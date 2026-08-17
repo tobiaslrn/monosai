@@ -63,6 +63,10 @@ export default tseslint.config(
       ],
       '@angular-eslint/prefer-on-push-component-change-detection': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
       // Angular's `output<void>()` and CDK dialog generics are idiomatic void usage.
       '@typescript-eslint/no-invalid-void-type': 'off',
       '@typescript-eslint/no-unnecessary-type-arguments': 'off',

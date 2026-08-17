@@ -1,4 +1,4 @@
-import type { IconName } from '../../shared-ui/icon/icon-paths';
+import type { IconName } from '../../shared-ui/icon/icon-set';
 
 /**
  * Primary destinations. Items are registered here as their feature lands so

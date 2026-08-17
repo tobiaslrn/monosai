@@ -8,7 +8,10 @@ import { provideServiceWorker } from '@angular/service-worker';
 import type { ApplicationConfig } from '@angular/core';
 import { provideRouter, withHashLocation, withInMemoryScrolling } from '@angular/router';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
+import { provideInitializationSteps } from './core/bootstrap/initialization-steps';
+import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
 import { APP_ROUTES } from './core/routing/app.routes';
+import { providePersistence } from './infrastructure/persistence/persistence.providers';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -20,7 +23,11 @@ export const appConfig: ApplicationConfig = {
       withHashLocation(),
       withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' }),
     ),
+    providePersistence(),
+    provideInitializationSteps(),
     provideAppInitializer(() => {
+      // Keeps the document theme attribute in sync with persisted settings.
+      inject(ThemeSynchronizer);
       void inject(AppInitializerService).run();
     }),
     provideServiceWorker('ngsw-worker.js', {

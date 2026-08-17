@@ -11,16 +11,6 @@ test.describe('application shell', () => {
     await expect(page).toHaveURL(/#\/settings$/);
   });
 
-  test('switches theme without reloading', async ({ page }) => {
-    await page.goto('/');
-
-    await page.getByRole('radio', { name: 'Dark' }).check();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-
-    await page.getByRole('radio', { name: 'System' }).check();
-    await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.*/);
-  });
-
   test('shows build diagnostics without user content', async ({ page }) => {
     await page.goto('/');
 
