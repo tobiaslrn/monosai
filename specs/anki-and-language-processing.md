@@ -1,0 +1,281 @@
+# Anki integration and language processing
+
+## 1. Non-negotiable rules
+
+- All Anki access is read-only.
+- The production code contains an allowlist of permitted actions; it does not expose a generic action method to application code.
+- Source selection is explicit: deck, note type, and expression field.
+- A vocabulary item is eligible only when at least one associated card in the selected deck has been reviewed at least once.
+- Refresh is manual and produces a new immutable combined snapshot.
+- Ordinary generated vocabulary validity is determined locally, never by the LLM.
+- Provider limitations and missing review evidence are reported rather than guessed around.
+
+## 2. Providers and capability negotiation
+
+Implement three adapters behind `AnkiVocabularyProvider`.
+
+### Desktop AnkiConnect
+
+Use the fixed local endpoint(s) supported by the selected AnkiConnect version. Begin with a version/permission probe, then capability-test only required read operations. The adapter may use actions equivalent to:
+
+- version/request-permission capability probe;
+- deck discovery;
+- note-type/model discovery;
+- field discovery;
+- reviewed-card or note search;
+- batched note/card information reads.
+
+Exact action selection is adapter-internal. Never invoke add/update/delete/media/sync/deck mutation actions.
+
+### Android AnkiConnect-compatible bridge
+
+Use the installed unofficial bridge at its fixed local endpoint. Do not assume desktop action completeness. Probe each required action and record capabilities. Prefer a reviewed-note search such as selected deck plus non-new/reviewed criteria when supported, followed by batched note information. If the bridge cannot prove review eligibility or return mapped fields reliably, return `review-evidence-unsupported` and present package import.
+
+Do not tell users that Monosai can install, configure, start, or obtain native permissions from AnkiDroid. Provide concise instructions to open/configure the bridge outside Monosai.
+
+### Package provider
+
+Accept `.apkg` and `.colpkg` chosen by the user. Process entirely in a dedicated worker:
+
+1. Inspect archive structure without extracting media.
+2. Reject encrypted archives, unsafe paths, decompression bombs, unsupported compression/schema, and configured resource-limit violations.
+3. Locate the supported collection database variant.
+4. Decompress only required metadata/database members.
+5. Open the collection in a transient in-memory database implementation.
+6. Discover decks, note types, field names, cards, notes, and review/scheduling evidence.
+7. Execute the same mapping/eligibility semantics as local providers.
+8. Close the DB, revoke URLs, terminate worker, and release buffers.
+
+Package support must be fixture-driven across representative current Anki Desktop and AnkiDroid exports. The implementation agent must document supported collection members/schema versions in diagnostics and tests. Unsupported versions fail clearly; do not attempt destructive in-place conversion.
+
+## 3. Capability model
+
+```ts
+interface AnkiCapabilities {
+  apiVersion: string;
+  canDiscoverDecks: boolean;
+  canDiscoverNoteTypes: boolean;
+  canDiscoverFields: boolean;
+  canFilterReviewed: boolean;
+  canReadNoteFields: boolean;
+  maxBatchSize?: number;
+  limitations: readonly CapabilityLimitation[];
+}
+```
+
+The mapping UI is enabled only when discovery is complete. Refresh is enabled only when every enabled mapping can be resolved and the provider can prove reviewed eligibility.
+
+### Required error variants
+
+`not-running`, `bridge-not-running`, `addon-missing-or-unreachable`, `permission-denied`, `origin-not-allowed`, `private-network-blocked`, `timeout`, `unsupported-api`, `unsupported-action`, `malformed-response`, `deck-discovery-failed`, `note-type-discovery-failed`, `field-discovery-failed`, `review-evidence-unsupported`, `query-failed`, `package-unreadable`, `package-schema-unsupported`, `package-review-data-missing`, `package-resource-limit`, `cancelled`, `unknown`.
+
+UI messaging must preserve these distinctions.
+
+## 4. Source mappings
+
+```ts
+interface SourceMapping {
+  id: string;
+  providerKind: AnkiProviderKind;
+  deckName: string;
+  noteTypeName: string;
+  expressionFieldName: string;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+```
+
+- Dropdown values are discovered, never free-typed.
+- Multiple mappings may point at one deck when note types/fields differ.
+- Selecting a parent deck follows the provider's normal deck-query semantics and includes descendants only if the displayed label explicitly says so. Store the exact query scope with the mapping.
+- A mapping is stale when a selected identifier no longer exists. Stale mappings block refresh until repaired/disabled/removed.
+- Refresh always combines all enabled mappings into one snapshot. There is no per-generation source selection.
+
+## 5. Reviewed eligibility
+
+For each selected mapping, include a note's field value when:
+
+1. The note matches the exact selected note type.
+2. At least one card for that note is within the selected deck scope.
+3. At least one such card has review evidence equivalent to `reps > 0` or a provider query that excludes never-reviewed/new cards.
+
+Suspended, buried, lapsed, or mature state does not remove eligibility after at least one review. Review recency, interval, ease, and card maturity do not weight vocabulary in v1.
+
+When a provider returns notes rather than cards, its query semantics must be contract-tested to prove that each returned note has at least one qualifying card. If that cannot be established, the adapter cannot create a snapshot.
+
+## 6. Literal field extraction
+
+The learner intentionally chooses the field. Monosai does not split, choose among variants, or reject sentence-like values.
+
+Extraction rules:
+
+1. Read the selected field value.
+2. Parse any markup into an inert document and extract visible text only. Remove script/style/media content. Never render provider HTML.
+3. Decode entities as part of visible-text extraction.
+4. Normalize CRLF/CR to LF and trim leading/trailing Unicode whitespace.
+5. Reject only missing-field, empty/whitespace-only, or values that cannot produce safe visible text.
+6. Preserve internal whitespace, punctuation, slashes, line breaks, phrases, and multiple expressions literally.
+7. Do not convert kana/kanji, split on separators, or use the dictionary to rewrite the field.
+
+The canonical expression applies only Unicode normalization and the documented whitespace/newline normalization needed for stable hashing. It does not change lexical content.
+
+Because entries may be phrases, analyze each field into a token sequence and support longest-sequence matching during validation. An odd literal value may never match generated output; that is accepted product behavior, not an import warning.
+
+## 7. Deduplication and provenance
+
+- Compute an expression hash from the canonical visible expression.
+- Merge exact canonical duplicates across mappings into one `VocabularyItem`.
+- Retain one `VocabularyProvenance` record per source mapping/note where practical. Source note IDs are diagnostic metadata and may be omitted by providers that do not expose them safely.
+- Do not deduplicate distinct orthographies merely because dictionary lemmas coincide. They can share normalized lookup forms but remain distinct items.
+- Unique-entry count, used by the 50-entry gate, counts deduplicated canonical expressions.
+
+## 8. Refresh workflow
+
+State machine:
+
+```text
+idle -> probing -> discovering/validating mappings -> querying
+     -> extracting -> analyzing -> summarizing -> awaiting confirmation
+     -> committing -> complete
+```
+
+Any pre-commit state can transition to `cancelled` or a typed failure. Only committing is non-cancellable. Temporary extracted data lives in worker/session storage and is discarded after failure/cancel.
+
+Summary includes:
+
+- mappings queried;
+- cards/notes examined when the provider supplies reliable counts;
+- reviewed eligible notes;
+- non-empty extracted values;
+- rejected missing/empty values;
+- exact duplicate occurrences;
+- unique expressions;
+- provider warnings/limitations.
+
+Confirmation transaction creates snapshot/items/provenance/statistics and sets Active. If the transaction fails, the old active snapshot remains unchanged.
+
+## 9. Language pipeline
+
+### Sentence segmentation
+
+Segmentation operates paragraph by paragraph and preserves all source characters. Use a deterministic Japanese-aware segmenter with versioned rules and a user review step. It must handle `。！？`, paired quotes/brackets, ellipses, repeated punctuation, dialogue lines, and paragraph endings. Avoid splitting on punctuation inside paired Japanese quotation marks where the sentence continues.
+
+The implementation may combine `Intl.Segmenter` and explicit rules only if output is deterministic across supported Chrome versions; otherwise ship a versioned implementation. Fixture tests are authoritative.
+
+### Tokenizer selection gate
+
+The implementation agent selects the concrete tokenizer. It must:
+
+- run fully offline in current Chrome/Android Chrome;
+- run inside a Web Worker;
+- return surface, lemma/base form, reading, and part of speech;
+- preserve offsets against original text;
+- support Japanese inflection needed for known-form matching;
+- initialize within documented mobile memory/time budgets;
+- permit asset redistribution with attribution;
+- pass the golden corpus in testing-and-delivery.md.
+
+Default selection rule: use the smallest maintained browser-compatible tokenizer that passes every gate. Kuromoji.js is the fallback candidate if no better maintained option passes. Wrap it behind `Tokenizer`; no feature imports its library types.
+
+### Analyzer output integrity
+
+- Every nonempty source range is represented by a token or explicit unclassified span.
+- Convert readings to hiragana for display/matching while retaining source surface.
+- Kana-only tokens do not receive redundant ruby.
+- Whole-token ruby is acceptable; per-kanji alignment is out of scope.
+- POS mapping converts library-specific tags to Monosai's bounded enum while retaining optional raw tags in infrastructure diagnostics only.
+
+## 10. Dictionary
+
+Bundle a compact common-word Japanese–English dataset. Dataset selection must:
+
+- permit static redistribution in a public application;
+- include written forms, readings, English glosses, and part-of-speech data;
+- have versioned reproducible build inputs and required attribution included in the asset manifest/source distribution;
+- fit the agreed core-only offline budget set by implementation performance testing;
+- contain no runtime network dependency;
+- pass lookup fixtures for common beginner vocabulary, kana-only words, orthographic variants, and inflections.
+
+Build a compact lookup artifact at development time. Do not import the raw source into Dexie per user. Lookup order:
+
+1. Exact surface.
+2. Exact lemma.
+3. Reading plus compatible POS.
+4. Canonical orthographic variants supplied by the dataset.
+
+Return a bounded number of prioritized common senses. The UI shows “No bundled definition” when none is found and never silently makes an online lookup.
+
+## 11. Grammar catalog and structural baseline
+
+The implementation agent selects/builds a licensed catalog; the application must not claim JLPT publishes an official exhaustive list.
+
+Required catalog fields: stable ID, N5–N1 classification, Japanese pattern, English name, English description, formation summary when available, optional Japanese/English example, source attribution, catalog version, and optional search aliases.
+
+Required selection gates:
+
+- broad N5–N1 coverage suitable for individual rule selection;
+- redistribution and modification rights compatible with the project;
+- source/attribution metadata shipped with the app;
+- stable IDs or a documented mapping/migration strategy;
+- schema validation, duplicate detection, nonempty descriptions, level validation, and review of unsafe HTML;
+- fixture sampling and manual language review before release.
+
+The structural baseline is a separate, Monosai-versioned dataset containing particles, auxiliary/copular forms, punctuation, productive inflection, counters/classifiers needed structurally, and other explicitly enumerated sentence-building forms. It must not include general starter content nouns, verbs, or adjectives. Publish the list in-app as read-only.
+
+Grammar catalog selection guides prompts and advisory review. It is not a deterministic local grammar validator.
+
+## 12. Vocabulary matcher and validation
+
+Compile a snapshot matcher in the language worker using:
+
+- canonical surface lookup;
+- normalized lemma/readings;
+- orthographic variants explicitly supported by the tokenizer/dictionary normalization rules;
+- phrase token sequences in a longest-match trie/automaton;
+- structural baseline matcher;
+- entity recognizers for numbers, dates, times, punctuation, and tokenizer-supported proper-name categories.
+
+### Precedence
+
+1. Punctuation/symbol formatting.
+2. Longest exact/normalized Anki phrase.
+3. Exact Anki single-token form.
+4. Normalized/inflected Anki form.
+5. Structural baseline.
+6. Deterministic recognized entity.
+7. Candidate unknown for exception review/repair.
+
+Precedence prevents a shorter known entry from masking a longer literal phrase. Record all supporting vocabulary IDs when ambiguous, but show one stable primary explanation.
+
+### Imported readings
+
+Classify against the latest active snapshot when markers or inspector data are requested. No snapshot yields an explicit `vocabulary-not-configured` state rather than marking every word unknown. Nonmatches use `not-in-snapshot` and never reject the reading.
+
+### Generated stories
+
+Validate title and every sentence against the captured snapshot. Classification completes locally before exception review. Candidate unknowns are sent to exception review only as described in the AI specification. Accepted story validation is frozen with validator/analyzer versions.
+
+### Normalization limits
+
+Allowed normalization must be deterministic and explainable: Unicode form, kana reading normalization, tokenizer lemma/inflection, documented common orthographic variants, and literal phrase matching. Do not accept semantic synonyms, model claims, dictionary similarity, fuzzy edit distance, or kanji-sharing as proof of known vocabulary.
+
+## 13. Furigana and rendering contract
+
+- Furigana comes from tokenizer readings and uses hiragana.
+- Suppress readings identical to kana surface after script normalization.
+- Render whole-token `<ruby>` and `<rt>`; preserve punctuation outside ruby when tokenizer offsets allow.
+- Every interactive token retains its original contiguous text. Never replace the Japanese with dictionary canonical spelling.
+- Token-spacing CSS and ruby CSS must pass narrow-screen, 200% text scaling, mixed kana/kanji, long token, quotation, and line-wrap fixtures.
+
+## 14. Language-processing acceptance
+
+- A generated inflection of a reviewed dictionary-form verb validates through an explainable lemma relationship.
+- A semantic synonym not present in Anki remains unknown.
+- A reviewed multi-token phrase wins longest-match classification.
+- Imported nonmatches remain readable and informational.
+- Titles are subject to the same generated-story validation policy.
+- All field content is rendered inert; malicious Anki HTML cannot execute.
+- Package parsing never extracts media or writes to the user's Anki collection.
+- The main thread remains responsive while parsing a 50,000-character chapter and a large supported package fixture.
+

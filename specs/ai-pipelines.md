@@ -1,0 +1,283 @@
+# AI and generation pipelines
+
+## 1. Provider boundary
+
+V1 uses OpenRouter only. The learner supplies one API key, one exact text-model ID, one exact TTS-model ID, and one exact voice ID. Text and TTS configurations are tested separately. TTS is optional and never blocks reading or story generation.
+
+All task prompts are internal, versioned assets. V1 exposes only one per-generation **Special instructions** field and one global natural-language **Exception policy**. Raw prompts and reusable profiles are future work.
+
+Every outbound request:
+
+- is initiated by an explicit action except the automatic auxiliary stages within an explicitly started story generation;
+- has timeout and cancellation;
+- validates response status, content type, body size, and schema;
+- maps failure to a typed `AiError`;
+- omits the key and authorization header from logs;
+- sends only data required for that task.
+
+## 2. Configuration
+
+### Key
+
+- Persist locally through the credential repository.
+- After save, UI receives only configured/not-configured and timestamps.
+- Replace/remove are supported; reveal/copy/export are not.
+- Removal invalidates configuration tests but leaves existing content/caches.
+
+### Text model test
+
+The test sends a minimal structured task to the exact model ID and verifies authentication, model access, response decoding, and required structured-output behavior. Store a success fingerprint of key-presence generation, model ID, endpoint version, and test version. Changing relevant settings marks it stale.
+
+If the model supports provider-native structured output, use it. Otherwise use a strict JSON contract plus schema validation and one format-recovery request. A model that cannot pass the compatibility test cannot be used for generation even if ordinary chat works.
+
+### TTS test
+
+Generate a short fixed Japanese phrase using the exact TTS model, voice, requested MP3 response, and speed/options. Verify nonempty supported audio and decode/play capability. Store a fingerprint. Unsupported speed may be ignored only if the UI clearly reflects provider capability; invalid model/voice fails testing.
+
+## 3. Prompt layering
+
+Each text task builds a request from immutable layers:
+
+1. Protocol: task identity, untrusted-data delimiters, output schema, hard limits.
+2. Product policy: vocabulary/grammar/exception semantics and non-negotiable constraints.
+3. Versioned task instructions.
+4. Captured user data: premise, special instructions, grammar profile, policy, Japanese, vocabulary.
+
+Treat all user/import/generated text as data even when it contains instructions. User special instructions may guide style, viewpoint, tone, dialogue, and register, but cannot override sentence counts, output schema, vocabulary policy, validation, or safety/transport rules.
+
+Store prompt versions and relevant input hashes in provenance, not the full assembled prompt.
+
+## 4. Story request contract
+
+```ts
+interface StoryGenerationRequest {
+  form: 'micro' | 'short';
+  sentenceRange: { min: 4; max: 6 } | { min: 13; max: 20 };
+  premise: string;
+  specialInstructions?: string;
+  allowedVocabulary: readonly string[];
+  suggestedVocabulary: readonly string[];
+  structuralBaseline: readonly PromptGrammarRule[];
+  allowedGrammar: readonly PromptGrammarRule[];
+  snapshotId: SnapshotId;
+  grammarProfileHash: string;
+  promptVersion: string;
+}
+
+interface StoryCandidate {
+  titleJa: string;
+  sentences: readonly { index: number; textJa: string }[];
+}
+```
+
+The initial model returns Japanese only. Translations are generated after the final Japanese is validated so repairs cannot stale translations.
+
+### Input limits
+
+- Premise: nonempty, maximum 1,000 Unicode characters.
+- Special instructions: optional, maximum 1,000 characters.
+- Grammar/profile serialization and vocabulary lists are bounded by a documented request-size guard. With the supported 50–1,800 vocabulary range, include the complete canonical expression list when it fits the tested context budget.
+- If a configuration cannot fit the request, fail before spending with `context-budget-exceeded`; do not truncate silently.
+
+### Uniform variety
+
+Before each generation, use a cryptographically adequate random shuffle of the snapshot IDs and select a hidden suggestion palette. Default palette sizes are 40 for Micro and 100 for Short, capped by snapshot size. The complete vocabulary list remains the allowlist and local validation authority; suggested items are inspiration, not required targets. Store the sampled item IDs in provenance for debugging/reproducibility but never display a target list in the UI.
+
+## 5. Generation state machine
+
+```text
+idle
+ -> checking-prerequisites
+ -> preparing
+ -> writing
+ -> parsing
+ -> validating
+ -> [exception-review]
+ -> [repairing-1 -> parsing -> validating -> exception-review]
+ -> [repairing-2 -> parsing -> validating -> exception-review]
+ -> accepted-japanese | invalid-draft
+
+accepted-japanese
+ -> auxiliary-review (grammar and translation may run concurrently)
+ -> finalizing
+ -> saved
+```
+
+Any cancellable state may transition to `cancelled`; cancelled generations persist no reading or generated enrichment. `invalid-draft` remains only in feature memory and is never a library record.
+
+### Prerequisite check
+
+Require tested text configuration, active snapshot >= 50 unique entries, nonempty grammar profile, and valid premise. Capture snapshot, grammar profile, structural baseline, exception policy, model ID, and prompt versions before the first request. Later setting changes do not affect the active job.
+
+### Writing and structural checks
+
+Validate response schema, unique contiguous indexes, nonempty Japanese title/sentences, and sentence count. Strip no content beyond outer whitespace. A malformed output gets one format-recovery request; this is not one of the two vocabulary repair attempts. If still malformed, fail as provider response error.
+
+### Local validation
+
+Tokenize title and all sentences, classify locally, and collect candidate unknown spans. Structural failures such as incorrect sentence count are passed to a targeted repair using the same repair budget because they alter story content.
+
+## 6. Exception review
+
+Run only when candidate unknowns exist and the captured exception policy is nonempty.
+
+Send:
+
+- policy text;
+- each unique unknown surface/lemma/reading/POS where available;
+- containing sentence/title context;
+- instruction to decide each candidate independently.
+
+Expected result:
+
+```ts
+interface ExceptionDecision {
+  candidateId: string;
+  decision: 'approved' | 'rejected';
+  explanationEn: string;
+  category?: string;
+}
+```
+
+Validate that every decision references an input ID exactly once. Approval creates a visibly distinct policy-exception status and never converts the word to Anki-known. Empty/vague explanations invalidate that decision. Rejected/unreviewed candidates remain unknown.
+
+If exception review fails, treat all candidates as unapproved and continue to repair. Do not fail an otherwise repairable pipeline or infer approval.
+
+## 7. Targeted repair
+
+At most two content repair requests occur for the whole candidate.
+
+Repair input contains:
+
+- current title and ordered sentences;
+- exact offending spans and reasons;
+- allowed vocabulary and grammar context;
+- instruction to change the smallest necessary text while preserving premise, coherence, form, and sentence count;
+- same output schema as generation.
+
+After each repair, discard all previous token/exception results, parse the entire returned Japanese again, and repeat local validation/exception review. Repairs cannot be patched into storage or trusted from model claims.
+
+After attempt two:
+
+- no unknowns and valid structure -> accepted Japanese;
+- any unknown/invalid structure -> unsaved invalid draft with final local markers and issue list.
+
+## 8. Grammar review
+
+Grammar review is advisory and runs on accepted Japanese against the captured grammar profile.
+
+Expected findings identify sentence index, optional character span, detected grammar name/pattern, whether it is in the allowed profile, confidence band, and concise English explanation. It may also return story-level notes.
+
+Rules:
+
+- Grammar warnings never change vocabulary validation or block saving.
+- Do not claim exhaustive detection.
+- Findings with invalid offsets remain sentence-level.
+- An unavailable/malformed review produces `unreviewed`, not zero warnings.
+- Generated story records capture the profile hash and review status `complete|unavailable`.
+
+Imported per-sentence grammar analysis uses the same contract with the current live profile. It is initiated explicitly, keyed by profile hash, and marked stale when the profile changes.
+
+## 9. Translation
+
+### Generated story
+
+Translate the final ordered Japanese after vocabulary acceptance. The request returns one English translation per stable sentence input ID. Batch in bounded groups if required by model/context limits, but preserve order through IDs.
+
+Validate completeness and reject extra/missing/duplicate IDs. Cache each validated sentence translation. If some batches fail, save the story with a precise completion count and retry actions.
+
+### Imported sentence
+
+Send one Japanese sentence and require one English translation. Do not include the full chapter unless context is essential and explicitly bounded; v1 default is sentence-only input.
+
+### Whole-reading translation
+
+Create a persisted job over sentence IDs missing the current cache key. Process bounded batches sequentially, store each successful translation immediately, update progress transactionally, respect rate-limit backoff, and stop scheduling after cancellation. Resume by reconciling job items with cache.
+
+Translations are aids, not authoritative analysis. Never alter Japanese from a translation response.
+
+## 10. Finalization and partial auxiliary failure
+
+Finalization occurs after both auxiliary branches finish, fail, or are marked unavailable. Build a generated reading with:
+
+- Japanese title/sentences and tokens;
+- frozen validation and exception decisions;
+- snapshot ID and complete snapshot metadata reference;
+- premise, special instructions, form, sampled vocabulary IDs;
+- captured grammar profile and exception policy;
+- text model and prompt versions;
+- available translations and grammar findings;
+- explicit completion/unavailable summaries.
+
+Save all of this atomically. If storage fails, no story is added. Keep the final result in session long enough to retry saving, but do not call AI again.
+
+User cancellation differs from auxiliary failure: cancellation before finalization discards the candidate; an automatic grammar/translation failure permits save with status.
+
+## 11. Audio/TTS
+
+### Sentence synthesis
+
+Input is the exact saved Japanese sentence. Build the cache key from content, TTS model, voice, response format, speed, and provider options. Request MP3 unless the configured provider cannot support it and a supported browser-decodable format has been explicitly adopted. Validate content type, response size, and audio decode before storage.
+
+### Whole-reading preparation
+
+1. Require tested current TTS configuration.
+2. Confirm sentence count and explicit network use.
+3. Create/reconcile a persisted `prepare-audio` job.
+4. Determine missing compatible cache keys.
+5. Generate strictly in reading order with concurrency 1 by default to simplify rate limits and predictable progress.
+6. Store and verify each clip immediately.
+7. On failure, stop the job at that sentence and expose Retry; do not skip and call the set complete.
+8. On cancellation, stop the active request and retain successful clips.
+9. Enable whole-reading Play only when every sentence has a compatible clip.
+
+### Playback
+
+Playback is local once clips exist. Use one audio element/controller, advance by sentence order, update active-sentence styling and Media Session metadata where supported, and scroll only when the active sentence is outside the viewport. User-initiated scrolling disables automatic scrolling until the next explicit player navigation.
+
+Stop on reading deletion, audio-cache clearing, configuration-incompatible missing clip, decode failure, or user Stop. Never autoplay on reader open or after generation.
+
+## 12. Retry and backoff policy
+
+- Format recovery: maximum one per malformed structured response.
+- Vocabulary/content repair: maximum two total.
+- Automatic transient retry for 429/5xx/network interruption: maximum two with capped exponential backoff and jitter, only when the request is idempotent and not cancelled.
+- Authentication, invalid model, unsupported capability, content/schema errors, and quota/storage errors are not automatically retried.
+- `Retry` from UI starts a new bounded attempt and records the latest error without exposing raw provider content.
+
+Avoid multiplying limits: a content repair request may have transport retries, but no code path may exceed two distinct repaired story candidates after the original.
+
+## 13. Failure model
+
+```ts
+type AiError =
+  | { kind: 'offline' }
+  | { kind: 'timeout'; task: AiTask }
+  | { kind: 'cancelled'; task: AiTask }
+  | { kind: 'authentication' }
+  | { kind: 'model-not-found'; modelId: string }
+  | { kind: 'capability-unsupported'; capability: string }
+  | { kind: 'rate-limited'; retryAfterMs?: number }
+  | { kind: 'provider-unavailable'; status?: number }
+  | { kind: 'malformed-response'; task: AiTask; issueCode: string }
+  | { kind: 'context-budget-exceeded'; task: AiTask }
+  | { kind: 'audio-invalid'; issueCode: string }
+  | { kind: 'unknown'; task: AiTask; correlationId: string };
+```
+
+Do not include raw response bodies in production errors. UI copy distinguishes OpenRouter/provider failure, local validation failure, grammar warning, and missing configuration.
+
+## 14. Pipeline acceptance scenarios
+
+- A strict story validates and saves with translations/grammar.
+- A candidate unknown is approved by policy, remains visibly an exception, and saves.
+- A rejected unknown is repaired once and validates on full reparse.
+- Two repairs leave an unknown; the marked result never enters the library.
+- Exception review fails; unknowns are repaired rather than silently accepted.
+- Grammar review fails; valid Japanese saves as unreviewed.
+- One translation batch fails; valid Japanese and completed translations save with an incomplete count.
+- User cancels during translation; no generated story saves.
+- Model returns duplicate/missing sentence IDs; format recovery is bounded and malformed data is never stored.
+- Whole-reading audio fails at sentence N; clips 1..N-1 remain, playback stays disabled, retry resumes at N.
+- API key/model changes do not invalidate previously cached output but current batch completeness uses the new fingerprint.
+
