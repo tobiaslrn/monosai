@@ -7,6 +7,15 @@
       "runtimeArgs": ["run", "start", "--", "--port=4200", "--host=127.0.0.1"],
       "port": 4200,
       "url": "http://127.0.0.1:4200"
+    },
+    {
+      "name": "start",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start"
+      ],
+      "port": 4200
     }
   ]
 }

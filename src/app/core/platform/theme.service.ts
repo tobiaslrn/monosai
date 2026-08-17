@@ -1,6 +1,6 @@
 import { DOCUMENT, Injectable, inject, signal } from '@angular/core';
 import { mediaQuerySignal } from './media-query';
-import type { ThemePreference } from './theme';
+import type { ThemeSetting } from '../../domain/settings/settings';
 
 /**
  * Applies the appearance preference to the document.
@@ -13,11 +13,11 @@ import type { ThemePreference } from './theme';
 export class ThemeService {
   private readonly document = inject(DOCUMENT);
   private readonly systemPrefersDark = mediaQuerySignal('(prefers-color-scheme: dark)');
-  private readonly preferenceSignal = signal<ThemePreference>('system');
+  private readonly preferenceSignal = signal<ThemeSetting>('system');
 
   readonly preference = this.preferenceSignal.asReadonly();
 
-  apply(preference: ThemePreference): void {
+  apply(preference: ThemeSetting): void {
     this.preferenceSignal.set(preference);
     const root = this.document.documentElement;
     if (preference === 'system') {

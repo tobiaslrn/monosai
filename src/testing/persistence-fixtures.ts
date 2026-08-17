@@ -1,0 +1,199 @@
+import type { ImportedReading, GeneratedStory } from '../app/domain/reading/reading';
+import type { ImportedReadingDraft } from '../app/domain/reading/reading-repository';
+import type { Paragraph, Sentence } from '../app/domain/reading/text-hierarchy';
+import type { TokenAnalysis } from '../app/domain/reading/token';
+import type {
+  VocabularyItem,
+  VocabularyProvenance,
+  VocabularySnapshot,
+} from '../app/domain/vocabulary/snapshot';
+import type { SnapshotCommit } from '../app/domain/vocabulary/vocabulary-repository';
+import {
+  paragraphId,
+  readingId,
+  sentenceId,
+  snapshotId,
+  vocabularyItemId,
+  type ReadingId,
+  type SnapshotId,
+} from '../app/domain/shared/ids';
+import { sha256Hex } from '../app/infrastructure/hashing/sha256';
+
+/**
+ * Production-shaped fixtures.
+ *
+ * Identifiers are deterministic UUIDs so tests can assert exact identity and
+ * migration fixtures stay reproducible.
+ */
+export function uuid(seed: number): string {
+  const hex = sha256Hex(`monosai-fixture-${seed}`);
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `4${hex.slice(13, 16)}`,
+    `8${hex.slice(17, 20)}`,
+    hex.slice(20, 32),
+  ].join('-');
+}
+
+export interface ImportedFixtureOptions {
+  readonly seed?: number;
+  readonly title?: string;
+  readonly paragraphTexts?: readonly (readonly string[])[];
+  readonly createdAt?: number;
+}
+
+/**
+ * Builds an imported reading with paragraphs, sentences, and token analyses.
+ * `paragraphTexts` is a list of paragraphs, each a list of sentences.
+ */
+export function importedReadingFixture(options: ImportedFixtureOptions = {}): ImportedReadingDraft {
+  const seed = options.seed ?? 1;
+  const createdAt = options.createdAt ?? 1_700_000_000_000;
+  const paragraphTexts = options.paragraphTexts ?? [
+    ['ねこがすきです。', '毎日ねこを見ます。'],
+    ['犬もかわいいです。'],
+  ];
+
+  const id = readingId(uuid(seed * 1000));
+  const paragraphs: Paragraph[] = [];
+  const sentences: Sentence[] = [];
+  const tokenAnalyses: TokenAnalysis[] = [];
+
+  let sentenceIndex = 0;
+  paragraphTexts.forEach((paragraphSentences, paragraphIndex) => {
+    const currentParagraphId = paragraphId(uuid(seed * 1000 + 100 + paragraphIndex));
+    paragraphs.push({
+      id: currentParagraphId,
+      readingId: id,
+      position: paragraphIndex,
+      sourceText: paragraphSentences.join(''),
+    });
+
+    paragraphSentences.forEach((text, positionInParagraph) => {
+      const currentSentenceId = sentenceId(uuid(seed * 1000 + 200 + sentenceIndex));
+      sentences.push({
+        id: currentSentenceId,
+        readingId: id,
+        paragraphId: currentParagraphId,
+        positionInReading: sentenceIndex,
+        positionInParagraph,
+        japaneseText: text,
+        contentHash: sha256Hex(text),
+      });
+      tokenAnalyses.push({
+        sentenceId: currentSentenceId,
+        analyzerVersion: 'test-analyzer-1',
+        tokens: [
+          {
+            id: `${currentSentenceId}-0`,
+            startUtf16: 0,
+            endUtf16: text.length,
+            surface: text,
+            dictionaryKeys: [],
+            isPunctuation: false,
+          },
+        ],
+      });
+      sentenceIndex += 1;
+    });
+  });
+
+  const characterCount = paragraphs.reduce(
+    (total, paragraph) => total + paragraph.sourceText.length,
+    0,
+  );
+
+  const reading: ImportedReading = {
+    id,
+    kind: 'imported',
+    title: options.title ?? 'ねこの一日',
+    createdAt,
+    updatedAt: createdAt,
+    lastOpenedAt: null,
+    sentenceCount: sentences.length,
+    characterCount,
+    translationSummary: { total: sentences.length, completed: 0, failed: 0 },
+    grammarSummary: { state: 'not-requested' },
+    audioSummary: { total: sentences.length, completed: 0, failed: 0 },
+    analyzerVersion: 'test-analyzer-1',
+    importSource: 'paste',
+    sourceTextHash: sha256Hex(paragraphs.map((paragraph) => paragraph.sourceText).join('\n\n')),
+  };
+
+  return { reading, paragraphs, sentences, tokenAnalyses };
+}
+
+export function generatedStoryFixture(
+  seed: number,
+  storySnapshotId: SnapshotId,
+  createdAt = 1_700_000_500_000,
+): GeneratedStory {
+  return {
+    id: readingId(uuid(seed * 1000)),
+    kind: 'generated',
+    title: 'ねこのぼうけん',
+    createdAt,
+    updatedAt: createdAt,
+    lastOpenedAt: null,
+    sentenceCount: 5,
+    characterCount: 60,
+    translationSummary: { total: 5, completed: 5, failed: 0 },
+    grammarSummary: { state: 'complete', concernCount: 0 },
+    audioSummary: { total: 5, completed: 0, failed: 0 },
+    analyzerVersion: 'test-analyzer-1',
+    form: 'micro',
+    premise: 'A cat explores the garden.',
+    snapshotId: storySnapshotId,
+    generationProvenanceId: uuid(seed * 1000 + 900),
+    validationOutcome: { kind: 'strict' },
+  };
+}
+
+export function snapshotFixture(seed: number, entryCount = 3): SnapshotCommit {
+  const id = snapshotId(uuid(seed * 1000 + 500));
+  const expressions = ['ねこ', '毎日', '見る', '犬', 'かわいい'].slice(0, entryCount);
+
+  const items: VocabularyItem[] = expressions.map((expression, index) => ({
+    id: vocabularyItemId(uuid(seed * 1000 + 600 + index)),
+    snapshotId: id,
+    visibleExpression: expression,
+    canonicalExpression: expression,
+    expressionHash: sha256Hex(expression),
+    analyzedSequence: [{ surface: expression }],
+  }));
+
+  const provenance: VocabularyProvenance[] = items.map((item) => ({
+    vocabularyItemId: item.id,
+    sourceMappingId: uuid(seed * 1000 + 700),
+    deckName: 'Core Japanese',
+    noteTypeName: 'Basic',
+    fieldName: 'Expression',
+  }));
+
+  const snapshot: VocabularySnapshot = {
+    id,
+    createdAt: 1_700_000_100_000,
+    status: 'complete',
+    uniqueEntryCount: items.length,
+    mappingIds: [provenance[0].sourceMappingId],
+    providerKinds: ['desktop-connect'],
+    analyzerVersion: 'test-analyzer-1',
+    normalizationVersion: 'test-normalizer-1',
+    stats: {
+      mappingsQueried: 1,
+      reviewedEligibleNotes: items.length,
+      nonEmptyValues: items.length,
+      rejectedEmptyValues: 0,
+      duplicateOccurrences: 1,
+      uniqueExpressions: items.length,
+      providerWarnings: [],
+    },
+  };
+
+  return { snapshot, items, provenance };
+}
+
+export function readingIdFor(seed: number): ReadingId {
+  return readingId(uuid(seed * 1000));
+}

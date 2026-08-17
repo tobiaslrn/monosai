@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { DATABASE_SCHEMA_VERSION } from '../../application/shared/repository-tokens';
 import { readBuildInfo } from '../../core/diagnostics/build-info';
 
 /** Local build identity. Never contains user content or credentials. */
@@ -16,6 +17,10 @@ import { readBuildInfo } from '../../core/diagnostics/build-info';
         <div>
           <dt>Build commit</dt>
           <dd>{{ build.buildCommit }}</dd>
+        </div>
+        <div>
+          <dt>Database schema version</dt>
+          <dd>{{ schemaVersion }}</dd>
         </div>
       </dl>
     </section>
@@ -47,4 +52,5 @@ import { readBuildInfo } from '../../core/diagnostics/build-info';
 })
 export class DiagnosticsSectionComponent {
   protected readonly build = readBuildInfo();
+  protected readonly schemaVersion = inject(DATABASE_SCHEMA_VERSION);
 }
