@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "monosai-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "--", "--port=4200", "--host=127.0.0.1"],
+      "port": 4200,
+      "url": "http://127.0.0.1:4200"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+@use 'styles/tokens';
+@use 'styles/reset';
+@use 'styles/a11y';
+@use 'styles/controls';
+
+.mn-sheet-panel {
+  display: block;
+}

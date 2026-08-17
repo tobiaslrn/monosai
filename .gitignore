@@ -1,8 +1,29 @@
+# Compiled output
+/dist
+/tmp
+/out-tsc
+/coverage
+
+# Node
+/node_modules
+npm-debug.log
+
+# Angular
+/.angular/cache
+.sass-cache/
 
 # Playwright
-node_modules/
 /test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# IDEs and editors
+.idea/
+.vscode/
+.history/
+
+# System files
+.DS_Store
+Thumbs.db
