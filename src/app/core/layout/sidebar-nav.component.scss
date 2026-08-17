@@ -1,0 +1,60 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  height: 100%;
+  padding: var(--space-5) var(--space-3);
+  border-right: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
+}
+
+.wordmark {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding-inline: var(--space-3);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.wordmark--compact {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background-color var(--motion-fast) ease-out;
+}
+
+a:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+
+a.is-active {
+  background: var(--action-primary-soft);
+  color: var(--action-primary-hover);
+  font-weight: 600;
+}

@@ -1,0 +1,116 @@
+@mixin light-palette {
+  --surface-canvas: #f8f6f1;
+  --surface-panel: #fffdf9;
+  --surface-raised: #ffffff;
+  --surface-sunken: #efece5;
+  --surface-inverse: #252824;
+
+  --text-primary: #252824;
+  --text-secondary: #5a6058;
+  --text-inverse: #f8f6f1;
+  --text-on-action: #ffffff;
+
+  --border-subtle: #dfe4dc;
+  --border-strong: #b9c1b5;
+
+  --action-primary: #4f6b59;
+  --action-primary-hover: #405645;
+  --action-primary-soft: #e4ede6;
+  --accent-secondary: #6f629a;
+  --accent-secondary-soft: #ece8f5;
+
+  --status-success: #3f6a4e;
+  --status-success-soft: #e3efe6;
+  --status-warning: #7d5a1c;
+  --status-warning-soft: #f6ecd8;
+  --status-danger: #8c463f;
+  --status-danger-soft: #f7e5e3;
+
+  --focus-ring: #4a3c86;
+  --shadow-raised: 0 1px 2px rgb(37 40 36 / 8%), 0 4px 12px rgb(37 40 36 / 6%);
+  --shadow-overlay: 0 8px 32px rgb(37 40 36 / 16%);
+}
+
+@mixin dark-palette {
+  --surface-canvas: #1b1d1a;
+  --surface-panel: #232622;
+  --surface-raised: #2b2f2a;
+  --surface-sunken: #161815;
+  --surface-inverse: #f0eee8;
+
+  --text-primary: #eceae4;
+  --text-secondary: #adb3a9;
+  --text-inverse: #1b1d1a;
+  --text-on-action: #12150f;
+
+  --border-subtle: #3a3f38;
+  --border-strong: #565d53;
+
+  --action-primary: #9dbfa8;
+  --action-primary-hover: #b3d0bc;
+  --action-primary-soft: #2c3730;
+  --accent-secondary: #b6aada;
+  --accent-secondary-soft: #322e42;
+
+  --status-success: #93c3a3;
+  --status-success-soft: #26332a;
+  --status-warning: #dcb779;
+  --status-warning-soft: #37301f;
+  --status-danger: #e59b93;
+  --status-danger-soft: #3a2724;
+
+  --focus-ring: #b7a9f0;
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-overlay: 0 8px 32px rgb(0 0 0 / 55%);
+}
+
+:root {
+  @include light-palette;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --font-ui: system-ui, 'Segoe UI', roboto, helvetica, arial, sans-serif;
+  --font-japanese: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', 'MS Mincho', serif;
+
+  --reader-font-size: 20px;
+  --reader-line-height-plain: 1.65;
+  --reader-line-height-ruby: 1.95;
+  --reader-measure: 720px;
+  --layout-measure: 1120px;
+
+  --motion-fast: 120ms;
+  --motion-medium: 200ms;
+  --touch-target: 44px;
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  @include dark-palette;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    @include dark-palette;
+
+    color-scheme: dark;
+  }
+}
+
+@media (max-width: 959px) {
+  :root {
+    --reader-font-size: 19px;
+  }
+}
