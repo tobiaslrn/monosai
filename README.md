@@ -69,9 +69,10 @@ Japanese-English dictionary, the grammar catalog, and the structural baseline.
 They live under `public/assets/language/<version>/` next to a `manifest.json`
 that records each file's size, SHA-256 digest, licence, and attribution.
 
-- The bundle is fetched lazily, on request from Settings, and never during
-  startup. Each file is verified against its digest before use and then cached
-  under its immutable versioned URL.
+- Preparation starts automatically once startup succeeds, and is never awaited,
+  so navigation and reading are available while the bundle downloads. Each file
+  is verified against its digest before use and then cached under its immutable
+  versioned URL. Settings reports progress and offers a retry after a failure.
 - `npm run assets:build` regenerates everything from the pinned sources in
   `scripts/assets/sources.json` and the reviewed datasets in `data/language/`.
   It needs network access and is the only thing that writes the bundle.

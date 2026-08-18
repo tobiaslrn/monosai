@@ -7,9 +7,9 @@ import { technicalCode } from '../../domain/shared/errors';
  * Offline language assets: their state, active versions, and the licences under
  * which the bundled datasets are redistributed.
  *
- * Loading is user initiated rather than automatic, because the tokenizer runtime
- * is several megabytes and reading imported text must not depend on it having
- * been downloaded first.
+ * Preparation starts on its own after startup, so this section reports progress
+ * rather than asking for permission. Retrying is offered only when preparation
+ * failed, which is the one case the user can act on.
  */
 @Component({
   selector: 'mn-language-assets-section',
@@ -52,15 +52,11 @@ import { technicalCode } from '../../domain/shared/errors';
         </dl>
       }
 
-      <button
-        type="button"
-        class="mn-button"
-        data-testid="language-load"
-        [disabled]="store.status() === 'initializing'"
-        (click)="load()"
-      >
-        {{ store.status() === 'failed' ? 'Try again' : 'Prepare offline language assets' }}
-      </button>
+      @if (store.status() === 'failed') {
+        <button type="button" class="mn-button" data-testid="language-retry" (click)="retry()">
+          Try again
+        </button>
+      }
 
       @if (store.attributions().length > 0) {
         <h3>Data sources</h3>
@@ -135,7 +131,7 @@ export class LanguageAssetsSectionComponent {
     const info = this.store.info();
     switch (this.store.status()) {
       case 'idle':
-        return 'Not prepared yet. Japanese analysis needs these files once.';
+        return 'Waiting to prepare Japanese analysis.';
       case 'initializing':
         return 'Downloading and verifying language assets…';
       case 'failed':
@@ -153,7 +149,7 @@ export class LanguageAssetsSectionComponent {
     return technicalCode(failure);
   }
 
-  protected load(): void {
+  protected retry(): void {
     void this.store.initialize();
   }
 }
