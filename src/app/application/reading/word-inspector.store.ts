@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import type { DictionaryEntry, DictionaryMatchBasis } from '../../domain/language/dictionary';
 import { DICTIONARY_RESULT_LIMIT } from '../../domain/language/dictionary';
 import type { LanguageError } from '../../domain/language/language-error';
+import type { StructuralBaselineEntry } from '../../domain/language/structural-baseline';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { Token } from '../../domain/reading/token';
 import {
@@ -10,6 +11,7 @@ import {
 } from '../../domain/reading/token-presentation';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
+import { LanguageStore } from '../language/language.store';
 
 /** What the bundled dictionary had to say about the selected word. */
 export type DictionaryState =
@@ -40,6 +42,7 @@ export interface InspectedWord {
 @Injectable()
 export class WordInspectorStore {
   private readonly runtime = inject(LANGUAGE_RUNTIME);
+  private readonly language = inject(LanguageStore);
 
   private readonly selectedSignal = signal<InspectedWord | null>(null);
   private readonly dictionarySignal = signal<DictionaryState>({ kind: 'idle' });
@@ -49,9 +52,29 @@ export class WordInspectorStore {
   readonly dictionary = this.dictionarySignal.asReadonly();
   readonly isOpen = computed(() => this.selectedSignal() !== null);
 
+  /**
+   * The shipped baseline keyed by the id a `structural-baseline` status records.
+   * Built once from the loaded bundle rather than per inspection, because a word
+   * can be opened repeatedly while reading.
+   */
+  private readonly baselineById = computed(
+    () =>
+      new Map<string, StructuralBaselineEntry>(
+        this.language.structuralBaseline().map((entry) => [entry.id, entry]),
+      ),
+  );
+
   readonly presentation = computed<TokenStatusPresentation | null>(() => {
     const status = this.selectedSignal()?.status ?? null;
-    return status === null ? null : presentStatus(status.validation);
+    if (status === null) {
+      return null;
+    }
+    const validation = status.validation;
+    const entry =
+      validation.category === 'structural-baseline'
+        ? (this.baselineById().get(validation.ruleId) ?? null)
+        : null;
+    return presentStatus(validation, entry);
   });
 
   async inspect(word: InspectedWord): Promise<void> {

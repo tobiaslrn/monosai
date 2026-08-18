@@ -49,6 +49,13 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
             <h3 id="mn-inspector-status">
               <span class="badge">{{ presentation.label }}</span>
             </h3>
+            @if (presentation.structuralForm; as form) {
+              <p class="form-name">{{ form.nameEn }}</p>
+              <p>{{ form.descriptionEn }}</p>
+              @if (form.exampleJa; as example) {
+                <p class="form-example" lang="ja">{{ example }}</p>
+              }
+            }
             <p>{{ presentation.explanation }}</p>
           </section>
         } @else {
@@ -171,6 +178,17 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       border-radius: var(--radius-pill);
       background: var(--surface-sunken);
       font-size: var(--text-sm);
+    }
+
+    .status .form-name {
+      font-weight: 600;
+    }
+
+    .status .form-example {
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-control);
+      background: var(--surface-raised);
+      font-size: var(--text-lg);
     }
 
     .status p {
