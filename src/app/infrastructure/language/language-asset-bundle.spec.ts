@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { readBundleFile, readBundleManifest } from '../../../testing/language-runtime';
-import { JLPT_LEVELS_EASIEST_FIRST } from '../../domain/grammar/rules';
+import {
+  GRAMMAR_PRESET_IDS_EASIEST_FIRST,
+  MAXIMUM_GUIDANCE_LENGTH,
+} from '../../domain/grammar/presets';
 import { LANGUAGE_ASSET_COMPONENT_NAMES } from '../../domain/language/language-assets';
 import { digestHex } from './asset-integrity';
 import {
   dictionaryAssetHeaderSchema,
   findInvalidDictionaryEntry,
-  grammarCatalogAssetSchema,
+  grammarPresetsAssetSchema,
   languageAssetManifestSchema,
   structuralBaselineAssetSchema,
 } from './language-asset.schema';
@@ -60,52 +63,43 @@ describe('committed language bundle', () => {
     );
   });
 
-  it('ships a grammar catalog covering every level with unique stable ids', () => {
-    const parsed = grammarCatalogAssetSchema.safeParse(readJson('grammar-catalog.json'));
+  it('ships every difficulty preset in ladder order, contiguous from zero', () => {
+    const parsed = grammarPresetsAssetSchema.safeParse(readJson('grammar-presets.json'));
     expect(parsed.success).toBe(true);
     if (!parsed.success) {
       return;
     }
-    const catalog = parsed.data;
-    expect(catalog.rules.length).toBe(manifest.components.grammarCatalog.ruleCount);
-    expect(new Set(catalog.rules.map((rule) => rule.id)).size).toBe(catalog.rules.length);
-    for (const level of JLPT_LEVELS_EASIEST_FIRST) {
-      const count = catalog.rules.filter((rule) => rule.level === level).length;
-      expect(count, level).toBeGreaterThan(0);
-      expect(count, level).toBe(manifest.components.grammarCatalog.countsByLevel[level]);
-    }
-  });
-
-  it('ships grammar descriptions free of markup', () => {
-    const parsed = grammarCatalogAssetSchema.parse(readJson('grammar-catalog.json'));
-    for (const rule of parsed.rules) {
-      expect(rule.descriptionEn, rule.id).not.toMatch(/[<>]|&[a-z]+;/i);
-      expect(rule.nameEn, rule.id).not.toMatch(/[<>]|&[a-z]+;/i);
-    }
-  });
-
-  it('ships the difficulty presets in ladder order without JLPT levels as names', () => {
-    const parsed = grammarCatalogAssetSchema.safeParse(readJson('grammar-catalog.json'));
-    expect(parsed.success).toBe(true);
-    if (!parsed.success) {
-      return;
-    }
-    const { presets } = parsed.data;
-    expect(presets.length).toBe(manifest.components.grammarCatalog.presetCount);
+    const { presets, presetCount } = parsed.data;
+    expect(presets.map((preset) => preset.id)).toEqual([...GRAMMAR_PRESET_IDS_EASIEST_FIRST]);
     expect(presets.map((preset) => preset.order)).toEqual([0, 1, 2, 3, 4, 5]);
-    expect(new Set(presets.map((preset) => preset.id)).size).toBe(presets.length);
+    expect(presetCount).toBe(presets.length);
+    expect(presetCount).toBe(manifest.components.grammarPresets.presetCount);
+  });
+
+  it('ships preset guidance that is bounded, plain, and never names a JLPT level', () => {
+    const { presets } = grammarPresetsAssetSchema.parse(readJson('grammar-presets.json'));
+
     for (const preset of presets) {
       // The name states the grammar the learner commands; only the caption may
       // record where those patterns are conventionally taught.
       expect(preset.nameEn, preset.id).not.toMatch(/\bN[1-5]\b/);
-      expect(preset.promptGuidance.length, preset.id).toBeLessThanOrEqual(1000);
-      expect(preset.promptGuidance, preset.id).not.toMatch(/[<>]|&[a-z]+;/i);
-      expect(preset.descriptionEn, preset.id).not.toMatch(/[<>]|&[a-z]+;/i);
+      expect(preset.promptGuidance.trim().length, preset.id).toBeGreaterThan(0);
+      expect(preset.promptGuidance.length, preset.id).toBeLessThanOrEqual(MAXIMUM_GUIDANCE_LENGTH);
+      for (const text of [
+        preset.promptGuidance,
+        preset.descriptionEn,
+        preset.captionEn,
+        preset.exampleEn,
+      ]) {
+        expect(text, preset.id).not.toMatch(/[<>]|&[a-z]+;/i);
+      }
+      expect(preset.exampleJa.trim().length, preset.id).toBeGreaterThan(0);
+      expect(preset.exampleEn.trim().length, preset.id).toBeGreaterThan(0);
     }
   });
 
   it('ships register guidance with an empty line for the neutral choice', () => {
-    const parsed = grammarCatalogAssetSchema.parse(readJson('grammar-catalog.json'));
+    const parsed = grammarPresetsAssetSchema.parse(readJson('grammar-presets.json'));
 
     expect(parsed.registerGuidance.either).toBe('');
     expect(parsed.registerGuidance.spoken.length).toBeGreaterThan(0);

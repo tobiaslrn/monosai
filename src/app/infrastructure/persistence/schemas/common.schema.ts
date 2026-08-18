@@ -8,7 +8,6 @@ import {
   snapshotId,
   sourceMappingId,
   vocabularyItemId,
-  grammarRuleId,
 } from '../../../domain/shared/ids';
 
 /** Persisted row schema version. Bumped alongside a Dexie migration. */
@@ -26,8 +25,6 @@ export const vocabularyItemIdSchema = z.uuid().transform(vocabularyItemId);
 export const sourceMappingIdSchema = z.uuid().transform(sourceMappingId);
 export const assetIdSchema = z.uuid().transform(assetId);
 export const jobIdSchema = z.uuid().transform(jobId);
-/** Catalog rule identifiers come from the dataset and are not UUIDs. */
-export const grammarRuleIdSchema = nonEmptyString.transform(grammarRuleId);
 
 export const completionSummarySchema = z.object({
   total: z.number().int().nonnegative(),

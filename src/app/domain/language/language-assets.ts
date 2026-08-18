@@ -1,5 +1,3 @@
-import type { JlptLevel } from '../grammar/rules';
-
 export interface LanguageAssetLicence {
   readonly component: string;
   readonly spdx: string;
@@ -36,9 +34,7 @@ export interface DictionaryComponent extends LanguageAssetComponent {
   readonly entryCount: number;
 }
 
-export interface GrammarCatalogComponent extends LanguageAssetComponent {
-  readonly ruleCount: number;
-  readonly countsByLevel: Readonly<Record<JlptLevel, number>>;
+export interface GrammarPresetsComponent extends LanguageAssetComponent {
   readonly presetCount: number;
 }
 
@@ -56,7 +52,7 @@ export interface LanguageAssetManifest {
   readonly components: {
     readonly tokenizer: TokenizerComponent;
     readonly dictionary: DictionaryComponent;
-    readonly grammarCatalog: GrammarCatalogComponent;
+    readonly grammarPresets: GrammarPresetsComponent;
     readonly structuralBaseline: StructuralBaselineComponent;
   };
 }
@@ -66,7 +62,7 @@ export type LanguageAssetComponentName = keyof LanguageAssetManifest['components
 export const LANGUAGE_ASSET_COMPONENT_NAMES: readonly LanguageAssetComponentName[] = [
   'tokenizer',
   'dictionary',
-  'grammarCatalog',
+  'grammarPresets',
   'structuralBaseline',
 ];
 
@@ -74,7 +70,7 @@ export const LANGUAGE_ASSET_COMPONENT_NAMES: readonly LanguageAssetComponentName
 export interface ActiveLanguageAssetVersions {
   readonly tokenizerVersion: string;
   readonly dictionaryVersion: string;
-  readonly grammarCatalogVersion: string;
+  readonly grammarPresetsVersion: string;
   readonly structuralBaselineVersion: string;
 }
 
@@ -82,7 +78,7 @@ export function activeVersionsOf(manifest: LanguageAssetManifest): ActiveLanguag
   return {
     tokenizerVersion: manifest.components.tokenizer.version,
     dictionaryVersion: manifest.components.dictionary.version,
-    grammarCatalogVersion: manifest.components.grammarCatalog.version,
+    grammarPresetsVersion: manifest.components.grammarPresets.version,
     structuralBaselineVersion: manifest.components.structuralBaseline.version,
   };
 }

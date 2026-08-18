@@ -92,7 +92,6 @@ describe('language worker initialization', () => {
       const value = response.outcome.result.value;
       expect(value.bundleVersion).toBe(manifest.bundleVersion);
       expect(value.dictionaryEntryCount).toBe(manifest.components.dictionary.entryCount);
-      expect(value.grammarRuleCount).toBe(manifest.components.grammarCatalog.ruleCount);
       expect(value.structuralBaselineEntries.length).toBe(
         manifest.components.structuralBaseline.entryCount,
       );
@@ -117,7 +116,7 @@ describe('language worker initialization', () => {
 
   it('reports a typed error when an asset cannot be downloaded', async () => {
     const harness = createWorkerHarness({
-      fetchFn: bundleFetch({ 'grammar-catalog.json': 'missing' }),
+      fetchFn: bundleFetch({ 'grammar-presets.json': 'missing' }),
     });
     await harness.send(initializeRequest('r1', manifest));
     const response = harness.responseFor('r1');

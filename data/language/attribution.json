@@ -46,19 +46,19 @@
       "redistribution": "Permitted under CC BY-SA 4.0; the derived asset carries the same licence."
     }
   },
-  "grammarCatalog": {
+  "grammarPresets": {
     "attribution": {
-      "name": "Monosai grammar catalog",
-      "role": "Selectable N5-N1 grammar rules used to guide generation prompts and advisory grammar review",
+      "name": "Monosai grammar presets",
+      "role": "Ordered difficulty presets whose prose guidance steers generation prompts and advisory grammar review",
       "licences": [
         {
-          "component": "Monosai grammar catalog",
+          "component": "Monosai grammar presets",
           "spdx": "CC0-1.0",
           "holder": "Monosai contributors",
           "url": "https://github.com/tobiaslrn/monosai"
         }
       ],
-      "noticeEn": "The grammar catalog is written for Monosai and dedicated to the public domain under CC0 1.0. The Japan Foundation and JEES do not publish an official exhaustive JLPT grammar list; levels record where a pattern is conventionally taught.",
+      "noticeEn": "The grammar difficulty presets are written for Monosai and dedicated to the public domain under CC0 1.0. The Japan Foundation and JEES do not publish an official exhaustive JLPT grammar list; a preset caption records only where its patterns are conventionally taught.",
       "redistribution": "Unrestricted."
     }
   },

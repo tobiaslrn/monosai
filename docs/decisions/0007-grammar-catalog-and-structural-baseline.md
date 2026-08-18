@@ -1,7 +1,14 @@
 # 0007 — Grammar catalog and structural baseline
 
 Date: 2026-08-18
-Status: Accepted
+Status: Partially superseded
+Superseded by: [0008](0008-grammar-profile-presets.md), which replaced per-rule
+*selection* with difficulty presets, and
+[0014](0014-remove-grammar-rule-catalog.md), which **deleted the grammar rule
+catalog outright** — the dataset, its ids, its licensing, and its build pipeline.
+Everything below about the catalog is historical. The structural baseline half of
+this decision stands unchanged and is now the only enumerated grammar dataset
+Monosai ships.
 
 ## Context
 

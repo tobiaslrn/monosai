@@ -206,24 +206,24 @@ Build a compact lookup artifact at development time. Do not import the raw sourc
 
 Return a bounded number of prioritized common senses. The UI shows “No bundled definition” when none is found and never silently makes an online lookup.
 
-## 11. Grammar catalog and structural baseline
+## 11. Grammar presets and structural baseline
 
-The implementation agent selects/builds a licensed catalog; the application must not claim JLPT publishes an official exhaustive list.
+Monosai ships **no enumerated grammar rule dataset**. The N5–N1 catalog this section once required was built, found not to pay for itself, and deleted; see [ADR 0014](../decisions/0014-remove-grammar-rule-catalog.md).
 
-Required catalog fields: stable ID, N5–N1 classification, Japanese pattern, English name, English description, formation summary when available, optional Japanese/English example, source attribution, catalog version, and optional search aliases.
+Grammar difficulty is carried by six ordered presets, each a prose `promptGuidance` string. Requirements:
 
-Required selection gates:
+- a stable preset ID and a contiguous `order` from zero, easiest first;
+- a name stating the grammar the learner commands, never containing a JLPT level; the caption records where those patterns are conventionally taught, and the application must not claim JLPT publishes an official exhaustive list;
+- guidance bounded at 1,000 characters, plain text, free of unsafe HTML;
+- a worked Japanese example with its English gloss, so the learner chooses by reading rather than by self-reporting;
+- register guidance for spoken, written, and a neutral choice, the last of which must be empty;
+- manual language review of all six guidance texts before release.
 
-- broad N5–N1 coverage suitable for individual rule selection;
-- redistribution and modification rights compatible with the project;
-- source/attribution metadata shipped with the app;
-- stable IDs or a documented mapping/migration strategy;
-- schema validation, duplicate detection, nonempty descriptions, level validation, and review of unsafe HTML;
-- fixture sampling and manual language review before release.
+Japanese patterns quoted inside guidance are prose, not keys into any table. The build validates their shape — non-empty, no punctuation carried in from the surrounding sentence, no pattern named twice in one string — and nothing more.
 
-The structural baseline is a separate, Monosai-versioned dataset containing particles, auxiliary/copular forms, punctuation, productive inflection, counters/classifiers needed structurally, and other explicitly enumerated sentence-building forms. It must not include general starter content nouns, verbs, or adjectives. Publish the list in-app as read-only.
+The structural baseline is a separate, Monosai-versioned dataset containing particles, auxiliary/copular forms, punctuation, productive inflection, counters/classifiers needed structurally, and other explicitly enumerated sentence-building forms. It must not include general starter content nouns, verbs, or adjectives. Publish the list in-app as read-only, grouped by category.
 
-Grammar catalog selection guides prompts and advisory review. It is not a deterministic local grammar validator.
+The grammar profile guides prompts and advisory review. It is not a deterministic local grammar validator.
 
 ## 12. Vocabulary matcher and validation
 
