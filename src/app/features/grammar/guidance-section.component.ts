@@ -115,8 +115,8 @@ const REGISTER_LABELS: Readonly<Record<RegisterPreference, string>> = {
     .guidance {
       margin: 0;
       padding: var(--space-3);
-      border-radius: var(--radius-2);
-      background: var(--color-surface-raised);
+      border-radius: var(--radius-control);
+      background: var(--surface-raised);
       font-size: var(--text-sm);
     }
 

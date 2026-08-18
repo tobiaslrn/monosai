@@ -3,7 +3,7 @@ import { expectNoSeriousAccessibilityViolations } from './accessibility';
 
 test.describe('application shell', () => {
   test('renders navigation and the settings route', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/settings');
 
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
@@ -12,7 +12,7 @@ test.describe('application shell', () => {
   });
 
   test('shows build diagnostics without user content', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/settings');
 
     const diagnostics = page.getByRole('region', { name: 'Diagnostics' });
     await expect(diagnostics.getByText('App version')).toBeVisible();
@@ -20,7 +20,7 @@ test.describe('application shell', () => {
   });
 
   test('has no serious accessibility violations', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/settings');
     await expectNoSeriousAccessibilityViolations(page);
   });
 

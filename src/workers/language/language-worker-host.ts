@@ -212,6 +212,8 @@ export class LanguageWorkerHost {
         };
       case 'analyze':
         return this.analyze(requestId, request.payload.text, request.payload.unit);
+      case 'analyze-sentences':
+        return this.analyzeSentences(requestId, request.payload.texts);
       case 'lookup': {
         const ready = this.ready;
         if (ready === null) {
@@ -381,15 +383,64 @@ export class LanguageWorkerHost {
     text: string,
     unit: 'paragraph' | 'sentence',
   ): Promise<Dispatched> {
+    const segments =
+      unit === 'sentence'
+        ? [{ startUtf16: 0, endUtf16: text.length, text }]
+        : segmentParagraph(text);
+    const analyzed = await this.tokenizeSegments(requestId, segments);
+    if (!analyzed.ok) {
+      return analyzed;
+    }
+
+    return {
+      ok: true,
+      value: {
+        operation: 'analyze',
+        value: {
+          analyzerVersion: ANALYZER_VERSION,
+          segmentationRulesVersion: SEGMENTATION_RULES_VERSION,
+          sentences: analyzed.value,
+        },
+      },
+    };
+  }
+
+  /**
+   * Tokenizes sentences whose boundaries the caller already decided. Import
+   * review corrects boundaries, so re-segmenting here would discard the
+   * correction the learner just made.
+   */
+  private async analyzeSentences(requestId: string, texts: readonly string[]): Promise<Dispatched> {
+    const segments = texts.map((text) => ({
+      startUtf16: 0,
+      endUtf16: text.length,
+      text,
+    }));
+    const analyzed = await this.tokenizeSegments(requestId, segments);
+    return analyzed.ok
+      ? { ok: true, value: { operation: 'analyze-sentences', value: analyzed.value } }
+      : analyzed;
+  }
+
+  /**
+   * Tokenizes segments, yielding between chunks so a cancel message can be
+   * delivered rather than queued behind a long synchronous run.
+   */
+  private async tokenizeSegments(
+    requestId: string,
+    segments: readonly { startUtf16: number; endUtf16: number; text: string }[],
+  ): Promise<
+    | { readonly ok: true; readonly value: readonly AnalyzedSentence[] }
+    | {
+        readonly ok: false;
+        readonly error: LanguageError;
+      }
+  > {
     const ready = this.ready;
     if (ready === null) {
       return { ok: false, error: notInitialized() };
     }
 
-    const segments =
-      unit === 'sentence'
-        ? [{ startUtf16: 0, endUtf16: text.length, text }]
-        : segmentParagraph(text);
     const chunkCharacters = this.dependencies.chunkCharacters ?? DEFAULT_CHUNK_CHARACTERS;
     const yieldControl = this.dependencies.yieldControl ?? defaultYield;
     const sentences: AnalyzedSentence[] = [];
@@ -422,17 +473,7 @@ export class LanguageWorkerHost {
       }
     }
 
-    return {
-      ok: true,
-      value: {
-        operation: 'analyze',
-        value: {
-          analyzerVersion: ANALYZER_VERSION,
-          segmentationRulesVersion: SEGMENTATION_RULES_VERSION,
-          sentences,
-        },
-      },
-    };
+    return { ok: true, value: sentences };
   }
 
   private async classify(

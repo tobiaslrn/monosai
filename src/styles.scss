@@ -1,8 +1,20 @@
+/*
+ * The CDK overlay and accessibility stylesheets are required, not optional:
+ * without them the overlay container is not positioned, the backdrop does not
+ * cover the page, and `cdk-visually-hidden` content becomes visible.
+ */
+@use '@angular/cdk/overlay-prebuilt.css';
+@use '@angular/cdk/a11y-prebuilt.css';
 @use 'styles/tokens';
 @use 'styles/reset';
 @use 'styles/a11y';
 @use 'styles/controls';
 
+.cdk-overlay-dark-backdrop {
+  background: rgb(37 40 36 / 45%);
+}
+
+/* Sheets sit against the bottom edge on a phone and are centred on desktop. */
 .mn-sheet-panel {
   display: block;
 }

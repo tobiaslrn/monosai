@@ -4,6 +4,7 @@ import type { StorageError } from '../storage/storage-error';
 import type { ImportedReading, LibraryFilter, Reading } from './reading';
 import type { Paragraph, ReadingGraph, Sentence } from './text-hierarchy';
 import type { ContinueReadingTarget, ReadingProgress } from './progress';
+import type { SentenceLocation } from './reading-position';
 import type { TokenAnalysis } from './token';
 
 /** Everything persisted atomically when an imported reading is saved. */
@@ -41,6 +42,19 @@ export interface ReadingRepository {
   listLibraryPage(request: LibraryPageRequest): Promise<Result<LibraryPage, StorageError>>;
   countReadings(filter: LibraryFilter): Promise<Result<number, StorageError>>;
   loadGraph(id: ReadingId, window?: ParagraphWindow): Promise<Result<ReadingGraph, StorageError>>;
+  /**
+   * Number of paragraphs, so the reader can size its window without loading the
+   * text of a reading it is about to render a few paragraphs of.
+   */
+  countParagraphs(id: ReadingId): Promise<Result<number, StorageError>>;
+  /**
+   * Resolves one sentence position through bounded indexed lookups. Resume uses
+   * it instead of scanning the reading to find where a saved position landed.
+   */
+  locateSentence(
+    id: ReadingId,
+    positionInReading: number,
+  ): Promise<Result<SentenceLocation | null, StorageError>>;
   loadTokenAnalyses(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly TokenAnalysis[], StorageError>>;

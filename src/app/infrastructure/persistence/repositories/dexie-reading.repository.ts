@@ -12,6 +12,7 @@ import type {
 } from '../../../domain/reading/reading-repository';
 import type { ReadingGraph } from '../../../domain/reading/text-hierarchy';
 import type { ContinueReadingTarget, ReadingProgress } from '../../../domain/reading/progress';
+import type { SentenceLocation } from '../../../domain/reading/reading-position';
 import type { TokenAnalysis } from '../../../domain/reading/token';
 import { storageError, type StorageError } from '../../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../monosai-db';
@@ -166,6 +167,55 @@ export class DexieReadingRepository implements ReadingRepository {
     return ok({
       paragraphs: paragraphs.value.map(toParagraph),
       sentences: sentences.value.map(toSentence),
+    });
+  }
+
+  countParagraphs(id: ReadingId): Promise<Result<number, StorageError>> {
+    return runStorage('paragraphs.count', () =>
+      this.db.paragraphs.where('readingId').equals(id).count(),
+    );
+  }
+
+  /**
+   * Two indexed point lookups: the sentence at the position, then the paragraph
+   * holding it. Neither reads the reading's other text.
+   */
+  async locateSentence(
+    id: ReadingId,
+    positionInReading: number,
+  ): Promise<Result<SentenceLocation | null, StorageError>> {
+    const loaded = await runStorage('sentences.locate', async () => {
+      const sentence = await this.db.sentences
+        .where('[readingId+positionInReading]')
+        .equals([id, positionInReading])
+        .first();
+      if (!sentence) {
+        return null;
+      }
+      const paragraph = await this.db.paragraphs.get(sentence.paragraphId);
+      return paragraph ? { sentence, paragraph } : null;
+    });
+    if (!loaded.ok) {
+      return loaded;
+    }
+    if (loaded.value === null) {
+      return ok(null);
+    }
+
+    const sentence = parseRecord(sentenceRowSchema, loaded.value.sentence, 'sentences');
+    if (!sentence.ok) {
+      return sentence;
+    }
+    const paragraph = parseRecord(paragraphRowSchema, loaded.value.paragraph, 'paragraphs');
+    if (!paragraph.ok) {
+      return paragraph;
+    }
+
+    return ok({
+      sentenceId: sentence.value.id,
+      paragraphId: paragraph.value.id,
+      paragraphPosition: paragraph.value.position,
+      positionInReading: sentence.value.positionInReading,
     });
   }
 

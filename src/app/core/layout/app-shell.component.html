@@ -9,7 +9,7 @@
     <router-outlet />
   </main>
 
-  @if (!viewport.isDesktop()) {
+  @if (showBottomNav()) {
     <mn-bottom-nav
       [items]="barItems()"
       [hasMore]="moreItems().length > 0"

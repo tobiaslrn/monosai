@@ -1,4 +1,8 @@
-import type { AnalyzeTextRequest, AnalyzedText } from '../../domain/language/analyzed-text';
+import type {
+  AnalyzeTextRequest,
+  AnalyzedSentence,
+  AnalyzedText,
+} from '../../domain/language/analyzed-text';
 import type { ClassificationMode } from '../../domain/language/classification';
 import type { DictionaryLookup, DictionaryQuery } from '../../domain/language/dictionary';
 import type {
@@ -105,6 +109,13 @@ export class LanguageWorkerClient implements LanguageRuntime {
     signal?: AbortSignal,
   ): Promise<Result<AnalyzedText, LanguageError>> {
     return this.send('analyze', { text: input.text, unit: input.unit }, signal);
+  }
+
+  analyzeSentences(
+    texts: readonly string[],
+    signal?: AbortSignal,
+  ): Promise<Result<readonly AnalyzedSentence[], LanguageError>> {
+    return this.send('analyze-sentences', { texts }, signal);
   }
 
   lookup(

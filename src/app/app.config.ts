@@ -6,7 +6,12 @@ import {
 } from '@angular/core';
 import { provideServiceWorker } from '@angular/service-worker';
 import type { ApplicationConfig } from '@angular/core';
-import { provideRouter, withHashLocation, withInMemoryScrolling } from '@angular/router';
+import {
+  provideRouter,
+  withComponentInputBinding,
+  withHashLocation,
+  withInMemoryScrolling,
+} from '@angular/router';
 import { LanguageStore } from './application/language/language.store';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
 import { provideInitializationSteps } from './core/bootstrap/initialization-steps';
@@ -24,6 +29,9 @@ export const appConfig: ApplicationConfig = {
       // server rewrite configuration.
       withHashLocation(),
       withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' }),
+      // Route parameters reach components as signal inputs, so the reader takes
+      // its reading id without injecting ActivatedRoute.
+      withComponentInputBinding(),
     ),
     providePersistence(),
     provideLanguage(),

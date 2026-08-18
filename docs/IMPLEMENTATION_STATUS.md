@@ -9,7 +9,7 @@ and what remains.
 | 0 — Repository and decision scaffolding  | Complete    |
 | 1 — Persistence foundation               | Complete    |
 | 2 — Offline language assets and worker   | Complete    |
-| 3 — Reader vertical slice                | Not started |
+| 3 — Reader vertical slice                | Complete    |
 | 4–10                                     | Not started |
 
 ## Milestone 0 — Repository and decision scaffolding
@@ -285,3 +285,167 @@ than asserted, because they are developer-hardware figures.
   Milestone 10.
 - A full manual language review of the 256 catalog rules and 177 baseline
   entries is a release gate, not a milestone gate.
+
+## Milestone 3 — Reader vertical slice
+
+### Delivered
+
+- **Language protocol version 2**: a new `analyze-sentences` batch operation
+  tokenizes already-decided sentence texts without re-segmenting them, so a
+  learner's split/merge corrections in import review survive into the saved
+  reading. The caller (`TextImportService`) chunks review batches at 120
+  sentences per worker call for progress and cancellation; the worker still
+  yields internally between token chunks through the same path `analyze`
+  uses. See [0009](decisions/0009-language-protocol-v2-analyze-sentences.md).
+- **Repository port additions**: `countParagraphs` and `locateSentence` on
+  `ReadingRepository`, both bounded indexed lookups, so the reader can size its
+  window and resolve a resume position without loading the reading's text.
+- **Domain** (`src/app/domain/reading/`, each with a focused spec):
+  `import-text.ts` (UTF-8 decode, 50,000-code-point limit, typed rejections),
+  `import-title.ts`, `import-draft.ts` (split/merge), `import-structure.ts`
+  (paragraph/sentence assembly, sentence-text trimming — see
+  [0010](decisions/0010-sentence-text-boundary-trimming.md)),
+  `reading-position.ts` (resume basis, progress fraction — see
+  [0012](decisions/0012-resume-basis.md)), `paragraph-window.ts` (window sizing
+  and extension — see [0011](decisions/0011-paragraph-window-bounds.md)),
+  `deletion-plan.ts`, `token-presentation.ts`.
+- **Application** (`src/app/application/reading/`): `text-import.service.ts`,
+  `import.store.ts`, `library.store.ts`, `reader.store.ts`,
+  `vocabulary-classification.service.ts`, `word-inspector.store.ts`.
+- **Features**: `features/add-text/` (paste/file, review, unsaved-exit guard),
+  `features/library/` (list, filters, Continue reading, delete),
+  `features/reader/` (paragraph window, ruby, aids, word inspector as a side
+  panel on desktop and a bottom sheet on Android), plus
+  `shared-ui/confirm-dialog/`.
+- **Routing**: `/library`, `/add`, `/reader/:id`; `first-use.resolver.ts` sends
+  a profile with readings to the Library and everything else to Add text;
+  `route-chrome.ts` marks the reader as a focused route so bottom navigation is
+  hidden there; `withComponentInputBinding()` feeds the reading id to the
+  reader.
+
+### Defects found and fixed along the way
+
+- The committed grammar UI referenced CSS variables that do not exist
+  (`--color-border`, `--color-accent`, `--color-surface-raised`,
+  `--color-focus`, `--color-text-muted`, `--text-sm`, `--text-lg`,
+  `--radius-2`), so its cards had no border, no background, and an invisible
+  focus ring. Mapped to the real semantic tokens and added `--text-sm/md/lg`
+  to `src/styles/_tokens.scss`.
+- `@angular/cdk/overlay-prebuilt.css` and `a11y-prebuilt.css` were never
+  imported. Every dialog and sheet, including the Milestone 0 More sheet, was
+  rendering without overlay positioning or a backdrop. Added to
+  `src/styles.scss`. See
+  [0013](decisions/0013-cdk-overlay-stylesheet-requirement.md).
+- The reader grid placed children into named areas that only existed in the
+  inspector layout, so the header and the text stacked in one cell and the
+  header swallowed clicks on the first line. Areas are now named in both
+  layouts.
+- The reader header is now sticky with its own stacking context, because ruby
+  annotations overflow above their line and covered header controls.
+- `ReaderStore.open` recorded `markOpened` after loading text, which raced
+  Continue reading. It now records opening before the text loads.
+
+### Checkpoint evidence
+
+| Requirement | Evidence |
+| --- | --- |
+| Fresh offline app imports, saves, reopens, inspects, resumes, filters, deletes | `e2e/reading.spec.ts` scenarios 1, 2, 14, and the offline half of 15 |
+| No Anki or AI request at any point | `inspecting a word shows local details with no request leaving the origin` asserts zero off-origin requests; `the reader states that vocabulary is not configured` covers the no-Anki path |
+| Desktop keyboard and Android touch/accessibility flows pass | Every `e2e/reading.spec.ts` scenario runs on both the `desktop-chrome` and `android-chrome` Playwright projects; `expectNoSeriousAccessibilityViolations` runs an axe scan at each major step; Escape closes the mobile word sheet and restores focus to its token (desktop is exempt — the inspector is a side panel there, not a dialog) |
+| Long-reader rendering meets the performance/reflow requirement | `e2e/reading-performance.spec.ts` at the real 50,000-character budget — see Measured performance baseline |
+| Resume states an approximation rather than hiding it | `reading-position.spec.ts`, `reader.store.spec.ts` (`exact`/`nearest`/`beginning`), and the reader's `nearest` notice |
+| Delete cascades to zero owned orphan rows and Continue reading self-repairs | `deleting asks first, then leaves zero owned orphan rows` and `Continue reading repairs itself when its target is deleted` |
+| Library's first page never scales with library size or reads audio bytes | `dexie-reading.repository.spec.ts` — `reads a bounded number of rows and never touches audio or text tables`, spying on every child table |
+
+### Measured performance baseline
+
+Windows 11, Node 24.4.1, Chromium via Playwright, on the development machine.
+Real Android 12 midrange figures are recorded in Milestone 10 against the
+deployed build; the `android-chrome` Playwright project here is touch-emulated
+desktop Chromium, not a real device.
+
+| Measurement | Value |
+| --- | --- |
+| Import fixture size | 50,000 characters exactly, 200 paragraphs, one sentence each |
+| Paragraphs mounted when the reading first opens | 4, against a bound of 15 |
+| Paragraphs mounted at any point while scrolling to the end | never exceeds 15 |
+| Long tasks from segmentation through opening the reader | none observed over the 50ms long-task threshold |
+| Production build, initial bundle | 815.21 kB raw, 188.06 kB transfer |
+| Production build, reader route (lazy) | 34.41 kB raw, 8.93 kB transfer |
+| Production build, language worker (lazy) | 363.34 kB raw, 64.33 kB transfer |
+
+The paragraph-window bound is asserted in CI at 15 mounted paragraphs
+(`MAXIMUM_MOUNTED_PARAGRAPHS`); the 4-paragraph opening figure and the
+long-task measurement are recorded here as prose rather than asserted exactly,
+because they vary with runner load. The long-task assertion in
+`reading-performance.spec.ts` uses a 100ms bound — deliberately looser than the
+strict 50ms long-task definition — because measurements on a shared CI runner
+land close to that line from scheduler noise alone; the test file is run
+serialized to reduce that noise. See
+[0011](decisions/0011-paragraph-window-bounds.md) for why 15/3/3 were chosen
+and why the window moves rather than growing.
+
+### Verification
+
+| Command | Result |
+| --- | --- |
+| `npm run format:check` | Pass |
+| `npm run lint` | Pass (0 problems) |
+| `npm run typecheck` | Pass |
+| `npm run assets:verify` | Pass — 22,629 dictionary entries, 256 rules, 177 baseline entries |
+| `npm test` | Pass — 43 files, 461 tests |
+| `npm run test:coverage` | Pass — 86.9% statements, 80.9% branches, 87.5% functions, 86.9% lines overall (gate: ≥85%/≥80%/≥85%/≥85%) |
+| `npm run build` | Pass — 815.21 kB initial, 188.06 kB transfer |
+| `npm run e2e` | Pass — 81 tests, 1 intentionally skipped (desktop-chrome, android-chrome) |
+
+### Assumptions and decisions
+
+- [0009 — Language protocol version 2 and `analyze-sentences`](decisions/0009-language-protocol-v2-analyze-sentences.md)
+- [0010 — Sentence text drops the line breaks and padding that end a segment](decisions/0010-sentence-text-boundary-trimming.md)
+- [0011 — Paragraph window bound, radius, step, and moving rather than growing](decisions/0011-paragraph-window-bounds.md)
+- [0012 — Resume basis: exact, nearest, or beginning, stated rather than hidden](decisions/0012-resume-basis.md)
+- [0013 — The CDK overlay and a11y stylesheets are a hard build requirement](decisions/0013-cdk-overlay-stylesheet-requirement.md)
+- **No sentence action row.** Translate, audio, grammar analysis, and sentence
+  details arrive with Milestones 7–9. `ux-ui-specification.md`'s reader section
+  describes the affordance; its absence here is a deliberate deferral, not an
+  omission.
+- **`translationsExpanded` is persisted but inert.** The reader aid is stored
+  and shown in the Aids panel, but controls nothing visible yet because no
+  translation UI exists until Milestone 7.
+- **The Library has no Generate button.** That route, and the readings it
+  would produce, arrive in Milestone 7.
+- **The reader header has a delete button, not an overflow menu.** Metadata
+  and delete both living behind one overflow control is deferred until there
+  is a second action to justify a menu.
+- **Scenario 15 (offline reading) is covered for in-application navigation
+  only.** `e2e/reading.spec.ts` removes the network after the library route's
+  lazy chunk is already loaded and proves the reading data and aids are fully
+  local from that point. Surviving a full offline *reload* needs the
+  service-worker shell fallback, which is Milestone 10; the e2e test states
+  this in a comment, and it is restated here so the gap is recorded in one
+  more place than just the test file.
+- Coverage below the ≥90%/≥95% branch/line bar for "repository transactions"
+  exists in several Dexie repositories this milestone did not touch —
+  `dexie-enrichment.repository.ts`, `dexie-grammar.repository.ts`,
+  `dexie-job.repository.ts`, `dexie-credential.repository.ts`,
+  `dexie-settings.repository.ts`, `dexie-source-mapping.repository.ts`,
+  `dexie-vocabulary.repository.ts`. These belong to Milestones 1, 4, and 5–9
+  respectively. `dexie-reading.repository.ts`, the one this milestone owns and
+  extended, was brought to 93.8% branches / 100% lines, meeting the bar. The
+  others are a follow-up for whichever milestone next touches them, not a gap
+  introduced here.
+- [Grammar catalog content defects](grammar-catalog-defects.md): two
+  ungrammatical example sentences and two pattern/name field mismatches,
+  confirmed and reported; they never blocked the reader, so they were left
+  unfixed pending the release-gate language review Milestone 2 already
+  identified as necessary.
+
+### Remaining work in later milestones
+
+- Grammar profile screen, Anki, OpenRouter, generation, enrichment, and audio
+  (Milestones 4–9).
+- PWA manifest, icons, install UX, and the offline shell fallback that would
+  complete scenario 15's offline-reload half (Milestone 10).
+- A full manual language review of the grammar catalog, including the
+  slug/pattern audit `grammar-catalog-defects.md` could not finish
+  mechanically, is a release gate, not a milestone gate.
