@@ -15,11 +15,7 @@ import type {
   TranslationRow,
 } from './schemas/enrichment.schema';
 import type { AssetJobRow } from './schemas/job.schema';
-import type {
-  CustomGrammarRuleRow,
-  GrammarProfileSnapshotRow,
-  GrammarSelectionRow,
-} from './schemas/grammar.schema';
+import type { GrammarProfileRow, GrammarProfileSnapshotRow } from './schemas/grammar.schema';
 import type {
   SourceMappingRow,
   VocabularyItemRow,
@@ -38,8 +34,7 @@ export class MonosaiDatabase extends Dexie {
   readonly vocabularySnapshots!: Table<VocabularySnapshotRow, string>;
   readonly vocabularyItems!: Table<VocabularyItemRow, string>;
   readonly vocabularyProvenance!: Table<VocabularyProvenanceRow, number>;
-  readonly grammarSelections!: Table<GrammarSelectionRow, string>;
-  readonly customGrammarRules!: Table<CustomGrammarRuleRow, string>;
+  readonly grammarProfile!: Table<GrammarProfileRow, string>;
   readonly grammarProfileSnapshots!: Table<GrammarProfileSnapshotRow, string>;
   readonly readings!: Table<ReadingRow, string>;
   readonly paragraphs!: Table<ParagraphRow, string>;

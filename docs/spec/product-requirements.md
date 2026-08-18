@@ -71,17 +71,21 @@ The flow matches UC-01, except the title defaults to the filename without its ex
 
 ### UC-03: Configure a grammar profile
 
-1. The user opens Grammar or is routed there from the first generation attempt.
-2. The user searches/browses collapsible N5–N1 sections.
-3. Selecting an entire level selects that level and every easier level; subsequent individual toggles are allowed.
-4. The user may create custom rules with name, description, and optional Japanese example.
+1. The user opens Grammar, or reaches it from the Generate prerequisite panel.
+2. The user reads six ordered difficulty presets, each shown with a name, a caption, a one-line description, and a real Japanese example sentence, and selects one.
+3. The user may optionally set a register preference of everyday spoken, polite written, or either.
+4. The user may optionally fork the selected preset into a custom variant: a free-text field prefilled with that preset's guidance, bounded at 1,000 characters.
 5. Changes save locally immediately.
+
+Presets are ordered `Starter forms`, `Basic forms`, `Everyday forms`, `Explanatory forms`, `Formal patterns`, `Literary patterns`, and are cumulative: each leaves everything simpler available. They are named for the grammar the learner commands, never for a JLPT level; the level appears only as a caption reading "usually taught around N…".
 
 Acceptance:
 
-- Nothing is selected on a fresh install.
-- Generation remains gated until at least one catalog rule or enabled custom rule is selected.
+- A fresh install defaults to `Starter forms`, and generation is never gated on the grammar profile.
+- No JLPT level is used as a preset name, and no copy states or implies that an official exhaustive JLPT grammar list exists.
+- A custom variant behaves exactly as a preset does: its guidance is what generation and grammar analysis both receive.
 - The always-permitted structural baseline is visible as explanatory read-only content and is not represented as learner knowledge.
+- The 256-rule catalog is not a selection surface. It remains searchable read-only reference and is the vocabulary UC-08 findings are named in.
 
 ### UC-04: Refresh reviewed Anki vocabulary
 
@@ -106,8 +110,9 @@ Prerequisites:
 - A remembered OpenRouter key.
 - A successfully tested exact text-model ID.
 - A completed active snapshot containing at least 50 unique entries.
-- A non-empty grammar profile.
 - A non-empty premise.
+
+A grammar preset is always set, so it is never a prerequisite. When the selected preset is far above what the snapshot can supply, the prerequisite panel shows a non-blocking warning that generation is likely to produce unknown vocabulary.
 
 Flow:
 

@@ -19,6 +19,13 @@ Build Monosai according to the repository specifications. Read the relevant spec
 - Validate all external, stored, imported, and AI-generated data at runtime.
 - Use explicit typed errors and exhaustive state handling. Avoid `any`.
 
+## Schema changes before the first stable release
+
+- There is no released version yet, so backward compatibility is not a concern.
+- Edit the existing schema version in place. Do not add a new schema version and do not write a migration.
+- Breaking local development databases is acceptable; recreating them is the expected cost.
+- Revisit this once the first stable release ships, after which migrations become mandatory.
+
 ## Quality
 
 - Preserve accessibility, offline behavior, data integrity, and read-only Anki access.

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { PART_OF_SPEECH_LABELS, type PartOfSpeech } from '../../domain/reading/token';
 import { JLPT_LEVELS_EASIEST_FIRST } from '../../domain/grammar/rules';
+import {
+  GRAMMAR_PRESET_IDS_EASIEST_FIRST,
+  MAXIMUM_GUIDANCE_LENGTH,
+} from '../../domain/grammar/presets';
 
 const partOfSpeechValues = Object.keys(PART_OF_SPEECH_LABELS) as [PartOfSpeech, ...PartOfSpeech[]];
 export const partOfSpeechSchema = z.enum(partOfSpeechValues);
@@ -49,6 +53,7 @@ export const languageAssetManifestSchema = z.object({
     grammarCatalog: componentSchema.extend({
       ruleCount: z.number().int().positive(),
       countsByLevel: levelCountsSchema,
+      presetCount: z.number().int().positive(),
     }),
     structuralBaseline: componentSchema.extend({ entryCount: z.number().int().positive() }),
   }),
@@ -60,6 +65,25 @@ export const grammarCatalogAssetSchema = z.object({
   sourceId: nonEmpty,
   ruleCount: z.number().int().positive(),
   countsByLevel: levelCountsSchema,
+  presets: z
+    .array(
+      z.object({
+        id: z.enum(GRAMMAR_PRESET_IDS_EASIEST_FIRST),
+        order: z.number().int().nonnegative(),
+        nameEn: nonEmpty,
+        captionEn: nonEmpty,
+        descriptionEn: nonEmpty,
+        exampleJa: nonEmpty,
+        exampleEn: nonEmpty,
+        promptGuidance: nonEmpty.max(MAXIMUM_GUIDANCE_LENGTH),
+      }),
+    )
+    .length(GRAMMAR_PRESET_IDS_EASIEST_FIRST.length),
+  registerGuidance: z.object({
+    spoken: nonEmpty,
+    written: nonEmpty,
+    either: z.literal(''),
+  }),
   rules: z
     .array(
       z.object({

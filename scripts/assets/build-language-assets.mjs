@@ -39,7 +39,13 @@ async function main() {
 
   const catalog = await buildGrammarCatalog({
     sourcePath: join(SOURCE_DIR, 'grammar-catalog.source.json'),
+    presetsPath: join(SOURCE_DIR, 'grammar-presets.source.json'),
   });
+  if (catalog.unknownPatterns.length > 0) {
+    console.warn(
+      `Preset guidance quotes patterns absent from the catalog: ${catalog.unknownPatterns.join(', ')}`,
+    );
+  }
   const catalogFile = await writeGrammarCatalog(
     join(outputDir, 'grammar-catalog.json'),
     catalog.artifact,
@@ -87,6 +93,7 @@ async function main() {
         version: catalog.artifact.version,
         ruleCount: catalog.artifact.ruleCount,
         countsByLevel: catalog.artifact.countsByLevel,
+        presetCount: catalog.artifact.presets.length,
         files: [
           { path: 'grammar-catalog.json', bytes: catalogFile.bytes, sha256: catalogFile.sha256 },
         ],

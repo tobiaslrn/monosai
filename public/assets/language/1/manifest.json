@@ -65,7 +65,7 @@
       }
     },
     "grammarCatalog": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "ruleCount": 256,
       "countsByLevel": {
         "N5": 58,
@@ -74,11 +74,12 @@
         "N2": 48,
         "N1": 45
       },
+      "presetCount": 6,
       "files": [
         {
           "path": "grammar-catalog.json",
-          "bytes": 79387,
-          "sha256": "cabe1c55d41972245bed2755400e816d7c1bfee25a30bf5e25aafa47bb3b2f05"
+          "bytes": 86088,
+          "sha256": "7908f09ea30be8f5a0e21c26b4927479a82a316589a39d53bd9c152f389a75b6"
         }
       ],
       "attribution": {

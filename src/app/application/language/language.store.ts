@@ -3,6 +3,7 @@ import type { LanguageError } from '../../domain/language/language-error';
 import type { LanguageAssetAttribution } from '../../domain/language/language-assets';
 import { allAttributions } from '../../domain/language/language-assets';
 import type { LanguageRuntimeInfo } from '../../domain/language/language-runtime';
+import type { GrammarPreset, RegisterGuidance } from '../../domain/grammar/presets';
 import type { StructuralBaselineEntry } from '../../domain/language/structural-baseline';
 import { LANGUAGE_ASSET_SOURCE, LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { SETTINGS_REPOSITORY } from '../shared/repository-tokens';
@@ -38,6 +39,12 @@ export class LanguageStore {
   readonly versions = computed(() => this.infoSignal()?.versions ?? null);
   readonly structuralBaseline = computed<readonly StructuralBaselineEntry[]>(
     () => this.infoSignal()?.structuralBaselineEntries ?? [],
+  );
+  readonly grammarPresets = computed<readonly GrammarPreset[]>(
+    () => this.infoSignal()?.grammarPresets ?? [],
+  );
+  readonly registerGuidance = computed<RegisterGuidance | null>(
+    () => this.infoSignal()?.registerGuidance ?? null,
   );
 
   /**

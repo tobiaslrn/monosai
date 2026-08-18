@@ -1,14 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fixedClock } from '../../../domain/shared/clock';
-import { grammarRuleId } from '../../../domain/shared/ids';
-import { isProfileEmpty } from '../../../domain/grammar/profile';
-import type { CustomGrammarRule } from '../../../domain/grammar/rules';
+import { sourceMappingId } from '../../../domain/shared/ids';
+import { DEFAULT_GRAMMAR_PROFILE_SELECTION } from '../../../domain/grammar/profile';
 import { createTestDatabase, destroyTestDatabase } from '../../../../testing/test-database';
 import { uuid } from '../../../../testing/persistence-fixtures';
 import type { MonosaiDatabase } from '../monosai-db';
 import { DexieGrammarRepository } from './dexie-grammar.repository';
 import { DexieSourceMappingRepository } from './dexie-source-mapping.repository';
-import { sourceMappingId } from '../../../domain/shared/ids';
 
 describe('DexieGrammarRepository', () => {
   let db: MonosaiDatabase;
@@ -23,101 +21,76 @@ describe('DexieGrammarRepository', () => {
     await destroyTestDatabase(db);
   });
 
-  function customRule(index: number, enabled = true): CustomGrammarRule {
-    return {
-      id: grammarRuleId(uuid(8200 + index)),
-      kind: 'custom',
-      name: `Custom rule ${index}`,
-      description: 'Use plain form in inner clauses.',
-      enabled,
-      position: index,
-      createdAt: 1_700_700_000_000,
-      updatedAt: 1_700_700_000_000,
-    };
-  }
-
-  it('selects nothing on a fresh install', async () => {
+  it('reads the default preset on a fresh install so generation is never gated', async () => {
     const selection = await repository.getSelection();
 
     expect(selection.ok).toBe(true);
     if (!selection.ok) {
       return;
     }
-    expect(isProfileEmpty(selection.value)).toBe(true);
+    expect(selection.value).toEqual(DEFAULT_GRAMMAR_PROFILE_SELECTION);
+    expect(selection.value.presetId).toBe('mn-preset-starter');
   });
 
-  it('stores and removes catalog selections', async () => {
-    const ruleIds = [grammarRuleId('n5-wa'), grammarRuleId('n5-desu')];
-    await repository.setCatalogRulesSelected(ruleIds, true);
-
-    let selection = await repository.getSelection();
-    expect(selection.ok && [...selection.value.selectedCatalogRuleIds].sort()).toEqual(
-      [...ruleIds].sort(),
-    );
-
-    await repository.setCatalogRuleSelected(ruleIds[0], false);
-
-    selection = await repository.getSelection();
-    expect(selection.ok && selection.value.selectedCatalogRuleIds).toEqual([ruleIds[1]]);
-    expect(await db.grammarSelections.count()).toBe(1);
-  });
-
-  it('keeps custom rules ordered and reports only enabled ones in the profile', async () => {
-    await repository.saveCustomRule(customRule(0));
-    await repository.saveCustomRule(customRule(1, false));
-
-    const rules = await repository.listCustomRules();
-    expect(rules.ok && rules.value.map((rule) => rule.position)).toEqual([0, 1]);
+  it('stores a preset and register preference', async () => {
+    await repository.setSelection({
+      presetId: 'mn-preset-everyday',
+      registerPreference: 'spoken',
+    });
 
     const selection = await repository.getSelection();
-    expect(selection.ok && selection.value.enabledCustomRuleIds).toHaveLength(1);
+    expect(selection.ok && selection.value.presetId).toBe('mn-preset-everyday');
+    expect(selection.ok && selection.value.registerPreference).toBe('spoken');
+    expect(selection.ok && selection.value.customGuidance).toBeUndefined();
   });
 
-  it('reorders custom rules', async () => {
-    const first = customRule(0);
-    const second = customRule(1);
-    await repository.saveCustomRule(first);
-    await repository.saveCustomRule(second);
-
-    await repository.reorderCustomRules([second.id, first.id]);
-
-    const rules = await repository.listCustomRules();
-    expect(rules.ok && rules.value.map((rule) => rule.id)).toEqual([second.id, first.id]);
-  });
-
-  it('deletes a custom rule without touching catalog selections', async () => {
-    const rule = customRule(0);
-    await repository.saveCustomRule(rule);
-    await repository.setCatalogRuleSelected(grammarRuleId('n5-wa'), true);
-
-    await repository.removeCustomRule(rule.id);
+  it('replaces the profile rather than accumulating rows', async () => {
+    await repository.setSelection({ presetId: 'mn-preset-basic', registerPreference: 'either' });
+    await repository.setSelection({ presetId: 'mn-preset-formal', registerPreference: 'written' });
 
     const selection = await repository.getSelection();
-    expect(selection.ok && selection.value.enabledCustomRuleIds).toEqual([]);
-    expect(selection.ok && selection.value.selectedCatalogRuleIds).toHaveLength(1);
+    expect(selection.ok && selection.value.presetId).toBe('mn-preset-formal');
+    expect(await db.grammarProfile.count()).toBe(1);
   });
 
-  it('captures a profile with resolved rule text so history cannot be rewritten', async () => {
+  it('round-trips custom guidance and clears it when the learner resets', async () => {
+    await repository.setSelection({
+      presetId: 'mn-preset-everyday',
+      registerPreference: 'either',
+      customGuidance: 'Casual spoken style; contractions such as ちゃう are natural.',
+    });
+    const forked = await repository.getSelection();
+    expect(forked.ok && forked.value.customGuidance).toContain('ちゃう');
+
+    await repository.setSelection({
+      presetId: 'mn-preset-everyday',
+      registerPreference: 'either',
+    });
+
+    const reset = await repository.getSelection();
+    expect(reset.ok && reset.value.customGuidance).toBeUndefined();
+  });
+
+  it('captures resolved guidance so revising a preset cannot rewrite history', async () => {
     const capture = {
       id: uuid(8300),
       profileHash: 'profile-hash-1',
       capturedAt: 1_700_700_000_000,
-      selectedCatalogRules: [
-        {
-          ruleId: grammarRuleId('n5-wa'),
-          label: 'は (topic marker)',
-          description: 'Marks the topic of the sentence.',
-        },
-      ],
-      enabledCustomRules: [],
+      presetId: 'mn-preset-basic' as const,
+      resolvedGuidance: 'Write at roughly JLPT N5 complexity.',
+      registerPreference: 'either' as const,
+      isCustomGuidance: false,
       structuralBaselineVersion: '1.0.0',
     };
 
     await repository.captureProfile(capture);
-    await repository.setCatalogRuleSelected(grammarRuleId('n5-wa'), false);
+    await repository.setSelection({ presetId: 'mn-preset-literary', registerPreference: 'spoken' });
 
     const loaded = await repository.getProfileCapture(capture.id);
-    expect(loaded.ok && loaded.value?.selectedCatalogRules[0].label).toBe('は (topic marker)');
+    expect(loaded.ok && loaded.value?.resolvedGuidance).toBe(
+      'Write at roughly JLPT N5 complexity.',
+    );
+    expect(loaded.ok && loaded.value?.presetId).toBe('mn-preset-basic');
   });
 
   it('returns null for an unknown profile capture', async () => {

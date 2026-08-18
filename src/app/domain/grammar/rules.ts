@@ -2,7 +2,7 @@ import type { GrammarRuleId } from '../shared/ids';
 
 export type JlptLevel = 'N5' | 'N4' | 'N3' | 'N2' | 'N1';
 
-/** Easiest first. "Select through N3" selects N5, N4, and N3. */
+/** Easiest first. Records where a pattern is conventionally taught. */
 export const JLPT_LEVELS_EASIEST_FIRST: readonly JlptLevel[] = ['N5', 'N4', 'N3', 'N2', 'N1'];
 
 export interface CatalogGrammarRule {
@@ -19,17 +19,3 @@ export interface CatalogGrammarRule {
   readonly sourceId: string;
   readonly catalogVersion: string;
 }
-
-export interface CustomGrammarRule {
-  readonly id: GrammarRuleId;
-  readonly kind: 'custom';
-  readonly name: string;
-  readonly description: string;
-  readonly exampleJa?: string;
-  readonly enabled: boolean;
-  readonly position: number;
-  readonly createdAt: number;
-  readonly updatedAt: number;
-}
-
-export type GrammarRule = CatalogGrammarRule | CustomGrammarRule;

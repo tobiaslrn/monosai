@@ -4,6 +4,11 @@ import type { Dexie } from 'dexie';
  * Schema history. One entry per monotonic version; a version's stores and its
  * upgrade function are declared together so transitions stay reviewable.
  *
+ * Before the first stable release there is exactly one version and it is edited
+ * in place: no user data exists to preserve, so a schema change drops local
+ * databases rather than carrying a migration nobody will ever run. Add version 2
+ * with the first release.
+ *
  * Indexes exist only for queries the specification requires. Large text, token
  * arrays, blobs, credentials, and policy text are never indexed.
  */
@@ -20,9 +25,8 @@ export const SCHEMA_VERSIONS: readonly {
       vocabularySnapshots: '&id, createdAt, uniqueEntryCount',
       vocabularyItems: '&id, snapshotId, [snapshotId+expressionHash]',
       vocabularyProvenance: '++id, vocabularyItemId, sourceMappingId',
-      // A row exists only for a selected catalog rule; deselecting removes it.
-      grammarSelections: '&ruleId',
-      customGrammarRules: '&id, position',
+      // Single row: the live profile is one difficulty preset, not a selection.
+      grammarProfile: '&key',
       grammarProfileSnapshots: '&id, profileHash',
       readings: '&id, kind, createdAt, lastOpenedAt, [kind+createdAt]',
       paragraphs: '&id, readingId, [readingId+position]',

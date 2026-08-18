@@ -202,14 +202,16 @@ Generated translations and grammar results appear automatically when available. 
 
 ### Prerequisite panel
 
-Show four independently actionable checks: Text AI, vocabulary snapshot (>= 50), grammar profile, and premise. TTS is shown as optional and never blocks generation. Each failed check links to its configuration screen and preserves the generation draft.
+Show three independently actionable checks: Text AI, vocabulary snapshot (>= 50), and premise. TTS is shown as optional and never blocks generation. Each failed check links to its configuration screen and preserves the generation draft.
+
+The grammar preset is always set and is therefore not a check. It is shown as a read-only line naming the current preset and linking to Grammar. When the preset is far above what the snapshot can supply, that line carries a non-blocking warning.
 
 ### Form
 
 - Required premise, multiline, with a reasonable UI limit stated in the AI specification.
 - Story form cards: Micro (4–6 sentences) and Short (13–20).
 - Optional special instructions with examples such as tone, viewpoint, dialogue, or desired register.
-- Active snapshot summary and grammar-rule count are read-only links.
+- Active snapshot summary and current grammar preset name are read-only links.
 - Generate button includes an OpenRouter/network indicator but no price estimate.
 
 No genre selector, topic suggestions, visible target-vocabulary list, temperature control, or raw prompt editor.
@@ -259,11 +261,26 @@ List created time, unique count, mapping summary, source kind, and number of gen
 
 ## 9. Grammar
 
-- Sticky search field searches pattern, English name, and description.
-- Level accordions appear N5 through N1, with selected/total counts and **Select through N…** / **Clear this level** actions.
-- Grammar points are chips within a virtualized/wrapped list. Activating a chip toggles it; a separate info affordance opens details so selection is not triggered accidentally.
-- Detail sheet/dialog: pattern, short English description, level label described as a catalog classification rather than official truth, formation summary if supplied, and example.
-- Custom rules section: Add, edit, enable/disable, reorder, delete. Name and description required; example optional.
+### Preset picker
+
+- Six preset cards in a single ordered list, easiest first, exactly one selected. Each card shows the name, a smaller caption reading "usually taught around N…" (the first card reads "the first patterns in any course"), a one-line plain-English description, and a real Japanese example sentence.
+- The example sentence is the primary affordance. Learners choose by reading it, not by trusting the label, because recognising a sentence is reliable where self-reporting grammar knowledge is not.
+- The name is never a JLPT level. The caption is the only place a level appears, and its wording states where patterns are conventionally taught rather than asserting an official list.
+- Selecting a card saves immediately and shows what changed in one line, including that existing grammar analyses become stale.
+
+### Register
+
+Three options — everyday spoken, polite written, either — as a single compact control below the picker. Optional, defaulting to either.
+
+### Custom variant
+
+- One **Use my own wording** action opens a text field prefilled with the selected preset's guidance, bounded at 1,000 characters, with **Reset to preset**.
+- The screen states plainly that a custom variant guides generation but that novelty analysis still uses the source preset's coverage, so results there are approximate.
+- There is no per-rule custom-rule editor.
+
+### Reference
+
+- The 256-rule catalog appears as a searchable read-only reference below the picker, searching pattern, English name, and description. Entries open a detail sheet with pattern, short English description, level described as a catalog classification rather than official truth, formation summary if supplied, and example. Nothing in this section is selectable.
 - Structural baseline section is read-only and explains why it is not learner vocabulary.
 
 ## 10. Settings

@@ -58,7 +58,8 @@ interface StoryGenerationRequest {
   allowedVocabulary: readonly string[];
   suggestedVocabulary: readonly string[];
   structuralBaseline: readonly PromptGrammarRule[];
-  allowedGrammar: readonly PromptGrammarRule[];
+  grammarGuidance: string;
+  registerPreference: 'spoken' | 'written' | 'either';
   snapshotId: SnapshotId;
   grammarProfileHash: string;
   promptVersion: string;
@@ -76,7 +77,8 @@ The initial model returns Japanese only. Translations are generated after the fi
 
 - Premise: nonempty, maximum 1,000 Unicode characters.
 - Special instructions: optional, maximum 1,000 characters.
-- Grammar/profile serialization and vocabulary lists are bounded by a documented request-size guard. With the supported 50–1,800 vocabulary range, include the complete canonical expression list when it fits the tested context budget.
+- `grammarGuidance` is resolved preset prose or a user-edited variant, maximum 1,000 characters. Individual catalog rules are never serialized into the request; the profile costs on the order of 150 tokens rather than the ~22,000 a full rule-object serialization measured.
+- Grammar/profile serialization and vocabulary lists are bounded by a request-size guard of 60,000 tokens for the assembled request. With the supported 50–1,800 vocabulary range, include the complete canonical expression list when it fits that budget.
 - If a configuration cannot fit the request, fail before spending with `context-budget-exceeded`; do not truncate silently.
 
 ### Uniform variety
@@ -166,7 +168,11 @@ After attempt two:
 
 Grammar review is advisory and runs on accepted Japanese against the captured grammar profile.
 
-Expected findings identify sentence index, optional character span, detected grammar name/pattern, whether it is in the allowed profile, confidence band, and concise English explanation. It may also return story-level notes.
+Expected findings identify sentence index, optional character span, detected grammar name/pattern, confidence band, and concise English explanation. It may also return story-level notes.
+
+Novelty is judged against the captured guidance prose, which is supplied to the review request alongside the Japanese. The review is advisory and detection is not claimed exhaustive, so a verdict may vary between runs; results are cached by profile hash, so a given profile yields one stored answer per sentence. No per-rule set is maintained, and the profile never references catalog rule IDs.
+
+Where a returned pattern matches a catalog rule, the UI may link the finding to that rule's detail sheet. This is a display lookup only and does not affect the verdict.
 
 Rules:
 
