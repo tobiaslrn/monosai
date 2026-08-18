@@ -193,8 +193,11 @@ and what remains.
 - `LanguageStore` activates a version into `LanguageAssetSettings` only after
   every asset verifies, then prunes superseded bundle caches. A failure leaves
   the previously recorded versions untouched.
+- Preparation starts on its own after a successful startup and is never awaited,
+  so navigation, the library, and settings render while the bundle downloads.
 - Settings gains a Language assets section: state, active versions, a retry
-  action, and the redistribution notices for all four datasets.
+  action shown only after a failure, and the redistribution notices for all four
+  datasets.
 
 ### Checkpoint evidence
 
@@ -212,7 +215,7 @@ and what remains.
 | Initialization failure and asset hash mismatch           | Tokenizer failure, download failure, tampered bytes, and a wrong manifest digest each produce their typed error |
 | Offline initialization                                   | `e2e/language-assets.spec.ts` — every bundle request aborted, initialization still succeeds from Cache Storage  |
 | Integrity failure recovers rather than crashing          | End-to-end corrupted asset shows `language/asset-integrity-mismatch`, activates nothing, and retries cleanly    |
-| Datasets never load before they are needed               | End-to-end assertion that no bundle request happens before the user asks                                        |
+| Navigation never waits for the bundle                    | End-to-end test holds the tokenizer download open and asserts the shell renders, navigates, and accepts input   |
 
 ### Measured performance baseline
 
@@ -244,7 +247,7 @@ than asserted, because they are developer-hardware figures.
 | `npm run typecheck`     | Pass                                                                |
 | `npm run assets:verify` | Pass — 22,629 dictionary entries, 256 rules, 177 baseline entries   |
 | `npm test`              | Pass — 29 files, 272 tests                                          |
-| `npm run build`         | Pass — 801.04 kB initial, 181.58 kB transfer; the language worker is a 362.38 kB lazy chunk (63.92 kB transfer) |
+| `npm run build`         | Pass — 802.73 kB initial, 182.08 kB transfer; the language worker is a 362.38 kB lazy chunk (63.92 kB transfer) |
 | `npm run e2e`           | Pass — 32 tests (desktop-chrome, android-chrome)                    |
 | `npm audit --omit=dev`  | 0 vulnerabilities                                                   |
 
@@ -253,11 +256,12 @@ than asserted, because they are developer-hardware figures.
 - [0005 — Tokenizer selection](decisions/0005-tokenizer-selection.md)
 - [0006 — Bundled dictionary dataset](decisions/0006-dictionary-dataset.md)
 - [0007 — Grammar catalog and structural baseline](decisions/0007-grammar-catalog-and-structural-baseline.md)
-- Language assets are prepared on request from Settings rather than during
-  startup. The specification requires that basic navigation must not wait for
-  the worker, and the tokenizer runtime is 13 MB; Milestone 3 will also trigger
-  preparation from the import flow, where the user is already asking for
-  analysis.
+- Language assets are prepared automatically once startup succeeds, but never as
+  a startup step. Every reading path needs the tokenizer, so asking the user to
+  request it would be friction with no benefit; the specification's requirement
+  is that basic navigation must not *wait* for the worker, which a background
+  preparation that is never awaited satisfies. Settings reports progress and
+  offers a retry only when preparation failed.
 - The application owns the language cache (`monosai-language-<version>`) rather
   than delegating it to the service worker, so integrity verification and
   version activation stay application-controlled and work in development, where

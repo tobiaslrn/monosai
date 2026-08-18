@@ -7,6 +7,7 @@ import {
 import { provideServiceWorker } from '@angular/service-worker';
 import type { ApplicationConfig } from '@angular/core';
 import { provideRouter, withHashLocation, withInMemoryScrolling } from '@angular/router';
+import { LanguageStore } from './application/language/language.store';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
 import { provideInitializationSteps } from './core/bootstrap/initialization-steps';
 import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
@@ -30,7 +31,17 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       // Keeps the document theme attribute in sync with persisted settings.
       inject(ThemeSynchronizer);
-      void inject(AppInitializerService).run();
+      const initializer = inject(AppInitializerService);
+      const language = inject(LanguageStore);
+      void initializer.run().then(() => {
+        // Every reading path needs the tokenizer, so preparation starts on its
+        // own once startup succeeds. It is deliberately not awaited and not a
+        // startup step: navigation, the library, and settings must render while
+        // the language bundle is still downloading.
+        if (initializer.state().status === 'ready') {
+          void language.initialize();
+        }
+      });
     }),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),

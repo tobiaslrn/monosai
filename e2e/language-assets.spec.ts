@@ -7,17 +7,15 @@ function statusOf(page: Page) {
   return page.getByTestId('language-status');
 }
 
-async function prepareAssets(page: Page): Promise<void> {
-  await page.getByTestId('language-load').click();
-  await expect(statusOf(page)).toContainText('Ready:', { timeout: 120_000 });
+function expectPrepared(page: Page) {
+  return expect(statusOf(page)).toContainText('Ready:', { timeout: 120_000 });
 }
 
 test.describe('offline language assets', () => {
-  test('downloads, verifies, and activates the language bundle', async ({ page }) => {
+  test('prepares, verifies, and activates the bundle without being asked', async ({ page }) => {
     await page.goto('/');
 
-    await expect(statusOf(page)).toContainText('Not prepared yet');
-    await prepareAssets(page);
+    await expectPrepared(page);
 
     const versions = page.getByTestId('language-versions');
     await expect(versions).toContainText('Tokenizer');
@@ -33,9 +31,26 @@ test.describe('offline language assets', () => {
     await expect(page.getByTestId('language-attributions')).toContainText('IPADIC');
   });
 
+  test('renders and navigates while the bundle is still downloading', async ({ page }) => {
+    // Hold the largest asset open so preparation cannot finish during the test.
+    await page.route(`**${BUNDLE_PREFIX}tokenizer/*`, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 5_000));
+      await route.abort();
+    });
+
+    await page.goto('/');
+
+    // The shell is interactive and the route renders even though the language
+    // bundle is still in flight.
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'Dark' })).toBeEnabled();
+    await page.getByRole('radio', { name: 'Dark' }).check();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  });
+
   test('initializes from the cache when the network is unavailable', async ({ page }) => {
     await page.goto('/');
-    await prepareAssets(page);
+    await expectPrepared(page);
 
     // Every request for a bundle file now fails. Initialization must still
     // succeed from the verified Cache Storage copy. The application shell itself
@@ -48,7 +63,7 @@ test.describe('offline language assets', () => {
     });
 
     await page.reload();
-    await prepareAssets(page);
+    await expectPrepared(page);
 
     const cached = await page.evaluate(async () => {
       const cache = await caches.open('monosai-language-1');
@@ -69,7 +84,6 @@ test.describe('offline language assets', () => {
     );
 
     await page.goto('/');
-    await page.getByTestId('language-load').click();
 
     const failure = page.getByTestId('language-error');
     await expect(failure).toBeVisible({ timeout: 120_000 });
@@ -96,24 +110,10 @@ test.describe('offline language assets', () => {
     });
 
     await page.goto('/');
-    await page.getByTestId('language-load').click();
     await expect(page.getByTestId('language-error')).toBeVisible({ timeout: 120_000 });
 
     corrupt = false;
-    await page.getByTestId('language-load').click();
-    await expect(statusOf(page)).toContainText('Ready:', { timeout: 120_000 });
-  });
-
-  test('never fetches a language asset before the user asks for it', async ({ page }) => {
-    const requests: string[] = [];
-    page.on('request', (request) => {
-      if (request.url().includes(BUNDLE_PREFIX)) {
-        requests.push(request.url());
-      }
-    });
-
-    await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-    expect(requests).toEqual([]);
+    await page.getByTestId('language-retry').click();
+    await expectPrepared(page);
   });
 });
