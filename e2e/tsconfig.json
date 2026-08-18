@@ -1,10 +1,17 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "outDir": "../out-tsc/e2e",
-    "types": ["node"],
+    /* Type-checked only: Playwright transpiles the specs itself and nothing
+       consumes a build of this project, so it declares no output root. */
+    "noEmit": true,
+    "types": [
+      "node"
+    ],
     "module": "preserve",
     "moduleResolution": "bundler"
   },
-  "include": ["**/*.ts", "../playwright.config.ts"]
+  "include": [
+    "**/*.ts",
+    "../playwright.config.ts"
+  ]
 }

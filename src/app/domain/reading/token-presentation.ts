@@ -1,4 +1,5 @@
 import { readingAddsInformation } from '../language/kana';
+import type { StructuralBaselineEntry } from '../language/structural-baseline';
 import type { Token } from './token';
 import type { TokenValidation, TokenValidationCategory } from './validation';
 
@@ -18,6 +19,20 @@ export interface TokenStatusPresentation {
   readonly explanation: string;
   /** What the learner can usefully do next, when there is something. */
   readonly nextAction: string | null;
+  /**
+   * Which sentence-building form was matched, when the baseline matched one.
+   *
+   * Kept structured rather than folded into `explanation` because the example is
+   * Japanese and has to be rendered with its own `lang` attribute.
+   */
+  readonly structuralForm?: StructuralFormDetail;
+}
+
+/** The named baseline form behind a `structural-baseline` status. */
+export interface StructuralFormDetail {
+  readonly nameEn: string;
+  readonly descriptionEn: string;
+  readonly exampleJa?: string;
 }
 
 const PRESENTATIONS: Record<TokenValidationCategory, TokenStatusPresentation> = {
@@ -81,9 +96,28 @@ const PRESENTATIONS: Record<TokenValidationCategory, TokenStatusPresentation> = 
 /**
  * The table is a total `Record` over the category union, so adding a validation
  * category without a presentation is a compile error rather than a blank marker.
+ *
+ * A `structural-baseline` status carries the id of the form that matched, so
+ * when the caller can resolve it the learner is told which form it was rather
+ * than only that it was grammar. The generic text stands when it cannot be
+ * resolved, which is what happens for an analysis stored under an older bundle.
  */
-export function presentStatus(validation: TokenValidation): TokenStatusPresentation {
-  return PRESENTATIONS[validation.category];
+export function presentStatus(
+  validation: TokenValidation,
+  baselineEntry?: StructuralBaselineEntry | null,
+): TokenStatusPresentation {
+  const presentation = PRESENTATIONS[validation.category];
+  if (validation.category !== 'structural-baseline' || !baselineEntry) {
+    return presentation;
+  }
+  return {
+    ...presentation,
+    structuralForm: {
+      nameEn: baselineEntry.nameEn,
+      descriptionEn: baselineEntry.descriptionEn,
+      ...(baselineEntry.exampleJa === undefined ? {} : { exampleJa: baselineEntry.exampleJa }),
+    },
+  };
 }
 
 /**
