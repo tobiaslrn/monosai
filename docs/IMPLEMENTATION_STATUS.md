@@ -10,7 +10,8 @@ and what remains.
 | 1 — Persistence foundation               | Complete    |
 | 2 — Offline language assets and worker   | Complete    |
 | 3 — Reader vertical slice                | Complete    |
-| 4–10                                     | Not started |
+| 4 — Grammar profile                      | Complete    |
+| 5–10                                     | Not started |
 
 ## Milestone 0 — Repository and decision scaffolding
 
@@ -143,9 +144,9 @@ and what remains.
 - Dictionary: JMdict English common-only, pinned release
   `3.6.2+20260817122448`, compacted to 22,629 entries (3.46 MB, 0.90 MB gzipped)
   with bounded senses and glosses and JMdict codes mapped to the domain enum.
-- Grammar catalog: 256 Monosai-authored rules (N5 58, N4 55, N3 50, N2 48,
-  N1 45) with stable ids, patterns, English names, descriptions, formation
-  summaries, and examples.
+- Grammar catalog: 256 Monosai-authored rules. **Deleted in Milestone 4**; see
+  [ADR 0014](decisions/0014-remove-grammar-rule-catalog.md). The bundle now ships
+  six grammar difficulty presets in its place.
 - Structural baseline: 177 Monosai-versioned sentence-building forms across
   particles, copula, auxiliaries, productive inflection, conjunctions, formal
   nouns, affixes, counters, and punctuation. Content words are rejected by the
@@ -283,8 +284,9 @@ than asserted, because they are developer-hardware figures.
   real Anki snapshots.
 - Real-device Android performance and the service-worker offline fallback are
   Milestone 10.
-- A full manual language review of the 256 catalog rules and 177 baseline
-  entries is a release gate, not a milestone gate.
+- A full manual language review of the 177 baseline entries is a release gate,
+  not a milestone gate. The equivalent 256-rule catalog review was removed with
+  the catalog in Milestone 4.
 
 ## Milestone 3 — Reader vertical slice
 
@@ -434,11 +436,11 @@ and why the window moves rather than growing.
   extended, was brought to 93.8% branches / 100% lines, meeting the bar. The
   others are a follow-up for whichever milestone next touches them, not a gap
   introduced here.
-- [Grammar catalog content defects](grammar-catalog-defects.md): two
-  ungrammatical example sentences and two pattern/name field mismatches,
-  confirmed and reported; they never blocked the reader, so they were left
-  unfixed pending the release-gate language review Milestone 2 already
-  identified as necessary.
+- Grammar catalog content defects: two ungrammatical example sentences and two
+  pattern/name field mismatches, confirmed and reported at the time in
+  `docs/grammar-catalog-defects.md`. They never blocked the reader. Milestone 4
+  deleted the catalog instead of repairing it, and folded this evidence into
+  [ADR 0014](decisions/0014-remove-grammar-rule-catalog.md).
 
 ### Remaining work in later milestones
 
@@ -446,6 +448,141 @@ and why the window moves rather than growing.
   (Milestones 4–9).
 - PWA manifest, icons, install UX, and the offline shell fallback that would
   complete scenario 15's offline-reload half (Milestone 10).
-- A full manual language review of the grammar catalog, including the
-  slug/pattern audit `grammar-catalog-defects.md` could not finish
-  mechanically, is a release gate, not a milestone gate.
+- A full manual language review of the grammar catalog was a release gate here;
+  Milestone 4 removed it by deleting the catalog.
+
+## Milestone 4 — Grammar profile
+
+### Delivered
+
+The grammar profile was specified as 256 individually selectable catalog rules.
+[ADR 0008](decisions/0008-grammar-profile-presets.md) replaced that with six
+ordered difficulty presets carrying prose guidance, and delivered the preset
+data, build validation, domain types, Dexie migration, `GrammarProfileStore`, and
+the `/grammar` picker. This milestone finishes the work and removes what 0008
+left behind.
+
+#### The rule catalog is deleted
+
+[ADR 0014](decisions/0014-remove-grammar-rule-catalog.md) records the decision
+and its evidence. The catalog survived 0008 for three consumers — a searchable
+reference screen, a display lookup for naming Milestone 8 findings, and a
+build-time pattern lint — none of which was built, and none of which paid for a
+dataset carrying roughly 24 mismatched ids, two near-duplicate rules, eight bare
+kanji grammatical labels where a readable pattern was expected, and
+`searchAliases` empty on all 256 entries.
+
+- Removed: `data/language/grammar-catalog.source.json`, the shipped
+  `grammar-catalog.json`, `domain/grammar/rules.ts` (`CatalogGrammarRule`,
+  `JlptLevel`, `JLPT_LEVELS_EASIEST_FIRST`), `GrammarRuleId`/`grammarRuleId`,
+  `grammarRuleIdSchema`, and `LanguageRuntimeInfo.grammarRuleCount`.
+- `scripts/assets/build-grammar-catalog.mjs` became `build-grammar-presets.mjs`,
+  keeping the preset and register-guidance validation from 0008 verbatim. The
+  quoted-pattern cross-check lost its corpus and became a structural check on the
+  same regex: non-empty, no trailing punctuation carried in from the prose, and
+  no pattern named twice in one guidance string.
+- Presets ship as the fourth bundle component, `grammarPresets`, carrying
+  `presetCount` — taking the manifest slot the catalog vacated, so
+  `LanguageAssetSettings` still records four component versions. Renamed
+  throughout: `GrammarPresetsComponent`, `grammarPresetsVersion`,
+  `grammarPresetsAssetSchema`. Per CLAUDE.md the settings schema was edited in
+  place; there is no v2 and no migration.
+- The shipped bundle drops from 86,088 to 6,809 bytes for this component, a
+  saving of 77 KB.
+
+#### Profile hashing and capture
+
+`profileHash` was declared on `GrammarProfileSnapshot` and indexed in Dexie, but
+nothing computed it. New `domain/grammar/profile-hash.ts`:
+
+- `grammarProfileHash()` hashes exactly the resolved guidance, the register
+  preference, and the structural-baseline version, over `hashCanonical` with a
+  `grammar-profile` domain prefix per
+  [ADR 0002](decisions/0002-hashing-and-canonical-serialization.md). Covering
+  nothing else is the point: a preset copyedit that leaves the resolved text
+  unchanged, or a dictionary refresh, must not stale every stored analysis.
+- `captureGrammarProfile()` builds the snapshot through the same
+  `resolveGuidance()` the prompt uses, so the hashed text and the sent text
+  cannot diverge. The snapshot is frozen and content addressed — its `id` is its
+  hash — so `GrammarProfileStore.captureProfile()` reuses an existing capture
+  rather than rewriting `capturedAt` on an immutable record. It has no caller
+  until Milestone 7, and no speculative UI is wired to it.
+
+#### Grammar screen
+
+- `structural-baseline-section.component.ts` publishes the 177 baseline entries
+  read-only, grouped by `StructuralBaselineCategory`, with `lang="ja"` on every
+  Japanese string. It is collapsed behind a disclosure so it cannot push the
+  picker off the first screen. `STRUCTURAL_BASELINE_CATEGORIES` moved into the
+  domain and is now the single source for the type, the asset schema enum, and
+  this ordering.
+- The page gained an `aria-live="polite"` status naming what was saved — the new
+  preset, register, or wording — and stating that existing grammar analyses are
+  out of date. The store reports the change as typed data
+  (`GrammarProfileChange`); the sentence is built in the feature layer.
+- No reference section. The searchable catalog and the rule detail sheet are out
+  of scope, not deferred.
+- `setCustomGuidance('')` now resets to the preset instead of storing an empty
+  override, which the store's bounds check had previously allowed through.
+
+### Checkpoint evidence
+
+| Roadmap checkpoint | Evidence |
+| --- | --- |
+| Preset, register, and custom-variant state survive reload | `e2e/grammar.spec.ts` — preset and custom wording asserted after `page.reload()` on desktop and Android |
+| Profile hashes change only for prompt-relevant content | `profile-hash.spec.ts` — stable across caption, description, and example copyedits; changes for guidance, register, and baseline version |
+| Fresh installs default to `Starter forms` and can generate immediately | `e2e/grammar.spec.ts` first test; no empty-profile gate exists |
+| No preset name contains a JLPT level | `language-asset-bundle.spec.ts` asserts it on the shipped asset; the build rejects it at authoring time |
+| No rule catalog ships in the bundle | `public/assets/language/1/` holds `grammar-presets.json` only; `manifest.json` lists four components with `grammarPresets` at `presetCount: 6` |
+| Keyboard-only traversal | `e2e/grammar.spec.ts` arrow-key traversal of the radiogroup, desktop project |
+| Accessibility | `expectNoSeriousAccessibilityViolations` on the picker and on the expanded baseline list, both projects |
+
+Inspected in the running app at 1280 px and 360 px: preset selection persists
+across reload, the wording editor saves and resets, the baseline expands to 177
+entries across 9 categories, there is no horizontal overflow at 360 px, the
+disclosure and action targets measure 44 px, and the console is clean.
+
+### Verification
+
+| Command | Result |
+| --- | --- |
+| `npm run format:check` | Pass |
+| `npm run lint` | Pass (0 problems) |
+| `npm run typecheck` | Pass |
+| `npm run assets:verify` | Pass — 22,629 dictionary entries, 6 presets, 177 baseline entries |
+| `npm test` | Pass — 47 files, 496 tests |
+| `npm run test:coverage` | Pass — 87.6% statements, 81.5% branches, 88.1% functions, 87.5% lines (gate: ≥85%/≥80%/≥85%/≥85%) |
+| `npm run build` | Pass — 815.30 kB initial, 188.55 kB transfer |
+| `npm run e2e` | Pass — 90 tests, 2 intentionally skipped (desktop-chrome, android-chrome) |
+
+### Assumptions and decisions
+
+- [0014 — Remove the grammar rule catalog](decisions/0014-remove-grammar-rule-catalog.md).
+  Numbered 0014 rather than the 0009 the plan named, because 0009–0013 were taken
+  by Milestone 3.
+- **Captures are content addressed.** `GrammarProfileSnapshot.id` is its
+  `profileHash`. The alternative — a UUID per capture — would store
+  byte-identical rows for every story generated under an unchanged profile, with
+  `capturedAt` the only thing distinguishing them. First write wins, so a capture
+  is genuinely immutable.
+- **`captureProfile()` reports a missing bundle as `unavailable`.** The port
+  fails with `StorageError`, and a profile cannot be captured before the presets
+  and the baseline version have loaded. `unavailable` is retryable, which is the
+  correct signal: the caller can retry once assets are ready.
+- **The register labels moved to `features/grammar/register-labels.ts`.** The
+  change confirmation and the register control must agree on what a register is
+  called; sharing the map is cheaper than keeping two copies in step.
+- `docs/grammar-catalog-defects.md` is deleted. It documented a dataset that no
+  longer exists; its findings are recorded in ADR 0014 as evidence.
+
+### Remaining work in later milestones
+
+These are Stage 5 of `docs/plans/milestone-4-grammar-presets.md` and have no
+consumer until the pipeline exists:
+
+- `StoryGenerationRequest.grammarGuidance` and `registerPreference`, and the
+  60,000-token `context-budget-exceeded` guard (Milestone 7).
+- The non-blocking preset/snapshot-size mismatch warning (Milestones 5 and 7).
+- Grammar review judging novelty against the captured guidance (Milestone 8).
+- Language review of the six preset guidance texts remains a release gate, as
+  ADR 0008 established.
