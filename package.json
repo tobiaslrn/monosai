@@ -26,7 +26,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "e2e": "playwright test",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run assets:verify && npm run test && npm run build",
+    "assets:build": "node scripts/assets/build-language-assets.mjs",
+    "assets:verify": "node scripts/assets/verify-language-assets.mjs"
   },
   "dependencies": {
     "@angular/cdk": "^21.2.0",
@@ -38,6 +40,7 @@
     "@angular/router": "^21.2.0",
     "@angular/service-worker": "^21.2.0",
     "dexie": "^4.4.5",
+    "lindera-wasm-web-ipadic": "2.0.0",
     "lucide-angular": "^1.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

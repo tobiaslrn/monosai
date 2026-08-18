@@ -1,0 +1,18 @@
+{
+  "$comment": "Pinned upstream inputs for the language asset build. Digests make the build verifiable; see docs/decisions/0005 and 0006.",
+  "jmdict": {
+    "name": "JMdict (English, common-only) via jmdict-simplified",
+    "release": "3.6.2+20260817122448",
+    "dictionaryRevision": "3.6.2",
+    "url": "https://github.com/scriptin/jmdict-simplified/releases/download/3.6.2%2B20260817122448/jmdict-eng-common-3.6.2%2B20260817122448.json.tgz",
+    "archive": "jmdict-eng-common.json.tgz",
+    "member": "^jmdict-eng-common-[^/]*[.]json$",
+    "sha256": "302c8d2034a124b4d4d170c7394fcc644c25ad971a0f5a27368345c8dbe81549"
+  },
+  "tokenizer": {
+    "name": "lindera-wasm-web-ipadic",
+    "package": "lindera-wasm-web-ipadic",
+    "version": "2.0.0",
+    "file": "lindera_wasm_bg.wasm"
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "bundleVersion": "1",
+  "components": {
+    "tokenizer": {
+      "version": "1.0.0",
+      "engine": "lindera-wasm-web-ipadic@2.0.0",
+      "files": [
+        {
+          "path": "tokenizer/lindera_wasm_bg.wasm",
+          "bytes": 13067153,
+          "sha256": "87c5fffa48186803bfa3c1fbbe0b24e75ffecf2e069f5dba8abd3b914f7818b3"
+        }
+      ],
+      "attribution": {
+        "name": "Lindera (WebAssembly build) with IPADIC",
+        "role": "Morphological analyser runtime and its bundled Japanese dictionary",
+        "licences": [
+          {
+            "component": "Lindera WebAssembly runtime",
+            "spdx": "MIT",
+            "holder": "Lindera contributors",
+            "url": "https://github.com/lindera/lindera"
+          },
+          {
+            "component": "IPADIC (ipadic-2.7.0)",
+            "spdx": "BSD-3-Clause",
+            "holder": "Nara Institute of Science and Technology (NAIST)",
+            "url": "https://github.com/lindera/lindera/blob/main/lindera-ipadic/README.md"
+          }
+        ],
+        "noticeEn": "Japanese morphological analysis uses Lindera (MIT) with the IPADIC dictionary, Copyright 2000, 2001, 2002, 2003 Nara Institute of Science and Technology, redistributed under its BSD 3-clause licence.",
+        "redistribution": "Permitted with the licence notices above retained."
+      }
+    },
+    "dictionary": {
+      "version": "1.0.0",
+      "entryCount": 22629,
+      "files": [
+        {
+          "path": "dictionary.json",
+          "bytes": 3622991,
+          "sha256": "e31b5c97c9eff3104756c0ffeb9457097b2ac5dcea96ce2355d19bde053772e9"
+        }
+      ],
+      "attribution": {
+        "name": "JMdict (English, common words only)",
+        "role": "Offline Japanese-English dictionary for word lookup",
+        "licences": [
+          {
+            "component": "JMdict",
+            "spdx": "CC-BY-SA-4.0",
+            "holder": "Electronic Dictionary Research and Development Group (EDRDG)",
+            "url": "https://www.edrdg.org/edrdg/licence.html"
+          },
+          {
+            "component": "jmdict-simplified conversion",
+            "spdx": "CC-BY-SA-4.0",
+            "holder": "Dmitry Shpika and contributors",
+            "url": "https://github.com/scriptin/jmdict-simplified"
+          }
+        ],
+        "noticeEn": "Dictionary data is derived from JMdict, Copyright Electronic Dictionary Research and Development Group, used under the Creative Commons Attribution-ShareAlike 4.0 International licence, via the jmdict-simplified JSON conversion. Monosai's compacted subset is redistributed under the same licence.",
+        "redistribution": "Permitted under CC BY-SA 4.0; the derived asset carries the same licence."
+      }
+    },
+    "grammarCatalog": {
+      "version": "1.0.0",
+      "ruleCount": 256,
+      "countsByLevel": {
+        "N5": 58,
+        "N4": 55,
+        "N3": 50,
+        "N2": 48,
+        "N1": 45
+      },
+      "files": [
+        {
+          "path": "grammar-catalog.json",
+          "bytes": 79387,
+          "sha256": "cabe1c55d41972245bed2755400e816d7c1bfee25a30bf5e25aafa47bb3b2f05"
+        }
+      ],
+      "attribution": {
+        "name": "Monosai grammar catalog",
+        "role": "Selectable N5-N1 grammar rules used to guide generation prompts and advisory grammar review",
+        "licences": [
+          {
+            "component": "Monosai grammar catalog",
+            "spdx": "CC0-1.0",
+            "holder": "Monosai contributors",
+            "url": "https://github.com/tobiaslrn/monosai"
+          }
+        ],
+        "noticeEn": "The grammar catalog is written for Monosai and dedicated to the public domain under CC0 1.0. The Japan Foundation and JEES do not publish an official exhaustive JLPT grammar list; levels record where a pattern is conventionally taught.",
+        "redistribution": "Unrestricted."
+      }
+    },
+    "structuralBaseline": {
+      "version": "1.0.0",
+      "entryCount": 177,
+      "files": [
+        {
+          "path": "structural-baseline.json",
+          "bytes": 44836,
+          "sha256": "d6190ab64d2cc6ab26a0dff08eed7c53f41f66bfb8e6c1669a1c0b691bb80298"
+        }
+      ],
+      "attribution": {
+        "name": "Monosai structural baseline",
+        "role": "Sentence-building forms treated as readable without an Anki entry",
+        "licences": [
+          {
+            "component": "Monosai structural baseline",
+            "spdx": "CC0-1.0",
+            "holder": "Monosai contributors",
+            "url": "https://github.com/tobiaslrn/monosai"
+          }
+        ],
+        "noticeEn": "The structural baseline is written for Monosai and dedicated to the public domain under CC0 1.0.",
+        "redistribution": "Unrestricted."
+      }
+    }
+  }
+}
