@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { PART_OF_SPEECH_LABELS, type PartOfSpeech } from '../../domain/reading/token';
-import { JLPT_LEVELS_EASIEST_FIRST } from '../../domain/grammar/rules';
+import { STRUCTURAL_BASELINE_CATEGORIES } from '../../domain/language/structural-baseline';
 import {
   GRAMMAR_PRESET_IDS_EASIEST_FIRST,
   MAXIMUM_GUIDANCE_LENGTH,
@@ -38,33 +38,24 @@ const componentSchema = z.object({
   attribution: attributionSchema,
 });
 
-const levelCountsSchema = z.object(
-  Object.fromEntries(
-    JLPT_LEVELS_EASIEST_FIRST.map((level) => [level, z.number().int().nonnegative()]),
-  ) as Record<(typeof JLPT_LEVELS_EASIEST_FIRST)[number], z.ZodNumber>,
-);
-
 export const languageAssetManifestSchema = z.object({
   schemaVersion: z.literal(1),
   bundleVersion: nonEmpty,
   components: z.object({
     tokenizer: componentSchema.extend({ engine: nonEmpty }),
     dictionary: componentSchema.extend({ entryCount: z.number().int().positive() }),
-    grammarCatalog: componentSchema.extend({
-      ruleCount: z.number().int().positive(),
-      countsByLevel: levelCountsSchema,
+    grammarPresets: componentSchema.extend({
       presetCount: z.number().int().positive(),
     }),
     structuralBaseline: componentSchema.extend({ entryCount: z.number().int().positive() }),
   }),
 });
 
-export const grammarCatalogAssetSchema = z.object({
+export const grammarPresetsAssetSchema = z.object({
   schemaVersion: z.literal(1),
   version: nonEmpty,
   sourceId: nonEmpty,
-  ruleCount: z.number().int().positive(),
-  countsByLevel: levelCountsSchema,
+  presetCount: z.number().int().positive(),
   presets: z
     .array(
       z.object({
@@ -84,21 +75,6 @@ export const grammarCatalogAssetSchema = z.object({
     written: nonEmpty,
     either: z.literal(''),
   }),
-  rules: z
-    .array(
-      z.object({
-        id: nonEmpty,
-        level: z.enum(JLPT_LEVELS_EASIEST_FIRST),
-        pattern: nonEmpty,
-        nameEn: nonEmpty,
-        descriptionEn: nonEmpty,
-        formation: nonEmpty.optional(),
-        exampleJa: nonEmpty.optional(),
-        exampleEn: nonEmpty.optional(),
-        searchAliases: z.array(nonEmpty).optional(),
-      }),
-    )
-    .min(1),
 });
 
 export const structuralBaselineAssetSchema = z.object({
@@ -118,17 +94,7 @@ export const structuralBaselineAssetSchema = z.object({
     .array(
       z.object({
         id: nonEmpty,
-        category: z.enum([
-          'particle',
-          'copula',
-          'auxiliary',
-          'inflection',
-          'conjunction',
-          'formal-noun',
-          'affix',
-          'counter',
-          'punctuation',
-        ]),
+        category: z.enum(STRUCTURAL_BASELINE_CATEGORIES),
         forms: z.array(nonEmpty).min(1),
         readings: z.array(nonEmpty).optional(),
         partsOfSpeech: z.array(partOfSpeechSchema).min(1),

@@ -18,7 +18,6 @@ export interface LanguageRuntimeInfo {
   readonly versions: ActiveLanguageAssetVersions;
   readonly analyzerVersion: string;
   readonly dictionaryEntryCount: number;
-  readonly grammarRuleCount: number;
   /** Published in-app as the read-only list of forms that count as readable. */
   readonly structuralBaselineEntries: readonly StructuralBaselineEntry[];
   /** Difficulty presets the learner picks from; replaces per-rule selection. */

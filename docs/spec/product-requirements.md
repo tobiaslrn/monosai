@@ -85,7 +85,7 @@ Acceptance:
 - No JLPT level is used as a preset name, and no copy states or implies that an official exhaustive JLPT grammar list exists.
 - A custom variant behaves exactly as a preset does: its guidance is what generation and grammar analysis both receive.
 - The always-permitted structural baseline is visible as explanatory read-only content and is not represented as learner knowledge.
-- The 256-rule catalog is not a selection surface. It remains searchable read-only reference and is the vocabulary UC-08 findings are named in.
+- There is no rule catalog and no selection surface. UC-08 findings are named by the pattern and explanation the grammar review itself returns; see [ADR 0014](../decisions/0014-remove-grammar-rule-catalog.md).
 
 ### UC-04: Refresh reviewed Anki vocabulary
 

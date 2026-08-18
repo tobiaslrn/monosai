@@ -1,6 +1,7 @@
 {
-  "$comment": "Monosai grammar difficulty presets. Authored for Monosai and dedicated to the public domain (CC0-1.0). Presets replace per-rule selection; see docs/decisions/0008-grammar-profile-presets.md. Names never contain a JLPT level; the caption records where patterns are conventionally taught. Japanese patterns are written literally and reference no catalog rule ids.",
+  "$comment": "Monosai grammar difficulty presets. Authored for Monosai and dedicated to the public domain (CC0-1.0). Presets are the only grammar profile surface; see docs/decisions/0008-grammar-profile-presets.md and docs/decisions/0014-remove-grammar-rule-catalog.md. Names never contain a JLPT level; the caption records where patterns are conventionally taught. Japanese patterns are written literally as prose sent to the model.",
   "version": "1.0.0",
+  "sourceId": "monosai-grammar-presets",
   "presets": [
     {
       "id": "mn-preset-starter",

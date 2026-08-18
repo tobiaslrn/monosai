@@ -1,16 +1,24 @@
 import type { PartOfSpeech, Token } from '../reading/token';
 import { normalizeLookupKey } from './kana';
 
-export type StructuralBaselineCategory =
-  | 'particle'
-  | 'copula'
-  | 'auxiliary'
-  | 'inflection'
-  | 'conjunction'
-  | 'formal-noun'
-  | 'affix'
-  | 'counter'
-  | 'punctuation';
+/**
+ * Every baseline category, in the order the dataset and the read-only in-app
+ * list present them: the forms that hold a clause together first, then the
+ * pieces that attach to a word.
+ */
+export const STRUCTURAL_BASELINE_CATEGORIES = [
+  'particle',
+  'copula',
+  'auxiliary',
+  'inflection',
+  'conjunction',
+  'formal-noun',
+  'affix',
+  'counter',
+  'punctuation',
+] as const;
+
+export type StructuralBaselineCategory = (typeof STRUCTURAL_BASELINE_CATEGORIES)[number];
 
 /**
  * One sentence-building form the learner is not expected to have in Anki.

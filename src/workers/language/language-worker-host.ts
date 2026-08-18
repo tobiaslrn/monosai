@@ -25,7 +25,7 @@ import type { Token } from '../../app/domain/reading/token';
 import {
   dictionaryAssetHeaderSchema,
   findInvalidDictionaryEntry,
-  grammarCatalogAssetSchema,
+  grammarPresetsAssetSchema,
   structuralBaselineAssetSchema,
   type RawDictionaryEntry,
 } from '../../app/infrastructure/language/language-asset.schema';
@@ -260,7 +260,7 @@ export class LanguageWorkerHost {
     if (
       components.tokenizer.files.length === 0 ||
       components.dictionary.files.length === 0 ||
-      components.grammarCatalog.files.length === 0 ||
+      components.grammarPresets.files.length === 0 ||
       components.structuralBaseline.files.length === 0
     ) {
       return {
@@ -270,7 +270,7 @@ export class LanguageWorkerHost {
     }
     const tokenizerFile = components.tokenizer.files[0];
     const dictionaryFile = components.dictionary.files[0];
-    const catalogFile = components.grammarCatalog.files[0];
+    const presetsFile = components.grammarPresets.files[0];
     const baselineFile = components.structuralBaseline.files[0];
 
     const dictionaryJson = await loadAssetJson(context, dictionaryFile);
@@ -293,17 +293,17 @@ export class LanguageWorkerHost {
       };
     }
 
-    const catalogJson = await loadAssetJson(context, catalogFile);
-    if (!catalogJson.ok) {
-      return catalogJson;
+    const presetsJson = await loadAssetJson(context, presetsFile);
+    if (!presetsJson.ok) {
+      return presetsJson;
     }
-    const catalog = grammarCatalogAssetSchema.safeParse(catalogJson.value);
-    if (!catalog.success) {
+    const presets = grammarPresetsAssetSchema.safeParse(presetsJson.value);
+    if (!presets.success) {
       return {
         ok: false,
         error: languageError(
           'asset-schema-invalid',
-          'The grammar catalog does not match its schema.',
+          'The grammar presets do not match their schema.',
         ),
       };
     }
@@ -361,10 +361,9 @@ export class LanguageWorkerHost {
       versions: activeVersionsOf(manifest),
       analyzerVersion: ANALYZER_VERSION,
       dictionaryEntryCount: dictionary.size,
-      grammarRuleCount: catalog.data.ruleCount,
       structuralBaselineEntries: baselineAsset.data.entries,
-      grammarPresets: catalog.data.presets,
-      registerGuidance: catalog.data.registerGuidance,
+      grammarPresets: presets.data.presets,
+      registerGuidance: presets.data.registerGuidance,
     };
     this.ready = {
       tokenizer,

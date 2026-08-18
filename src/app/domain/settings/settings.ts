@@ -74,13 +74,13 @@ export const DEFAULT_EXCEPTION_POLICY: ExceptionPolicy = {
 export interface LanguageAssetSettings {
   readonly tokenizerVersion: string | null;
   readonly dictionaryVersion: string | null;
-  readonly grammarCatalogVersion: string | null;
+  readonly grammarPresetsVersion: string | null;
   readonly structuralBaselineVersion: string | null;
 }
 
 export const DEFAULT_LANGUAGE_ASSET_SETTINGS: LanguageAssetSettings = {
   tokenizerVersion: null,
   dictionaryVersion: null,
-  grammarCatalogVersion: null,
+  grammarPresetsVersion: null,
   structuralBaselineVersion: null,
 };

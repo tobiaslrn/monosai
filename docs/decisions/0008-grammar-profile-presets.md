@@ -1,11 +1,18 @@
 # 0008 — Grammar profile as difficulty presets
 
 Date: 2026-08-18
-Status: Accepted
+Status: Accepted, with two paragraphs superseded
 Supersedes: the *selection* decisions in
 [0007](0007-grammar-catalog-and-structural-baseline.md). The catalog and
 structural baseline datasets, their licensing, ids, and build pipeline are
 unchanged.
+Superseded by: [0014](0014-remove-grammar-rule-catalog.md) in two places — the
+"Storage and versioning" paragraph, which shipped presets inside the grammar
+catalog asset and declined to make them a separate versioned component, and the
+first Consequences bullet, which kept the 256 rules as reference content and as a
+display lookup for naming findings. The catalog is deleted; presets ship as their
+own `grammarPresets` component and the component count is still four. Everything
+else here stands.
 
 ## Context
 
@@ -106,24 +113,27 @@ also know casual contractions" would have silently inherited the wrong set.
 Grammar review instead judges novelty against the captured guidance prose, which
 is supplied to the review request. Verdicts may therefore vary between runs; they
 are cached by profile hash, so a given profile yields one stored answer per
-sentence. Where a returned pattern happens to match a catalog rule, the UI may
-link to that rule's detail sheet — a display lookup that does not affect the
-verdict.
+sentence. ~~Where a returned pattern happens to match a catalog rule, the UI may
+link to that rule's detail sheet.~~ Removed by
+[0014](0014-remove-grammar-rule-catalog.md): a finding is named by the review's
+own pattern and explanation, with no second description to contradict it.
 
 ### Storage and versioning
 
-Presets ship **inside the existing grammar catalog asset** as a top-level
-`presets` array, and `grammarCatalog.version` becomes `2.0.0`. They are not a
-fifth versioned component: they are small, they ship and load with the same
-grammar asset, and a fifth version in `LanguageAssetSettings` would buy nothing.
-It continues to record four component versions.
+~~Presets ship **inside the existing grammar catalog asset** as a top-level
+`presets` array. They are not a fifth versioned component.~~ Superseded by
+[0014](0014-remove-grammar-rule-catalog.md): with the catalog deleted, presets
+ship as `grammar-presets.json` under their own `grammarPresets` manifest
+component, taking the slot the catalog vacated.
+`LanguageAssetSettings` still records four component versions, as this decision
+intended.
 
-Source of truth is `data/language/grammar-presets.source.json`, merged into the
-shipped bundle by the existing `scripts/assets/build-grammar-catalog.mjs`, which
-gains validation that guidance is present, within its length bound, free of the
-unsafe HTML already rejected in rule prose, and that no preset name contains a
-JLPT level. A soft lint warns when a Japanese pattern quoted in guidance appears
-nowhere in the catalog, catching typos without coupling the two.
+Source of truth is `data/language/grammar-presets.source.json`, validated and
+compacted by `scripts/assets/build-grammar-presets.mjs` (named
+`build-grammar-catalog.mjs` until 0014), which checks that guidance is present,
+within its length bound, free of unsafe HTML, and that no preset name contains a
+JLPT level. The soft lint that warned when a quoted Japanese pattern appeared
+nowhere in the catalog became a structural check when 0014 removed the corpus.
 
 ### Domain model
 
@@ -159,10 +169,11 @@ an unsaved marked draft.
 
 ## Consequences
 
-- The 256 catalog rules survive as reader reference content and as a display
-  lookup for naming findings. Their `mn-<level>-<slug>` ids are no longer
-  referenced by the profile, the prompt, or the novelty verdict, so id stability
-  now matters materially less than 0007 assumed.
+- ~~The 256 catalog rules survive as reader reference content and as a display
+  lookup for naming findings.~~ Superseded by
+  [0014](0014-remove-grammar-rule-catalog.md): nothing referenced the rules, so
+  the catalog was deleted rather than kept for consumers that were never built.
+  Their `mn-<level>-<slug>` ids are gone with it.
 - Milestone 4 loses the chip grid, level accordions, cumulative selection,
   per-level counts, virtualization, and the custom-rule records table. Its
   "hundreds of chips remain responsive" checkpoint is replaced.

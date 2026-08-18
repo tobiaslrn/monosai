@@ -23,12 +23,11 @@ function runtimeInfo(): LanguageRuntimeInfo {
     versions: {
       tokenizerVersion: MANIFEST.components.tokenizer.version,
       dictionaryVersion: MANIFEST.components.dictionary.version,
-      grammarCatalogVersion: MANIFEST.components.grammarCatalog.version,
+      grammarPresetsVersion: MANIFEST.components.grammarPresets.version,
       structuralBaselineVersion: MANIFEST.components.structuralBaseline.version,
     },
     analyzerVersion: 'analyzer/1',
     dictionaryEntryCount: 10,
-    grammarRuleCount: 5,
     structuralBaselineEntries: [],
     grammarPresets: [],
     registerGuidance: { spoken: '', written: '', either: '' },

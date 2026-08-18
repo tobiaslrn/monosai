@@ -20,7 +20,6 @@ type ParagraphId = Brand<string, 'ParagraphId'>;
 type SentenceId = Brand<string, 'SentenceId'>;
 type SnapshotId = Brand<string, 'SnapshotId'>;
 type VocabularyItemId = Brand<string, 'VocabularyItemId'>;
-type GrammarRuleId = Brand<string, 'GrammarRuleId'>;
 type AssetId = Brand<string, 'AssetId'>;
 type JobId = Brand<string, 'JobId'>;
 
@@ -140,22 +139,6 @@ Snapshots are append-only. A failed refresh is represented by a transient refres
 ### Grammar
 
 ```ts
-type JlptLevel = 'N5' | 'N4' | 'N3' | 'N2' | 'N1';
-
-interface CatalogGrammarRule {
-  id: GrammarRuleId;
-  kind: 'catalog';
-  level: JlptLevel;
-  pattern: string;
-  nameEn: string;
-  descriptionEn: string;
-  formation?: string;
-  exampleJa?: string;
-  exampleEn?: string;
-  sourceId: string;
-  catalogVersion: string;
-}
-
 type GrammarPresetId =
   | 'mn-preset-starter'
   | 'mn-preset-basic'
@@ -173,6 +156,7 @@ interface GrammarPreset {
   captionEn: string; // "usually taught around N4"
   descriptionEn: string;
   exampleJa: string;
+  exampleEn: string;
   promptGuidance: string; // prose sent to the model
 }
 
@@ -196,9 +180,9 @@ interface GrammarProfileSnapshot {
 
 The live profile stores one preset ID, a register preference, and optional custom guidance. Generated stories capture the resolved guidance text, not only the preset ID, so preset revisions cannot rewrite history — the same principle that previously applied to resolved rule text.
 
-`CustomGrammarRule`, per-rule selection, and per-preset rule sets are all removed; see [ADR 0008](../decisions/0008-grammar-profile-presets.md). Grammar rule IDs are no longer referenced by the profile at any point. The catalog remains reference content and a lookup for naming findings.
+`CustomGrammarRule`, per-rule selection, and per-preset rule sets are all removed; see [ADR 0008](../decisions/0008-grammar-profile-presets.md). The rule catalog itself, along with `CatalogGrammarRule`, `JlptLevel`, and `GrammarRuleId`, is deleted; see [ADR 0014](../decisions/0014-remove-grammar-rule-catalog.md). No enumerated grammar rule exists anywhere in the model.
 
-`profileHash` covers the resolved guidance, the register preference, and the structural-baseline version. It does not cover catalog rule content, so catalog copyedits do not invalidate stored analyses.
+`profileHash` covers the resolved guidance, the register preference, and the structural-baseline version, and nothing else. A preset copyedit that leaves the resolved text unchanged does not invalidate stored analyses, and neither does a dictionary or tokenizer refresh. A capture is content addressed: its `id` is its `profileHash`, so an unchanged profile reuses the capture it already has.
 
 ### Validation
 
@@ -343,7 +327,7 @@ Canonical serialization uses sorted object keys, explicit null omission rules, n
 - Grammar: `hash('grammar' + sentenceHash + modelId + grammarPromptVersion + profileHash)`.
 - Audio: `hash('tts' + sentenceHash + ttsModelId + voiceId + canonicalOptions)`.
 - Imported validation cache: `hash('validation' + sentenceHash + analyzerVersion + validatorVersion + snapshotId)`.
-- Grammar profile: hash captured ordered catalog rule identities/content, ordered custom rule content, and baseline version.
+- Grammar profile: `hash('grammar-profile' + resolvedGuidance + registerPreference + structuralBaselineVersion)`.
 - Exception policy: hash normalized policy text and exception prompt version.
 
 Do not include the API key in any fingerprint.
@@ -382,7 +366,7 @@ Delete reading cascade:
 1. Stop/cancel active jobs and playback for reading.
 2. Delete audio, translations, grammar analyses, validations, token analyses, sentences, paragraphs, progress, generation provenance/profile captures owned only by the reading, and the reading row.
 3. Recompute Continue-reading pointer.
-4. Leave vocabulary snapshots, shared grammar catalog, global profile, source mappings, settings, and credentials.
+4. Leave vocabulary snapshots, the global grammar profile, source mappings, settings, and credentials.
 
 Clear audio deletes all audio blobs and audio jobs, resets reading audio summaries, and stops playback. Full reset deletes the database and application Cache Storage after confirmations.
 

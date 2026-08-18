@@ -64,36 +64,28 @@
         "redistribution": "Permitted under CC BY-SA 4.0; the derived asset carries the same licence."
       }
     },
-    "grammarCatalog": {
-      "version": "2.0.0",
-      "ruleCount": 256,
-      "countsByLevel": {
-        "N5": 58,
-        "N4": 55,
-        "N3": 50,
-        "N2": 48,
-        "N1": 45
-      },
+    "grammarPresets": {
+      "version": "1.0.0",
       "presetCount": 6,
       "files": [
         {
-          "path": "grammar-catalog.json",
-          "bytes": 86088,
-          "sha256": "7908f09ea30be8f5a0e21c26b4927479a82a316589a39d53bd9c152f389a75b6"
+          "path": "grammar-presets.json",
+          "bytes": 6809,
+          "sha256": "eceb703ba3dfb349fde6881403c4583e4de89b5689fb43e800e37ee12ab6f1b4"
         }
       ],
       "attribution": {
-        "name": "Monosai grammar catalog",
-        "role": "Selectable N5-N1 grammar rules used to guide generation prompts and advisory grammar review",
+        "name": "Monosai grammar presets",
+        "role": "Ordered difficulty presets whose prose guidance steers generation prompts and advisory grammar review",
         "licences": [
           {
-            "component": "Monosai grammar catalog",
+            "component": "Monosai grammar presets",
             "spdx": "CC0-1.0",
             "holder": "Monosai contributors",
             "url": "https://github.com/tobiaslrn/monosai"
           }
         ],
-        "noticeEn": "The grammar catalog is written for Monosai and dedicated to the public domain under CC0 1.0. The Japan Foundation and JEES do not publish an official exhaustive JLPT grammar list; levels record where a pattern is conventionally taught.",
+        "noticeEn": "The grammar difficulty presets are written for Monosai and dedicated to the public domain under CC0 1.0. The Japan Foundation and JEES do not publish an official exhaustive JLPT grammar list; a preset caption records only where its patterns are conventionally taught.",
         "redistribution": "Unrestricted."
       }
     },

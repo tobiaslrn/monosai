@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { readJson, sha256, sha256File } from './lib/fs-json.mjs';
 import { LANGUAGE_BUNDLE_VERSION, assetOutputDir, tokenizerSourcePath } from './lib/layout.mjs';
-import { buildGrammarCatalog } from './build-grammar-catalog.mjs';
+import { buildGrammarPresets } from './build-grammar-presets.mjs';
 import { buildStructuralBaseline } from './build-structural-baseline.mjs';
 
 /**
@@ -11,7 +11,7 @@ import { buildStructuralBaseline } from './build-structural-baseline.mjs';
  *
  * It re-validates the committed dataset sources, proves that every manifest
  * digest matches the file that will be served, and proves that the committed
- * grammar and baseline artifacts are exactly what their sources produce. It
+ * preset and baseline artifacts are exactly what their sources produce. It
  * needs no network, so it runs in every pull request.
  */
 async function main() {
@@ -51,18 +51,17 @@ async function main() {
     }
   }
 
-  const catalog = await buildGrammarCatalog({
-    sourcePath: join('data', 'language', 'grammar-catalog.source.json'),
-    presetsPath: join('data', 'language', 'grammar-presets.source.json'),
+  const presets = await buildGrammarPresets({
+    sourcePath: join('data', 'language', 'grammar-presets.source.json'),
   });
   const baseline = await buildStructuralBaseline({
     sourcePath: join('data', 'language', 'structural-baseline.source.json'),
   });
-  const committedCatalog = await readJson(join(outputDir, 'grammar-catalog.json'));
+  const committedPresets = await readJson(join(outputDir, 'grammar-presets.json'));
   const committedBaseline = await readJson(join(outputDir, 'structural-baseline.json'));
-  if (JSON.stringify(committedCatalog) !== JSON.stringify(catalog.artifact)) {
+  if (JSON.stringify(committedPresets) !== JSON.stringify(presets.artifact)) {
     failures.push(
-      'committed grammar-catalog.json differs from its source; run npm run assets:build',
+      'committed grammar-presets.json differs from its source; run npm run assets:build',
     );
   }
   if (JSON.stringify(committedBaseline) !== JSON.stringify(baseline.artifact)) {
@@ -92,7 +91,7 @@ async function main() {
     [
       `language bundle ${manifest.bundleVersion} verified`,
       `  dictionary          ${manifest.components.dictionary.entryCount} entries`,
-      `  grammar catalog     ${manifest.components.grammarCatalog.ruleCount} rules ${JSON.stringify(manifest.components.grammarCatalog.countsByLevel)}`,
+      `  grammar presets     ${manifest.components.grammarPresets.presetCount} presets`,
       `  structural baseline ${manifest.components.structuralBaseline.entryCount} entries`,
       '',
     ].join('\n'),

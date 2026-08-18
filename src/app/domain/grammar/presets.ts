@@ -1,11 +1,11 @@
 /**
  * Grammar difficulty presets.
  *
- * The grammar profile is one choice from an ordered ladder of presets rather
- * than a selection over catalog rules; see
- * `docs/decisions/0008-grammar-profile-presets.md`. A preset carries prose that
- * is sent to the model in place of a serialized rule list, and references no
- * catalog rule ids, so presets and the catalog can version independently.
+ * The grammar profile is one choice from an ordered ladder of presets; see
+ * `docs/decisions/0008-grammar-profile-presets.md`. A preset carries the prose
+ * sent to the model, which is the only grammar difficulty signal Monosai ships
+ * — the enumerated rule catalog it replaced was removed in
+ * `docs/decisions/0014-remove-grammar-rule-catalog.md`.
  */
 
 export const GRAMMAR_PRESET_IDS_EASIEST_FIRST = [

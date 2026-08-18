@@ -17,7 +17,7 @@
 - **Add text**: paste/file input, segmentation review, save.
 - **Generate**: prerequisites, premise form, progress, invalid draft.
 - **Vocabulary**: providers, source mappings, refresh results, snapshots.
-- **Grammar**: catalog selection, custom rules, structural baseline explanation.
+- **Grammar**: difficulty preset, register and wording, structural baseline explanation.
 - **Settings**: OpenRouter, TTS, exception policy, appearance, storage, install/update, reset.
 
 The Reader is a focused child route reached from Library or finalization. It is not a permanent navigation item.
@@ -275,13 +275,13 @@ Three options — everyday spoken, polite written, either — as a single compac
 ### Custom variant
 
 - One **Use my own wording** action opens a text field prefilled with the selected preset's guidance, bounded at 1,000 characters, with **Reset to preset**.
-- The screen states plainly that a custom variant guides generation but that novelty analysis still uses the source preset's coverage, so results there are approximate.
+- The screen states plainly that a custom variant replaces the preset wording entirely, for generation and for novelty analysis alike. Novelty is judged against the captured guidance prose, so a variant is not approximate — it is simply the profile.
 - There is no per-rule custom-rule editor.
 
-### Reference
+### Structural baseline
 
-- The 256-rule catalog appears as a searchable read-only reference below the picker, searching pattern, English name, and description. Entries open a detail sheet with pattern, short English description, level described as a catalog classification rather than official truth, formation summary if supplied, and example. Nothing in this section is selectable.
-- Structural baseline section is read-only and explains why it is not learner vocabulary.
+- The structural baseline section is read-only, grouped by category, and explains that these forms are always treated as readable and are never counted as learner vocabulary. It is collapsed by default so its 177 entries cannot push the picker off the first screen.
+- There is no in-app grammar reference; see [ADR 0014](../decisions/0014-remove-grammar-rule-catalog.md).
 
 ## 10. Settings
 

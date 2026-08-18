@@ -18,7 +18,7 @@ import { technicalCode } from '../../domain/shared/errors';
     <section class="mn-panel" aria-labelledby="mn-language-assets-heading">
       <h2 id="mn-language-assets-heading">Language assets</h2>
       <p class="mn-hint">
-        Japanese analysis, the bundled dictionary, the grammar catalog, and the structural baseline
+        Japanese analysis, the bundled dictionary, the grammar presets, and the structural baseline
         are downloaded once and then verified and used offline.
       </p>
 
@@ -42,8 +42,8 @@ import { technicalCode } from '../../domain/shared/errors';
             <dd>{{ active.dictionaryVersion }}</dd>
           </div>
           <div>
-            <dt>Grammar catalog</dt>
-            <dd>{{ active.grammarCatalogVersion }}</dd>
+            <dt>Grammar presets</dt>
+            <dd>{{ active.grammarPresetsVersion }}</dd>
           </div>
           <div>
             <dt>Structural baseline</dt>
@@ -140,7 +140,6 @@ export class LanguageAssetsSectionComponent {
         return info === null
           ? 'Ready.'
           : `Ready: ${String(info.dictionaryEntryCount)} dictionary entries, ` +
-              `${String(info.grammarRuleCount)} grammar rules, ` +
               `${String(info.structuralBaselineEntries.length)} structural forms.`;
     }
   });

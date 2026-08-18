@@ -3,7 +3,7 @@ import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { readJson, sha256File, writeArtifact } from './lib/fs-json.mjs';
 import { buildDictionary, writeDictionary } from './build-dictionary.mjs';
-import { buildGrammarCatalog, writeGrammarCatalog } from './build-grammar-catalog.mjs';
+import { buildGrammarPresets, writeGrammarPresets } from './build-grammar-presets.mjs';
 import { buildStructuralBaseline, writeStructuralBaseline } from './build-structural-baseline.mjs';
 import { LANGUAGE_BUNDLE_VERSION, assetOutputDir, tokenizerSourcePath } from './lib/layout.mjs';
 
@@ -37,18 +37,12 @@ async function main() {
     dictionary.artifact,
   );
 
-  const catalog = await buildGrammarCatalog({
-    sourcePath: join(SOURCE_DIR, 'grammar-catalog.source.json'),
-    presetsPath: join(SOURCE_DIR, 'grammar-presets.source.json'),
+  const presets = await buildGrammarPresets({
+    sourcePath: join(SOURCE_DIR, 'grammar-presets.source.json'),
   });
-  if (catalog.unknownPatterns.length > 0) {
-    console.warn(
-      `Preset guidance quotes patterns absent from the catalog: ${catalog.unknownPatterns.join(', ')}`,
-    );
-  }
-  const catalogFile = await writeGrammarCatalog(
-    join(outputDir, 'grammar-catalog.json'),
-    catalog.artifact,
+  const presetsFile = await writeGrammarPresets(
+    join(outputDir, 'grammar-presets.json'),
+    presets.artifact,
   );
 
   const baseline = await buildStructuralBaseline({
@@ -89,15 +83,13 @@ async function main() {
         ],
         attribution: attribution.dictionary.attribution,
       },
-      grammarCatalog: {
-        version: catalog.artifact.version,
-        ruleCount: catalog.artifact.ruleCount,
-        countsByLevel: catalog.artifact.countsByLevel,
-        presetCount: catalog.artifact.presets.length,
+      grammarPresets: {
+        version: presets.artifact.version,
+        presetCount: presets.artifact.presetCount,
         files: [
-          { path: 'grammar-catalog.json', bytes: catalogFile.bytes, sha256: catalogFile.sha256 },
+          { path: 'grammar-presets.json', bytes: presetsFile.bytes, sha256: presetsFile.sha256 },
         ],
-        attribution: attribution.grammarCatalog.attribution,
+        attribution: attribution.grammarPresets.attribution,
       },
       structuralBaseline: {
         version: baseline.artifact.version,
@@ -123,7 +115,7 @@ async function main() {
     [
       `language bundle ${LANGUAGE_BUNDLE_VERSION} written to ${outputDir}`,
       `  dictionary          ${dictionary.artifact.entryCount} entries, ${dictionaryFile.bytes} bytes`,
-      `  grammar catalog     ${catalog.artifact.ruleCount} rules, ${catalogFile.bytes} bytes`,
+      `  grammar presets     ${presets.artifact.presetCount} presets, ${presetsFile.bytes} bytes`,
       `  structural baseline ${baseline.artifact.entryCount} entries, ${baselineFile.bytes} bytes`,
       `  tokenizer           ${tokenizerFile.bytes} bytes (served from the locked package)`,
       `  manifest            ${manifestFile.bytes} bytes`,

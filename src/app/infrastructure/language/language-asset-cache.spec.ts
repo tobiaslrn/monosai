@@ -11,11 +11,11 @@ import {
 
 const BASE_URL = 'https://monosai.test/assets/language/1/';
 
-function fileOf(path: 'structural-baseline.json' | 'grammar-catalog.json'): LanguageAssetFile {
+function fileOf(path: 'structural-baseline.json' | 'grammar-presets.json'): LanguageAssetFile {
   const manifest = readBundleManifest();
   return path === 'structural-baseline.json'
     ? manifest.components.structuralBaseline.files[0]
-    : manifest.components.grammarCatalog.files[0];
+    : manifest.components.grammarPresets.files[0];
 }
 
 function bodyFor(bytes: Uint8Array): ArrayBuffer {
@@ -135,13 +135,13 @@ describe('language asset cache', () => {
 
   it('works without Cache Storage at all', async () => {
     const recorder = recordingFetch();
-    const result = await loadAssetFile(contextWith(recorder, null), fileOf('grammar-catalog.json'));
+    const result = await loadAssetFile(contextWith(recorder, null), fileOf('grammar-presets.json'));
     expect(result.ok).toBe(true);
   });
 
   it('decodes a verified JSON asset', async () => {
     const recorder = recordingFetch();
-    const result = await loadAssetJson(contextWith(recorder, null), fileOf('grammar-catalog.json'));
+    const result = await loadAssetJson(contextWith(recorder, null), fileOf('grammar-presets.json'));
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect((result.value as { schemaVersion: number }).schemaVersion).toBe(1);

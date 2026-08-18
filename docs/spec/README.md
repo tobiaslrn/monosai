@@ -29,7 +29,7 @@ This suite supersedes both earlier Monosai drafts wherever they conflict. The fo
 - Users enter their own story premise. Topic suggestions and genre metadata are excluded.
 - The model chooses Japanese register. A per-generation special-instructions field can guide it.
 - Both story forms become available at 50 unique reviewed entries; story length is not tied to vocabulary count.
-- The grammar profile is a selectable N5–N1 catalog plus custom rules, not an ordered list of unstructured notes.
+- The grammar profile is one choice from six ordered difficulty presets carrying prose guidance, plus a register preference and an optional user-edited variant. There is no rule catalog and no per-rule selection.
 - Reader aids start enabled globally rather than opening in a natural-text-only mode.
 - Imported readings use the newest completed vocabulary snapshot. Generated stories retain their creation snapshot.
 - Individual readings can be deleted. Search, editing, export, backup, and sync remain excluded.
@@ -73,7 +73,7 @@ The concrete tokenizer and open grammar dataset are implementation-time dependen
 | Vocabulary snapshot | An immutable, deduplicated set of eligible visible field values created by a refresh. |
 | Active snapshot | The newest successfully completed snapshot. Failed/cancelled refreshes never become active. |
 | Structural baseline | Versioned grammar/function material that is always allowed to form Japanese sentences. It is not starter content vocabulary. |
-| Grammar profile | The learner's device-wide selected catalog rules plus enabled custom rules. |
+| Grammar profile | The learner's device-wide difficulty preset, register preference, and optional user-edited guidance. |
 | Exception policy | One device-wide natural-language policy evaluated by AI for otherwise unknown generated vocabulary. |
 | Known | Locally validated against the story snapshot or active snapshot, as appropriate. |
 | Exception | Not known through Anki, but accepted by the AI exception review under the captured policy. |

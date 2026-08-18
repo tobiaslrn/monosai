@@ -43,7 +43,7 @@ Each milestone should leave the main branch production-buildable. Commit generat
 ### Build
 
 - Select tokenizer and compact dictionary using the gates in the language specification.
-- Select/build grammar catalog and define the structural baseline; add reproducible build scripts, manifests, hashes, schemas, and attributions.
+- Author the grammar difficulty presets and define the structural baseline; add reproducible build scripts, manifests, hashes, schemas, and attributions.
 - Implement language worker protocol, initialization, segmentation, tokenization, readings/POS, dictionary lookup index, phrase matcher, and vocabulary classification.
 - Integrate immutable asset caching and version activation.
 - Create the golden language corpus.
@@ -74,16 +74,17 @@ Each milestone should leave the main branch production-buildable. Commit generat
 
 ### Build
 
-- Author the six presets in `data/language/grammar-presets.source.json` and extend `scripts/assets/build-grammar-catalog.mjs` to validate and merge them into the catalog asset.
-- Implement the preset picker, register control, custom-variant field, read-only catalog reference, and structural-baseline explanation.
+- Author the six presets in `data/language/grammar-presets.source.json` and ship them as the `grammarPresets` bundle component, validated by `scripts/assets/build-grammar-presets.mjs`.
+- Implement the preset picker, register control, custom-variant field, change confirmation, and the read-only structural-baseline list.
+- Delete the grammar rule catalog and everything that referenced it; see [ADR 0014](../decisions/0014-remove-grammar-rule-catalog.md).
 - Implement live profile hashing and immutable capture.
 - Remove the empty-profile generation gate and the `CustomGrammarRule` table via migration.
 
 ### Checkpoint
 
-- Preset, register, and custom-variant state survive reload; profile hashes change only for prompt-relevant content and are unaffected by catalog copyedits.
+- Preset, register, and custom-variant state survive reload; profile hashes change only for prompt-relevant content and are unaffected by preset copyedits that leave the resolved guidance unchanged.
 - Fresh installs default to `Starter forms` and can generate immediately.
-- No preset name contains a JLPT level, and the profile references no catalog rule IDs.
+- No preset name contains a JLPT level, and no rule catalog ships in the bundle.
 
 ## 7. Milestone 5 — Anki vocabulary
 

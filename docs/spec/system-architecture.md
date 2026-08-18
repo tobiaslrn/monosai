@@ -210,7 +210,7 @@ Cancellation checks occur between chunks and within loops at bounded intervals. 
 
 - Tokenizer runtime/dictionary assets.
 - Compact dictionary index/data.
-- Grammar catalog and structural baseline.
+- Grammar difficulty presets and structural baseline.
 
 Each language bundle has an immutable versioned URL and manifest with hashes. A newly installed version is verified before being made active; the prior cached version remains until no stored analysis depends on it or a cleanup migration completes.
 

@@ -38,7 +38,7 @@ export const exceptionPolicySchema = z.object({
 export const languageAssetSettingsSchema = z.object({
   tokenizerVersion: z.string().nullable(),
   dictionaryVersion: z.string().nullable(),
-  grammarCatalogVersion: z.string().nullable(),
+  grammarPresetsVersion: z.string().nullable(),
   structuralBaselineVersion: z.string().nullable(),
 });
 
