@@ -3,23 +3,32 @@
 Implementation plan. Read [ADR 0008](../decisions/0008-grammar-profile-presets.md)
 first; it carries the reasoning and the measurements. This document is the work.
 
+> **Status: delivered.** Read this alongside
+> [ADR 0014](../decisions/0014-remove-grammar-rule-catalog.md), which deleted the
+> grammar rule catalog after this plan was written. Every reference below to the
+> catalog surviving as reference content, to `build-grammar-catalog.mjs`, or to
+> merging presets into `grammar-catalog.json` is historical: presets ship as
+> their own `grammarPresets` component built by `build-grammar-presets.mjs`.
+
 ## What you are building
 
 The grammar profile stops being 256 selectable rules and becomes one choice from
 six ordered difficulty presets, plus an optional register preference and an
-optional user-edited variant. The 256-rule catalog survives unchanged as
-read-only reference content. The profile references no catalog rule ids.
+optional user-edited variant. The profile references no rule ids — and, since
+[ADR 0014](../decisions/0014-remove-grammar-rule-catalog.md), no rule catalog
+exists to reference.
 
 Specifications already updated for this change: `product-requirements.md` UC-03
 and UC-05, `ux-ui-specification.md` §7 and §9, `ai-pipelines.md` §4 and §8,
 `domain-and-data-model.md` Grammar section, `implementation-roadmap.md` §6. Treat
 them as authoritative; this plan is the sequence.
 
-## Stage 0 — Catalog id hygiene (independent, not a blocker)
+## Stage 0 — Catalog id hygiene — CANCELLED
 
-Do this whenever convenient. It no longer blocks the presets, because nothing in
-the profile references rule ids — but it is a real defect and renaming is free
-until something ships that depends on the ids.
+**Cancelled, not pending.** The catalog was deleted rather than repaired; see
+[ADR 0014](../decisions/0014-remove-grammar-rule-catalog.md), which records these
+defects as part of the evidence for deleting it. Nothing below is outstanding
+work. It is kept only so the decision's evidence has a visible source.
 
 Approximately 24 catalog ids do not correspond to their pattern. Confirmed
 examples: `mn-n3-kke-nai` is `〜わけがない`, `mn-n3-mono-no` is `〜つつ`,

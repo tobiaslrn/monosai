@@ -5,12 +5,7 @@ import {
   REGISTER_PREFERENCES,
   type RegisterPreference,
 } from '../../domain/grammar/presets';
-
-const REGISTER_LABELS: Readonly<Record<RegisterPreference, string>> = {
-  either: 'Either',
-  spoken: 'Everyday spoken',
-  written: 'Polite written',
-};
+import { REGISTER_LABELS } from './register-labels';
 
 /**
  * Register preference and the custom-guidance escape hatch.

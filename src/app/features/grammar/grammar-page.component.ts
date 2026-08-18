@@ -1,13 +1,18 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
 import { GuidanceSectionComponent } from './guidance-section.component';
 import { PresetPickerComponent } from './preset-picker.component';
+import { REGISTER_LABELS } from './register-labels';
+import { StructuralBaselineSectionComponent } from './structural-baseline-section.component';
+
+/** Appended to every confirmation; changing the profile is what makes analyses stale. */
+const STALE_NOTICE = 'Existing grammar analyses are now out of date.';
 
 @Component({
   selector: 'mn-grammar-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PresetPickerComponent, GuidanceSectionComponent],
+  imports: [PresetPickerComponent, GuidanceSectionComponent, StructuralBaselineSectionComponent],
   template: `
     <div class="mn-page">
       <header>
@@ -17,6 +22,14 @@ import { PresetPickerComponent } from './preset-picker.component';
           text. Changing it marks existing grammar analyses as stale.
         </p>
       </header>
+
+      <!--
+        Announced rather than shown as a toast: the change has already been saved,
+        so this confirms what happened without asking for an acknowledgement.
+      -->
+      <p class="confirmation" role="status" aria-live="polite" data-testid="grammar-confirmation">
+        {{ confirmation() }}
+      </p>
 
       @if (language.status() === 'failed') {
         <section class="mn-panel" role="alert">
@@ -37,6 +50,11 @@ import { PresetPickerComponent } from './preset-picker.component';
           <h2 id="mn-grammar-wording-heading">Register and wording</h2>
           <mn-guidance-section />
         </section>
+
+        <section class="mn-panel" aria-labelledby="mn-grammar-baseline-heading">
+          <h2 id="mn-grammar-baseline-heading">Always-known forms</h2>
+          <mn-structural-baseline-section />
+        </section>
       }
 
       @if (profile.lastError(); as error) {
@@ -44,10 +62,44 @@ import { PresetPickerComponent } from './preset-picker.component';
       }
     </div>
   `,
+  styles: `
+    .confirmation:empty {
+      display: none;
+    }
+
+    .confirmation {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+  `,
 })
 export class GrammarPageComponent {
   protected readonly profile = inject(GrammarProfileStore);
   protected readonly language = inject(LanguageStore);
+
+  /**
+   * One line naming what was saved.
+   *
+   * Empty until the learner changes something, so a screen reader is not handed
+   * a stale announcement on arrival.
+   */
+  protected readonly confirmation = computed(() => {
+    const change = this.profile.lastChange();
+    if (change === null) {
+      return '';
+    }
+    switch (change.kind) {
+      case 'preset':
+        return `Reading level set to ${this.presetName(change.presetId)}. ${STALE_NOTICE}`;
+      case 'register':
+        return `Register set to ${REGISTER_LABELS[change.registerPreference]}. ${STALE_NOTICE}`;
+      case 'custom-guidance':
+        return `Your own wording saved. ${STALE_NOTICE}`;
+      case 'reset-to-preset':
+        return `Wording reset to ${this.presetName(change.presetId)}. ${STALE_NOTICE}`;
+    }
+  });
 
   constructor() {
     void this.language.initialize();
@@ -56,5 +108,9 @@ export class GrammarPageComponent {
 
   protected retry(): void {
     void this.language.initialize();
+  }
+
+  private presetName(presetId: string): string {
+    return this.profile.presets().find((preset) => preset.id === presetId)?.nameEn ?? presetId;
   }
 }
