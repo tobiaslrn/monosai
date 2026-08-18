@@ -1,6 +1,6 @@
 {
   "$comment": "Monosai grammar catalog source. Authored for Monosai and dedicated to the public domain (CC0-1.0). JLPT does not publish an official exhaustive grammar list; `level` records where a pattern is conventionally taught. Built by scripts/assets/build-grammar-catalog.mjs.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "sourceId": "monosai-grammar-catalog",
   "rules": [
     {

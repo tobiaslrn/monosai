@@ -39,6 +39,7 @@ export interface DictionaryComponent extends LanguageAssetComponent {
 export interface GrammarCatalogComponent extends LanguageAssetComponent {
   readonly ruleCount: number;
   readonly countsByLevel: Readonly<Record<JlptLevel, number>>;
+  readonly presetCount: number;
 }
 
 export interface StructuralBaselineComponent extends LanguageAssetComponent {

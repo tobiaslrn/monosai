@@ -84,6 +84,34 @@ describe('committed language bundle', () => {
     }
   });
 
+  it('ships the difficulty presets in ladder order without JLPT levels as names', () => {
+    const parsed = grammarCatalogAssetSchema.safeParse(readJson('grammar-catalog.json'));
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) {
+      return;
+    }
+    const { presets } = parsed.data;
+    expect(presets.length).toBe(manifest.components.grammarCatalog.presetCount);
+    expect(presets.map((preset) => preset.order)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(new Set(presets.map((preset) => preset.id)).size).toBe(presets.length);
+    for (const preset of presets) {
+      // The name states the grammar the learner commands; only the caption may
+      // record where those patterns are conventionally taught.
+      expect(preset.nameEn, preset.id).not.toMatch(/\bN[1-5]\b/);
+      expect(preset.promptGuidance.length, preset.id).toBeLessThanOrEqual(1000);
+      expect(preset.promptGuidance, preset.id).not.toMatch(/[<>]|&[a-z]+;/i);
+      expect(preset.descriptionEn, preset.id).not.toMatch(/[<>]|&[a-z]+;/i);
+    }
+  });
+
+  it('ships register guidance with an empty line for the neutral choice', () => {
+    const parsed = grammarCatalogAssetSchema.parse(readJson('grammar-catalog.json'));
+
+    expect(parsed.registerGuidance.either).toBe('');
+    expect(parsed.registerGuidance.spoken.length).toBeGreaterThan(0);
+    expect(parsed.registerGuidance.written.length).toBeGreaterThan(0);
+  });
+
   it('ships a structural baseline of sentence-building forms only', () => {
     const parsed = structuralBaselineAssetSchema.safeParse(readJson('structural-baseline.json'));
     expect(parsed.success).toBe(true);

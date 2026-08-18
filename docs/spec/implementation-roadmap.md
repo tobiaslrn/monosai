@@ -74,16 +74,16 @@ Each milestone should leave the main branch production-buildable. Commit generat
 
 ### Build
 
-- Implement searchable level accordions/chips, cumulative selection semantics, details, selected counts, and structural-baseline explanation.
-- Implement custom-rule create/edit/reorder/enable/delete.
+- Author the six presets in `data/language/grammar-presets.source.json` and extend `scripts/assets/build-grammar-catalog.mjs` to validate and merge them into the catalog asset.
+- Implement the preset picker, register control, custom-variant field, read-only catalog reference, and structural-baseline explanation.
 - Implement live profile hashing and immutable capture.
-- Add empty-profile generation gate routing while preserving generation form drafts.
+- Remove the empty-profile generation gate and the `CustomGrammarRule` table via migration.
 
 ### Checkpoint
 
-- Selection/custom rule behavior survives reload and profile hashes change only for prompt-relevant content.
-- Fresh installs select nothing; generation cannot continue with an empty profile.
-- Hundreds of chips remain responsive and keyboard/touch accessible.
+- Preset, register, and custom-variant state survive reload; profile hashes change only for prompt-relevant content and are unaffected by catalog copyedits.
+- Fresh installs default to `Starter forms` and can generate immediately.
+- No preset name contains a JLPT level, and the profile references no catalog rule IDs.
 
 ## 7. Milestone 5 — Anki vocabulary
 

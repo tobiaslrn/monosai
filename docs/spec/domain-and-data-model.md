@@ -156,29 +156,49 @@ interface CatalogGrammarRule {
   catalogVersion: string;
 }
 
-interface CustomGrammarRule {
-  id: GrammarRuleId;
-  kind: 'custom';
-  name: string;
-  description: string;
-  exampleJa?: string;
-  enabled: boolean;
-  position: number;
-  createdAt: number;
-  updatedAt: number;
+type GrammarPresetId =
+  | 'mn-preset-starter'
+  | 'mn-preset-basic'
+  | 'mn-preset-everyday'
+  | 'mn-preset-explanatory'
+  | 'mn-preset-formal'
+  | 'mn-preset-literary';
+
+type RegisterPreference = 'spoken' | 'written' | 'either';
+
+interface GrammarPreset {
+  id: GrammarPresetId;
+  order: number; // 0 easiest
+  nameEn: string; // never a JLPT level
+  captionEn: string; // "usually taught around N4"
+  descriptionEn: string;
+  exampleJa: string;
+  promptGuidance: string; // prose sent to the model
+}
+
+interface GrammarProfileSelection {
+  presetId: GrammarPresetId;
+  registerPreference: RegisterPreference;
+  customGuidance?: string; // <= 1,000 characters; forked from presetId
 }
 
 interface GrammarProfileSnapshot {
   id: string;
   profileHash: string;
   capturedAt: number;
-  selectedCatalogRules: readonly CapturedGrammarRule[];
-  enabledCustomRules: readonly CapturedGrammarRule[];
+  presetId: GrammarPresetId;
+  resolvedGuidance: string;
+  registerPreference: RegisterPreference;
+  isCustomGuidance: boolean;
   structuralBaselineVersion: string;
 }
 ```
 
-The live profile stores selected catalog IDs and custom-rule records. Generated stories capture resolved rule text, not only IDs, so catalog updates cannot rewrite history.
+The live profile stores one preset ID, a register preference, and optional custom guidance. Generated stories capture the resolved guidance text, not only the preset ID, so preset revisions cannot rewrite history — the same principle that previously applied to resolved rule text.
+
+`CustomGrammarRule`, per-rule selection, and per-preset rule sets are all removed; see [ADR 0008](../decisions/0008-grammar-profile-presets.md). Grammar rule IDs are no longer referenced by the profile at any point. The catalog remains reference content and a lookup for naming findings.
+
+`profileHash` covers the resolved guidance, the register preference, and the structural-baseline version. It does not cover catalog rule content, so catalog copyedits do not invalidate stored analyses.
 
 ### Validation
 

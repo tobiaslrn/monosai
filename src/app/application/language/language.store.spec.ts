@@ -30,6 +30,8 @@ function runtimeInfo(): LanguageRuntimeInfo {
     dictionaryEntryCount: 10,
     grammarRuleCount: 5,
     structuralBaselineEntries: [],
+    grammarPresets: [],
+    registerGuidance: { spoken: '', written: '', either: '' },
   };
 }
 

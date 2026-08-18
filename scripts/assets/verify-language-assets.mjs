@@ -53,6 +53,7 @@ async function main() {
 
   const catalog = await buildGrammarCatalog({
     sourcePath: join('data', 'language', 'grammar-catalog.source.json'),
+    presetsPath: join('data', 'language', 'grammar-presets.source.json'),
   });
   const baseline = await buildStructuralBaseline({
     sourcePath: join('data', 'language', 'structural-baseline.source.json'),

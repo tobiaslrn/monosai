@@ -13,6 +13,7 @@ export interface NavigationItem {
 }
 
 export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
+  { path: '/grammar', label: 'Grammar', icon: 'grammar', mobilePlacement: 'bar' },
   { path: '/settings', label: 'Settings', icon: 'settings', mobilePlacement: 'bar' },
 ];
 

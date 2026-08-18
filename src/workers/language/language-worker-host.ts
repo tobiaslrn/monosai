@@ -361,6 +361,8 @@ export class LanguageWorkerHost {
       dictionaryEntryCount: dictionary.size,
       grammarRuleCount: catalog.data.ruleCount,
       structuralBaselineEntries: baselineAsset.data.entries,
+      grammarPresets: catalog.data.presets,
+      registerGuidance: catalog.data.registerGuidance,
     };
     this.ready = {
       tokenizer,

@@ -7,6 +7,7 @@ import type { Dictionary } from './dictionary';
 import type { LanguageError } from './language-error';
 import type { ActiveLanguageAssetVersions, LanguageAssetManifest } from './language-assets';
 import type { SentenceSegment } from './segmentation';
+import type { GrammarPreset, RegisterGuidance } from '../grammar/presets';
 import type { StructuralBaselineEntry } from './structural-baseline';
 import type { Tokenizer } from './tokenizer';
 
@@ -19,6 +20,9 @@ export interface LanguageRuntimeInfo {
   readonly grammarRuleCount: number;
   /** Published in-app as the read-only list of forms that count as readable. */
   readonly structuralBaselineEntries: readonly StructuralBaselineEntry[];
+  /** Difficulty presets the learner picks from; replaces per-rule selection. */
+  readonly grammarPresets: readonly GrammarPreset[];
+  readonly registerGuidance: RegisterGuidance;
 }
 
 export interface ClassifiedSentence {
