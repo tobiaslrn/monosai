@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fixedClock } from '../../../domain/shared/clock';
 import { readingId, sentenceId } from '../../../domain/shared/ids';
 import type { MonosaiDatabase } from '../monosai-db';
@@ -168,6 +168,54 @@ describe('DexieReadingRepository', () => {
       expect(analyses.value).toHaveLength(1);
       expect(analyses.value[0].sentenceId).toBe(draft.sentences[0].id);
     });
+
+    it('counts paragraphs without loading their text', async () => {
+      const draft = importedReadingFixture({
+        paragraphTexts: [['一。'], ['二。'], ['三。']],
+      });
+      await repository.saveImportedReading(draft);
+
+      const count = await repository.countParagraphs(draft.reading.id);
+
+      expect(count.ok && count.value).toBe(3);
+    });
+
+    it('locates the sentence and paragraph at a position through two indexed lookups', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+
+      const located = await repository.locateSentence(draft.reading.id, 1);
+
+      expect(located.ok).toBe(true);
+      if (!located.ok) {
+        return;
+      }
+      expect(located.value).toEqual({
+        sentenceId: draft.sentences[1].id,
+        paragraphId: draft.sentences[1].paragraphId,
+        paragraphPosition: draft.paragraphs[0].position,
+        positionInReading: 1,
+      });
+    });
+
+    it('returns null when no sentence occupies that position', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+
+      const located = await repository.locateSentence(draft.reading.id, 99);
+
+      expect(located.ok && located.value).toBeNull();
+    });
+
+    it('returns null when the sentence exists but its paragraph does not', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+      await db.paragraphs.delete(draft.sentences[0].paragraphId);
+
+      const located = await repository.locateSentence(draft.reading.id, 0);
+
+      expect(located.ok && located.value).toBeNull();
+    });
   });
 
   describe('library queries', () => {
@@ -220,6 +268,42 @@ describe('DexieReadingRepository', () => {
       ]);
       expect((await repository.countReadings('all')).ok).toBe(true);
       expect(await db.readings.count()).toBe(2);
+    });
+
+    it('reads a bounded number of rows and never touches audio or text tables', async () => {
+      for (let index = 0; index < 30; index += 1) {
+        await repository.saveImportedReading(
+          importedReadingFixture({
+            seed: index + 1,
+            title: `Reading ${index}`,
+            createdAt: 1_700_000_000_000 + index * 1000,
+          }),
+        );
+      }
+
+      const audioGet = vi.spyOn(db.audioAssets, 'get');
+      const audioWhere = vi.spyOn(db.audioAssets, 'where');
+      const paragraphsWhere = vi.spyOn(db.paragraphs, 'where');
+      const sentencesWhere = vi.spyOn(db.sentences, 'where');
+      const tokenAnalysesWhere = vi.spyOn(db.tokenAnalyses, 'where');
+
+      const page = await repository.listLibraryPage({ filter: 'all', limit: 5 });
+
+      expect(page.ok).toBe(true);
+      if (page.ok) {
+        // Bounded by the requested page size regardless of how many readings
+        // exist: the library's first page never scales with total library size.
+        expect(page.value.items.length).toBeLessThanOrEqual(5);
+        expect(page.value.hasMore).toBe(true);
+      }
+
+      // The library summary lives entirely on the denormalized reading row, so
+      // listing a page never reads audio bytes or any child text table.
+      expect(audioGet).not.toHaveBeenCalled();
+      expect(audioWhere).not.toHaveBeenCalled();
+      expect(paragraphsWhere).not.toHaveBeenCalled();
+      expect(sentencesWhere).not.toHaveBeenCalled();
+      expect(tokenAnalysesWhere).not.toHaveBeenCalled();
     });
   });
 
@@ -345,6 +429,122 @@ describe('DexieReadingRepository', () => {
     it('returns no analyses for unknown sentences', async () => {
       const analyses = await repository.loadTokenAnalyses([sentenceId(uuid(4243))]);
       expect(analyses.ok && analyses.value).toEqual([]);
+    });
+
+    it('reports a corrupt paragraph row when loading the graph', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+      await db.paragraphs.update(draft.paragraphs[0].id, { position: -1 });
+
+      const graph = await repository.loadGraph(draft.reading.id);
+
+      expect(graph.ok).toBe(false);
+      expect(!graph.ok && graph.error.code).toBe('corrupt-record');
+    });
+
+    it('reports a corrupt sentence row when loading the graph', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+      await db.sentences.update(draft.sentences[0].id, { positionInReading: -1 });
+
+      const graph = await repository.loadGraph(draft.reading.id);
+
+      expect(graph.ok).toBe(false);
+      expect(!graph.ok && graph.error.code).toBe('corrupt-record');
+    });
+
+    it('reports a corrupt sentence row when locating a position', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+      // `positionInParagraph`, unlike `positionInReading`, is not part of the
+      // lookup index, so corrupting it does not stop the row from being found.
+      await db.sentences.update(draft.sentences[0].id, { positionInParagraph: -1 });
+
+      const located = await repository.locateSentence(draft.reading.id, 0);
+
+      expect(located.ok).toBe(false);
+      expect(!located.ok && located.error.code).toBe('corrupt-record');
+    });
+
+    it('reports a corrupt paragraph row when locating a position', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+      await db.paragraphs.update(draft.sentences[0].paragraphId, { position: -1 });
+
+      const located = await repository.locateSentence(draft.reading.id, 0);
+
+      expect(located.ok).toBe(false);
+      expect(!located.ok && located.error.code).toBe('corrupt-record');
+    });
+
+    it('reports a corrupt reading row when resolving Continue reading', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+      await repository.markOpened(draft.reading.id, 1_700_000_500_000);
+      await db.readings.update(draft.reading.id, { sentenceCount: -5 });
+
+      const target = await repository.resolveContinueReading();
+
+      expect(target.ok).toBe(false);
+      expect(!target.ok && target.error.code).toBe('corrupt-record');
+    });
+  });
+
+  describe('storage failures', () => {
+    it('maps a rejected read into a typed storage error for every read method', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+      const failure = new Error('disk unavailable');
+      failure.name = 'UnknownError';
+
+      vi.spyOn(db.readings, 'get').mockRejectedValueOnce(failure);
+      expect((await repository.getReading(draft.reading.id)).ok).toBe(false);
+
+      vi.spyOn(db.readings, 'where').mockImplementationOnce(() => {
+        throw failure;
+      });
+      expect((await repository.listLibraryPage({ filter: 'all', limit: 5 })).ok).toBe(false);
+
+      vi.spyOn(db.paragraphs, 'where').mockImplementationOnce(() => {
+        throw failure;
+      });
+      expect((await repository.loadGraph(draft.reading.id)).ok).toBe(false);
+
+      vi.spyOn(db.paragraphs, 'where').mockImplementationOnce(() => {
+        throw failure;
+      });
+      expect((await repository.countParagraphs(draft.reading.id)).ok).toBe(false);
+
+      vi.spyOn(db.sentences, 'where').mockImplementationOnce(() => {
+        throw failure;
+      });
+      expect((await repository.locateSentence(draft.reading.id, 0)).ok).toBe(false);
+
+      vi.spyOn(db.tokenAnalyses, 'where').mockImplementationOnce(() => {
+        throw failure;
+      });
+      expect((await repository.loadTokenAnalyses([draft.sentences[0].id])).ok).toBe(false);
+
+      vi.spyOn(db.readingProgress, 'get').mockRejectedValueOnce(failure);
+      expect((await repository.getProgress(draft.reading.id)).ok).toBe(false);
+
+      vi.spyOn(db.readings, 'where').mockImplementationOnce(() => {
+        throw failure;
+      });
+      expect((await repository.resolveContinueReading()).ok).toBe(false);
+    });
+
+    it('propagates a failure to read progress while resolving Continue reading', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+      await repository.markOpened(draft.reading.id, 1_700_000_500_000);
+      const failure = new Error('disk unavailable');
+      failure.name = 'UnknownError';
+      vi.spyOn(db.readingProgress, 'get').mockRejectedValueOnce(failure);
+
+      const target = await repository.resolveContinueReading();
+
+      expect(target.ok).toBe(false);
     });
   });
 });

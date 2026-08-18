@@ -13,7 +13,7 @@ function expectPrepared(page: Page) {
 
 test.describe('offline language assets', () => {
   test('prepares, verifies, and activates the bundle without being asked', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/settings');
 
     await expectPrepared(page);
 
@@ -38,7 +38,7 @@ test.describe('offline language assets', () => {
       await route.abort();
     });
 
-    await page.goto('/');
+    await page.goto('/#/settings');
 
     // The shell is interactive and the route renders even though the language
     // bundle is still in flight.
@@ -49,7 +49,7 @@ test.describe('offline language assets', () => {
   });
 
   test('initializes from the cache when the network is unavailable', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/settings');
     await expectPrepared(page);
 
     // Every request for a bundle file now fails. Initialization must still
@@ -83,7 +83,7 @@ test.describe('offline language assets', () => {
       }),
     );
 
-    await page.goto('/');
+    await page.goto('/#/settings');
 
     const failure = page.getByTestId('language-error');
     await expect(failure).toBeVisible({ timeout: 120_000 });
@@ -109,7 +109,7 @@ test.describe('offline language assets', () => {
       await route.fallback();
     });
 
-    await page.goto('/');
+    await page.goto('/#/settings');
     await expect(page.getByTestId('language-error')).toBeVisible({ timeout: 120_000 });
 
     corrupt = false;

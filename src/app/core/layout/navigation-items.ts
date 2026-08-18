@@ -13,8 +13,10 @@ export interface NavigationItem {
 }
 
 export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
-  { path: '/grammar', label: 'Grammar', icon: 'grammar', mobilePlacement: 'bar' },
-  { path: '/settings', label: 'Settings', icon: 'settings', mobilePlacement: 'bar' },
+  { path: '/library', label: 'Library', icon: 'library', mobilePlacement: 'bar' },
+  { path: '/add', label: 'Add text', icon: 'add', mobilePlacement: 'bar' },
+  { path: '/grammar', label: 'Grammar', icon: 'grammar', mobilePlacement: 'more' },
+  { path: '/settings', label: 'Settings', icon: 'settings', mobilePlacement: 'more' },
 ];
 
 export function barItems(items: readonly NavigationItem[]): readonly NavigationItem[] {

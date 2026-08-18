@@ -67,18 +67,18 @@ import type { GrammarPresetId } from '../../domain/grammar/presets';
       align-items: flex-start;
       min-height: 44px;
       padding: var(--space-3);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
       cursor: pointer;
     }
 
     .preset.is-selected {
-      border-color: var(--color-accent);
-      background: var(--color-surface-raised);
+      border-color: var(--action-primary);
+      background: var(--surface-raised);
     }
 
     .preset:focus-within {
-      outline: 2px solid var(--color-focus);
+      outline: 2px solid var(--focus-ring);
       outline-offset: 2px;
     }
 
@@ -109,7 +109,7 @@ import type { GrammarPresetId } from '../../domain/grammar/presets';
 
     .caption {
       font-size: var(--text-sm);
-      color: var(--color-text-muted);
+      color: var(--text-secondary);
     }
 
     .example {
@@ -119,7 +119,7 @@ import type { GrammarPresetId } from '../../domain/grammar/presets';
 
     .gloss {
       font-size: var(--text-sm);
-      color: var(--color-text-muted);
+      color: var(--text-secondary);
     }
   `,
 })

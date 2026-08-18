@@ -50,6 +50,10 @@ const requestSchema = z.discriminatedUnion('operation', [
     payload: z.object({ text: z.string(), unit: z.enum(['paragraph', 'sentence']) }),
   }),
   z.object({
+    operation: z.literal('analyze-sentences'),
+    payload: z.object({ texts: z.array(z.string()) }),
+  }),
+  z.object({
     operation: z.literal('lookup'),
     payload: z.object({ query: dictionaryQuerySchema }),
   }),

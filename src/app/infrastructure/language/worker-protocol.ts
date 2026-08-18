@@ -1,4 +1,4 @@
-import type { AnalyzedText } from '../../domain/language/analyzed-text';
+import type { AnalyzedSentence, AnalyzedText } from '../../domain/language/analyzed-text';
 import type { ClassificationMode } from '../../domain/language/classification';
 import type { DictionaryLookup, DictionaryQuery } from '../../domain/language/dictionary';
 import type { LanguageError } from '../../domain/language/language-error';
@@ -17,7 +17,7 @@ import type { VocabularyItem } from '../../domain/vocabulary/snapshot';
  * that disagree refuse to talk rather than guessing, which matters because a
  * service-worker update can leave an old worker script cached.
  */
-export const LANGUAGE_PROTOCOL_VERSION = 1;
+export const LANGUAGE_PROTOCOL_VERSION = 2;
 
 export interface InitializeRequest {
   readonly operation: 'initialize';
@@ -36,6 +36,19 @@ export interface SegmentRequest {
 export interface AnalyzeRequest {
   readonly operation: 'analyze';
   readonly payload: { readonly text: string; readonly unit: 'paragraph' | 'sentence' };
+}
+
+/**
+ * Tokenizes a batch of already-decided sentences.
+ *
+ * `analyze` decides sentence boundaries itself, which is wrong once the learner
+ * has corrected them in import review: the reviewed boundaries are the ones that
+ * must be tokenized. Sending the batch as one request keeps the round trips
+ * bounded while the caller still chunks for progress and cancellation.
+ */
+export interface AnalyzeSentencesRequest {
+  readonly operation: 'analyze-sentences';
+  readonly payload: { readonly texts: readonly string[] };
 }
 
 export interface LookupRequest {
@@ -69,6 +82,7 @@ export type LanguageRequest =
   | InitializeRequest
   | SegmentRequest
   | AnalyzeRequest
+  | AnalyzeSentencesRequest
   | LookupRequest
   | CompileSnapshotRequest
   | ClassifyRequest
@@ -91,6 +105,10 @@ export type LanguageResult =
   | { readonly operation: 'initialize'; readonly value: InitializeResult }
   | { readonly operation: 'segment'; readonly value: readonly SentenceSegment[] }
   | { readonly operation: 'analyze'; readonly value: AnalyzedText }
+  | {
+      readonly operation: 'analyze-sentences';
+      readonly value: readonly AnalyzedSentence[];
+    }
   | { readonly operation: 'lookup'; readonly value: DictionaryLookup }
   | { readonly operation: 'compile-snapshot'; readonly value: CompileSnapshotResult }
   | { readonly operation: 'classify'; readonly value: ClassifyResult }

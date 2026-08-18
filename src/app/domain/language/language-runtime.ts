@@ -1,4 +1,5 @@
 import type { Result } from '../shared/result';
+import type { AnalyzedSentence } from './analyzed-text';
 import type { Token } from '../reading/token';
 import type { TokenStatusAssignment } from '../reading/validation';
 import type { VocabularyItem } from '../vocabulary/snapshot';
@@ -62,6 +63,15 @@ export interface LanguageRuntime extends Tokenizer, Dictionary {
     text: string,
     signal?: AbortSignal,
   ): Promise<Result<readonly SentenceSegment[], LanguageError>>;
+  /**
+   * Tokenizes sentences whose boundaries the caller has already decided, which
+   * is what import review produces once the learner has split or merged them.
+   * Results are positional: one analysis per input text, in the same order.
+   */
+  analyzeSentences(
+    texts: readonly string[],
+    signal?: AbortSignal,
+  ): Promise<Result<readonly AnalyzedSentence[], LanguageError>>;
   compileSnapshot(
     snapshotId: string,
     items: readonly VocabularyItem[],

@@ -4,6 +4,7 @@ import { RouterOutlet } from '@angular/router';
 import { ViewportService } from '../platform/viewport.service';
 import { BottomNavComponent } from './bottom-nav.component';
 import { MoreSheetComponent, type MoreSheetData } from './more-sheet.component';
+import { routeChromeSignal } from '../routing/route-chrome';
 import { NAVIGATION_ITEMS, barItems, moreItems } from './navigation-items';
 import { SidebarNavComponent } from './sidebar-nav.component';
 
@@ -19,7 +20,13 @@ export class AppShellComponent {
   private readonly dialog = inject(Dialog);
   protected readonly viewport = inject(ViewportService);
 
+  protected readonly chrome = routeChromeSignal();
   protected readonly items = NAVIGATION_ITEMS;
+
+  /** The reader is a focused route: it hides bottom navigation on a phone. */
+  protected readonly showBottomNav = computed(
+    () => !this.viewport.isDesktop() && this.chrome() !== 'focused',
+  );
   protected readonly barItems = computed(() => barItems(this.items));
   protected readonly moreItems = computed(() => moreItems(this.items));
 
