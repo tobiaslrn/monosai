@@ -11,6 +11,7 @@ import { AppInitializerService } from './core/bootstrap/app-initializer.service'
 import { provideInitializationSteps } from './core/bootstrap/initialization-steps';
 import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
 import { APP_ROUTES } from './core/routing/app.routes';
+import { provideLanguage } from './infrastructure/language/language.providers';
 import { providePersistence } from './infrastructure/persistence/persistence.providers';
 
 export const appConfig: ApplicationConfig = {
@@ -24,6 +25,7 @@ export const appConfig: ApplicationConfig = {
       withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' }),
     ),
     providePersistence(),
+    provideLanguage(),
     provideInitializationSteps(),
     provideAppInitializer(() => {
       // Keeps the document theme attribute in sync with persisted settings.

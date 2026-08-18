@@ -1,0 +1,2567 @@
+{
+  "$comment": "Monosai grammar catalog source. Authored for Monosai and dedicated to the public domain (CC0-1.0). JLPT does not publish an official exhaustive grammar list; `level` records where a pattern is conventionally taught. Built by scripts/assets/build-grammar-catalog.mjs.",
+  "version": "1.0.0",
+  "sourceId": "monosai-grammar-catalog",
+  "rules": [
+    {
+      "id": "mn-n5-desu",
+      "level": "N5",
+      "pattern": "〜です",
+      "nameEn": "です (polite copula)",
+      "descriptionEn": "Polite way of saying that something is something else.",
+      "formation": "Noun / na-adjective + です",
+      "exampleJa": "私は学生です。",
+      "exampleEn": "I am a student."
+    },
+    {
+      "id": "mn-n5-dewa-arimasen",
+      "level": "N5",
+      "pattern": "〜ではありません",
+      "nameEn": "ではありません (polite negative copula)",
+      "descriptionEn": "Polite way of saying that something is not the case.",
+      "formation": "Noun / na-adjective + ではありません",
+      "exampleJa": "学生ではありません。",
+      "exampleEn": "I am not a student."
+    },
+    {
+      "id": "mn-n5-da",
+      "level": "N5",
+      "pattern": "〜だ",
+      "nameEn": "だ (plain copula)",
+      "descriptionEn": "Plain-form statement that something is something else.",
+      "formation": "Noun / na-adjective + だ",
+      "exampleJa": "これは本だ。",
+      "exampleEn": "This is a book."
+    },
+    {
+      "id": "mn-n5-wa-topic",
+      "level": "N5",
+      "pattern": "〜は",
+      "nameEn": "は (topic marker)",
+      "descriptionEn": "Marks what the sentence is about and often sets up a contrast.",
+      "formation": "Noun + は",
+      "exampleJa": "今日は暑いです。",
+      "exampleEn": "Today is hot."
+    },
+    {
+      "id": "mn-n5-ga-subject",
+      "level": "N5",
+      "pattern": "〜が",
+      "nameEn": "が (subject marker)",
+      "descriptionEn": "Marks the subject, especially new information or the subject of a descriptive clause.",
+      "formation": "Noun + が",
+      "exampleJa": "猫がいます。",
+      "exampleEn": "There is a cat."
+    },
+    {
+      "id": "mn-n5-wo-object",
+      "level": "N5",
+      "pattern": "〜を",
+      "nameEn": "を (object marker)",
+      "descriptionEn": "Marks the thing an action is done to.",
+      "formation": "Noun + を + verb",
+      "exampleJa": "水を飲みます。",
+      "exampleEn": "I drink water."
+    },
+    {
+      "id": "mn-n5-ni-time-place",
+      "level": "N5",
+      "pattern": "〜に",
+      "nameEn": "に (time, destination, indirect object)",
+      "descriptionEn": "Marks a point in time, a destination, or the receiver of an action.",
+      "formation": "Noun + に",
+      "exampleJa": "七時に起きます。",
+      "exampleEn": "I get up at seven."
+    },
+    {
+      "id": "mn-n5-de-means",
+      "level": "N5",
+      "pattern": "〜で",
+      "nameEn": "で (means and place of action)",
+      "descriptionEn": "Marks the tool, method, or place where an action happens.",
+      "formation": "Noun + で",
+      "exampleJa": "バスで行きます。",
+      "exampleEn": "I go by bus."
+    },
+    {
+      "id": "mn-n5-he-direction",
+      "level": "N5",
+      "pattern": "〜へ",
+      "nameEn": "へ (direction)",
+      "descriptionEn": "Marks the direction of movement, slightly more formal than に.",
+      "formation": "Noun + へ",
+      "exampleJa": "駅へ行きます。",
+      "exampleEn": "I go towards the station."
+    },
+    {
+      "id": "mn-n5-kara-made",
+      "level": "N5",
+      "pattern": "〜から〜まで",
+      "nameEn": "から〜まで (from ... to ...)",
+      "descriptionEn": "Marks the start and end of a span of time or space.",
+      "formation": "Noun + から + noun + まで",
+      "exampleJa": "九時から五時まで働きます。",
+      "exampleEn": "I work from nine to five."
+    },
+    {
+      "id": "mn-n5-to-with",
+      "level": "N5",
+      "pattern": "〜と",
+      "nameEn": "と (with, and)",
+      "descriptionEn": "Joins nouns exhaustively, or marks the person you do something with.",
+      "formation": "Noun + と + noun",
+      "exampleJa": "友だちと話します。",
+      "exampleEn": "I talk with a friend."
+    },
+    {
+      "id": "mn-n5-mo-also",
+      "level": "N5",
+      "pattern": "〜も",
+      "nameEn": "も (also, too)",
+      "descriptionEn": "Says that the statement applies to this item as well.",
+      "formation": "Noun + も",
+      "exampleJa": "私も行きます。",
+      "exampleEn": "I will go too."
+    },
+    {
+      "id": "mn-n5-no-possessive",
+      "level": "N5",
+      "pattern": "〜の",
+      "nameEn": "の (linking nouns)",
+      "descriptionEn": "Links two nouns, showing possession, origin, or description.",
+      "formation": "Noun + の + noun",
+      "exampleJa": "私の本です。",
+      "exampleEn": "It is my book."
+    },
+    {
+      "id": "mn-n5-ka-question",
+      "level": "N5",
+      "pattern": "〜か",
+      "nameEn": "か (question marker)",
+      "descriptionEn": "Turns a statement into a question without changing word order.",
+      "formation": "Sentence + か",
+      "exampleJa": "行きますか。",
+      "exampleEn": "Are you going?"
+    },
+    {
+      "id": "mn-n5-masu",
+      "level": "N5",
+      "pattern": "〜ます",
+      "nameEn": "ます (polite present)",
+      "descriptionEn": "Polite non-past verb form for habits, facts, and future plans.",
+      "formation": "Verb stem + ます",
+      "exampleJa": "毎日読みます。",
+      "exampleEn": "I read every day."
+    },
+    {
+      "id": "mn-n5-masen",
+      "level": "N5",
+      "pattern": "〜ません",
+      "nameEn": "ません (polite negative)",
+      "descriptionEn": "Polite negative verb form for habits and refusals.",
+      "formation": "Verb stem + ません",
+      "exampleJa": "肉を食べません。",
+      "exampleEn": "I do not eat meat."
+    },
+    {
+      "id": "mn-n5-mashita",
+      "level": "N5",
+      "pattern": "〜ました",
+      "nameEn": "ました (polite past)",
+      "descriptionEn": "Polite past verb form for completed actions and past states.",
+      "formation": "Verb stem + ました",
+      "exampleJa": "映画を見ました。",
+      "exampleEn": "I watched a film."
+    },
+    {
+      "id": "mn-n5-masen-deshita",
+      "level": "N5",
+      "pattern": "〜ませんでした",
+      "nameEn": "ませんでした (polite past negative)",
+      "descriptionEn": "Polite past negative verb form.",
+      "formation": "Verb stem + ませんでした",
+      "exampleJa": "行きませんでした。",
+      "exampleEn": "I did not go."
+    },
+    {
+      "id": "mn-n5-mashou",
+      "level": "N5",
+      "pattern": "〜ましょう",
+      "nameEn": "ましょう (let us)",
+      "descriptionEn": "Suggests doing something together.",
+      "formation": "Verb stem + ましょう",
+      "exampleJa": "一緒に行きましょう。",
+      "exampleEn": "Let us go together."
+    },
+    {
+      "id": "mn-n5-masenka",
+      "level": "N5",
+      "pattern": "〜ませんか",
+      "nameEn": "ませんか (would you like to)",
+      "descriptionEn": "Politely invites the listener to do something.",
+      "formation": "Verb stem + ませんか",
+      "exampleJa": "お茶を飲みませんか。",
+      "exampleEn": "Would you like to have tea?"
+    },
+    {
+      "id": "mn-n5-nai-plain",
+      "level": "N5",
+      "pattern": "〜ない",
+      "nameEn": "ない (plain negative)",
+      "descriptionEn": "Plain negative verb form used in casual speech and before other patterns.",
+      "formation": "Verb negative stem + ない",
+      "exampleJa": "行かない。",
+      "exampleEn": "I am not going."
+    },
+    {
+      "id": "mn-n5-ta-plain",
+      "level": "N5",
+      "pattern": "〜た",
+      "nameEn": "た (plain past)",
+      "descriptionEn": "Plain past verb form, also used before nouns and other patterns.",
+      "formation": "Verb + た",
+      "exampleJa": "食べた。",
+      "exampleEn": "I ate."
+    },
+    {
+      "id": "mn-n5-te-form",
+      "level": "N5",
+      "pattern": "〜て",
+      "nameEn": "て form (connective)",
+      "descriptionEn": "Connects clauses in sequence and feeds many other patterns.",
+      "formation": "Verb + て",
+      "exampleJa": "起きて顔を洗います。",
+      "exampleEn": "I get up and wash my face."
+    },
+    {
+      "id": "mn-n5-te-kudasai",
+      "level": "N5",
+      "pattern": "〜てください",
+      "nameEn": "てください (please do)",
+      "descriptionEn": "Politely asks someone to do something.",
+      "formation": "Verb て + ください",
+      "exampleJa": "待ってください。",
+      "exampleEn": "Please wait."
+    },
+    {
+      "id": "mn-n5-te-imasu",
+      "level": "N5",
+      "pattern": "〜ています",
+      "nameEn": "ています (ongoing action or state)",
+      "descriptionEn": "Describes an action in progress or a state that continues.",
+      "formation": "Verb て + います",
+      "exampleJa": "本を読んでいます。",
+      "exampleEn": "I am reading a book."
+    },
+    {
+      "id": "mn-n5-te-mo-ii",
+      "level": "N5",
+      "pattern": "〜てもいいです",
+      "nameEn": "てもいいです (may, permission)",
+      "descriptionEn": "Gives or asks for permission.",
+      "formation": "Verb て + もいいです",
+      "exampleJa": "帰ってもいいですか。",
+      "exampleEn": "May I go home?"
+    },
+    {
+      "id": "mn-n5-naide-kudasai",
+      "level": "N5",
+      "pattern": "〜ないでください",
+      "nameEn": "ないでください (please do not)",
+      "descriptionEn": "Politely asks someone not to do something.",
+      "formation": "Verb ない stem + でください",
+      "exampleJa": "写真を撮らないでください。",
+      "exampleEn": "Please do not take photos."
+    },
+    {
+      "id": "mn-n5-tai",
+      "level": "N5",
+      "pattern": "〜たい",
+      "nameEn": "たい (want to do)",
+      "descriptionEn": "Expresses the speaker's own wish to do something.",
+      "formation": "Verb stem + たい",
+      "exampleJa": "水が飲みたいです。",
+      "exampleEn": "I want to drink water."
+    },
+    {
+      "id": "mn-n5-arimasu-imasu",
+      "level": "N5",
+      "pattern": "〜があります／います",
+      "nameEn": "があります / います (there is)",
+      "descriptionEn": "States existence: あります for things, います for living beings.",
+      "formation": "Noun + が + あります / います",
+      "exampleJa": "机の上に本があります。",
+      "exampleEn": "There is a book on the desk."
+    },
+    {
+      "id": "mn-n5-suki-jouzu",
+      "level": "N5",
+      "pattern": "〜が好きです",
+      "nameEn": "が好きです (like)",
+      "descriptionEn": "Expresses liking, where the liked thing takes が.",
+      "formation": "Noun + が + 好きです",
+      "exampleJa": "音楽が好きです。",
+      "exampleEn": "I like music."
+    },
+    {
+      "id": "mn-n5-adj-i",
+      "level": "N5",
+      "pattern": "い形容詞",
+      "nameEn": "i-adjectives",
+      "descriptionEn": "Adjectives ending in い that inflect for tense and negation by themselves.",
+      "formation": "Adjective + です / くない / かった",
+      "exampleJa": "この本は面白いです。",
+      "exampleEn": "This book is interesting."
+    },
+    {
+      "id": "mn-n5-adj-na",
+      "level": "N5",
+      "pattern": "な形容詞",
+      "nameEn": "na-adjectives",
+      "descriptionEn": "Adjectives that need な before a noun and use the copula to inflect.",
+      "formation": "Adjective + な + noun",
+      "exampleJa": "静かな部屋です。",
+      "exampleEn": "It is a quiet room."
+    },
+    {
+      "id": "mn-n5-adj-i-negative",
+      "level": "N5",
+      "pattern": "〜くない",
+      "nameEn": "くない (negative i-adjective)",
+      "descriptionEn": "Negates an i-adjective by replacing the final vowel.",
+      "formation": "Adjective stem + くない",
+      "exampleJa": "高くないです。",
+      "exampleEn": "It is not expensive."
+    },
+    {
+      "id": "mn-n5-adj-i-past",
+      "level": "N5",
+      "pattern": "〜かった",
+      "nameEn": "かった (past i-adjective)",
+      "descriptionEn": "Puts an i-adjective into the past.",
+      "formation": "Adjective stem + かった",
+      "exampleJa": "楽しかったです。",
+      "exampleEn": "It was fun."
+    },
+    {
+      "id": "mn-n5-adj-adverb",
+      "level": "N5",
+      "pattern": "〜く／〜に",
+      "nameEn": "く / に (adverbial forms)",
+      "descriptionEn": "Turns an adjective into an adverb describing how an action is done.",
+      "formation": "i-adjective stem + く; na-adjective + に",
+      "exampleJa": "早く歩きます。",
+      "exampleEn": "I walk quickly."
+    },
+    {
+      "id": "mn-n5-kore-sore-are",
+      "level": "N5",
+      "pattern": "これ・それ・あれ",
+      "nameEn": "これ / それ / あれ (demonstrative pronouns)",
+      "descriptionEn": "Points at things near the speaker, near the listener, or away from both.",
+      "formation": "Standalone pronoun",
+      "exampleJa": "それは何ですか。",
+      "exampleEn": "What is that?"
+    },
+    {
+      "id": "mn-n5-kono-sono-ano",
+      "level": "N5",
+      "pattern": "この・その・あの",
+      "nameEn": "この / その / あの (demonstrative modifiers)",
+      "descriptionEn": "Points at a noun near the speaker, listener, or neither.",
+      "formation": "Demonstrative + noun",
+      "exampleJa": "この本を読みます。",
+      "exampleEn": "I will read this book."
+    },
+    {
+      "id": "mn-n5-doko-nani-dare",
+      "level": "N5",
+      "pattern": "どこ・何・誰",
+      "nameEn": "どこ / 何 / 誰 (question words)",
+      "descriptionEn": "Asks about place, thing, and person.",
+      "formation": "Question word in the slot being asked about",
+      "exampleJa": "誰が来ますか。",
+      "exampleEn": "Who is coming?"
+    },
+    {
+      "id": "mn-n5-itsu-ikura",
+      "level": "N5",
+      "pattern": "いつ・いくら",
+      "nameEn": "いつ / いくら (when, how much)",
+      "descriptionEn": "Asks about time and price.",
+      "formation": "Question word in the slot being asked about",
+      "exampleJa": "いくらですか。",
+      "exampleEn": "How much is it?"
+    },
+    {
+      "id": "mn-n5-dono-dochira",
+      "level": "N5",
+      "pattern": "どの・どちら",
+      "nameEn": "どの / どちら (which)",
+      "descriptionEn": "Asks which one out of a known set.",
+      "formation": "どの + noun; どちら standalone",
+      "exampleJa": "どちらが好きですか。",
+      "exampleEn": "Which do you prefer?"
+    },
+    {
+      "id": "mn-n5-counters-basic",
+      "level": "N5",
+      "pattern": "数＋助数詞",
+      "nameEn": "Numbers with counters",
+      "descriptionEn": "Counting requires a counter word matched to what is counted.",
+      "formation": "Number + counter",
+      "exampleJa": "本を三冊買いました。",
+      "exampleEn": "I bought three books."
+    },
+    {
+      "id": "mn-n5-yori-hou-ga",
+      "level": "N5",
+      "pattern": "〜より〜のほうが",
+      "nameEn": "より〜のほうが (comparison)",
+      "descriptionEn": "Compares two things and says which one is more.",
+      "formation": "Noun + より + noun + のほうが + adjective",
+      "exampleJa": "バスより電車のほうが早いです。",
+      "exampleEn": "The train is faster than the bus."
+    },
+    {
+      "id": "mn-n5-ichiban",
+      "level": "N5",
+      "pattern": "〜で一番",
+      "nameEn": "で一番 (the most)",
+      "descriptionEn": "Marks the top item within a group.",
+      "formation": "Group + で + 一番 + adjective",
+      "exampleJa": "クラスで一番背が高いです。",
+      "exampleEn": "He is the tallest in the class."
+    },
+    {
+      "id": "mn-n5-mae-ni",
+      "level": "N5",
+      "pattern": "〜前に",
+      "nameEn": "前に (before doing)",
+      "descriptionEn": "Says that one action happens before another.",
+      "formation": "Verb dictionary form / noun + の + 前に",
+      "exampleJa": "寝る前に歯を磨きます。",
+      "exampleEn": "I brush my teeth before sleeping."
+    },
+    {
+      "id": "mn-n5-ato-de",
+      "level": "N5",
+      "pattern": "〜あとで",
+      "nameEn": "あとで (after doing)",
+      "descriptionEn": "Says that one action happens after another.",
+      "formation": "Verb た form / noun + の + あとで",
+      "exampleJa": "食べたあとで散歩します。",
+      "exampleEn": "I take a walk after eating."
+    },
+    {
+      "id": "mn-n5-toki",
+      "level": "N5",
+      "pattern": "〜とき",
+      "nameEn": "とき (when)",
+      "descriptionEn": "Marks the time at which something else happens.",
+      "formation": "Clause in modifying form + とき",
+      "exampleJa": "子供のとき、京都に住んでいました。",
+      "exampleEn": "When I was a child I lived in Kyoto."
+    },
+    {
+      "id": "mn-n5-kara-reason",
+      "level": "N5",
+      "pattern": "〜から",
+      "nameEn": "から (because)",
+      "descriptionEn": "Gives a reason, with the reason coming first.",
+      "formation": "Clause + から",
+      "exampleJa": "寒いから窓を閉めます。",
+      "exampleEn": "I will close the window because it is cold."
+    },
+    {
+      "id": "mn-n5-ga-but",
+      "level": "N5",
+      "pattern": "〜が（逆接）",
+      "nameEn": "が (but)",
+      "descriptionEn": "Joins two clauses with contrast in a neutral register.",
+      "formation": "Clause + が + clause",
+      "exampleJa": "高いですが、買います。",
+      "exampleEn": "It is expensive, but I will buy it."
+    },
+    {
+      "id": "mn-n5-keredo",
+      "level": "N5",
+      "pattern": "〜けれど",
+      "nameEn": "けれど (but, softer)",
+      "descriptionEn": "Joins clauses with contrast in a softer, more conversational tone.",
+      "formation": "Clause + けれど",
+      "exampleJa": "行きたいけれど、時間がない。",
+      "exampleEn": "I want to go, but I have no time."
+    },
+    {
+      "id": "mn-n5-dake",
+      "level": "N5",
+      "pattern": "〜だけ",
+      "nameEn": "だけ (only)",
+      "descriptionEn": "Limits something to just that amount or item.",
+      "formation": "Noun / verb + だけ",
+      "exampleJa": "少しだけ食べました。",
+      "exampleEn": "I ate only a little."
+    },
+    {
+      "id": "mn-n5-nakereba-narimasen",
+      "level": "N5",
+      "pattern": "〜なければなりません",
+      "nameEn": "なければなりません (must)",
+      "descriptionEn": "States an obligation that cannot be avoided.",
+      "formation": "Verb ない stem + なければなりません",
+      "exampleJa": "薬を飲まなければなりません。",
+      "exampleEn": "I have to take medicine."
+    },
+    {
+      "id": "mn-n5-nakute-mo-ii",
+      "level": "N5",
+      "pattern": "〜なくてもいいです",
+      "nameEn": "なくてもいいです (do not have to)",
+      "descriptionEn": "States that something is not required.",
+      "formation": "Verb ない stem + なくてもいいです",
+      "exampleJa": "来なくてもいいです。",
+      "exampleEn": "You do not have to come."
+    },
+    {
+      "id": "mn-n5-dictionary-koto-ga-dekiru",
+      "level": "N5",
+      "pattern": "〜ことができます",
+      "nameEn": "ことができます (can do)",
+      "descriptionEn": "States ability or possibility.",
+      "formation": "Verb dictionary form + ことができます",
+      "exampleJa": "日本語を話すことができます。",
+      "exampleEn": "I can speak Japanese."
+    },
+    {
+      "id": "mn-n5-mada-mou",
+      "level": "N5",
+      "pattern": "まだ・もう",
+      "nameEn": "まだ / もう (still, already)",
+      "descriptionEn": "Marks whether a state continues or has already changed.",
+      "formation": "まだ / もう + predicate",
+      "exampleJa": "もう食べました。",
+      "exampleEn": "I have already eaten."
+    },
+    {
+      "id": "mn-n5-totemo-amari",
+      "level": "N5",
+      "pattern": "とても・あまり",
+      "nameEn": "とても / あまり (very, not very)",
+      "descriptionEn": "Adjusts degree; あまり pairs with a negative.",
+      "formation": "Adverb + predicate",
+      "exampleJa": "あまり高くないです。",
+      "exampleEn": "It is not very expensive."
+    },
+    {
+      "id": "mn-n5-issho-ni",
+      "level": "N5",
+      "pattern": "〜と一緒に",
+      "nameEn": "と一緒に (together with)",
+      "descriptionEn": "States who does the action with you.",
+      "formation": "Noun + と一緒に",
+      "exampleJa": "母と一緒に行きます。",
+      "exampleEn": "I will go together with my mother."
+    },
+    {
+      "id": "mn-n5-ni-narimasu",
+      "level": "N5",
+      "pattern": "〜になります",
+      "nameEn": "になります (become)",
+      "descriptionEn": "Describes a change of state.",
+      "formation": "Noun / na-adjective + に + なります",
+      "exampleJa": "医者になります。",
+      "exampleEn": "I will become a doctor."
+    },
+    {
+      "id": "mn-n5-ku-narimasu",
+      "level": "N5",
+      "pattern": "〜くなります",
+      "nameEn": "くなります (become, i-adjective)",
+      "descriptionEn": "Describes a change of state with an i-adjective.",
+      "formation": "Adjective stem + く + なります",
+      "exampleJa": "寒くなりました。",
+      "exampleEn": "It has got cold."
+    },
+    {
+      "id": "mn-n4-te-mo",
+      "level": "N4",
+      "pattern": "〜ても",
+      "nameEn": "ても (even if)",
+      "descriptionEn": "Says the result holds regardless of the condition.",
+      "formation": "Verb て + も",
+      "exampleJa": "雨が降っても行きます。",
+      "exampleEn": "I will go even if it rains."
+    },
+    {
+      "id": "mn-n4-tara",
+      "level": "N4",
+      "pattern": "〜たら",
+      "nameEn": "たら (if, when)",
+      "descriptionEn": "Marks a condition whose result follows once it is met.",
+      "formation": "Verb た form + ら",
+      "exampleJa": "駅に着いたら電話します。",
+      "exampleEn": "I will call when I arrive at the station."
+    },
+    {
+      "id": "mn-n4-ba",
+      "level": "N4",
+      "pattern": "〜ば",
+      "nameEn": "ば (conditional)",
+      "descriptionEn": "Marks a condition in a neutral or written register.",
+      "formation": "Verb conditional stem + ば",
+      "exampleJa": "安ければ買います。",
+      "exampleEn": "I will buy it if it is cheap."
+    },
+    {
+      "id": "mn-n4-nara",
+      "level": "N4",
+      "pattern": "〜なら",
+      "nameEn": "なら (if it is the case that)",
+      "descriptionEn": "Takes up a topic the other person raised and responds to it.",
+      "formation": "Noun / clause + なら",
+      "exampleJa": "旅行なら京都がいいです。",
+      "exampleEn": "If you mean travel, Kyoto is good."
+    },
+    {
+      "id": "mn-n4-to-conditional",
+      "level": "N4",
+      "pattern": "〜と",
+      "nameEn": "と (whenever, inevitable result)",
+      "descriptionEn": "States a result that always follows the condition.",
+      "formation": "Verb dictionary form + と",
+      "exampleJa": "春になると花が咲きます。",
+      "exampleEn": "When spring comes, flowers bloom."
+    },
+    {
+      "id": "mn-n4-potential",
+      "level": "N4",
+      "pattern": "可能形",
+      "nameEn": "Potential form",
+      "descriptionEn": "Verb form expressing ability or possibility.",
+      "formation": "Godan e-stem + る; ichidan + られる",
+      "exampleJa": "漢字が読めます。",
+      "exampleEn": "I can read kanji."
+    },
+    {
+      "id": "mn-n4-volitional",
+      "level": "N4",
+      "pattern": "意向形",
+      "nameEn": "Volitional form",
+      "descriptionEn": "Plain form expressing intention or a suggestion.",
+      "formation": "Verb + う / よう",
+      "exampleJa": "行こう。",
+      "exampleEn": "Let us go."
+    },
+    {
+      "id": "mn-n4-passive",
+      "level": "N4",
+      "pattern": "受身形",
+      "nameEn": "Passive form",
+      "descriptionEn": "Marks the subject as the one affected by the action.",
+      "formation": "Verb + れる / られる",
+      "exampleJa": "先生に褒められました。",
+      "exampleEn": "I was praised by the teacher."
+    },
+    {
+      "id": "mn-n4-causative",
+      "level": "N4",
+      "pattern": "使役形",
+      "nameEn": "Causative form",
+      "descriptionEn": "Says that someone makes or lets another person act.",
+      "formation": "Verb + せる / させる",
+      "exampleJa": "子供に野菜を食べさせます。",
+      "exampleEn": "I make my child eat vegetables."
+    },
+    {
+      "id": "mn-n4-causative-passive",
+      "level": "N4",
+      "pattern": "使役受身形",
+      "nameEn": "Causative-passive form",
+      "descriptionEn": "Says the subject was made to do something.",
+      "formation": "Verb + せられる / させられる",
+      "exampleJa": "残業させられました。",
+      "exampleEn": "I was made to work overtime."
+    },
+    {
+      "id": "mn-n4-imperative",
+      "level": "N4",
+      "pattern": "命令形",
+      "nameEn": "Imperative form",
+      "descriptionEn": "Blunt command form, common in signs and rough speech.",
+      "formation": "Godan e-stem; ichidan + ろ",
+      "exampleJa": "早く来い。",
+      "exampleEn": "Come quickly."
+    },
+    {
+      "id": "mn-n4-te-ageru",
+      "level": "N4",
+      "pattern": "〜てあげる",
+      "nameEn": "てあげる (do for someone)",
+      "descriptionEn": "Marks an action done as a favour for someone else.",
+      "formation": "Verb て + あげる",
+      "exampleJa": "友だちに教えてあげました。",
+      "exampleEn": "I taught my friend as a favour."
+    },
+    {
+      "id": "mn-n4-te-kureru",
+      "level": "N4",
+      "pattern": "〜てくれる",
+      "nameEn": "てくれる (someone does for me)",
+      "descriptionEn": "Marks an action someone does for the speaker's benefit.",
+      "formation": "Verb て + くれる",
+      "exampleJa": "母が作ってくれました。",
+      "exampleEn": "My mother made it for me."
+    },
+    {
+      "id": "mn-n4-te-morau",
+      "level": "N4",
+      "pattern": "〜てもらう",
+      "nameEn": "てもらう (have someone do)",
+      "descriptionEn": "Marks an action the speaker receives as a favour.",
+      "formation": "Verb て + もらう",
+      "exampleJa": "先生に見てもらいました。",
+      "exampleEn": "I had the teacher look at it."
+    },
+    {
+      "id": "mn-n4-te-oku",
+      "level": "N4",
+      "pattern": "〜ておく",
+      "nameEn": "ておく (do in advance)",
+      "descriptionEn": "Marks an action done ahead of time and left that way.",
+      "formation": "Verb て + おく",
+      "exampleJa": "切符を買っておきます。",
+      "exampleEn": "I will buy the tickets in advance."
+    },
+    {
+      "id": "mn-n4-te-shimau",
+      "level": "N4",
+      "pattern": "〜てしまう",
+      "nameEn": "てしまう (finish, unfortunately)",
+      "descriptionEn": "Marks completion, often with regret.",
+      "formation": "Verb て + しまう",
+      "exampleJa": "宿題を忘れてしまいました。",
+      "exampleEn": "I ended up forgetting my homework."
+    },
+    {
+      "id": "mn-n4-te-miru",
+      "level": "N4",
+      "pattern": "〜てみる",
+      "nameEn": "てみる (try doing)",
+      "descriptionEn": "Marks doing something to see how it goes.",
+      "formation": "Verb て + みる",
+      "exampleJa": "着てみてもいいですか。",
+      "exampleEn": "May I try it on?"
+    },
+    {
+      "id": "mn-n4-te-iku-kuru",
+      "level": "N4",
+      "pattern": "〜ていく／〜てくる",
+      "nameEn": "ていく / てくる (direction of change)",
+      "descriptionEn": "Marks movement away or towards, or a change over time.",
+      "formation": "Verb て + いく / くる",
+      "exampleJa": "だんだん暖かくなってきました。",
+      "exampleEn": "It has gradually got warmer."
+    },
+    {
+      "id": "mn-n4-ta-koto-ga-aru",
+      "level": "N4",
+      "pattern": "〜たことがある",
+      "nameEn": "たことがある (have done before)",
+      "descriptionEn": "States that the speaker has had an experience at least once.",
+      "formation": "Verb た form + ことがある",
+      "exampleJa": "北海道に行ったことがあります。",
+      "exampleEn": "I have been to Hokkaido."
+    },
+    {
+      "id": "mn-n4-tsumori",
+      "level": "N4",
+      "pattern": "〜つもりだ",
+      "nameEn": "つもりだ (intend to)",
+      "descriptionEn": "States a firm personal plan.",
+      "formation": "Verb dictionary form + つもりだ",
+      "exampleJa": "来年留学するつもりです。",
+      "exampleEn": "I intend to study abroad next year."
+    },
+    {
+      "id": "mn-n4-you-to-omou",
+      "level": "N4",
+      "pattern": "〜ようと思う",
+      "nameEn": "ようと思う (think I will)",
+      "descriptionEn": "States an intention just decided or being weighed.",
+      "formation": "Volitional + と思う",
+      "exampleJa": "早く寝ようと思います。",
+      "exampleEn": "I think I will go to bed early."
+    },
+    {
+      "id": "mn-n4-hazu",
+      "level": "N4",
+      "pattern": "〜はずだ",
+      "nameEn": "はずだ (should, expectation)",
+      "descriptionEn": "States a conclusion the speaker has reason to expect.",
+      "formation": "Plain form + はずだ",
+      "exampleJa": "彼は来るはずです。",
+      "exampleEn": "He should be coming."
+    },
+    {
+      "id": "mn-n4-kamoshirenai",
+      "level": "N4",
+      "pattern": "〜かもしれない",
+      "nameEn": "かもしれない (might)",
+      "descriptionEn": "Marks something as a real but uncertain possibility.",
+      "formation": "Plain form + かもしれない",
+      "exampleJa": "雨が降るかもしれません。",
+      "exampleEn": "It might rain."
+    },
+    {
+      "id": "mn-n4-darou",
+      "level": "N4",
+      "pattern": "〜だろう",
+      "nameEn": "だろう (probably)",
+      "descriptionEn": "States the speaker's conjecture.",
+      "formation": "Plain form + だろう",
+      "exampleJa": "明日は晴れるだろう。",
+      "exampleEn": "It will probably be sunny tomorrow."
+    },
+    {
+      "id": "mn-n4-souda-hearsay",
+      "level": "N4",
+      "pattern": "〜そうだ（伝聞）",
+      "nameEn": "そうだ (I hear that)",
+      "descriptionEn": "Reports information heard from elsewhere.",
+      "formation": "Plain form + そうだ",
+      "exampleJa": "台風が来るそうです。",
+      "exampleEn": "I hear a typhoon is coming."
+    },
+    {
+      "id": "mn-n4-souda-appearance",
+      "level": "N4",
+      "pattern": "〜そうだ（様態）",
+      "nameEn": "そうだ (looks like)",
+      "descriptionEn": "Describes an impression from what the speaker can see.",
+      "formation": "Verb stem / adjective stem + そうだ",
+      "exampleJa": "おいしそうですね。",
+      "exampleEn": "That looks delicious."
+    },
+    {
+      "id": "mn-n4-youda",
+      "level": "N4",
+      "pattern": "〜ようだ",
+      "nameEn": "ようだ (seems)",
+      "descriptionEn": "States an inference based on evidence.",
+      "formation": "Plain form + ようだ",
+      "exampleJa": "誰もいないようです。",
+      "exampleEn": "It seems nobody is here."
+    },
+    {
+      "id": "mn-n4-rashii",
+      "level": "N4",
+      "pattern": "〜らしい",
+      "nameEn": "らしい (apparently)",
+      "descriptionEn": "Reports something inferred from outside information.",
+      "formation": "Plain form + らしい",
+      "exampleJa": "店は休みらしいです。",
+      "exampleEn": "The shop is apparently closed."
+    },
+    {
+      "id": "mn-n4-mitai",
+      "level": "N4",
+      "pattern": "〜みたいだ",
+      "nameEn": "みたいだ (seems, casual)",
+      "descriptionEn": "Casual equivalent of ようだ for stating an impression.",
+      "formation": "Plain form / noun + みたいだ",
+      "exampleJa": "風邪みたいです。",
+      "exampleEn": "It seems to be a cold."
+    },
+    {
+      "id": "mn-n4-nakereba-ikenai",
+      "level": "N4",
+      "pattern": "〜なくてはいけない",
+      "nameEn": "なくてはいけない (must)",
+      "descriptionEn": "States an obligation in a slightly more conversational register.",
+      "formation": "Verb ない stem + なくてはいけない",
+      "exampleJa": "行かなくてはいけません。",
+      "exampleEn": "I have to go."
+    },
+    {
+      "id": "mn-n4-te-wa-ikenai",
+      "level": "N4",
+      "pattern": "〜てはいけない",
+      "nameEn": "てはいけない (must not)",
+      "descriptionEn": "States a prohibition that applies to the listener.",
+      "formation": "Verb て + はいけない",
+      "exampleJa": "ここで泳いではいけません。",
+      "exampleEn": "You must not swim here."
+    },
+    {
+      "id": "mn-n4-hou-ga-ii",
+      "level": "N4",
+      "pattern": "〜ほうがいい",
+      "nameEn": "ほうがいい (had better)",
+      "descriptionEn": "Recommends one course of action.",
+      "formation": "Verb た form + ほうがいい",
+      "exampleJa": "休んだほうがいいです。",
+      "exampleEn": "You had better rest."
+    },
+    {
+      "id": "mn-n4-nagara",
+      "level": "N4",
+      "pattern": "〜ながら",
+      "nameEn": "ながら (while doing)",
+      "descriptionEn": "Marks two actions by one person at the same time.",
+      "formation": "Verb stem + ながら",
+      "exampleJa": "音楽を聞きながら勉強します。",
+      "exampleEn": "I study while listening to music."
+    },
+    {
+      "id": "mn-n4-tari-tari",
+      "level": "N4",
+      "pattern": "〜たり〜たり",
+      "nameEn": "たり〜たり (doing things like)",
+      "descriptionEn": "Lists representative actions.",
+      "formation": "Verb た form + り (repeated)",
+      "exampleJa": "泳いだり走ったりしました。",
+      "exampleEn": "I did things like swimming and running."
+    },
+    {
+      "id": "mn-n4-mae-ni-verb",
+      "level": "N4",
+      "pattern": "〜ないで",
+      "nameEn": "ないで (without doing)",
+      "descriptionEn": "Marks an action done without doing something else.",
+      "formation": "Verb ない stem + で",
+      "exampleJa": "朝ご飯を食べないで出ました。",
+      "exampleEn": "I left without eating breakfast."
+    },
+    {
+      "id": "mn-n4-noni-contrast",
+      "level": "N4",
+      "pattern": "〜のに",
+      "nameEn": "のに (even though)",
+      "descriptionEn": "Marks a result that contradicts expectation.",
+      "formation": "Plain form + のに",
+      "exampleJa": "薬を飲んだのに治りません。",
+      "exampleEn": "Even though I took medicine, I did not get better."
+    },
+    {
+      "id": "mn-n4-node",
+      "level": "N4",
+      "pattern": "〜ので",
+      "nameEn": "ので (because, neutral)",
+      "descriptionEn": "Gives a reason in a soft, objective tone.",
+      "formation": "Plain form + ので",
+      "exampleJa": "用事があるので失礼します。",
+      "exampleEn": "I have an errand, so please excuse me."
+    },
+    {
+      "id": "mn-n4-shi-reasons",
+      "level": "N4",
+      "pattern": "〜し、〜し",
+      "nameEn": "し (and what is more)",
+      "descriptionEn": "Stacks up reasons or qualities.",
+      "formation": "Plain form + し",
+      "exampleJa": "安いし、近いです。",
+      "exampleEn": "It is cheap, and it is close."
+    },
+    {
+      "id": "mn-n4-you-ni-naru",
+      "level": "N4",
+      "pattern": "〜ようになる",
+      "nameEn": "ようになる (come to be able)",
+      "descriptionEn": "Marks a change reaching a new state or ability.",
+      "formation": "Verb dictionary / potential + ようになる",
+      "exampleJa": "泳げるようになりました。",
+      "exampleEn": "I have become able to swim."
+    },
+    {
+      "id": "mn-n4-you-ni-suru",
+      "level": "N4",
+      "pattern": "〜ようにする",
+      "nameEn": "ようにする (make an effort to)",
+      "descriptionEn": "Marks a deliberate effort or habit.",
+      "formation": "Verb dictionary / ない form + ようにする",
+      "exampleJa": "毎日歩くようにしています。",
+      "exampleEn": "I make a point of walking every day."
+    },
+    {
+      "id": "mn-n4-koto-ni-suru",
+      "level": "N4",
+      "pattern": "〜ことにする",
+      "nameEn": "ことにする (decide to)",
+      "descriptionEn": "Marks the speaker's own decision.",
+      "formation": "Verb dictionary / ない form + ことにする",
+      "exampleJa": "たばこをやめることにしました。",
+      "exampleEn": "I decided to quit smoking."
+    },
+    {
+      "id": "mn-n4-koto-ni-naru",
+      "level": "N4",
+      "pattern": "〜ことになる",
+      "nameEn": "ことになる (it has been decided)",
+      "descriptionEn": "Marks a decision made by circumstances or others.",
+      "formation": "Verb dictionary form + ことになる",
+      "exampleJa": "来月転勤することになりました。",
+      "exampleEn": "It has been decided that I will transfer next month."
+    },
+    {
+      "id": "mn-n4-tokoro-da",
+      "level": "N4",
+      "pattern": "〜ところだ",
+      "nameEn": "ところだ (just about to, just did)",
+      "descriptionEn": "Marks the exact stage of an action.",
+      "formation": "Verb dictionary / た form + ところだ",
+      "exampleJa": "今出るところです。",
+      "exampleEn": "I am just about to leave."
+    },
+    {
+      "id": "mn-n4-bakari",
+      "level": "N4",
+      "pattern": "〜たばかり",
+      "nameEn": "たばかり (just finished)",
+      "descriptionEn": "Marks something that happened moments ago.",
+      "formation": "Verb た form + ばかり",
+      "exampleJa": "着いたばかりです。",
+      "exampleEn": "I have only just arrived."
+    },
+    {
+      "id": "mn-n4-teki-modifier",
+      "level": "N4",
+      "pattern": "連体修飾節",
+      "nameEn": "Relative clauses",
+      "descriptionEn": "A plain-form clause placed directly before a noun to describe it.",
+      "formation": "Plain-form clause + noun",
+      "exampleJa": "母が作ったケーキ",
+      "exampleEn": "the cake my mother made"
+    },
+    {
+      "id": "mn-n4-yasui-nikui",
+      "level": "N4",
+      "pattern": "〜やすい／〜にくい",
+      "nameEn": "やすい / にくい (easy or hard to do)",
+      "descriptionEn": "Says an action is easy or difficult to perform.",
+      "formation": "Verb stem + やすい / にくい",
+      "exampleJa": "この字は読みにくいです。",
+      "exampleEn": "This character is hard to read."
+    },
+    {
+      "id": "mn-n4-sugiru",
+      "level": "N4",
+      "pattern": "〜すぎる",
+      "nameEn": "すぎる (too much)",
+      "descriptionEn": "Marks an amount or degree that goes past what is appropriate.",
+      "formation": "Verb stem / adjective stem + すぎる",
+      "exampleJa": "食べすぎました。",
+      "exampleEn": "I ate too much."
+    },
+    {
+      "id": "mn-n4-hajimeru-owaru",
+      "level": "N4",
+      "pattern": "〜始める／〜終わる",
+      "nameEn": "始める / 終わる (start, finish doing)",
+      "descriptionEn": "Marks the beginning or end of an action.",
+      "formation": "Verb stem + 始める / 終わる",
+      "exampleJa": "本を読み始めました。",
+      "exampleEn": "I started reading the book."
+    },
+    {
+      "id": "mn-n4-tsuzukeru",
+      "level": "N4",
+      "pattern": "〜続ける",
+      "nameEn": "続ける (keep doing)",
+      "descriptionEn": "Marks an action continued over time.",
+      "formation": "Verb stem + 続ける",
+      "exampleJa": "三時間走り続けました。",
+      "exampleEn": "I kept running for three hours."
+    },
+    {
+      "id": "mn-n4-kata",
+      "level": "N4",
+      "pattern": "〜方",
+      "nameEn": "方 (way of doing)",
+      "descriptionEn": "Turns a verb into how something is done.",
+      "formation": "Verb stem + 方",
+      "exampleJa": "使い方が分かりません。",
+      "exampleEn": "I do not know how to use it."
+    },
+    {
+      "id": "mn-n4-garu",
+      "level": "N4",
+      "pattern": "〜がる",
+      "nameEn": "がる (show signs of feeling)",
+      "descriptionEn": "Describes another person's feelings from their behaviour.",
+      "formation": "Adjective stem + がる",
+      "exampleJa": "妹は寒がっています。",
+      "exampleEn": "My sister is acting cold."
+    },
+    {
+      "id": "mn-n4-sou-ni-naru",
+      "level": "N4",
+      "pattern": "〜そうになる",
+      "nameEn": "そうになる (almost happened)",
+      "descriptionEn": "Marks something that nearly happened.",
+      "formation": "Verb stem + そうになる",
+      "exampleJa": "転びそうになりました。",
+      "exampleEn": "I almost fell over."
+    },
+    {
+      "id": "mn-n4-aida-ni",
+      "level": "N4",
+      "pattern": "〜間に",
+      "nameEn": "間に (while, during)",
+      "descriptionEn": "Marks a window of time in which something else happens.",
+      "formation": "Noun + の / plain form + 間に",
+      "exampleJa": "寝ている間に雨が降りました。",
+      "exampleEn": "It rained while I was asleep."
+    },
+    {
+      "id": "mn-n4-mama",
+      "level": "N4",
+      "pattern": "〜まま",
+      "nameEn": "まま (as it is)",
+      "descriptionEn": "Marks a state left unchanged.",
+      "formation": "Plain form / noun + の + まま",
+      "exampleJa": "電気をつけたまま寝ました。",
+      "exampleEn": "I fell asleep with the light left on."
+    },
+    {
+      "id": "mn-n4-dasu",
+      "level": "N4",
+      "pattern": "〜出す",
+      "nameEn": "出す (burst into action)",
+      "descriptionEn": "Marks an action beginning suddenly.",
+      "formation": "Verb stem + 出す",
+      "exampleJa": "急に泣き出しました。",
+      "exampleEn": "She suddenly burst into tears."
+    },
+    {
+      "id": "mn-n3-wake-da",
+      "level": "N3",
+      "pattern": "〜わけだ",
+      "nameEn": "わけだ (that is why)",
+      "descriptionEn": "Presents the statement as the natural conclusion of what came before.",
+      "formation": "Plain form + わけだ",
+      "exampleJa": "だから遅れたわけです。",
+      "exampleEn": "That is why you were late, then."
+    },
+    {
+      "id": "mn-n3-mono-da",
+      "level": "N3",
+      "pattern": "〜ものだ",
+      "nameEn": "ものだ (general truth, nostalgia)",
+      "descriptionEn": "States a general truth or recalls a past habit.",
+      "formation": "Plain form + ものだ",
+      "exampleJa": "子供はよく転ぶものだ。",
+      "exampleEn": "Children do fall over a lot."
+    },
+    {
+      "id": "mn-n3-beki",
+      "level": "N3",
+      "pattern": "〜べきだ",
+      "nameEn": "べきだ (should, moral obligation)",
+      "descriptionEn": "States what ought to be done.",
+      "formation": "Verb dictionary form + べきだ",
+      "exampleJa": "早く謝るべきです。",
+      "exampleEn": "You should apologise quickly."
+    },
+    {
+      "id": "mn-n3-hazu-ga-nai",
+      "level": "N3",
+      "pattern": "〜はずがない",
+      "nameEn": "はずがない (cannot possibly)",
+      "descriptionEn": "Denies a possibility on the basis of reasoning.",
+      "formation": "Plain form + はずがない",
+      "exampleJa": "彼が知っているはずがない。",
+      "exampleEn": "There is no way he knows."
+    },
+    {
+      "id": "mn-n3-ni-chigainai",
+      "level": "N3",
+      "pattern": "〜に違いない",
+      "nameEn": "に違いない (must be)",
+      "descriptionEn": "States a confident conclusion.",
+      "formation": "Plain form + に違いない",
+      "exampleJa": "留守に違いない。",
+      "exampleEn": "They must be out."
+    },
+    {
+      "id": "mn-n3-you-ni",
+      "level": "N3",
+      "pattern": "〜ように",
+      "nameEn": "ように (so that, as)",
+      "descriptionEn": "Marks a purpose or a manner to match.",
+      "formation": "Plain form + ように",
+      "exampleJa": "忘れないようにメモします。",
+      "exampleEn": "I take notes so that I do not forget."
+    },
+    {
+      "id": "mn-n3-tame-ni",
+      "level": "N3",
+      "pattern": "〜ために",
+      "nameEn": "ために (in order to, because of)",
+      "descriptionEn": "Marks a purpose, or a cause in written style.",
+      "formation": "Verb dictionary form / noun + の + ために",
+      "exampleJa": "健康のために歩きます。",
+      "exampleEn": "I walk for my health."
+    },
+    {
+      "id": "mn-n3-no-ni-purpose",
+      "level": "N3",
+      "pattern": "〜のに（目的）",
+      "nameEn": "のに (for the purpose of)",
+      "descriptionEn": "Marks what something is used for.",
+      "formation": "Verb dictionary form + のに",
+      "exampleJa": "この道具は切るのに使います。",
+      "exampleEn": "This tool is used for cutting."
+    },
+    {
+      "id": "mn-n3-sae",
+      "level": "N3",
+      "pattern": "〜さえ",
+      "nameEn": "さえ (even)",
+      "descriptionEn": "Raises an extreme example to make a point.",
+      "formation": "Noun + さえ",
+      "exampleJa": "水さえ飲めなかった。",
+      "exampleEn": "I could not even drink water."
+    },
+    {
+      "id": "mn-n3-shika-nai",
+      "level": "N3",
+      "pattern": "〜しかない",
+      "nameEn": "しかない (nothing but, no choice)",
+      "descriptionEn": "Limits to one option, often the only one left.",
+      "formation": "Noun / verb dictionary form + しかない",
+      "exampleJa": "待つしかありません。",
+      "exampleEn": "There is nothing to do but wait."
+    },
+    {
+      "id": "mn-n3-dake-de-naku",
+      "level": "N3",
+      "pattern": "〜だけでなく",
+      "nameEn": "だけでなく (not only)",
+      "descriptionEn": "Adds a second, often stronger item.",
+      "formation": "Noun / plain form + だけでなく",
+      "exampleJa": "英語だけでなく中国語も話す。",
+      "exampleEn": "He speaks not only English but also Chinese."
+    },
+    {
+      "id": "mn-n3-hodo",
+      "level": "N3",
+      "pattern": "〜ほど",
+      "nameEn": "ほど (to the extent that)",
+      "descriptionEn": "Marks the degree of a state by comparison.",
+      "formation": "Plain form / noun + ほど",
+      "exampleJa": "泣くほど痛かった。",
+      "exampleEn": "It hurt enough to make me cry."
+    },
+    {
+      "id": "mn-n3-bakari-de-naku",
+      "level": "N3",
+      "pattern": "〜ばかりでなく",
+      "nameEn": "ばかりでなく (not just)",
+      "descriptionEn": "Adds a further item beyond the obvious one.",
+      "formation": "Noun / plain form + ばかりでなく",
+      "exampleJa": "彼ばかりでなく私も悪い。",
+      "exampleEn": "Not only he but I am also at fault."
+    },
+    {
+      "id": "mn-n3-kke",
+      "level": "N3",
+      "pattern": "〜っけ",
+      "nameEn": "っけ (was it ...?)",
+      "descriptionEn": "Asks the listener to confirm something half remembered.",
+      "formation": "Plain form + っけ",
+      "exampleJa": "会議は何時だっけ。",
+      "exampleEn": "What time was the meeting again?"
+    },
+    {
+      "id": "mn-n3-temo-ii",
+      "level": "N3",
+      "pattern": "〜てもかまわない",
+      "nameEn": "てもかまわない (do not mind if)",
+      "descriptionEn": "Grants permission in a tolerant tone.",
+      "formation": "Verb て + もかまわない",
+      "exampleJa": "遅れてもかまいません。",
+      "exampleEn": "I do not mind if you are late."
+    },
+    {
+      "id": "mn-n3-uchi-ni",
+      "level": "N3",
+      "pattern": "〜うちに",
+      "nameEn": "うちに (while the state lasts)",
+      "descriptionEn": "Marks a window that will not last.",
+      "formation": "Plain form / noun + の + うちに",
+      "exampleJa": "熱いうちに食べてください。",
+      "exampleEn": "Please eat it while it is hot."
+    },
+    {
+      "id": "mn-n3-tabi-ni",
+      "level": "N3",
+      "pattern": "〜たびに",
+      "nameEn": "たびに (every time)",
+      "descriptionEn": "Marks something that happens on each occasion.",
+      "formation": "Verb dictionary form / noun + の + たびに",
+      "exampleJa": "会うたびに背が伸びている。",
+      "exampleEn": "He is taller every time we meet."
+    },
+    {
+      "id": "mn-n3-kagiri",
+      "level": "N3",
+      "pattern": "〜限り",
+      "nameEn": "限り (as far as, as long as)",
+      "descriptionEn": "Marks a limit on the claim being made.",
+      "formation": "Plain form + 限り",
+      "exampleJa": "私が知る限り本当です。",
+      "exampleEn": "As far as I know, it is true."
+    },
+    {
+      "id": "mn-n3-kawari-ni",
+      "level": "N3",
+      "pattern": "〜代わりに",
+      "nameEn": "代わりに (instead of, in return)",
+      "descriptionEn": "Marks a substitution or an exchange.",
+      "formation": "Noun + の / plain form + 代わりに",
+      "exampleJa": "私の代わりに行ってください。",
+      "exampleEn": "Please go instead of me."
+    },
+    {
+      "id": "mn-n3-ni-yotte",
+      "level": "N3",
+      "pattern": "〜によって",
+      "nameEn": "によって (by, depending on)",
+      "descriptionEn": "Marks an agent, a cause, or a variable factor.",
+      "formation": "Noun + によって",
+      "exampleJa": "人によって考え方が違う。",
+      "exampleEn": "Ways of thinking differ from person to person."
+    },
+    {
+      "id": "mn-n3-ni-taishite",
+      "level": "N3",
+      "pattern": "〜に対して",
+      "nameEn": "に対して (towards, in contrast to)",
+      "descriptionEn": "Marks the target of an attitude, or a contrast.",
+      "formation": "Noun + に対して",
+      "exampleJa": "客に対して丁寧に話す。",
+      "exampleEn": "He speaks politely towards customers."
+    },
+    {
+      "id": "mn-n3-ni-tsuite",
+      "level": "N3",
+      "pattern": "〜について",
+      "nameEn": "について (about, concerning)",
+      "descriptionEn": "Marks the topic being discussed.",
+      "formation": "Noun + について",
+      "exampleJa": "環境について話しました。",
+      "exampleEn": "We talked about the environment."
+    },
+    {
+      "id": "mn-n3-to-shite",
+      "level": "N3",
+      "pattern": "〜として",
+      "nameEn": "として (as, in the role of)",
+      "descriptionEn": "Marks a role or capacity.",
+      "formation": "Noun + として",
+      "exampleJa": "医者として働いています。",
+      "exampleEn": "I work as a doctor."
+    },
+    {
+      "id": "mn-n3-ni-yoruto",
+      "level": "N3",
+      "pattern": "〜によると",
+      "nameEn": "によると (according to)",
+      "descriptionEn": "Marks the source of reported information.",
+      "formation": "Noun + によると",
+      "exampleJa": "天気予報によると雨です。",
+      "exampleEn": "According to the forecast it will rain."
+    },
+    {
+      "id": "mn-n3-kke-nai",
+      "level": "N3",
+      "pattern": "〜わけがない",
+      "nameEn": "わけがない (there is no way)",
+      "descriptionEn": "Denies a possibility outright.",
+      "formation": "Plain form + わけがない",
+      "exampleJa": "そんなことがあるわけがない。",
+      "exampleEn": "There is no way that happens."
+    },
+    {
+      "id": "mn-n3-ppoi",
+      "level": "N3",
+      "pattern": "〜っぽい",
+      "nameEn": "っぽい (-ish)",
+      "descriptionEn": "Says something has the flavour of the noun or quality.",
+      "formation": "Noun / verb stem + っぽい",
+      "exampleJa": "子供っぽい話し方だ。",
+      "exampleEn": "It is a childish way of speaking."
+    },
+    {
+      "id": "mn-n3-gachi",
+      "level": "N3",
+      "pattern": "〜がち",
+      "nameEn": "がち (prone to)",
+      "descriptionEn": "Says something tends to happen.",
+      "formation": "Verb stem + がち",
+      "exampleJa": "忘れがちです。",
+      "exampleEn": "I tend to forget."
+    },
+    {
+      "id": "mn-n3-kke-gimi",
+      "level": "N3",
+      "pattern": "〜気味",
+      "nameEn": "気味 (a touch of)",
+      "descriptionEn": "Says a slight amount of a condition is present.",
+      "formation": "Verb stem / noun + 気味",
+      "exampleJa": "風邪気味です。",
+      "exampleEn": "I have a touch of a cold."
+    },
+    {
+      "id": "mn-n3-mitai-ni",
+      "level": "N3",
+      "pattern": "〜みたいに",
+      "nameEn": "みたいに (like, casual)",
+      "descriptionEn": "Compares manner informally.",
+      "formation": "Noun / plain form + みたいに",
+      "exampleJa": "鳥みたいに飛びたい。",
+      "exampleEn": "I want to fly like a bird."
+    },
+    {
+      "id": "mn-n3-sou-mo-nai",
+      "level": "N3",
+      "pattern": "〜そうもない",
+      "nameEn": "そうもない (unlikely to)",
+      "descriptionEn": "Says something shows no sign of happening.",
+      "formation": "Verb stem + そうもない",
+      "exampleJa": "雨は止みそうもない。",
+      "exampleEn": "The rain shows no sign of stopping."
+    },
+    {
+      "id": "mn-n3-naranai",
+      "level": "N3",
+      "pattern": "〜てはならない",
+      "nameEn": "てはならない (must not, formal)",
+      "descriptionEn": "States a formal prohibition.",
+      "formation": "Verb て + はならない",
+      "exampleJa": "秘密を漏らしてはならない。",
+      "exampleEn": "You must not leak the secret."
+    },
+    {
+      "id": "mn-n3-zaru-o-enai",
+      "level": "N3",
+      "pattern": "〜ざるを得ない",
+      "nameEn": "ざるを得ない (cannot help but)",
+      "descriptionEn": "States something unavoidable in formal style.",
+      "formation": "Verb ない stem + ざるを得ない",
+      "exampleJa": "認めざるを得ない。",
+      "exampleEn": "I have no choice but to admit it."
+    },
+    {
+      "id": "mn-n3-you-ni-mieru",
+      "level": "N3",
+      "pattern": "〜ように見える",
+      "nameEn": "ように見える (looks as if)",
+      "descriptionEn": "Reports how something appears.",
+      "formation": "Plain form + ように見える",
+      "exampleJa": "疲れているように見えます。",
+      "exampleEn": "You look tired."
+    },
+    {
+      "id": "mn-n3-tsumori-datta",
+      "level": "N3",
+      "pattern": "〜つもりだった",
+      "nameEn": "つもりだった (had intended to)",
+      "descriptionEn": "States an intention that was not carried out.",
+      "formation": "Verb dictionary form + つもりだった",
+      "exampleJa": "電話するつもりでした。",
+      "exampleEn": "I had intended to call."
+    },
+    {
+      "id": "mn-n3-nakanaka",
+      "level": "N3",
+      "pattern": "なかなか〜ない",
+      "nameEn": "なかなか〜ない (not easily)",
+      "descriptionEn": "Says something does not happen despite effort.",
+      "formation": "なかなか + negative predicate",
+      "exampleJa": "なかなか眠れません。",
+      "exampleEn": "I cannot get to sleep easily."
+    },
+    {
+      "id": "mn-n3-sappari",
+      "level": "N3",
+      "pattern": "〜さえ〜ば",
+      "nameEn": "さえ〜ば (if only)",
+      "descriptionEn": "States the single sufficient condition.",
+      "formation": "Noun + さえ + conditional",
+      "exampleJa": "時間さえあればできます。",
+      "exampleEn": "I could do it if only I had time."
+    },
+    {
+      "id": "mn-n3-ta-tokoro",
+      "level": "N3",
+      "pattern": "〜たところ",
+      "nameEn": "たところ (upon doing)",
+      "descriptionEn": "Marks what was found after doing something.",
+      "formation": "Verb た form + ところ",
+      "exampleJa": "調べたところ間違いでした。",
+      "exampleEn": "Upon checking, it was a mistake."
+    },
+    {
+      "id": "mn-n3-kke-ba-yokatta",
+      "level": "N3",
+      "pattern": "〜ばよかった",
+      "nameEn": "ばよかった (should have)",
+      "descriptionEn": "Expresses regret about what was not done.",
+      "formation": "Verb conditional + よかった",
+      "exampleJa": "もっと勉強すればよかった。",
+      "exampleEn": "I should have studied more."
+    },
+    {
+      "id": "mn-n3-te-hoshii",
+      "level": "N3",
+      "pattern": "〜てほしい",
+      "nameEn": "てほしい (want someone to)",
+      "descriptionEn": "States a wish about another person's action.",
+      "formation": "Verb て + ほしい",
+      "exampleJa": "手伝ってほしいです。",
+      "exampleEn": "I want you to help me."
+    },
+    {
+      "id": "mn-n3-you-ni-iu",
+      "level": "N3",
+      "pattern": "〜ように言う",
+      "nameEn": "ように言う (tell someone to)",
+      "descriptionEn": "Reports an instruction indirectly.",
+      "formation": "Plain form + ように言う",
+      "exampleJa": "静かにするように言われました。",
+      "exampleEn": "I was told to be quiet."
+    },
+    {
+      "id": "mn-n3-kotoni",
+      "level": "N3",
+      "pattern": "〜ことに",
+      "nameEn": "ことに (to my surprise)",
+      "descriptionEn": "Front-loads the speaker's reaction to what follows.",
+      "formation": "Adjective plain form + ことに",
+      "exampleJa": "驚いたことに彼が来た。",
+      "exampleEn": "To my surprise, he came."
+    },
+    {
+      "id": "mn-n3-ni-shitagatte",
+      "level": "N3",
+      "pattern": "〜にしたがって",
+      "nameEn": "にしたがって (in accordance with, as)",
+      "descriptionEn": "Marks a parallel change or compliance.",
+      "formation": "Noun / verb dictionary form + にしたがって",
+      "exampleJa": "年をとるにしたがって忘れやすくなる。",
+      "exampleEn": "As you age you forget more easily."
+    },
+    {
+      "id": "mn-n3-to-tomo-ni",
+      "level": "N3",
+      "pattern": "〜とともに",
+      "nameEn": "とともに (along with)",
+      "descriptionEn": "Marks simultaneity or accompaniment in written style.",
+      "formation": "Noun / verb dictionary form + とともに",
+      "exampleJa": "成長とともに変わります。",
+      "exampleEn": "It changes along with growth."
+    },
+    {
+      "id": "mn-n3-okage-de",
+      "level": "N3",
+      "pattern": "〜おかげで",
+      "nameEn": "おかげで (thanks to)",
+      "descriptionEn": "Credits a good result to a cause.",
+      "formation": "Noun + の / plain form + おかげで",
+      "exampleJa": "君のおかげで助かった。",
+      "exampleEn": "Thanks to you I was saved."
+    },
+    {
+      "id": "mn-n3-sei-de",
+      "level": "N3",
+      "pattern": "〜せいで",
+      "nameEn": "せいで (because of, blame)",
+      "descriptionEn": "Blames a bad result on a cause.",
+      "formation": "Noun + の / plain form + せいで",
+      "exampleJa": "雨のせいで遅れました。",
+      "exampleEn": "I was late because of the rain."
+    },
+    {
+      "id": "mn-n3-mono-no",
+      "level": "N3",
+      "pattern": "〜つつ",
+      "nameEn": "つつ (while, although)",
+      "descriptionEn": "Marks simultaneity or concession in written style.",
+      "formation": "Verb stem + つつ",
+      "exampleJa": "悪いと知りつつ続けた。",
+      "exampleEn": "He continued while knowing it was wrong."
+    },
+    {
+      "id": "mn-n3-dou-ni-mo",
+      "level": "N3",
+      "pattern": "どうしても〜ない",
+      "nameEn": "どうしても〜ない (no matter what)",
+      "descriptionEn": "Says something cannot be done however hard one tries.",
+      "formation": "どうしても + negative predicate",
+      "exampleJa": "どうしても思い出せない。",
+      "exampleEn": "I simply cannot remember."
+    },
+    {
+      "id": "mn-n3-igai",
+      "level": "N3",
+      "pattern": "〜以外",
+      "nameEn": "以外 (apart from)",
+      "descriptionEn": "Excludes one item from a set.",
+      "formation": "Noun + 以外",
+      "exampleJa": "私以外は全員来ました。",
+      "exampleEn": "Everyone apart from me came."
+    },
+    {
+      "id": "mn-n3-toori-ni",
+      "level": "N3",
+      "pattern": "〜とおりに",
+      "nameEn": "とおりに (just as)",
+      "descriptionEn": "Says an action matches an instruction or model.",
+      "formation": "Verb た form / noun + の + とおりに",
+      "exampleJa": "説明したとおりにやってください。",
+      "exampleEn": "Please do it just as I explained."
+    },
+    {
+      "id": "mn-n3-mama-ni",
+      "level": "N3",
+      "pattern": "〜ままに",
+      "nameEn": "ままに (as one pleases)",
+      "descriptionEn": "Marks acting in line with an impulse or state.",
+      "formation": "Plain form + ままに",
+      "exampleJa": "思いのままに書いた。",
+      "exampleEn": "I wrote as I pleased."
+    },
+    {
+      "id": "mn-n2-ni-kimatteiru",
+      "level": "N2",
+      "pattern": "〜に決まっている",
+      "nameEn": "に決まっている (certainly)",
+      "descriptionEn": "States a conclusion as beyond doubt.",
+      "formation": "Plain form + に決まっている",
+      "exampleJa": "嘘に決まっている。",
+      "exampleEn": "It is obviously a lie."
+    },
+    {
+      "id": "mn-n2-koto-wa-nai",
+      "level": "N2",
+      "pattern": "〜ことはない",
+      "nameEn": "ことはない (no need to)",
+      "descriptionEn": "Says something is unnecessary.",
+      "formation": "Verb dictionary form + ことはない",
+      "exampleJa": "心配することはない。",
+      "exampleEn": "There is no need to worry."
+    },
+    {
+      "id": "mn-n2-wake-ni-wa-ikanai",
+      "level": "N2",
+      "pattern": "〜わけにはいかない",
+      "nameEn": "わけにはいかない (cannot afford to)",
+      "descriptionEn": "States that something is not permissible in the circumstances.",
+      "formation": "Verb dictionary form + わけにはいかない",
+      "exampleJa": "黙っているわけにはいかない。",
+      "exampleEn": "I cannot just keep quiet."
+    },
+    {
+      "id": "mn-n2-you-ga-nai",
+      "level": "N2",
+      "pattern": "〜ようがない",
+      "nameEn": "ようがない (no way to)",
+      "descriptionEn": "Says there is no means available.",
+      "formation": "Verb stem + ようがない",
+      "exampleJa": "連絡しようがない。",
+      "exampleEn": "There is no way to get in touch."
+    },
+    {
+      "id": "mn-n2-ki-mi-nai",
+      "level": "N2",
+      "pattern": "〜かねない",
+      "nameEn": "かねない (might well, badly)",
+      "descriptionEn": "Warns that an undesirable outcome is possible.",
+      "formation": "Verb stem + かねない",
+      "exampleJa": "事故になりかねない。",
+      "exampleEn": "It could well lead to an accident."
+    },
+    {
+      "id": "mn-n2-gatai",
+      "level": "N2",
+      "pattern": "〜がたい",
+      "nameEn": "がたい (hard to)",
+      "descriptionEn": "Says something is difficult to do, in formal style.",
+      "formation": "Verb stem + がたい",
+      "exampleJa": "信じがたい話です。",
+      "exampleEn": "It is a hard story to believe."
+    },
+    {
+      "id": "mn-n2-tokoro-dewa-nai",
+      "level": "N2",
+      "pattern": "〜どころではない",
+      "nameEn": "どころではない (in no state to)",
+      "descriptionEn": "Says the situation rules the action out.",
+      "formation": "Noun / verb dictionary form + どころではない",
+      "exampleJa": "旅行どころではない。",
+      "exampleEn": "I am in no position to travel."
+    },
+    {
+      "id": "mn-n2-mono-ka",
+      "level": "N2",
+      "pattern": "〜ものか",
+      "nameEn": "ものか (as if I would)",
+      "descriptionEn": "Rejects something emphatically.",
+      "formation": "Plain form + ものか",
+      "exampleJa": "負けるものか。",
+      "exampleEn": "As if I would lose."
+    },
+    {
+      "id": "mn-n2-bakari-ka",
+      "level": "N2",
+      "pattern": "〜ばかりか",
+      "nameEn": "ばかりか (not only that)",
+      "descriptionEn": "Adds a further, stronger item.",
+      "formation": "Plain form / noun + ばかりか",
+      "exampleJa": "遅刻したばかりか宿題も忘れた。",
+      "exampleEn": "Not only was he late, he also forgot his homework."
+    },
+    {
+      "id": "mn-n2-ue-ni",
+      "level": "N2",
+      "pattern": "〜上に",
+      "nameEn": "上に (on top of that)",
+      "descriptionEn": "Adds a second point in the same direction.",
+      "formation": "Plain form + 上に",
+      "exampleJa": "安い上においしい。",
+      "exampleEn": "It is cheap, and tasty on top of that."
+    },
+    {
+      "id": "mn-n2-ni-kagirazu",
+      "level": "N2",
+      "pattern": "〜に限らず",
+      "nameEn": "に限らず (not limited to)",
+      "descriptionEn": "Widens the scope beyond one case.",
+      "formation": "Noun + に限らず",
+      "exampleJa": "子供に限らず大人も楽しめる。",
+      "exampleEn": "Not only children but adults can enjoy it."
+    },
+    {
+      "id": "mn-n2-mo-kamawazu",
+      "level": "N2",
+      "pattern": "〜もかまわず",
+      "nameEn": "もかまわず (without caring about)",
+      "descriptionEn": "Says someone acts while ignoring something.",
+      "formation": "Noun / plain form + もかまわず",
+      "exampleJa": "人目もかまわず泣いた。",
+      "exampleEn": "She cried without caring who saw."
+    },
+    {
+      "id": "mn-n2-nuki",
+      "level": "N2",
+      "pattern": "〜抜きで",
+      "nameEn": "抜きで (leaving out)",
+      "descriptionEn": "Says something proceeds without an element.",
+      "formation": "Noun + 抜きで",
+      "exampleJa": "冗談抜きで話そう。",
+      "exampleEn": "Let us talk with the jokes left out."
+    },
+    {
+      "id": "mn-n2-dake-ni",
+      "level": "N2",
+      "pattern": "〜だけに",
+      "nameEn": "だけに (precisely because)",
+      "descriptionEn": "Says the result follows naturally from the reason.",
+      "formation": "Plain form + だけに",
+      "exampleJa": "期待していただけに残念だ。",
+      "exampleEn": "It is disappointing precisely because I had hoped."
+    },
+    {
+      "id": "mn-n2-mono-dakara",
+      "level": "N2",
+      "pattern": "〜ものだから",
+      "nameEn": "ものだから (because, excusing)",
+      "descriptionEn": "Offers a reason as an explanation or excuse.",
+      "formation": "Plain form + ものだから",
+      "exampleJa": "急いでいたものだから忘れた。",
+      "exampleEn": "I forgot because I was in a hurry."
+    },
+    {
+      "id": "mn-n2-koto-kara",
+      "level": "N2",
+      "pattern": "〜ことから",
+      "nameEn": "ことから (from the fact that)",
+      "descriptionEn": "Draws a conclusion from a stated fact.",
+      "formation": "Plain form + ことから",
+      "exampleJa": "足跡があることから侵入が分かった。",
+      "exampleEn": "From the footprints we knew of the intrusion."
+    },
+    {
+      "id": "mn-n2-ue-de",
+      "level": "N2",
+      "pattern": "〜上で",
+      "nameEn": "上で (after doing, on the basis of)",
+      "descriptionEn": "Says the second step follows the first.",
+      "formation": "Verb dictionary / た form + 上で",
+      "exampleJa": "確認した上で返事します。",
+      "exampleEn": "I will reply after checking."
+    },
+    {
+      "id": "mn-n2-sai-ni",
+      "level": "N2",
+      "pattern": "〜際に",
+      "nameEn": "際に (on the occasion of)",
+      "descriptionEn": "Marks a formal occasion or moment.",
+      "formation": "Verb dictionary / た form / noun + の + 際に",
+      "exampleJa": "出発の際に確認します。",
+      "exampleEn": "I will check at the time of departure."
+    },
+    {
+      "id": "mn-n2-ni-atatte",
+      "level": "N2",
+      "pattern": "〜にあたって",
+      "nameEn": "にあたって (on the occasion of)",
+      "descriptionEn": "Marks an important juncture in formal style.",
+      "formation": "Verb dictionary form / noun + にあたって",
+      "exampleJa": "開会にあたって一言申し上げます。",
+      "exampleEn": "Let me say a word on the occasion of the opening."
+    },
+    {
+      "id": "mn-n2-ni-oite",
+      "level": "N2",
+      "pattern": "〜において",
+      "nameEn": "において (in, at, formal)",
+      "descriptionEn": "Marks a place, time, or field in formal writing.",
+      "formation": "Noun + において",
+      "exampleJa": "会議は東京において行われる。",
+      "exampleEn": "The meeting will be held in Tokyo."
+    },
+    {
+      "id": "mn-n2-ni-kanshite",
+      "level": "N2",
+      "pattern": "〜に関して",
+      "nameEn": "に関して (regarding)",
+      "descriptionEn": "Marks a topic in formal style.",
+      "formation": "Noun + に関して",
+      "exampleJa": "この件に関して説明します。",
+      "exampleEn": "I will explain regarding this matter."
+    },
+    {
+      "id": "mn-n2-ni-motozuite",
+      "level": "N2",
+      "pattern": "〜に基づいて",
+      "nameEn": "に基づいて (based on)",
+      "descriptionEn": "Marks the basis for an action or judgement.",
+      "formation": "Noun + に基づいて",
+      "exampleJa": "事実に基づいて書く。",
+      "exampleEn": "I write based on the facts."
+    },
+    {
+      "id": "mn-n2-ni-sotte",
+      "level": "N2",
+      "pattern": "〜に沿って",
+      "nameEn": "に沿って (along, in line with)",
+      "descriptionEn": "Marks conformity to a line or a policy.",
+      "formation": "Noun + に沿って",
+      "exampleJa": "方針に沿って進める。",
+      "exampleEn": "We proceed in line with the policy."
+    },
+    {
+      "id": "mn-n2-wo-tsuujite",
+      "level": "N2",
+      "pattern": "〜を通じて",
+      "nameEn": "を通じて (through, throughout)",
+      "descriptionEn": "Marks a medium or a whole span.",
+      "formation": "Noun + を通じて",
+      "exampleJa": "友人を通じて知りました。",
+      "exampleEn": "I found out through a friend."
+    },
+    {
+      "id": "mn-n2-wo-megutte",
+      "level": "N2",
+      "pattern": "〜をめぐって",
+      "nameEn": "をめぐって (surrounding an issue)",
+      "descriptionEn": "Marks the disputed topic of a discussion.",
+      "formation": "Noun + をめぐって",
+      "exampleJa": "税制をめぐって議論が続く。",
+      "exampleEn": "Debate continues surrounding the tax system."
+    },
+    {
+      "id": "mn-n2-wo-toshite",
+      "level": "N2",
+      "pattern": "〜を問わず",
+      "nameEn": "を問わず (regardless of)",
+      "descriptionEn": "Says a distinction does not matter.",
+      "formation": "Noun + を問わず",
+      "exampleJa": "年齢を問わず参加できます。",
+      "exampleEn": "Anyone can join regardless of age."
+    },
+    {
+      "id": "mn-n2-hanmen",
+      "level": "N2",
+      "pattern": "〜反面",
+      "nameEn": "反面 (on the other hand)",
+      "descriptionEn": "Presents two opposing sides of one thing.",
+      "formation": "Plain form + 反面",
+      "exampleJa": "便利な反面高いです。",
+      "exampleEn": "It is convenient, but expensive on the other hand."
+    },
+    {
+      "id": "mn-n2-ippou-de",
+      "level": "N2",
+      "pattern": "〜一方で",
+      "nameEn": "一方で (while, whereas)",
+      "descriptionEn": "Contrasts two simultaneous facts.",
+      "formation": "Plain form + 一方で",
+      "exampleJa": "収入は増える一方で支出も増えた。",
+      "exampleEn": "Income rose while spending also rose."
+    },
+    {
+      "id": "mn-n2-ni-mo-kakawarazu",
+      "level": "N2",
+      "pattern": "〜にもかかわらず",
+      "nameEn": "にもかかわらず (in spite of)",
+      "descriptionEn": "Marks a result contrary to expectation, formally.",
+      "formation": "Plain form / noun + にもかかわらず",
+      "exampleJa": "雨にもかかわらず出発した。",
+      "exampleEn": "We set off in spite of the rain."
+    },
+    {
+      "id": "mn-n2-kuse-ni",
+      "level": "N2",
+      "pattern": "〜くせに",
+      "nameEn": "くせに (even though, critical)",
+      "descriptionEn": "Marks a contrast with a note of blame.",
+      "formation": "Plain form + くせに",
+      "exampleJa": "知っているくせに黙っていた。",
+      "exampleEn": "He kept quiet even though he knew."
+    },
+    {
+      "id": "mn-n2-to-wa-ie",
+      "level": "N2",
+      "pattern": "〜とはいえ",
+      "nameEn": "とはいえ (although it is true that)",
+      "descriptionEn": "Concedes a point before contradicting it.",
+      "formation": "Plain form + とはいえ",
+      "exampleJa": "安いとはいえ質は悪い。",
+      "exampleEn": "Cheap though it is, the quality is poor."
+    },
+    {
+      "id": "mn-n2-mono-nara",
+      "level": "N2",
+      "pattern": "〜ものなら",
+      "nameEn": "ものなら (if it were possible)",
+      "descriptionEn": "Marks an unlikely or wished-for condition.",
+      "formation": "Verb potential + ものなら",
+      "exampleJa": "できるものならやりたい。",
+      "exampleEn": "I would do it if I possibly could."
+    },
+    {
+      "id": "mn-n2-tara-kirinai",
+      "level": "N2",
+      "pattern": "〜たらきりがない",
+      "nameEn": "たらきりがない (there is no end to)",
+      "descriptionEn": "Says a list could go on forever.",
+      "formation": "Verb た form + らきりがない",
+      "exampleJa": "数えたらきりがない。",
+      "exampleEn": "There would be no end to counting them."
+    },
+    {
+      "id": "mn-n2-nai-koto-wa-nai",
+      "level": "N2",
+      "pattern": "〜ないことはない",
+      "nameEn": "ないことはない (it is not that ... not)",
+      "descriptionEn": "Softly admits a possibility.",
+      "formation": "Verb ない form + ことはない",
+      "exampleJa": "できないことはない。",
+      "exampleEn": "It is not that it cannot be done."
+    },
+    {
+      "id": "mn-n2-tsutsu-aru",
+      "level": "N2",
+      "pattern": "〜つつある",
+      "nameEn": "つつある (in the process of)",
+      "descriptionEn": "Marks a change under way, in written style.",
+      "formation": "Verb stem + つつある",
+      "exampleJa": "状況は改善しつつある。",
+      "exampleEn": "The situation is improving."
+    },
+    {
+      "id": "mn-n2-ni-tsurete",
+      "level": "N2",
+      "pattern": "〜につれて",
+      "nameEn": "につれて (as, in proportion to)",
+      "descriptionEn": "Marks two changes moving together.",
+      "formation": "Noun / verb dictionary form + につれて",
+      "exampleJa": "年をとるにつれて忘れやすくなる。",
+      "exampleEn": "As one ages one forgets more easily."
+    },
+    {
+      "id": "mn-n2-ni-shitagai",
+      "level": "N2",
+      "pattern": "〜に伴って",
+      "nameEn": "に伴って (accompanying)",
+      "descriptionEn": "Marks a change that comes with another.",
+      "formation": "Noun / verb dictionary form + に伴って",
+      "exampleJa": "人口増加に伴って問題も増えた。",
+      "exampleEn": "Problems grew along with the population."
+    },
+    {
+      "id": "mn-n2-dogeza",
+      "level": "N2",
+      "pattern": "〜ぬきに",
+      "nameEn": "〜を抜きにして (setting aside)",
+      "descriptionEn": "Sets an element aside for the sake of argument.",
+      "formation": "Noun + を抜きにして",
+      "exampleJa": "冗談を抜きにして考えよう。",
+      "exampleEn": "Let us think about it setting jokes aside."
+    },
+    {
+      "id": "mn-n2-kke-kagiri-dewa",
+      "level": "N2",
+      "pattern": "〜限りでは",
+      "nameEn": "限りでは (as far as ... goes)",
+      "descriptionEn": "Limits a claim to the available evidence.",
+      "formation": "Verb dictionary / た form + 限りでは",
+      "exampleJa": "見た限りでは問題ない。",
+      "exampleEn": "As far as I could see there is no problem."
+    },
+    {
+      "id": "mn-n2-beki-dewa-nai",
+      "level": "N2",
+      "pattern": "〜べきではない",
+      "nameEn": "べきではない (ought not to)",
+      "descriptionEn": "States what should not be done.",
+      "formation": "Verb dictionary form + べきではない",
+      "exampleJa": "諦めるべきではない。",
+      "exampleEn": "You ought not to give up."
+    },
+    {
+      "id": "mn-n2-you-de-wa",
+      "level": "N2",
+      "pattern": "〜ようでは",
+      "nameEn": "ようでは (if things are like this)",
+      "descriptionEn": "Warns about a consequence of the current state.",
+      "formation": "Plain form + ようでは",
+      "exampleJa": "こんな成績ようでは困る。",
+      "exampleEn": "If your marks are like this, it is a problem."
+    },
+    {
+      "id": "mn-n2-dake-atte",
+      "level": "N2",
+      "pattern": "〜だけあって",
+      "nameEn": "だけあって (as one would expect)",
+      "descriptionEn": "Says the result matches a known merit.",
+      "formation": "Plain form / noun + だけあって",
+      "exampleJa": "プロだけあって上手だ。",
+      "exampleEn": "He is skilled, as you would expect from a professional."
+    },
+    {
+      "id": "mn-n2-ni-shitewa",
+      "level": "N2",
+      "pattern": "〜にしては",
+      "nameEn": "にしては (considering)",
+      "descriptionEn": "Judges something against an expected standard.",
+      "formation": "Plain form / noun + にしては",
+      "exampleJa": "初めてにしては上手です。",
+      "exampleEn": "That is good considering it is your first time."
+    },
+    {
+      "id": "mn-n2-wari-ni",
+      "level": "N2",
+      "pattern": "〜割に",
+      "nameEn": "割に (for, considering)",
+      "descriptionEn": "Compares a result against a proportion.",
+      "formation": "Plain form / noun + の + 割に",
+      "exampleJa": "値段の割においしい。",
+      "exampleEn": "It tastes good for the price."
+    },
+    {
+      "id": "mn-n2-kekka",
+      "level": "N2",
+      "pattern": "〜結果",
+      "nameEn": "結果 (as a result)",
+      "descriptionEn": "Marks an outcome in written style.",
+      "formation": "Verb た form / noun + の + 結果",
+      "exampleJa": "調査の結果分かった。",
+      "exampleEn": "It became clear as a result of the survey."
+    },
+    {
+      "id": "mn-n2-kke-mono-o",
+      "level": "N2",
+      "pattern": "〜ものを",
+      "nameEn": "ものを (if only, regret)",
+      "descriptionEn": "Regrets a better outcome that was missed.",
+      "formation": "Plain form + ものを",
+      "exampleJa": "早く言えばよかったものを。",
+      "exampleEn": "If only you had said so sooner."
+    },
+    {
+      "id": "mn-n2-shidai",
+      "level": "N2",
+      "pattern": "〜次第",
+      "nameEn": "次第 (as soon as)",
+      "descriptionEn": "Says the next step follows immediately.",
+      "formation": "Verb stem + 次第",
+      "exampleJa": "着き次第連絡します。",
+      "exampleEn": "I will contact you as soon as I arrive."
+    },
+    {
+      "id": "mn-n2-gotoni",
+      "level": "N2",
+      "pattern": "〜ごとに",
+      "nameEn": "ごとに (every, at each)",
+      "descriptionEn": "Marks a regular interval.",
+      "formation": "Noun / verb dictionary form + ごとに",
+      "exampleJa": "五分ごとに来ます。",
+      "exampleEn": "It comes every five minutes."
+    },
+    {
+      "id": "mn-n1-nagara-mo",
+      "level": "N1",
+      "pattern": "〜ながらも",
+      "nameEn": "ながらも (although)",
+      "descriptionEn": "Concedes a point in written style.",
+      "formation": "Plain form / adjective + ながらも",
+      "exampleJa": "狭いながらも快適な部屋。",
+      "exampleEn": "A small but comfortable room."
+    },
+    {
+      "id": "mn-n1-to-ittemo",
+      "level": "N1",
+      "pattern": "〜といっても",
+      "nameEn": "といっても (although I say)",
+      "descriptionEn": "Qualifies a statement just made.",
+      "formation": "Plain form + といっても",
+      "exampleJa": "留学といっても一か月だけです。",
+      "exampleEn": "Although I say study abroad, it was only a month."
+    },
+    {
+      "id": "mn-n1-mo-nannmo",
+      "level": "N1",
+      "pattern": "〜もなんともない",
+      "nameEn": "〜もなにもない (nothing of the sort)",
+      "descriptionEn": "Denies a claim outright in speech.",
+      "formation": "Noun + もなにもない",
+      "exampleJa": "遠慮もなにもない。",
+      "exampleEn": "There is no question of holding back."
+    },
+    {
+      "id": "mn-n1-mono-tomo-sezu",
+      "level": "N1",
+      "pattern": "〜をものともせず",
+      "nameEn": "をものともせず (undaunted by)",
+      "descriptionEn": "Says an obstacle did not stop someone.",
+      "formation": "Noun + をものともせず",
+      "exampleJa": "嵐をものともせず出港した。",
+      "exampleEn": "They sailed out undaunted by the storm."
+    },
+    {
+      "id": "mn-n1-wo-yoso-ni",
+      "level": "N1",
+      "pattern": "〜をよそに",
+      "nameEn": "をよそに (ignoring)",
+      "descriptionEn": "Says someone acted while disregarding something.",
+      "formation": "Noun + をよそに",
+      "exampleJa": "反対をよそに計画を進めた。",
+      "exampleEn": "They pushed the plan on, ignoring the objections."
+    },
+    {
+      "id": "mn-n1-nashi-ni",
+      "level": "N1",
+      "pattern": "〜なしに",
+      "nameEn": "なしに (without)",
+      "descriptionEn": "Says an action happened without a required step.",
+      "formation": "Noun + なしに",
+      "exampleJa": "許可なしに入れません。",
+      "exampleEn": "You cannot enter without permission."
+    },
+    {
+      "id": "mn-n1-koto-naku",
+      "level": "N1",
+      "pattern": "〜ことなく",
+      "nameEn": "ことなく (without ever)",
+      "descriptionEn": "Says something never happened during an action, in written style.",
+      "formation": "Verb dictionary form + ことなく",
+      "exampleJa": "休むことなく働いた。",
+      "exampleEn": "He worked without ever resting."
+    },
+    {
+      "id": "mn-n1-ni-kagiru",
+      "level": "N1",
+      "pattern": "〜に限る",
+      "nameEn": "に限る (nothing beats)",
+      "descriptionEn": "Declares one option the best.",
+      "formation": "Noun / verb dictionary form + に限る",
+      "exampleJa": "夏はビールに限る。",
+      "exampleEn": "In summer nothing beats beer."
+    },
+    {
+      "id": "mn-n1-kiwamaru",
+      "level": "N1",
+      "pattern": "〜極まる",
+      "nameEn": "極まる (extremely)",
+      "descriptionEn": "Marks an extreme degree in formal style.",
+      "formation": "na-adjective stem + 極まる",
+      "exampleJa": "失礼極まる態度だ。",
+      "exampleEn": "It is an extremely rude attitude."
+    },
+    {
+      "id": "mn-n1-no-kiwami",
+      "level": "N1",
+      "pattern": "〜の極み",
+      "nameEn": "の極み (the height of)",
+      "descriptionEn": "Marks the utmost point of a quality.",
+      "formation": "Noun + の極み",
+      "exampleJa": "贅沢の極みだ。",
+      "exampleEn": "It is the height of luxury."
+    },
+    {
+      "id": "mn-n1-ni-taenai",
+      "level": "N1",
+      "pattern": "〜に堪えない",
+      "nameEn": "に堪えない (cannot bear to)",
+      "descriptionEn": "Says something is unbearable, in formal style.",
+      "formation": "Noun / verb dictionary form + に堪えない",
+      "exampleJa": "見るに堪えない光景。",
+      "exampleEn": "A sight one cannot bear to look at."
+    },
+    {
+      "id": "mn-n1-zuku",
+      "level": "N1",
+      "pattern": "〜ずくめ",
+      "nameEn": "ずくめ (entirely full of)",
+      "descriptionEn": "Says something consists entirely of one thing.",
+      "formation": "Noun + ずくめ",
+      "exampleJa": "黒ずくめの服装。",
+      "exampleEn": "An outfit entirely in black."
+    },
+    {
+      "id": "mn-n1-mamire",
+      "level": "N1",
+      "pattern": "〜まみれ",
+      "nameEn": "まみれ (covered in)",
+      "descriptionEn": "Says something is smeared with a substance.",
+      "formation": "Noun + まみれ",
+      "exampleJa": "泥まみれになった。",
+      "exampleEn": "He got covered in mud."
+    },
+    {
+      "id": "mn-n1-darake",
+      "level": "N1",
+      "pattern": "〜だらけ",
+      "nameEn": "だらけ (full of, negative)",
+      "descriptionEn": "Says something is riddled with an unwanted thing.",
+      "formation": "Noun + だらけ",
+      "exampleJa": "間違いだらけの文章。",
+      "exampleEn": "Writing full of mistakes."
+    },
+    {
+      "id": "mn-n1-amari",
+      "level": "N1",
+      "pattern": "〜あまり",
+      "nameEn": "あまり (out of an excess of)",
+      "descriptionEn": "Says a strong feeling caused an action.",
+      "formation": "Noun + の / plain form + あまり",
+      "exampleJa": "驚きのあまり声が出なかった。",
+      "exampleEn": "Out of sheer surprise I could not speak."
+    },
+    {
+      "id": "mn-n1-yue-ni",
+      "level": "N1",
+      "pattern": "〜ゆえに",
+      "nameEn": "ゆえに (because, literary)",
+      "descriptionEn": "Gives a reason in formal written style.",
+      "formation": "Noun / plain form + ゆえに",
+      "exampleJa": "未熟ゆえに失敗した。",
+      "exampleEn": "He failed because of inexperience."
+    },
+    {
+      "id": "mn-n1-beku",
+      "level": "N1",
+      "pattern": "〜べく",
+      "nameEn": "べく (in order to, literary)",
+      "descriptionEn": "Marks purpose in formal written style.",
+      "formation": "Verb dictionary form + べく",
+      "exampleJa": "解決すべく努力した。",
+      "exampleEn": "We made an effort in order to resolve it."
+    },
+    {
+      "id": "mn-n1-mai-shi",
+      "level": "N1",
+      "pattern": "〜まいし",
+      "nameEn": "〜まいし (it is not as if)",
+      "descriptionEn": "Rejects a premise informally.",
+      "formation": "Verb volitional + まいし",
+      "exampleJa": "子供でもあるまいし。",
+      "exampleEn": "It is not as if you were a child."
+    },
+    {
+      "id": "mn-n1-dewa-arumaishi",
+      "level": "N1",
+      "pattern": "〜ではあるまいし",
+      "nameEn": "ではあるまいし (it is not as though)",
+      "descriptionEn": "Dismisses an assumption in formal speech.",
+      "formation": "Noun + ではあるまいし",
+      "exampleJa": "初心者ではあるまいし。",
+      "exampleEn": "It is not as though you were a beginner."
+    },
+    {
+      "id": "mn-n1-to-omoikiya",
+      "level": "N1",
+      "pattern": "〜と思いきや",
+      "nameEn": "と思いきや (contrary to expectation)",
+      "descriptionEn": "Says the outcome defeated an expectation.",
+      "formation": "Plain form + と思いきや",
+      "exampleJa": "簡単と思いきや難しかった。",
+      "exampleEn": "I thought it would be easy, but it was hard."
+    },
+    {
+      "id": "mn-n1-ya-ina-ya",
+      "level": "N1",
+      "pattern": "〜や否や",
+      "nameEn": "や否や (the moment that)",
+      "descriptionEn": "Says the second event followed instantly.",
+      "formation": "Verb dictionary form + や否や",
+      "exampleJa": "着くや否や雨が降った。",
+      "exampleEn": "The moment we arrived it rained."
+    },
+    {
+      "id": "mn-n1-nari",
+      "level": "N1",
+      "pattern": "〜なり",
+      "nameEn": "なり (as soon as, literary)",
+      "descriptionEn": "Marks an immediate consequence in written style.",
+      "formation": "Verb dictionary form + なり",
+      "exampleJa": "座るなり眠った。",
+      "exampleEn": "He fell asleep as soon as he sat down."
+    },
+    {
+      "id": "mn-n1-sokusoku",
+      "level": "N1",
+      "pattern": "〜そばから",
+      "nameEn": "そばから (no sooner than)",
+      "descriptionEn": "Says the reverse happens right after each attempt.",
+      "formation": "Verb dictionary form + そばから",
+      "exampleJa": "片付けるそばから散らかす。",
+      "exampleEn": "No sooner do I tidy up than it is messy again."
+    },
+    {
+      "id": "mn-n1-tsuide",
+      "level": "N1",
+      "pattern": "〜ついでに",
+      "nameEn": "ついでに (while one is at it)",
+      "descriptionEn": "Adds a second errand to a first.",
+      "formation": "Verb dictionary / た form / noun + の + ついでに",
+      "exampleJa": "買い物のついでに寄ります。",
+      "exampleEn": "I will drop by while I am out shopping."
+    },
+    {
+      "id": "mn-n1-kagiri-da",
+      "level": "N1",
+      "pattern": "〜限りだ",
+      "nameEn": "限りだ (extremely, feeling)",
+      "descriptionEn": "States an intense feeling in formal style.",
+      "formation": "Adjective plain form + 限りだ",
+      "exampleJa": "うらやましい限りだ。",
+      "exampleEn": "I could not be more envious."
+    },
+    {
+      "id": "mn-n1-ni-taru",
+      "level": "N1",
+      "pattern": "〜に足る",
+      "nameEn": "に足る (worthy of)",
+      "descriptionEn": "Says something merits an action.",
+      "formation": "Noun / verb dictionary form + に足る",
+      "exampleJa": "信頼に足る人物。",
+      "exampleEn": "A person worthy of trust."
+    },
+    {
+      "id": "mn-n1-made-mo-nai",
+      "level": "N1",
+      "pattern": "〜までもない",
+      "nameEn": "までもない (no need to go so far as)",
+      "descriptionEn": "Says an action is unnecessary.",
+      "formation": "Verb dictionary form + までもない",
+      "exampleJa": "言うまでもない。",
+      "exampleEn": "It goes without saying."
+    },
+    {
+      "id": "mn-n1-ni-koshita-koto-wa-nai",
+      "level": "N1",
+      "pattern": "〜に越したことはない",
+      "nameEn": "に越したことはない (nothing better than)",
+      "descriptionEn": "Says one option is preferable if available.",
+      "formation": "Plain form + に越したことはない",
+      "exampleJa": "安いに越したことはない。",
+      "exampleEn": "There is nothing better than cheap."
+    },
+    {
+      "id": "mn-n1-dewa-sumanai",
+      "level": "N1",
+      "pattern": "〜では済まない",
+      "nameEn": "では済まない (cannot be settled by)",
+      "descriptionEn": "Says a measure will not be enough.",
+      "formation": "Noun / plain form + では済まない",
+      "exampleJa": "謝罪では済まない。",
+      "exampleEn": "An apology will not settle it."
+    },
+    {
+      "id": "mn-n1-nakuwa-nai",
+      "level": "N1",
+      "pattern": "〜なくはない",
+      "nameEn": "なくはない (it is not that there is none)",
+      "descriptionEn": "Concedes a small amount in a guarded way.",
+      "formation": "Verb / adjective ない form + はない",
+      "exampleJa": "興味がなくはない。",
+      "exampleEn": "It is not that I have no interest."
+    },
+    {
+      "id": "mn-n1-wo-kinshi",
+      "level": "N1",
+      "pattern": "〜を禁じ得ない",
+      "nameEn": "を禁じ得ない (cannot suppress)",
+      "descriptionEn": "Says a feeling cannot be held back, formally.",
+      "formation": "Noun + を禁じ得ない",
+      "exampleJa": "同情を禁じ得ない。",
+      "exampleEn": "I cannot suppress my sympathy."
+    },
+    {
+      "id": "mn-n1-ni-katakunai",
+      "level": "N1",
+      "pattern": "〜に難くない",
+      "nameEn": "に難くない (not hard to)",
+      "descriptionEn": "Says something is easy to imagine or guess.",
+      "formation": "Verb dictionary form + に難くない",
+      "exampleJa": "想像するに難くない。",
+      "exampleEn": "It is not hard to imagine."
+    },
+    {
+      "id": "mn-n1-goto-ki",
+      "level": "N1",
+      "pattern": "〜ごとき",
+      "nameEn": "ごとき (like, literary)",
+      "descriptionEn": "Compares in formal written style, often dismissively.",
+      "formation": "Noun + ごとき",
+      "exampleJa": "私ごとき者には無理です。",
+      "exampleEn": "It is beyond someone like me."
+    },
+    {
+      "id": "mn-n1-tarito-mo",
+      "level": "N1",
+      "pattern": "〜たりとも",
+      "nameEn": "たりとも (not even one)",
+      "descriptionEn": "Denies even the smallest amount.",
+      "formation": "Number + たりとも",
+      "exampleJa": "一日たりとも忘れない。",
+      "exampleEn": "I will not forget for even one day."
+    },
+    {
+      "id": "mn-n1-nari-tomo",
+      "level": "N1",
+      "pattern": "〜なりとも",
+      "nameEn": "〜なりとも (at least, even if only)",
+      "descriptionEn": "Offers a minimal alternative in formal style.",
+      "formation": "Noun + なりとも",
+      "exampleJa": "少しなりとも役に立ちたい。",
+      "exampleEn": "I want to help at least a little."
+    },
+    {
+      "id": "mn-n1-izure",
+      "level": "N1",
+      "pattern": "〜いかんによらず",
+      "nameEn": "いかんによらず (regardless of)",
+      "descriptionEn": "Says an outcome does not depend on a factor.",
+      "formation": "Noun + のいかんによらず",
+      "exampleJa": "理由のいかんによらず認めない。",
+      "exampleEn": "It is not accepted regardless of the reason."
+    },
+    {
+      "id": "mn-n1-mo-saru-koto-nagara",
+      "level": "N1",
+      "pattern": "〜もさることながら",
+      "nameEn": "もさることながら (to say nothing of)",
+      "descriptionEn": "Adds a second, greater point.",
+      "formation": "Noun + もさることながら",
+      "exampleJa": "味もさることながら見た目も良い。",
+      "exampleEn": "The taste aside, it also looks good."
+    },
+    {
+      "id": "mn-n1-hitotsu",
+      "level": "N1",
+      "pattern": "〜ひとつ〜ない",
+      "nameEn": "ひとつ〜ない (not even one)",
+      "descriptionEn": "Emphasises complete absence.",
+      "formation": "Noun + ひとつ + negative",
+      "exampleJa": "文句ひとつ言わない。",
+      "exampleEn": "He does not utter a single complaint."
+    },
+    {
+      "id": "mn-n1-ni-shite-hajimete",
+      "level": "N1",
+      "pattern": "〜にして初めて",
+      "nameEn": "にして初めて (only when)",
+      "descriptionEn": "Says a condition is required before something happens.",
+      "formation": "Noun + にして初めて",
+      "exampleJa": "経験してにして初めて分かる。",
+      "exampleEn": "Only when you experience it do you understand."
+    },
+    {
+      "id": "mn-n1-aru-imi",
+      "level": "N1",
+      "pattern": "〜にあって",
+      "nameEn": "にあって (in the situation of)",
+      "descriptionEn": "Marks a special circumstance in formal style.",
+      "formation": "Noun + にあって",
+      "exampleJa": "非常時にあって冷静だった。",
+      "exampleEn": "He stayed calm in the emergency."
+    },
+    {
+      "id": "mn-n1-to-aimatte",
+      "level": "N1",
+      "pattern": "〜と相まって",
+      "nameEn": "と相まって (coupled with)",
+      "descriptionEn": "Says two factors combined to produce a result.",
+      "formation": "Noun + と相まって",
+      "exampleJa": "天候と相まって混雑した。",
+      "exampleEn": "Coupled with the weather it got crowded."
+    },
+    {
+      "id": "mn-n1-kke-o-hete",
+      "level": "N1",
+      "pattern": "〜を経て",
+      "nameEn": "を経て (after passing through)",
+      "descriptionEn": "Marks a process gone through, formally.",
+      "formation": "Noun + を経て",
+      "exampleJa": "審査を経て決まった。",
+      "exampleEn": "It was decided after passing review."
+    },
+    {
+      "id": "mn-n1-ni-sokushite",
+      "level": "N1",
+      "pattern": "〜に即して",
+      "nameEn": "に即して (in conformity with)",
+      "descriptionEn": "Marks strict conformity to a standard.",
+      "formation": "Noun + に即して",
+      "exampleJa": "実情に即して判断する。",
+      "exampleEn": "We judge in conformity with the actual situation."
+    },
+    {
+      "id": "mn-n1-wo-fumaete",
+      "level": "N1",
+      "pattern": "〜を踏まえて",
+      "nameEn": "を踏まえて (on the basis of)",
+      "descriptionEn": "Marks the grounds taken into account.",
+      "formation": "Noun + を踏まえて",
+      "exampleJa": "結果を踏まえて話す。",
+      "exampleEn": "I speak on the basis of the results."
+    },
+    {
+      "id": "mn-n1-ni-shite-mo",
+      "level": "N1",
+      "pattern": "〜にしても〜にしても",
+      "nameEn": "にしても〜にしても (whether ... or)",
+      "descriptionEn": "Says the result holds in either case.",
+      "formation": "Noun + にしても (repeated)",
+      "exampleJa": "行くにしても行かないにしても連絡して。",
+      "exampleEn": "Contact me whether you go or not."
+    }
+  ]
+}

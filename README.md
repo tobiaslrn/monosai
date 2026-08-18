@@ -37,7 +37,9 @@ The development server serves the app at <http://localhost:4200/>.
 | `npm run typecheck` | TypeScript project build |
 | `npm run format` / `npm run format:check` | Prettier |
 | `npm run e2e` | Playwright desktop and Android projects |
-| `npm run verify` | Format check, lint, typecheck, tests, production build |
+| `npm run assets:verify` | Language dataset schemas, digests, and attribution (offline) |
+| `npm run assets:build` | Rebuild the language bundle from pinned sources (needs network) |
+| `npm run verify` | Format check, lint, typecheck, asset check, tests, production build |
 
 ## Architecture
 
@@ -54,10 +56,32 @@ presentation (features, shared-ui, core layout)
 - `src/app/features` — screens; they never import infrastructure directly.
 - `src/app/core` — bootstrap, routing, layout, platform facades, diagnostics.
 - `src/app/shared-ui` — bounded reusable presentation primitives.
+- `src/workers` — worker entry points and their implementations.
 
 Layer rules are enforced by ESLint (`import/no-restricted-paths`,
 `import/no-cycle`). Architectural decisions are recorded in
 [docs/decisions](docs/decisions).
+
+## Language assets
+
+Japanese analysis needs an offline bundle: the tokenizer runtime, a compact
+Japanese-English dictionary, the grammar catalog, and the structural baseline.
+They live under `public/assets/language/<version>/` next to a `manifest.json`
+that records each file's size, SHA-256 digest, licence, and attribution.
+
+- The bundle is fetched lazily, on request from Settings, and never during
+  startup. Each file is verified against its digest before use and then cached
+  under its immutable versioned URL.
+- `npm run assets:build` regenerates everything from the pinned sources in
+  `scripts/assets/sources.json` and the reviewed datasets in `data/language/`.
+  It needs network access and is the only thing that writes the bundle.
+- `npm run assets:verify` re-checks the committed bundle without network access
+  and runs in CI.
+- The tokenizer runtime is not committed: it ships from the locked npm package
+  and the Angular builder copies it into the versioned asset directory.
+
+Dataset choices, the gates they pass, and the rejected alternatives are recorded
+in [docs/decisions](docs/decisions).
 
 ## Deployment
 

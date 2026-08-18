@@ -31,6 +31,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "lindera_wasm_bg.wasm",
+                "input": "node_modules/lindera-wasm-web-ipadic",
+                "output": "assets/language/1/tokenizer"
               }
             ],
             "styles": ["src/styles.scss"],

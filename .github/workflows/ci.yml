@@ -24,6 +24,8 @@ jobs:
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
+      - name: Language dataset schema, digest, and attribution check
+        run: npm run assets:verify
       - run: npm run test:coverage
       - name: Production build
         run: npm run build:pages -- --define MONOSAI_BUILD_COMMIT='"${{ github.sha }}"'

@@ -27,11 +27,29 @@ const layerZones = [
   { target: './src/app/shared-ui', from: './src/app/infrastructure' },
   { target: './src/app/infrastructure', from: './src/app/features' },
   { target: './src/app/infrastructure', from: './src/app/core' },
+  // Workers implement infrastructure concerns and may use domain and
+  // infrastructure code, but never presentation or application layers.
+  { target: './src/app/domain', from: './src/workers' },
+  { target: './src/app/application', from: './src/workers' },
+  { target: './src/app/features', from: './src/workers' },
+  { target: './src/app/shared-ui', from: './src/workers' },
+  { target: './src/app/infrastructure', from: './src/workers' },
+  { target: './src/workers', from: './src/app/features' },
+  { target: './src/workers', from: './src/app/core' },
+  { target: './src/workers', from: './src/app/application' },
 ];
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'coverage/**', '.angular/**', 'playwright-report/**', 'test-results/**'],
+    ignores: [
+      'dist/**',
+      'coverage/**',
+      '.angular/**',
+      'out-tsc/**',
+      '.asset-cache/**',
+      'playwright-report/**',
+      'test-results/**',
+    ],
   },
   {
     files: ['**/*.ts'],

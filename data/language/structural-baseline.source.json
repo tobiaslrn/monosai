@@ -1,0 +1,1692 @@
+{
+  "$comment": "Monosai structural baseline source. Sentence-building forms only: no general content nouns, verbs, or adjectives. Built by scripts/assets/build-structural-baseline.mjs.",
+  "version": "1.0.0",
+  "entries": [
+    {
+      "id": "sb-particle-ga",
+      "category": "particle",
+      "forms": ["が"],
+      "readings": ["が"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "が (subject marker)",
+      "descriptionEn": "Marks the grammatical subject of a clause.",
+      "exampleJa": "猫が寝ている。"
+    },
+    {
+      "id": "sb-particle-wo",
+      "category": "particle",
+      "forms": ["を"],
+      "readings": ["を"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "を (object marker)",
+      "descriptionEn": "Marks the direct object of a verb.",
+      "exampleJa": "本を読む。"
+    },
+    {
+      "id": "sb-particle-ni",
+      "category": "particle",
+      "forms": ["に"],
+      "readings": ["に"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "に (target, place, time)",
+      "descriptionEn": "Marks a destination, indirect object, point in time, or resulting state.",
+      "exampleJa": "七時に起きる。"
+    },
+    {
+      "id": "sb-particle-de",
+      "category": "particle",
+      "forms": ["で"],
+      "readings": ["で"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "で (means, place of action)",
+      "descriptionEn": "Marks the means, material, cause, or the place where an action happens.",
+      "exampleJa": "バスで行く。"
+    },
+    {
+      "id": "sb-particle-to",
+      "category": "particle",
+      "forms": ["と"],
+      "readings": ["と"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "と (with, and, quotation)",
+      "descriptionEn": "Joins nouns, marks a companion, and introduces quoted speech or thought.",
+      "exampleJa": "友だちと話す。"
+    },
+    {
+      "id": "sb-particle-he",
+      "category": "particle",
+      "forms": ["へ"],
+      "readings": ["へ"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "へ (direction)",
+      "descriptionEn": "Marks the direction an action moves towards.",
+      "exampleJa": "駅へ歩く。"
+    },
+    {
+      "id": "sb-particle-kara",
+      "category": "particle",
+      "forms": ["から"],
+      "readings": ["から"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "から (from, because)",
+      "descriptionEn": "Marks a starting point in space or time, and gives a reason.",
+      "exampleJa": "家から出る。"
+    },
+    {
+      "id": "sb-particle-made",
+      "category": "particle",
+      "forms": ["まで"],
+      "readings": ["まで"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "まで (until, as far as)",
+      "descriptionEn": "Marks the end point of a range in space, time, or degree.",
+      "exampleJa": "駅まで走る。"
+    },
+    {
+      "id": "sb-particle-yori",
+      "category": "particle",
+      "forms": ["より"],
+      "readings": ["より"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "より (than, from)",
+      "descriptionEn": "Marks the standard of comparison, or a formal starting point.",
+      "exampleJa": "思ったより早い。"
+    },
+    {
+      "id": "sb-particle-no",
+      "category": "particle",
+      "forms": ["の"],
+      "readings": ["の"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "の (linking and nominalising)",
+      "descriptionEn": "Links nouns as a modifier, stands in for a noun, and nominalises clauses.",
+      "exampleJa": "私の本。"
+    },
+    {
+      "id": "sb-particle-wa",
+      "category": "particle",
+      "forms": ["は"],
+      "readings": ["は"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "は (topic marker)",
+      "descriptionEn": "Marks the topic of the sentence and sets up contrast.",
+      "exampleJa": "私は学生です。"
+    },
+    {
+      "id": "sb-particle-mo",
+      "category": "particle",
+      "forms": ["も"],
+      "readings": ["も"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "も (also, even)",
+      "descriptionEn": "Adds the sense of also or even to the marked element.",
+      "exampleJa": "私も行く。"
+    },
+    {
+      "id": "sb-particle-koso",
+      "category": "particle",
+      "forms": ["こそ"],
+      "readings": ["こそ"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "こそ (emphasis)",
+      "descriptionEn": "Singles the marked element out for emphasis.",
+      "exampleJa": "今日こそ書く。"
+    },
+    {
+      "id": "sb-particle-sae",
+      "category": "particle",
+      "forms": ["さえ"],
+      "readings": ["さえ"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "さえ (even)",
+      "descriptionEn": "Marks a surprising or extreme example.",
+      "exampleJa": "水さえない。"
+    },
+    {
+      "id": "sb-particle-shika",
+      "category": "particle",
+      "forms": ["しか"],
+      "readings": ["しか"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "しか (nothing but)",
+      "descriptionEn": "Limits to the marked element and takes a negative predicate.",
+      "exampleJa": "水しかない。"
+    },
+    {
+      "id": "sb-particle-dake",
+      "category": "particle",
+      "forms": ["だけ"],
+      "readings": ["だけ"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "だけ (only)",
+      "descriptionEn": "Limits the marked element to just that much.",
+      "exampleJa": "少しだけ食べる。"
+    },
+    {
+      "id": "sb-particle-bakari",
+      "category": "particle",
+      "forms": ["ばかり"],
+      "readings": ["ばかり"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "ばかり (just, nothing but)",
+      "descriptionEn": "Marks an approximate amount, an exclusive focus, or something just completed.",
+      "exampleJa": "寝てばかりいる。"
+    },
+    {
+      "id": "sb-particle-hodo",
+      "category": "particle",
+      "forms": ["ほど"],
+      "readings": ["ほど"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "ほど (extent)",
+      "descriptionEn": "Marks an extent or a standard of comparison.",
+      "exampleJa": "泣くほど痛い。"
+    },
+    {
+      "id": "sb-particle-kurai",
+      "category": "particle",
+      "forms": ["くらい", "ぐらい"],
+      "readings": ["くらい", "ぐらい"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "くらい / ぐらい (approximate extent)",
+      "descriptionEn": "Marks an approximate amount or a low degree.",
+      "exampleJa": "一時間くらい待つ。"
+    },
+    {
+      "id": "sb-particle-nado",
+      "category": "particle",
+      "forms": ["など"],
+      "readings": ["など"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "など (and so on)",
+      "descriptionEn": "Marks a list as non-exhaustive.",
+      "exampleJa": "本など買う。"
+    },
+    {
+      "id": "sb-particle-toka",
+      "category": "particle",
+      "forms": ["とか"],
+      "readings": ["とか"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "とか (things like)",
+      "descriptionEn": "Lists examples informally.",
+      "exampleJa": "パンとか卵を買う。"
+    },
+    {
+      "id": "sb-particle-yara",
+      "category": "particle",
+      "forms": ["やら"],
+      "readings": ["やら"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "やら (listing uncertainty)",
+      "descriptionEn": "Lists uncertain or mixed alternatives.",
+      "exampleJa": "何やら聞こえる。"
+    },
+    {
+      "id": "sb-particle-ya",
+      "category": "particle",
+      "forms": ["や"],
+      "readings": ["や"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "や (non-exhaustive and)",
+      "descriptionEn": "Joins nouns as an incomplete list.",
+      "exampleJa": "本やペンがある。"
+    },
+    {
+      "id": "sb-particle-zutsu",
+      "category": "particle",
+      "forms": ["ずつ"],
+      "readings": ["ずつ"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "ずつ (each, apiece)",
+      "descriptionEn": "Distributes an amount evenly.",
+      "exampleJa": "少しずつ進む。"
+    },
+    {
+      "id": "sb-particle-ka",
+      "category": "particle",
+      "forms": ["か"],
+      "readings": ["か"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "か (question, alternatives)",
+      "descriptionEn": "Turns a clause into a question and joins alternatives.",
+      "exampleJa": "行きますか。"
+    },
+    {
+      "id": "sb-particle-ne",
+      "category": "particle",
+      "forms": ["ね"],
+      "readings": ["ね"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "ね (seeking agreement)",
+      "descriptionEn": "Invites agreement or confirmation.",
+      "exampleJa": "寒いですね。"
+    },
+    {
+      "id": "sb-particle-yo",
+      "category": "particle",
+      "forms": ["よ"],
+      "readings": ["よ"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "よ (assertion)",
+      "descriptionEn": "Presents information the listener may not already know.",
+      "exampleJa": "来ますよ。"
+    },
+    {
+      "id": "sb-particle-na",
+      "category": "particle",
+      "forms": ["な"],
+      "readings": ["な"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "な (informal ending, prohibition)",
+      "descriptionEn": "Softens an informal statement, or forbids an action.",
+      "exampleJa": "静かにするな。"
+    },
+    {
+      "id": "sb-particle-wa-soft",
+      "category": "particle",
+      "forms": ["わ"],
+      "readings": ["わ"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "わ (soft assertion)",
+      "descriptionEn": "Adds a soft, personal tone to a statement.",
+      "exampleJa": "そうだわ。"
+    },
+    {
+      "id": "sb-particle-zo",
+      "category": "particle",
+      "forms": ["ぞ"],
+      "readings": ["ぞ"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "ぞ (forceful ending)",
+      "descriptionEn": "Adds forceful emphasis in casual speech.",
+      "exampleJa": "行くぞ。"
+    },
+    {
+      "id": "sb-particle-ze",
+      "category": "particle",
+      "forms": ["ぜ"],
+      "readings": ["ぜ"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "ぜ (forceful ending)",
+      "descriptionEn": "Adds casual, forceful emphasis.",
+      "exampleJa": "やるぜ。"
+    },
+    {
+      "id": "sb-particle-sa",
+      "category": "particle",
+      "forms": ["さ"],
+      "readings": ["さ"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "さ (casual ending)",
+      "descriptionEn": "Adds a casual, offhand tone to a statement.",
+      "exampleJa": "知らないさ。"
+    },
+    {
+      "id": "sb-particle-te",
+      "category": "particle",
+      "forms": ["て", "で"],
+      "readings": ["て", "で"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "て (clause connector)",
+      "descriptionEn": "Joins clauses in sequence, cause, or manner.",
+      "exampleJa": "起きて食べる。"
+    },
+    {
+      "id": "sb-particle-ba",
+      "category": "particle",
+      "forms": ["ば"],
+      "readings": ["ば"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "ば (conditional)",
+      "descriptionEn": "Marks a conditional clause.",
+      "exampleJa": "行けば分かる。"
+    },
+    {
+      "id": "sb-particle-kedo",
+      "category": "particle",
+      "forms": ["けど", "けれど", "けれども"],
+      "readings": ["けど", "けれど", "けれども"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "けど / けれども (but)",
+      "descriptionEn": "Joins clauses with contrast.",
+      "exampleJa": "高いけど買う。"
+    },
+    {
+      "id": "sb-particle-noni",
+      "category": "particle",
+      "forms": ["のに"],
+      "readings": ["のに"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "のに (even though)",
+      "descriptionEn": "Joins clauses with unexpected contrast.",
+      "exampleJa": "寒いのに出る。"
+    },
+    {
+      "id": "sb-particle-node",
+      "category": "particle",
+      "forms": ["ので"],
+      "readings": ["ので"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "ので (because)",
+      "descriptionEn": "Gives a reason in a neutral tone.",
+      "exampleJa": "雨なので休む。"
+    },
+    {
+      "id": "sb-particle-nagara",
+      "category": "particle",
+      "forms": ["ながら"],
+      "readings": ["ながら"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "ながら (while)",
+      "descriptionEn": "Marks two simultaneous actions.",
+      "exampleJa": "歌いながら歩く。"
+    },
+    {
+      "id": "sb-particle-tari",
+      "category": "particle",
+      "forms": ["たり"],
+      "readings": ["たり"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "たり (listing actions)",
+      "descriptionEn": "Lists representative alternating actions.",
+      "exampleJa": "読んだり書いたりする。"
+    },
+    {
+      "id": "sb-particle-shi",
+      "category": "particle",
+      "forms": ["し"],
+      "readings": ["し"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "し (and moreover)",
+      "descriptionEn": "Adds a further reason or quality.",
+      "exampleJa": "安いし早い。"
+    },
+    {
+      "id": "sb-particle-temo",
+      "category": "particle",
+      "forms": ["ても", "でも"],
+      "readings": ["ても", "でも"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "ても (even if)",
+      "descriptionEn": "Marks a concession or an irrelevant condition.",
+      "exampleJa": "雨でも行く。"
+    },
+    {
+      "id": "sb-particle-tte",
+      "category": "particle",
+      "forms": ["って"],
+      "readings": ["って"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "って (casual quotation, topic)",
+      "descriptionEn": "Quotes speech or introduces a topic in casual speech.",
+      "exampleJa": "行くって言った。"
+    },
+    {
+      "id": "sb-particle-nomi",
+      "category": "particle",
+      "forms": ["のみ"],
+      "readings": ["のみ"],
+      "partsOfSpeech": ["particle"],
+      "nameEn": "のみ (only, formal)",
+      "descriptionEn": "Limits to the marked element in formal writing.",
+      "exampleJa": "会員のみ入れる。"
+    },
+    {
+      "id": "sb-copula-da",
+      "category": "copula",
+      "forms": ["だ"],
+      "readings": ["だ"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "だ (plain copula)",
+      "descriptionEn": "Plain-form copula asserting that something is the case.",
+      "exampleJa": "学生だ。"
+    },
+    {
+      "id": "sb-copula-desu",
+      "category": "copula",
+      "forms": ["です"],
+      "readings": ["です"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "です (polite copula)",
+      "descriptionEn": "Polite copula, also inflecting to でしょう and でした.",
+      "exampleJa": "学生です。"
+    },
+    {
+      "id": "sb-copula-dearu",
+      "category": "copula",
+      "forms": ["である"],
+      "readings": ["である"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "である (written copula)",
+      "descriptionEn": "Formal written copula used in essays and reports.",
+      "exampleJa": "事実である。"
+    },
+    {
+      "id": "sb-copula-ja",
+      "category": "copula",
+      "forms": ["じゃ"],
+      "readings": ["じゃ"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "じゃ (contracted copula)",
+      "descriptionEn": "Contraction of では, used before negatives in speech.",
+      "exampleJa": "学生じゃない。"
+    },
+    {
+      "id": "sb-aux-masu",
+      "category": "auxiliary",
+      "forms": ["ます"],
+      "readings": ["ます"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "ます (polite verb ending)",
+      "descriptionEn": "Makes a verb polite, inflecting to ません, ました, and ましょう.",
+      "exampleJa": "行きます。"
+    },
+    {
+      "id": "sb-aux-ta",
+      "category": "auxiliary",
+      "forms": ["た"],
+      "readings": ["た"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "た (past and completion)",
+      "descriptionEn": "Marks past tense or a completed state.",
+      "exampleJa": "食べた。"
+    },
+    {
+      "id": "sb-aux-nai",
+      "category": "auxiliary",
+      "forms": ["ない"],
+      "readings": ["ない"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "ない (negation)",
+      "descriptionEn": "Negates a verb or auxiliary, inflecting to なく and なかっ.",
+      "exampleJa": "行かない。"
+    },
+    {
+      "id": "sb-aux-nu",
+      "category": "auxiliary",
+      "forms": ["ぬ", "ん"],
+      "readings": ["ぬ", "ん"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "ぬ / ん (literary negation)",
+      "descriptionEn": "Literary or contracted negation.",
+      "exampleJa": "行かぬ。"
+    },
+    {
+      "id": "sb-aux-tai",
+      "category": "auxiliary",
+      "forms": ["たい"],
+      "readings": ["たい"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "たい (want to)",
+      "descriptionEn": "Expresses the speaker own desire to act.",
+      "exampleJa": "食べたい。"
+    },
+    {
+      "id": "sb-aux-u",
+      "category": "auxiliary",
+      "forms": ["う", "よう"],
+      "readings": ["う", "よう"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "う / よう (volitional)",
+      "descriptionEn": "Expresses intention, invitation, or conjecture.",
+      "exampleJa": "行こう。"
+    },
+    {
+      "id": "sb-aux-rashii",
+      "category": "auxiliary",
+      "forms": ["らしい"],
+      "readings": ["らしい"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "らしい (apparently)",
+      "descriptionEn": "Reports something inferred from outside evidence.",
+      "exampleJa": "休みらしい。"
+    },
+    {
+      "id": "sb-aux-souda",
+      "category": "auxiliary",
+      "forms": ["そうだ"],
+      "readings": ["そうだ"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "そうだ (hearsay, appearance)",
+      "descriptionEn": "Reports hearsay or describes an appearance.",
+      "exampleJa": "降りそうだ。"
+    },
+    {
+      "id": "sb-aux-youda",
+      "category": "auxiliary",
+      "forms": ["ようだ"],
+      "readings": ["ようだ"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "ようだ (seems)",
+      "descriptionEn": "States a resemblance or an impression.",
+      "exampleJa": "眠いようだ。"
+    },
+    {
+      "id": "sb-aux-mai",
+      "category": "auxiliary",
+      "forms": ["まい"],
+      "readings": ["まい"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "まい (negative volition)",
+      "descriptionEn": "Literary negative intention or conjecture.",
+      "exampleJa": "二度と行くまい。"
+    },
+    {
+      "id": "sb-aux-iru",
+      "category": "auxiliary",
+      "forms": ["いる", "おる"],
+      "readings": ["いる", "おる"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "ている (progressive, resulting state)",
+      "descriptionEn": "Helper verb marking an ongoing action or a resulting state.",
+      "exampleJa": "走っている。"
+    },
+    {
+      "id": "sb-aux-aru",
+      "category": "auxiliary",
+      "forms": ["ある"],
+      "readings": ["ある"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "てある (prepared state)",
+      "descriptionEn": "Helper verb marking a state left in place on purpose.",
+      "exampleJa": "書いてある。"
+    },
+    {
+      "id": "sb-aux-oku",
+      "category": "auxiliary",
+      "forms": ["おく"],
+      "readings": ["おく"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "ておく (do in advance)",
+      "descriptionEn": "Helper verb marking preparation for later.",
+      "exampleJa": "買っておく。"
+    },
+    {
+      "id": "sb-aux-shimau",
+      "category": "auxiliary",
+      "forms": ["しまう", "ちまう"],
+      "readings": ["しまう", "ちまう"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "てしまう (completion, regret)",
+      "descriptionEn": "Helper verb marking completion, often with regret.",
+      "exampleJa": "忘れてしまう。"
+    },
+    {
+      "id": "sb-aux-kuru",
+      "category": "auxiliary",
+      "forms": ["くる"],
+      "readings": ["くる"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "てくる (motion towards, gradual change)",
+      "descriptionEn": "Helper verb marking motion towards the speaker or gradual change.",
+      "exampleJa": "歩いてくる。"
+    },
+    {
+      "id": "sb-aux-iku",
+      "category": "auxiliary",
+      "forms": ["いく", "ゆく"],
+      "readings": ["いく", "ゆく"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "ていく (motion away, continuation)",
+      "descriptionEn": "Helper verb marking motion away or continuing change.",
+      "exampleJa": "歩いていく。"
+    },
+    {
+      "id": "sb-aux-miru",
+      "category": "auxiliary",
+      "forms": ["みる"],
+      "readings": ["みる"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "てみる (try doing)",
+      "descriptionEn": "Helper verb marking an attempt.",
+      "exampleJa": "食べてみる。"
+    },
+    {
+      "id": "sb-aux-morau",
+      "category": "auxiliary",
+      "forms": ["もらう", "いただく"],
+      "readings": ["もらう", "いただく"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "てもらう (receive an action)",
+      "descriptionEn": "Helper verb marking an action received as a favour.",
+      "exampleJa": "教えてもらう。"
+    },
+    {
+      "id": "sb-aux-kureru",
+      "category": "auxiliary",
+      "forms": ["くれる", "くださる"],
+      "readings": ["くれる", "くださる"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "てくれる (someone does for me)",
+      "descriptionEn": "Helper verb marking an action done for the speaker.",
+      "exampleJa": "貸してくれる。"
+    },
+    {
+      "id": "sb-aux-ageru",
+      "category": "auxiliary",
+      "forms": ["あげる", "やる", "さしあげる"],
+      "readings": ["あげる", "やる", "さしあげる"],
+      "partsOfSpeech": ["auxiliary"],
+      "nameEn": "てあげる (do for someone)",
+      "descriptionEn": "Helper verb marking an action done for someone else.",
+      "exampleJa": "作ってあげる。"
+    },
+    {
+      "id": "sb-infl-reru",
+      "category": "inflection",
+      "forms": ["れる", "られる"],
+      "readings": ["れる", "られる"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "れる / られる (passive, potential)",
+      "descriptionEn": "Productive ending forming passive and potential verbs.",
+      "exampleJa": "食べられる。"
+    },
+    {
+      "id": "sb-infl-seru",
+      "category": "inflection",
+      "forms": ["せる", "させる"],
+      "readings": ["せる", "させる"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "せる / させる (causative)",
+      "descriptionEn": "Productive ending forming causative verbs.",
+      "exampleJa": "行かせる。"
+    },
+    {
+      "id": "sb-infl-tagaru",
+      "category": "inflection",
+      "forms": ["たがる"],
+      "readings": ["たがる"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "たがる (someone else wants to)",
+      "descriptionEn": "Productive ending describing another person desire to act.",
+      "exampleJa": "行きたがる。"
+    },
+    {
+      "id": "sb-infl-garu",
+      "category": "inflection",
+      "forms": ["がる"],
+      "readings": ["がる"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "がる (show signs of)",
+      "descriptionEn": "Productive ending turning a feeling word into observable behaviour.",
+      "exampleJa": "寒がる。"
+    },
+    {
+      "id": "sb-infl-sa",
+      "category": "inflection",
+      "forms": ["さ"],
+      "readings": ["さ"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "さ (nominalising suffix)",
+      "descriptionEn": "Turns an adjective into a noun of degree.",
+      "exampleJa": "高さ。"
+    },
+    {
+      "id": "sb-infl-me",
+      "category": "inflection",
+      "forms": ["目"],
+      "readings": ["め"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "目 (ordinal suffix)",
+      "descriptionEn": "Turns a number into an ordinal.",
+      "exampleJa": "三番目。"
+    },
+    {
+      "id": "sb-infl-teki",
+      "category": "inflection",
+      "forms": ["的"],
+      "readings": ["てき"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "的 (adjectival suffix)",
+      "descriptionEn": "Turns a noun into a na-adjective meaning -ic or -al.",
+      "exampleJa": "文化的。"
+    },
+    {
+      "id": "sb-infl-ka",
+      "category": "inflection",
+      "forms": ["化"],
+      "readings": ["か"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "化 (transformation suffix)",
+      "descriptionEn": "Turns a noun into a process of becoming.",
+      "exampleJa": "近代化。"
+    },
+    {
+      "id": "sb-infl-sei",
+      "category": "inflection",
+      "forms": ["性"],
+      "readings": ["せい"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "性 (property suffix)",
+      "descriptionEn": "Turns a noun into an abstract property.",
+      "exampleJa": "可能性。"
+    },
+    {
+      "id": "sb-infl-chuu",
+      "category": "inflection",
+      "forms": ["中"],
+      "readings": ["ちゅう"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "中 (during, throughout)",
+      "descriptionEn": "Marks an ongoing period or a whole extent.",
+      "exampleJa": "仕事中。"
+    },
+    {
+      "id": "sb-infl-goro",
+      "category": "inflection",
+      "forms": ["頃", "ごろ"],
+      "readings": ["ごろ", "ころ"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "ごろ (around a time)",
+      "descriptionEn": "Marks an approximate point in time.",
+      "exampleJa": "三時頃。"
+    },
+    {
+      "id": "sb-infl-sugi",
+      "category": "inflection",
+      "forms": ["過ぎ"],
+      "readings": ["すぎ"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "過ぎ (past, too much)",
+      "descriptionEn": "Marks a time just past or an excess.",
+      "exampleJa": "八時過ぎ。"
+    },
+    {
+      "id": "sb-infl-tachi",
+      "category": "inflection",
+      "forms": ["達", "たち"],
+      "readings": ["たち"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "たち (plural for people)",
+      "descriptionEn": "Makes a person noun plural.",
+      "exampleJa": "子供たち。"
+    },
+    {
+      "id": "sb-infl-ra",
+      "category": "inflection",
+      "forms": ["等", "ら"],
+      "readings": ["ら"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "ら (informal plural)",
+      "descriptionEn": "Makes a pronoun or person noun plural informally.",
+      "exampleJa": "僕ら。"
+    },
+    {
+      "id": "sb-infl-gata",
+      "category": "inflection",
+      "forms": ["方"],
+      "readings": ["がた"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "方 (polite plural)",
+      "descriptionEn": "Polite plural suffix for groups of people.",
+      "exampleJa": "先生方。"
+    },
+    {
+      "id": "sb-affix-o",
+      "category": "affix",
+      "forms": ["お", "御"],
+      "readings": ["お"],
+      "partsOfSpeech": ["prefix"],
+      "nameEn": "お (honorific prefix)",
+      "descriptionEn": "Adds politeness to a noun or verb stem.",
+      "exampleJa": "お名前。"
+    },
+    {
+      "id": "sb-affix-go",
+      "category": "affix",
+      "forms": ["ご"],
+      "readings": ["ご"],
+      "partsOfSpeech": ["prefix"],
+      "nameEn": "ご (honorific prefix)",
+      "descriptionEn": "Adds politeness, usually to Sino-Japanese nouns.",
+      "exampleJa": "ご家族。"
+    },
+    {
+      "id": "sb-affix-dai",
+      "category": "affix",
+      "forms": ["第"],
+      "readings": ["だい"],
+      "partsOfSpeech": ["prefix"],
+      "nameEn": "第 (ordinal prefix)",
+      "descriptionEn": "Forms ordinals in front of a number.",
+      "exampleJa": "第一課。"
+    },
+    {
+      "id": "sb-affix-name-suffix",
+      "category": "affix",
+      "forms": ["さん", "様", "さま", "君", "くん", "ちゃん"],
+      "readings": ["さん", "さま", "くん", "ちゃん"],
+      "partsOfSpeech": ["suffix"],
+      "nameEn": "さん / さま / くん / ちゃん (name suffixes)",
+      "descriptionEn": "Politeness suffixes attached to a person name.",
+      "exampleJa": "田中さん。"
+    },
+    {
+      "id": "sb-conj-soshite",
+      "category": "conjunction",
+      "forms": ["そして"],
+      "readings": ["そして"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "そして (and then)",
+      "descriptionEn": "Connects sentences in sequence.",
+      "exampleJa": "そして帰った。"
+    },
+    {
+      "id": "sb-conj-shikashi",
+      "category": "conjunction",
+      "forms": ["しかし"],
+      "readings": ["しかし"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "しかし (however)",
+      "descriptionEn": "Connects sentences with contrast.",
+      "exampleJa": "しかし高い。"
+    },
+    {
+      "id": "sb-conj-demo",
+      "category": "conjunction",
+      "forms": ["でも"],
+      "readings": ["でも"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "でも (but, informal)",
+      "descriptionEn": "Connects sentences with informal contrast.",
+      "exampleJa": "でも行きたい。"
+    },
+    {
+      "id": "sb-conj-dakara",
+      "category": "conjunction",
+      "forms": ["だから", "ですから"],
+      "readings": ["だから", "ですから"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "だから (therefore)",
+      "descriptionEn": "Presents the following sentence as a result.",
+      "exampleJa": "だから急ぐ。"
+    },
+    {
+      "id": "sb-conj-mata",
+      "category": "conjunction",
+      "forms": ["また"],
+      "readings": ["また"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "また (also, again)",
+      "descriptionEn": "Adds a further point or repetition.",
+      "exampleJa": "また来ます。"
+    },
+    {
+      "id": "sb-conj-matawa",
+      "category": "conjunction",
+      "forms": ["または", "もしくは"],
+      "readings": ["または", "もしくは"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "または (or)",
+      "descriptionEn": "Offers an alternative.",
+      "exampleJa": "または明日。"
+    },
+    {
+      "id": "sb-conj-sorede",
+      "category": "conjunction",
+      "forms": ["それで"],
+      "readings": ["それで"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "それで (and so)",
+      "descriptionEn": "Presents a consequence.",
+      "exampleJa": "それで遅れた。"
+    },
+    {
+      "id": "sb-conj-sorekara",
+      "category": "conjunction",
+      "forms": ["それから"],
+      "readings": ["それから"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "それから (after that)",
+      "descriptionEn": "Marks the next step in a sequence.",
+      "exampleJa": "それから寝た。"
+    },
+    {
+      "id": "sb-conj-tsumari",
+      "category": "conjunction",
+      "forms": ["つまり"],
+      "readings": ["つまり"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "つまり (in other words)",
+      "descriptionEn": "Restates the previous point more plainly.",
+      "exampleJa": "つまり無理だ。"
+    },
+    {
+      "id": "sb-conj-tokoroga",
+      "category": "conjunction",
+      "forms": ["ところが"],
+      "readings": ["ところが"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "ところが (and yet)",
+      "descriptionEn": "Introduces an unexpected turn.",
+      "exampleJa": "ところが誰もいない。"
+    },
+    {
+      "id": "sb-conj-nazenara",
+      "category": "conjunction",
+      "forms": ["なぜなら"],
+      "readings": ["なぜなら"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "なぜなら (because)",
+      "descriptionEn": "Introduces an explicit reason.",
+      "exampleJa": "なぜなら遠いからだ。"
+    },
+    {
+      "id": "sb-conj-ga",
+      "category": "conjunction",
+      "forms": ["が"],
+      "readings": ["が"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "が (but, sentence initial)",
+      "descriptionEn": "Joins sentences with mild contrast.",
+      "exampleJa": "が、行けない。"
+    },
+    {
+      "id": "sb-conj-soreni",
+      "category": "conjunction",
+      "forms": ["それに"],
+      "readings": ["それに"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "それに (besides)",
+      "descriptionEn": "Adds a further reason or item.",
+      "exampleJa": "それに安い。"
+    },
+    {
+      "id": "sb-conj-suruto",
+      "category": "conjunction",
+      "forms": ["すると"],
+      "readings": ["すると"],
+      "partsOfSpeech": ["conjunction"],
+      "nameEn": "すると (thereupon)",
+      "descriptionEn": "Marks what happened next as a result.",
+      "exampleJa": "すると鳴った。"
+    },
+    {
+      "id": "sb-formal-koto",
+      "category": "formal-noun",
+      "forms": ["こと", "事"],
+      "readings": ["こと"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "こと (nominaliser)",
+      "descriptionEn": "Turns a clause into an abstract noun.",
+      "exampleJa": "行くことにする。"
+    },
+    {
+      "id": "sb-formal-mono",
+      "category": "formal-noun",
+      "forms": ["もの", "物"],
+      "readings": ["もの"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "もの (thing, explanatory)",
+      "descriptionEn": "Nominalises a clause or states a general truth.",
+      "exampleJa": "若いものだ。"
+    },
+    {
+      "id": "sb-formal-tame",
+      "category": "formal-noun",
+      "forms": ["ため", "為"],
+      "readings": ["ため"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "ため (purpose, cause)",
+      "descriptionEn": "Marks a purpose or a cause.",
+      "exampleJa": "健康のため。"
+    },
+    {
+      "id": "sb-formal-toki",
+      "category": "formal-noun",
+      "forms": ["とき", "時"],
+      "readings": ["とき"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "とき (when)",
+      "descriptionEn": "Marks the time at which something happens.",
+      "exampleJa": "子供の時。"
+    },
+    {
+      "id": "sb-formal-tokoro",
+      "category": "formal-noun",
+      "forms": ["ところ", "所"],
+      "readings": ["ところ"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "ところ (point, just about to)",
+      "descriptionEn": "Marks a point in an action or an abstract place.",
+      "exampleJa": "出るところだ。"
+    },
+    {
+      "id": "sb-formal-hazu",
+      "category": "formal-noun",
+      "forms": ["はず"],
+      "readings": ["はず"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "はず (expectation)",
+      "descriptionEn": "States a reasoned expectation.",
+      "exampleJa": "来るはずだ。"
+    },
+    {
+      "id": "sb-formal-tsumori",
+      "category": "formal-noun",
+      "forms": ["つもり"],
+      "readings": ["つもり"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "つもり (intention)",
+      "descriptionEn": "States a plan or intention.",
+      "exampleJa": "行くつもりだ。"
+    },
+    {
+      "id": "sb-formal-wake",
+      "category": "formal-noun",
+      "forms": ["わけ", "訳"],
+      "readings": ["わけ"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "わけ (reason, conclusion)",
+      "descriptionEn": "Marks a reason or a natural conclusion.",
+      "exampleJa": "そういうわけだ。"
+    },
+    {
+      "id": "sb-formal-you",
+      "category": "formal-noun",
+      "forms": ["よう", "様"],
+      "readings": ["よう"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "よう (manner, appearance)",
+      "descriptionEn": "Marks a manner, appearance, or comparison.",
+      "exampleJa": "雨のよう。"
+    },
+    {
+      "id": "sb-formal-hou",
+      "category": "formal-noun",
+      "forms": ["ほう", "方"],
+      "readings": ["ほう"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "ほう (side, alternative)",
+      "descriptionEn": "Marks one side of a comparison.",
+      "exampleJa": "こちらのほう。"
+    },
+    {
+      "id": "sb-formal-uchi",
+      "category": "formal-noun",
+      "forms": ["うち", "内"],
+      "readings": ["うち"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "うち (within, while)",
+      "descriptionEn": "Marks a period or range within which something holds.",
+      "exampleJa": "若いうち。"
+    },
+    {
+      "id": "sb-formal-toori",
+      "category": "formal-noun",
+      "forms": ["とおり", "通り"],
+      "readings": ["とおり"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "とおり (just as)",
+      "descriptionEn": "Marks conformity to something already stated.",
+      "exampleJa": "言ったとおり。"
+    },
+    {
+      "id": "sb-formal-kagiri",
+      "category": "formal-noun",
+      "forms": ["かぎり", "限り"],
+      "readings": ["かぎり"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "かぎり (as far as, limit)",
+      "descriptionEn": "Marks the limit or extent of something.",
+      "exampleJa": "知る限り。"
+    },
+    {
+      "id": "sb-formal-mama",
+      "category": "formal-noun",
+      "forms": ["まま"],
+      "readings": ["まま"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "まま (unchanged state)",
+      "descriptionEn": "Marks a state left exactly as it is.",
+      "exampleJa": "そのまま。"
+    },
+    {
+      "id": "sb-formal-ippou",
+      "category": "formal-noun",
+      "forms": ["一方"],
+      "readings": ["いっぽう"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "一方 (on the other hand)",
+      "descriptionEn": "Marks one of two contrasted sides.",
+      "exampleJa": "その一方。"
+    },
+    {
+      "id": "sb-formal-no",
+      "category": "formal-noun",
+      "forms": ["の"],
+      "readings": ["の"],
+      "partsOfSpeech": ["noun"],
+      "nameEn": "の (nominalised clause)",
+      "descriptionEn": "Stands in for a noun after a modifying clause.",
+      "exampleJa": "走るのが好き。"
+    },
+    {
+      "id": "sb-counter-ko",
+      "category": "counter",
+      "forms": ["個"],
+      "readings": ["こ"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "個 (counter for general small objects)",
+      "descriptionEn": "Counter used after a number for general small objects."
+    },
+    {
+      "id": "sb-counter-hon",
+      "category": "counter",
+      "forms": ["本"],
+      "readings": ["ほん"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "本 (counter for long thin objects)",
+      "descriptionEn": "Counter used after a number for long thin objects."
+    },
+    {
+      "id": "sb-counter-mai",
+      "category": "counter",
+      "forms": ["枚"],
+      "readings": ["まい"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "枚 (counter for flat thin objects)",
+      "descriptionEn": "Counter used after a number for flat thin objects."
+    },
+    {
+      "id": "sb-counter-nin",
+      "category": "counter",
+      "forms": ["人"],
+      "readings": ["にん"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "人 (counter for people)",
+      "descriptionEn": "Counter used after a number for people."
+    },
+    {
+      "id": "sb-counter-hiki",
+      "category": "counter",
+      "forms": ["匹"],
+      "readings": ["ひき"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "匹 (counter for small animals)",
+      "descriptionEn": "Counter used after a number for small animals."
+    },
+    {
+      "id": "sb-counter-tou",
+      "category": "counter",
+      "forms": ["頭"],
+      "readings": ["とう"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "頭 (counter for large animals)",
+      "descriptionEn": "Counter used after a number for large animals."
+    },
+    {
+      "id": "sb-counter-wa",
+      "category": "counter",
+      "forms": ["羽"],
+      "readings": ["わ"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "羽 (counter for birds and rabbits)",
+      "descriptionEn": "Counter used after a number for birds and rabbits."
+    },
+    {
+      "id": "sb-counter-satsu",
+      "category": "counter",
+      "forms": ["冊"],
+      "readings": ["さつ"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "冊 (counter for books and bound volumes)",
+      "descriptionEn": "Counter used after a number for books and bound volumes."
+    },
+    {
+      "id": "sb-counter-dai",
+      "category": "counter",
+      "forms": ["台"],
+      "readings": ["だい"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "台 (counter for machines and vehicles)",
+      "descriptionEn": "Counter used after a number for machines and vehicles."
+    },
+    {
+      "id": "sb-counter-hai",
+      "category": "counter",
+      "forms": ["杯"],
+      "readings": ["はい"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "杯 (counter for cupfuls and glassfuls)",
+      "descriptionEn": "Counter used after a number for cupfuls and glassfuls."
+    },
+    {
+      "id": "sb-counter-ken-house",
+      "category": "counter",
+      "forms": ["軒"],
+      "readings": ["けん"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "軒 (counter for houses and shops)",
+      "descriptionEn": "Counter used after a number for houses and shops."
+    },
+    {
+      "id": "sb-counter-soku",
+      "category": "counter",
+      "forms": ["足"],
+      "readings": ["そく"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "足 (counter for pairs of footwear)",
+      "descriptionEn": "Counter used after a number for pairs of footwear."
+    },
+    {
+      "id": "sb-counter-kai-times",
+      "category": "counter",
+      "forms": ["回"],
+      "readings": ["かい"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "回 (counter for times or occurrences)",
+      "descriptionEn": "Counter used after a number for times or occurrences."
+    },
+    {
+      "id": "sb-counter-do",
+      "category": "counter",
+      "forms": ["度"],
+      "readings": ["ど"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "度 (counter for times and degrees)",
+      "descriptionEn": "Counter used after a number for times and degrees."
+    },
+    {
+      "id": "sb-counter-ban",
+      "category": "counter",
+      "forms": ["番"],
+      "readings": ["ばん"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "番 (counter for turns and numbered order)",
+      "descriptionEn": "Counter used after a number for turns and numbered order."
+    },
+    {
+      "id": "sb-counter-sai",
+      "category": "counter",
+      "forms": ["歳"],
+      "readings": ["さい"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "歳 (counter for years of age)",
+      "descriptionEn": "Counter used after a number for years of age."
+    },
+    {
+      "id": "sb-counter-sai-alt",
+      "category": "counter",
+      "forms": ["才"],
+      "readings": ["さい"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "才 (counter for years of age, simplified form)",
+      "descriptionEn": "Counter used after a number for years of age, simplified form."
+    },
+    {
+      "id": "sb-counter-en",
+      "category": "counter",
+      "forms": ["円"],
+      "readings": ["えん"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "円 (counter for Japanese yen)",
+      "descriptionEn": "Counter used after a number for Japanese yen."
+    },
+    {
+      "id": "sb-counter-ji",
+      "category": "counter",
+      "forms": ["時"],
+      "readings": ["じ"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "時 (counter for the hour on a clock)",
+      "descriptionEn": "Counter used after a number for the hour on a clock."
+    },
+    {
+      "id": "sb-counter-fun",
+      "category": "counter",
+      "forms": ["分"],
+      "readings": ["ふん"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "分 (counter for minutes)",
+      "descriptionEn": "Counter used after a number for minutes."
+    },
+    {
+      "id": "sb-counter-byou",
+      "category": "counter",
+      "forms": ["秒"],
+      "readings": ["びょう"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "秒 (counter for seconds)",
+      "descriptionEn": "Counter used after a number for seconds."
+    },
+    {
+      "id": "sb-counter-nichi",
+      "category": "counter",
+      "forms": ["日"],
+      "readings": ["にち"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "日 (counter for days and days of the month)",
+      "descriptionEn": "Counter used after a number for days and days of the month."
+    },
+    {
+      "id": "sb-counter-gatsu",
+      "category": "counter",
+      "forms": ["月"],
+      "readings": ["がつ"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "月 (counter for months of the year)",
+      "descriptionEn": "Counter used after a number for months of the year."
+    },
+    {
+      "id": "sb-counter-nen",
+      "category": "counter",
+      "forms": ["年"],
+      "readings": ["ねん"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "年 (counter for years)",
+      "descriptionEn": "Counter used after a number for years."
+    },
+    {
+      "id": "sb-counter-shuu",
+      "category": "counter",
+      "forms": ["週"],
+      "readings": ["しゅう"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "週 (counter for weeks)",
+      "descriptionEn": "Counter used after a number for weeks."
+    },
+    {
+      "id": "sb-counter-kai-floor",
+      "category": "counter",
+      "forms": ["階"],
+      "readings": ["かい"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "階 (counter for floors of a building)",
+      "descriptionEn": "Counter used after a number for floors of a building."
+    },
+    {
+      "id": "sb-counter-mei",
+      "category": "counter",
+      "forms": ["名"],
+      "readings": ["めい"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "名 (counter for people, in formal writing)",
+      "descriptionEn": "Counter used after a number for people, in formal writing."
+    },
+    {
+      "id": "sb-counter-ken-item",
+      "category": "counter",
+      "forms": ["件"],
+      "readings": ["けん"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "件 (counter for cases and items of business)",
+      "descriptionEn": "Counter used after a number for cases and items of business."
+    },
+    {
+      "id": "sb-counter-tsuu",
+      "category": "counter",
+      "forms": ["通"],
+      "readings": ["つう"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "通 (counter for letters and documents)",
+      "descriptionEn": "Counter used after a number for letters and documents."
+    },
+    {
+      "id": "sb-counter-bu",
+      "category": "counter",
+      "forms": ["部"],
+      "readings": ["ぶ"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "部 (counter for copies of a publication)",
+      "descriptionEn": "Counter used after a number for copies of a publication."
+    },
+    {
+      "id": "sb-counter-kumi",
+      "category": "counter",
+      "forms": ["組"],
+      "readings": ["くみ"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "組 (counter for sets and pairs)",
+      "descriptionEn": "Counter used after a number for sets and pairs."
+    },
+    {
+      "id": "sb-counter-peji",
+      "category": "counter",
+      "forms": ["ページ"],
+      "readings": ["ぺーじ"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "ページ (counter for pages)",
+      "descriptionEn": "Counter used after a number for pages."
+    },
+    {
+      "id": "sb-counter-wari",
+      "category": "counter",
+      "forms": ["割"],
+      "readings": ["わり"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "割 (counter for tenths and percentages)",
+      "descriptionEn": "Counter used after a number for tenths and percentages."
+    },
+    {
+      "id": "sb-counter-bai",
+      "category": "counter",
+      "forms": ["倍"],
+      "readings": ["ばい"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "倍 (counter for multiples)",
+      "descriptionEn": "Counter used after a number for multiples."
+    },
+    {
+      "id": "sb-counter-jikan",
+      "category": "counter",
+      "forms": ["時間"],
+      "readings": ["じかん"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "時間 (counter for hours of duration)",
+      "descriptionEn": "Counter used after a number for hours of duration."
+    },
+    {
+      "id": "sb-counter-shuukan",
+      "category": "counter",
+      "forms": ["週間"],
+      "readings": ["しゅうかん"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "週間 (counter for weeks of duration)",
+      "descriptionEn": "Counter used after a number for weeks of duration."
+    },
+    {
+      "id": "sb-counter-kagetsu",
+      "category": "counter",
+      "forms": ["か月"],
+      "readings": ["かげつ"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "か月 (counter for months of duration)",
+      "descriptionEn": "Counter used after a number for months of duration."
+    },
+    {
+      "id": "sb-counter-nenkan",
+      "category": "counter",
+      "forms": ["年間"],
+      "readings": ["ねんかん"],
+      "partsOfSpeech": ["counter"],
+      "nameEn": "年間 (counter for years of duration)",
+      "descriptionEn": "Counter used after a number for years of duration."
+    },
+    {
+      "id": "sb-punct-kuten",
+      "category": "punctuation",
+      "forms": ["。"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "。 (full stop)",
+      "descriptionEn": "Japanese text full stop; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-touten",
+      "category": "punctuation",
+      "forms": ["、"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "、 (comma)",
+      "descriptionEn": "Japanese text comma; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-excl",
+      "category": "punctuation",
+      "forms": ["！"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "！ (exclamation mark)",
+      "descriptionEn": "Japanese text exclamation mark; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-quest",
+      "category": "punctuation",
+      "forms": ["？"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "？ (question mark)",
+      "descriptionEn": "Japanese text question mark; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-open-quote",
+      "category": "punctuation",
+      "forms": ["「"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "「 (opening quotation mark)",
+      "descriptionEn": "Japanese text opening quotation mark; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-close-quote",
+      "category": "punctuation",
+      "forms": ["」"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "」 (closing quotation mark)",
+      "descriptionEn": "Japanese text closing quotation mark; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-open-book",
+      "category": "punctuation",
+      "forms": ["『"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "『 (opening double quotation mark)",
+      "descriptionEn": "Japanese text opening double quotation mark; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-close-book",
+      "category": "punctuation",
+      "forms": ["』"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "』 (closing double quotation mark)",
+      "descriptionEn": "Japanese text closing double quotation mark; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-open-paren",
+      "category": "punctuation",
+      "forms": ["（"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "（ (opening parenthesis)",
+      "descriptionEn": "Japanese text opening parenthesis; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-close-paren",
+      "category": "punctuation",
+      "forms": ["）"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "） (closing parenthesis)",
+      "descriptionEn": "Japanese text closing parenthesis; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-nakaguro",
+      "category": "punctuation",
+      "forms": ["・"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "・ (middle dot separator)",
+      "descriptionEn": "Japanese text middle dot separator; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-choon",
+      "category": "punctuation",
+      "forms": ["ー"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "ー (long vowel mark)",
+      "descriptionEn": "Japanese text long vowel mark; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-ellipsis",
+      "category": "punctuation",
+      "forms": ["…"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "… (ellipsis)",
+      "descriptionEn": "Japanese text ellipsis; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-colon",
+      "category": "punctuation",
+      "forms": ["："],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "： (colon)",
+      "descriptionEn": "Japanese text colon; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-semicolon",
+      "category": "punctuation",
+      "forms": ["；"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "； (semicolon)",
+      "descriptionEn": "Japanese text semicolon; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-wave",
+      "category": "punctuation",
+      "forms": ["〜"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "〜 (wave dash for ranges)",
+      "descriptionEn": "Japanese text wave dash for ranges; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-wave-full",
+      "category": "punctuation",
+      "forms": ["～"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "～ (full-width tilde for ranges)",
+      "descriptionEn": "Japanese text full-width tilde for ranges; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-ascii-period",
+      "category": "punctuation",
+      "forms": ["."],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": ". (ASCII full stop)",
+      "descriptionEn": "Japanese text ASCII full stop; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-ascii-comma",
+      "category": "punctuation",
+      "forms": [","],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": ", (ASCII comma)",
+      "descriptionEn": "Japanese text ASCII comma; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-ascii-excl",
+      "category": "punctuation",
+      "forms": ["!"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "! (ASCII exclamation mark)",
+      "descriptionEn": "Japanese text ASCII exclamation mark; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-ascii-quest",
+      "category": "punctuation",
+      "forms": ["?"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "? (ASCII question mark)",
+      "descriptionEn": "Japanese text ASCII question mark; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-open-lenticular",
+      "category": "punctuation",
+      "forms": ["【"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "【 (opening lenticular bracket)",
+      "descriptionEn": "Japanese text opening lenticular bracket; formatting only, never a vocabulary item."
+    },
+    {
+      "id": "sb-punct-close-lenticular",
+      "category": "punctuation",
+      "forms": ["】"],
+      "partsOfSpeech": ["symbol"],
+      "nameEn": "】 (closing lenticular bracket)",
+      "descriptionEn": "Japanese text closing lenticular bracket; formatting only, never a vocabulary item."
+    }
+  ]
+}
