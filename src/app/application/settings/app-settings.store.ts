@@ -45,6 +45,24 @@ export class AppSettingsStore {
     this.preferences.set(preferences.value);
   }
 
+  /**
+   * Re-reads the settings row.
+   *
+   * Committing a vocabulary snapshot sets the active snapshot inside the same
+   * transaction that writes it, so this store's copy is stale afterwards.
+   * Re-reading rather than assuming the new id keeps the one source of truth in
+   * the database.
+   */
+  async reloadAppSettings(): Promise<void> {
+    const settings = await this.repository.getAppSettings();
+    if (!settings.ok) {
+      this.failure.set(settings.error);
+      return;
+    }
+    this.appSettings.set(settings.value);
+    this.failure.set(null);
+  }
+
   async setTheme(theme: ThemeSetting): Promise<void> {
     const previous = this.appSettings();
     this.appSettings.set({ ...previous, theme });
