@@ -1,0 +1,228 @@
+import { TestBed } from '@angular/core/testing';
+import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  FakeCredentialRepository,
+  modelTest,
+  StubAiSettingsRepository,
+  StubTextProvider,
+} from '../../../testing/ai-fakes';
+import { FAKE_OPENROUTER } from '../../../testing/openrouter-server';
+import { aiError } from '../../domain/ai/ai-error';
+import { fixedClock } from '../../domain/shared/clock';
+import type { Hasher } from '../../domain/shared/hashing';
+import { ok } from '../../domain/shared/result';
+import { storageError } from '../../domain/storage/storage-error';
+import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
+import {
+  CLOCK,
+  CREDENTIAL_REPOSITORY,
+  HASHER,
+  SETTINGS_REPOSITORY,
+} from '../shared/repository-tokens';
+import { CredentialStore } from './credential.store';
+import { TextModelStore } from './text-model.store';
+
+const HASH: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
+const MODEL = FAKE_OPENROUTER.textModel;
+
+describe('TextModelStore', () => {
+  let settings: StubAiSettingsRepository;
+  let credentials: FakeCredentialRepository;
+  let provider: StubTextProvider;
+
+  beforeEach(() => {
+    settings = new StubAiSettingsRepository();
+    credentials = new FakeCredentialRepository();
+    provider = new StubTextProvider(ok(modelTest(MODEL)));
+
+    TestBed.configureTestingModule({
+      providers: [
+        TextModelStore,
+        CredentialStore,
+        { provide: SETTINGS_REPOSITORY, useValue: settings },
+        { provide: CREDENTIAL_REPOSITORY, useValue: credentials },
+        { provide: TEXT_GENERATION_PROVIDER, useValue: provider },
+        { provide: HASHER, useValue: HASH },
+        { provide: CLOCK, useValue: fixedClock(1_700_000_000_000) },
+      ],
+    });
+  });
+
+  async function ready(): Promise<TextModelStore> {
+    const credential = TestBed.inject(CredentialStore);
+    await credential.load();
+    const store = TestBed.inject(TextModelStore);
+    await store.load();
+    return store;
+  }
+
+  describe('readiness', () => {
+    it('is not configured on a fresh install', async () => {
+      const store = await ready();
+
+      expect(store.readiness()).toBe('not-configured');
+      expect(provider.calls).toBe(0);
+    });
+
+    it('is not configured while no key is saved, even with a model', async () => {
+      await credentials.remove();
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      await store.save();
+
+      expect(store.readiness()).toBe('not-configured');
+    });
+
+    it('is untested once a model is saved', async () => {
+      const store = await ready();
+
+      store.setDraftModelId(MODEL);
+      await store.save();
+
+      expect(store.readiness()).toBe('untested');
+    });
+
+    it('is ready after a passing test', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+
+      await store.test();
+
+      expect(store.readiness()).toBe('ready');
+      expect(store.structuredOutput()).toBe('native-schema');
+      expect(settings.textModel.lastTestedAt).toBe(1_700_000_000_000);
+    });
+
+    it('goes stale when the model changes', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      await store.test();
+
+      store.setDraftModelId('vendor/other');
+      await store.save();
+
+      expect(store.readiness()).toBe('stale');
+      expect(settings.textModel.lastTestFingerprint).not.toBeNull();
+    });
+
+    it('goes stale when the key is replaced, without erasing the old result', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      await store.test();
+      const fingerprint = settings.textModel.lastTestFingerprint;
+
+      await TestBed.inject(CredentialStore).save('sk-or-v1-replacement');
+
+      expect(store.readiness()).toBe('stale');
+      expect(settings.textModel.lastTestFingerprint).toBe(fingerprint);
+    });
+
+    it('reads as not configured once the key is removed', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      await store.test();
+
+      await TestBed.inject(CredentialStore).remove();
+
+      expect(store.readiness()).toBe('not-configured');
+      expect(settings.textModel.lastTestFingerprint).not.toBeNull();
+    });
+  });
+
+  describe('test', () => {
+    it('saves the field before testing, so the result describes what is stored', async () => {
+      const store = await ready();
+
+      store.setDraftModelId('  vendor/text-model  ');
+      await store.test();
+
+      expect(settings.textModel.modelId).toBe(MODEL);
+      expect(store.hasUnsavedModelId()).toBe(false);
+    });
+
+    it('makes no request when no model is given', async () => {
+      const store = await ready();
+
+      await store.test();
+
+      expect(provider.calls).toBe(0);
+    });
+
+    it('records a provider failure and reads as failed', async () => {
+      provider.result = {
+        ok: false,
+        error: aiError('authentication', 'text-model-test', 'rejected'),
+      };
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+
+      await store.test();
+
+      expect(store.readiness()).toBe('failed');
+      expect(store.testFailure()?.code).toBe('authentication');
+      expect(settings.textModel.lastTestFingerprint).toBeNull();
+    });
+
+    it('clears a previous failure when the model is changed', async () => {
+      provider.result = {
+        ok: false,
+        error: aiError('model-not-found', 'text-model-test', 'absent'),
+      };
+      const store = await ready();
+      store.setDraftModelId('vendor/absent');
+      await store.test();
+
+      store.setDraftModelId(MODEL);
+      await store.save();
+
+      expect(store.testFailure()).toBeNull();
+      expect(store.readiness()).toBe('untested');
+    });
+
+    it('returns to idle after cancellation and records nothing', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      const pending = store.test();
+      store.cancelTest();
+      await pending;
+
+      expect(store.action()).toBe('idle');
+      expect(store.readiness()).toBe('untested');
+      expect(store.testFailure()).toBeNull();
+    });
+
+    it('surfaces a failure to store the passing result', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      await store.save();
+      settings.failWrites = storageError('quota', 'no room');
+
+      await store.test();
+
+      expect(store.storageFailure()?.code).toBe('quota');
+      expect(store.readiness()).toBe('untested');
+    });
+  });
+
+  describe('save', () => {
+    it('reverts nothing and reports a storage failure', async () => {
+      const store = await ready();
+      settings.failWrites = storageError('unavailable', 'closed');
+
+      store.setDraftModelId(MODEL);
+      await expect(store.save()).resolves.toBe(false);
+
+      expect(settings.textModel.modelId).toBe('');
+      expect(store.storageFailure()?.code).toBe('unavailable');
+    });
+
+    it('does not write when the field is unchanged', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      await store.save();
+      settings.failWrites = storageError('unavailable', 'closed');
+
+      await expect(store.save()).resolves.toBe(true);
+    });
+  });
+});
