@@ -1,5 +1,10 @@
 import type { ImportedReading, GeneratedStory } from '../app/domain/reading/reading';
-import type { ImportedReadingDraft } from '../app/domain/reading/reading-repository';
+import type { GenerationProvenance } from '../app/domain/ai/generation-provenance';
+import type {
+  GeneratedStoryDraft,
+  ImportedReadingDraft,
+} from '../app/domain/reading/reading-repository';
+import type { FrozenSentenceValidation, TokenValidation } from '../app/domain/reading/validation';
 import type { Paragraph, Sentence } from '../app/domain/reading/text-hierarchy';
 import type { TokenAnalysis } from '../app/domain/reading/token';
 import type {
@@ -147,6 +152,114 @@ export function generatedStoryFixture(
     snapshotId: storySnapshotId,
     generationProvenanceId: uuid(seed * 1000 + 900),
     validationOutcome: { kind: 'strict' },
+  };
+}
+
+export interface GeneratedDraftOptions {
+  readonly seed?: number;
+  readonly sentenceTexts?: readonly string[];
+  /** Replaces the validation of the first token, for invariant coverage. */
+  readonly firstTokenValidation?: TokenValidation;
+  readonly provenance?: Partial<GenerationProvenance>;
+}
+
+/**
+ * Builds an accepted generated story exactly as the assembly service does:
+ * one paragraph, one frozen validation per sentence, and provenance whose ids
+ * agree with the reading's.
+ */
+export function generatedStoryDraftFixture(
+  storySnapshotId: SnapshotId,
+  options: GeneratedDraftOptions = {},
+): GeneratedStoryDraft {
+  const seed = options.seed ?? 7;
+  const texts = options.sentenceTexts ?? ['ねこがいます。', 'ねこはねます。'];
+  const createdAt = 1_700_000_500_000;
+
+  const id = readingId(uuid(seed * 1000));
+  const provenanceId = uuid(seed * 1000 + 900);
+  const onlyParagraphId = paragraphId(uuid(seed * 1000 + 100));
+
+  const sentences: Sentence[] = [];
+  const tokenAnalyses: TokenAnalysis[] = [];
+  const frozenValidations: FrozenSentenceValidation[] = [];
+
+  texts.forEach((text, index) => {
+    const currentSentenceId = sentenceId(uuid(seed * 1000 + 200 + index));
+    sentences.push({
+      id: currentSentenceId,
+      readingId: id,
+      paragraphId: onlyParagraphId,
+      positionInReading: index,
+      positionInParagraph: index,
+      japaneseText: text,
+      contentHash: sha256Hex(text),
+    });
+    const tokenId = `${currentSentenceId}-0`;
+    tokenAnalyses.push({
+      sentenceId: currentSentenceId,
+      analyzerVersion: 'test-analyzer-1',
+      tokens: [
+        {
+          id: tokenId,
+          startUtf16: 0,
+          endUtf16: text.length,
+          surface: text,
+          dictionaryKeys: [],
+          isPunctuation: false,
+        },
+      ],
+    });
+    frozenValidations.push({
+      sentenceId: currentSentenceId,
+      snapshotId: storySnapshotId,
+      validatorVersion: 'test-validator-1',
+      tokenStatuses: [
+        {
+          tokenId,
+          validation:
+            index === 0 && options.firstTokenValidation !== undefined
+              ? options.firstTokenValidation
+              : { category: 'anki-exact', vocabularyItemIds: [] },
+        },
+      ],
+    });
+  });
+
+  const sourceText = texts.join('');
+
+  const reading: GeneratedStory = {
+    ...generatedStoryFixture(seed, storySnapshotId, createdAt),
+    id,
+    sentenceCount: sentences.length,
+    characterCount: sourceText.length,
+    translationSummary: { total: sentences.length, completed: 0, failed: 0 },
+    grammarSummary: { state: 'not-requested' },
+    audioSummary: { total: sentences.length, completed: 0, failed: 0 },
+    generationProvenanceId: provenanceId,
+  };
+
+  const provenance: GenerationProvenance = {
+    id: provenanceId,
+    readingId: id,
+    snapshotId: storySnapshotId,
+    grammarProfileSnapshotId: uuid(seed * 1000 + 950),
+    exceptionPolicyHash: '',
+    modelId: 'vendor/text-model',
+    promptVersions: { story: 'story/1' },
+    repairAttempts: 0,
+    suggestedVocabularyItemIds: [],
+    createdAt,
+    ...options.provenance,
+  };
+
+  return {
+    reading,
+    paragraphs: [{ id: onlyParagraphId, readingId: id, position: 0, sourceText }],
+    sentences,
+    tokenAnalyses,
+    frozenValidations,
+    provenance,
   };
 }
 

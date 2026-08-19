@@ -9,7 +9,18 @@
  */
 
 export type ChatContentKind =
-  'valid' | 'fenced' | 'prose' | 'invalid-json' | 'wrong-shape' | 'empty';
+  | 'valid'
+  | 'fenced'
+  | 'prose'
+  | 'invalid-json'
+  | 'wrong-shape'
+  | 'empty'
+  | 'story'
+  | 'story-repaired'
+  | 'story-duplicate-index'
+  | 'story-too-short'
+  | 'decisions-approved'
+  | 'decisions-rejected';
 
 export type AudioKind = 'valid' | 'empty' | 'wrong-mime' | 'oversized';
 
@@ -26,6 +37,14 @@ export interface FakeOpenRouterOptions {
   readonly content?: ChatContentKind;
   /** Content for every chat request after the first, so recovery can differ. */
   readonly recoveryContent?: ChatContentKind;
+  /**
+   * Content per chat request, in order, for multi-step flows.
+   *
+   * Takes precedence over `content` and `recoveryContent`. Running past the end
+   * of the sequence repeats its last entry, so a test only lists the steps it
+   * cares about.
+   */
+  readonly contentSequence?: readonly ChatContentKind[];
   /** Forced status for every request, for statuses with no other trigger. */
   readonly status?: number;
   /** Number of leading attempts that fail with `transientStatus`. */
@@ -53,6 +72,34 @@ const DEFAULT_TEXT_MODEL = 'vendor/text-model';
 const DEFAULT_TTS_MODEL = 'vendor/tts-model';
 const DEFAULT_VOICE = 'sakura';
 
+/** Builds a story payload with contiguous indexes, which is the valid shape. */
+function story(sentences: readonly string[], titleJa = 'ねこの一日'): string {
+  return JSON.stringify({
+    titleJa,
+    sentences: sentences.map((textJa, index) => ({ index, textJa })),
+  });
+}
+
+/** Four sentences: the smallest valid Micro story. */
+const MICRO_SENTENCES = [
+  'ねこがいます。',
+  'ねこはねます。',
+  'ねこはたべます。',
+  'ねこはあるきます。',
+];
+
+function decisions(decision: 'approved' | 'rejected'): string {
+  return JSON.stringify({
+    decisions: [
+      {
+        candidateId: 'candidate-1',
+        decision,
+        explanationEn: 'The policy covers place names the learner mentioned in the premise.',
+      },
+    ],
+  });
+}
+
 const CHAT_CONTENT: Record<ChatContentKind, string> = {
   valid: '{"ok": true, "language": "ja"}',
   fenced: '```json\n{"ok": true, "language": "ja"}\n```',
@@ -60,6 +107,25 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
   'invalid-json': '{"ok": true, "language": ',
   'wrong-shape': '{"ok": "yes", "language": "en"}',
   empty: '',
+  story: story(MICRO_SENTENCES),
+  'story-repaired': story([
+    'ねこがいます。',
+    'ねこはねます。',
+    'ねこはのみます。',
+    'ねこはあるきます。',
+  ]),
+  'story-duplicate-index': JSON.stringify({
+    titleJa: 'ねこの一日',
+    sentences: [
+      { index: 0, textJa: 'ねこがいます。' },
+      { index: 1, textJa: 'ねこはねます。' },
+      { index: 1, textJa: 'ねこはたべます。' },
+      { index: 3, textJa: 'ねこはあるきます。' },
+    ],
+  }),
+  'story-too-short': story(['ねこがいます。', 'ねこはねます。']),
+  'decisions-approved': decisions('approved'),
+  'decisions-rejected': decisions('rejected'),
 };
 
 /** Bytes that stand in for an MP3. Decodability is decided by the fake decoder. */
@@ -169,9 +235,15 @@ export class FakeOpenRouterServer {
       );
     }
 
-    const isRecovery = this.chatRequestCount() > 1;
+    const sequence = this.options.contentSequence;
+    const requestIndex = this.chatRequestCount() - 1;
+    const isRecovery = requestIndex > 0;
     const kind =
-      (isRecovery ? this.options.recoveryContent : undefined) ?? this.options.content ?? 'valid';
+      sequence === undefined
+        ? ((isRecovery ? this.options.recoveryContent : undefined) ??
+          this.options.content ??
+          'valid')
+        : (sequence[Math.min(requestIndex, sequence.length - 1)] ?? 'valid');
     const payload = JSON.stringify({
       choices: [{ finish_reason: 'stop', message: { content: CHAT_CONTENT[kind] } }],
     });

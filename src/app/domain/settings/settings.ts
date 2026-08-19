@@ -1,3 +1,4 @@
+import type { StructuredOutputMode } from '../ai/model-test';
 import type { SnapshotId } from '../shared/ids';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
@@ -35,12 +36,22 @@ export interface TextModelSettings {
   readonly modelId: string;
   readonly lastTestFingerprint: string | null;
   readonly lastTestedAt: number | null;
+  /**
+   * The structured-output mode the last successful test proved.
+   *
+   * Persisted rather than rediscovered so generation opens with the mode this
+   * model is known to honour instead of spending a format-recovery request
+   * every run to learn it again. Null whenever no test currently vouches for
+   * the configuration. See ADR 0020.
+   */
+  readonly structuredOutput: StructuredOutputMode | null;
 }
 
 export const DEFAULT_TEXT_MODEL_SETTINGS: TextModelSettings = {
   modelId: '',
   lastTestFingerprint: null,
   lastTestedAt: null,
+  structuredOutput: null,
 };
 
 export interface TtsSettings {

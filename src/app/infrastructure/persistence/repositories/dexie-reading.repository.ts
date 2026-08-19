@@ -2,8 +2,14 @@ import Dexie from 'dexie';
 import type { Clock } from '../../../domain/shared/clock';
 import { ok, type Result } from '../../../domain/shared/result';
 import type { ReadingId, SentenceId } from '../../../domain/shared/ids';
-import type { ImportedReading, LibraryFilter, Reading } from '../../../domain/reading/reading';
 import type {
+  GeneratedStory,
+  ImportedReading,
+  LibraryFilter,
+  Reading,
+} from '../../../domain/reading/reading';
+import type {
+  GeneratedStoryDraft,
   ImportedReadingDraft,
   LibraryPage,
   LibraryPageRequest,
@@ -25,6 +31,8 @@ import {
   tokenAnalysisRowSchema,
 } from '../schemas/reading.schema';
 import {
+  toFrozenValidationRow,
+  toGenerationProvenanceRow,
   toParagraph,
   toParagraphRow,
   toProgress,
@@ -37,7 +45,12 @@ import {
   toTokenAnalysisRow,
 } from './reading-mappers';
 import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
-import { assertUniqueIds, assertUniquePositions } from './integrity';
+import {
+  assertNoUnacceptedValidation,
+  assertProvenanceComplete,
+  assertUniqueIds,
+  assertUniquePositions,
+} from './integrity';
 
 /**
  * Reading persistence.
@@ -53,7 +66,7 @@ export class DexieReadingRepository implements ReadingRepository {
 
   saveImportedReading(draft: ImportedReadingDraft): Promise<Result<ImportedReading, StorageError>> {
     return runStorageWithRules('readings.saveImported', async () => {
-      this.assertDraftIntegrity(draft);
+      this.assertTextIntegrity(draft);
 
       await this.db.transaction(
         'rw',
@@ -71,6 +84,57 @@ export class DexieReadingRepository implements ReadingRepository {
           await this.db.tokenAnalyses.bulkAdd(
             draft.tokenAnalyses.map((analysis) => toTokenAnalysisRow(analysis, draft.reading.id)),
           );
+        },
+      );
+
+      return draft.reading;
+    });
+  }
+
+  /**
+   * Writes an accepted story, its text, its frozen validation, and its
+   * provenance in one transaction.
+   *
+   * Deliberately shaped exactly like `saveImportedReading`: same integrity
+   * rules, same conflict on an id that already exists, same all-or-nothing
+   * transaction. The two extra tables are what make a generated story
+   * explainable, so they are written with it rather than after it — a story
+   * that is visible without its validation would be a story nobody can check.
+   */
+  saveGeneratedStory(draft: GeneratedStoryDraft): Promise<Result<GeneratedStory, StorageError>> {
+    return runStorageWithRules('readings.saveGenerated', async () => {
+      this.assertTextIntegrity(draft);
+      this.assertGeneratedIntegrity(draft);
+
+      await this.db.transaction(
+        'rw',
+        [
+          this.db.readings,
+          this.db.paragraphs,
+          this.db.sentences,
+          this.db.tokenAnalyses,
+          this.db.frozenValidations,
+          this.db.generationProvenance,
+        ],
+        async () => {
+          const existing = await this.db.readings.get(draft.reading.id);
+          if (existing) {
+            throw new StorageRuleViolation(
+              storageError('conflict', 'This story has already been saved.'),
+            );
+          }
+          await this.db.readings.add(toReadingRow(draft.reading));
+          await this.db.paragraphs.bulkAdd(draft.paragraphs.map(toParagraphRow));
+          await this.db.sentences.bulkAdd(draft.sentences.map(toSentenceRow));
+          await this.db.tokenAnalyses.bulkAdd(
+            draft.tokenAnalyses.map((analysis) => toTokenAnalysisRow(analysis, draft.reading.id)),
+          );
+          await this.db.frozenValidations.bulkAdd(
+            draft.frozenValidations.map((validation) =>
+              toFrozenValidationRow(validation, draft.reading.id),
+            ),
+          );
+          await this.db.generationProvenance.add(toGenerationProvenanceRow(draft.provenance));
         },
       );
 
@@ -331,7 +395,8 @@ export class DexieReadingRepository implements ReadingRepository {
     });
   }
 
-  private assertDraftIntegrity(draft: ImportedReadingDraft): void {
+  /** Rules every reading obeys, whatever produced its text. */
+  private assertTextIntegrity(draft: ImportedReadingDraft | GeneratedStoryDraft): void {
     assertUniqueIds(draft.paragraphs, 'paragraph');
     assertUniqueIds(draft.sentences, 'sentence');
     assertUniquePositions(
@@ -367,6 +432,29 @@ export class DexieReadingRepository implements ReadingRepository {
     if (draft.reading.sentenceCount !== draft.sentences.length) {
       throw new StorageRuleViolation(
         storageError('conflict', 'The reading sentence count does not match its sentences.'),
+      );
+    }
+  }
+
+  /** The rules only a generated story has to satisfy. */
+  private assertGeneratedIntegrity(draft: GeneratedStoryDraft): void {
+    assertNoUnacceptedValidation(draft.frozenValidations);
+    assertProvenanceComplete(draft.provenance, draft.reading);
+
+    const sentenceIds = new Set<string>(draft.sentences.map((sentence) => sentence.id));
+    for (const validation of draft.frozenValidations) {
+      if (!sentenceIds.has(validation.sentenceId)) {
+        throw new StorageRuleViolation(
+          storageError(
+            'conflict',
+            'A frozen validation references a sentence that is not being saved.',
+          ),
+        );
+      }
+    }
+    if (draft.frozenValidations.length !== draft.sentences.length) {
+      throw new StorageRuleViolation(
+        storageError('conflict', 'Every sentence of a generated story needs a frozen validation.'),
       );
     }
   }

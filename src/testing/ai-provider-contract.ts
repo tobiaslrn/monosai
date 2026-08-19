@@ -1,6 +1,8 @@
 import { expect, it } from 'vitest';
 import type { AiErrorCode } from '../app/domain/ai/ai-error';
+import { SENTENCE_RANGES, type StoryGenerationRequest } from '../app/domain/ai/story-request';
 import type { TextGenerationProvider } from '../app/domain/ai/text-generation-provider';
+import { snapshotId } from '../app/domain/shared/ids';
 import type { TextToSpeechProvider } from '../app/domain/ai/text-to-speech-provider';
 import type { Result } from '../app/domain/shared/result';
 import type { HarnessOptions } from './ai-fakes';
@@ -44,6 +46,26 @@ function serialize(value: unknown): string {
     entry instanceof Blob ? `blob:${String(entry.size)}` : entry,
   );
 }
+
+/** A minimal but complete generation request, for the shared guarantees. */
+const CONTRACT_STORY_REQUEST: StoryGenerationRequest = {
+  form: 'micro',
+  sentenceRange: SENTENCE_RANGES.micro,
+  premise: 'ねこが一日をすごす話。',
+  allowedVocabulary: ['ねこ'],
+  suggestedVocabulary: ['ねこ'],
+  structuralBaseline: ['は'],
+  grammarGuidance: 'Write single short clauses.',
+  registerPreference: 'either',
+  snapshotId: snapshotId('00000000-0000-4000-8000-000000000001'),
+  grammarProfileHash: 'profile-hash',
+  promptVersion: 'story/1',
+};
+
+const CONTRACT_TASK_CONFIG = {
+  modelId: FAKE_OPENROUTER.textModel,
+  structuredOutput: 'native-schema',
+} as const;
 
 export function runTextProviderContract(create: TextProviderFactory): void {
   it('accepts a model that satisfies the compatibility probe', async () => {
@@ -101,6 +123,40 @@ export function runTextProviderContract(create: TextProviderFactory): void {
     const result = await create({ status: 500 }).provider.testConfiguration({
       modelId: FAKE_OPENROUTER.textModel,
     });
+
+    expect(result.ok).toBe(false);
+    expect(serialize(result)).not.toContain(FAKE_OPENROUTER.apiKey);
+  });
+
+  it('reports an offline device for a story without spending a request', async () => {
+    const context = create({ online: false });
+
+    expectFailure(
+      await context.provider.generateStory(CONTRACT_STORY_REQUEST, CONTRACT_TASK_CONFIG),
+      'offline',
+    );
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('returns cancelled for a story whose signal is already aborted', async () => {
+    const context = create();
+
+    expectFailure(
+      await context.provider.generateStory(
+        CONTRACT_STORY_REQUEST,
+        CONTRACT_TASK_CONFIG,
+        AbortSignal.abort(),
+      ),
+      'cancelled',
+    );
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('never puts the key in a generation error', async () => {
+    const result = await create({ status: 500 }).provider.generateStory(
+      CONTRACT_STORY_REQUEST,
+      CONTRACT_TASK_CONFIG,
+    );
 
     expect(result.ok).toBe(false);
     expect(serialize(result)).not.toContain(FAKE_OPENROUTER.apiKey);

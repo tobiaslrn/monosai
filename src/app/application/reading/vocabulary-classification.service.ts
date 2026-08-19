@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { languageError, type LanguageError } from '../../domain/language/language-error';
-import type { SentenceTokens } from '../../domain/language/language-runtime';
+import type { ClassificationResult, SentenceTokens } from '../../domain/language/language-runtime';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import type { SnapshotId } from '../../domain/shared/ids';
 import { err, ok, type Result } from '../../domain/shared/result';
@@ -78,6 +78,34 @@ export class VocabularyClassificationService {
       statusesBySentence.set(sentence.sentenceId, sentence.statuses);
     }
     return ok({ kind: 'classified', snapshotId, statusesBySentence });
+  }
+
+  /**
+   * Classifies a generated candidate against the snapshot it was written for.
+   *
+   * Generated stories use the `generated` mode, where a word outside the
+   * snapshot is `unknown` rather than `not-in-snapshot`: an accepted story may
+   * never contain a word the learner has not reviewed, so there is no
+   * "follows the newest snapshot" state for it to be in. The snapshot id is
+   * passed rather than read from settings, because a generation captures its
+   * snapshot before the first request and a refresh mid-run must not change
+   * what the story is judged against.
+   */
+  async classifyGenerated(
+    snapshotId: SnapshotId,
+    sentences: readonly SentenceTokens[],
+    signal?: AbortSignal,
+  ): Promise<Result<ClassificationResult, LanguageError>> {
+    const ready = await this.language.initialize();
+    if (!ready) {
+      return err(languageError('not-initialized', 'Japanese language support is not ready yet.'));
+    }
+
+    const compiled = await this.ensureCompiled(snapshotId, signal);
+    if (!compiled.ok) {
+      return compiled;
+    }
+    return this.runtime.classify(snapshotId, 'generated', sentences, signal);
   }
 
   /** Forces the next classification to rebuild the worker's matcher. */

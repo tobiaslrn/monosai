@@ -27,6 +27,15 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 export const AUDIO_REQUEST_TIMEOUT_MS = 60_000;
 
 /**
+ * Deadline for a story, a repair, or an exception review.
+ *
+ * Writing twenty sentences under a vocabulary constraint takes far longer than
+ * a compatibility probe, and a deadline shorter than the work is a timeout the
+ * learner pays for and learns nothing from.
+ */
+export const GENERATION_REQUEST_TIMEOUT_MS = 120_000;
+
+/**
  * Whether an assembled URL still resolves inside the configured API base.
  *
  * The comparison is made on the parsed URL rather than the raw string, because

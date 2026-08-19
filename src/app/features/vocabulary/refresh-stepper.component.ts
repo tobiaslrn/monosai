@@ -3,6 +3,11 @@ import {
   VocabularyRefreshStore,
   type RefreshState,
 } from '../../application/vocabulary/vocabulary-refresh.store';
+import {
+  StepperComponent,
+  type StepStatus,
+  type StepperStep,
+} from '../../shared-ui/stepper/stepper.component';
 
 /** The stages a learner sees, in the order the workflow passes through them. */
 const STAGES = [
@@ -41,61 +46,23 @@ function stageOf(state: RefreshState): StageKey | null {
 /**
  * Progress through a refresh.
  *
- * The current stage is announced with its counts as text rather than only as a
- * bar, because a progress indicator with no numbers tells a screen reader
- * nothing about how far along a long extraction is.
+ * The stage mapping lives here and the shell comes from `mn-stepper`: the two
+ * long workflows in the app share a state vocabulary, not a state machine.
+ * Counts are announced as text rather than only as a bar, because a progress
+ * indicator with no numbers tells a screen reader nothing about how far along a
+ * long extraction is.
  */
 @Component({
   selector: 'mn-refresh-stepper',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [StepperComponent],
   template: `
-    <ol class="stages">
-      @for (stage of stages; track stage.key) {
-        <li
-          class="stage"
-          [class.is-current]="stage.key === currentStage()"
-          [class.is-done]="isDone(stage.key)"
-          [attr.aria-current]="stage.key === currentStage() ? 'step' : null"
-        >
-          {{ stage.label }}
-        </li>
-      }
-    </ol>
-
+    <mn-stepper [steps]="steps()" label="Vocabulary refresh progress" />
     <p class="detail" data-testid="refresh-detail">{{ detail() }}</p>
   `,
   styles: `
-    .stages {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      margin: 0 0 var(--space-2);
-      padding: 0;
-      list-style: none;
-      counter-reset: stage;
-    }
-
-    .stage {
-      counter-increment: stage;
-      font-size: var(--text-sm);
-      color: var(--text-secondary);
-    }
-
-    .stage::before {
-      content: counter(stage) '. ';
-    }
-
-    .stage.is-done {
-      color: var(--status-success);
-    }
-
-    .stage.is-current {
-      color: var(--text-primary);
-      font-weight: 600;
-    }
-
     .detail {
-      margin: 0;
+      margin: var(--space-3) 0 0;
       font-size: var(--text-sm);
       color: var(--text-secondary);
     }
@@ -103,9 +70,21 @@ function stageOf(state: RefreshState): StageKey | null {
 })
 export class RefreshStepperComponent {
   protected readonly refresh = inject(VocabularyRefreshStore);
-  protected readonly stages = STAGES;
 
-  protected readonly currentStage = computed(() => stageOf(this.refresh.state()));
+  private readonly currentStage = computed(() => stageOf(this.refresh.state()));
+
+  protected readonly steps = computed<readonly StepperStep[]>(() => {
+    const state = this.refresh.state();
+    const current = this.currentStage();
+    const order = STAGES.map((stage) => stage.key);
+    const currentIndex = current === null ? -1 : order.indexOf(current);
+
+    return STAGES.map((stage, index) => ({
+      key: stage.key,
+      label: stage.label,
+      status: statusFor(state, index, currentIndex),
+    }));
+  });
 
   /** One sentence carrying the counts the stage actually knows. */
   protected readonly detail = computed(() => {
@@ -140,13 +119,17 @@ export class RefreshStepperComponent {
         return '';
     }
   });
+}
 
-  protected isDone(stage: StageKey): boolean {
-    const current = this.currentStage();
-    if (current === null) {
-      return false;
-    }
-    const order = STAGES.map((entry) => entry.key);
-    return order.indexOf(stage) < order.indexOf(current);
+function statusFor(state: RefreshState, index: number, currentIndex: number): StepStatus {
+  if (currentIndex === -1) {
+    return state.kind === 'failed' ? 'failed' : 'pending';
   }
+  if (index < currentIndex) {
+    return 'complete';
+  }
+  if (index > currentIndex) {
+    return 'pending';
+  }
+  return state.kind === 'complete' ? 'complete' : 'active';
 }

@@ -1,7 +1,9 @@
 import type { Result } from '../shared/result';
 import type { ParagraphId, ReadingId, SentenceId } from '../shared/ids';
 import type { StorageError } from '../storage/storage-error';
-import type { ImportedReading, LibraryFilter, Reading } from './reading';
+import type { GenerationProvenance } from '../ai/generation-provenance';
+import type { GeneratedStory, ImportedReading, LibraryFilter, Reading } from './reading';
+import type { FrozenSentenceValidation } from './validation';
 import type { Paragraph, ReadingGraph, Sentence } from './text-hierarchy';
 import type { ContinueReadingTarget, ReadingProgress } from './progress';
 import type { SentenceLocation } from './reading-position';
@@ -13,6 +15,24 @@ export interface ImportedReadingDraft {
   readonly paragraphs: readonly Paragraph[];
   readonly sentences: readonly Sentence[];
   readonly tokenAnalyses: readonly TokenAnalysis[];
+}
+
+/**
+ * Everything persisted atomically when a generated story is accepted.
+ *
+ * It mirrors `ImportedReadingDraft` and adds the two things a generated story
+ * cannot exist without: the frozen validation of every sentence, and the
+ * provenance that says which snapshot, profile, policy, model, and prompts
+ * produced it. Both are written in the same transaction as the text, so a
+ * story is never visible without the evidence that it was validated.
+ */
+export interface GeneratedStoryDraft {
+  readonly reading: GeneratedStory;
+  readonly paragraphs: readonly Paragraph[];
+  readonly sentences: readonly Sentence[];
+  readonly tokenAnalyses: readonly TokenAnalysis[];
+  readonly frozenValidations: readonly FrozenSentenceValidation[];
+  readonly provenance: GenerationProvenance;
 }
 
 export interface LibraryPageRequest {
@@ -38,6 +58,15 @@ export interface ParagraphWindow {
  */
 export interface ReadingRepository {
   saveImportedReading(draft: ImportedReadingDraft): Promise<Result<ImportedReading, StorageError>>;
+  /**
+   * Writes an accepted story and its evidence in one transaction.
+   *
+   * The repository refuses a draft whose frozen validation still contains an
+   * `unknown` category, which is the storage-level half of "no unknown-containing
+   * result can enter the library": the state machine also refuses, and neither
+   * relies on the other having remembered to.
+   */
+  saveGeneratedStory(draft: GeneratedStoryDraft): Promise<Result<GeneratedStory, StorageError>>;
   getReading(id: ReadingId): Promise<Result<Reading | null, StorageError>>;
   listLibraryPage(request: LibraryPageRequest): Promise<Result<LibraryPage, StorageError>>;
   countReadings(filter: LibraryFilter): Promise<Result<number, StorageError>>;

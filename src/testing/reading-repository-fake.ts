@@ -1,7 +1,15 @@
 import type { ContinueReadingTarget, ReadingProgress } from '../app/domain/reading/progress';
-import type { ImportedReading, LibraryFilter, Reading } from '../app/domain/reading/reading';
-import type { SentenceLocation } from '../app/domain/reading/reading-position';
 import type {
+  GeneratedStory,
+  ImportedReading,
+  LibraryFilter,
+  Reading,
+} from '../app/domain/reading/reading';
+import type { SentenceLocation } from '../app/domain/reading/reading-position';
+import type { GenerationProvenance } from '../app/domain/ai/generation-provenance';
+import type { FrozenSentenceValidation } from '../app/domain/reading/validation';
+import type {
+  GeneratedStoryDraft,
   ImportedReadingDraft,
   LibraryPage,
   LibraryPageRequest,
@@ -152,6 +160,10 @@ export class FakeReadingRepository implements ReadingRepository {
   readonly graphRequests: (ParagraphWindow | undefined)[] = [];
   readonly analysisRequests: (readonly SentenceId[])[] = [];
   readonly savedProgress: ReadingProgress[] = [];
+  frozenValidations: FrozenSentenceValidation[] = [];
+  provenance: GenerationProvenance[] = [];
+  /** Set to make an accepted story fail to save, without losing the candidate. */
+  failSaveGeneratedWith: StorageError | null = null;
 
   /** Set to make the matching read or write fail with a typed storage error. */
   failListWith: StorageError | null = null;
@@ -173,6 +185,20 @@ export class FakeReadingRepository implements ReadingRepository {
     this.paragraphs.push(...draft.paragraphs);
     this.sentences.push(...draft.sentences);
     this.tokenAnalyses.push(...draft.tokenAnalyses);
+    return Promise.resolve(ok(draft.reading));
+  }
+
+  saveGeneratedStory(draft: GeneratedStoryDraft): Promise<Result<GeneratedStory, StorageError>> {
+    if (this.failSaveGeneratedWith !== null) {
+      // Exactly like the real transaction aborting: not one row is written.
+      return Promise.resolve(err(this.failSaveGeneratedWith));
+    }
+    this.readings.push(draft.reading);
+    this.paragraphs.push(...draft.paragraphs);
+    this.sentences.push(...draft.sentences);
+    this.tokenAnalyses.push(...draft.tokenAnalyses);
+    this.frozenValidations.push(...draft.frozenValidations);
+    this.provenance.push(draft.provenance);
     return Promise.resolve(ok(draft.reading));
   }
 
