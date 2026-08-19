@@ -104,3 +104,14 @@ describe('CredentialStore', () => {
     expect(store.failure()?.code).toBe('corrupt-record');
   });
 });
+
+describe('CredentialStore removal failure', () => {
+  it('keeps reporting the key as saved when removal fails', async () => {
+    const store = createStore(failingCredentials('unavailable'));
+
+    await expect(store.remove()).resolves.toBe(false);
+
+    expect(store.failure()?.code).toBe('unavailable');
+    expect(store.action()).toBe('idle');
+  });
+});

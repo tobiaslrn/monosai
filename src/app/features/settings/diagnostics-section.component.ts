@@ -1,5 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { DATABASE_SCHEMA_VERSION } from '../../application/shared/repository-tokens';
+import {
+  AI_ENDPOINT_VERSION,
+  TEXT_MODEL_TEST_VERSION,
+  TTS_TEST_VERSION,
+} from '../../domain/ai/configuration-fingerprint';
+import { EXCEPTION_PROMPT_VERSION } from '../../domain/ai/exception-policy-hash';
 import { readBuildInfo } from '../../core/diagnostics/build-info';
 
 /** Local build identity. Never contains user content or credentials. */
@@ -21,6 +27,14 @@ import { readBuildInfo } from '../../core/diagnostics/build-info';
         <div>
           <dt>Database schema version</dt>
           <dd>{{ schemaVersion }}</dd>
+        </div>
+        <div>
+          <dt>Provider protocol</dt>
+          <dd>{{ endpointVersion }}</dd>
+        </div>
+        <div>
+          <dt>Prompt versions</dt>
+          <dd>{{ promptVersions }}</dd>
         </div>
       </dl>
     </section>
@@ -53,4 +67,7 @@ import { readBuildInfo } from '../../core/diagnostics/build-info';
 export class DiagnosticsSectionComponent {
   protected readonly build = readBuildInfo();
   protected readonly schemaVersion = inject(DATABASE_SCHEMA_VERSION);
+  protected readonly endpointVersion = AI_ENDPOINT_VERSION;
+  /** Versions of the internal prompt assets, so a report can name what ran. */
+  protected readonly promptVersions = `text-test ${String(TEXT_MODEL_TEST_VERSION)} · tts-test ${String(TTS_TEST_VERSION)} · exception ${String(EXCEPTION_PROMPT_VERSION)}`;
 }

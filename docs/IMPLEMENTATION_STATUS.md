@@ -12,7 +12,8 @@ and what remains.
 | 3 — Reader vertical slice                | Complete    |
 | 4 — Grammar profile                      | Complete    |
 | 5 — Anki vocabulary                      | Complete    |
-| 6–10                                     | Not started |
+| 6 — OpenRouter and settings              | Complete    |
+| 7–10                                     | Not started |
 
 ## Milestone 0 — Repository and decision scaffolding
 
@@ -716,3 +717,130 @@ otherwise pay for the same analysis many times.
   private-network behaviour on secure contexts, so that row of the Milestone 10
   compatibility matrix is still open.
 
+
+## Milestone 6 — OpenRouter and settings
+
+### Delivered
+
+#### One request path, and only one
+
+`OpenRouterClient` (`src/app/infrastructure/openrouter/openrouter-client.ts`) is
+the only place an OpenRouter request is made. There is no general-purpose "call
+any URL" surface: the path comes from a module constant, the assembled URL is
+parsed and checked against the configured origin before an authorization header
+exists, and the key is readable only inside `CredentialRepository.useApiKey`'s
+callback — it is never assigned to a field, a signal, a log, or an error.
+
+The client owns every per-request invariant so a task adapter cannot forget one:
+timeout with an internal controller plus caller-signal forwarding, cancellation,
+status and content-type validation, declared-length and buffered size limits,
+zod validation of the body, and mapping onto a typed `AiError`. Bounded retry
+lives in `retry-policy.ts`: at most two automatic attempts with capped
+exponential backoff and jitter, only for rate limits, provider outages, and
+network interruption, never after cancellation, and never for authentication,
+unknown models, missing capabilities, or schema failures. A `Retry-After` longer
+than ten seconds ends the attempt instead of blocking behind a spinner.
+
+Offline is decided through an injected predicate before the credential is
+unlocked, so an offline device never spends an attempt and never reads the key.
+
+#### Two ports, tested independently
+
+`TextGenerationProvider` and `TextToSpeechProvider` (`src/app/domain/ai/`) carry
+the names from the architecture specification but declare only
+`testConfiguration`; the generation, review, translation, and synthesis methods
+arrive with the milestones that implement them. See
+[ADR 0018](decisions/0018-openrouter-request-boundary.md).
+
+The text tester sends a minimal structured probe to the exact model using
+provider-native `json_schema`. If the provider refuses that parameter, or the
+model answers in the wrong shape, it makes exactly one recovery request under a
+strict JSON contract and records which mode worked. A failing model therefore
+costs at most two calls, and a model that cannot be held to an exact structure
+cannot be used for generation however well ordinary chat works.
+
+The TTS tester synthesizes one fixed Japanese phrase at the exact model, voice,
+and speed, then validates MIME, size, and decodability through an injected
+decoder. A provider that rejects `speed` is retried once without it and the
+result records `speedApplied: false`, which the screen states plainly rather
+than implying the setting took effect.
+
+#### Readiness derived, never flagged
+
+`configuration-fingerprint.ts` hashes the key generation, the exact IDs, the
+endpoint version, and the test version. Readiness is a comparison between the
+stored fingerprint and the current one (`configuration-readiness.ts`), so
+changing a model, a voice, the speed, or the key marks the matching test stale
+with no code remembering to invalidate anything. The two fingerprints share no
+input beyond the key generation, which is what makes text and TTS readiness
+independent by construction.
+
+The key itself never enters a fingerprint. The credential's `updatedAt` is used
+as a generation counter instead: a hash of a secret is still derived from the
+secret, and fingerprints live in ordinary settings rows.
+
+#### Settings screens
+
+Three new sections precede the existing ones: **OpenRouter text** (key entry,
+save/replace, two-step removal, configured indicator, exact model ID, and Test
+configuration with cancellation), **Text to speech** (exact model, voice, speed,
+Test voice, and an explicit Play sample button), and **Generation policy** (one
+textarea, length limit, save state). No reveal toggle exists, the key input is
+cleared the instant its value is handed to the repository, and a shared
+`mn-configuration-status` renders readiness and failure recovery without either
+section being able to show the other's state.
+
+`ai-error-copy.ts` gives all twelve failure variants their own heading, what
+failed, what did not fail, primary action, and escape path, plus a copyable
+technical code. Diagnostics now also reports the provider protocol and the
+internal prompt versions.
+
+### Verified
+
+- 1,048 unit tests across 92 files, including a deterministic fake OpenRouter
+  server (`src/testing/openrouter-server.ts`) and a shared port contract suite
+  (`src/testing/ai-provider-contract.ts`) run against both adapters.
+- Coverage 87.5% statements / 81.2% branches overall. Every new module clears
+  the stricter provider gate: error mapping 100/95, client 99/94, text adapter
+  97/97, TTS adapter 97/91, stores 96–100 / 94–100.
+- 36 new end-to-end tests on desktop Chrome and a Pixel 5 viewport: key
+  save/replace/remove with the value absent from the DOM, the console, and the
+  stored settings row; text-model pass and reload; staleness on model change and
+  key replacement; not-configured after key removal with the model kept; 401,
+  404, 429, and 500 each producing their own recovery; a model that cannot hold
+  the structure; offline entering an offline state rather than hanging;
+  cancellation of an in-flight request; TTS failure leaving text readiness
+  untouched; audio the browser cannot store; policy persistence across reload;
+  zero provider requests while configuring or on the library route; and axe
+  clean with the AI sections in a failed state.
+- Browser-driven check of the rendered settings route at desktop, 375px, and
+  320px, in light and dark, with no page-level horizontal scrolling and no
+  console errors.
+- One live check against the real OpenRouter with a deliberately invalid key:
+  the 401 mapped to `authentication` and rendered the full recovery copy with
+  code `ai/authentication`.
+
+### Assumptions
+
+- **OpenRouter has no single documented synthesis endpoint**, so speech targets
+  the OpenAI-compatible `POST /audio/speech` shape with `response_format: mp3`.
+  The path is a constant and the request is built in one adapter; an
+  incompatible provider fails at configuration time with
+  `capability-unsupported` rather than mid-reading. See ADR 0018.
+- **402 is reported as an authentication failure.** OpenRouter uses it for an
+  exhausted account and the specified failure model has no variant for it; it
+  sends the learner to the same place a rejected key does, and the copy names
+  both causes.
+- The compatibility probe asks for a two-field JSON object. It is deliberately
+  the smallest task that still proves exact structured output, so a failure is
+  attributable to formatting rather than to task difficulty.
+
+### Remaining
+
+- A real configured text model and a real TTS model/voice have not been
+  exercised end to end; only a rejected key has. That belongs to the Milestone
+  10 manual compatibility matrix.
+- The remaining port methods — story generation, repair, exception review,
+  grammar review, translation, and synthesis — arrive with Milestones 7 to 9,
+  along with the `AiTask` variants that name them.
+- Install and update controls in the storage section are still Milestone 10.

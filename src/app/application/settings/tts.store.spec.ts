@@ -237,3 +237,86 @@ describe('text and TTS readiness independence', () => {
     expect(speech.readiness()).toBe('ready');
   });
 });
+
+describe('TtsStore edge paths', () => {
+  let settings: StubAiSettingsRepository;
+  let provider: StubTtsProvider;
+
+  beforeEach(() => {
+    settings = new StubAiSettingsRepository();
+    provider = new StubTtsProvider(ok(ttsTest()));
+    TestBed.configureTestingModule({
+      providers: [
+        TtsStore,
+        CredentialStore,
+        { provide: SETTINGS_REPOSITORY, useValue: settings },
+        { provide: CREDENTIAL_REPOSITORY, useValue: new FakeCredentialRepository() },
+        { provide: TEXT_TO_SPEECH_PROVIDER, useValue: provider },
+        { provide: HASHER, useValue: HASH },
+        { provide: CLOCK, useValue: fixedClock(1_700_000_000_000) },
+      ],
+    });
+  });
+
+  it('surfaces a failed read without claiming to be configured', async () => {
+    settings.failReads = storageError('corrupt-record', 'bad row');
+    const store = TestBed.inject(TtsStore);
+
+    await store.load();
+
+    expect(store.storageFailure()?.code).toBe('corrupt-record');
+    expect(store.readiness()).toBe('not-configured');
+  });
+
+  it('makes no request when the draft cannot be stored', async () => {
+    await TestBed.inject(CredentialStore).load();
+    const store = TestBed.inject(TtsStore);
+    await store.load();
+    settings.failWrites = storageError('quota', 'no room');
+
+    store.setDraft(CONFIGURED);
+    await store.test();
+
+    expect(provider.calls).toBe(0);
+    expect(store.action()).toBe('idle');
+    expect(store.storageFailure()?.code).toBe('quota');
+  });
+
+  it('makes no request while the voice is still missing', async () => {
+    await TestBed.inject(CredentialStore).load();
+    const store = TestBed.inject(TtsStore);
+    await store.load();
+
+    store.setDraft({ modelId: FAKE_OPENROUTER.ttsModel });
+    await store.test();
+
+    expect(provider.calls).toBe(0);
+    expect(store.action()).toBe('idle');
+  });
+
+  it('supersedes an attempt that has not spent a request yet', async () => {
+    await TestBed.inject(CredentialStore).load();
+    const store = TestBed.inject(TtsStore);
+    await store.load();
+    store.setDraft(CONFIGURED);
+    await store.save();
+
+    const first = store.test();
+    const second = store.test();
+    await Promise.all([first, second]);
+
+    expect(provider.calls).toBe(1);
+    expect(store.readiness()).toBe('ready');
+  });
+
+  it('falls back to the default speed when a control reports nothing usable', async () => {
+    await TestBed.inject(CredentialStore).load();
+    const store = TestBed.inject(TtsStore);
+    await store.load();
+
+    store.setDraft({ ...CONFIGURED, speed: Number.NaN });
+    await store.save();
+
+    expect(settings.tts.speed).toBe(1);
+  });
+});

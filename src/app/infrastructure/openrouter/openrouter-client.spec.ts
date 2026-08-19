@@ -273,3 +273,128 @@ describe('OpenRouterClient redaction', () => {
     }
   });
 });
+
+describe('OpenRouterClient edge responses', () => {
+  function clientWith(fetchFn: typeof fetch): OpenRouterClient {
+    return new OpenRouterClient({
+      fetchFn,
+      credentials: new FakeCredentialRepository(),
+      isOnline: () => true,
+      sleep: () => Promise.resolve(),
+      correlationId: () => 'cid',
+    });
+  }
+
+  it('rejects a body that claims to be JSON but is not', async () => {
+    const client = clientWith(() =>
+      Promise.resolve(
+        new Response('{"choices": ', {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    const error = expectError(await client.postJson(probe, chatCompletionSchema));
+
+    expect(error.detail?.issueCode).toBe('invalid-json');
+  });
+
+  it('classifies a rejection whose body is not an error envelope', async () => {
+    const client = clientWith(() =>
+      Promise.resolve(new Response('<html>Bad Gateway</html>', { status: 502 })),
+    );
+
+    const error = expectError(await client.postJson(probe, chatCompletionSchema));
+
+    expect(error.code).toBe('provider-unavailable');
+    expect(JSON.stringify(error)).not.toContain('html');
+  });
+
+  it('refuses an oversized body that declared no length', async () => {
+    const client = clientWith(() =>
+      Promise.resolve(
+        new Response(new ArrayBuffer(9 * 1024 * 1024), {
+          status: 200,
+          headers: { 'Content-Type': 'audio/mpeg' },
+        }),
+      ),
+    );
+
+    const error = expectError(
+      await client.postAudio({
+        path: '/audio/speech',
+        task: 'tts-test',
+        voiceId: 'sakura',
+        body: {},
+      }),
+    );
+
+    expect(error.detail?.issueCode).toBe('response-too-large');
+  });
+
+  it('treats a missing content type as no content type', async () => {
+    const client = clientWith(() =>
+      Promise.resolve(new Response('{}', { status: 200, headers: {} })),
+    );
+
+    const error = expectError(await client.postJson(probe, chatCompletionSchema));
+
+    expect(error.detail?.issueCode).toBe('content-type');
+  });
+
+  it('names the requested voice when a synthesis request is refused', async () => {
+    const client = clientWith(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: { message: 'Unknown voice', param: 'voice' } }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    const error = expectError(
+      await client.postAudio({
+        path: '/audio/speech',
+        task: 'tts-test',
+        modelId: 'vendor/tts-model',
+        voiceId: 'sakura',
+        body: {},
+      }),
+    );
+
+    expect(error.detail?.voiceId).toBe('sakura');
+    expect(error.detail?.capability).toBe('voice');
+  });
+
+  it('reports cancellation when the request was aborted rather than timing out', async () => {
+    const controller = new AbortController();
+    const client = clientWith(() => {
+      controller.abort();
+      return Promise.reject(new DOMException('aborted', 'AbortError'));
+    });
+
+    const error = expectError(
+      await client.postJson({ ...probe, signal: controller.signal }, chatCompletionSchema),
+    );
+
+    expect(error.code).toBe('cancelled');
+  });
+
+  it('stops before waiting when the caller cancels during a retryable attempt', async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    const client = clientWith(() => {
+      calls += 1;
+      controller.abort();
+      return Promise.resolve(new Response('{}', { status: 503 }));
+    });
+
+    const error = expectError(
+      await client.postJson({ ...probe, signal: controller.signal }, chatCompletionSchema),
+    );
+
+    expect(error.code).toBe('cancelled');
+    expect(calls).toBe(1);
+  });
+});
