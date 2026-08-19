@@ -1,0 +1,172 @@
+import { expect, it } from 'vitest';
+import type { AiErrorCode } from '../app/domain/ai/ai-error';
+import type { TextGenerationProvider } from '../app/domain/ai/text-generation-provider';
+import type { TextToSpeechProvider } from '../app/domain/ai/text-to-speech-provider';
+import type { Result } from '../app/domain/shared/result';
+import type { HarnessOptions } from './ai-fakes';
+import { FAKE_OPENROUTER } from './openrouter-server';
+
+/**
+ * Guarantees every AI provider implementation owes its callers, regardless of
+ * which service is behind it.
+ *
+ * They are written once here and run against each adapter, so a second provider
+ * cannot quietly weaken cancellation, offline behaviour, or credential
+ * redaction. Service-specific behaviour — status mapping, retry counts, schema
+ * handling — belongs in the adapter's own spec.
+ */
+
+export interface ProviderContext<TProvider> {
+  readonly provider: TProvider;
+  /** Requests that actually reached the wire, including retried attempts. */
+  readonly requestCount: () => number;
+}
+
+export type TextProviderFactory = (
+  options?: HarnessOptions,
+) => ProviderContext<TextGenerationProvider>;
+
+export type TtsProviderFactory = (
+  options?: HarnessOptions,
+) => ProviderContext<TextToSpeechProvider>;
+
+function expectFailure<T>(result: Result<T, { code: AiErrorCode }>, code: AiErrorCode): void {
+  expect(result.ok).toBe(false);
+  if (result.ok) {
+    return;
+  }
+  expect(result.error.code).toBe(code);
+}
+
+/** Serializes a result including Blob payloads, so nothing can hide a key. */
+function serialize(value: unknown): string {
+  return JSON.stringify(value, (_key, entry: unknown) =>
+    entry instanceof Blob ? `blob:${String(entry.size)}` : entry,
+  );
+}
+
+export function runTextProviderContract(create: TextProviderFactory): void {
+  it('accepts a model that satisfies the compatibility probe', async () => {
+    const result = await create().provider.testConfiguration({
+      modelId: FAKE_OPENROUTER.textModel,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.modelId).toBe(FAKE_OPENROUTER.textModel);
+  });
+
+  it('rejects a blank model without spending a request', async () => {
+    const context = create();
+
+    expectFailure(await context.provider.testConfiguration({ modelId: '   ' }), 'model-not-found');
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('reports a rejected key as authentication', async () => {
+    expectFailure(
+      await create({ apiKeys: ['other-key'] }).provider.testConfiguration({
+        modelId: FAKE_OPENROUTER.textModel,
+      }),
+      'authentication',
+    );
+  });
+
+  it('reports an offline device without spending a request', async () => {
+    const context = create({ online: false });
+
+    expectFailure(
+      await context.provider.testConfiguration({ modelId: FAKE_OPENROUTER.textModel }),
+      'offline',
+    );
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('returns cancelled for a signal that is already aborted', async () => {
+    const context = create();
+
+    expectFailure(
+      await context.provider.testConfiguration(
+        { modelId: FAKE_OPENROUTER.textModel },
+        AbortSignal.abort(),
+      ),
+      'cancelled',
+    );
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('never puts the key in an error', async () => {
+    const result = await create({ status: 500 }).provider.testConfiguration({
+      modelId: FAKE_OPENROUTER.textModel,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(serialize(result)).not.toContain(FAKE_OPENROUTER.apiKey);
+  });
+}
+
+export function runTtsProviderContract(create: TtsProviderFactory): void {
+  const config = {
+    modelId: FAKE_OPENROUTER.ttsModel,
+    voiceId: FAKE_OPENROUTER.voice,
+    speed: 1,
+  };
+
+  it('accepts a model and voice that produce decodable audio', async () => {
+    const result = await create().provider.testConfiguration(config);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.voiceId).toBe(FAKE_OPENROUTER.voice);
+    expect(result.value.byteLength).toBeGreaterThan(0);
+  });
+
+  it('rejects a blank model and a blank voice without spending a request', async () => {
+    const context = create();
+
+    expectFailure(
+      await context.provider.testConfiguration({ ...config, modelId: ' ' }),
+      'model-not-found',
+    );
+    expectFailure(
+      await context.provider.testConfiguration({ ...config, voiceId: ' ' }),
+      'capability-unsupported',
+    );
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('reports a rejected key as authentication', async () => {
+    expectFailure(
+      await create({ apiKeys: ['other-key'] }).provider.testConfiguration(config),
+      'authentication',
+    );
+  });
+
+  it('reports an offline device without spending a request', async () => {
+    const context = create({ online: false });
+
+    expectFailure(await context.provider.testConfiguration(config), 'offline');
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('returns cancelled for a signal that is already aborted', async () => {
+    const context = create();
+
+    expectFailure(
+      await context.provider.testConfiguration(config, AbortSignal.abort()),
+      'cancelled',
+    );
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('never puts the key in an error', async () => {
+    const result = await create({ status: 500 }).provider.testConfiguration(config);
+
+    expect(result.ok).toBe(false);
+    expect(serialize(result)).not.toContain(FAKE_OPENROUTER.apiKey);
+  });
+}

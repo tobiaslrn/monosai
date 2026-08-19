@@ -1,0 +1,127 @@
+import { describe, expect, it } from 'vitest';
+import { openRouterHarness, type HarnessOptions } from '../../../testing/ai-fakes';
+import { FAKE_OPENROUTER } from '../../../testing/openrouter-server';
+import { TTS_TEST_PHRASE } from './tts-test.adapter';
+
+const CONFIG = {
+  modelId: FAKE_OPENROUTER.ttsModel,
+  voiceId: FAKE_OPENROUTER.voice,
+  speed: 1.25,
+};
+
+function run(options: HarnessOptions = {}): ReturnType<typeof openRouterHarness> {
+  return openRouterHarness(options);
+}
+
+describe('OpenRouterTtsTester', () => {
+  it('synthesizes the fixed phrase with the exact model, voice, and speed', async () => {
+    const harness = run();
+
+    const result = await harness.tts.testConfiguration(CONFIG);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.speedApplied).toBe(true);
+    expect(result.value.mimeType).toBe('audio/mpeg');
+    expect(result.value.sample.size).toBe(result.value.byteLength);
+    expect(harness.server.requests[0]?.body).toMatchObject({
+      model: FAKE_OPENROUTER.ttsModel,
+      voice: FAKE_OPENROUTER.voice,
+      input: TTS_TEST_PHRASE,
+      response_format: 'mp3',
+      speed: 1.25,
+    });
+  });
+
+  it('retries once without speed and reports that the setting was ignored', async () => {
+    const harness = run({ supportsSpeed: false });
+
+    const result = await harness.tts.testConfiguration(CONFIG);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.speedApplied).toBe(false);
+    expect(harness.server.callCount).toBe(2);
+    expect(harness.server.requests[1]?.body['speed']).toBeUndefined();
+  });
+
+  it('rejects an unknown voice as a capability failure', async () => {
+    const harness = run();
+
+    const result = await harness.tts.testConfiguration({ ...CONFIG, voiceId: 'absent' });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe('capability-unsupported');
+    expect(result.error.detail?.capability).toBe('voice');
+    expect(harness.server.callCount).toBe(1);
+  });
+
+  it('rejects an unknown model', async () => {
+    const result = await run().tts.testConfiguration({ ...CONFIG, modelId: 'vendor/absent' });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe('model-not-found');
+  });
+
+  it('rejects audio in a format the cache cannot store', async () => {
+    const result = await run({ audio: 'wrong-mime' }).tts.testConfiguration(CONFIG);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe('audio-invalid');
+    expect(result.error.detail?.issueCode).toBe('unsupported-mime');
+  });
+
+  it('rejects a clip this browser cannot decode', async () => {
+    const result = await run({ decodable: false }).tts.testConfiguration(CONFIG);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe('audio-invalid');
+    expect(result.error.detail?.issueCode).toBe('undecodable');
+  });
+
+  it('rejects an empty clip', async () => {
+    const result = await run({ audio: 'empty' }).tts.testConfiguration(CONFIG);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe('malformed-response');
+  });
+
+  it('refuses an oversized clip', async () => {
+    const result = await run({ audio: 'oversized' }).tts.testConfiguration(CONFIG);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.detail?.issueCode).toBe('response-too-large');
+  });
+
+  it('reports every failure against the tts-test task', async () => {
+    const result = await run({ status: 500 }).tts.testConfiguration(CONFIG);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.task).toBe('tts-test');
+  });
+});
