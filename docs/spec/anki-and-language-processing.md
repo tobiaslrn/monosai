@@ -67,9 +67,11 @@ The mapping UI is enabled only when discovery is complete. Refresh is enabled on
 
 ### Required error variants
 
-`not-running`, `bridge-not-running`, `addon-missing-or-unreachable`, `permission-denied`, `origin-not-allowed`, `private-network-blocked`, `timeout`, `unsupported-api`, `unsupported-action`, `malformed-response`, `deck-discovery-failed`, `note-type-discovery-failed`, `field-discovery-failed`, `review-evidence-unsupported`, `query-failed`, `package-unreadable`, `package-schema-unsupported`, `package-review-data-missing`, `package-resource-limit`, `cancelled`, `unknown`.
+`not-running`, `bridge-not-running`, `addon-missing-or-unreachable`, `permission-denied`, `origin-not-allowed`, `timeout`, `unsupported-api`, `unsupported-action`, `malformed-response`, `deck-discovery-failed`, `note-type-discovery-failed`, `field-discovery-failed`, `review-evidence-unsupported`, `query-failed`, `package-unreadable`, `package-schema-unsupported`, `package-review-data-missing`, `package-resource-limit`, `cancelled`, `unknown`.
 
 UI messaging must preserve these distinctions.
+
+A browser cannot see why a local request failed, so no variant may be inferred that the application has no evidence for. A page served from anywhere other than `http://localhost` or `http://127.0.0.1` is outside AnkiConnect's default origin allowlist and is refused by the add-on, which is reported as `origin-not-allowed` with the page's own origin as the cause. See ADR 0017.
 
 ## 4. Source mappings
 

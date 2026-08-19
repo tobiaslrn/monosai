@@ -162,7 +162,7 @@ describe('VocabularyPageComponent', () => {
       new FakeAnkiProvider(CONTRACT_COLLECTION, {
         probeError: {
           domain: 'anki',
-          code: 'private-network-blocked',
+          code: 'origin-not-allowed',
           message: 'blocked',
         },
       }),
@@ -170,10 +170,10 @@ describe('VocabularyPageComponent', () => {
     await settle(fixture);
     const alert = element.querySelector('[role="alert"]');
 
-    expect(alert?.textContent).toContain('Your browser blocked the connection');
+    expect(alert?.textContent).toContain('Anki refused this address');
     expect(alert?.textContent).toContain('still active');
     expect(alert?.textContent).toContain('package');
-    expect(alert?.textContent).toContain('anki/private-network-blocked');
+    expect(alert?.textContent).toContain('anki/origin-not-allowed');
   });
 
   it('shows an empty snapshot history before any refresh', async () => {

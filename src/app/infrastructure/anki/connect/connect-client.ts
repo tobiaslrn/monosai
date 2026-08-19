@@ -40,8 +40,9 @@ export interface ConnectClientOptions {
   readonly endpoints: readonly string[];
   readonly fetchFn: typeof fetch;
   /**
-   * The page's own origin. Used to tell a blocked private-network request from
-   * a rejected origin, because the browser reports both as an opaque failure.
+   * The page's own origin. Used to tell a rejected origin from an endpoint that
+   * is simply absent, because the browser reports both as an opaque failure,
+   * and reported back as the cause so the learner knows which address to allow.
    */
   readonly pageOrigin: string;
   /** `not-running` for the desktop add-on, `bridge-not-running` for Android. */
@@ -58,21 +59,23 @@ function cancelled(): AnkiError {
 }
 
 /**
- * Whether the browser will subject this request to a Private Network Access
- * preflight.
+ * Whether the page is served from the local machine.
  *
- * Chrome requires a public page reaching a private address to receive an
- * `Access-Control-Allow-Private-Network` header, which AnkiConnect does not
- * send. A page served over `http://localhost` is not public and is exempt, so
- * this distinguishes the deployed application from local development — and it
- * is the difference between telling someone to fix their CORS list and telling
- * them the browser will not allow the connection at all.
+ * AnkiConnect's origin allowlist defaults to `http://localhost` and exempts
+ * `http://127.0.0.1` alongside it, so a page served from either address is
+ * accepted out of the box while any other origin is refused until the learner
+ * adds it. That is the difference between "nothing is listening" and "something
+ * is listening but will not talk to this address", which the browser itself
+ * reports identically.
+ *
+ * Measured against AnkiConnect 25.x: a request from an origin outside the
+ * allowlist is answered `403` with a mismatched `Access-Control-Allow-Origin`,
+ * so the browser rejects it during CORS. The add-on does answer the Private
+ * Network Access preflight with `Access-Control-Allow-Private-Network: true`,
+ * so a blocked private-network request is not the failure to report here.
  */
-function subjectToPrivateNetworkAccess(pageOrigin: string): boolean {
-  if (pageOrigin.startsWith('http://localhost') || pageOrigin.startsWith('http://127.0.0.1')) {
-    return false;
-  }
-  return pageOrigin.startsWith('https://') || pageOrigin.startsWith('http://');
+function isLocalPageOrigin(pageOrigin: string): boolean {
+  return pageOrigin.startsWith('http://localhost') || pageOrigin.startsWith('http://127.0.0.1');
 }
 
 /**
@@ -305,11 +308,11 @@ export class AnkiConnectClient {
   /**
    * Names an opaque `fetch` failure.
    *
-   * The browser reports a refused connection, a rejected origin, and a blocked
-   * private-network request identically, so the page's own origin is what
-   * separates them: a public page reaching a local address is blocked before
-   * CORS is ever consulted, while a local development page that fails has
-   * either found nothing listening or been refused by the add-on's origin list.
+   * The browser reports a refused connection and a rejected origin identically,
+   * so two things separate them: an origin outside AnkiConnect's default
+   * allowlist is refused by the add-on however healthy it is, and an endpoint
+   * that has answered before is plainly present. Only a local origin that has
+   * never had an answer is genuinely unreachable.
    */
   private describeTransportFailure(
     thrown: unknown,
@@ -325,16 +328,10 @@ export class AnkiConnectClient {
     if (thrown instanceof DOMException && thrown.name === 'AbortError') {
       return cancelled();
     }
-    if (subjectToPrivateNetworkAccess(this.options.pageOrigin)) {
-      return ankiError(
-        'private-network-blocked',
-        'Your browser blocked Monosai from reaching Anki on this computer. Use an Anki package instead.',
-        this.options.pageOrigin,
-      );
-    }
-    if (this.activeEndpoint !== null) {
-      // Something answered here before, so the address is right and the add-on
-      // is now refusing this origin rather than being absent.
+    if (!isLocalPageOrigin(this.options.pageOrigin) || this.activeEndpoint !== null) {
+      // Either this page is served from an address AnkiConnect does not allow
+      // by default, or something answered here before and is now refusing the
+      // request. Both are the origin list, not an absent add-on.
       return ankiError(
         'origin-not-allowed',
         'Anki refused a request from Monosai. Add this address to the AnkiConnect origin list and try again.',

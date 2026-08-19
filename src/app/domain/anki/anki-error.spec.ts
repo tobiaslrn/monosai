@@ -41,7 +41,7 @@ describe('ankiError', () => {
   });
 
   it('points at the package provider when the local connection cannot work', () => {
-    expect(suggestsPackageFallback(ankiError('private-network-blocked', 'x'))).toBe(true);
+    expect(suggestsPackageFallback(ankiError('origin-not-allowed', 'x'))).toBe(true);
     expect(suggestsPackageFallback(ankiError('review-evidence-unsupported', 'x'))).toBe(true);
   });
 
@@ -54,7 +54,7 @@ describe('ankiError', () => {
 describe('ALL_ANKI_ERROR_CODES', () => {
   it('lists every variant exactly once', () => {
     expect(new Set(ALL_ANKI_ERROR_CODES).size).toBe(ALL_ANKI_ERROR_CODES.length);
-    expect(ALL_ANKI_ERROR_CODES).toHaveLength(21);
+    expect(ALL_ANKI_ERROR_CODES).toHaveLength(20);
   });
 });
 
