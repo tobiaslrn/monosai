@@ -2,14 +2,16 @@ import { DOCUMENT, inject, type Provider } from '@angular/core';
 import {
   ANKI_PROVIDER_FACTORY,
   MARKUP_TEXT_EXTRACTOR,
+  PACKAGE_PROVIDER_FACTORY,
   type AnkiProviderFactory,
+  type PackageProviderFactory,
 } from '../../application/shared/anki-tokens';
-import type { AnkiVocabularyProvider } from '../../domain/anki/anki-provider';
+import type { AnkiVocabularyProvider, PackageSource } from '../../domain/anki/anki-provider';
 import { AndroidConnectAdapter } from './connect/android-connect.adapter';
 import { ANDROID_ENDPOINTS, AnkiConnectClient, DESKTOP_ENDPOINTS } from './connect/connect-client';
 import { DesktopConnectAdapter } from './connect/desktop-connect.adapter';
 import { DomMarkupTextExtractor } from './dom-markup-text';
-import { PackageProviderAdapter, type PackageSource } from './package/package-provider.adapter';
+import { PackageProviderAdapter } from './package/package-provider.adapter';
 import { PackageWorkerClient, packageWorkerChannel } from './package/package-worker.client';
 
 /** Where the SQLite runtime is served from, relative to the application base. */
@@ -44,20 +46,24 @@ export function createPackageProvider(
 /**
  * Binds the Anki ports.
  *
- * The factory covers the two local-connection providers, which need nothing
- * beyond the page's own origin. The package provider is not among them because
- * it needs the file the learner chose, so it is created through
- * `createPackageProvider` at the point that file exists.
- *
  * Providers are created per refresh rather than as singletons: the package
  * provider owns a worker whose memory is only reclaimed by terminating it, and
- * a connection provider should not outlive the screen that opened it.
+ * a connection provider should not outlive the screen that opened it. Both
+ * factories exist so a feature can ask for a provider without reaching into
+ * infrastructure to construct one.
  */
 export function provideAnki(): Provider[] {
   return [
     {
       provide: MARKUP_TEXT_EXTRACTOR,
       useFactory: () => new DomMarkupTextExtractor(),
+    },
+    {
+      provide: PACKAGE_PROVIDER_FACTORY,
+      useFactory: (): PackageProviderFactory => {
+        const documentRef = inject(DOCUMENT);
+        return (source) => createPackageProvider(source, documentRef.baseURI);
+      },
     },
     {
       provide: ANKI_PROVIDER_FACTORY,

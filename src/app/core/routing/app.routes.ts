@@ -25,6 +25,14 @@ export const APP_ROUTES: Routes = [
       import('../../features/reader/reader-page.component').then((m) => m.ReaderPageComponent),
   },
   {
+    path: 'vocabulary',
+    title: 'Vocabulary · Monosai',
+    loadComponent: () =>
+      import('../../features/vocabulary/vocabulary-page.component').then(
+        (m) => m.VocabularyPageComponent,
+      ),
+  },
+  {
     path: 'grammar',
     title: 'Grammar · Monosai',
     loadComponent: () =>

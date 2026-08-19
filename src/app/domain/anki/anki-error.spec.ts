@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { technicalCode } from '../shared/errors';
-import { ankiError, isRetryable, suggestsPackageFallback } from './anki-error';
+import {
+  ALL_ANKI_ERROR_CODES,
+  ankiError,
+  isRetryable,
+  suggestsPackageFallback,
+} from './anki-error';
 import { canDiscover, canRefresh, type AnkiCapabilities } from './capabilities';
 
 const CAPABLE: AnkiCapabilities = {
@@ -43,6 +48,13 @@ describe('ankiError', () => {
   it('does not suggest the package provider to a failed package import', () => {
     expect(suggestsPackageFallback(ankiError('package-unreadable', 'x'))).toBe(false);
     expect(suggestsPackageFallback(ankiError('package-resource-limit', 'x'))).toBe(false);
+  });
+});
+
+describe('ALL_ANKI_ERROR_CODES', () => {
+  it('lists every variant exactly once', () => {
+    expect(new Set(ALL_ANKI_ERROR_CODES).size).toBe(ALL_ANKI_ERROR_CODES.length);
+    expect(ALL_ANKI_ERROR_CODES).toHaveLength(21);
   });
 });
 

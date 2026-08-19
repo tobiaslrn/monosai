@@ -13,9 +13,9 @@ import type { LanguageError } from '../../domain/language/language-error';
 import type { SourceMappingId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { SnapshotStats, VocabularySnapshot } from '../../domain/vocabulary/snapshot';
-import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
 import type { SnapshotCommit } from '../../domain/vocabulary/vocabulary-repository';
 import { LanguageStore } from '../language/language.store';
+import { SourceMappingStore } from './source-mapping.store';
 import { VocabularyClassificationService } from '../reading/vocabulary-classification.service';
 import { AppSettingsStore } from '../settings/app-settings.store';
 import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
@@ -95,11 +95,11 @@ export class VocabularyRefreshStore {
   private readonly settings = inject(AppSettingsStore);
   private readonly classification = inject(VocabularyClassificationService);
   private readonly language = inject(LanguageStore);
+  private readonly sources = inject(SourceMappingStore);
 
   private readonly stateSignal = signal<RefreshState>(IDLE);
   private readonly capabilitiesSignal = signal<AnkiCapabilities | null>(null);
   private readonly catalogSignal = signal<AnkiCatalog | null>(null);
-  private readonly resolutionSignal = signal<MappingResolution | null>(null);
   private readonly warningsSignal = signal<readonly string[]>([]);
   private readonly announcementSignal = signal('');
 
@@ -109,7 +109,17 @@ export class VocabularyRefreshStore {
   readonly state = this.stateSignal.asReadonly();
   readonly capabilities = this.capabilitiesSignal.asReadonly();
   readonly catalog = this.catalogSignal.asReadonly();
-  readonly resolution = this.resolutionSignal.asReadonly();
+
+  /**
+   * How the configured mappings line up with what the source actually has.
+   *
+   * Derived rather than stored, so repairing a stale mapping clears its warning
+   * immediately instead of only when the next refresh runs.
+   */
+  readonly resolution = computed<MappingResolution | null>(() => {
+    const catalog = this.catalogSignal();
+    return catalog === null ? null : resolveMappings(this.sources.mappings(), catalog);
+  });
   readonly warnings = this.warningsSignal.asReadonly();
   readonly announcement = this.announcementSignal.asReadonly();
 
@@ -135,7 +145,6 @@ export class VocabularyRefreshStore {
     this.provider = provider;
     this.capabilitiesSignal.set(null);
     this.catalogSignal.set(null);
-    this.resolutionSignal.set(null);
     this.warningsSignal.set([]);
 
     const signal = this.beginRun('probing');
@@ -164,25 +173,16 @@ export class VocabularyRefreshStore {
     );
   }
 
-  /** Re-checks the configured mappings against the discovered catalog. */
-  validate(mappings: readonly SourceMapping[]): MappingResolution | null {
-    const catalog = this.catalogSignal();
-    if (catalog === null) {
-      return null;
-    }
-    const resolution = resolveMappings(mappings, catalog);
-    this.resolutionSignal.set(resolution);
-    return resolution;
-  }
-
   /**
    * Reads every enabled mapping and prepares a snapshot for confirmation.
    *
    * All enabled mappings are combined into one snapshot; there is deliberately
-   * no per-mapping or per-generation source selection. Nothing is stored here —
-   * the result waits in `awaiting-confirmation` until the learner accepts it.
+   * no per-mapping or per-generation source selection, and the mappings are
+   * read from the store rather than passed in so a caller cannot refresh
+   * against a list the editor is not showing. Nothing is stored here — the
+   * result waits in `awaiting-confirmation` until the learner accepts it.
    */
-  async refresh(mappings: readonly SourceMapping[]): Promise<void> {
+  async refresh(): Promise<void> {
     const provider = this.provider;
     const capabilities = this.capabilitiesSignal();
     if (provider === null || capabilities === null) {
@@ -201,7 +201,7 @@ export class VocabularyRefreshStore {
 
     const signal = this.beginRun('validating');
 
-    const resolution = this.validate(mappings);
+    const resolution = this.resolution();
     if (resolution === null || !canRefreshMappings(resolution)) {
       this.fail(
         ankiError(

@@ -15,6 +15,7 @@ import { snapshotId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
 import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
 import { AppSettingsStore } from '../settings/app-settings.store';
+import { SourceMappingStore } from './source-mapping.store';
 import { VocabularyRefreshStore } from './vocabulary-refresh.store';
 
 const BASIC = mappingFor();
@@ -23,20 +24,41 @@ describe('VocabularyRefreshStore', () => {
   let beds: VocabularyTestBed;
   let store: VocabularyRefreshStore;
   let settings: AppSettingsStore;
+  let sources: SourceMappingStore;
 
   beforeEach(() => {
     beds = configureVocabularyTestBed();
     store = TestBed.inject(VocabularyRefreshStore);
     settings = TestBed.inject(AppSettingsStore);
+    sources = TestBed.inject(SourceMappingStore);
   });
 
   async function connect(provider = new FakeAnkiProvider(CONTRACT_COLLECTION)): Promise<void> {
     await store.connect(provider);
   }
 
+  /**
+   * Puts the given mappings in the store the refresh reads from.
+   *
+   * The refresh deliberately takes no mapping argument, so a spec configures
+   * the sources the same way the editor does.
+   */
+  async function configure(mappings: readonly SourceMapping[]): Promise<void> {
+    for (const mapping of mappings) {
+      await sources.add(mapping);
+      if (!mapping.enabled) {
+        const added = sources.mappings().at(-1);
+        if (added !== undefined) {
+          await sources.setEnabled(added.id, false);
+        }
+      }
+    }
+  }
+
   async function refreshWith(mappings: readonly SourceMapping[] = [BASIC]): Promise<void> {
     await connect();
-    await store.refresh(mappings);
+    await configure(mappings);
+    await store.refresh();
   }
 
   describe('connecting', () => {
@@ -91,7 +113,8 @@ describe('VocabularyRefreshStore', () => {
   describe('mapping validation', () => {
     it('blocks a refresh while a mapping is stale', async () => {
       await connect();
-      await store.refresh([mappingFor({ deckName: 'Gone' })]);
+      await configure([mappingFor({ deckName: 'Gone' })]);
+      await store.refresh();
 
       const state = store.state();
       expect(state.kind).toBe('failed');
@@ -102,14 +125,16 @@ describe('VocabularyRefreshStore', () => {
 
     it('blocks a refresh with nothing enabled', async () => {
       await connect();
-      await store.refresh([mappingFor({ enabled: false })]);
+      await configure([mappingFor({ enabled: false })]);
+      await store.refresh();
 
       expect(store.state().kind).toBe('failed');
       expect(beds.vocabulary.commitCount).toBe(0);
     });
 
     it('refuses to refresh before connecting', async () => {
-      await store.refresh([BASIC]);
+      await configure([BASIC]);
+      await store.refresh();
 
       const state = store.state();
       expect(state.kind).toBe('failed');
@@ -184,7 +209,8 @@ describe('VocabularyRefreshStore', () => {
       await store.connect(
         new FakeAnkiProvider(CONTRACT_COLLECTION, { warnings: ['Nothing has been reviewed.'] }),
       );
-      await store.refresh([BASIC]);
+      await configure([BASIC]);
+      await store.refresh();
 
       const state = store.state();
       if (state.kind !== 'awaiting-confirmation') return;
@@ -193,7 +219,8 @@ describe('VocabularyRefreshStore', () => {
 
     it('prepares an empty snapshot when nothing was ever reviewed', async () => {
       await store.connect(new FakeAnkiProvider(NO_REVIEW_EVIDENCE_COLLECTION));
-      await store.refresh([BASIC]);
+      await configure([BASIC]);
+      await store.refresh();
 
       const state = store.state();
       expect(state.kind).toBe('awaiting-confirmation');
@@ -286,7 +313,8 @@ describe('VocabularyRefreshStore', () => {
 
       // The provider observes the same cancellation the store would raise.
       await store.connect(new FakeAnkiProvider(CONTRACT_COLLECTION));
-      const refreshing = store.refresh([BASIC]);
+      await configure([BASIC]);
+      const refreshing = store.refresh();
       store.cancel();
       await refreshing;
 
@@ -303,7 +331,8 @@ describe('VocabularyRefreshStore', () => {
           extractError: ankiError('query-failed', 'Anki could not answer.'),
         }),
       );
-      await store.refresh([BASIC]);
+      await configure([BASIC]);
+      await store.refresh();
 
       const state = store.state();
       expect(state.kind).toBe('failed');
