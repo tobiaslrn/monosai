@@ -1,0 +1,16 @@
+{
+  "contract-schema18-zstd.apkg": 18296,
+  "contract-schema18-deflate.apkg": 2160,
+  "contract-schema11.apkg": 1265,
+  "contract-schema18-zstd.colpkg": 18296,
+  "no-review-evidence.apkg": 18159,
+  "filtered-deck.apkg": 17770,
+  "missing-reps-column.apkg": 815,
+  "no-collection.apkg": 289,
+  "not-a-database.apkg": 244,
+  "unsupported-compression.apkg": 231,
+  "unsafe-path.apkg": 216,
+  "encrypted.apkg": 227,
+  "decompression-bomb.apkg": 224,
+  "truncated.apkg": 2
+}

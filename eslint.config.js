@@ -62,7 +62,9 @@ export default tseslint.config(
     processor: angular.processInlineTemplates,
     languageOptions: {
       parserOptions: {
-        projectService: { allowDefaultProject: ['playwright.config.ts'] },
+        projectService: {
+          allowDefaultProject: ['playwright.config.ts', 'vitest.manual.config.ts'],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
