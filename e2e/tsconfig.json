@@ -4,14 +4,9 @@
     /* Type-checked only: Playwright transpiles the specs itself and nothing
        consumes a build of this project, so it declares no output root. */
     "noEmit": true,
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "module": "preserve",
     "moduleResolution": "bundler"
   },
-  "include": [
-    "**/*.ts",
-    "../playwright.config.ts"
-  ]
+  "include": ["**/*.ts", "../playwright.config.ts"]
 }

@@ -226,6 +226,13 @@ adds no data: the entries are already in memory via
 - The editorial content of the baseline now reaches the learner. Before this,
   every `nameEn`, `descriptionEn`, and `exampleJa` was validated, digested,
   shipped, and never displayed outside the read-only list on the Grammar screen.
+- **The reader change is not yet observable in the running app.** Token statuses
+  exist only when classification succeeds, which needs an active Anki vocabulary
+  snapshot; until Milestone 5 supplies one the inspector shows its
+  "Connect Anki" hint and no status section at all. The wiring is therefore
+  proven by `token-presentation.spec.ts` and `word-inspector.store.spec.ts`
+  rather than by inspection in the browser, and it should be looked at in the
+  rendered app as part of Milestone 5's first real snapshot.
 - That list gains a purpose beyond disclosure: it is the index of forms the
   reader now names.
 - A `ruleId` the current bundle no longer defines falls back to the generic
