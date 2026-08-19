@@ -688,13 +688,16 @@ otherwise pay for the same analysis many times.
 
 ### Assumptions
 
-- **The deployed application may not be able to reach Anki at all.** Chrome
-  applies a Private Network Access preflight to a public page reaching a local
-  address, and AnkiConnect does not send the header that satisfies it. The
-  client distinguishes this from a refused connection and from a rejected
-  origin using the page's own origin, and the copy points at the package
-  provider. Which one real Chrome produces against a real AnkiConnect is
-  recorded in the Milestone 10 compatibility matrix, not guessed at here.
+- **What stops a deployed page is the origin allowlist, measured, not the
+  private-network preflight.** AnkiConnect (`2055492159`, Anki 25.x) answers
+  every preflight with `Access-Control-Allow-Private-Network: true` regardless
+  of origin, and answers a request from an origin outside `webCorsOriginList`
+  with `403` plus a mismatched allow-origin header, which the browser rejects
+  during CORS. Loopback is exempt whenever `http://localhost` is allowed, and a
+  real run of the vocabulary page at `http://127.0.0.1:4200` connected and
+  listed a real collection. An opaque transport failure is therefore reported as
+  `origin-not-allowed`, and `private-network-blocked` has been removed — the
+  application has no evidence that could distinguish it. See ADR 0017.
 - A collection with review counts present but all zero is reported as zero
   eligible entries plus a warning that scheduling information may have been
   excluded from the export. The two are not distinguishable from the data, so
@@ -708,4 +711,8 @@ otherwise pay for the same analysis many times.
 - The Android bridge has been exercised against a fake and against the shared
   contract, never against a real device. That belongs to the Milestone 10
   compatibility matrix.
+- A deployed HTTPS page reaching `127.0.0.1` from the learner's own Chrome
+  profile has not been observed; only loopback has. Chrome gates some
+  private-network behaviour on secure contexts, so that row of the Milestone 10
+  compatibility matrix is still open.
 

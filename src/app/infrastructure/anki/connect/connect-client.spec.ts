@@ -99,7 +99,10 @@ describe('AnkiConnectClient', () => {
       expect(result.error.code).toBe('bridge-not-running');
     });
 
-    it('reports a blocked private network when the page is not served locally', async () => {
+    it('reports a rejected origin when the page is not served locally', async () => {
+      // AnkiConnect allows `http://localhost` and `http://127.0.0.1` out of the
+      // box and answers anything else with a 403 the browser reports as an
+      // opaque failure, so a non-local page is refused rather than unreachable.
       const client = clientWith(
         new FakeAnkiConnectServer(CONTRACT_COLLECTION, { transportFailure: true }).fetch,
         { pageOrigin: 'https://example.github.io' },
@@ -108,7 +111,8 @@ describe('AnkiConnectClient', () => {
       const result = await client.version();
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe('private-network-blocked');
+      expect(result.error.code).toBe('origin-not-allowed');
+      expect(result.error.cause).toBe('https://example.github.io');
     });
 
     it('reports a rejected origin once an endpoint has already answered', async () => {

@@ -15,7 +15,6 @@ export type AnkiErrorCode =
   | 'addon-missing-or-unreachable'
   | 'permission-denied'
   | 'origin-not-allowed'
-  | 'private-network-blocked'
   | 'timeout'
   | 'unsupported-api'
   | 'unsupported-action'
@@ -44,7 +43,6 @@ export const ALL_ANKI_ERROR_CODES: readonly AnkiErrorCode[] = [
   'addon-missing-or-unreachable',
   'permission-denied',
   'origin-not-allowed',
-  'private-network-blocked',
   'timeout',
   'unsupported-api',
   'unsupported-action',
@@ -99,7 +97,6 @@ const SUGGESTS_PACKAGE_FALLBACK: readonly AnkiErrorCode[] = [
   'addon-missing-or-unreachable',
   'permission-denied',
   'origin-not-allowed',
-  'private-network-blocked',
   'unsupported-api',
   'unsupported-action',
   'review-evidence-unsupported',

@@ -48,9 +48,6 @@ describe('ANKI_ERROR_COPY', () => {
   });
 
   it('offers the package path when a local connection cannot work', () => {
-    expect(ANKI_ERROR_COPY['private-network-blocked'].primaryAction.toLowerCase()).toContain(
-      'package',
-    );
     expect(ANKI_ERROR_COPY['review-evidence-unsupported'].primaryAction.toLowerCase()).toContain(
       'package',
     );

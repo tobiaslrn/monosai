@@ -66,18 +66,12 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
   },
   'origin-not-allowed': {
     heading: 'Anki refused this address',
-    whatFailed: 'AnkiConnect is running but does not accept requests from this address.',
-    whatDidNot: NOTHING_SAVED,
-    primaryAction: "Add this address to AnkiConnect's allowed origins, then test again.",
-    escape: USE_PACKAGE,
-  },
-  'private-network-blocked': {
-    heading: 'Your browser blocked the connection',
     whatFailed:
-      'The browser will not let this page reach Anki on your own computer, so the connection cannot be made from here.',
+      'AnkiConnect answers on this device but does not accept requests from the address this page is served from.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: USE_PACKAGE,
-    escape: 'Reading, furigana, and the dictionary work without any Anki connection.',
+    primaryAction:
+      "Add this page's address to AnkiConnect's allowed origins, then restart Anki and test again.",
+    escape: USE_PACKAGE,
   },
   timeout: {
     heading: 'Anki did not answer in time',
