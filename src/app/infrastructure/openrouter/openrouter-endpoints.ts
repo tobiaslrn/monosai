@@ -11,7 +11,7 @@ export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 /** Text tasks use the OpenAI-compatible chat completion shape. */
 export const CHAT_COMPLETIONS_PATH = '/chat/completions';
 
-/** Speech synthesis uses the OpenAI-compatible speech shape. See ADR 0017. */
+/** Speech synthesis uses the OpenAI-compatible speech shape. See ADR 0018. */
 export const AUDIO_SPEECH_PATH = '/audio/speech';
 
 /** Largest JSON body accepted, so a broken endpoint cannot exhaust memory. */

@@ -113,7 +113,7 @@ export function mapHttpStatus(
   if (status === 402) {
     // Insufficient credit is an account-access problem the learner fixes in the
     // same place a rejected key is fixed, and the failure model has no separate
-    // variant for it. See ADR 0017.
+    // variant for it. See ADR 0018.
     return aiError('authentication', task, 'The provider refused the request for account access.', {
       cause: 'HTTP 402',
       detail: detailOf(context, { status }),

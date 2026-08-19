@@ -104,8 +104,7 @@ export class FakeOpenRouterServer {
       });
     }
 
-    const url =
-      typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     const headers = new Headers(init?.headers);
     const authorization = headers.get('authorization');
     const apiKey = authorization?.startsWith('Bearer ')
