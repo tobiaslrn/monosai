@@ -59,6 +59,12 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     </p>
   `,
   styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
     .checks {
       display: flex;
       flex-direction: column;

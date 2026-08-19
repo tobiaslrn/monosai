@@ -134,6 +134,20 @@ describe('GenerationStepperComponent', () => {
     expect(stages['Translating']).toBe('skipped');
   });
 
+  it('reports an unsaved draft as everything but the save', async () => {
+    const { element, store, fixture } = render();
+    bed.provider.storyQueue.push(ok(storyWithUnknown()));
+    bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
+
+    await store.generate('micro', { premise: 'ねこの話。' });
+    fixture.detectChanges();
+
+    const stages = stagesOf(element);
+    expect(stages['Validating vocabulary']).toBe('complete');
+    expect(stages['Repairing']).toBe('complete');
+    expect(stages['Saving']).toBe('skipped');
+  });
+
   it('marks the failing stage rather than the whole run', async () => {
     const untested = configureGenerationTestBed({ structuredOutput: null });
     const { element, store, fixture } = render();

@@ -20,8 +20,10 @@ export const textModelSettingsSchema = z.object({
   lastTestFingerprint: z.string().nullable(),
   lastTestedAt: timestampSchema.nullable(),
   // Recorded by a successful test so generation opens in the mode this model
-  // is known to honour. Null whenever no test currently vouches for it.
-  structuredOutput: z.enum(['native-schema', 'json-contract']).nullable(),
+  // is known to honour. Null whenever no test currently vouches for it, which
+  // is also what a row written before the field existed means: an absent value
+  // is the untested state, so it is defaulted rather than treated as corrupt.
+  structuredOutput: z.enum(['native-schema', 'json-contract']).nullable().default(null),
 });
 
 export const ttsSettingsSchema = z.object({

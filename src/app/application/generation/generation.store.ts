@@ -81,7 +81,11 @@ export type GenerationState =
   | { readonly kind: 'finalizing' }
   | { readonly kind: 'saved'; readonly reading: GeneratedStory }
   | { readonly kind: 'invalid-draft'; readonly draft: InvalidDraft }
-  | { readonly kind: 'cancelled' }
+  | {
+      readonly kind: 'cancelled';
+      /** The stage the run was in when it was cancelled. */
+      readonly during: RunningStateKind;
+    }
   | {
       readonly kind: 'failed';
       readonly error: GenerationFailure;
@@ -767,8 +771,9 @@ export class GenerationStore {
   }
 
   private cancelled(): void {
+    const during = this.runningKind();
     this.controller = null;
-    this.stateSignal.set({ kind: 'cancelled' });
+    this.stateSignal.set({ kind: 'cancelled', during });
     this.announce('Generation cancelled. Nothing was saved.');
   }
 
