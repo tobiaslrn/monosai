@@ -8,6 +8,15 @@ import type { TextGenerationProvider } from '../app/domain/ai/text-generation-pr
 import type { TextToSpeechProvider } from '../app/domain/ai/text-to-speech-provider';
 import type { CredentialStatus } from '../app/domain/settings/credential';
 import type { CredentialRepository } from '../app/domain/settings/credential-repository';
+import type { SettingsRepository } from '../app/domain/settings/settings-repository';
+import {
+  DEFAULT_EXCEPTION_POLICY,
+  DEFAULT_TEXT_MODEL_SETTINGS,
+  DEFAULT_TTS_SETTINGS,
+  type ExceptionPolicy,
+  type TextModelSettings,
+  type TtsSettings,
+} from '../app/domain/settings/settings';
 import { err, ok, type Result } from '../app/domain/shared/result';
 import { storageError, type StorageError } from '../app/domain/storage/storage-error';
 import {
@@ -172,4 +181,87 @@ export class StubTtsProvider implements TextToSpeechProvider {
     void signal;
     return Promise.resolve(this.outcome);
   }
+}
+
+/**
+ * The settings rows the AI stores read and write.
+ *
+ * Only these six methods are stubbed: the app, reader-preference, and
+ * language-asset rows belong to other stores, and empty bodies for them would
+ * assert nothing.
+ */
+export type AiSettingsSubset = Pick<
+  SettingsRepository,
+  | 'getTextModelSettings'
+  | 'updateTextModelSettings'
+  | 'getTtsSettings'
+  | 'updateTtsSettings'
+  | 'getExceptionPolicy'
+  | 'updateExceptionPolicy'
+>;
+
+export class StubAiSettingsRepository implements AiSettingsSubset {
+  textModel: TextModelSettings = DEFAULT_TEXT_MODEL_SETTINGS;
+  tts: TtsSettings = DEFAULT_TTS_SETTINGS;
+  policy: ExceptionPolicy = DEFAULT_EXCEPTION_POLICY;
+
+  /** Set to make the next write fail, for revert and failure-copy coverage. */
+  failWrites: StorageError | null = null;
+  failReads: StorageError | null = null;
+
+  getTextModelSettings(): Promise<Result<TextModelSettings, StorageError>> {
+    return Promise.resolve(this.failReads === null ? ok(this.textModel) : err(this.failReads));
+  }
+
+  updateTextModelSettings(
+    patch: Partial<TextModelSettings>,
+  ): Promise<Result<TextModelSettings, StorageError>> {
+    if (this.failWrites !== null) {
+      return Promise.resolve(err(this.failWrites));
+    }
+    this.textModel = { ...this.textModel, ...patch };
+    return Promise.resolve(ok(this.textModel));
+  }
+
+  getTtsSettings(): Promise<Result<TtsSettings, StorageError>> {
+    return Promise.resolve(this.failReads === null ? ok(this.tts) : err(this.failReads));
+  }
+
+  updateTtsSettings(patch: Partial<TtsSettings>): Promise<Result<TtsSettings, StorageError>> {
+    if (this.failWrites !== null) {
+      return Promise.resolve(err(this.failWrites));
+    }
+    this.tts = { ...this.tts, ...patch };
+    return Promise.resolve(ok(this.tts));
+  }
+
+  getExceptionPolicy(): Promise<Result<ExceptionPolicy, StorageError>> {
+    return Promise.resolve(this.failReads === null ? ok(this.policy) : err(this.failReads));
+  }
+
+  updateExceptionPolicy(policy: ExceptionPolicy): Promise<Result<ExceptionPolicy, StorageError>> {
+    if (this.failWrites !== null) {
+      return Promise.resolve(err(this.failWrites));
+    }
+    this.policy = policy;
+    return Promise.resolve(ok(this.policy));
+  }
+}
+
+/** A passing text-model test result. */
+export function modelTest(modelId = FAKE_OPENROUTER.textModel): ModelTest {
+  return { modelId, structuredOutput: 'native-schema' };
+}
+
+/** A passing TTS test result, with a clip small enough to keep in memory. */
+export function ttsTest(speedApplied = true): TtsTest {
+  const bytes = new ArrayBuffer(1024);
+  return {
+    modelId: FAKE_OPENROUTER.ttsModel,
+    voiceId: FAKE_OPENROUTER.voice,
+    speedApplied,
+    mimeType: 'audio/mpeg',
+    byteLength: bytes.byteLength,
+    sample: new Blob([bytes], { type: 'audio/mpeg' }),
+  };
 }
