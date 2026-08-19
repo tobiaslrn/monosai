@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import type { LanguageError } from '../../domain/language/language-error';
+import { languageError, type LanguageError } from '../../domain/language/language-error';
 import type { SentenceTokens } from '../../domain/language/language-runtime';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import type { SnapshotId } from '../../domain/shared/ids';
-import { ok, type Result } from '../../domain/shared/result';
+import { err, ok, type Result } from '../../domain/shared/result';
+import { LanguageStore } from '../language/language.store';
 import { AppSettingsStore } from '../settings/app-settings.store';
 import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
@@ -40,6 +41,7 @@ export class VocabularyClassificationService {
   private readonly runtime = inject(LANGUAGE_RUNTIME);
   private readonly vocabulary = inject(VOCABULARY_REPOSITORY);
   private readonly settings = inject(AppSettingsStore);
+  private readonly language = inject(LanguageStore);
 
   private compiledSnapshotId: SnapshotId | null = null;
 
@@ -50,6 +52,15 @@ export class VocabularyClassificationService {
     const snapshotId = this.settings.activeSnapshotId();
     if (snapshotId === null || sentences.length === 0) {
       return ok(VOCABULARY_NOT_CONFIGURED);
+    }
+
+    // On a cold start the reader can reach this before the worker has loaded
+    // its assets, and compiling a matcher into an uninitialized worker fails.
+    // Waiting here is what stops a snapshot the learner does have from being
+    // reported as no vocabulary at all.
+    const ready = await this.language.initialize();
+    if (!ready) {
+      return err(languageError('not-initialized', 'Japanese language support is not ready yet.'));
     }
 
     const compiled = await this.ensureCompiled(snapshotId, signal);

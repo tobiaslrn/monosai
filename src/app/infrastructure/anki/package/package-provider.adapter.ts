@@ -2,6 +2,7 @@ import { ankiError, type AnkiError } from '../../../domain/anki/anki-error';
 import type {
   AnkiExtractionEvent,
   AnkiVocabularyProvider,
+  PackageSource,
 } from '../../../domain/anki/anki-provider';
 import type { AnkiCapabilities, CapabilityLimitation } from '../../../domain/anki/capabilities';
 import type { AnkiCatalog } from '../../../domain/anki/catalog';
@@ -10,18 +11,6 @@ import type { AnkiProviderKind } from '../../../domain/vocabulary/snapshot';
 import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
 import type { OpenResult } from './package-protocol';
 import type { PackageWorkerClient } from './package-worker.client';
-
-/**
- * The package this provider reads, supplied by the learner.
- *
- * The bytes are read once, on the first probe, and handed to the worker; the
- * provider never keeps a second copy of a file that can be hundreds of
- * megabytes.
- */
-export interface PackageSource {
-  readonly fileName: string;
-  bytes(): Promise<ArrayBuffer>;
-}
 
 function limitationsOf(opened: OpenResult): readonly CapabilityLimitation[] {
   const limitations: CapabilityLimitation[] = [];

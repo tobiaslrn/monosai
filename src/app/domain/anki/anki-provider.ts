@@ -40,6 +40,17 @@ export type AnkiExtractionEvent =
   | { readonly kind: 'failed'; readonly error: AnkiError };
 
 /**
+ * A package file the learner chose.
+ *
+ * The bytes are read lazily so a file of hundreds of megabytes is not held
+ * twice while it waits to be opened.
+ */
+export interface PackageSource {
+  readonly fileName: string;
+  bytes(): Promise<ArrayBuffer>;
+}
+
+/**
  * Read-only access to one Anki source.
  *
  * There is deliberately no generic action method: every implementation exposes

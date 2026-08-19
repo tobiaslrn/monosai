@@ -11,7 +11,8 @@ and what remains.
 | 2 — Offline language assets and worker   | Complete    |
 | 3 — Reader vertical slice                | Complete    |
 | 4 — Grammar profile                      | Complete    |
-| 5–10                                     | Not started |
+| 5 — Anki vocabulary                      | Complete    |
+| 6–10                                     | Not started |
 
 ## Milestone 0 — Repository and decision scaffolding
 
@@ -587,3 +588,124 @@ now that the milestone is delivered.
 - Grammar review judging novelty against the captured guidance (Milestone 8).
 - Language review of the six preset guidance texts remains a release gate, as
   ADR 0008 established.
+
+## Milestone 5 — Anki vocabulary
+
+### Delivered
+
+Everything downstream of a vocabulary snapshot already existed: the matcher, the
+classification precedence, the Dexie tables, and the atomic commit. What was
+missing was the producer, so `activeSnapshotId` was permanently null and no
+reader marker could ever appear. This milestone builds the three read-only
+sources, the refresh that turns them into one immutable snapshot, and the screen
+that drives it.
+
+#### Read-only by construction
+
+The AnkiConnect client's `invoke` is private and its action parameter is typed
+`AllowedAction`, whose eight entries are all reads. There is no public method
+that takes an action name, so a write action is a compile error rather than
+something review has to catch. `allowed-actions.spec.ts` also checks the list
+against the mutating verbs AnkiConnect uses and reads the client's own source to
+confirm nothing else reaches the wire.
+
+The package pipeline is read-only the same way: `CollectionDatabase` exposes
+only `query` and `close`, with no `run` or `exec`. Media members are listed from
+the central directory and never decompressed.
+
+#### Three sources, one contract
+
+`runProviderContract` is one suite every provider passes — the reference fake,
+the package pipeline across four package formats, and both HTTP adapters against
+a deterministic fake AnkiConnect server. A snapshot has to mean the same thing
+whichever source built it, and three genuinely different implementations
+answering identically is what makes that true rather than hoped for.
+
+Eligibility is decided from each card's own `reps`, never from a search term
+like `-is:new`: a card studied and later forgotten returns to the new queue while
+keeping its review count. A card in a filtered deck resolves its home deck
+through `odid`, so Custom Study cannot move it out of a mapping.
+
+#### Packages
+
+See [ADR 0016](decisions/0016-anki-package-parsing.md). The ZIP reader is
+written directly against the format so the safety checks are ours; `fzstd`
+decodes the zstd collection modern Anki writes; `sql.js` opens it. Both
+libraries are imported lazily inside a dedicated worker that is terminated
+after use, so the initial bundle is unchanged and the WebAssembly heap is
+actually reclaimed.
+
+Two collection layouts are supported behind one reader, chosen by which tables
+exist rather than by version number: normalized (schema 18) and JSON in the
+`col` row (schema 11).
+
+#### The refresh
+
+The state machine's ordering carries the guarantee. Every state before
+`committing` can be cancelled or fail without touching stored data;
+`committing` is the one non-cancellable state because it is a single
+transaction that either replaces the active snapshot or leaves it exactly as it
+was. The prepared snapshot waits for confirmation, and extracted values live
+only in the store.
+
+Only distinct expressions are tokenized — a deck with heavy duplication would
+otherwise pay for the same analysis many times.
+
+### Verified
+
+- 834 unit tests, including the shared contract across five provider
+  configurations and the full refresh state machine.
+- 14 synthetic package fixtures, built reproducibly from Node built-ins and
+  checked byte for byte by `npm run verify`. They cover both schema layouts,
+  zstd and deflate, `.colpkg`, filtered decks, missing review data, unsafe
+  paths, encryption, unsupported compression, and a decompression bomb.
+- 16 end-to-end tests on desktop and Pixel 5, covering the package path through
+  to reader markers, the AnkiConnect path, discard, missing review evidence, and
+  two named failures. Axe finds no serious or critical violations.
+- Manual compatibility pass against a real 1,500-note export kept outside the
+  repository (`npm run test:manual`): deck `Kaishi 1.5k`, note type
+  `Kaishi 1.5k+`, field `Word`, **150 eligible entries**, zero rejections. The
+  collection decompresses in about 35 ms.
+- Driven in the browser end to end: a package import produced the expected
+  counts (6 reviewed notes, 5 with text, 1 empty skipped, 1 duplicate merged,
+  4 unique), committed, and the reader then marked ねこ, 見る, and 犬 as known.
+  No horizontal overflow at 320 px and no tables on the page.
+
+### Fixed along the way
+
+- **The reader claimed vocabulary was not configured on a cold start.** Opening
+  a reading by URL reaches classification before the language worker has loaded
+  its assets; compiling a matcher then failed, and the reader fell back to "no
+  reviewed Anki vocabulary is set up" — telling the learner to fix something
+  that was not broken. `VocabularyClassificationService` now waits for the
+  runtime, and `vocabularyNotConfigured` no longer reports a failure as an
+  absent snapshot.
+- **The Active snapshot badge failed colour contrast** at 2.4:1, because it
+  named a `--surface-base` token that does not exist and inherited a dark
+  foreground. It now uses the design system's soft pairing: 5.25:1 light,
+  6.65:1 dark.
+- Added the `DexieSourceMappingRepository` spec that Milestone 1 left out.
+
+### Assumptions
+
+- **The deployed application may not be able to reach Anki at all.** Chrome
+  applies a Private Network Access preflight to a public page reaching a local
+  address, and AnkiConnect does not send the header that satisfies it. The
+  client distinguishes this from a refused connection and from a rejected
+  origin using the page's own origin, and the copy points at the package
+  provider. Which one real Chrome produces against a real AnkiConnect is
+  recorded in the Milestone 10 compatibility matrix, not guessed at here.
+- A collection with review counts present but all zero is reported as zero
+  eligible entries plus a warning that scheduling information may have been
+  excluded from the export. The two are not distinguishable from the data, so
+  the warning names the possibility rather than asserting it.
+
+### Remaining
+
+- Setup and troubleshooting documentation for desktop AnkiConnect, the Android
+  bridge, and the package fallback lands in Milestone 10.
+- The non-blocking preset/snapshot-size mismatch warning needs Milestone 7.
+- The Android bridge has been exercised against a fake and against the shared
+  contract, never against a real device. That belongs to the Milestone 10
+  compatibility matrix.
+

@@ -15,6 +15,7 @@ export interface NavigationItem {
 export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
   { path: '/library', label: 'Library', icon: 'library', mobilePlacement: 'bar' },
   { path: '/add', label: 'Add text', icon: 'add', mobilePlacement: 'bar' },
+  { path: '/vocabulary', label: 'Vocabulary', icon: 'vocabulary', mobilePlacement: 'more' },
   { path: '/grammar', label: 'Grammar', icon: 'grammar', mobilePlacement: 'more' },
   { path: '/settings', label: 'Settings', icon: 'settings', mobilePlacement: 'more' },
 ];

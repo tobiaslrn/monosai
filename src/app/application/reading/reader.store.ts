@@ -98,8 +98,15 @@ export class ReaderStore {
   readonly hasMoreAbove = computed(() => this.windowSignal().first > 0);
 
   /** True when vocabulary markers cannot be shown because Anki is not set up. */
+  /**
+   * True only when there genuinely is no vocabulary to classify against.
+   *
+   * A classification failure also leaves the status unset, but telling the
+   * learner their Anki vocabulary is not set up when it is would send them to
+   * fix something that is not broken.
+   */
   readonly vocabularyNotConfigured = computed(
-    () => this.vocabularySignal().kind === 'not-configured',
+    () => this.vocabularySignal().kind === 'not-configured' && this.languageErrorSignal() === null,
   );
 
   /**

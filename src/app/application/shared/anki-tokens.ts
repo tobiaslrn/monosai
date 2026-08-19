@@ -1,5 +1,5 @@
 import { InjectionToken } from '@angular/core';
-import type { AnkiVocabularyProvider } from '../../domain/anki/anki-provider';
+import type { AnkiVocabularyProvider, PackageSource } from '../../domain/anki/anki-provider';
 import type { MarkupTextExtractor } from '../../domain/anki/markup-text';
 
 /**
@@ -16,6 +16,19 @@ export type AnkiProviderFactory = (
 
 export const ANKI_PROVIDER_FACTORY = new InjectionToken<AnkiProviderFactory>(
   'monosai.anki-provider-factory',
+);
+
+/**
+ * Creates a provider for one chosen package file.
+ *
+ * Separate from the connection factory because it needs the file, and a
+ * feature must be able to ask for one without reaching into infrastructure to
+ * start a worker itself.
+ */
+export type PackageProviderFactory = (source: PackageSource) => AnkiVocabularyProvider;
+
+export const PACKAGE_PROVIDER_FACTORY = new InjectionToken<PackageProviderFactory>(
+  'monosai.package-provider-factory',
 );
 
 /**

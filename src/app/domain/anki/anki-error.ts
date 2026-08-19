@@ -32,6 +32,36 @@ export type AnkiErrorCode =
   | 'cancelled'
   | 'unknown';
 
+/**
+ * The same variants as a value.
+ *
+ * The UI has to give every one of them its own wording, and only a runtime list
+ * lets a test prove none was forgotten.
+ */
+export const ALL_ANKI_ERROR_CODES: readonly AnkiErrorCode[] = [
+  'not-running',
+  'bridge-not-running',
+  'addon-missing-or-unreachable',
+  'permission-denied',
+  'origin-not-allowed',
+  'private-network-blocked',
+  'timeout',
+  'unsupported-api',
+  'unsupported-action',
+  'malformed-response',
+  'deck-discovery-failed',
+  'note-type-discovery-failed',
+  'field-discovery-failed',
+  'review-evidence-unsupported',
+  'query-failed',
+  'package-unreadable',
+  'package-schema-unsupported',
+  'package-review-data-missing',
+  'package-resource-limit',
+  'cancelled',
+  'unknown',
+];
+
 export type AnkiError = DomainErrorBase<'anki', AnkiErrorCode>;
 
 export function ankiError(code: AnkiErrorCode, message: string, cause?: string): AnkiError {
