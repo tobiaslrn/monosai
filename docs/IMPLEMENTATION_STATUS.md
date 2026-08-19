@@ -577,8 +577,9 @@ disclosure and action targets measure 44 px, and the console is clean.
 
 ### Remaining work in later milestones
 
-These are Stage 5 of `docs/plans/milestone-4-grammar-presets.md` and have no
-consumer until the pipeline exists:
+Deferred deliberately: each needs a pipeline that does not exist yet, so there is
+nothing to wire them to. The milestone plan that scheduled them has been deleted
+now that the milestone is delivered.
 
 - `StoryGenerationRequest.grammarGuidance` and `registerPreference`, and the
   60,000-token `context-budget-exceeded` guard (Milestone 7).
