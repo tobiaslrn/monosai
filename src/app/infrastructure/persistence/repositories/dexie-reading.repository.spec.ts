@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fixedClock } from '../../../domain/shared/clock';
-import { readingId, sentenceId } from '../../../domain/shared/ids';
+import { readingId, sentenceId, snapshotId } from '../../../domain/shared/ids';
 import type { MonosaiDatabase } from '../monosai-db';
 import { createTestDatabase, destroyTestDatabase } from '../../../../testing/test-database';
 import {
+  generatedStoryDraftFixture,
   generatedStoryFixture,
   importedReadingFixture,
   snapshotFixture,
@@ -112,6 +113,126 @@ describe('DexieReadingRepository', () => {
 
       expect(saved.ok).toBe(false);
       expect(await db.readings.count()).toBe(0);
+    });
+  });
+
+  describe('saving a generated story', () => {
+    const storySnapshotId = snapshotId(uuid(9_500));
+
+    it('writes the text, validation, and provenance in one transaction', async () => {
+      const draft = generatedStoryDraftFixture(storySnapshotId);
+
+      const saved = await repository.saveGeneratedStory(draft);
+
+      expect(saved.ok).toBe(true);
+      expect(await db.readings.count()).toBe(1);
+      expect(await db.paragraphs.count()).toBe(1);
+      expect(await db.sentences.count()).toBe(draft.sentences.length);
+      expect(await db.tokenAnalyses.count()).toBe(draft.tokenAnalyses.length);
+      expect(await db.frozenValidations.count()).toBe(draft.frozenValidations.length);
+      expect(await db.generationProvenance.count()).toBe(1);
+    });
+
+    it('reads back as a generated reading with its provenance pointer intact', async () => {
+      const draft = generatedStoryDraftFixture(storySnapshotId);
+      await repository.saveGeneratedStory(draft);
+
+      const stored = await repository.getReading(draft.reading.id);
+
+      expect(stored.ok).toBe(true);
+      if (!stored.ok || stored.value?.kind !== 'generated') {
+        throw new Error('expected a stored generated story');
+      }
+      expect(stored.value.generationProvenanceId).toBe(draft.provenance.id);
+      expect(stored.value.snapshotId).toBe(storySnapshotId);
+    });
+
+    it('refuses a draft that still marks a word unknown, and writes nothing', async () => {
+      const draft = generatedStoryDraftFixture(storySnapshotId, {
+        firstTokenValidation: { category: 'unknown', reason: 'unresolved-after-repair' },
+      });
+
+      const saved = await repository.saveGeneratedStory(draft);
+
+      expect(saved.ok).toBe(false);
+      if (saved.ok) {
+        throw new Error('expected a conflict');
+      }
+      expect(saved.error.code).toBe('conflict');
+      expect(await db.readings.count()).toBe(0);
+      expect(await db.sentences.count()).toBe(0);
+      expect(await db.frozenValidations.count()).toBe(0);
+      expect(await db.generationProvenance.count()).toBe(0);
+    });
+
+    it('refuses a draft carrying the imported-only not-in-snapshot category', async () => {
+      const draft = generatedStoryDraftFixture(storySnapshotId, {
+        firstTokenValidation: { category: 'not-in-snapshot' },
+      });
+
+      const saved = await repository.saveGeneratedStory(draft);
+
+      expect(saved.ok).toBe(false);
+      expect(await db.readings.count()).toBe(0);
+    });
+
+    it('accepts a policy exception, which is a validated status', async () => {
+      const draft = generatedStoryDraftFixture(storySnapshotId, {
+        firstTokenValidation: {
+          category: 'policy-exception',
+          exceptionId: 'candidate-1',
+          explanationEn: 'The policy allows place names the learner mentioned.',
+        },
+      });
+
+      const saved = await repository.saveGeneratedStory(draft);
+
+      expect(saved.ok).toBe(true);
+    });
+
+    it('refuses provenance that describes a different run', async () => {
+      const draft = generatedStoryDraftFixture(storySnapshotId, {
+        provenance: { modelId: '' },
+      });
+
+      const saved = await repository.saveGeneratedStory(draft);
+
+      expect(saved.ok).toBe(false);
+      expect(await db.readings.count()).toBe(0);
+    });
+
+    it('refuses a story whose sentences are not all validated', async () => {
+      const draft = generatedStoryDraftFixture(storySnapshotId);
+
+      const saved = await repository.saveGeneratedStory({
+        ...draft,
+        frozenValidations: draft.frozenValidations.slice(0, 1),
+      });
+
+      expect(saved.ok).toBe(false);
+      expect(await db.readings.count()).toBe(0);
+    });
+
+    it('refuses a duplicate story identity and keeps the first save intact', async () => {
+      const draft = generatedStoryDraftFixture(storySnapshotId);
+      await repository.saveGeneratedStory(draft);
+
+      const second = await repository.saveGeneratedStory(draft);
+
+      expect(second.ok).toBe(false);
+      expect(await db.readings.count()).toBe(1);
+      expect(await db.generationProvenance.count()).toBe(1);
+    });
+
+    it('leaves no owned rows behind when the story is deleted', async () => {
+      const draft = generatedStoryDraftFixture(storySnapshotId);
+      await repository.saveGeneratedStory(draft);
+
+      await repository.deleteReading(draft.reading.id);
+
+      expect(await db.readings.count()).toBe(0);
+      expect(await db.frozenValidations.count()).toBe(0);
+      expect(await db.generationProvenance.count()).toBe(0);
     });
   });
 

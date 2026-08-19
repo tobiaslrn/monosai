@@ -6,6 +6,7 @@ import {
 import { CREDENTIAL_REPOSITORY } from '../../application/shared/repository-tokens';
 import { createAudioDecoder } from './audio-decode';
 import { OpenRouterClient } from './openrouter-client';
+import { OpenRouterTextProvider } from './openrouter-text-provider';
 import { OpenRouterTextModelTester } from './text-model-test.adapter';
 import { OpenRouterTtsTester } from './tts-test.adapter';
 
@@ -16,9 +17,11 @@ function delay(ms: number): Promise<void> {
 /**
  * Binds the AI ports to the OpenRouter adapters.
  *
- * Both testers share one client, because the client is where the single
+ * Every adapter shares one client, because the client is where the single
  * outbound request path, the credential boundary, and the retry limits live.
- * The ports stay separate so that a TTS failure cannot reach text readiness.
+ * The ports stay separate so that a TTS failure cannot reach text readiness,
+ * and the text port is composed from a tester and a generator so neither file
+ * has to carry the other's job.
  */
 export function provideOpenRouter(): Provider[] {
   const client = (): OpenRouterClient => {
@@ -34,7 +37,16 @@ export function provideOpenRouter(): Provider[] {
   return [
     {
       provide: TEXT_GENERATION_PROVIDER,
-      useFactory: () => new OpenRouterTextModelTester(client()),
+      useFactory: () => {
+        const shared = client();
+        return new OpenRouterTextProvider(
+          new OpenRouterTextModelTester(shared),
+          // Loaded on the first generation, so the prompt assets stay out of
+          // the initial bundle for a learner who only imports their own text.
+          async () =>
+            new (await import('./story-generation.adapter')).OpenRouterStoryGenerator(shared),
+        );
+      },
     },
     {
       provide: TEXT_TO_SPEECH_PROVIDER,

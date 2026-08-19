@@ -1,6 +1,7 @@
 import { DOCUMENT, inject, type Provider } from '@angular/core';
 import { systemClock, type Clock } from '../../domain/shared/clock';
 import type { IdGenerator } from '../../domain/shared/ids';
+import type { RandomSource } from '../../domain/shared/random';
 import {
   CLOCK,
   CREDENTIAL_REPOSITORY,
@@ -10,6 +11,7 @@ import {
   HASHER,
   ID_GENERATOR,
   JOB_REPOSITORY,
+  RANDOM_SOURCE,
   READING_REPOSITORY,
   SETTINGS_REPOSITORY,
   SOURCE_MAPPING_REPOSITORY,
@@ -36,6 +38,30 @@ const cryptoIdGenerator: IdGenerator = {
   nextId: () => crypto.randomUUID(),
 };
 
+/**
+ * Cryptographically adequate randomness, as the specification requires for the
+ * suggestion palette.
+ *
+ * Rejection sampling removes the modulo bias a plain remainder would leave, so
+ * the last few vocabulary items are not quietly less likely to be suggested
+ * than the first few.
+ */
+const cryptoRandomSource: RandomSource = {
+  nextInt: (exclusiveMax: number): number => {
+    if (!Number.isInteger(exclusiveMax) || exclusiveMax <= 0) {
+      throw new RangeError('nextInt requires a positive integer bound');
+    }
+    const limit = Math.floor(0x1_0000_0000 / exclusiveMax) * exclusiveMax;
+    const buffer = new Uint32Array(1);
+    for (;;) {
+      crypto.getRandomValues(buffer);
+      if (buffer[0] < limit) {
+        return buffer[0] % exclusiveMax;
+      }
+    }
+  },
+};
+
 /** Binds every domain port to its Dexie-backed implementation. */
 export function providePersistence(): Provider[] {
   return [
@@ -43,6 +69,7 @@ export function providePersistence(): Provider[] {
     { provide: DATABASE_SCHEMA_VERSION, useValue: CURRENT_SCHEMA_VERSION },
     { provide: HASHER, useValue: sha256Hasher },
     { provide: ID_GENERATOR, useValue: cryptoIdGenerator },
+    { provide: RANDOM_SOURCE, useValue: cryptoRandomSource },
     { provide: MonosaiDatabase, useFactory: () => new MonosaiDatabase() },
     {
       provide: SETTINGS_REPOSITORY,

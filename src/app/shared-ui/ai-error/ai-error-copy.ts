@@ -1,4 +1,13 @@
 import type { AiError, AiErrorCode } from '../../domain/ai/ai-error';
+import type { AiTask } from '../../domain/ai/ai-task';
+
+/**
+ * Provider-failure copy, shared by every screen that can see one.
+ *
+ * It lives in `shared-ui` rather than inside Settings because Generate needs
+ * exactly the same table: one feature reaching into another's internals for its
+ * wording is how two tables that must agree start drifting apart.
+ */
 
 /**
  * What the learner is told about one provider failure.
@@ -121,6 +130,29 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
   },
 };
 
+/**
+ * What was being attempted, in the learner's words.
+ *
+ * The failure table says what went wrong; this says what it went wrong during.
+ * They are separate because the same rate limit needs the same explanation
+ * whether it interrupted a configuration test or a repair, while "the test" and
+ * "the repair" are not interchangeable words.
+ *
+ * Exhaustive by type: adding a task to `AiTask` will not compile until it has
+ * been given words here.
+ */
+export const AI_TASK_COPY: Record<AiTask, string> = {
+  'text-model-test': 'testing your text model',
+  'tts-test': 'testing your voice',
+  'story-generation': 'writing your story',
+  'story-repair': 'repairing your story',
+  'exception-review': 'checking your exception policy',
+};
+
 export function aiErrorCopy(error: AiError): AiErrorCopy {
   return AI_ERROR_COPY[error.code];
+}
+
+export function aiTaskCopy(task: AiTask): string {
+  return AI_TASK_COPY[task];
 }

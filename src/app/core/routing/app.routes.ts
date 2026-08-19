@@ -17,6 +17,14 @@ export const APP_ROUTES: Routes = [
       import('../../features/add-text/add-text-page.component').then((m) => m.AddTextPageComponent),
   },
   {
+    path: 'generate',
+    title: 'Generate · Monosai',
+    loadComponent: () =>
+      import('../../features/generate/generate-page.component').then(
+        (m) => m.GeneratePageComponent,
+      ),
+  },
+  {
     path: 'reader/:id',
     title: 'Reading · Monosai',
     // The reader supplies its own header and hides the bottom navigation.

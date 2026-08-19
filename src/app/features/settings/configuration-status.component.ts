@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import type { AiError } from '../../domain/ai/ai-error';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import { technicalCode } from '../../domain/shared/errors';
-import { aiErrorCopy } from './ai-error-copy';
+import { aiErrorCopy } from '../../shared-ui/ai-error/ai-error-copy';
 
 interface ReadinessLabel {
   readonly text: string;

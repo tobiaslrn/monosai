@@ -19,6 +19,9 @@ export const textModelSettingsSchema = z.object({
   modelId: z.string(),
   lastTestFingerprint: z.string().nullable(),
   lastTestedAt: timestampSchema.nullable(),
+  // Recorded by a successful test so generation opens in the mode this model
+  // is known to honour. Null whenever no test currently vouches for it.
+  structuredOutput: z.enum(['native-schema', 'json-contract']).nullable(),
 });
 
 export const ttsSettingsSchema = z.object({

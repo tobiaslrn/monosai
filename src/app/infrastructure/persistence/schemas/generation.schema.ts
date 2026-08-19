@@ -62,7 +62,9 @@ export const generationProvenanceRowSchema = z.object({
   readingId: readingIdSchema,
   snapshotId: snapshotIdSchema,
   grammarProfileSnapshotId: nonEmptyString,
-  exceptionPolicyHash: nonEmptyString,
+  // Empty when the learner had configured no exception policy: an absent policy
+  // is a real state, and rejecting it here would make it unrepresentable.
+  exceptionPolicyHash: z.string(),
   modelId: nonEmptyString,
   promptVersions: z.record(z.string(), nonEmptyString),
   repairAttempts: z.number().int().min(0).max(2),

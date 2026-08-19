@@ -2,6 +2,7 @@ import { InjectionToken } from '@angular/core';
 import type { Clock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import type { IdGenerator } from '../../domain/shared/ids';
+import type { RandomSource } from '../../domain/shared/random';
 import type { ReadingRepository } from '../../domain/reading/reading-repository';
 import type { SettingsRepository } from '../../domain/settings/settings-repository';
 import type { CredentialRepository } from '../../domain/settings/credential-repository';
@@ -52,3 +53,4 @@ export const DATABASE_SCHEMA_VERSION = new InjectionToken<number>(
 export const CLOCK = new InjectionToken<Clock>('monosai.clock');
 export const HASHER = new InjectionToken<Hasher>('monosai.hasher');
 export const ID_GENERATOR = new InjectionToken<IdGenerator>('monosai.id-generator');
+export const RANDOM_SOURCE = new InjectionToken<RandomSource>('monosai.random-source');

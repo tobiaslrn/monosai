@@ -2,7 +2,6 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
 import { textModelFingerprint } from '../../domain/ai/configuration-fingerprint';
 import { readinessOf, type ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
-import type { StructuredOutputMode } from '../../domain/ai/model-test';
 import {
   DEFAULT_TEXT_MODEL_SETTINGS,
   type TextModelSettings,
@@ -35,7 +34,6 @@ export class TextModelStore {
   private readonly actionSignal = signal<TextModelAction>('idle');
   private readonly testFailureSignal = signal<AiError | null>(null);
   private readonly storageFailureSignal = signal<StorageError | null>(null);
-  private readonly structuredOutputSignal = signal<StructuredOutputMode | null>(null);
 
   private controller: AbortController | null = null;
 
@@ -44,7 +42,12 @@ export class TextModelStore {
   readonly action = this.actionSignal.asReadonly();
   readonly testFailure = this.testFailureSignal.asReadonly();
   readonly storageFailure = this.storageFailureSignal.asReadonly();
-  readonly structuredOutput = this.structuredOutputSignal.asReadonly();
+  /**
+   * The mode the stored test proved, or null when no test currently vouches
+   * for the configuration. Generation opens in this mode rather than spending a
+   * format-recovery request every run to rediscover it. See ADR 0020.
+   */
+  readonly structuredOutput = computed(() => this.settingsSignal().structuredOutput);
 
   readonly lastTestedAt = computed(() => this.settingsSignal().lastTestedAt);
 
@@ -94,7 +97,12 @@ export class TextModelStore {
       return true;
     }
 
-    const saved = await this.repository.updateTextModelSettings({ modelId });
+    // The stored mode described the previous model, so it stops applying the
+    // moment the model changes; readiness reads stale for the same reason.
+    const saved = await this.repository.updateTextModelSettings({
+      modelId,
+      structuredOutput: null,
+    });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
       return false;
@@ -104,7 +112,6 @@ export class TextModelStore {
     this.storageFailureSignal.set(null);
     // A previous failure described a different configuration.
     this.testFailureSignal.set(null);
-    this.structuredOutputSignal.set(null);
     return true;
   }
 
@@ -122,7 +129,6 @@ export class TextModelStore {
     this.controller = controller;
     this.actionSignal.set('testing');
     this.testFailureSignal.set(null);
-    this.structuredOutputSignal.set(null);
 
     const persisted = await this.persistDraft();
     const modelId = this.settingsSignal().modelId;
@@ -148,10 +154,10 @@ export class TextModelStore {
       return;
     }
 
-    this.structuredOutputSignal.set(result.value.structuredOutput);
     const saved = await this.repository.updateTextModelSettings({
       lastTestFingerprint: this.fingerprintFor(modelId),
       lastTestedAt: this.clock.now(),
+      structuredOutput: result.value.structuredOutput,
     });
     if (saved.ok) {
       this.settingsSignal.set(saved.value);

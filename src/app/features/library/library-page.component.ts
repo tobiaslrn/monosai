@@ -48,6 +48,10 @@ const FILTERS: readonly FilterOption[] = [
             <mn-icon name="add" [size]="18" />
             <span>Add text</span>
           </a>
+          <a class="mn-button" routerLink="/generate">
+            <mn-icon name="generate" [size]="18" />
+            <span>Generate</span>
+          </a>
         </div>
 
         <div class="filters" role="group" aria-label="Filter readings">
@@ -69,11 +73,15 @@ const FILTERS: readonly FilterOption[] = [
             <h2>Nothing saved yet</h2>
             <p class="mn-hint">
               Add Japanese you already have, and read it with furigana, word lookup, and offline
-              aids. No Anki connection or API key is needed.
+              aids — no Anki connection or API key needed. Or connect Anki and an OpenRouter key,
+              and generate a short story from the words you have already reviewed.
             </p>
-            <a class="mn-button mn-button--primary" routerLink="/add"
-              >Add Japanese you already have</a
-            >
+            <div class="actions">
+              <a class="mn-button mn-button--primary" routerLink="/add"
+                >Add Japanese you already have</a
+              >
+              <a class="mn-button" routerLink="/generate">Generate from reviewed Anki vocabulary</a>
+            </div>
           </section>
         } @else if (store.isEmpty()) {
           <p class="mn-hint">No {{ store.filter() }} readings yet.</p>

@@ -1,0 +1,778 @@
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { aiError, type AiError } from '../../domain/ai/ai-error';
+import {
+  applyDecisions,
+  noApprovals,
+  type ExceptionCandidate,
+  type ExceptionReviewOutcome,
+} from '../../domain/ai/exception-review';
+import { MAX_REPAIR_ATTEMPTS } from '../../domain/ai/generation-provenance';
+import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
+import {
+  SENTENCE_RANGES,
+  validateStoryInput,
+  type StoryCandidate,
+  type StoryGenerationRequest,
+  type StoryInputDraft,
+} from '../../domain/ai/story-request';
+import {
+  checkStoryStructure,
+  orderedSentences,
+  type StructureIssue,
+} from '../../domain/ai/story-structure';
+import type { TextTaskConfig, UnknownSpan } from '../../domain/ai/text-generation-provider';
+import type { GrammarProfileSnapshot } from '../../domain/grammar/profile';
+import { VALIDATOR_VERSION } from '../../domain/language/analyzer-version';
+import type { LanguageError } from '../../domain/language/language-error';
+import type { SentenceTokens } from '../../domain/language/language-runtime';
+import type { GeneratedStory, StoryForm } from '../../domain/reading/reading';
+import type { Token } from '../../domain/reading/token';
+import type { TokenStatusAssignment } from '../../domain/reading/validation';
+import type { VocabularyItemId } from '../../domain/shared/ids';
+import type { StorageError } from '../../domain/storage/storage-error';
+import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
+import { GrammarProfileStore } from '../grammar/grammar-profile.store';
+import { LanguageStore } from '../language/language.store';
+import { VocabularyClassificationService } from '../reading/vocabulary-classification.service';
+import { ExceptionPolicyStore } from '../settings/exception-policy.store';
+import { TextModelStore } from '../settings/text-model.store';
+import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
+import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
+import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
+import { StoryAssemblyService, type AcceptedSentence } from './story-assembly.service';
+import { VocabularyPreparationService } from './vocabulary-preparation.service';
+
+export type GenerationFailure = AiError | LanguageError | StorageError;
+
+/** One sentence of an unsaved draft, with the words that kept it out. */
+export interface InvalidDraftSentence {
+  readonly textJa: string;
+  readonly unknownSurfaces: readonly string[];
+}
+
+export interface InvalidDraft {
+  readonly titleJa: string;
+  readonly titleUnknownSurfaces: readonly string[];
+  readonly sentences: readonly InvalidDraftSentence[];
+  readonly issues: readonly string[];
+  readonly repairAttempts: number;
+}
+
+/**
+ * The generation state machine from ai-pipelines section 5.
+ *
+ * The ordering carries the guarantee: everything up to `finalizing` is
+ * discardable, so a cancellation or a failure at any of those states leaves no
+ * reading row, and `finalizing` is the one non-cancellable state because it is
+ * a single transaction that either writes the whole story or writes nothing.
+ *
+ * `invalid-draft` is a state, not a record. It lives in this store and dies
+ * with the screen; there is deliberately no path from it to storage.
+ */
+export type GenerationState =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'checking-prerequisites' }
+  | { readonly kind: 'preparing' }
+  | { readonly kind: 'writing' }
+  | { readonly kind: 'parsing' }
+  | { readonly kind: 'validating' }
+  | { readonly kind: 'exception-review'; readonly candidateCount: number }
+  | { readonly kind: 'repairing'; readonly attempt: number }
+  | { readonly kind: 'finalizing' }
+  | { readonly kind: 'saved'; readonly reading: GeneratedStory }
+  | { readonly kind: 'invalid-draft'; readonly draft: InvalidDraft }
+  | { readonly kind: 'cancelled' }
+  | {
+      readonly kind: 'failed';
+      readonly error: GenerationFailure;
+      /**
+       * The stage the run was in when it failed.
+       *
+       * A terminal state names no stage of its own, and the progress display
+       * has to say where the run stopped rather than painting everything as
+       * never started.
+       */
+      readonly during: RunningStateKind;
+    };
+
+/** The states a run passes through, as opposed to the ones it ends in. */
+export type RunningStateKind =
+  | 'checking-prerequisites'
+  | 'preparing'
+  | 'writing'
+  | 'parsing'
+  | 'validating'
+  | 'exception-review'
+  | 'repairing'
+  | 'finalizing';
+
+const IDLE: GenerationState = { kind: 'idle' };
+
+/** States where a cancel request is still meaningful. */
+const CANCELLABLE = new Set<GenerationState['kind']>([
+  'checking-prerequisites',
+  'preparing',
+  'writing',
+  'parsing',
+  'validating',
+  'exception-review',
+  'repairing',
+]);
+
+/**
+ * Reads the current abort state.
+ *
+ * `AbortSignal.aborted` is typed as a plain boolean, so checking it twice in one
+ * function narrows it to `false` for the second check even though it can flip
+ * between them. Going through a call keeps every check honest.
+ */
+function isAborted(signal: AbortSignal): boolean {
+  return signal.aborted;
+}
+
+/** The context captured before the first request and never re-read after it. */
+interface CapturedContext {
+  readonly snapshot: VocabularySnapshot;
+  readonly profile: GrammarProfileSnapshot;
+  readonly policyText: string;
+  readonly policyHash: string;
+  readonly taskConfig: TextTaskConfig;
+}
+
+/** Title and sentences carry the same analysis; only the title has no row. */
+interface AnalyzedUnit {
+  readonly key: string;
+  /** Null for the title, which is validated but is not a sentence. */
+  readonly sentenceIndex: number | null;
+  readonly textJa: string;
+  readonly tokens: readonly Token[];
+  statuses: readonly TokenStatusAssignment[];
+}
+
+/**
+ * Identity of one candidate unknown.
+ *
+ * Surface and lemma together, so two different words that happen to share a
+ * surface are asked about separately. The separator is a character Japanese
+ * text does not contain, so it cannot be produced by a surface itself.
+ */
+function candidateKey(token: Token): string {
+  return `${token.surface}|${token.lemma ?? ''}`;
+}
+
+/**
+ * One generation, from prerequisites through to a saved story.
+ *
+ * The store is provided by the Generate page rather than at the root, so
+ * leaving the screen discards the draft and stops whatever is in flight. Every
+ * captured input is taken before the first request, so changing a setting
+ * mid-run cannot change what the running story is judged against.
+ */
+@Injectable()
+export class GenerationStore {
+  private readonly provider = inject(TEXT_GENERATION_PROVIDER);
+  private readonly runtime = inject(LANGUAGE_RUNTIME);
+  private readonly vocabulary = inject(VOCABULARY_REPOSITORY);
+  private readonly preparation = inject(VocabularyPreparationService);
+  private readonly assembly = inject(StoryAssemblyService);
+  private readonly classification = inject(VocabularyClassificationService);
+  private readonly grammar = inject(GrammarProfileStore);
+  private readonly policy = inject(ExceptionPolicyStore);
+  private readonly textModel = inject(TextModelStore);
+  private readonly language = inject(LanguageStore);
+
+  private readonly stateSignal = signal<GenerationState>(IDLE);
+  private readonly announcementSignal = signal('');
+  private readonly repairSignal = signal(0);
+  private readonly reviewSignal = signal(0);
+
+  private controller: AbortController | null = null;
+
+  readonly state = this.stateSignal.asReadonly();
+  readonly announcement = this.announcementSignal.asReadonly();
+  /** Content repairs spent so far in this run. Format recovery is not counted. */
+  readonly repairAttempts = this.repairSignal.asReadonly();
+  /** Exception reviews run so far, so the stepper can say Skipped honestly. */
+  readonly exceptionReviews = this.reviewSignal.asReadonly();
+
+  readonly isBusy = computed(() => {
+    const kind = this.stateSignal().kind;
+    return (
+      kind !== 'idle' &&
+      kind !== 'saved' &&
+      kind !== 'invalid-draft' &&
+      kind !== 'cancelled' &&
+      kind !== 'failed'
+    );
+  });
+  readonly canCancel = computed(() => CANCELLABLE.has(this.stateSignal().kind));
+
+  /**
+   * Runs one generation.
+   *
+   * Nothing is written until the last step, and the only thing that is written
+   * is a story every word of which has a validation that is not `unknown`.
+   */
+  async generate(form: StoryForm, draft: StoryInputDraft): Promise<void> {
+    this.controller?.abort();
+    const controller = new AbortController();
+    this.controller = controller;
+    const signal = controller.signal;
+
+    this.repairSignal.set(0);
+    this.reviewSignal.set(0);
+    this.stateSignal.set({ kind: 'checking-prerequisites' });
+    this.announce('Checking what this story needs…');
+
+    const captured = await this.capture();
+    if (!captured.ok) {
+      this.fail(captured.error);
+      return;
+    }
+    if (isAborted(signal)) {
+      this.cancelled();
+      return;
+    }
+
+    const input = validateStoryInput(draft);
+    if (!input.ok) {
+      this.fail(
+        aiError('unknown', 'story-generation', input.error[0].message, {
+          detail: { issueCode: input.error[0].code },
+        }),
+      );
+      return;
+    }
+
+    this.stateSignal.set({ kind: 'preparing' });
+    this.announce('Preparing your reviewed vocabulary…');
+
+    const context = captured.value;
+    const prepared = await this.preparation.prepare(context.snapshot.id, form);
+    if (!prepared.ok) {
+      this.fail(prepared.error);
+      return;
+    }
+    if (isAborted(signal)) {
+      this.cancelled();
+      return;
+    }
+
+    const request: StoryGenerationRequest = {
+      form,
+      sentenceRange: SENTENCE_RANGES[form],
+      premise: input.value.premise,
+      allowedVocabulary: prepared.value.allowedVocabulary,
+      suggestedVocabulary: prepared.value.suggestedVocabulary,
+      structuralBaseline: this.baselineForms(),
+      grammarGuidance: context.profile.resolvedGuidance,
+      registerPreference: context.profile.registerPreference,
+      snapshotId: context.snapshot.id,
+      grammarProfileHash: context.profile.profileHash,
+      promptVersion: PROMPT_VERSIONS.story,
+      ...(input.value.specialInstructions === undefined
+        ? {}
+        : { specialInstructions: input.value.specialInstructions }),
+    };
+
+    const budget = this.preparation.guardBudget(request);
+    if (!budget.ok) {
+      this.fail(budget.error);
+      return;
+    }
+
+    this.stateSignal.set({ kind: 'writing' });
+    this.announce('Writing Japanese…');
+    const written = await this.provider.generateStory(request, context.taskConfig, signal);
+    if (!written.ok) {
+      this.finish(written.error, signal);
+      return;
+    }
+
+    await this.runValidationLoop(
+      written.value,
+      request,
+      context,
+      prepared.value.suggestedItemIds,
+      signal,
+    );
+  }
+
+  cancel(): void {
+    if (!this.canCancel()) {
+      return;
+    }
+    this.controller?.abort();
+  }
+
+  /** Returns to the empty form, discarding an invalid draft or a finished run. */
+  reset(): void {
+    this.controller?.abort();
+    this.controller = null;
+    this.repairSignal.set(0);
+    this.reviewSignal.set(0);
+    this.stateSignal.set(IDLE);
+    this.announce('');
+  }
+
+  dispose(): void {
+    this.controller?.abort();
+    this.controller = null;
+  }
+
+  /**
+   * Parse, validate, review, and repair until the candidate is accepted, the
+   * repair budget runs out, or something fails.
+   *
+   * Every pass reparses and revalidates the whole returned story. Nothing from
+   * an earlier pass survives into a later one: a repair's token analysis,
+   * classification, and exception decisions are all computed again from the
+   * Japanese that just arrived, because a model's claim to have fixed one word
+   * is not evidence that it did.
+   */
+  private async runValidationLoop(
+    firstCandidate: StoryCandidate,
+    request: StoryGenerationRequest,
+    context: CapturedContext,
+    suggestedItemIds: readonly VocabularyItemId[],
+    signal: AbortSignal,
+  ): Promise<void> {
+    let candidate = firstCandidate;
+
+    for (;;) {
+      this.stateSignal.set({ kind: 'parsing' });
+      const structureIssues = checkStoryStructure(candidate, request.sentenceRange);
+
+      this.stateSignal.set({ kind: 'validating' });
+      this.announce('Checking every word against your vocabulary…');
+      const analyzed = await this.analyze(candidate, context, signal);
+      if (!analyzed.ok) {
+        this.finish(analyzed.error, signal);
+        return;
+      }
+      if (isAborted(signal)) {
+        this.cancelled();
+        return;
+      }
+
+      const units = analyzed.value;
+      const candidates = this.collectCandidates(units);
+
+      let review: ExceptionReviewOutcome = noApprovals(candidates);
+      if (candidates.length > 0 && context.policyText !== '') {
+        this.stateSignal.set({ kind: 'exception-review', candidateCount: candidates.length });
+        this.reviewSignal.set(this.reviewSignal() + 1);
+        this.announce(
+          `Asking your exception policy about ${String(candidates.length)} unfamiliar words…`,
+        );
+        const reviewed = await this.provider.reviewExceptions(
+          {
+            policyText: context.policyText,
+            candidates,
+            promptVersion: PROMPT_VERSIONS['exception-review'],
+          },
+          context.taskConfig,
+          signal,
+        );
+        if (reviewed.ok) {
+          review = applyDecisions(candidates, reviewed.value);
+        } else if (reviewed.error.code === 'cancelled' || isAborted(signal)) {
+          this.cancelled();
+          return;
+        }
+        // Any other review failure is not fatal: every candidate simply stays
+        // unknown and goes to repair. Inferring approval from a failed request
+        // is the one thing that must never happen here.
+      }
+
+      this.applyApprovals(units, review);
+      const remaining = new Set(review.stillUnknown);
+      const accepted = remaining.size === 0 && structureIssues.length === 0;
+
+      if (accepted) {
+        await this.finalize(units, request, context, suggestedItemIds, review.approvals.size);
+        return;
+      }
+
+      if (this.repairSignal() >= MAX_REPAIR_ATTEMPTS) {
+        this.invalidDraft(units, candidates, remaining, structureIssues);
+        return;
+      }
+
+      const attempt = this.repairSignal() + 1;
+      this.repairSignal.set(attempt);
+      this.stateSignal.set({ kind: 'repairing', attempt });
+      this.announce(`Repairing the story (attempt ${String(attempt)} of 2)…`);
+
+      const repaired = await this.provider.repairStory(
+        {
+          original: request,
+          candidate,
+          unknownSpans: this.unknownSpans(units, candidates, remaining),
+          structureIssues,
+          attempt,
+          promptVersion: PROMPT_VERSIONS.repair,
+        },
+        context.taskConfig,
+        signal,
+      );
+      if (!repaired.ok) {
+        this.finish(repaired.error, signal);
+        return;
+      }
+      candidate = repaired.value;
+    }
+  }
+
+  /** Captures the snapshot, profile, policy, and model before anything is spent. */
+  private async capture(): Promise<
+    | { readonly ok: true; readonly value: CapturedContext }
+    | { readonly ok: false; readonly error: GenerationFailure }
+  > {
+    const snapshot = await this.vocabulary.getActiveSnapshot();
+    if (!snapshot.ok) {
+      return { ok: false, error: snapshot.error };
+    }
+    if (snapshot.value === null) {
+      return {
+        ok: false,
+        error: aiError('unknown', 'story-generation', 'There is no active vocabulary snapshot.', {
+          detail: { issueCode: 'no-snapshot' },
+        }),
+      };
+    }
+
+    const profile = await this.grammar.captureProfile();
+    if (!profile.ok) {
+      return { ok: false, error: profile.error };
+    }
+
+    const settings = this.textModel.settings();
+    const structuredOutput = settings.structuredOutput;
+    if (settings.modelId === '' || structuredOutput === null) {
+      return {
+        ok: false,
+        error: aiError(
+          'capability-unsupported',
+          'story-generation',
+          'No tested text model is available for generation.',
+          { detail: { capability: 'structured-output' } },
+        ),
+      };
+    }
+
+    const policy = this.policy.policy();
+    return {
+      ok: true,
+      value: {
+        snapshot: snapshot.value,
+        profile: profile.value,
+        policyText: policy.text,
+        policyHash: policy.policyHash,
+        taskConfig: { modelId: settings.modelId, structuredOutput },
+      },
+    };
+  }
+
+  /** Tokenizes the title and every sentence, then classifies them together. */
+  private async analyze(
+    candidate: StoryCandidate,
+    context: CapturedContext,
+    signal: AbortSignal,
+  ): Promise<
+    | { readonly ok: true; readonly value: AnalyzedUnit[] }
+    | { readonly ok: false; readonly error: GenerationFailure }
+  > {
+    const sentences = orderedSentences(candidate);
+    const texts = [candidate.titleJa, ...sentences];
+
+    const tokenized = await this.runtime.analyzeSentences(texts, signal);
+    if (!tokenized.ok) {
+      return { ok: false, error: tokenized.error };
+    }
+    if (tokenized.value.length !== texts.length) {
+      return {
+        ok: false,
+        error: aiError(
+          'unknown',
+          'story-generation',
+          'The analysis returned the wrong number of sentences.',
+          {
+            detail: { issueCode: 'analysis-length-mismatch' },
+          },
+        ),
+      };
+    }
+
+    const units: AnalyzedUnit[] = texts.map((textJa, index) => ({
+      key: index === 0 ? 'title' : `s${String(index - 1)}`,
+      sentenceIndex: index === 0 ? null : index - 1,
+      textJa,
+      tokens: tokenized.value[index].tokens,
+      statuses: [],
+    }));
+
+    const input: readonly SentenceTokens[] = units.map((unit) => ({
+      sentenceId: unit.key,
+      tokens: unit.tokens,
+    }));
+    const classified = await this.classification.classifyGenerated(
+      context.snapshot.id,
+      input,
+      signal,
+    );
+    if (!classified.ok) {
+      return { ok: false, error: classified.error };
+    }
+
+    const byKey = new Map(
+      classified.value.sentences.map((sentence) => [sentence.sentenceId, sentence.statuses]),
+    );
+    for (const unit of units) {
+      unit.statuses = byKey.get(unit.key) ?? [];
+    }
+    return { ok: true, value: units };
+  }
+
+  /**
+   * One candidate per distinct word, not per occurrence.
+   *
+   * The policy is asked about a word, and asking twice would let the same word
+   * be approved in one sentence and refused in the next.
+   */
+  private collectCandidates(units: readonly AnalyzedUnit[]): readonly ExceptionCandidate[] {
+    const byKey = new Map<string, ExceptionCandidate>();
+
+    for (const unit of units) {
+      const tokenById = new Map(unit.tokens.map((token) => [token.id, token]));
+      for (const status of unit.statuses) {
+        if (status.validation.category !== 'unknown') {
+          continue;
+        }
+        const token = tokenById.get(status.tokenId);
+        if (token === undefined) {
+          continue;
+        }
+        const key = candidateKey(token);
+        if (byKey.has(key)) {
+          continue;
+        }
+        byKey.set(key, {
+          id: key,
+          surface: token.surface,
+          contextJa: unit.textJa,
+          ...(token.lemma === undefined ? {} : { lemma: token.lemma }),
+          ...(token.readingHiragana === undefined
+            ? {}
+            : { readingHiragana: token.readingHiragana }),
+          ...(token.partOfSpeech === undefined ? {} : { partOfSpeech: token.partOfSpeech }),
+        });
+      }
+    }
+
+    return [...byKey.values()];
+  }
+
+  /** Replaces the statuses of approved words, and only those. */
+  private applyApprovals(units: AnalyzedUnit[], review: ExceptionReviewOutcome): void {
+    if (review.approvals.size === 0) {
+      return;
+    }
+    for (const unit of units) {
+      const tokenById = new Map(unit.tokens.map((token) => [token.id, token]));
+      unit.statuses = unit.statuses.map((status) => {
+        if (status.validation.category !== 'unknown') {
+          return status;
+        }
+        const token = tokenById.get(status.tokenId);
+        const approval =
+          token === undefined ? undefined : review.approvals.get(candidateKey(token));
+        return approval === undefined ? status : { tokenId: status.tokenId, validation: approval };
+      });
+    }
+  }
+
+  private unknownSpans(
+    units: readonly AnalyzedUnit[],
+    candidates: readonly ExceptionCandidate[],
+    remaining: ReadonlySet<string>,
+  ): readonly UnknownSpan[] {
+    const byId = new Map(candidates.map((candidate) => [candidate.id, candidate]));
+    const spans: UnknownSpan[] = [];
+    const seen = new Set<string>();
+
+    for (const unit of units) {
+      const tokenById = new Map(unit.tokens.map((token) => [token.id, token]));
+      for (const status of unit.statuses) {
+        if (status.validation.category !== 'unknown') {
+          continue;
+        }
+        const token = tokenById.get(status.tokenId);
+        if (token === undefined) {
+          continue;
+        }
+        const key = candidateKey(token);
+        if (!remaining.has(key) || seen.has(`${unit.key}:${key}`)) {
+          continue;
+        }
+        seen.add(`${unit.key}:${key}`);
+        spans.push({
+          sentenceIndex: unit.sentenceIndex,
+          surface: byId.get(key)?.surface ?? token.surface,
+          reason: 'is not in the allowed vocabulary and was not approved by the exception policy.',
+        });
+      }
+    }
+    return spans;
+  }
+
+  /** Writes the accepted story and its evidence in one transaction. */
+  private async finalize(
+    units: readonly AnalyzedUnit[],
+    request: StoryGenerationRequest,
+    context: CapturedContext,
+    suggestedItemIds: readonly VocabularyItemId[],
+    exceptionCount: number,
+  ): Promise<void> {
+    this.stateSignal.set({ kind: 'finalizing' });
+    this.announce('Saving the story. This cannot be cancelled.');
+
+    const sentences: readonly AcceptedSentence[] = units
+      .filter((unit) => unit.sentenceIndex !== null)
+      .map((unit) => ({ textJa: unit.textJa, tokens: unit.tokens, statuses: unit.statuses }));
+
+    const draft = this.assembly.build({
+      titleJa: units[0].textJa,
+      sentences,
+      form: request.form,
+      premise: request.premise,
+      snapshotId: context.snapshot.id,
+      validatorVersion: VALIDATOR_VERSION,
+      grammarProfileSnapshotId: context.profile.id,
+      exceptionPolicyHash: context.policyHash,
+      modelId: context.taskConfig.modelId,
+      repairAttempts: this.repairSignal(),
+      suggestedVocabularyItemIds: suggestedItemIds,
+      exceptionCount,
+      ...(request.specialInstructions === undefined
+        ? {}
+        : { specialInstructions: request.specialInstructions }),
+    });
+
+    const saved = await this.assembly.save(draft);
+    this.controller = null;
+    if (!saved.ok) {
+      this.stateSignal.set({ kind: 'failed', error: saved.error, during: 'finalizing' });
+      this.announce('The story could not be saved. Nothing was added to your library.');
+      return;
+    }
+
+    this.stateSignal.set({ kind: 'saved', reading: saved.value });
+    this.announce(`Saved “${saved.value.title}” to your library.`);
+  }
+
+  /** The terminal state for a candidate that never validated. Nothing is saved. */
+  private invalidDraft(
+    units: readonly AnalyzedUnit[],
+    candidates: readonly ExceptionCandidate[],
+    remaining: ReadonlySet<string>,
+    structureIssues: readonly StructureIssue[],
+  ): void {
+    const surfacesOf = (unit: AnalyzedUnit): readonly string[] => {
+      const tokenById = new Map(unit.tokens.map((token) => [token.id, token]));
+      const surfaces = new Set<string>();
+      for (const status of unit.statuses) {
+        if (status.validation.category !== 'unknown') {
+          continue;
+        }
+        const token = tokenById.get(status.tokenId);
+        if (token !== undefined && remaining.has(candidateKey(token))) {
+          surfaces.add(token.surface);
+        }
+      }
+      return [...surfaces];
+    };
+
+    const unresolved = candidates
+      .filter((candidate) => remaining.has(candidate.id))
+      .map((candidate) => `“${candidate.surface}” is not in your reviewed vocabulary.`);
+
+    this.controller = null;
+    this.stateSignal.set({
+      kind: 'invalid-draft',
+      draft: {
+        titleJa: units[0].textJa,
+        titleUnknownSurfaces: surfacesOf(units[0]),
+        sentences: units
+          .filter((unit) => unit.sentenceIndex !== null)
+          .map((unit) => ({ textJa: unit.textJa, unknownSurfaces: surfacesOf(unit) })),
+        issues: [...structureIssues.map((issue) => issue.message), ...unresolved],
+        repairAttempts: this.repairSignal(),
+      },
+    });
+    this.announce(
+      'This story still uses words you have not reviewed, so it was not saved. Nothing was added to your library.',
+    );
+  }
+
+  /** Structural baseline forms, which stay readable whatever the allowlist says. */
+  private baselineForms(): readonly string[] {
+    const forms = new Set<string>();
+    for (const entry of this.language.structuralBaseline()) {
+      for (const form of entry.forms) {
+        forms.add(form);
+      }
+    }
+    return [...forms];
+  }
+
+  /** A provider failure is a cancellation or a real failure, never both. */
+  private finish(error: GenerationFailure, signal: AbortSignal): void {
+    if (error.domain === 'ai' && error.code === 'cancelled') {
+      this.cancelled();
+      return;
+    }
+    if (isAborted(signal)) {
+      this.cancelled();
+      return;
+    }
+    this.fail(error);
+  }
+
+  private fail(error: GenerationFailure): void {
+    const during = this.runningKind();
+    this.controller = null;
+    this.stateSignal.set({ kind: 'failed', error, during });
+    this.announce(error.message);
+  }
+
+  /** Where the run currently is, for a failure that has to say so. */
+  private runningKind(): RunningStateKind {
+    const kind = this.stateSignal().kind;
+    switch (kind) {
+      case 'checking-prerequisites':
+      case 'preparing':
+      case 'writing':
+      case 'parsing':
+      case 'validating':
+      case 'exception-review':
+      case 'repairing':
+      case 'finalizing':
+        return kind;
+      default:
+        // Only reachable if a failure is reported outside a run, which the
+        // public methods do not do; naming the first stage is the honest guess.
+        return 'checking-prerequisites';
+    }
+  }
+
+  private cancelled(): void {
+    this.controller = null;
+    this.stateSignal.set({ kind: 'cancelled' });
+    this.announce('Generation cancelled. Nothing was saved.');
+  }
+
+  private announce(message: string): void {
+    this.announcementSignal.set(message);
+  }
+}

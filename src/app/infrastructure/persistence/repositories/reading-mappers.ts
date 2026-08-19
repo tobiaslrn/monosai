@@ -1,9 +1,12 @@
+import type { GenerationProvenance } from '../../../domain/ai/generation-provenance';
 import type { Reading } from '../../../domain/reading/reading';
+import type { FrozenSentenceValidation } from '../../../domain/reading/validation';
 import type { Paragraph, Sentence } from '../../../domain/reading/text-hierarchy';
 import type { ReadingProgress } from '../../../domain/reading/progress';
 import type { TokenAnalysis } from '../../../domain/reading/token';
 import type { ReadingId } from '../../../domain/shared/ids';
 import { ROW_VERSION } from '../schemas/common.schema';
+import type { FrozenValidationRow, GenerationProvenanceRow } from '../schemas/generation.schema';
 import type {
   ParagraphRow,
   ReadingProgressRow,
@@ -67,4 +70,38 @@ export function toProgressRow(progress: ReadingProgress): ReadingProgressRow {
 export function toProgress(row: ReadingProgressRow): ReadingProgress {
   const { v: _version, ...progress } = row;
   return progress;
+}
+
+export function toFrozenValidationRow(
+  validation: FrozenSentenceValidation,
+  readingId: ReadingId,
+): FrozenValidationRow {
+  return {
+    v: ROW_VERSION,
+    sentenceId: validation.sentenceId,
+    readingId,
+    snapshotId: validation.snapshotId,
+    validatorVersion: validation.validatorVersion,
+    tokenStatuses: validation.tokenStatuses,
+  };
+}
+
+export function toFrozenValidation(row: FrozenValidationRow): FrozenSentenceValidation {
+  return {
+    sentenceId: row.sentenceId,
+    snapshotId: row.snapshotId,
+    validatorVersion: row.validatorVersion,
+    tokenStatuses: row.tokenStatuses,
+  };
+}
+
+export function toGenerationProvenanceRow(
+  provenance: GenerationProvenance,
+): GenerationProvenanceRow {
+  return { ...provenance, v: ROW_VERSION };
+}
+
+export function toGenerationProvenance(row: GenerationProvenanceRow): GenerationProvenance {
+  const { v: _version, ...provenance } = row;
+  return provenance;
 }

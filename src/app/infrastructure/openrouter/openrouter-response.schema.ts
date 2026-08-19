@@ -64,3 +64,97 @@ export const COMPATIBILITY_PROBE_JSON_SCHEMA = {
     },
   },
 } as const;
+
+/**
+ * The story a generation or repair request must return.
+ *
+ * Japanese only: translations are generated after the final Japanese is
+ * accepted, so a repair can never leave a stale English sentence behind
+ * (ai-pipelines section 4).
+ */
+export const storyCandidateSchema = z.object({
+  titleJa: z.string(),
+  sentences: z
+    .array(
+      z.object({
+        index: z.number().int().nonnegative(),
+        textJa: z.string(),
+      }),
+    )
+    .max(64),
+});
+
+export type StoryCandidatePayload = z.infer<typeof storyCandidateSchema>;
+
+/** The JSON Schema sent to models driven by provider-native structured output. */
+export const STORY_CANDIDATE_JSON_SCHEMA = {
+  name: 'monosai_story',
+  strict: true,
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['titleJa', 'sentences'],
+    properties: {
+      titleJa: { type: 'string' },
+      sentences: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['index', 'textJa'],
+          properties: {
+            index: { type: 'integer', minimum: 0 },
+            textJa: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+/**
+ * The exception review's answer.
+ *
+ * `category` is optional and free text; it is recorded but never given meaning,
+ * because a taxonomy invented by the model is not one Monosai can validate.
+ */
+export const exceptionDecisionsSchema = z.object({
+  decisions: z
+    .array(
+      z.object({
+        candidateId: z.string(),
+        decision: z.enum(['approved', 'rejected']),
+        explanationEn: z.string(),
+        category: z.string().optional(),
+      }),
+    )
+    .max(256),
+});
+
+export type ExceptionDecisionsPayload = z.infer<typeof exceptionDecisionsSchema>;
+
+export const EXCEPTION_DECISIONS_JSON_SCHEMA = {
+  name: 'monosai_exception_decisions',
+  strict: true,
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['decisions'],
+    properties: {
+      decisions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['candidateId', 'decision', 'explanationEn'],
+          properties: {
+            candidateId: { type: 'string' },
+            decision: { type: 'string', enum: ['approved', 'rejected'] },
+            explanationEn: { type: 'string' },
+            category: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+} as const;

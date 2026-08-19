@@ -1,6 +1,5 @@
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { ModelTest, StructuredOutputMode, TextModelConfig } from '../../domain/ai/model-test';
-import type { TextGenerationProvider } from '../../domain/ai/text-generation-provider';
 import { err, ok, type Result } from '../../domain/shared/result';
 import { extractJsonObject } from './json-content';
 import type { OpenRouterClient } from './openrouter-client';
@@ -33,13 +32,17 @@ const MAX_PROBE_TOKENS = 64;
 /**
  * Verifies one exact text model against the provider.
  *
+ * It implements the testing half of `TextGenerationProvider`; the generation
+ * half lives in `story-generation.adapter.ts`, and `OpenRouterTextProvider`
+ * composes the two into the object the injection token resolves to.
+ *
  * The test is deliberately stricter than ordinary chat: a model that cannot be
  * held to an exact structure cannot be used for generation, so passing here is
  * the precondition the Generate screen checks. At most two requests are made —
  * the structured attempt and one format recovery — so a failing model cannot
  * cost more than that.
  */
-export class OpenRouterTextModelTester implements TextGenerationProvider {
+export class OpenRouterTextModelTester {
   constructor(private readonly client: OpenRouterClient) {}
 
   async testConfiguration(

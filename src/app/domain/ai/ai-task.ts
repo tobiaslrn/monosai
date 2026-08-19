@@ -7,6 +7,13 @@
  * translation, grammar review, and synthesis arrive; it is deliberately not
  * declared ahead of the code that uses it.
  */
-export type AiTask = 'text-model-test' | 'tts-test';
+export type AiTask =
+  'text-model-test' | 'tts-test' | 'story-generation' | 'story-repair' | 'exception-review';
 
-export const ALL_AI_TASKS: readonly AiTask[] = ['text-model-test', 'tts-test'];
+export const ALL_AI_TASKS: readonly AiTask[] = [
+  'text-model-test',
+  'tts-test',
+  'story-generation',
+  'story-repair',
+  'exception-review',
+];

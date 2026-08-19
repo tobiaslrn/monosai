@@ -1,10 +1,20 @@
 import type { AudioDecoder } from '../app/infrastructure/openrouter/audio-decode';
 import { OpenRouterClient } from '../app/infrastructure/openrouter/openrouter-client';
+import { OpenRouterTextProvider } from '../app/infrastructure/openrouter/openrouter-text-provider';
+import { OpenRouterStoryGenerator } from '../app/infrastructure/openrouter/story-generation.adapter';
 import { OpenRouterTextModelTester } from '../app/infrastructure/openrouter/text-model-test.adapter';
 import { OpenRouterTtsTester } from '../app/infrastructure/openrouter/tts-test.adapter';
-import type { AiError } from '../app/domain/ai/ai-error';
+import { aiError, type AiError } from '../app/domain/ai/ai-error';
+import type { AiTask } from '../app/domain/ai/ai-task';
+import type { ExceptionDecision } from '../app/domain/ai/exception-review';
+import type { StoryCandidate, StoryGenerationRequest } from '../app/domain/ai/story-request';
 import type { ModelTest, TextModelConfig, TtsConfig, TtsTest } from '../app/domain/ai/model-test';
-import type { TextGenerationProvider } from '../app/domain/ai/text-generation-provider';
+import type {
+  ExceptionReviewRequest,
+  StoryRepairRequest,
+  TextGenerationProvider,
+  TextTaskConfig,
+} from '../app/domain/ai/text-generation-provider';
 import type { TextToSpeechProvider } from '../app/domain/ai/text-to-speech-provider';
 import type { CredentialStatus } from '../app/domain/settings/credential';
 import type { CredentialRepository } from '../app/domain/settings/credential-repository';
@@ -100,7 +110,7 @@ export function fakeAudioDecoder(decodable = true): AudioDecoder {
 export interface OpenRouterHarness {
   readonly server: FakeOpenRouterServer;
   readonly client: OpenRouterClient;
-  readonly text: OpenRouterTextModelTester;
+  readonly text: OpenRouterTextProvider;
   readonly tts: OpenRouterTtsTester;
   /** Every backoff wait the client performed, in order. */
   readonly sleeps: number[];
@@ -139,14 +149,38 @@ export function openRouterHarness(options: HarnessOptions = {}): OpenRouterHarne
     server,
     client,
     sleeps,
-    text: new OpenRouterTextModelTester(client),
+    text: new OpenRouterTextProvider(new OpenRouterTextModelTester(client), () =>
+      Promise.resolve(new OpenRouterStoryGenerator(client)),
+    ),
     tts: new OpenRouterTtsTester(client, fakeAudioDecoder(options.decodable ?? true)),
   };
 }
 
-/** Text provider that answers from memory, for application-layer tests. */
+/**
+ * Text provider that answers from memory, for application-layer tests.
+ *
+ * Generation answers come from per-method queues rather than from one
+ * configurable result, because the scenarios that matter are sequences: a
+ * story, then a review, then a repair. Running a queue dry is a failure rather
+ * than a repeated last answer, so a test that expects three provider calls
+ * cannot quietly pass while the store makes four.
+ */
 export class StubTextProvider implements TextGenerationProvider {
   calls = 0;
+
+  readonly generationCalls = { story: 0, repair: 0, review: 0 };
+  /** Every request that reached the provider, for prompt-content assertions. */
+  readonly storyRequests: StoryGenerationRequest[] = [];
+  readonly repairRequests: StoryRepairRequest[] = [];
+  readonly reviewRequests: ExceptionReviewRequest[] = [];
+  readonly configs: TextTaskConfig[] = [];
+
+  readonly storyQueue: Result<StoryCandidate, AiError>[] = [];
+  readonly repairQueue: Result<StoryCandidate, AiError>[] = [];
+  readonly reviewQueue: Result<readonly ExceptionDecision[], AiError>[] = [];
+
+  /** Runs just before each generation answer, so a test can cancel mid-flight. */
+  beforeAnswer: (() => void) | null = null;
 
   constructor(private outcome: Result<ModelTest, AiError>) {}
 
@@ -162,6 +196,55 @@ export class StubTextProvider implements TextGenerationProvider {
     void config;
     void signal;
     return Promise.resolve(this.outcome);
+  }
+
+  generateStory(
+    request: StoryGenerationRequest,
+    config: TextTaskConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<StoryCandidate, AiError>> {
+    this.generationCalls.story += 1;
+    this.storyRequests.push(request);
+    this.configs.push(config);
+    return this.answer('story-generation', this.storyQueue, signal);
+  }
+
+  repairStory(
+    request: StoryRepairRequest,
+    config: TextTaskConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<StoryCandidate, AiError>> {
+    this.generationCalls.repair += 1;
+    this.repairRequests.push(request);
+    this.configs.push(config);
+    return this.answer('story-repair', this.repairQueue, signal);
+  }
+
+  reviewExceptions(
+    request: ExceptionReviewRequest,
+    config: TextTaskConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<readonly ExceptionDecision[], AiError>> {
+    this.generationCalls.review += 1;
+    this.reviewRequests.push(request);
+    this.configs.push(config);
+    return this.answer('exception-review', this.reviewQueue, signal);
+  }
+
+  private answer<T>(
+    task: AiTask,
+    queue: Result<T, AiError>[],
+    signal?: AbortSignal,
+  ): Promise<Result<T, AiError>> {
+    this.beforeAnswer?.();
+    if (signal?.aborted === true) {
+      return Promise.resolve(err(aiError('cancelled', task, 'The request was cancelled.')));
+    }
+    const next = queue.shift();
+    if (next === undefined) {
+      throw new Error(`StubTextProvider received an unexpected ${task} request`);
+    }
+    return Promise.resolve(next);
   }
 }
 
