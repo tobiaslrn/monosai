@@ -19,6 +19,7 @@ import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
 import { APP_ROUTES } from './core/routing/app.routes';
 import { provideAnki } from './infrastructure/anki/anki.providers';
 import { provideLanguage } from './infrastructure/language/language.providers';
+import { provideOpenRouter } from './infrastructure/openrouter/openrouter.providers';
 import { providePersistence } from './infrastructure/persistence/persistence.providers';
 
 export const appConfig: ApplicationConfig = {
@@ -37,6 +38,7 @@ export const appConfig: ApplicationConfig = {
     providePersistence(),
     provideLanguage(),
     provideAnki(),
+    provideOpenRouter(),
     provideInitializationSteps(),
     provideAppInitializer(() => {
       // Keeps the document theme attribute in sync with persisted settings.
