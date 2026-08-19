@@ -154,8 +154,11 @@ export function runProviderContract(
         expect(discovered.ok).toBe(true);
         if (!discovered.ok) return;
 
-        const deckNames = discovered.value.decks.map((deck) => deck.name).sort();
-        expect(deckNames).toEqual([...CONTRACT_COLLECTION.deckNames].sort());
+        // A provider may expose decks the fixture did not declare — a real
+        // collection always carries Anki's own Default deck — so the contract
+        // asks that the declared ones are all there, not that nothing else is.
+        const deckNames = discovered.value.decks.map((deck) => deck.name);
+        expect(deckNames).toEqual(expect.arrayContaining([...CONTRACT_COLLECTION.deckNames]));
 
         const parent = discovered.value.decks.find((deck) => deck.name === 'Core Japanese');
         expect(parent?.hasChildren).toBe(true);
@@ -288,16 +291,17 @@ export function runProviderContract(
       await under.teardown?.();
     });
 
+    // Registered only when the setup can express it, rather than registered and
+    // skipped: a provider that always knows its review counts has nothing to
+    // prove here, and a permanently skipped test reads as an oversight.
     const withoutEvidence = setup.withoutReviewEvidence;
-    it.runIf(withoutEvidence !== undefined)(
-      'produces no entries when nothing was ever reviewed',
-      async () => {
-        if (withoutEvidence === undefined) return;
+    if (withoutEvidence !== undefined) {
+      it('produces no entries when nothing was ever reviewed', async () => {
         await withProvider(withoutEvidence, async (provider) => {
           const collected = await collectExtraction(provider, [mappingFor()]);
           expect(collected.entries).toHaveLength(0);
         });
-      },
-    );
+      });
+    }
   });
 }
