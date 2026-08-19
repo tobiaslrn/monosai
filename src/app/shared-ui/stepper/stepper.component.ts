@@ -135,9 +135,14 @@ const STATUS_LABELS: Record<StepStatus, string> = {
       color: var(--status-danger);
     }
 
-    .step[data-status='skipped'] .name,
-    .step[data-status='skipped'] .status {
-      opacity: 0.7;
+    /*
+     * Skipped is marked by a hollow dashed dot rather than by dimming the text:
+     * lowering the opacity of secondary text drops it under the 4.5:1 contrast
+     * floor, and a stage nobody can read is worse than one that looks emphatic.
+     */
+    .step[data-status='skipped'] .marker {
+      border-style: dashed;
+      background: transparent;
     }
 
     /* Wide viewports lay the stages out in a row; the text stays under each. */

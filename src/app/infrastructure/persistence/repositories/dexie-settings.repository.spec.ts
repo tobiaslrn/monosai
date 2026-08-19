@@ -116,4 +116,23 @@ describe('DexieSettingsRepository', () => {
     expect(loaded.ok && loaded.value.tokenizerVersion).toBe('1.0.0');
     expect(loaded.ok && loaded.value.dictionaryVersion).toBeNull();
   });
+
+  it('reads a text-model row written before the structured-output field existed', async () => {
+    // The field records what a successful test proved; a row that predates it
+    // simply has nothing proved yet, which is exactly `null`.
+    await db.settings.put({
+      key: 'text-model',
+      v: ROW_VERSION,
+      value: { modelId: 'vendor/model', lastTestFingerprint: 'fp', lastTestedAt: 1 },
+    });
+
+    const loaded = await repository.getTextModelSettings();
+
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+    expect(loaded.value.modelId).toBe('vendor/model');
+    expect(loaded.value.structuredOutput).toBeNull();
+  });
 });

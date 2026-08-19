@@ -28,8 +28,9 @@ const ORDER: readonly StageKey[] = STAGES.map((stage) => stage.key);
 
 /** The stage a state is currently in, or `null` outside a run. */
 function stageOf(state: GenerationState): StageKey | null {
-  // A failure names the stage it interrupted, so the display can mark it.
-  const kind = state.kind === 'failed' ? state.during : state.kind;
+  // A failure or a cancellation names the stage it interrupted, so the display
+  // can mark where the run actually stopped instead of showing nothing at all.
+  const kind = state.kind === 'failed' || state.kind === 'cancelled' ? state.during : state.kind;
   switch (kind) {
     case 'checking-prerequisites':
     case 'preparing':
@@ -49,7 +50,6 @@ function stageOf(state: GenerationState): StageKey | null {
       return 'saving';
     case 'idle':
     case 'invalid-draft':
-    case 'cancelled':
       return null;
   }
 }
@@ -150,6 +150,26 @@ export class GenerationStepperComponent {
     // Milestone 7 saves with empty auxiliary summaries; Milestone 8 runs these.
     if (key === 'grammar' || key === 'translating') {
       return 'skipped';
+    }
+    // An unsaved draft ran everything except the save, so the stages it passed
+    // report done rather than never started.
+    if (state.kind === 'invalid-draft') {
+      if (key === 'saving') {
+        return 'skipped';
+      }
+      if (key === 'repairing') {
+        return repairs > 0 ? 'complete' : 'skipped';
+      }
+      if (key === 'exception-review') {
+        return reviews > 0 ? 'complete' : 'skipped';
+      }
+      return 'complete';
+    }
+    if (state.kind === 'cancelled') {
+      if (index < currentIndex) {
+        return 'complete';
+      }
+      return index === currentIndex ? 'skipped' : 'pending';
     }
     if (state.kind === 'failed') {
       return index === currentIndex ? 'failed' : index < currentIndex ? 'complete' : 'pending';

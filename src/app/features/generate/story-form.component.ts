@@ -128,6 +128,12 @@ const FORMS: readonly FormOption[] = [
     </div>
   `,
   styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
     .counter {
       margin: 0;
       color: var(--text-secondary);

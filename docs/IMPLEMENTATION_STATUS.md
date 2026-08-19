@@ -13,7 +13,8 @@ and what remains.
 | 4 — Grammar profile                      | Complete    |
 | 5 — Anki vocabulary                      | Complete    |
 | 6 — OpenRouter and settings              | Complete    |
-| 7–10                                     | Not started |
+| 7 — Generation and local validation      | Complete    |
+| 8–10                                     | Not started |
 
 ## Milestone 0 — Repository and decision scaffolding
 
@@ -844,3 +845,178 @@ internal prompt versions.
   grammar review, translation, and synthesis — arrive with Milestones 7 to 9,
   along with the `AiTask` variants that name them.
 - Install and update controls in the storage section are still Milestone 10.
+
+## Milestone 7 — Generation and local validation
+
+### Delivered
+
+#### The request contract and every rule live in the domain
+
+`src/app/domain/ai/` gains the pieces a story is judged by, each small enough to
+test on its own: `story-request.ts` (the request, the two sentence ranges, the
+1,000-character input limits measured in code points), `story-structure.ts`
+(unique contiguous indexes from zero, nonempty title and sentences, outer
+whitespace trimmed and nothing else, a wrong sentence count reported as
+_repairable_ rather than malformed), `exception-review.ts` (a decision must name
+an input id exactly once and give a real reason; rejected, unreviewed, and
+invalidly decided candidates all stay unknown), `suggestion-palette.ts` (a
+partial Fisher–Yates shuffle over an injected `RandomSource`, 40 for Micro and
+100 for Short, capped by snapshot size), `context-budget.ts` (a deterministic
+estimate and the 60,000-token guard that fails before spending), plus
+`prompt-versions.ts` and `generation-provenance.ts`.
+
+`RandomSource` is a new port in `domain/shared`, implemented over
+`crypto.getRandomValues` with rejection sampling so the last vocabulary items are
+not quietly less likely to be suggested than the first.
+
+#### Prompts are assembled in the adapter, in four immutable layers
+
+`infrastructure/openrouter/prompts/` builds protocol, product policy, versioned
+task instructions, and then captured user data inside delimiters that the data
+itself cannot close. The policy layer states in so many words that learner
+instructions may guide style, viewpoint, tone, dialogue, and register, and cannot
+change the sentence count, the schema, the vocabulary policy, or the validation.
+
+`story-generation.adapter.ts` implements `generateStory`, `repairStory`, and
+`reviewExceptions` over the existing client, and owns exactly one policy: a
+single format-recovery request per malformed structured reply. The domain's
+structural check runs inside its reply reader, so that one recovery covers a
+missing title, an empty sentence, and a duplicate or missing index — but never a
+story of the wrong length, which is well formed and spends a content repair
+instead. `OpenRouterTextProvider` composes the tester and the generator so
+neither file grows a second job, and loads the generator on first use so its
+prompts stay out of the initial bundle. See
+[ADR 0019](decisions/0019-generated-story-structure.md).
+
+#### The state machine, and what it refuses to do
+
+`application/generation/generation.store.ts` runs the specified states and is
+provided by the Generate page, so leaving the screen discards the draft. It
+captures the snapshot, the grammar profile (`GrammarProfileStore.captureProfile`
+finally has a caller), the exception policy, the model, and the prompt versions
+before the first request, so a setting changed mid-run cannot change what the
+running story is judged against.
+
+After every candidate — the first and each repair — the whole returned Japanese
+is tokenized and classified again from scratch in `generated` mode, and every
+exception decision is asked again. Nothing from an earlier pass survives into a
+later one, because a model's claim to have fixed a word is not evidence that it
+did. At most two content repairs are spent; after that the result is an
+`invalid-draft` that lives in feature memory and has no path to storage.
+
+#### One transaction, and two independent refusals
+
+`ReadingRepository.saveGeneratedStory` writes the reading, its paragraph,
+sentences, token analyses, frozen validations, and provenance in a single
+transaction, mirroring `saveImportedReading`. `repositories/integrity.ts` refuses
+any draft whose frozen validation still carries `unknown` — or the imported-only
+`not-in-snapshot` — and any provenance that describes a different run. The store
+refuses the same draft before it ever gets there; both checks exist because one
+is a promise and two independent ones are an invariant.
+
+An accepted story is saved with its auxiliary summaries empty
+(`grammarSummary: not-requested`, translations and audio `0/N`). Milestone 8
+fills those branches in on top of this save path.
+
+#### The Generate screen
+
+Three independently actionable checks, each linking to the screen that fixes it
+with the draft surviving the trip (it lives in a root-provided
+`GenerationDraftStore`, unlike the run itself). TTS is named as optional and
+carries no state. The grammar preset is a read-only line with a non-blocking
+warning when the preset outruns the snapshot — the item Milestones 4 and 5
+deferred here.
+
+The form has a premise with a live counter, Micro and Short cards with their
+ranges, optional special instructions, read-only snapshot and preset links, and a
+Generate button that says a request is coming and estimates no price. There is no
+genre picker, no topic suggestions, no visible target vocabulary, no temperature,
+and no prompt editor.
+
+The nine specified stages render through a new `shared-ui/stepper`, which
+`features/vocabulary/refresh-stepper.component.ts` was refitted onto — two
+workflows with one state vocabulary is a real shared concept. Grammar review and
+translation show as Skipped rather than being hidden. The invalid draft shows the
+unsaved Japanese with the offending words marked, the issue list, the repair
+count, and **Try a new generation / Change premise or instructions / Close**,
+with confirmation on Close and no Save anyway.
+
+`ai-error-copy.ts` moved to `shared-ui/ai-error/` so Generate and Settings share
+one table, and gained a phrase per `AiTask` so a failure can say what it
+interrupted.
+
+#### Persisted structured-output mode
+
+`TextModelSettings.structuredOutput` records what a successful test proved, so
+generation opens in the mode the model is known to honour instead of spending a
+recovery request every run to rediscover it. A row written before the field
+existed reads as "nothing proved yet" rather than as a corrupt record. See
+[ADR 0020](decisions/0020-persisted-structured-output-mode.md).
+
+### Checkpoint evidence
+
+| Requirement                                                | Evidence                                                                                                                                                                            |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Strict pass                                                | `generation.store.spec.ts` — 1 provider call, saved, `validationOutcome: strict`                                                                                                     |
+| Exception approved                                         | 2 calls; the word saves as `policy-exception` with its explanation, never as `anki-*`                                                                                               |
+| Repair success on full reparse                             | 3 calls (story, review, repair); `repairAttempts: 1` recorded in provenance                                                                                                         |
+| Repair failure after two repairs                           | 3 calls, `invalid-draft`, and zero rows in every owned table                                                                                                                        |
+| Malformed reply and bounded format recovery                | `story-generation.adapter.spec.ts` — prose costs exactly 2 calls; a duplicate index is malformed and never returned; a wrong-length story costs 1 and is repaired instead            |
+| Cancellation at each cancellable state                     | `generation.store.spec.ts` — prerequisites, writing, validating, exception review, and repairing each end `cancelled` with nothing saved; `canCancel()` is false once saving starts   |
+| Hard model failure                                         | An authentication failure is not repaired and writes nothing                                                                                                                        |
+| No unknown-containing result can enter the library         | `dexie-reading.repository.spec.ts` refuses `unknown` and `not-in-snapshot` drafts and writes zero rows; the store refuses independently                                              |
+| Cancelled/invalid results create no reading rows           | `e2e/generation.spec.ts` counts every owned store after an invalid draft and after a cancellation                                                                                    |
+| Provenance captured                                        | Snapshot, profile capture, policy hash, model, prompt versions, repair count, and sampled item ids asserted on the stored row                                                        |
+
+### Verification
+
+| Command                | Result                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| `npm run format:check` | Pass                                                                                      |
+| `npm run lint`         | Pass (0 problems)                                                                         |
+| `npm run typecheck`    | Pass                                                                                      |
+| `npm test`             | Pass — 101 files, 1,160 tests                                                              |
+| `npm run build`        | Pass — 848.82 kB initial, 198.64 kB transfer; the Generate page is a 40.80 kB lazy chunk    |
+| `npm run e2e`          | Pass — 156 tests, 14 of them new (desktop-chrome, android-chrome)                           |
+
+Browser-driven check of the rendered `/generate` route at 1280 px and 360 px in
+light and dark: the prerequisite panel, the form, the stepper progressing, a
+saved story, and an invalid draft, with no console errors and no page-level
+horizontal scrolling. The invalid-draft and saved states were driven through
+Playwright, because reaching them needs a key, a tested model, and a real
+vocabulary snapshot in IndexedDB.
+
+### Assumptions and decisions
+
+- **An accepted story is saved in this milestone**, with empty auxiliary
+  summaries, so that "no unknown-containing result can enter the library" and
+  "cancelled/invalid results create no reading rows" are provable end to end
+  rather than deferred to Milestone 8.
+- **A generated story is one paragraph.** A model returns ordered sentences and
+  no structure above them; any split would be invented and then presented as if
+  it came from the source. See ADR 0019.
+- **The structural baseline reaches the model as plain forms.** The
+  `PromptGrammarRule` the AI specification names was removed in ADR 0014; the
+  model needs only the fact that these function words stay available, which a
+  form list states in roughly 400 tokens.
+- **An exception explanation must be at least twelve characters and must not
+  restate the verdict.** The specification invalidates "empty or vague" without
+  defining vague; the check is deliberately conservative, because a discarded
+  decision costs a repair attempt while a lenient one would cost an unearned
+  approval.
+- **Preset-to-snapshot expectations are advisory numbers**, not a syllabus claim
+  and not a gate. They exist for one non-blocking warning, so a learner with
+  sixty words does not spend a request discovering that literary prose will not
+  validate.
+
+### Remaining work in later milestones
+
+- Grammar review and translation, the `auxiliary-review` states, and the
+  partial-failure completion summaries are Milestone 8; the stepper shows both
+  stages as Skipped until then.
+- A save that fails after acceptance keeps the candidate only as long as the
+  screen lives. The specified "keep the final result in session long enough to
+  retry saving" holds, but a dedicated retry action arrives with finalization in
+  Milestone 8.
+- No real model has generated a story end to end; only the routed stub has. That
+  belongs to the Milestone 10 compatibility matrix.
