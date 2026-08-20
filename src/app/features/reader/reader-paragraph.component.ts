@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import type { ReaderParagraph } from '../../application/reading/reader.store';
+import type { SentenceId } from '../../domain/shared/ids';
 import { ReaderSentenceComponent, type TokenActivation } from './reader-sentence.component';
 
 /**
@@ -18,6 +20,7 @@ import { ReaderSentenceComponent, type TokenActivation } from './reader-sentence
       @for (sentence of entry().sentences; track sentence.sentence.id) {
         <mn-reader-sentence
           [entry]="sentence"
+          [aids]="aidsFor(sentence.sentence.id)"
           [furigana]="furigana()"
           [tokenSpacing]="tokenSpacing()"
           [markers]="markers()"
@@ -41,6 +44,7 @@ import { ReaderSentenceComponent, type TokenActivation } from './reader-sentence
 })
 export class ReaderParagraphComponent {
   readonly entry = input.required<ReaderParagraph>();
+  readonly aids = input<ReadonlyMap<SentenceId, SentenceAids>>(new Map());
   readonly furigana = input(true);
   readonly tokenSpacing = input(true);
   readonly markers = input(true);
@@ -49,4 +53,8 @@ export class ReaderParagraphComponent {
 
   readonly activated = output<TokenActivation>();
   readonly previewed = output<TokenActivation>();
+
+  protected aidsFor(sentenceId: SentenceId): SentenceAids {
+    return this.aids().get(sentenceId) ?? NO_AIDS;
+  }
 }

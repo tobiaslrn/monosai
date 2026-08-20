@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { Router, RouterLink } from '@angular/router';
+import { SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
@@ -45,7 +46,7 @@ import { WordInspectorSheetComponent } from './word-inspector-sheet.component';
     ReaderParagraphComponent,
     WordInspectorComponent,
   ],
-  providers: [ReaderStore, WordInspectorStore],
+  providers: [ReaderStore, WordInspectorStore, SentenceAidsStore],
   template: `
     <div class="reader" [class.has-inspector]="showSidePanel()">
       <header class="bar">
@@ -111,6 +112,7 @@ import { WordInspectorSheetComponent } from './word-inspector-sheet.component';
               @for (paragraph of store.paragraphs(); track paragraph.paragraph.id) {
                 <mn-reader-paragraph
                   [entry]="paragraph"
+                  [aids]="aids.aids()"
                   [furigana]="preferences().furigana"
                   [tokenSpacing]="preferences().tokenSpacing"
                   [markers]="preferences().statusMarkers"
@@ -263,6 +265,7 @@ export class ReaderPageComponent {
   readonly id = input.required<string>();
 
   protected readonly store = inject(ReaderStore);
+  protected readonly aids = inject(SentenceAidsStore);
   protected readonly inspector = inject(WordInspectorStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly library = inject(LibraryStore);
@@ -297,7 +300,19 @@ export class ReaderPageComponent {
     effect(() => {
       // Re-registered whenever the mounted window changes, because the observed
       // sentinels and sentences are replaced with it.
-      this.store.paragraphs();
+      const paragraphs = this.store.paragraphs();
+      const reading = this.store.reading();
+      if (reading !== null) {
+        // A local read of the stored aids for exactly the sentences now
+        // mounted. Nothing here reaches a provider: a missing aid is fetched
+        // only when the learner asks for it.
+        void this.aids.load(
+          reading,
+          paragraphs.flatMap((paragraph) =>
+            paragraph.sentences.map((sentence) => sentence.sentence),
+          ),
+        );
+      }
       queueMicrotask(() => {
         this.observeEdges();
         this.observeSentences();

@@ -19,12 +19,24 @@ import type { StorageError } from '../app/domain/storage/storage-error';
  * same in-memory bookkeeping so a future spec can grow into them.
  */
 export class FakeEnrichmentRepository implements EnrichmentRepository {
+  /**
+   * Which sentence ids each bounded per-sentence query was asked for, so a
+   * spec can assert the reader reads only its mounted window.
+   */
+  readonly perSentenceQueries: { translations: SentenceId[][]; grammar: SentenceId[][] } = {
+    translations: [],
+    grammar: [],
+  };
+
   translations: TranslationRecord[] = [];
   grammarAnalyses: GrammarAnalysisRecord[] = [];
   audio: AudioAsset[] = [];
 
   /** Set to make the next `getTranslationByCacheKey` call fail. */
   failGetTranslationWith: StorageError | null = null;
+
+  /** Set to make the bounded per-sentence translation query fail. */
+  failListTranslationsForSentencesWith: StorageError | null = null;
 
   getTranslationByCacheKey(
     cacheKey: string,
@@ -48,6 +60,10 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
   listTranslationsForSentences(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly TranslationRecord[], StorageError>> {
+    this.perSentenceQueries.translations.push([...sentenceIds]);
+    if (this.failListTranslationsForSentencesWith !== null) {
+      return Promise.resolve(err(this.failListTranslationsForSentencesWith));
+    }
     const wanted = new Set(sentenceIds);
     return Promise.resolve(ok(this.translations.filter((record) => wanted.has(record.sentenceId))));
   }
@@ -76,6 +92,7 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
   listGrammarAnalysesForSentences(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly GrammarAnalysisRecord[], StorageError>> {
+    this.perSentenceQueries.grammar.push([...sentenceIds]);
     const wanted = new Set(sentenceIds);
     return Promise.resolve(
       ok(this.grammarAnalyses.filter((record) => wanted.has(record.sentenceId))),
