@@ -4,8 +4,18 @@ import type { ReaderSentence } from '../../application/reading/reader.store';
 import { tokensCoveredByConcerns } from '../../domain/enrichment/finding-spans';
 import type { Token } from '../../domain/reading/token';
 import { ReaderTokenComponent, type TokenActivationSource } from './reader-token.component';
+import { SentenceGesturesDirective, type SentenceGesture } from './sentence-gestures.directive';
 import { SentenceGrammarComponent } from './sentence-grammar.component';
 import { SentenceTranslationComponent } from './sentence-translation.component';
+
+/** A request to open the sentence menu, and where to put it. */
+export interface SentenceMenuRequest {
+  readonly sentence: ReaderSentence;
+  /** Viewport coordinates for a pointer, or the control that asked. */
+  readonly origin: SentenceGesture | HTMLElement;
+  /** Where focus returns to; null when the menu was opened by a pointer. */
+  readonly returnFocusTo: HTMLElement | null;
+}
 
 export interface TokenActivation {
   readonly sentence: ReaderSentence;
@@ -26,11 +36,18 @@ export interface TokenActivation {
 @Component({
   selector: 'mn-reader-sentence',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReaderTokenComponent, SentenceTranslationComponent, SentenceGrammarComponent],
+  imports: [
+    ReaderTokenComponent,
+    SentenceGesturesDirective,
+    SentenceTranslationComponent,
+    SentenceGrammarComponent,
+  ],
   template: `
     <span
       class="sentence"
       lang="ja"
+      mnSentenceGestures
+      (menuRequested)="openMenuAt($event)"
       [class.is-spaced]="tokenSpacing()"
       [class.is-current]="current()"
       [class.has-concern]="aids().concernCount > 0"
@@ -50,6 +67,14 @@ export interface TokenActivation {
         />
       }
     </span>
+
+    <!--
+      Invisible until it is focused, so a keyboard reader always has a route to
+      the sentence menu while a mouse reader sees an uncluttered page.
+    -->
+    <button #actions type="button" class="sentence-actions" (click)="openMenuFromControl(actions)">
+      Actions for sentence {{ entry().sentence.positionInReading + 1 }}
+    </button>
 
     @if (aids().translation; as translation) {
       @if (aids().translationVisible) {
@@ -81,6 +106,38 @@ export interface TokenActivation {
         box-decoration-break: clone;
         -webkit-box-decoration-break: clone;
       }
+    }
+
+    /*
+     * The skip-link pattern: laid out only while it has focus, so it is
+     * reachable by Tab and invisible to everyone else.
+     */
+    .sentence-actions {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      border: 0;
+      clip-path: inset(50%);
+    }
+
+    .sentence-actions:focus-visible {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0 0 0 var(--space-1);
+      padding: 0 var(--space-2);
+      overflow: visible;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      background: var(--surface-raised);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      font-size: var(--text-sm);
+      clip-path: none;
+      cursor: pointer;
     }
 
     .sentence.is-current {
@@ -117,6 +174,7 @@ export class ReaderSentenceComponent {
   readonly selectedTokenId = input<string | null>(null);
 
   readonly activated = output<TokenActivation>();
+  readonly menuRequested = output<SentenceMenuRequest>();
   readonly previewed = output<TokenActivation>();
   readonly previewEnded = output<void>();
 
@@ -126,6 +184,14 @@ export class ReaderSentenceComponent {
       ? new Set<string>()
       : tokensCoveredByConcerns(grammar.findings, this.entry().tokens);
   });
+
+  protected openMenuAt(origin: SentenceGesture): void {
+    this.menuRequested.emit({ sentence: this.entry(), origin, returnFocusTo: null });
+  }
+
+  protected openMenuFromControl(control: HTMLElement): void {
+    this.menuRequested.emit({ sentence: this.entry(), origin: control, returnFocusTo: control });
+  }
 
   protected onActivated(activation: TokenActivationSource): void {
     this.activated.emit({ sentence: this.entry(), ...activation });

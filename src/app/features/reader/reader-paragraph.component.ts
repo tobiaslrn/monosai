@@ -2,7 +2,11 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import type { ReaderParagraph } from '../../application/reading/reader.store';
 import type { SentenceId } from '../../domain/shared/ids';
-import { ReaderSentenceComponent, type TokenActivation } from './reader-sentence.component';
+import {
+  ReaderSentenceComponent,
+  type SentenceMenuRequest,
+  type TokenActivation,
+} from './reader-sentence.component';
 
 /**
  * One paragraph.
@@ -29,6 +33,7 @@ import { ReaderSentenceComponent, type TokenActivation } from './reader-sentence
           (activated)="activated.emit($event)"
           (previewed)="previewed.emit($event)"
           (previewEnded)="previewEnded.emit()"
+          (menuRequested)="menuRequested.emit($event)"
         />
       }
     </p>
@@ -55,6 +60,7 @@ export class ReaderParagraphComponent {
   readonly activated = output<TokenActivation>();
   readonly previewed = output<TokenActivation>();
   readonly previewEnded = output<void>();
+  readonly menuRequested = output<SentenceMenuRequest>();
 
   protected aidsFor(sentenceId: SentenceId): SentenceAids {
     return this.aids().get(sentenceId) ?? NO_AIDS;

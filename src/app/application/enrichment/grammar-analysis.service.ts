@@ -5,8 +5,10 @@ import { normalizeReview } from '../../domain/enrichment/grammar-normalization';
 import type { GrammarAnalysisRecord, GrammarFinding } from '../../domain/enrichment/records';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { ReadingId, SentenceId } from '../../domain/shared/ids';
+import type { Result } from '../../domain/shared/result';
+import type { StorageError } from '../../domain/storage/storage-error';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
-import { CLOCK, ID_GENERATOR } from '../shared/repository-tokens';
+import { CLOCK, ENRICHMENT_REPOSITORY, ID_GENERATOR } from '../shared/repository-tokens';
 
 export type GrammarRunOutcome =
   | { readonly status: 'complete'; readonly records: readonly GrammarAnalysisRecord[] }
@@ -24,6 +26,7 @@ export type GrammarRunOutcome =
 @Injectable({ providedIn: 'root' })
 export class GrammarAnalysisService {
   private readonly provider = inject(TEXT_GENERATION_PROVIDER);
+  private readonly enrichment = inject(ENRICHMENT_REPOSITORY);
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
 
@@ -89,5 +92,21 @@ export class GrammarAnalysisService {
     });
 
     return { status: 'complete', records };
+  }
+
+  /**
+   * Persists one analysis and refreshes the reading's grammar summary in the
+   * same transaction.
+   *
+   * Split from `run` for the same reason translation's is: the generated path
+   * produces records that are written only inside `saveGeneratedStory`'s
+   * transaction, while an imported reading analysed one sentence at a time
+   * writes each one as it arrives.
+   */
+  store(
+    record: GrammarAnalysisRecord,
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<GrammarAnalysisRecord, StorageError>> {
+    return this.enrichment.storeGrammarAnalysis(record, currentCacheKeys);
   }
 }

@@ -9,7 +9,11 @@ import {
 import type { ReaderSentence } from '../../application/reading/reader.store';
 import type { GrammarAnalysisRecord, TranslationRecord } from '../../domain/enrichment/records';
 import { paragraphId, readingId, sentenceId } from '../../domain/shared/ids';
-import { ReaderSentenceComponent } from './reader-sentence.component';
+import {
+  ReaderSentenceComponent,
+  type SentenceMenuRequest,
+  type TokenActivation,
+} from './reader-sentence.component';
 
 const READING_ID = readingId('r1');
 const SENTENCE_ID = sentenceId('s1');
@@ -99,11 +103,20 @@ function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReaderSentenceComponent],
-  template: `<p><mn-reader-sentence [entry]="entry" [aids]="aids()" /></p>`,
+  template: `<p>
+    <mn-reader-sentence
+      [entry]="entry"
+      [aids]="aids()"
+      (activated)="activations.push($event)"
+      (menuRequested)="menuRequests.push($event)"
+    />
+  </p>`,
 })
 class HostComponent {
   readonly entry = ENTRY;
   readonly aids = signal<SentenceAids>(NO_AIDS);
+  readonly activations: TokenActivation[] = [];
+  readonly menuRequests: SentenceMenuRequest[] = [];
 }
 
 describe('ReaderSentenceComponent', () => {
@@ -184,5 +197,41 @@ describe('ReaderSentenceComponent', () => {
 
     expect(element.querySelector('.translation')).toBeNull();
     expect(element.querySelector('.grammar')).toBeNull();
+  });
+
+  it('keeps a word click and a whitespace click apart', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    element
+      .querySelector('button.token')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(fixture.componentInstance.activations).toHaveLength(1);
+    expect(fixture.componentInstance.menuRequests).toHaveLength(0);
+
+    element.querySelector('.sentence')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(fixture.componentInstance.activations).toHaveLength(1);
+    expect(fixture.componentInstance.menuRequests).toHaveLength(1);
+  });
+
+  it('offers a focus-revealed control that names its sentence', () => {
+    const element = render();
+    const control = element.querySelector<HTMLButtonElement>('.sentence-actions');
+
+    expect(control?.textContent.trim()).toBe('Actions for sentence 1');
+  });
+
+  it('opens the menu from the focus-revealed control, returning focus to it', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const control = element.querySelector<HTMLButtonElement>('.sentence-actions');
+
+    control?.click();
+
+    const [request] = fixture.componentInstance.menuRequests;
+    expect(request.returnFocusTo).toBe(control);
+    expect(fixture.componentInstance.activations).toHaveLength(0);
   });
 });

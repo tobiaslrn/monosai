@@ -166,6 +166,9 @@ export class ReaderTokenComponent {
   protected readonly interactive = computed(() => isInspectable(this.token()));
 
   protected onActivate(event: MouseEvent): void {
+    // The sentence around this token opens its menu on any click that reaches
+    // it, so a word click must stop here or it would open both.
+    event.stopPropagation();
     this.activated.emit({ token: this.token(), origin: event.currentTarget as HTMLElement });
   }
 

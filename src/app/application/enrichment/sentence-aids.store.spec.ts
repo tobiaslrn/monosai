@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { aiError } from '../../domain/ai/ai-error';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import { grammarCacheKey, translationCacheKey } from '../../domain/enrichment/cache-keys';
 import type { GrammarAnalysisRecord, TranslationRecord } from '../../domain/enrichment/records';
@@ -10,16 +11,27 @@ import { DEFAULT_READER_PREFERENCES } from '../../domain/settings/settings';
 import type { Hasher } from '../../domain/shared/hashing';
 import { paragraphId, readingId, sentenceId, snapshotId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
-import { modelTest, StubTextProvider } from '../../../testing/ai-fakes';
+import { autoAnswerAuxiliary, modelTest, StubTextProvider } from '../../../testing/ai-fakes';
+import { FakeReadingRepository } from '../../../testing/reading-repository-fake';
 import { FakeEnrichmentRepository } from '../../../testing/enrichment-fakes';
-import { ok } from '../../domain/shared/result';
+import { err, ok } from '../../domain/shared/result';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { AppSettingsStore } from '../settings/app-settings.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
-import { ENRICHMENT_REPOSITORY, HASHER } from '../shared/repository-tokens';
+import {
+  CLOCK,
+  ENRICHMENT_REPOSITORY,
+  HASHER,
+  ID_GENERATOR,
+  READING_REPOSITORY,
+} from '../shared/repository-tokens';
+import { fixedClock } from '../../domain/shared/clock';
 import { EnrichmentKeysService } from './enrichment-keys.service';
+import { GrammarAnalysisService } from './grammar-analysis.service';
 import { SentenceAidsStore } from './sentence-aids.store';
+import { SentenceEnrichmentService } from './sentence-enrichment.service';
+import { TranslationService } from './translation.service';
 
 const READING_ID = readingId('r1');
 const MODEL_ID = 'vendor/model';
@@ -127,35 +139,79 @@ function analysisFor(
   };
 }
 
+/** Everything the aids store and its enrichment service need, with fakes. */
+function aidsProviders(
+  enrichment: FakeEnrichmentRepository,
+  readings: FakeReadingRepository,
+  provider: StubTextProvider,
+  liveProfileHash: ReturnType<typeof signal<string | null>>,
+  modelId = MODEL_ID,
+): unknown[] {
+  let nextId = 0;
+  return [
+    SentenceAidsStore,
+    SentenceEnrichmentService,
+    TranslationService,
+    GrammarAnalysisService,
+    EnrichmentKeysService,
+    { provide: ENRICHMENT_REPOSITORY, useValue: enrichment },
+    { provide: READING_REPOSITORY, useValue: readings },
+    { provide: HASHER, useValue: HASH },
+    { provide: CLOCK, useValue: fixedClock(1_000) },
+    {
+      provide: ID_GENERATOR,
+      useValue: {
+        nextId: () => {
+          nextId += 1;
+          return `id-${String(nextId)}`;
+        },
+      },
+    },
+    { provide: TEXT_GENERATION_PROVIDER, useValue: provider },
+    {
+      provide: TextModelStore,
+      useValue: {
+        settings: signal({ modelId, structuredOutput: modelId === '' ? null : 'json-schema' }),
+      },
+    },
+    {
+      provide: GrammarProfileStore,
+      useValue: {
+        liveProfileHash,
+        resolvedGuidance: signal('Write short sentences.'),
+        selection: signal({ presetId: 'mn-preset-basic', registerPreference: 'either' }),
+      },
+    },
+    {
+      provide: AppSettingsStore,
+      useValue: { readerPreferences: signal(DEFAULT_READER_PREFERENCES) },
+    },
+  ];
+}
+
 describe('SentenceAidsStore', () => {
   let enrichment: FakeEnrichmentRepository;
+  let readings: FakeReadingRepository;
   let provider: StubTextProvider;
   let profileHash: ReturnType<typeof signal<string | null>>;
   let store: SentenceAidsStore;
 
+  /** Registers the reading's sentences, which reading-wide cache keys need. */
+  function withSentences(list: readonly Sentence[]): readonly Sentence[] {
+    readings.sentences = [...list];
+    return list;
+  }
+
   beforeEach(() => {
     TestBed.resetTestingModule();
     enrichment = new FakeEnrichmentRepository();
+    readings = new FakeReadingRepository();
     provider = new StubTextProvider(ok(modelTest()));
+    autoAnswerAuxiliary(provider);
     profileHash = signal<string | null>(LIVE_PROFILE_HASH);
 
     TestBed.configureTestingModule({
-      providers: [
-        SentenceAidsStore,
-        EnrichmentKeysService,
-        { provide: ENRICHMENT_REPOSITORY, useValue: enrichment },
-        { provide: HASHER, useValue: HASH },
-        { provide: TEXT_GENERATION_PROVIDER, useValue: provider },
-        {
-          provide: TextModelStore,
-          useValue: { settings: signal({ modelId: MODEL_ID, structuredOutput: 'json-schema' }) },
-        },
-        { provide: GrammarProfileStore, useValue: { liveProfileHash: profileHash } },
-        {
-          provide: AppSettingsStore,
-          useValue: { readerPreferences: signal(DEFAULT_READER_PREFERENCES) },
-        },
-      ],
+      providers: aidsProviders(enrichment, readings, provider, profileHash),
     });
     store = TestBed.inject(SentenceAidsStore);
   });
@@ -263,5 +319,106 @@ describe('SentenceAidsStore', () => {
     await store.load(importedReading(), [first[1]]);
 
     expect([...store.aids().keys()]).toEqual(['s1']);
+  });
+  describe('explicit actions', () => {
+    it('translates one sentence with exactly one request, and none on a repeat', async () => {
+      const window = withSentences(sentences(1));
+      await store.load(importedReading(), window);
+
+      await store.translateSentence(window[0].id);
+      expect(provider.generationCalls.translate).toBe(1);
+      expect(store.aids().get(window[0].id)?.translation?.textEn).toBe('EN: 文0。');
+      expect(enrichment.translations).toHaveLength(1);
+
+      await store.translateSentence(window[0].id);
+      expect(provider.generationCalls.translate).toBe(1);
+    });
+
+    it('serves a translation stored in an earlier session without a request', async () => {
+      const window = withSentences(sentences(1));
+      enrichment.translations = [translationFor(window[0], 'Sentence zero.')];
+      await store.load(importedReading(), window);
+
+      await store.translateSentence(window[0].id);
+
+      expect(provider.generationCalls.translate).toBe(0);
+    });
+
+    it('leaves the sentence readable and offers a retry when translation fails', async () => {
+      const window = withSentences(sentences(1));
+      await store.load(importedReading(), window);
+      provider.translationQueue.push(
+        err(aiError('rate-limited', 'translation', 'Too many requests.')),
+      );
+
+      await store.translateSentence(window[0].id);
+
+      const failed = store.aids().get(window[0].id);
+      expect(failed?.translation).toBeNull();
+      expect(failed?.translationAction.state).toBe('failed');
+      expect(failed?.translationAction.error?.error.code).toBe('rate-limited');
+
+      await store.translateSentence(window[0].id);
+
+      const retried = store.aids().get(window[0].id);
+      expect(retried?.translationAction.state).toBe('idle');
+      expect(retried?.translation?.textEn).toBe('EN: 文0。');
+    });
+
+    it('analyzes grammar for the sentence that asked, and no other', async () => {
+      const window = withSentences(sentences(2));
+      await store.load(importedReading(), window);
+
+      await store.analyzeGrammar(window[0].id);
+
+      expect(provider.generationCalls.grammar).toBe(1);
+      expect(store.aids().get(window[0].id)?.grammar).not.toBeNull();
+      expect(store.aids().get(window[1].id)?.grammar).toBeNull();
+    });
+
+    it('re-analyzes after a profile change, keeping both rows', async () => {
+      const window = withSentences(sentences(1));
+      enrichment.grammarAnalyses = [analysisFor(window[0], 'profile-old')];
+      await store.load(importedReading(), window);
+      expect(store.aids().get(window[0].id)?.grammarStale).toBe(true);
+
+      await store.analyzeGrammar(window[0].id);
+
+      expect(provider.generationCalls.grammar).toBe(1);
+      expect(enrichment.grammarAnalyses).toHaveLength(2);
+      expect(enrichment.grammarAnalyses.map((record) => record.profileHash)).toEqual([
+        'profile-old',
+        LIVE_PROFILE_HASH,
+      ]);
+      expect(store.aids().get(window[0].id)?.grammarStale).toBe(false);
+    });
+
+    it('makes no request when the analysis is already current', async () => {
+      const window = withSentences(sentences(1));
+      enrichment.grammarAnalyses = [analysisFor(window[0], LIVE_PROFILE_HASH)];
+      await store.load(importedReading(), window);
+
+      await store.analyzeGrammar(window[0].id);
+
+      expect(provider.generationCalls.grammar).toBe(0);
+    });
+
+    it('reports a missing text model as a failure instead of requesting anything', async () => {
+      TestBed.resetTestingModule();
+      const window = sentences(1);
+      readings.sentences = [...window];
+      TestBed.configureTestingModule({
+        providers: aidsProviders(enrichment, readings, provider, profileHash, ''),
+      });
+      const bare = TestBed.inject(SentenceAidsStore);
+
+      await bare.load(importedReading(), window);
+      await bare.translateSentence(window[0].id);
+
+      expect(provider.generationCalls.translate).toBe(0);
+      expect(bare.aids().get(window[0].id)?.translationAction.error?.error.code).toBe(
+        'capability-unsupported',
+      );
+    });
   });
 });
