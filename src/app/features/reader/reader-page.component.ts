@@ -14,6 +14,7 @@ import {
 import { Dialog } from '@angular/cdk/dialog';
 import { Router, RouterLink } from '@angular/router';
 import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
+import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
@@ -27,6 +28,7 @@ import { PopoverService, type PopoverRef } from '../../shared-ui/popover/popover
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
 import { ReaderAidsComponent } from './reader-aids.component';
 import { ReaderParagraphComponent } from './reader-paragraph.component';
+import { ReadingStatusPanelComponent } from './reading-status-panel.component';
 import type { SentenceMenuRequest, TokenActivation } from './reader-sentence.component';
 import {
   SentenceMenuComponent,
@@ -56,6 +58,7 @@ const PREVIEW_DELAY_MS = 250;
     ReaderAidsComponent,
     ReaderParagraphComponent,
     ReaderPopoverComponent,
+    ReadingStatusPanelComponent,
     SentenceDetailsComponent,
     SentenceMenuComponent,
     WordInspectorComponent,
@@ -117,6 +120,16 @@ const PREVIEW_DELAY_MS = 250;
                 Vocabulary markers are off because no reviewed Anki vocabulary is set up. Reading,
                 furigana, and word lookup all work without it.
               </p>
+            }
+
+            @if (store.reading(); as reading) {
+              <mn-reading-status-panel
+                [reading]="reading"
+                [progress]="translationJob.progress()"
+                (started)="startWholeReadingTranslation()"
+                (cancelled)="translationJob.cancel()"
+                (retried)="retryWholeReadingTranslation()"
+              />
             }
 
             @if (store.hasMoreAbove()) {
@@ -282,6 +295,7 @@ export class ReaderPageComponent {
 
   protected readonly store = inject(ReaderStore);
   protected readonly aids = inject(SentenceAidsStore);
+  protected readonly translationJob = inject(TranslationJobStore);
   protected readonly inspector = inject(WordInspectorStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly library = inject(LibraryStore);
@@ -362,6 +376,16 @@ export class ReaderPageComponent {
       });
     });
 
+    effect(() => {
+      // A job writes rows this page is displaying, so its progress is what
+      // tells the reader to re-read them. Re-reading the reading row also
+      // refreshes the summaries the status panel counts, and that in turn
+      // re-runs the aid load above for the mounted window.
+      if (this.translationJob.progress().kind !== 'idle') {
+        void this.store.refreshSummaries();
+      }
+    });
+
     const flushOnHide = (): void => {
       if (document.visibilityState === 'hidden') {
         void this.store.flushProgress();
@@ -381,6 +405,20 @@ export class ReaderPageComponent {
 
   protected reload(): void {
     void this.store.open(readingId(this.id()));
+  }
+
+  /**
+   * Translates everything in the reading that has no current translation.
+   *
+   * The only whole-reading request in the reader, and it starts here and
+   * nowhere else. Opening a reading resumes nothing on its own.
+   */
+  protected startWholeReadingTranslation(): void {
+    void this.translationJob.start(readingId(this.id()));
+  }
+
+  protected retryWholeReadingTranslation(): void {
+    void this.translationJob.retry(readingId(this.id()));
   }
 
   /**
@@ -449,11 +487,11 @@ export class ReaderPageComponent {
         this.popover.close();
         return;
       case 'translate':
-        void this.aids.translateSentence(sentenceId);
+        void this.aids.translateSentence(sentenceId).then(() => this.store.refreshSummaries());
         this.popover.close();
         return;
       case 'analyze-grammar':
-        void this.aids.analyzeGrammar(sentenceId);
+        void this.aids.analyzeGrammar(sentenceId).then(() => this.store.refreshSummaries());
         this.popover.close();
         return;
       case 'details':

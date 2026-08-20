@@ -166,6 +166,25 @@ export class ReaderStore {
     this.statusSignal.set('ready');
   }
 
+  /**
+   * Re-reads the reading row after an aid was written.
+   *
+   * The denormalized summaries are refreshed inside the write's own
+   * transaction, so the only stale copy afterwards is the one held here.
+   * Re-reading rather than adjusting a counter locally keeps the database the
+   * single source of what is actually stored.
+   */
+  async refreshSummaries(): Promise<void> {
+    const current = this.readingSignal();
+    if (current === null) {
+      return;
+    }
+    const reading = await this.readings.getReading(current.id);
+    if (reading.ok && reading.value !== null) {
+      this.readingSignal.set(reading.value);
+    }
+  }
+
   /** Mounts more paragraphs when the learner reaches an edge of the window. */
   async extend(direction: WindowDirection): Promise<void> {
     const reading = this.readingSignal();
