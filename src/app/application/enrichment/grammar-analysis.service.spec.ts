@@ -6,8 +6,9 @@ import { fixedClock } from '../../domain/shared/clock';
 import { paragraphId, readingId, sentenceId, type SentenceId } from '../../domain/shared/ids';
 import { ok, err } from '../../domain/shared/result';
 import { modelTest, StubTextProvider } from '../../../testing/ai-fakes';
+import { FakeEnrichmentRepository } from '../../../testing/enrichment-fakes';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
-import { CLOCK, ID_GENERATOR } from '../shared/repository-tokens';
+import { CLOCK, ENRICHMENT_REPOSITORY, ID_GENERATOR } from '../shared/repository-tokens';
 import { GrammarAnalysisService } from './grammar-analysis.service';
 
 const READING_ID = readingId('r1');
@@ -49,6 +50,7 @@ describe('GrammarAnalysisService', () => {
       providers: [
         GrammarAnalysisService,
         { provide: TEXT_GENERATION_PROVIDER, useValue: provider },
+        { provide: ENRICHMENT_REPOSITORY, useValue: new FakeEnrichmentRepository() },
         { provide: CLOCK, useValue: fixedClock(1_000) },
         { provide: ID_GENERATOR, useValue: sequentialIds() },
       ],

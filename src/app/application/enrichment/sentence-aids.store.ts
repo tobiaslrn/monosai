@@ -1,5 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
-import type { AiError } from '../../domain/ai/ai-error';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import { concernCount } from '../../domain/enrichment/grammar-normalization';
 import type { GrammarAnalysisRecord, TranslationRecord } from '../../domain/enrichment/records';
@@ -13,6 +12,7 @@ import { AppSettingsStore } from '../settings/app-settings.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { ENRICHMENT_REPOSITORY } from '../shared/repository-tokens';
 import { EnrichmentKeysService } from './enrichment-keys.service';
+import { SentenceEnrichmentService, type EnrichmentFailure } from './sentence-enrichment.service';
 
 /** Where one explicit aid action stands for one sentence. */
 export type AidActionState = 'idle' | 'running' | 'failed';
@@ -20,7 +20,7 @@ export type AidActionState = 'idle' | 'running' | 'failed';
 export interface AidAction {
   readonly state: AidActionState;
   /** The last failure, kept so sentence details can explain what to retry. */
-  readonly error: AiError | null;
+  readonly error: EnrichmentFailure | null;
 }
 
 export const IDLE_ACTION: AidAction = { state: 'idle', error: null };
@@ -78,6 +78,7 @@ const NO_ACTIONS: SentenceActions = { translation: IDLE_ACTION, grammar: IDLE_AC
 @Injectable()
 export class SentenceAidsStore {
   private readonly enrichment = inject(ENRICHMENT_REPOSITORY);
+  private readonly sentenceEnrichment = inject(SentenceEnrichmentService);
   private readonly keys = inject(EnrichmentKeysService);
   private readonly textModel = inject(TextModelStore);
   private readonly grammarProfile = inject(GrammarProfileStore);
@@ -90,9 +91,22 @@ export class SentenceAidsStore {
   private readonly actionsSignal = signal<ReadonlyMap<SentenceId, SentenceActions>>(new Map());
   private readonly errorSignal = signal<StorageError | null>(null);
 
+  /**
+   * Aborts every in-flight action when the reader is left. The store is
+   * provided by the reader page, so leaving destroys it and this fires.
+   */
+  private readonly controller = new AbortController();
+
   /** The reading whose aids are loaded, or null before the first load. */
   readonly reading = this.readingSignal.asReadonly();
+  readonly sentences = this.sentencesSignal.asReadonly();
   readonly lastError = this.errorSignal.asReadonly();
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      this.controller.abort();
+    });
+  }
 
   readonly aids = computed<ReadonlyMap<SentenceId, SentenceAids>>(() => {
     const stored = this.storedSignal();
@@ -154,6 +168,107 @@ export class SentenceAidsStore {
   toggleTranslation(sentenceId: SentenceId): void {
     const visible = this.aids().get(sentenceId)?.translationVisible ?? false;
     this.overridesSignal.update((overrides) => new Map(overrides).set(sentenceId, !visible));
+  }
+
+  /**
+   * Translates one sentence, because the learner asked for it.
+   *
+   * A sentence whose stored translation already matches the current
+   * configuration returns immediately: no request, no write, no state change.
+   * Retrying after a failure is the same call — the failed state is simply
+   * replaced by the new attempt.
+   */
+  async translateSentence(sentenceId: SentenceId): Promise<void> {
+    const target = this.actionable(sentenceId, 'translation');
+    if (target === null) {
+      return;
+    }
+    const stored = this.storedSignal().get(sentenceId);
+    const translation = stored?.translation ?? null;
+    if (
+      translation !== null &&
+      translation.cacheKey === this.sentenceEnrichment.translationKeyFor(target.sentence)
+    ) {
+      return;
+    }
+
+    this.setAction(sentenceId, 'translation', { state: 'running', error: null });
+    const result = await this.sentenceEnrichment.translate(
+      target.sentence,
+      target.reading.id,
+      this.controller.signal,
+    );
+    if (!result.ok) {
+      this.setAction(sentenceId, 'translation', { state: 'failed', error: result.error });
+      return;
+    }
+    this.replaceStored(sentenceId, { ...emptyStored(stored), translation: result.value });
+    this.setAction(sentenceId, 'translation', IDLE_ACTION);
+  }
+
+  /**
+   * Analyses one sentence's grammar against the live profile.
+   *
+   * Re-analysis after a profile change writes a second row rather than
+   * replacing the first: the older analysis is still the true record of what
+   * was said under the profile it was judged by.
+   */
+  async analyzeGrammar(sentenceId: SentenceId): Promise<void> {
+    const target = this.actionable(sentenceId, 'grammar');
+    if (target === null) {
+      return;
+    }
+    const stored = this.storedSignal().get(sentenceId);
+    const grammar = stored?.grammar ?? null;
+    if (
+      grammar !== null &&
+      stored?.grammarStale !== true &&
+      grammar.cacheKey === this.sentenceEnrichment.grammarKeyFor(target.sentence)
+    ) {
+      return;
+    }
+
+    this.setAction(sentenceId, 'grammar', { state: 'running', error: null });
+    const result = await this.sentenceEnrichment.analyzeGrammar(
+      target.sentence,
+      target.reading.id,
+      this.controller.signal,
+    );
+    if (!result.ok) {
+      this.setAction(sentenceId, 'grammar', { state: 'failed', error: result.error });
+      return;
+    }
+    this.replaceStored(sentenceId, {
+      ...emptyStored(stored),
+      grammar: result.value,
+      grammarStale: false,
+    });
+    this.setAction(sentenceId, 'grammar', IDLE_ACTION);
+  }
+
+  /**
+   * The reading and sentence an action applies to, or null when the sentence
+   * is no longer mounted or the same action is already running for it.
+   */
+  private actionable(
+    sentenceId: SentenceId,
+    kind: keyof SentenceActions,
+  ): { readonly reading: Reading; readonly sentence: Sentence } | null {
+    const reading = this.readingSignal();
+    const sentence = this.sentencesSignal().find((entry) => entry.id === sentenceId);
+    const running = (this.actionsSignal().get(sentenceId) ?? NO_ACTIONS)[kind].state === 'running';
+    return reading === null || sentence === undefined || running ? null : { reading, sentence };
+  }
+
+  private replaceStored(sentenceId: SentenceId, next: StoredAids): void {
+    this.storedSignal.update((stored) => new Map(stored).set(sentenceId, next));
+  }
+
+  private setAction(sentenceId: SentenceId, kind: keyof SentenceActions, action: AidAction): void {
+    this.actionsSignal.update((actions) => {
+      const current = actions.get(sentenceId) ?? NO_ACTIONS;
+      return new Map(actions).set(sentenceId, { ...current, [kind]: action });
+    });
   }
 
   /** The cache keys the current model and prompt would use for these sentences. */
@@ -226,6 +341,10 @@ function isStaleAgainstProfile(
     return false;
   }
   return record.profileHash !== liveProfileHash;
+}
+
+function emptyStored(stored: StoredAids | undefined): StoredAids {
+  return stored ?? { translation: null, grammar: null, grammarStale: false };
 }
 
 function groupBySentence<T extends { readonly sentenceId: SentenceId }>(

@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { Router, RouterLink } from '@angular/router';
-import { SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
+import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
@@ -27,7 +27,13 @@ import { PopoverService, type PopoverRef } from '../../shared-ui/popover/popover
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
 import { ReaderAidsComponent } from './reader-aids.component';
 import { ReaderParagraphComponent } from './reader-paragraph.component';
-import type { TokenActivation } from './reader-sentence.component';
+import type { SentenceMenuRequest, TokenActivation } from './reader-sentence.component';
+import {
+  SentenceMenuComponent,
+  sentenceMenuActions,
+  type SentenceMenuActionId,
+} from './sentence-menu.component';
+import { SentenceDetailsComponent } from './sentence-details.component';
 import { WordInspectorComponent } from './word-inspector.component';
 import { WordPreviewComponent } from './word-preview.component';
 
@@ -50,6 +56,8 @@ const PREVIEW_DELAY_MS = 250;
     ReaderAidsComponent,
     ReaderParagraphComponent,
     ReaderPopoverComponent,
+    SentenceDetailsComponent,
+    SentenceMenuComponent,
     WordInspectorComponent,
     WordPreviewComponent,
   ],
@@ -128,6 +136,7 @@ const PREVIEW_DELAY_MS = 250;
                   (activated)="inspect($event)"
                   (previewed)="previewWord($event)"
                   (previewEnded)="endPreview()"
+                  (menuRequested)="openSentenceMenu($event)"
                 />
               }
             </article>
@@ -142,6 +151,18 @@ const PREVIEW_DELAY_MS = 250;
         }
       </main>
     </div>
+
+    <ng-template #sentenceMenu>
+      <mn-reader-popover label="Sentence actions">
+        <mn-sentence-menu [actions]="menuActions()" (chosen)="runSentenceAction($event)" />
+      </mn-reader-popover>
+    </ng-template>
+
+    <ng-template #sentenceDetails>
+      <mn-reader-popover label="Sentence details">
+        <mn-sentence-details [aids]="menuAids()" />
+      </mn-reader-popover>
+    </ng-template>
 
     <ng-template #wordPreview>
       <mn-word-preview />
@@ -272,15 +293,32 @@ export class ReaderPageComponent {
   private readonly content = viewChild<ElementRef<HTMLElement>>('content');
   private readonly wordPopover = viewChild.required<TemplateRef<unknown>>('wordPopover');
   private readonly wordPreview = viewChild.required<TemplateRef<unknown>>('wordPreview');
+  private readonly sentenceMenu = viewChild.required<TemplateRef<unknown>>('sentenceMenu');
+  private readonly sentenceDetails = viewChild.required<TemplateRef<unknown>>('sentenceDetails');
   private readonly topSentinel = viewChild<ElementRef<HTMLElement>>('topSentinel');
   private readonly bottomSentinel = viewChild<ElementRef<HTMLElement>>('bottomSentinel');
 
+  private readonly menuRequestSignal = signal<SentenceMenuRequest | null>(null);
   private readonly currentSentenceIdSignal = signal<string | null>(null);
   protected readonly currentSentenceId = this.currentSentenceIdSignal.asReadonly();
 
   protected readonly preferences = this.settings.readerPreferences;
 
   protected readonly selectedTokenId = computed(() => this.inspector.selected()?.token.id ?? null);
+
+  /** The aids of the sentence whose menu or details are open. */
+  protected readonly menuAids = computed(() => {
+    const request = this.menuRequestSignal();
+    return request === null
+      ? NO_AIDS
+      : (this.aids.aids().get(request.sentence.sentence.id) ?? NO_AIDS);
+  });
+
+  protected readonly menuActions = computed(() => {
+    const request = this.menuRequestSignal();
+    const kind = this.store.reading()?.kind ?? 'imported';
+    return request === null ? [] : sentenceMenuActions(this.menuAids(), kind);
+  });
 
   /** Item 6 of the inspector's content order, from what is already stored. */
   protected readonly selectedWordFindings = computed(() => {
@@ -371,6 +409,73 @@ export class ReaderPageComponent {
 
   protected closeInspector(): void {
     this.popover.close();
+  }
+
+  /**
+   * Opens the sentence menu where it was asked for: at the pointer for a
+   * whitespace click or a long press, and at the focus-revealed control when
+   * the keyboard asked.
+   */
+  protected openSentenceMenu(request: SentenceMenuRequest): void {
+    this.endPreview();
+    this.menuRequestSignal.set(request);
+    this.popover.open({
+      origin: request.origin,
+      template: this.sentenceMenu(),
+      viewContainerRef: this.viewContainerRef,
+      returnFocusTo: request.returnFocusTo,
+      onClosed: () => {
+        this.menuRequestSignal.set(null);
+      },
+    });
+  }
+
+  /**
+   * Runs one menu entry.
+   *
+   * Every entry that costs a request is an explicit choice made here and
+   * nowhere else: nothing in the reader translates or analyses on its own.
+   */
+  protected runSentenceAction(action: SentenceMenuActionId): void {
+    const request = this.menuRequestSignal();
+    if (request === null) {
+      return;
+    }
+    const sentenceId = request.sentence.sentence.id;
+
+    switch (action) {
+      case 'toggle-translation':
+        this.aids.toggleTranslation(sentenceId);
+        this.popover.close();
+        return;
+      case 'translate':
+        void this.aids.translateSentence(sentenceId);
+        this.popover.close();
+        return;
+      case 'analyze-grammar':
+        void this.aids.analyzeGrammar(sentenceId);
+        this.popover.close();
+        return;
+      case 'details':
+        this.showSentenceDetails(request);
+        return;
+    }
+  }
+
+  /** Swaps the menu for its details, keeping one floating surface open. */
+  private showSentenceDetails(request: SentenceMenuRequest): void {
+    // Opening dismisses the menu, and that dismissal clears the sentence the
+    // details are about, so the sentence is restored afterwards.
+    this.popover.open({
+      origin: request.origin,
+      template: this.sentenceDetails(),
+      viewContainerRef: this.viewContainerRef,
+      returnFocusTo: request.returnFocusTo,
+      onClosed: () => {
+        this.menuRequestSignal.set(null);
+      },
+    });
+    this.menuRequestSignal.set(request);
   }
 
   /**
