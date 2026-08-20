@@ -3,7 +3,13 @@ import { ALL_PROMPT_TASK_NAMES, PROMPT_VERSIONS, promptVersionRecord } from './p
 
 describe('PROMPT_VERSIONS', () => {
   it('names every prompt asset generation records in provenance', () => {
-    expect(Object.keys(PROMPT_VERSIONS).sort()).toEqual(['exception-review', 'repair', 'story']);
+    expect(Object.keys(PROMPT_VERSIONS).sort()).toEqual([
+      'exception-review',
+      'grammar',
+      'repair',
+      'story',
+      'translation',
+    ]);
   });
 
   it('lists every task exactly once as a value', () => {

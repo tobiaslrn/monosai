@@ -28,3 +28,18 @@ export type GrammarSummary =
   | { readonly state: 'unavailable'; readonly reasonCode: string };
 
 export const NO_GRAMMAR_REVIEW: GrammarSummary = { state: 'not-requested' };
+
+export function grammarComplete(concernCount: number): GrammarSummary {
+  return { state: 'complete', concernCount };
+}
+
+export function grammarPartial(
+  analyzedSentenceCount: number,
+  concernCount: number,
+): GrammarSummary {
+  return { state: 'partial', analyzedSentenceCount, concernCount };
+}
+
+export function grammarUnavailable(reasonCode: string): GrammarSummary {
+  return { state: 'unavailable', reasonCode };
+}
