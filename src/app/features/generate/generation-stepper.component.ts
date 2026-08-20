@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import {
   GenerationStore,
+  type BranchState,
   type GenerationState,
 } from '../../application/generation/generation.store';
 import {
@@ -23,6 +24,36 @@ const STAGES = [
 ] as const;
 
 type StageKey = (typeof STAGES)[number]['key'];
+
+/**
+ * How a finished auxiliary branch reads.
+ *
+ * An unavailable review is reported as failed rather than skipped: the run did
+ * ask for it and did not get one, which is a different thing from a stage the
+ * run never needed. Neither outcome stops the story from being saved.
+ */
+function branchStatus(branch: BranchState): StepStatus {
+  switch (branch.status) {
+    case 'running':
+      return 'active';
+    case 'complete':
+      return 'complete';
+    case 'partial':
+      return 'failed';
+    case 'unavailable':
+      return 'failed';
+  }
+}
+
+function branchDetail(key: StageKey, branch: BranchState): string | undefined {
+  if (branch.status === 'unavailable') {
+    return 'unavailable';
+  }
+  if (branch.status === 'partial' && key === 'translating') {
+    return `${String(branch.completed)} of ${String(branch.total)} translated`;
+  }
+  return undefined;
+}
 
 const ORDER: readonly StageKey[] = STAGES.map((stage) => stage.key);
 
@@ -96,15 +127,26 @@ export class GenerationStepperComponent {
     const currentIndex = current === null ? -1 : ORDER.indexOf(current);
     const repairs = this.generation.repairAttempts();
     const reviews = this.generation.exceptionReviews();
+    const auxiliary = this.generation.auxiliary();
 
-    return STAGES.map((stage, index) => ({
-      key: stage.key,
-      label: stage.label,
-      status: this.statusFor(stage.key, index, currentIndex, state, repairs, reviews),
-      ...(stage.key === 'repairing' && repairs > 0
-        ? { detail: `attempt ${String(repairs)} of 2` }
-        : {}),
-    }));
+    return STAGES.map((stage, index) => {
+      const branch =
+        stage.key === 'grammar'
+          ? auxiliary?.grammar
+          : stage.key === 'translating'
+            ? auxiliary?.translation
+            : undefined;
+      const detail = branch === undefined ? undefined : branchDetail(stage.key, branch);
+      return {
+        key: stage.key,
+        label: stage.label,
+        status: this.statusFor(stage.key, index, currentIndex, state, repairs, reviews),
+        ...(stage.key === 'repairing' && repairs > 0
+          ? { detail: `attempt ${String(repairs)} of 2` }
+          : {}),
+        ...(detail === undefined ? {} : { detail }),
+      };
+    });
   });
 
   protected readonly detail = computed(() => {
@@ -160,10 +202,12 @@ export class GenerationStepperComponent {
     if (key === 'grammar' || key === 'translating') {
       if (state.kind === 'auxiliary-review') {
         const branch = key === 'grammar' ? state.grammar : state.translation;
-        return branch.status === 'running' ? 'active' : 'complete';
+        return branch.status === 'running' ? 'active' : branchStatus(branch);
       }
       if (state.kind === 'finalizing' || state.kind === 'saved') {
-        return 'complete';
+        const outcome = this.generation.auxiliary();
+        const branch = key === 'grammar' ? outcome?.grammar : outcome?.translation;
+        return branch === undefined ? 'complete' : branchStatus(branch);
       }
       // An invalid draft never reached acceptance, so grammar and translation
       // never ran — reporting them Complete here would claim work that never

@@ -35,7 +35,27 @@ export interface GenerationStubs {
   readonly stories?: readonly StoryReply[];
   readonly repairs?: readonly StoryReply[];
   readonly decisions?: readonly ExceptionReply[];
+  /**
+   * How each grammar review answers, in order. `unavailable` returns prose,
+   * which is what an unusable review looks like on the wire once the adapter
+   * has spent its one format recovery.
+   */
+  readonly grammar?: readonly AuxiliaryOutcome[];
+  /** How each translation batch answers, in order. */
+  readonly translations?: readonly AuxiliaryOutcome[];
 }
+
+/**
+ * One auxiliary answer.
+ *
+ * `ok` echoes back exactly what was asked for, which is what makes a batch
+ * count assertion meaningful; `unavailable` is unusable content, and `partial`
+ * drops the last requested entry so the batch fails completeness validation.
+ */
+export type AuxiliaryOutcome = 'ok' | 'unavailable' | 'partial' | 'hang';
+
+/** Returned instead of content when this request must stay in flight. */
+const HANG = Symbol('hang');
 
 export interface StoryReply {
   readonly titleJa: string;
@@ -54,9 +74,31 @@ export interface StubOptions {
   readonly generation?: GenerationStubs;
 }
 
-/** Names of the JSON schemas the generation adapter sends. */
+/** Names of the JSON schemas the generation and enrichment adapters send. */
 const STORY_SCHEMA = 'monosai_story';
 const DECISIONS_SCHEMA = 'monosai_exception_decisions';
+const GRAMMAR_SCHEMA = 'monosai_grammar_review';
+const TRANSLATIONS_SCHEMA = 'monosai_translations';
+
+/**
+ * The sentence ids a grammar or translation request carries.
+ *
+ * Both prompts list their sentences as `id: …` / `text: …` pairs, so the stub
+ * can answer per requested id without the test having to know which sentences
+ * a run accepted.
+ */
+function requestedSentences(text: string): readonly { id: string; textJa: string }[] {
+  const lines = text.split('\n');
+  const found: { id: string; textJa: string }[] = [];
+  lines.forEach((line, index) => {
+    const next = lines[index + 1] as string | undefined;
+    if (!line.startsWith('id: ') || next?.startsWith('text: ') !== true) {
+      return;
+    }
+    found.push({ id: line.slice('id: '.length).trim(), textJa: next.slice('text: '.length) });
+  });
+  return found;
+}
 
 interface ChatBody {
   readonly messages?: readonly { readonly role: string; readonly content: string }[];
@@ -90,7 +132,7 @@ export async function stubOpenRouter(
   options: StubOptions = {},
 ): Promise<ProviderCalls> {
   const urls: string[] = [];
-  const served = { story: 0, repair: 0, decisions: 0 };
+  const served = { story: 0, repair: 0, decisions: 0, grammar: 0, translations: 0 };
 
   await page.route(OPENROUTER_PATTERN, async (route) => {
     const url = route.request().url();
@@ -122,6 +164,12 @@ export async function stubOpenRouter(
     }
 
     const generated = generationContent(route.request().postDataJSON() as ChatBody);
+    if (generated === HANG) {
+      // Never fulfilled, so cancelling this one stage is real while the stages
+      // before it answered normally.
+      await new Promise(() => undefined);
+      return;
+    }
     if (generated !== null) {
       await route.fulfill({
         status: 200,
@@ -155,10 +203,40 @@ export async function stubOpenRouter(
    * A repair is told apart from a first draft by the marker the repair prompt
    * carries, which is the only difference the two requests have on the wire.
    */
-  function generationContent(body: ChatBody): string | null {
+  function generationContent(body: ChatBody): string | typeof HANG | null {
     const schema = body.response_format?.json_schema?.name;
     const text = (body.messages ?? []).map((message) => message.content).join(' ');
 
+    // Matched on the task instruction, not on the guidance block: the story and
+    // repair prompts carry the same grammar guidance and must not be answered
+    // with a review.
+    if (schema === GRAMMAR_SCHEMA || text.includes('review each given Japanese sentence')) {
+      const outcome = nextOf(options.generation?.grammar, served.grammar) ?? 'ok';
+      served.grammar += 1;
+      if (outcome === 'hang') {
+        return HANG;
+      }
+      // A review with no findings is a complete review, not a missing one.
+      return outcome === 'unavailable' ? 'Sure, happy to help!' : JSON.stringify({ findings: [] });
+    }
+    if (schema === TRANSLATIONS_SCHEMA || text.includes('translate each given Japanese sentence')) {
+      const outcome = nextOf(options.generation?.translations, served.translations) ?? 'ok';
+      served.translations += 1;
+      if (outcome === 'hang') {
+        return HANG;
+      }
+      if (outcome === 'unavailable') {
+        return 'Sure, happy to help!';
+      }
+      const sentences = requestedSentences(text);
+      const answered = outcome === 'partial' ? sentences.slice(0, -1) : sentences;
+      return JSON.stringify({
+        translations: answered.map((sentence) => ({
+          id: sentence.id,
+          textEn: `EN: ${sentence.textJa}`,
+        })),
+      });
+    }
     if (schema === DECISIONS_SCHEMA || text.includes('exception policy (data)')) {
       const reply = nextOf(options.generation?.decisions, served.decisions);
       served.decisions += 1;

@@ -22,6 +22,7 @@ import { TextModelStore } from '../../application/settings/text-model.store';
 import { ExceptionPolicyStore } from '../../application/settings/exception-policy.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { technicalCode } from '../../domain/shared/errors';
+import { completionLabel, grammarLabel } from '../library/reading-summary-labels';
 import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
@@ -84,6 +85,10 @@ import { StoryFormComponent } from './story-form.component';
         <section class="mn-panel" aria-labelledby="mn-generate-saved-heading">
           <h2 id="mn-generate-saved-heading">Saved to your library</h2>
           <p class="mn-hint" data-testid="saved-title">{{ reading.title }}</p>
+          <ul class="summaries" data-testid="saved-summaries">
+            <li>{{ translationSummaryLabel() }}</li>
+            <li>{{ grammarSummaryLabel() }}</li>
+          </ul>
           <div class="actions">
             <a class="mn-button mn-button--primary" [routerLink]="['/reader', reading.id]"
               >Read it now</a
@@ -170,6 +175,17 @@ import { StoryFormComponent } from './story-form.component';
     .recovery p {
       margin: 0 0 var(--space-2);
     }
+
+    .summaries {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+      margin: 0 0 var(--space-3);
+      padding: 0;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      list-style: none;
+    }
   `,
 })
 export class GeneratePageComponent implements OnDestroy {
@@ -219,6 +235,20 @@ export class GeneratePageComponent implements OnDestroy {
   protected readonly savedReading = computed(() => {
     const state = this.state();
     return state.kind === 'saved' ? state.reading : null;
+  });
+
+  /**
+   * The saved story's auxiliary counts, worded exactly as the library card
+   * words them, so the two places a learner sees them cannot disagree.
+   */
+  protected readonly translationSummaryLabel = computed(() => {
+    const reading = this.savedReading();
+    return reading === null ? '' : completionLabel('Translations', reading.translationSummary);
+  });
+
+  protected readonly grammarSummaryLabel = computed(() => {
+    const reading = this.savedReading();
+    return reading === null ? '' : grammarLabel(reading.grammarSummary);
   });
 
   /**

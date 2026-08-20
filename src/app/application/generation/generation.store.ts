@@ -108,8 +108,25 @@ export type GenerationState =
       readonly during: RunningStateKind;
     };
 
-/** One auxiliary branch's progress, independent of the other's. */
-export type BranchState = { readonly status: 'running' } | { readonly status: 'done' };
+/**
+ * One auxiliary branch's progress, independent of the other's.
+ *
+ * `unavailable` is kept apart from `partial` because they mean different
+ * things to the learner: a review that did not happen is not the same as a
+ * translation that covered some of the story, and collapsing them would make
+ * "grammar was not reviewed" read as "grammar found nothing".
+ */
+export type BranchState =
+  | { readonly status: 'running' }
+  | { readonly status: 'complete' }
+  | { readonly status: 'partial'; readonly completed: number; readonly total: number }
+  | { readonly status: 'unavailable' };
+
+/** How both auxiliary branches ended, once they have. */
+export interface AuxiliaryOutcome {
+  readonly grammar: BranchState;
+  readonly translation: BranchState;
+}
 
 /** The states a run passes through, as opposed to the ones it ends in. */
 export type RunningStateKind =
@@ -206,6 +223,7 @@ export class GenerationStore {
   private readonly announcementSignal = signal('');
   private readonly repairSignal = signal(0);
   private readonly reviewSignal = signal(0);
+  private readonly auxiliarySignal = signal<AuxiliaryOutcome | null>(null);
 
   private controller: AbortController | null = null;
   /**
@@ -221,6 +239,15 @@ export class GenerationStore {
   readonly repairAttempts = this.repairSignal.asReadonly();
   /** Exception reviews run so far, so the stepper can say Skipped honestly. */
   readonly exceptionReviews = this.reviewSignal.asReadonly();
+  /**
+   * How the auxiliary branches ended, or null before they have.
+   *
+   * Held apart from `state` because the run moves on to `finalizing` and
+   * `saved` while the outcome stays worth showing: the progress display and the
+   * saved panel both have to keep reporting a partial translation after the
+   * story is in the library.
+   */
+  readonly auxiliary = this.auxiliarySignal.asReadonly();
 
   readonly isBusy = computed(() => {
     const kind = this.stateSignal().kind;
@@ -253,6 +280,7 @@ export class GenerationStore {
 
     this.repairSignal.set(0);
     this.reviewSignal.set(0);
+    this.auxiliarySignal.set(null);
     this.stateSignal.set({ kind: 'checking-prerequisites' });
     this.announce('Checking what this story needs…');
 
@@ -359,6 +387,7 @@ export class GenerationStore {
     this.builtDraft = null;
     this.repairSignal.set(0);
     this.reviewSignal.set(0);
+    this.auxiliarySignal.set(null);
     this.stateSignal.set(IDLE);
     this.announce('');
   }
@@ -764,6 +793,27 @@ export class GenerationStore {
       this.cancelled();
       return;
     }
+
+    const outcome: AuxiliaryOutcome = {
+      grammar:
+        grammarOutcome.status === 'unavailable'
+          ? { status: 'unavailable' }
+          : { status: 'complete' },
+      translation:
+        translationOutcome.failures.length === 0
+          ? { status: 'complete' }
+          : {
+              status: 'partial',
+              completed: translationOutcome.records.length,
+              total: draft.sentences.length,
+            },
+    };
+    this.auxiliarySignal.set(outcome);
+    this.stateSignal.set({
+      kind: 'auxiliary-review',
+      grammar: outcome.grammar,
+      translation: outcome.translation,
+    });
 
     const merged = this.assembly.withAuxiliary(draft, grammarOutcome, translationOutcome);
     await this.persist(merged);
