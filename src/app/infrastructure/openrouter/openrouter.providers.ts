@@ -45,6 +45,8 @@ export function provideOpenRouter(): Provider[] {
           // the initial bundle for a learner who only imports their own text.
           async () =>
             new (await import('./story-generation.adapter')).OpenRouterStoryGenerator(shared),
+          // Loaded on the first review or translation, for the same reason.
+          async () => new (await import('./enrichment.adapter')).OpenRouterEnricher(shared),
         );
       },
     },

@@ -36,6 +36,15 @@ export const AUDIO_REQUEST_TIMEOUT_MS = 60_000;
 export const GENERATION_REQUEST_TIMEOUT_MS = 120_000;
 
 /**
+ * Deadline for a grammar review or a translation batch.
+ *
+ * Shorter than story generation — reviewing or translating sentences that
+ * already exist is less work than writing them — but longer than the default,
+ * because a batch of several sentences still takes more than a single probe.
+ */
+export const ENRICHMENT_REQUEST_TIMEOUT_MS = 60_000;
+
+/**
  * Whether an assembled URL still resolves inside the configured API base.
  *
  * The comparison is made on the parsed URL rather than the raw string, because

@@ -1,4 +1,5 @@
 import type { AudioDecoder } from '../app/infrastructure/openrouter/audio-decode';
+import { OpenRouterEnricher } from '../app/infrastructure/openrouter/enrichment.adapter';
 import { OpenRouterClient } from '../app/infrastructure/openrouter/openrouter-client';
 import { OpenRouterTextProvider } from '../app/infrastructure/openrouter/openrouter-text-provider';
 import { OpenRouterStoryGenerator } from '../app/infrastructure/openrouter/story-generation.adapter';
@@ -7,6 +8,10 @@ import { OpenRouterTtsTester } from '../app/infrastructure/openrouter/tts-test.a
 import { aiError, type AiError } from '../app/domain/ai/ai-error';
 import type { AiTask } from '../app/domain/ai/ai-task';
 import type { ExceptionDecision } from '../app/domain/ai/exception-review';
+import type {
+  GrammarReviewRequest,
+  GrammarReviewResult,
+} from '../app/domain/ai/grammar-review-request';
 import type { StoryCandidate, StoryGenerationRequest } from '../app/domain/ai/story-request';
 import type { ModelTest, TextModelConfig, TtsConfig, TtsTest } from '../app/domain/ai/model-test';
 import type {
@@ -16,6 +21,10 @@ import type {
   TextTaskConfig,
 } from '../app/domain/ai/text-generation-provider';
 import type { TextToSpeechProvider } from '../app/domain/ai/text-to-speech-provider';
+import type {
+  TranslationBatchRequest,
+  TranslationResult,
+} from '../app/domain/ai/translation-request';
 import type { CredentialStatus } from '../app/domain/settings/credential';
 import type { CredentialRepository } from '../app/domain/settings/credential-repository';
 import type { SettingsRepository } from '../app/domain/settings/settings-repository';
@@ -149,8 +158,10 @@ export function openRouterHarness(options: HarnessOptions = {}): OpenRouterHarne
     server,
     client,
     sleeps,
-    text: new OpenRouterTextProvider(new OpenRouterTextModelTester(client), () =>
-      Promise.resolve(new OpenRouterStoryGenerator(client)),
+    text: new OpenRouterTextProvider(
+      new OpenRouterTextModelTester(client),
+      () => Promise.resolve(new OpenRouterStoryGenerator(client)),
+      () => Promise.resolve(new OpenRouterEnricher(client)),
     ),
     tts: new OpenRouterTtsTester(client, fakeAudioDecoder(options.decodable ?? true)),
   };
@@ -168,16 +179,20 @@ export function openRouterHarness(options: HarnessOptions = {}): OpenRouterHarne
 export class StubTextProvider implements TextGenerationProvider {
   calls = 0;
 
-  readonly generationCalls = { story: 0, repair: 0, review: 0 };
+  readonly generationCalls = { story: 0, repair: 0, review: 0, grammar: 0, translate: 0 };
   /** Every request that reached the provider, for prompt-content assertions. */
   readonly storyRequests: StoryGenerationRequest[] = [];
   readonly repairRequests: StoryRepairRequest[] = [];
   readonly reviewRequests: ExceptionReviewRequest[] = [];
+  readonly grammarRequests: GrammarReviewRequest[] = [];
+  readonly translationRequests: TranslationBatchRequest[] = [];
   readonly configs: TextTaskConfig[] = [];
 
   readonly storyQueue: Result<StoryCandidate, AiError>[] = [];
   readonly repairQueue: Result<StoryCandidate, AiError>[] = [];
   readonly reviewQueue: Result<readonly ExceptionDecision[], AiError>[] = [];
+  readonly grammarQueue: Result<GrammarReviewResult, AiError>[] = [];
+  readonly translationQueue: Result<readonly TranslationResult[], AiError>[] = [];
 
   /** Runs just before each generation answer, so a test can cancel mid-flight. */
   beforeAnswer: (() => void) | null = null;
@@ -229,6 +244,28 @@ export class StubTextProvider implements TextGenerationProvider {
     this.reviewRequests.push(request);
     this.configs.push(config);
     return this.answer('exception-review', this.reviewQueue, signal);
+  }
+
+  reviewGrammar(
+    request: GrammarReviewRequest,
+    config: TextTaskConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<GrammarReviewResult, AiError>> {
+    this.generationCalls.grammar += 1;
+    this.grammarRequests.push(request);
+    this.configs.push(config);
+    return this.answer('grammar-review', this.grammarQueue, signal);
+  }
+
+  translate(
+    request: TranslationBatchRequest,
+    config: TextTaskConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<readonly TranslationResult[], AiError>> {
+    this.generationCalls.translate += 1;
+    this.translationRequests.push(request);
+    this.configs.push(config);
+    return this.answer('translation', this.translationQueue, signal);
   }
 
   private answer<T>(

@@ -1,5 +1,13 @@
 import type { StoryGenerationRequest } from '../../../domain/ai/story-request';
-import { POLICY_LAYER, PROTOCOL_LAYER, asData, assemble, listBlock } from './prompt-layers';
+import {
+  JAPANESE_OUTPUT_LAYER,
+  POLICY_LAYER,
+  PROTOCOL_LAYER,
+  asData,
+  assemble,
+  listBlock,
+  type AssembledPrompt,
+} from './prompt-layers';
 
 /** Versioned task instructions for writing a fresh story. */
 const TASK_LAYER = [
@@ -9,15 +17,11 @@ const TASK_LAYER = [
   'The title is Japanese, short, and uses the same vocabulary policy as the sentences.',
 ] as const;
 
-export interface AssembledPrompt {
-  readonly system: string;
-  readonly user: string;
-}
-
 export function buildStoryPrompt(request: StoryGenerationRequest): AssembledPrompt {
   const system = assemble([
     PROTOCOL_LAYER,
     POLICY_LAYER,
+    JAPANESE_OUTPUT_LAYER,
     TASK_LAYER.join('\n'),
     `Write exactly between ${String(request.sentenceRange.min)} and ${String(
       request.sentenceRange.max,

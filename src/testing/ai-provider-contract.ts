@@ -1,9 +1,11 @@
 import { expect, it } from 'vitest';
 import type { AiErrorCode } from '../app/domain/ai/ai-error';
+import type { GrammarReviewRequest } from '../app/domain/ai/grammar-review-request';
 import { SENTENCE_RANGES, type StoryGenerationRequest } from '../app/domain/ai/story-request';
 import type { TextGenerationProvider } from '../app/domain/ai/text-generation-provider';
-import { snapshotId } from '../app/domain/shared/ids';
+import { sentenceId, snapshotId } from '../app/domain/shared/ids';
 import type { TextToSpeechProvider } from '../app/domain/ai/text-to-speech-provider';
+import type { TranslationBatchRequest } from '../app/domain/ai/translation-request';
 import type { Result } from '../app/domain/shared/result';
 import type { HarnessOptions } from './ai-fakes';
 import { FAKE_OPENROUTER } from './openrouter-server';
@@ -66,6 +68,20 @@ const CONTRACT_TASK_CONFIG = {
   modelId: FAKE_OPENROUTER.textModel,
   structuredOutput: 'native-schema',
 } as const;
+
+/** A minimal but complete grammar review request, for the shared guarantees. */
+const CONTRACT_GRAMMAR_REQUEST: GrammarReviewRequest = {
+  profileGuidance: 'Plain, short clauses only.',
+  registerPreference: 'either',
+  sentences: [{ id: sentenceId('00000000-0000-4000-8000-000000000002'), textJa: 'ねこがいます。' }],
+  promptVersion: 'grammar/1',
+};
+
+/** A minimal but complete translation request, for the shared guarantees. */
+const CONTRACT_TRANSLATION_REQUEST: TranslationBatchRequest = {
+  sentences: [{ id: sentenceId('00000000-0000-4000-8000-000000000002'), textJa: 'ねこがいます。' }],
+  promptVersion: 'translation/1',
+};
 
 export function runTextProviderContract(create: TextProviderFactory): void {
   it('accepts a model that satisfies the compatibility probe', async () => {
@@ -155,6 +171,74 @@ export function runTextProviderContract(create: TextProviderFactory): void {
   it('never puts the key in a generation error', async () => {
     const result = await create({ status: 500 }).provider.generateStory(
       CONTRACT_STORY_REQUEST,
+      CONTRACT_TASK_CONFIG,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(serialize(result)).not.toContain(FAKE_OPENROUTER.apiKey);
+  });
+
+  it('reports an offline device for a grammar review without spending a request', async () => {
+    const context = create({ online: false });
+
+    expectFailure(
+      await context.provider.reviewGrammar(CONTRACT_GRAMMAR_REQUEST, CONTRACT_TASK_CONFIG),
+      'offline',
+    );
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('returns cancelled for a grammar review whose signal is already aborted', async () => {
+    const context = create();
+
+    expectFailure(
+      await context.provider.reviewGrammar(
+        CONTRACT_GRAMMAR_REQUEST,
+        CONTRACT_TASK_CONFIG,
+        AbortSignal.abort(),
+      ),
+      'cancelled',
+    );
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('never puts the key in a grammar review error', async () => {
+    const result = await create({ status: 500 }).provider.reviewGrammar(
+      CONTRACT_GRAMMAR_REQUEST,
+      CONTRACT_TASK_CONFIG,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(serialize(result)).not.toContain(FAKE_OPENROUTER.apiKey);
+  });
+
+  it('reports an offline device for a translation without spending a request', async () => {
+    const context = create({ online: false });
+
+    expectFailure(
+      await context.provider.translate(CONTRACT_TRANSLATION_REQUEST, CONTRACT_TASK_CONFIG),
+      'offline',
+    );
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('returns cancelled for a translation whose signal is already aborted', async () => {
+    const context = create();
+
+    expectFailure(
+      await context.provider.translate(
+        CONTRACT_TRANSLATION_REQUEST,
+        CONTRACT_TASK_CONFIG,
+        AbortSignal.abort(),
+      ),
+      'cancelled',
+    );
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('never puts the key in a translation error', async () => {
+    const result = await create({ status: 500 }).provider.translate(
+      CONTRACT_TRANSLATION_REQUEST,
       CONTRACT_TASK_CONFIG,
     );
 
