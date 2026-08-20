@@ -193,17 +193,20 @@ describe('BrowserStorageMaintenance', () => {
       cacheKey: 'audio-key',
       createdAt: 1_700_800_000_000,
     });
-    await enrichment.storeTranslation({
-      id: uuid(9200),
-      sentenceId: draft.sentences[0].id,
-      readingId: draft.reading.id,
-      sourceContentHash: draft.sentences[0].contentHash,
-      textEn: 'The cat likes it.',
-      modelId: 'vendor/text',
-      promptVersion: 'v1',
-      cacheKey: 'translation-key',
-      createdAt: 1_700_800_000_000,
-    });
+    await enrichment.storeTranslation(
+      {
+        id: uuid(9200),
+        sentenceId: draft.sentences[0].id,
+        readingId: draft.reading.id,
+        sourceContentHash: draft.sentences[0].contentHash,
+        textEn: 'The cat likes it.',
+        modelId: 'vendor/text',
+        promptVersion: 'v1',
+        cacheKey: 'translation-key',
+        createdAt: 1_700_800_000_000,
+      },
+      new Map([[draft.sentences[0].id, 'translation-key']]),
+    );
 
     const cleared = await maintenance.clearAudioCache();
 

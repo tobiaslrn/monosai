@@ -1,6 +1,12 @@
 import { ok, type Result } from '../../../domain/shared/result';
 import type { AssetId, ReadingId, SentenceId } from '../../../domain/shared/ids';
-import type { CompletionSummary } from '../../../domain/reading/summaries';
+import type { CompletionSummary, GrammarSummary } from '../../../domain/reading/summaries';
+import {
+  NO_GRAMMAR_REVIEW,
+  grammarComplete,
+  grammarPartial,
+} from '../../../domain/reading/summaries';
+import { concernCount } from '../../../domain/enrichment/grammar-normalization';
 import type {
   AudioAsset,
   AudioAssetSummary,
@@ -59,13 +65,30 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     return parsed.ok ? ok(parsed.value.map(toTranslation)) : parsed;
   }
 
+  async listTranslationsForSentences(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly TranslationRecord[], StorageError>> {
+    const loaded = await runStorage('translations.listForSentences', () =>
+      this.db.translations
+        .where('sentenceId')
+        .anyOf([...sentenceIds])
+        .toArray(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const parsed = parseRecords(translationRowSchema, loaded.value, 'translations');
+    return parsed.ok ? ok(parsed.value.map(toTranslation)) : parsed;
+  }
+
   async storeTranslation(
     record: TranslationRecord,
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<TranslationRecord, StorageError>> {
     const written = await runStorage('translations.put', async () => {
       await this.db.transaction('rw', [this.db.translations, this.db.readings], async () => {
         await this.db.translations.put({ ...record, v: ROW_VERSION });
-        await this.refreshTranslationSummary(record.readingId);
+        await this.refreshTranslationSummary(record.readingId, currentCacheKeys);
       });
     });
     return written.ok ? ok(record) : written;
@@ -100,12 +123,32 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     return parsed.ok ? ok(parsed.value.map(toGrammarAnalysis)) : parsed;
   }
 
+  async listGrammarAnalysesForSentences(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly GrammarAnalysisRecord[], StorageError>> {
+    const loaded = await runStorage('grammarAnalyses.listForSentences', () =>
+      this.db.grammarAnalyses
+        .where('sentenceId')
+        .anyOf([...sentenceIds])
+        .toArray(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const parsed = parseRecords(grammarAnalysisRowSchema, loaded.value, 'grammarAnalyses');
+    return parsed.ok ? ok(parsed.value.map(toGrammarAnalysis)) : parsed;
+  }
+
   async storeGrammarAnalysis(
     record: GrammarAnalysisRecord,
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<GrammarAnalysisRecord, StorageError>> {
-    const written = await runStorage('grammarAnalyses.put', () =>
-      this.db.grammarAnalyses.put({ ...record, v: ROW_VERSION }),
-    );
+    const written = await runStorage('grammarAnalyses.put', async () => {
+      await this.db.transaction('rw', [this.db.grammarAnalyses, this.db.readings], async () => {
+        await this.db.grammarAnalyses.put({ ...record, v: ROW_VERSION });
+        await this.refreshGrammarSummary(record.readingId, currentCacheKeys);
+      });
+    });
     return written.ok ? ok(record) : written;
   }
 
@@ -174,16 +217,32 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
 
   async summarizeTranslations(
     readingId: ReadingId,
-    configFingerprint: string,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<CompletionSummary, StorageError>> {
-    return this.summarize(readingId, configFingerprint, 'translations');
+    return runStorage('translations.summarize', async () => {
+      const completed = await this.currentTranslationCount(readingId, cacheKeys);
+      return { total: cacheKeys.size, completed, failed: 0 };
+    });
   }
 
   async summarizeAudio(
     readingId: ReadingId,
-    configFingerprint: string,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<CompletionSummary, StorageError>> {
-    return this.summarize(readingId, configFingerprint, 'audioAssets');
+    return runStorage('audioAssets.summarize', async () => {
+      const rows = await this.db.audioAssets.where('readingId').equals(readingId).toArray();
+      const completed = rows.filter((row) => cacheKeys.get(row.sentenceId) === row.cacheKey).length;
+      return { total: cacheKeys.size, completed, failed: 0 };
+    });
+  }
+
+  async summarizeGrammar(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<GrammarSummary, StorageError>> {
+    return runStorage('grammarAnalyses.summarize', () =>
+      this.computeGrammarSummary(readingId, cacheKeys),
+    );
   }
 
   async listSentenceIdsMissingTranslation(
@@ -206,52 +265,57 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     return ok(missing);
   }
 
-  private async summarize(
+  /**
+   * A row counts as current only if its own `cacheKey` matches the caller's
+   * current key for its specific sentence — the same reasoning
+   * `listSentenceIdsMissingTranslation` already applies.
+   */
+  private async currentTranslationCount(
     readingId: ReadingId,
-    configFingerprint: string,
-    table: 'translations' | 'audioAssets',
-  ): Promise<Result<CompletionSummary, StorageError>> {
-    const reading = await runStorage('readings.get', () => this.db.readings.get(readingId));
-    if (!reading.ok) {
-      return reading;
-    }
-    const total = reading.value?.sentenceCount ?? 0;
-
-    const counted = await runStorage(`${table}.count`, () =>
-      table === 'translations'
-        ? this.db.translations
-            .where('readingId')
-            .equals(readingId)
-            .filter((row) => row.modelId === configFingerprint)
-            .count()
-        : this.db.audioAssets
-            .where('readingId')
-            .equals(readingId)
-            .filter((row) => row.optionsFingerprint === configFingerprint)
-            .count(),
-    );
-    if (!counted.ok) {
-      return counted;
-    }
-
-    return ok({ total, completed: Math.min(counted.value, total), failed: 0 });
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<number> {
+    const rows = await this.db.translations.where('readingId').equals(readingId).toArray();
+    return rows.filter((row) => cacheKeys.get(row.sentenceId) === row.cacheKey).length;
   }
 
-  private async refreshTranslationSummary(readingId: ReadingId): Promise<void> {
-    const reading = await this.db.readings.get(readingId);
-    if (!reading) {
-      return;
+  private async computeGrammarSummary(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<GrammarSummary> {
+    if (cacheKeys.size === 0) {
+      return NO_GRAMMAR_REVIEW;
     }
-    const completed = await this.db.translations.where('readingId').equals(readingId).count();
+    const rows = await this.db.grammarAnalyses.where('readingId').equals(readingId).toArray();
+    const currentRows = rows.filter((row) => cacheKeys.get(row.sentenceId) === row.cacheKey);
+    const concern = currentRows.reduce((sum, row) => sum + concernCount(row.findings), 0);
+    return currentRows.length === cacheKeys.size
+      ? grammarComplete(concern)
+      : grammarPartial(currentRows.length, concern);
+  }
+
+  private async refreshTranslationSummary(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<void> {
+    const completed = await this.currentTranslationCount(readingId, cacheKeys);
     await this.db.readings.update(readingId, {
-      translationSummary: {
-        total: reading.sentenceCount,
-        completed: Math.min(completed, reading.sentenceCount),
-        failed: 0,
-      },
+      translationSummary: { total: cacheKeys.size, completed, failed: 0 },
     });
   }
 
+  private async refreshGrammarSummary(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<void> {
+    const summary = await this.computeGrammarSummary(readingId, cacheKeys);
+    await this.db.readings.update(readingId, { grammarSummary: summary });
+  }
+
+  /**
+   * `storeAudio` has no cache-key map to work from, so this stays a plain
+   * reading-wide count capped at the sentence total, unlike the corrected
+   * per-sentence-current logic in `summarizeAudio`.
+   */
   private async refreshAudioSummary(readingId: ReadingId): Promise<void> {
     const reading = await this.db.readings.get(readingId);
     if (!reading) {

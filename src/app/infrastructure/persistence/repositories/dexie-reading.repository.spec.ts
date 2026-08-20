@@ -233,6 +233,99 @@ describe('DexieReadingRepository', () => {
       expect(await db.readings.count()).toBe(0);
       expect(await db.frozenValidations.count()).toBe(0);
       expect(await db.generationProvenance.count()).toBe(0);
+      expect(await db.translations.where('readingId').equals(draft.reading.id).count()).toBe(0);
+      expect(await db.grammarAnalyses.where('readingId').equals(draft.reading.id).count()).toBe(0);
+    });
+
+    it('writes translations in the same transaction as the text', async () => {
+      const draft = generatedStoryDraftFixture(storySnapshotId);
+
+      const saved = await repository.saveGeneratedStory(draft);
+
+      expect(saved.ok).toBe(true);
+      expect(await db.translations.count()).toBe(draft.translations.length);
+    });
+
+    it('refuses a grammar summary claiming full coverage when fewer analyses are saved, writing nothing', async () => {
+      const base = generatedStoryDraftFixture(storySnapshotId);
+      const draft = {
+        ...base,
+        grammarAnalyses: [
+          {
+            id: 'grammar-1',
+            cacheKey: 'grammar-cache-1',
+            sentenceId: base.sentences[0].id,
+            readingId: base.reading.id,
+            sourceContentHash: base.sentences[0].contentHash,
+            profileHash: 'profile-1',
+            modelId: 'vendor/text-model',
+            promptVersion: 'grammar-v1',
+            findings: [],
+            createdAt: 1_700_000_500_000,
+          },
+        ],
+        reading: {
+          ...base.reading,
+          grammarSummary: { state: 'complete' as const, concernCount: 0 },
+        },
+      };
+
+      const saved = await repository.saveGeneratedStory(draft);
+
+      expect(saved.ok).toBe(false);
+      if (saved.ok) {
+        throw new Error('expected a conflict');
+      }
+      expect(saved.error.code).toBe('conflict');
+      expect(await db.readings.count()).toBe(0);
+      expect(await db.grammarAnalyses.count()).toBe(0);
+    });
+
+    it('refuses a translation whose content hash no longer matches its sentence, writing nothing', async () => {
+      const base = generatedStoryDraftFixture(storySnapshotId);
+      const draft = {
+        ...base,
+        translations: base.translations.map((record, index) =>
+          index === 0 ? { ...record, sourceContentHash: 'a-stale-hash-that-does-not-match' } : record,
+        ),
+      };
+
+      const saved = await repository.saveGeneratedStory(draft);
+
+      expect(saved.ok).toBe(false);
+      if (saved.ok) {
+        throw new Error('expected a conflict');
+      }
+      expect(saved.error.code).toBe('conflict');
+      expect(await db.readings.count()).toBe(0);
+      expect(await db.paragraphs.count()).toBe(0);
+      expect(await db.sentences.count()).toBe(0);
+      expect(await db.tokenAnalyses.count()).toBe(0);
+      expect(await db.frozenValidations.count()).toBe(0);
+      expect(await db.generationProvenance.count()).toBe(0);
+      expect(await db.translations.count()).toBe(0);
+      expect(await db.grammarAnalyses.count()).toBe(0);
+    });
+
+    it('refuses a translation summary whose counts disagree with the translations being saved, writing nothing', async () => {
+      const base = generatedStoryDraftFixture(storySnapshotId);
+      const draft = {
+        ...base,
+        reading: {
+          ...base.reading,
+          translationSummary: { total: base.translations.length, completed: 0, failed: 0 },
+        },
+      };
+
+      const saved = await repository.saveGeneratedStory(draft);
+
+      expect(saved.ok).toBe(false);
+      if (saved.ok) {
+        throw new Error('expected a conflict');
+      }
+      expect(saved.error.code).toBe('conflict');
+      expect(await db.readings.count()).toBe(0);
+      expect(await db.translations.count()).toBe(0);
     });
   });
 

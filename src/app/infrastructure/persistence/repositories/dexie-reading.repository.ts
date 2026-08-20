@@ -15,6 +15,7 @@ import type {
   LibraryPageRequest,
   ParagraphWindow,
   ReadingRepository,
+  SentenceRef,
 } from '../../../domain/reading/reading-repository';
 import type { ReadingGraph } from '../../../domain/reading/text-hierarchy';
 import type { ContinueReadingTarget, ReadingProgress } from '../../../domain/reading/progress';
@@ -23,6 +24,7 @@ import type { TokenAnalysis } from '../../../domain/reading/token';
 import { storageError, type StorageError } from '../../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../monosai-db';
 import { parseBulkRecords, parseRecord, parseRecords } from '../record-validation';
+import { ROW_VERSION } from '../schemas/common.schema';
 import {
   paragraphRowSchema,
   readingProgressRowSchema,
@@ -46,6 +48,7 @@ import {
 } from './reading-mappers';
 import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
 import {
+  assertEnrichmentConsistent,
   assertNoUnacceptedValidation,
   assertProvenanceComplete,
   assertUniqueIds,
@@ -105,6 +108,7 @@ export class DexieReadingRepository implements ReadingRepository {
     return runStorageWithRules('readings.saveGenerated', async () => {
       this.assertTextIntegrity(draft);
       this.assertGeneratedIntegrity(draft);
+      assertEnrichmentConsistent(draft);
 
       await this.db.transaction(
         'rw',
@@ -115,6 +119,8 @@ export class DexieReadingRepository implements ReadingRepository {
           this.db.tokenAnalyses,
           this.db.frozenValidations,
           this.db.generationProvenance,
+          this.db.translations,
+          this.db.grammarAnalyses,
         ],
         async () => {
           const existing = await this.db.readings.get(draft.reading.id);
@@ -135,6 +141,12 @@ export class DexieReadingRepository implements ReadingRepository {
             ),
           );
           await this.db.generationProvenance.add(toGenerationProvenanceRow(draft.provenance));
+          await this.db.translations.bulkAdd(
+            draft.translations.map((record) => ({ ...record, v: ROW_VERSION })),
+          );
+          await this.db.grammarAnalyses.bulkAdd(
+            draft.grammarAnalyses.map((record) => ({ ...record, v: ROW_VERSION })),
+          );
         },
       );
 
@@ -297,6 +309,28 @@ export class DexieReadingRepository implements ReadingRepository {
     }
     const parsed = parseBulkRecords(tokenAnalysisRowSchema, loaded.value, 'tokenAnalyses');
     return parsed.ok ? ok(parsed.value.map(toTokenAnalysis)) : parsed;
+  }
+
+  /** A single indexed scan; never loads sentence text. */
+  async listSentenceRefs(
+    readingId: ReadingId,
+  ): Promise<Result<readonly SentenceRef[], StorageError>> {
+    const loaded = await runStorage('sentences.listRefs', () =>
+      this.db.sentences.where('readingId').equals(readingId).toArray(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const parsed = parseRecords(sentenceRowSchema, loaded.value, 'sentences');
+    return parsed.ok
+      ? ok(
+          parsed.value.map((row) => ({
+            id: row.id,
+            contentHash: row.contentHash,
+            positionInReading: row.positionInReading,
+          })),
+        )
+      : parsed;
   }
 
   deleteReading(id: ReadingId): Promise<Result<void, StorageError>> {
