@@ -1,9 +1,9 @@
-import type { ElementRef } from '@angular/core';
+import type { ElementRef, TemplateRef } from '@angular/core';
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
-  Injector,
+  ViewContainerRef,
   computed,
   effect,
   inject,
@@ -19,15 +19,20 @@ import { WordInspectorStore } from '../../application/reading/word-inspector.sto
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { LibraryStore } from '../../application/reading/library.store';
 import { describeDeletion } from '../../domain/reading/deletion-plan';
+import { findingsCoveringToken } from '../../domain/enrichment/finding-spans';
 import { readingId } from '../../domain/shared/ids';
-import { ViewportService } from '../../core/platform/viewport.service';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { PopoverService, type PopoverRef } from '../../shared-ui/popover/popover.service';
+import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
 import { ReaderAidsComponent } from './reader-aids.component';
 import { ReaderParagraphComponent } from './reader-paragraph.component';
 import type { TokenActivation } from './reader-sentence.component';
 import { WordInspectorComponent } from './word-inspector.component';
-import { WordInspectorSheetComponent } from './word-inspector-sheet.component';
+import { WordPreviewComponent } from './word-preview.component';
+
+/** How long a pointer must rest on a word before its preview appears. */
+const PREVIEW_DELAY_MS = 250;
 
 /**
  * The reader.
@@ -44,11 +49,13 @@ import { WordInspectorSheetComponent } from './word-inspector-sheet.component';
     IconComponent,
     ReaderAidsComponent,
     ReaderParagraphComponent,
+    ReaderPopoverComponent,
     WordInspectorComponent,
+    WordPreviewComponent,
   ],
   providers: [ReaderStore, WordInspectorStore, SentenceAidsStore],
   template: `
-    <div class="reader" [class.has-inspector]="showSidePanel()">
+    <div class="reader">
       <header class="bar">
         <a class="icon-button" routerLink="/library" aria-label="Back to library">
           <mn-icon name="back" />
@@ -119,6 +126,8 @@ import { WordInspectorSheetComponent } from './word-inspector-sheet.component';
                   [currentSentenceId]="currentSentenceId()"
                   [selectedTokenId]="selectedTokenId()"
                   (activated)="inspect($event)"
+                  (previewed)="previewWord($event)"
+                  (previewEnded)="endPreview()"
                 />
               }
             </article>
@@ -132,32 +141,31 @@ import { WordInspectorSheetComponent } from './word-inspector-sheet.component';
           }
         }
       </main>
-
-      @if (showSidePanel()) {
-        <aside class="inspector-panel" aria-label="Word details">
-          <mn-word-inspector (closed)="closeInspector()" />
-        </aside>
-      }
     </div>
+
+    <ng-template #wordPreview>
+      <mn-word-preview />
+    </ng-template>
+
+    <ng-template #wordPopover>
+      <mn-reader-popover label="Word details">
+        <mn-word-inspector [grammarFindings]="selectedWordFindings()" (closed)="closeInspector()" />
+      </mn-reader-popover>
+    </ng-template>
   `,
   styles: `
+    /*
+     * One column at every width. Word details float over the text rather than
+     * taking a column of their own, so the reading measure never changes when
+     * a word is opened (ADR 0022).
+     */
     .reader {
       display: grid;
-      /*
-       * The areas must be named in both layouts. Placing children into areas
-       * that only exist in the inspector layout leaves the header and the text
-       * stacked in one cell, where the header covers the first line.
-       */
       grid-template-rows: auto 1fr;
       grid-template-areas: 'bar' 'content';
       gap: var(--space-4);
-      max-width: var(--layout-measure);
+      max-width: var(--reader-measure);
       margin-inline: auto;
-    }
-
-    .reader.has-inspector {
-      grid-template-columns: minmax(0, 1fr) minmax(20rem, 23rem);
-      grid-template-areas: 'bar bar' 'content inspector';
     }
 
     /*
@@ -245,19 +253,6 @@ import { WordInspectorSheetComponent } from './word-inspector-sheet.component';
     .sentinel {
       height: 1px;
     }
-
-    .inspector-panel {
-      position: sticky;
-      top: var(--space-4);
-      grid-area: inspector;
-      align-self: start;
-      max-height: calc(100dvh - 2 * var(--space-4));
-      padding: var(--space-4);
-      overflow-y: auto;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-panel);
-    }
   `,
 })
 export class ReaderPageComponent {
@@ -269,12 +264,14 @@ export class ReaderPageComponent {
   protected readonly inspector = inject(WordInspectorStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly library = inject(LibraryStore);
-  private readonly viewport = inject(ViewportService);
+  private readonly popover = inject(PopoverService);
   private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
-  private readonly injector = inject(Injector);
+  private readonly viewContainerRef = inject(ViewContainerRef);
 
   private readonly content = viewChild<ElementRef<HTMLElement>>('content');
+  private readonly wordPopover = viewChild.required<TemplateRef<unknown>>('wordPopover');
+  private readonly wordPreview = viewChild.required<TemplateRef<unknown>>('wordPreview');
   private readonly topSentinel = viewChild<ElementRef<HTMLElement>>('topSentinel');
   private readonly bottomSentinel = viewChild<ElementRef<HTMLElement>>('bottomSentinel');
 
@@ -285,12 +282,20 @@ export class ReaderPageComponent {
 
   protected readonly selectedTokenId = computed(() => this.inspector.selected()?.token.id ?? null);
 
-  protected readonly showSidePanel = computed(
-    () => this.viewport.isDesktop() && this.inspector.isOpen(),
-  );
+  /** Item 6 of the inspector's content order, from what is already stored. */
+  protected readonly selectedWordFindings = computed(() => {
+    const selected = this.inspector.selected();
+    if (selected === null) {
+      return [];
+    }
+    const grammar = this.aids.aids().get(selected.sentence.id)?.grammar ?? null;
+    return grammar === null ? [] : findingsCoveringToken(grammar.findings, selected.token);
+  });
 
   private edgeObserver: IntersectionObserver | null = null;
   private sentenceObserver: IntersectionObserver | null = null;
+  private previewTimer: ReturnType<typeof setTimeout> | null = null;
+  private previewRef: PopoverRef | null = null;
 
   constructor() {
     effect(() => {
@@ -327,6 +332,8 @@ export class ReaderPageComponent {
     document.addEventListener('visibilitychange', flushOnHide);
 
     inject(DestroyRef).onDestroy(() => {
+      this.endPreview();
+      this.popover.close();
       document.removeEventListener('visibilitychange', flushOnHide);
       this.edgeObserver?.disconnect();
       this.sentenceObserver?.disconnect();
@@ -338,7 +345,12 @@ export class ReaderPageComponent {
     void this.store.open(readingId(this.id()));
   }
 
-  /** Opens word details, as a side panel on desktop and a sheet on mobile. */
+  /**
+   * Pins word details in a popover anchored to the word itself.
+   *
+   * Everything shown is local, so this stays a lookup in the bundled dictionary
+   * and never a request. Focus returns to the token when the popover closes.
+   */
   protected inspect(activation: TokenActivation): void {
     void this.inspector.inspect({
       token: activation.token,
@@ -346,21 +358,61 @@ export class ReaderPageComponent {
       status: activation.sentence.statuses?.get(activation.token.id) ?? null,
     });
 
-    if (!this.viewport.isDesktop()) {
-      const ref = this.dialog.open<void>(WordInspectorSheetComponent, {
-        injector: this.injector,
-        ariaLabelledBy: 'mn-word-sheet-title',
-        panelClass: 'mn-sheet-panel',
-        hasBackdrop: true,
-      });
-      ref.closed.subscribe(() => {
+    this.popover.open({
+      origin: activation.origin,
+      template: this.wordPopover(),
+      viewContainerRef: this.viewContainerRef,
+      returnFocusTo: activation.origin,
+      onClosed: () => {
         this.inspector.close();
-      });
-    }
+      },
+    });
   }
 
   protected closeInspector(): void {
-    this.inspector.close();
+    this.popover.close();
+  }
+
+  /**
+   * Shows the concise hover preview, after a pause so that sweeping the pointer
+   * across a line does not flash a card per word.
+   *
+   * Suppressed while a word is pinned: the preview and the pinned card share
+   * one floating surface, and a hover must never dismiss what the learner
+   * deliberately opened.
+   */
+  protected previewWord(activation: TokenActivation): void {
+    if (this.inspector.isOpen()) {
+      return;
+    }
+    this.cancelPreviewTimer();
+    this.previewTimer = setTimeout(() => {
+      this.previewTimer = null;
+      void this.inspector.previewWord(activation.token);
+      this.previewRef = this.popover.open({
+        origin: activation.origin,
+        template: this.wordPreview(),
+        viewContainerRef: this.viewContainerRef,
+        modal: false,
+        onClosed: () => {
+          this.previewRef = null;
+        },
+      });
+    }, PREVIEW_DELAY_MS);
+  }
+
+  protected endPreview(): void {
+    this.cancelPreviewTimer();
+    this.previewRef?.close();
+    this.previewRef = null;
+    this.inspector.clearPreview();
+  }
+
+  private cancelPreviewTimer(): void {
+    if (this.previewTimer !== null) {
+      clearTimeout(this.previewTimer);
+      this.previewTimer = null;
+    }
   }
 
   protected async confirmDelete(): Promise<void> {

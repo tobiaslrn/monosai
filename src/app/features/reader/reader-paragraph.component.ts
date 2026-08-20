@@ -28,6 +28,7 @@ import { ReaderSentenceComponent, type TokenActivation } from './reader-sentence
           [selectedTokenId]="selectedTokenId()"
           (activated)="activated.emit($event)"
           (previewed)="previewed.emit($event)"
+          (previewEnded)="previewEnded.emit()"
         />
       }
     </p>
@@ -53,6 +54,7 @@ export class ReaderParagraphComponent {
 
   readonly activated = output<TokenActivation>();
   readonly previewed = output<TokenActivation>();
+  readonly previewEnded = output<void>();
 
   protected aidsFor(sentenceId: SentenceId): SentenceAids {
     return this.aids().get(sentenceId) ?? NO_AIDS;

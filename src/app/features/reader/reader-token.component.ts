@@ -4,6 +4,17 @@ import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
 
 /**
+ * A token and the element it was activated from.
+ *
+ * The element travels with the event because word details are anchored to the
+ * word they describe, and because focus has to come back to it on dismissal.
+ */
+export interface TokenActivationSource {
+  readonly token: Token;
+  readonly origin: HTMLElement;
+}
+
+/**
  * One token in the reader.
  *
  * Inspectable tokens are real buttons, so keyboard activation, touch targets,
@@ -21,9 +32,11 @@ import type { TokenStatusAssignment } from '../../domain/reading/validation';
         [class]="markerClass()"
         [class.is-selected]="selected()"
         [class.has-concern]="grammarConcern()"
-        (click)="activated.emit(token())"
-        (focus)="previewed.emit(token())"
-        (mouseenter)="previewed.emit(token())"
+        (click)="onActivate($event)"
+        (focus)="onPreview($event)"
+        (mouseenter)="onPreview($event)"
+        (blur)="previewEnded.emit()"
+        (mouseleave)="previewEnded.emit()"
       >
         @if (ruby(); as reading) {
           <ruby
@@ -146,10 +159,19 @@ export class ReaderTokenComponent {
   /** Set only when a finding supplies a span that covers this token. */
   readonly grammarConcern = input(false);
 
-  readonly activated = output<Token>();
-  readonly previewed = output<Token>();
+  readonly activated = output<TokenActivationSource>();
+  readonly previewed = output<TokenActivationSource>();
+  readonly previewEnded = output<void>();
 
   protected readonly interactive = computed(() => isInspectable(this.token()));
+
+  protected onActivate(event: MouseEvent): void {
+    this.activated.emit({ token: this.token(), origin: event.currentTarget as HTMLElement });
+  }
+
+  protected onPreview(event: Event): void {
+    this.previewed.emit({ token: this.token(), origin: event.currentTarget as HTMLElement });
+  }
 
   protected readonly ruby = computed(() => (this.showFurigana() ? rubyFor(this.token()) : null));
 

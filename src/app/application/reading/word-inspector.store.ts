@@ -33,6 +33,18 @@ export interface InspectedWord {
 }
 
 /**
+ * The concise answer a hover gives before anything is pinned.
+ *
+ * Deliberately less than the pinned card: a reading and one gloss is what a
+ * learner needs to keep reading, and anything more would be a card that
+ * follows the pointer around (`ux-ui-specification.md:154`).
+ */
+export interface WordPreview {
+  readonly token: Token;
+  readonly glossEn: string | null;
+}
+
+/**
  * The pinned word inspector.
  *
  * Lookup is local and bounded: it queries the bundled dictionary in the language
@@ -46,10 +58,13 @@ export class WordInspectorStore {
 
   private readonly selectedSignal = signal<InspectedWord | null>(null);
   private readonly dictionarySignal = signal<DictionaryState>({ kind: 'idle' });
+  private readonly previewSignal = signal<WordPreview | null>(null);
   private lookupToken = 0;
+  private previewLookupToken = 0;
 
   readonly selected = this.selectedSignal.asReadonly();
   readonly dictionary = this.dictionarySignal.asReadonly();
+  readonly preview = this.previewSignal.asReadonly();
   readonly isOpen = computed(() => this.selectedSignal() !== null);
 
   /**
@@ -108,6 +123,38 @@ export class WordInspectorStore {
         ? { kind: 'not-found' }
         : { kind: 'found', matchedBy: result.value.matchedBy, entries: result.value.entries },
     );
+  }
+
+  /**
+   * Looks up the one gloss a hover preview shows.
+   *
+   * Kept apart from `inspect` rather than reusing it: hovering across a line of
+   * text must not overwrite the word the learner deliberately pinned, and a
+   * preview that never arrives is simply not shown.
+   */
+  async previewWord(token: Token): Promise<void> {
+    this.previewLookupToken += 1;
+    const lookup = this.previewLookupToken;
+    this.previewSignal.set({ token, glossEn: null });
+
+    const result = await this.runtime.lookup({
+      surface: token.surface,
+      limit: 1,
+      ...(token.lemma === undefined ? {} : { lemma: token.lemma }),
+      ...(token.readingHiragana === undefined ? {} : { readingHiragana: token.readingHiragana }),
+      ...(token.partOfSpeech === undefined ? {} : { partOfSpeech: token.partOfSpeech }),
+    });
+
+    if (lookup !== this.previewLookupToken || !result.ok) {
+      return;
+    }
+    const glosses = result.value.entries.at(0)?.senses.at(0)?.glossesEn ?? [];
+    this.previewSignal.set({ token, glossEn: glosses.length === 0 ? null : glosses.join('; ') });
+  }
+
+  clearPreview(): void {
+    this.previewLookupToken += 1;
+    this.previewSignal.set(null);
   }
 
   close(): void {

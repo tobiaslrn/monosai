@@ -18,3 +18,11 @@
 .mn-sheet-panel {
   display: block;
 }
+
+/*
+ * A hover preview is a hint, not a surface: it must never swallow the pointer
+ * event that would have pinned the word underneath it.
+ */
+.mn-popover-pane.is-preview {
+  pointer-events: none;
+}

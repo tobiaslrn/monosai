@@ -38,3 +38,24 @@ export function tokensCoveredByConcerns(
   }
   return covered;
 }
+
+/**
+ * The findings whose span covers one token.
+ *
+ * Used for the word popover's grammar line, so it keeps findings that are
+ * inside the profile too: an explanation of a form the learner has already met
+ * is exactly what word details are for. Findings without a span are left to the
+ * sentence, which is the only thing they were ever said about.
+ */
+export function findingsCoveringToken(
+  findings: readonly GrammarFinding[],
+  token: SpannedToken,
+): readonly GrammarFinding[] {
+  return findings.filter(
+    (finding) =>
+      finding.startUtf16 !== undefined &&
+      finding.endUtf16 !== undefined &&
+      token.startUtf16 < finding.endUtf16 &&
+      finding.startUtf16 < token.endUtf16,
+  );
+}

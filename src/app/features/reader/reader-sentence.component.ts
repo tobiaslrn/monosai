@@ -3,13 +3,15 @@ import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentenc
 import type { ReaderSentence } from '../../application/reading/reader.store';
 import { tokensCoveredByConcerns } from '../../domain/enrichment/finding-spans';
 import type { Token } from '../../domain/reading/token';
-import { ReaderTokenComponent } from './reader-token.component';
+import { ReaderTokenComponent, type TokenActivationSource } from './reader-token.component';
 import { SentenceGrammarComponent } from './sentence-grammar.component';
 import { SentenceTranslationComponent } from './sentence-translation.component';
 
 export interface TokenActivation {
   readonly sentence: ReaderSentence;
   readonly token: Token;
+  /** The token's own button, which the word popover is anchored to. */
+  readonly origin: HTMLElement;
 }
 
 /**
@@ -43,7 +45,8 @@ export interface TokenActivation {
           [selected]="selectedTokenId() === token.id"
           [grammarConcern]="concernTokenIds().has(token.id)"
           (activated)="onActivated($event)"
-          (previewed)="previewed.emit({ sentence: entry(), token: $event })"
+          (previewed)="onPreviewed($event)"
+          (previewEnded)="previewEnded.emit()"
         />
       }
     </span>
@@ -115,6 +118,7 @@ export class ReaderSentenceComponent {
 
   readonly activated = output<TokenActivation>();
   readonly previewed = output<TokenActivation>();
+  readonly previewEnded = output<void>();
 
   protected readonly concernTokenIds = computed(() => {
     const grammar = this.aids().grammar;
@@ -123,7 +127,11 @@ export class ReaderSentenceComponent {
       : tokensCoveredByConcerns(grammar.findings, this.entry().tokens);
   });
 
-  protected onActivated(token: Token): void {
-    this.activated.emit({ sentence: this.entry(), token });
+  protected onActivated(activation: TokenActivationSource): void {
+    this.activated.emit({ sentence: this.entry(), ...activation });
+  }
+
+  protected onPreviewed(activation: TokenActivationSource): void {
+    this.previewed.emit({ sentence: this.entry(), ...activation });
   }
 }
