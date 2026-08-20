@@ -28,6 +28,7 @@ function token(overrides: Partial<Token> = {}): Token {
       [status]="status()"
       [showFurigana]="furigana()"
       [showMarkers]="markers()"
+      [grammarConcern]="concern()"
       (activated)="activations.push($event)"
     />
   `,
@@ -37,6 +38,7 @@ class HostComponent {
   readonly status = signal<TokenStatusAssignment | null>(null);
   readonly furigana = signal(true);
   readonly markers = signal(true);
+  readonly concern = signal(false);
   readonly activations: TokenActivationSource[] = [];
 }
 
@@ -101,6 +103,16 @@ describe('ReaderTokenComponent', () => {
     expect(element.querySelector('button')?.textContent).toContain('猫');
   });
 
+  it('keeps the annotation out of the word, so the line around it stays the sentence', () => {
+    // The button is the ruby base rather than the ruby's parent: a press on the
+    // furigana, or anywhere else in the loose line, belongs to the sentence.
+    const element = render().nativeElement as HTMLElement;
+    const rt = element.querySelector('rt');
+
+    expect(rt?.closest('button')).toBeNull();
+    expect(element.querySelector('button')?.closest('ruby')).not.toBeNull();
+  });
+
   it('renders punctuation as plain text with no focus stop', () => {
     const fixture = render();
     fixture.componentInstance.current.set(
@@ -113,7 +125,7 @@ describe('ReaderTokenComponent', () => {
     expect(element.textContent).toContain('。');
   });
 
-  it('carries status as a marker class and an accessible label, not colour alone', () => {
+  it('marks a warning with a class and an accessible label, not colour alone', () => {
     const fixture = render();
     fixture.componentInstance.status.set({
       tokenId: 't1',
@@ -122,22 +134,53 @@ describe('ReaderTokenComponent', () => {
     fixture.detectChanges();
 
     const button = (fixture.nativeElement as HTMLElement).querySelector('button');
-    expect(button?.classList.contains('is-not-in-snapshot')).toBe(true);
+    expect(button?.classList.contains('is-warning-vocabulary')).toBe(true);
     expect(button?.textContent).toContain('Not in current vocabulary');
+  });
+
+  it('leaves a word that is not a warning completely unmarked', () => {
+    // The reader marks warnings and nothing else: a known word gets no ink and
+    // no announcement, and what its status says is left to word details.
+    const fixture = render();
+    fixture.componentInstance.status.set({
+      tokenId: 't1',
+      validation: { category: 'anki-exact', vocabularyItemIds: [] },
+    });
+    fixture.detectChanges();
+
+    const button = (fixture.nativeElement as HTMLElement).querySelector('button');
+    expect(button?.className).not.toContain('is-');
+    expect(button?.textContent).not.toContain('Known from Anki');
+  });
+
+  it('marks unfamiliar grammar on the host, so both warnings can show at once', () => {
+    const fixture = render();
+    fixture.componentInstance.status.set({
+      tokenId: 't1',
+      validation: { category: 'unknown', reason: 'not-in-vocabulary' },
+    });
+    fixture.componentInstance.concern.set(true);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const host = element.querySelector('mn-reader-token');
+    expect(host?.classList.contains('has-grammar-concern')).toBe(true);
+    expect(element.querySelector('button')?.classList.contains('is-warning-vocabulary')).toBe(true);
+    expect(element.textContent).toContain('unfamiliar grammar');
   });
 
   it('drops both the marker and its announcement when markers are off', () => {
     const fixture = render();
     fixture.componentInstance.status.set({
       tokenId: 't1',
-      validation: { category: 'anki-exact', vocabularyItemIds: [] },
+      validation: { category: 'unknown', reason: 'not-in-vocabulary' },
     });
     fixture.componentInstance.markers.set(false);
     fixture.detectChanges();
 
     const button = (fixture.nativeElement as HTMLElement).querySelector('button');
-    expect(button?.className).not.toContain('is-known');
-    expect(button?.textContent).not.toContain('Known from Anki');
+    expect(button?.className).not.toContain('is-warning-vocabulary');
+    expect(button?.textContent).not.toContain('Unknown vocabulary');
   });
 
   it('does not announce a status for punctuation', () => {

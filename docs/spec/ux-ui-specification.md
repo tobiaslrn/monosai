@@ -67,8 +67,9 @@ Exact final colors may be tuned only to meet contrast. Do not use semantic token
 
 - UI: local system sans-serif stack.
 - Japanese reading text: system Japanese serif stack with sans-serif fallback; do not download remote fonts.
-- Ruby: native `<ruby><rt>` semantics. Use whole-token readings, omit ruby for kana-only tokens and punctuation.
-- Base reader size: 20px desktop and 19px mobile, user-scalable through browser/OS. Line height >= 1.9 with furigana, >= 1.65 without.
+- Ruby: native `<ruby><rt>` semantics with the token button as the ruby base. Use whole-token readings, omit ruby for kana-only tokens and punctuation.
+- Base reader size: 20px desktop and 19px mobile, multiplied by the learner's text scale (0.8–2.5) and additionally user-scalable through browser/OS.
+- Line height >= 2.05 with furigana, >= 1.75 without. The leading is not only room for ruby: it is the whitespace a sentence is pressed in, so it is deliberately looser than prose would need. The ratio eases off as the scale grows, because what matters is the gap in pixels.
 - Never disable browser zoom or Android text scaling.
 
 ### Shape, spacing, elevation, motion
@@ -129,74 +130,116 @@ If input or reviewed boundaries changed, navigation/back/reload produces an acce
 
 ## 6. Reader
 
+### The reading surface
+
+The page is Japanese and nothing else. Translations, grammar notes, dictionary
+entries, and provenance all live in a popover the learner opened deliberately,
+so scrolling a reading never means scrolling past commentary on it. Nothing on
+the page is added or removed by an aid arriving, so a reading with every
+sentence translated is laid out exactly like one with none.
+
 ### Desktop structure
 
-- Compact sticky header: Back, title, reading progress, Aids, overflow metadata/delete.
+- Compact sticky header: Back, title, Aids, and an overflow menu. No reading-progress figure (the library card carries it).
 - Center reading column: 680–760px maximum text width.
-- Word details open as a floating popover anchored to the word, not as a right inspector panel (see ADR 0022). A lightweight preview appears on pointer hover, but never replaces the pinned popover.
+- Word details and the sentence translation open as floating popovers anchored to what was pressed, never as a panel that takes a column (see ADR 0022). A lightweight preview appears on pointer hover, but never replaces the pinned popover.
+- Exactly one floating surface is open at a time; opening either closes the other, and scrolling closes both.
 - Whole-reading player appears as a sticky footer only while preparing/playing or when explicitly opened.
 
 ### Mobile structure
 
-- Sticky header with Back, truncated title, Aids, and player status.
+- Sticky header with Back, truncated title, Aids, overflow, and player status.
 - Full-width reading with 16px gutters.
-- Word details use the same popover, docked to the bottom edge as a sheet below the desktop breakpoint (ADR 0022). Focus returns to the word when dismissed.
-- Sentence actions have no visible control at rest. Hovering a sentence tints it, clicking its whitespace (desktop) or long-pressing it (Android) opens the sentence menu, and a focus-revealed button at the end of each sentence opens the same menu from the keyboard, so long-press is never the only route.
+- Popovers dock to the bottom edge as a sheet below the desktop breakpoint (ADR 0022). Focus returns to the word when dismissed.
 
 ### Text and token interaction
 
 - Paragraphs retain source order and spacing.
-- Sentences have `lang="ja"`; translations have `lang="en"`.
+- Sentences have `lang="ja"`; translations have `lang="en"` inside their popover.
 - Tokens are interactive only if they have inspectable data. Use native buttons styled inline rather than click handlers on spans.
+- A word's target is the word itself: the button is the ruby base rather than the ruby's parent, and its own leading is reset so the box hugs the glyphs. The annotation above it and the leading around it belong to the sentence, so a press there opens the sentence rather than the word.
 - Desktop: hover/focus gives a concise preview; click/Enter/Space pins full details.
 - Android: tap opens full details. Tapping sentence whitespace does not conflict with a word tap.
 - Token spacing is implemented by layout gap/margins, not by modifying the stored Japanese string.
 
+### Selecting a sentence
+
+- **No control is printed for a sentence** — no gutter affordance, no end-cap, no hover toolbar, no focus-revealed button on the page.
+- A press anywhere in a paragraph that is not a word selects the sentence it fell in or nearest to: the gaps between words, the punctuation, the leading between two lines, and the run of space out to the end of a line all count.
+- The decision is geometric, taken from the line boxes of the sentences in the paragraph, because a press in the leading lands on the paragraph and on no sentence element at all. The line the press is on wins over a nearer point on another line.
+- Android long-presses anywhere in the sentence, including on a word. A press that moves, is interrupted by a scroll, or ends in a text selection is not a selection.
+- The selected sentence is tinted, so a sheet docked to the bottom of a phone is not orphaned from the sentence it is about.
+- Hovering a sentence tints it, and only its colour changes: nothing on the page may move under the pointer.
+- The keyboard cannot aim at whitespace, so its route to a sentence is the word popover, which offers the sentence translation from the word the reader stopped at.
+
 ### Initial aid state
 
-All global aids start on:
+Global aids start on: furigana, token spacing, warning markers, and an unscaled
+text size. There is no preference for showing translations or grammar, because
+neither is ever laid out on the page.
 
-- Furigana shown when a reading is available.
-- Token spacing enabled.
-- Status markers enabled when a status exists.
-- Cached/saved translations expanded.
-
-If an aid does not exist, show an explicit action without making a request. Examples: **Translate sentence**, **Analyze grammar**, **Generate audio**.
+Opening a sentence or a word requests nothing. Where an aid does not exist, the
+popover shows an explicit action — **Translate this sentence**, **Analyze this
+sentence's grammar**, **Generate audio** — and says that it sends this one
+sentence to the learner's model.
 
 ### Status presentation
 
-Use a combination of color, underline/pattern, icon, accessible label, and inspector text. Do not permanently attach verbose labels to every token.
+The reader marks warnings and nothing else. A known word, a particle, a number,
+and a policy exception all render as plain text: each is a way of saying the
+text is readable, and marking them buried the Japanese they described. Every
+status still carries its label, explanation, and next action in word details.
 
 | Category | Visual treatment | Accessible short label |
 | --- | --- | --- |
-| Known from Anki | Sage dotted underline | Known from Anki |
-| Structural grammar | Neutral thin underline | Structural grammar |
-| Normalized known form | Sage dashed underline | Known normalized form |
-| Entity/number/date | Lavender dotted underline | Recognized entity |
-| Policy exception | Lavender/amber double underline + badge in inspector | Policy exception |
-| Not in current snapshot (imported) | Amber dashed underline | Not in current vocabulary |
-| Unknown generated draft | Coral wavy underline + warning icon | Unknown vocabulary |
-| Grammar concern | Amber marker on the sentence, not misleadingly on a single token unless the analysis supplies a span | Grammar concern |
+| Not in current snapshot, or unknown | Pastel-orange wavy underline under the word | Not in current vocabulary / Unknown vocabulary |
+| Grammar outside the learner's profile | Pastel-blue wavy underline, drawn under the span the finding covers, at a deeper offset so a word can carry both | Unfamiliar grammar |
+| Everything else | None | None |
 
-### Sentence actions
+A finding with no span marks nothing: the word popover explains it rather than
+guessing a word for it.
 
-- Show/hide translation.
-- Translate/retry when missing or failed.
-- Generate/play audio.
-- Analyze/re-analyze grammar for imported content.
-- Open sentence details with provider/provenance status.
+### Sentence popover
 
-Generated translations and grammar results appear automatically when available. All failures are retryable from the affected sentence or reading status panel.
+The sentence is where everything that spends a request lives, and where the two
+warnings the page marks are said in words:
 
-### Inspector content order
+1. The translation, or the action that fetches it.
+2. **Words you may not know** — the words in this sentence carrying the
+   vocabulary warning, de-duplicated, each with the kind of warning it is.
+3. **Grammar** — the findings outside the learner's profile, the action to
+   analyze or re-analyze (imported readings only), and a note that each finding
+   is also on the word it is about. In-profile findings never appear here; a
+   note saying a form is already known is what buried the Japanese.
+
+Both sections are ruled in their marker's own colour, so a learner who pressed
+the sentence because something was underlined finds out what without hunting for
+the underline that sent them there. A failure is shown in Monosai's words with a
+retry, and always says the sentence itself is unchanged.
+
+### Word popover content order
+
+Read-only throughout. Nothing here spends a request, so a word can be opened as
+often as a learner likes without wondering what it cost.
 
 1. Surface form and reading.
 2. Lemma and part of speech.
-3. Validation/status badge and plain-language explanation.
-4. Compact dictionary senses, numbered when multiple.
-5. Sentence context.
-6. Exception or grammar explanation when applicable.
-7. Recommended next action, such as “Review this word in Anki, then refresh vocabulary.”
+3. **Grammar, when this word has any** — the notes covering it, plus the ones said about the sentence as a whole, marked as such. A learner who pressed an underlined word came for this, so it must not sit below a dictionary they have to scroll past. It is ruled in the grammar marker's own colour, so the section names the underline that sent them there.
+4. Validation/status badge and plain-language explanation.
+5. Compact dictionary senses, numbered when multiple.
+6. Grammar, when this word has none: the empty state alone. Analysis is offered on the sentence.
+7. Recommended next action, such as "Review this word in Anki, then refresh vocabulary."
+8. A route to this word's sentence, laid out only while it holds focus — the keyboard's only way to a sentence, since selecting one is a press on whitespace it cannot aim.
+
+The sentence is not repeated here: the learner is looking at it. A finding with
+no span marks nothing on the page, so every word of its sentence carries it —
+there is no other surface it could be read on.
+
+### Whole-reading actions
+
+- The overflow menu holds **Translate _n_ sentences** (the whole-reading job, named with the count it would send) and **Delete reading**.
+- A running job appears as a hairline progress row under the header with a stop, a retry for what is left, and a dismissal. It takes none of the page at rest, and no permanent status strip exists.
+- Generated stories are reviewed once against the profile captured with them and are never re-analyzed.
 
 ## 7. Generate
 
@@ -303,7 +346,8 @@ Three options — everyday spoken, polite written, either — as a single compac
 ### Appearance and reading
 
 - System/Light/Dark theme.
-- Global furigana, spacing, markers, and translations switches.
+- Global furigana, spacing, and warning-marker switches.
+- Reading text scale (0.8–2.5), which line height and paragraph spacing follow within bounds. Also reachable from the reader's Aids panel.
 
 ### Storage and app
 
@@ -328,6 +372,7 @@ No dedicated privacy/legal page or spending dashboard.
 - Chips expose `aria-pressed`; whole-level controls announce affected ranges.
 - At 320px, no page-level horizontal scrolling; tables become definition lists/cards.
 - Ruby never overlaps adjacent lines at 200% Android text scaling.
-- Touch targets and sentence actions remain usable without hover or long-press.
+- Touch targets remain usable without hover. A sentence is reached without a pointer through the word popover, since selecting one is a press on whitespace that a keyboard cannot aim.
+- Header panels are native popovers, so dismissal, Escape, the top layer, and mutual exclusivity are the platform's behaviour rather than bespoke listeners.
 - All audio begins only after explicit activation.
 

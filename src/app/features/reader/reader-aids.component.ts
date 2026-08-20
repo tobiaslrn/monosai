@@ -1,12 +1,17 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
-import type { ReaderPreferences } from '../../domain/settings/settings';
+import {
+  MAX_TEXT_SCALE,
+  MIN_TEXT_SCALE,
+  TEXT_SCALE_STEP,
+  type ReaderPreferences,
+} from '../../domain/settings/settings';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
-type AidKey = keyof Omit<ReaderPreferences, 'updatedAt'>;
+type AidToggle = 'furigana' | 'tokenSpacing' | 'warningMarkers';
 
 interface AidOption {
-  readonly key: AidKey;
+  readonly key: AidToggle;
   readonly label: string;
   readonly description: string;
 }
@@ -15,79 +20,120 @@ const AIDS: readonly AidOption[] = [
   { key: 'furigana', label: 'Furigana', description: 'Readings above words that contain kanji.' },
   { key: 'tokenSpacing', label: 'Word spacing', description: 'Extra space between words.' },
   {
-    key: 'statusMarkers',
-    label: 'Status markers',
-    description: 'Underlines showing what you know.',
-  },
-  {
-    key: 'translationsExpanded',
-    label: 'Show saved translations',
-    description: 'Expand translations you already have.',
+    key: 'warningMarkers',
+    label: 'Warning markers',
+    description: 'Underline words you have not reviewed and grammar you may not know.',
   },
 ];
 
 /**
- * Reading aid switches.
+ * Reading aid switches and the text scale.
  *
  * These are device-wide preferences, not per-reading settings: changing one
  * here applies to every open and future reading immediately.
+ *
+ * The panel is a native popover anchored to its own button, so dismissal by
+ * `Escape` or a press outside, the top layer, and closing whenever another
+ * header panel opens are all the platform's behaviour rather than three
+ * listeners and a registry of our own.
  */
 @Component({
   selector: 'mn-reader-aids',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent],
   template: `
-    <div class="anchor">
-      <button
-        type="button"
-        class="mn-button"
-        [attr.aria-expanded]="open()"
-        aria-controls="mn-aids-panel"
-        (click)="toggle()"
-      >
+    <div>
+      <button type="button" class="mn-button anchor-button" popovertarget="mn-aids-panel">
         <mn-icon name="aids" [size]="18" />
         <span>Aids</span>
       </button>
 
-      @if (open()) {
-        <div id="mn-aids-panel" class="panel" role="group" aria-label="Reading aids">
-          <p class="mn-hint">These apply to every reading on this device.</p>
-          @for (aid of aids; track aid.key) {
-            <label class="aid">
-              <input
-                type="checkbox"
-                [checked]="settings.readerPreferences()[aid.key]"
-                (change)="toggleAid(aid.key, $event)"
-              />
-              <span class="text">
-                <span class="label">{{ aid.label }}</span>
-                <span class="mn-hint">{{ aid.description }}</span>
-              </span>
-            </label>
-          }
+      <div id="mn-aids-panel" popover class="panel" role="group" aria-label="Reading aids">
+        <p class="mn-hint">These apply to every reading on this device.</p>
+
+        <div class="scale">
+          <label for="mn-text-scale">Text size</label>
+          <input
+            id="mn-text-scale"
+            type="range"
+            [min]="minScale"
+            [max]="maxScale"
+            [step]="step"
+            [value]="scale()"
+            [attr.aria-valuetext]="scaleLabel()"
+            (input)="setScale($event)"
+          />
+          <span class="scale-value" aria-hidden="true">{{ scaleLabel() }}</span>
         </div>
-      }
+        <p class="mn-hint">Larger text is set more loosely, so the lines keep their air.</p>
+
+        @for (aid of aids; track aid.key) {
+          <label class="aid">
+            <input
+              type="checkbox"
+              [checked]="settings.readerPreferences()[aid.key]"
+              (change)="toggleAid(aid.key, $event)"
+            />
+            <span class="text">
+              <span class="label">{{ aid.label }}</span>
+              <span class="mn-hint">{{ aid.description }}</span>
+            </span>
+          </label>
+        }
+      </div>
     </div>
   `,
   styles: `
-    .anchor {
-      position: relative;
+    .anchor-button {
+      anchor-name: --mn-aids-anchor;
     }
 
+    /*
+     * Positioned against the button rather than a wrapper, because a popover
+     * is in the top layer and no longer has an ancestor to be absolute inside.
+     */
     .panel {
       position: absolute;
-      z-index: 5;
-      inset-inline-end: 0;
+      position-anchor: --mn-aids-anchor;
+      /*
+       * All-physical keywords: position-area refuses a mix of physical and
+       * logical ones. The popover user-agent style pins inset to zero to centre
+       * a dialog, which has to be released before the area applies.
+       */
+      position-area: bottom span-left;
+      inset: auto;
       display: flex;
       flex-direction: column;
       gap: var(--space-2);
       width: min(20rem, calc(100vw - 2 * var(--space-4)));
-      margin-top: var(--space-2);
+      margin: var(--space-2) 0 0;
       padding: var(--space-4);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-card);
       background: var(--surface-panel);
       box-shadow: var(--shadow-overlay);
+    }
+
+    .panel:not(:popover-open) {
+      display: none;
+    }
+
+    .scale {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: var(--space-3);
+      align-items: center;
+      min-height: var(--touch-target);
+    }
+
+    .scale input {
+      width: 100%;
+    }
+
+    .scale-value {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      font-variant-numeric: tabular-nums;
     }
 
     .aid {
@@ -116,15 +162,24 @@ const AIDS: readonly AidOption[] = [
 export class ReaderAidsComponent {
   protected readonly settings = inject(AppSettingsStore);
   protected readonly aids = AIDS;
+  protected readonly minScale = MIN_TEXT_SCALE;
+  protected readonly maxScale = MAX_TEXT_SCALE;
+  protected readonly step = TEXT_SCALE_STEP;
 
-  private readonly openSignal = signal(false);
-  protected readonly open = this.openSignal.asReadonly();
+  protected readonly scale = computed(() => this.settings.readerPreferences().textScale);
 
-  protected toggle(): void {
-    this.openSignal.update((open) => !open);
+  /** A percentage rather than a bare multiplier, which reads as nothing. */
+  protected readonly scaleLabel = computed(() => `${String(Math.round(this.scale() * 100))}%`);
+
+  protected toggleAid(key: AidToggle, event: Event): void {
+    void this.settings.setReaderPreference(key, (event.target as HTMLInputElement).checked);
   }
 
-  protected toggleAid(key: AidKey, event: Event): void {
-    void this.settings.setReaderPreference(key, (event.target as HTMLInputElement).checked);
+  protected setScale(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    void this.settings.setReaderPreference(
+      'textScale' satisfies keyof ReaderPreferences,
+      Number.isFinite(value) ? value : 1,
+    );
   }
 }

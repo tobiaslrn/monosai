@@ -8,7 +8,6 @@ import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { SentenceId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
-import { AppSettingsStore } from '../settings/app-settings.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { ENRICHMENT_REPOSITORY } from '../shared/repository-tokens';
 import { EnrichmentKeysService } from './enrichment-keys.service';
@@ -19,21 +18,25 @@ export type AidActionState = 'idle' | 'running' | 'failed';
 
 export interface AidAction {
   readonly state: AidActionState;
-  /** The last failure, kept so sentence details can explain what to retry. */
+  /** The last failure, kept so the surface that asked can offer a retry. */
   readonly error: EnrichmentFailure | null;
 }
 
 export const IDLE_ACTION: AidAction = { state: 'idle', error: null };
 
-/** Everything the reader shows under and around one sentence. */
+/**
+ * Everything stored for one sentence.
+ *
+ * Nothing here is rendered on the reading surface itself: a translation is read
+ * in the sentence popover and grammar in the word popover, so this describes
+ * what those surfaces can show rather than what is on the page.
+ */
 export interface SentenceAids {
   readonly translation: TranslationRecord | null;
-  /** The global aid preference, unless this sentence was toggled by hand. */
-  readonly translationVisible: boolean;
   readonly grammar: GrammarAnalysisRecord | null;
   /** True only for an imported analysis judged against an older profile. */
   readonly grammarStale: boolean;
-  /** Findings outside the profile — what an amber marker actually marks. */
+  /** Findings outside the profile — what the grammar marker actually marks. */
   readonly concernCount: number;
   readonly translationAction: AidAction;
   readonly grammarAction: AidAction;
@@ -41,7 +44,6 @@ export interface SentenceAids {
 
 export const NO_AIDS: SentenceAids = {
   translation: null,
-  translationVisible: false,
   grammar: null,
   grammarStale: false,
   concernCount: 0,
@@ -82,12 +84,10 @@ export class SentenceAidsStore {
   private readonly keys = inject(EnrichmentKeysService);
   private readonly textModel = inject(TextModelStore);
   private readonly grammarProfile = inject(GrammarProfileStore);
-  private readonly settings = inject(AppSettingsStore);
 
   private readonly readingSignal = signal<Reading | null>(null);
   private readonly sentencesSignal = signal<readonly Sentence[]>([]);
   private readonly storedSignal = signal<ReadonlyMap<SentenceId, StoredAids>>(new Map());
-  private readonly overridesSignal = signal<ReadonlyMap<SentenceId, boolean>>(new Map());
   private readonly actionsSignal = signal<ReadonlyMap<SentenceId, SentenceActions>>(new Map());
   private readonly errorSignal = signal<StorageError | null>(null);
 
@@ -124,9 +124,7 @@ export class SentenceAidsStore {
 
   readonly aids = computed<ReadonlyMap<SentenceId, SentenceAids>>(() => {
     const stored = this.storedSignal();
-    const overrides = this.overridesSignal();
     const actions = this.actionsSignal();
-    const expanded = this.settings.readerPreferences().translationsExpanded;
 
     const merged = new Map<SentenceId, SentenceAids>();
     for (const sentence of this.sentencesSignal()) {
@@ -135,7 +133,6 @@ export class SentenceAidsStore {
       const action = actions.get(sentence.id) ?? NO_ACTIONS;
       merged.set(sentence.id, {
         translation: found?.translation ?? null,
-        translationVisible: overrides.get(sentence.id) ?? expanded,
         grammar,
         grammarStale: found?.grammarStale ?? false,
         concernCount: grammar === null ? 0 : concernCount(grammar.findings),
@@ -176,12 +173,6 @@ export class SentenceAidsStore {
 
     this.errorSignal.set(null);
     this.storedSignal.set(this.assemble(reading, sentences, translations.value, analyses.value));
-  }
-
-  /** Shows or hides one sentence's translation, overriding the global aid. */
-  toggleTranslation(sentenceId: SentenceId): void {
-    const visible = this.aids().get(sentenceId)?.translationVisible ?? false;
-    this.overridesSignal.update((overrides) => new Map(overrides).set(sentenceId, !visible));
   }
 
   /**

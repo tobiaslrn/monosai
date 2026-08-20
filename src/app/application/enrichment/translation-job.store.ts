@@ -165,6 +165,19 @@ export class TranslationJobStore {
   }
 
   /**
+   * Returns a settled job to rest, so its report leaves the reader.
+   *
+   * Only ever called for a run that has finished, been stopped, or failed:
+   * dismissing the report of a run that is still scheduling batches would hide
+   * work that is still spending requests.
+   */
+  acknowledge(): void {
+    if (!this.isRunning()) {
+      this.progressSignal.set(IDLE);
+    }
+  }
+
+  /**
    * Resolves configuration, keys, and the job row this run will advance.
    *
    * A stored job whose `configFingerprint` no longer matches is closed rather

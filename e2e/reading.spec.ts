@@ -81,7 +81,8 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     await expect(wordDetails(page)).toContainText('猫');
     await expect(wordDetails(page)).toContainText('Noun');
     await expect(wordDetails(page)).toContainText('cat');
-    await expect(wordDetails(page)).toContainText('In this sentence');
+    // The sentence is not repeated here: the learner is looking at it.
+    await expect(wordDetails(page)).not.toContainText('In this sentence');
     expect(external).toEqual([]);
   });
 
@@ -108,8 +109,73 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     await saveAndOpenReader(page);
 
     await expect(page.getByText(/Vocabulary markers are off/)).toBeVisible();
-    await expect(page.locator('.is-unknown')).toHaveCount(0);
-    await expect(page.locator('.is-not-in-snapshot')).toHaveCount(0);
+    await expect(page.locator('.is-warning-vocabulary')).toHaveCount(0);
+  });
+
+  test('the reading surface is Japanese, with no controls printed on it', async ({ page }) => {
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    // Every button inside the text is a word. A sentence is reached by pressing
+    // it, so nothing is printed for one.
+    const buttons = page.locator('article.text button');
+    expect(await buttons.count()).toBeGreaterThan(0);
+    expect(await page.locator('article.text button:not(.token)').count()).toBe(0);
+    await expect(page.locator('article.text [lang="en"]')).toHaveCount(0);
+  });
+
+  test('pressing the whitespace in a sentence opens it, and costs nothing', async ({
+    page,
+    baseURL,
+  }) => {
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    const external: string[] = [];
+    page.on('request', (request) => {
+      if (!request.url().startsWith(baseURL ?? '')) {
+        external.push(request.url());
+      }
+    });
+
+    await page.locator('.sentence').first().locator('.token.is-plain').first().click();
+
+    // No model is configured, so the offer is all there is — and it is an
+    // offer, never a request made on the reader's behalf.
+    await expect(page.locator('mn-sentence-popover')).toBeVisible();
+    expect(external).toEqual([]);
+  });
+
+  test('the text scale changes the reading, and is remembered', async ({ page }) => {
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    const paragraph = page.locator('mn-reader-paragraph p').first();
+    const before = await paragraph.evaluate((element) =>
+      Number.parseFloat(window.getComputedStyle(element).fontSize),
+    );
+
+    await page.getByRole('button', { name: 'Aids' }).click();
+    await page.getByLabel('Text size').fill('1.5');
+    await page.keyboard.press('Escape');
+
+    await expect
+      .poll(() =>
+        paragraph.evaluate((element) =>
+          Number.parseFloat(window.getComputedStyle(element).fontSize),
+        ),
+      )
+      .toBeGreaterThan(before);
+
+    await page.reload();
+    await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
+    const afterReload = await paragraph.evaluate((element) =>
+      Number.parseFloat(window.getComputedStyle(element).fontSize),
+    );
+    expect(afterReload).toBeGreaterThan(before);
   });
 
   test('has no serious accessibility violations across the workflow', async ({ page }) => {

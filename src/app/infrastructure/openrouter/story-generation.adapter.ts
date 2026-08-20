@@ -140,7 +140,9 @@ function readDecisions(parsed: unknown): Result<readonly ExceptionDecision[], st
       candidateId: decision.candidateId,
       decision: decision.decision,
       explanationEn: decision.explanationEn,
-      ...(decision.category === undefined ? {} : { category: decision.category }),
+      ...(decision.category === undefined || decision.category === null
+        ? {}
+        : { category: decision.category }),
     })),
   );
 }

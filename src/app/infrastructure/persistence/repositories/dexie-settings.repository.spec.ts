@@ -32,7 +32,7 @@ describe('DexieSettingsRepository', () => {
     expect(preferences.ok && preferences.value).toEqual(DEFAULT_READER_PREFERENCES);
   });
 
-  it('starts every reader aid enabled', async () => {
+  it('starts every reader aid enabled, at unscaled text', async () => {
     const preferences = await repository.getReaderPreferences();
 
     expect(preferences.ok).toBe(true);
@@ -41,8 +41,17 @@ describe('DexieSettingsRepository', () => {
     }
     expect(preferences.value.furigana).toBe(true);
     expect(preferences.value.tokenSpacing).toBe(true);
-    expect(preferences.value.statusMarkers).toBe(true);
-    expect(preferences.value.translationsExpanded).toBe(true);
+    expect(preferences.value.warningMarkers).toBe(true);
+    expect(preferences.value.textScale).toBe(1);
+  });
+
+  it('rejects a text scale outside the usable range rather than storing it', async () => {
+    const updated = await repository.updateReaderPreferences({ textScale: 12 });
+
+    expect(updated.ok).toBe(false);
+
+    const reloaded = await repository.getReaderPreferences();
+    expect(reloaded.ok && reloaded.value.textScale).toBe(1);
   });
 
   it('persists a partial update and stamps the change time', async () => {

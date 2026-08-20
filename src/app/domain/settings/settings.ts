@@ -15,22 +15,49 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   updatedAt: 0,
 };
 
-/** Global reader aids. All start enabled and apply to every reading. */
+/**
+ * The bounds of the reader's text scale.
+ *
+ * Line height and paragraph spacing follow the scale, so the smallest setting
+ * still has whitespace a sentence can be pressed in and the largest does not
+ * push a single sentence past a screen.
+ */
+export const MIN_TEXT_SCALE = 0.8;
+export const MAX_TEXT_SCALE = 2.5;
+export const TEXT_SCALE_STEP = 0.05;
+
+/**
+ * Global reader aids, applied to every reading on this device.
+ *
+ * There is no preference for showing translations or grammar: the reading
+ * surface shows Japanese, and every piece of English is something the learner
+ * opened deliberately.
+ */
 export interface ReaderPreferences {
   readonly furigana: boolean;
   readonly tokenSpacing: boolean;
-  readonly statusMarkers: boolean;
-  readonly translationsExpanded: boolean;
+  /** Underlines for unreviewed vocabulary and unfamiliar grammar only. */
+  readonly warningMarkers: boolean;
+  /** Multiplier over the base reading font size, within the bounds above. */
+  readonly textScale: number;
   readonly updatedAt: number;
 }
 
 export const DEFAULT_READER_PREFERENCES: ReaderPreferences = {
   furigana: true,
   tokenSpacing: true,
-  statusMarkers: true,
-  translationsExpanded: true,
+  warningMarkers: true,
+  textScale: 1,
   updatedAt: 0,
 };
+
+/** Keeps a scale from settings, a URL, or an old row inside the usable range. */
+export function clampTextScale(scale: number): number {
+  if (!Number.isFinite(scale)) {
+    return DEFAULT_READER_PREFERENCES.textScale;
+  }
+  return Math.min(MAX_TEXT_SCALE, Math.max(MIN_TEXT_SCALE, scale));
+}
 
 export interface TextModelSettings {
   readonly modelId: string;

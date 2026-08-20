@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { isInspectable, presentStatus, rubyFor } from '../../domain/reading/token-presentation';
 import type { Token } from '../../domain/reading/token';
@@ -24,39 +25,48 @@ export interface TokenActivationSource {
 @Component({
   selector: 'mn-reader-token',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [NgTemplateOutlet],
+  host: { '[class.has-grammar-concern]': 'grammarConcern()' },
   template: `
     @if (interactive()) {
+      <!--
+        The button is the ruby base rather than the ruby's parent, so a word's
+        hit box is the word itself. The annotation above it stays part of the
+        sentence, which is what lets a press over the furigana — or anywhere
+        else in the line that is not a word — open the sentence instead.
+      -->
+      @if (ruby(); as reading) {
+        <ruby
+          ><ng-container *ngTemplateOutlet="tokenButton" /><rt>{{ reading }}</rt></ruby
+        >
+      } @else {
+        <ng-container *ngTemplateOutlet="tokenButton" />
+      }
+    } @else {
+      <span class="token is-plain">{{ token().surface }}</span>
+    }
+
+    <ng-template #tokenButton>
       <button
         type="button"
         class="token"
         [class]="markerClass()"
         [class.is-selected]="selected()"
-        [class.has-concern]="grammarConcern()"
         (click)="onActivate($event)"
         (focus)="onPreview($event)"
         (mouseenter)="onPreview($event)"
         (blur)="previewEnded.emit()"
         (mouseleave)="previewEnded.emit()"
       >
-        @if (ruby(); as reading) {
-          <ruby
-            >{{ token().surface }}<rt>{{ reading }}</rt></ruby
-          >
-        } @else {
-          {{ token().surface }}
-        }
+        {{ token().surface }}
         @if (statusLabel(); as label) {
           <span class="mn-visually-hidden">, {{ label }}</span>
         }
         @if (grammarConcern()) {
-          <span class="mn-visually-hidden">, grammar concern</span>
+          <span class="mn-visually-hidden">, unfamiliar grammar</span>
         }
       </button>
-    } @else {
-      <span class="token is-plain" [class.has-concern]="grammarConcern()">{{
-        token().surface
-      }}</span>
-    }
+    </ng-template>
   `,
   styles: `
     :host {
@@ -68,6 +78,12 @@ export interface TokenActivationSource {
       scroll-margin-block-start: 5rem;
     }
 
+    /*
+     * A ruby base is blockified to inline-block, which would take the whole
+     * loose line box with it and make the word's target as tall as the line.
+     * Its own leading is reset so the box hugs the glyphs, leaving the space
+     * above and below the word to the sentence.
+     */
     .token {
       display: inline;
       padding: 0;
@@ -75,6 +91,8 @@ export interface TokenActivationSource {
       background: none;
       color: inherit;
       font: inherit;
+      /* After the font shorthand, which would otherwise reset the leading. */
+      line-height: 1.15;
       text-align: inherit;
       cursor: pointer;
     }
@@ -84,41 +102,12 @@ export interface TokenActivationSource {
     }
 
     /*
-     * Status is carried by an underline pattern as well as a colour, so the
-     * meaning survives greyscale, colour-blindness, and forced-colours modes.
+     * The reader marks warnings and nothing else. Both are squiggles rather
+     * than a colour alone, so the two survive greyscale, colour-blindness, and
+     * forced-colours modes, and both are paired with a hidden label.
      */
-    .is-known {
-      text-decoration: underline dotted var(--status-success) 2px;
-      text-underline-offset: 0.25em;
-    }
-
-    .is-normalized {
-      text-decoration: underline dashed var(--status-success) 2px;
-      text-underline-offset: 0.25em;
-    }
-
-    .is-structural {
-      text-decoration: underline solid var(--border-strong) 1px;
-      text-underline-offset: 0.25em;
-    }
-
-    .is-entity {
-      text-decoration: underline dotted var(--accent-secondary) 2px;
-      text-underline-offset: 0.25em;
-    }
-
-    .is-exception {
-      text-decoration: underline double var(--accent-secondary) 3px;
-      text-underline-offset: 0.2em;
-    }
-
-    .is-not-in-snapshot {
-      text-decoration: underline dashed var(--status-warning) 2px;
-      text-underline-offset: 0.25em;
-    }
-
-    .is-unknown {
-      text-decoration: underline wavy var(--status-danger) 2px;
+    .is-warning-vocabulary {
+      text-decoration: underline wavy var(--marker-vocabulary) 1.5px;
       text-underline-offset: 0.2em;
     }
 
@@ -129,13 +118,14 @@ export interface TokenActivationSource {
     }
 
     /*
-     * Only ever set when a finding supplied a span covering this token; a
-     * sentence-level finding marks the sentence instead. The tint is paired
-     * with a visually hidden label, so the meaning does not rely on colour.
+     * The grammar squiggle is drawn on the host rather than on the token, so a
+     * word that is both unreviewed and part of an unfamiliar pattern carries
+     * both lines instead of one overwriting the other. The deeper offset keeps
+     * them apart.
      */
-    .token.has-concern {
-      border-radius: 4px;
-      background: var(--status-warning-soft);
+    :host(.has-grammar-concern) {
+      text-decoration: underline wavy var(--marker-grammar) 1.5px;
+      text-underline-offset: 0.36em;
     }
 
     .token.is-selected {
@@ -147,6 +137,14 @@ export interface TokenActivationSource {
       font-size: 0.5em;
       /* Ruby must not be dragged into the underline of its own token. */
       text-decoration: none;
+    }
+
+    /*
+     * The annotation is not part of the word's target: a press on it is a press
+     * on the line, and belongs to the sentence.
+     */
+    rt {
+      cursor: text;
     }
   `,
 })
@@ -183,20 +181,19 @@ export class ReaderTokenComponent {
     return status === null ? null : presentStatus(status.validation);
   });
 
-  protected readonly markerClass = computed(() => {
-    const presentation = this.presentation();
-    if (!this.showMarkers() || presentation === null || presentation.marker === 'punctuation') {
-      return '';
-    }
-    return `is-${presentation.marker}`;
-  });
+  /**
+   * Nothing is marked unless it is a warning: a known word, a particle, and a
+   * number all read as plain text, and everything their status has to say is
+   * still in word details.
+   */
+  protected readonly marked = computed(
+    () => this.showMarkers() && this.presentation()?.marker === 'warning-vocabulary',
+  );
+
+  protected readonly markerClass = computed(() => (this.marked() ? 'is-warning-vocabulary' : ''));
 
   /** Only announced when markers are on, so the aid switch controls both. */
-  protected readonly statusLabel = computed(() => {
-    const presentation = this.presentation();
-    if (!this.showMarkers() || presentation === null || presentation.marker === 'punctuation') {
-      return null;
-    }
-    return presentation.label;
-  });
+  protected readonly statusLabel = computed(() =>
+    this.marked() ? (this.presentation()?.label ?? null) : null,
+  );
 }

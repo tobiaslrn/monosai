@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_TEXT_SCALE, MIN_TEXT_SCALE } from '../../../domain/settings/settings';
 import { nonEmptyString, snapshotIdSchema, timestampSchema } from './common.schema';
 
 export const appSettingsSchema = z.object({
@@ -10,8 +11,8 @@ export const appSettingsSchema = z.object({
 export const readerPreferencesSchema = z.object({
   furigana: z.boolean(),
   tokenSpacing: z.boolean(),
-  statusMarkers: z.boolean(),
-  translationsExpanded: z.boolean(),
+  warningMarkers: z.boolean(),
+  textScale: z.number().min(MIN_TEXT_SCALE).max(MAX_TEXT_SCALE),
   updatedAt: timestampSchema,
 });
 
