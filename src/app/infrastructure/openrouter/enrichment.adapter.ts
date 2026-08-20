@@ -96,8 +96,12 @@ function readGrammarReview(parsed: unknown): Result<GrammarReviewResult, string>
       explanationEn: finding.explanationEn,
       confidence: finding.confidence,
       inProfile: finding.inProfile,
-      ...(finding.startUtf16 === undefined ? {} : { startUtf16: finding.startUtf16 }),
-      ...(finding.endUtf16 === undefined ? {} : { endUtf16: finding.endUtf16 }),
+      ...(finding.startUtf16 === undefined || finding.startUtf16 === null
+        ? {}
+        : { startUtf16: finding.startUtf16 }),
+      ...(finding.endUtf16 === undefined || finding.endUtf16 === null
+        ? {}
+        : { endUtf16: finding.endUtf16 }),
     })),
   });
 }

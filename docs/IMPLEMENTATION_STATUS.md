@@ -1338,3 +1338,108 @@ panel after a generation, and this panel.
   CDK overlay's positioning strategies and the a11y focus trap are new weight
   this milestone pulled in. The budget needs either raising deliberately or
   paying down before release.
+
+## Milestone 8C — Reader surface rebuild: Japanese only
+
+8B rendered aids as content. Four sentences produced eight English blocks, every
+grammar finding was printed including the in-profile ones whose whole content was
+"you already know this form", eight token treatments competed for attention, and
+the only mouse route to a sentence was the few whitespace pixels inside an inline
+span. This milestone rebuilds the reading surface around one rule:
+[ADR 0023](decisions/0023-japanese-only-reading-surface.md) — **the page carries
+Japanese, and every piece of English is in a popover the learner opened.**
+
+The 8B rule still holds underneath it: opening a reading, selecting a sentence,
+and opening a word all make zero network requests.
+
+### Delivered
+
+#### The reading surface
+
+`reader-sentence.component.ts` renders tokens and nothing else. A sentence with a
+translation and an analysis is laid out exactly like one with neither, so an aid
+arriving never moves the text. Five components that existed only to print aids on
+the page are deleted: the sentence translation, sentence grammar, sentence
+details, sentence menu, and reading status panel.
+
+`domain/reading/token-presentation.ts` collapses eight marker treatments to
+`warning-vocabulary | none`. Unreviewed vocabulary takes a pastel-orange wavy
+underline on the word; grammar outside the profile takes a pastel-blue one, drawn
+on the token host at a deeper offset so a word can carry both. Every other
+category renders as plain text and keeps its label, explanation, and next action
+for word details.
+
+#### Pressing a sentence, with nothing printed for it
+
+`paragraph-gestures.directive.ts` listens on the paragraph rather than the
+sentence, because a press in the leading between two lines lands on the paragraph
+and on no sentence element at all — exactly the whitespace that makes the target
+big enough to hit. `sentence-hit-testing.ts` decides which sentence a point
+belongs to from the line boxes, preferring the line the press is on over a nearer
+point on another line; it is pure, so a press in a gap, past the end of a line,
+and between two lines are all unit-testable.
+
+The leading is deliberately loose and follows a new `textScale` preference
+(0.8–2.5, Aids panel and Settings), with the ratio easing off as the text grows
+because what matters is the gap in pixels. The token button is the ruby base
+rather than the ruby's parent and its own leading is reset, so a word's hit box
+is the word: the annotation above it belongs to the sentence.
+
+#### Two popovers, one open at a time
+
+The sentence popover carries everything that spends a request — the translation
+or the action that fetches it, the words in the sentence the vocabulary does not
+cover, and the grammar outside the profile with its analyze/re-analyze action —
+each section ruled in its marker's own colour. The word popover is a read-only
+lookup that leads with grammar whenever the word has any, never repeats the
+sentence, and hides its route to the sentence until that route holds focus.
+
+Both close on scroll, added to `PopoverService` as `closeOnScroll`.
+
+#### The header
+
+`Back · title · Aids · ⋮`. Whole-reading translation moved into the overflow menu
+as "Translate _n_ sentences"; a running job is a hairline `mn-translation-progress`
+row under the header with stop, retry, and dismiss, and nothing at rest.
+`TranslationJobStore.acknowledge()` returns a settled job to idle. Both header
+panels are native popovers positioned with CSS anchor positioning, so light
+dismissal, `Escape`, the top layer, and mutual exclusivity are the platform's.
+
+### Fixed along the way
+
+- One inspected word highlighted a word in **every** sentence: token ids are
+  unique within a sentence and repeat across them, so selection is now a
+  `(sentence, token)` pair.
+- A long title stretched the reader's grid column past its measure and pushed the
+  header actions off-screen; the sticky bar now has `min-width: 0`.
+- `box-decoration-break: clone` was set only on hover, and switching from `slice`
+  re-applied inline padding to every wrapped line, nudging the sentence sideways
+  under the pointer. It is now constant.
+- The long-press click guard could eat the *next* gesture's click; a new
+  `pointerdown` disarms it.
+- A finding with no span was unreachable: it marks nothing, and the word popover
+  filtered it out. `sentenceWideFindings` now shows it on every word of its
+  sentence.
+
+### Verification
+
+| Command | Result |
+| --- | --- |
+| `npm run lint` | Pass |
+| `npm run typecheck` | Pass |
+| `npm test` | Pass — 122 files, 1,355 tests |
+| `npm run e2e` | Pass — desktop-chrome and android-chrome |
+
+### Assumptions and decisions
+
+- **No control is printed for a sentence**, so the keyboard's only route to one
+  is the word popover's focus-revealed "Open this sentence". Selecting a sentence
+  is a press on whitespace, which a keyboard cannot aim.
+- **In-profile findings never appear on the sentence.** They are explanations
+  rather than concerns, and they remain at the word.
+- **Reading progress is still tracked but no longer shown in the reader.** The
+  library card carries it.
+- **Schema edited in place** (`ReaderPreferences`), per the pre-release rule:
+  `translationsExpanded` removed, `statusMarkers` renamed `warningMarkers`,
+  `textScale` added. Local development databases carrying the old row fail
+  validation and are recreated.

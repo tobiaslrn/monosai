@@ -4,15 +4,26 @@ import type { Token } from './token';
 import type { TokenValidation, TokenValidationCategory } from './validation';
 
 /**
+ * Whether a token is marked on the page at all.
+ *
+ * The reader marks warnings and nothing else: a word the learner has not
+ * reviewed is worth interrupting the line for, whereas "you know this",
+ * "this is a particle", and "this is a number" are three ways of saying the
+ * text is readable, and printing them under every token buried the Japanese.
+ * Everything a status has to say is still available in word details.
+ */
+export type TokenMarker = 'warning-vocabulary' | 'none';
+
+/**
  * How a token is presented in the reader.
  *
- * Status is never carried by colour alone: every category also has a distinct
- * underline treatment and an accessible label, so the meaning survives a
- * greyscale screen and a screen reader.
+ * A marked token is never marked by colour alone: it also carries a distinct
+ * underline shape and an accessible label, so the meaning survives a greyscale
+ * screen and a screen reader.
  */
 export interface TokenStatusPresentation {
-  /** Modifier appended to the token class, which selects the underline style. */
-  readonly marker: string;
+  /** Whether the token carries a marker, and which one. */
+  readonly marker: TokenMarker;
   /** Short label read out with the token. */
   readonly label: string;
   /** Plain-language sentence shown in the inspector. */
@@ -37,56 +48,56 @@ export interface StructuralFormDetail {
 
 const PRESENTATIONS: Record<TokenValidationCategory, TokenStatusPresentation> = {
   'anki-exact': {
-    marker: 'known',
+    marker: 'none',
     label: 'Known from Anki',
     explanation: 'You have reviewed this expression in Anki.',
     nextAction: null,
   },
   'anki-normalized': {
-    marker: 'normalized',
+    marker: 'none',
     label: 'Known normalized form',
     explanation: 'This is an inflected or respelled form of an expression you have reviewed.',
     nextAction: null,
   },
   'anki-phrase': {
-    marker: 'known',
+    marker: 'none',
     label: 'Known from Anki',
     explanation: 'These words together match a phrase you have reviewed.',
     nextAction: null,
   },
   'structural-baseline': {
-    marker: 'structural',
+    marker: 'none',
     label: 'Structural grammar',
     explanation:
       'This is sentence-building grammar, such as a particle or an ending. Monosai always treats it as readable rather than as vocabulary.',
     nextAction: null,
   },
   entity: {
-    marker: 'entity',
+    marker: 'none',
     label: 'Recognized entity',
     explanation: 'This is a name, number, date, or time, recognized from its form.',
     nextAction: null,
   },
   'policy-exception': {
-    marker: 'exception',
+    marker: 'none',
     label: 'Policy exception',
     explanation: 'Your exception policy allowed this word even though you have not reviewed it.',
     nextAction: null,
   },
   'not-in-snapshot': {
-    marker: 'not-in-snapshot',
+    marker: 'warning-vocabulary',
     label: 'Not in current vocabulary',
     explanation: 'This word is not in your most recent reviewed vocabulary.',
     nextAction: 'Review this word in Anki, then refresh your vocabulary.',
   },
   unknown: {
-    marker: 'unknown',
+    marker: 'warning-vocabulary',
     label: 'Unknown vocabulary',
     explanation: 'This word could not be matched to your reviewed vocabulary.',
     nextAction: 'Review this word in Anki, then refresh your vocabulary.',
   },
   punctuation: {
-    marker: 'punctuation',
+    marker: 'none',
     label: 'Punctuation',
     explanation: 'Punctuation.',
     nextAction: null,

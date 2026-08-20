@@ -1,6 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
-import type { ReaderPreferences, ThemeSetting } from '../../domain/settings/settings';
+import {
+  MAX_TEXT_SCALE,
+  MIN_TEXT_SCALE,
+  TEXT_SCALE_STEP,
+  type ReaderPreferences,
+  type ThemeSetting,
+} from '../../domain/settings/settings';
 
 const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -8,16 +14,16 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ];
 
-type ReaderAid = keyof Omit<ReaderPreferences, 'updatedAt'>;
+/** The boolean aids. Text scale is a range and is rendered on its own. */
+type ReaderAid = keyof Omit<ReaderPreferences, 'updatedAt' | 'textScale'>;
 
 const READER_AIDS: readonly { key: ReaderAid; label: string; hint: string }[] = [
   { key: 'furigana', label: 'Furigana', hint: 'Show readings above words that have one.' },
   { key: 'tokenSpacing', label: 'Token spacing', hint: 'Add space between words while reading.' },
-  { key: 'statusMarkers', label: 'Status markers', hint: 'Underline words by vocabulary status.' },
   {
-    key: 'translationsExpanded',
-    label: 'Show saved translations',
-    hint: 'Expand translations that are already saved.',
+    key: 'warningMarkers',
+    label: 'Warning markers',
+    hint: 'Underline unreviewed words and grammar you may not know. Nothing else is marked.',
   },
 ];
 
@@ -46,6 +52,25 @@ const READER_AIDS: readonly { key: ReaderAid; label: string; hint: string }[] = 
           }
         </div>
         <p class="mn-hint">System follows your device's light or dark setting.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Reading size</legend>
+        <div class="scale">
+          <input
+            id="mn-appearance-text-scale"
+            type="range"
+            [min]="minScale"
+            [max]="maxScale"
+            [step]="step"
+            [value]="settings.readerPreferences().textScale"
+            aria-label="Text size"
+            [attr.aria-valuetext]="scaleLabel()"
+            (input)="setScale($event)"
+          />
+          <span aria-hidden="true">{{ scaleLabel() }}</span>
+        </div>
+        <p class="mn-hint">Line spacing follows the text size, within limits.</p>
       </fieldset>
 
       <fieldset>
@@ -111,12 +136,43 @@ const READER_AIDS: readonly { key: ReaderAid; label: string; hint: string }[] = 
     .aid-label {
       font-weight: 500;
     }
+
+    .scale {
+      display: flex;
+      gap: var(--space-3);
+      align-items: center;
+      min-height: var(--touch-target);
+    }
+
+    .scale input {
+      flex: 1;
+      max-width: 20rem;
+    }
+
+    .scale span {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      font-variant-numeric: tabular-nums;
+    }
   `,
 })
 export class AppearanceSectionComponent {
   protected readonly settings = inject(AppSettingsStore);
   protected readonly themeOptions = THEME_OPTIONS;
   protected readonly readerAids = READER_AIDS;
+  protected readonly minScale = MIN_TEXT_SCALE;
+  protected readonly maxScale = MAX_TEXT_SCALE;
+  protected readonly step = TEXT_SCALE_STEP;
+
+  /** A percentage rather than a bare multiplier, which reads as nothing. */
+  protected readonly scaleLabel = computed(
+    () => `${String(Math.round(this.settings.readerPreferences().textScale * 100))}%`,
+  );
+
+  protected setScale(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    void this.settings.setReaderPreference('textScale', Number.isFinite(value) ? value : 1);
+  }
 
   protected selectTheme(theme: ThemeSetting): void {
     void this.settings.setTheme(theme);

@@ -238,7 +238,7 @@ describe('SentenceAidsStore', () => {
     expect(provider.calls).toBe(0);
   });
 
-  it('exposes a stored translation, expanded by the default aid preference', async () => {
+  it('exposes a stored translation for the sentence popover to show', async () => {
     const window = sentences(1);
     enrichment.translations = [translationFor(window[0], 'Sentence zero.')];
 
@@ -246,19 +246,6 @@ describe('SentenceAidsStore', () => {
 
     const aids = store.aids().get(window[0].id);
     expect(aids?.translation?.textEn).toBe('Sentence zero.');
-    expect(aids?.translationVisible).toBe(true);
-  });
-
-  it('hides and re-shows one sentence without touching the global preference', async () => {
-    const window = sentences(1);
-    enrichment.translations = [translationFor(window[0], 'Sentence zero.')];
-    await store.load(importedReading(), window);
-
-    store.toggleTranslation(window[0].id);
-    expect(store.aids().get(window[0].id)?.translationVisible).toBe(false);
-
-    store.toggleTranslation(window[0].id);
-    expect(store.aids().get(window[0].id)?.translationVisible).toBe(true);
   });
 
   it('marks an imported analysis judged against an older profile as stale', async () => {

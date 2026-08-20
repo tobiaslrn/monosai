@@ -26,6 +26,14 @@
   --status-danger: #8c463f;
   --status-danger-soft: #f7e5e3;
 
+  /*
+   * The reader's only two markers. Both are warnings, both are drawn as a
+   * squiggle rather than by colour alone, and nothing else in the reading
+   * surface is marked at all.
+   */
+  --marker-vocabulary: #c9762f;
+  --marker-grammar: #4f7ba8;
+
   --focus-ring: #4a3c86;
   --shadow-raised: 0 1px 2px rgb(37 40 36 / 8%), 0 4px 12px rgb(37 40 36 / 6%);
   --shadow-overlay: 0 8px 32px rgb(37 40 36 / 16%);
@@ -59,6 +67,9 @@
   --status-danger: #e59b93;
   --status-danger-soft: #3a2724;
 
+  --marker-vocabulary: #e0a874;
+  --marker-grammar: #8fb4dc;
+
   --focus-ring: #b7a9f0;
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 40%);
   --shadow-overlay: 0 8px 32px rgb(0 0 0 / 55%);
@@ -86,9 +97,19 @@
   --font-ui: system-ui, 'Segoe UI', roboto, helvetica, arial, sans-serif;
   --font-japanese: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', 'MS Mincho', serif;
 
-  --reader-font-size: 20px;
-  --reader-line-height-plain: 1.65;
-  --reader-line-height-ruby: 1.95;
+  /*
+   * The base reading size. Everything derived from it — the scaled size, the
+   * leading, the paragraph gap — is declared on the reader itself, because a
+   * custom property is substituted where it is declared: derived here, they
+   * would resolve against this element's scale of 1 and never follow the
+   * learner's setting.
+   */
+  --reader-base-font-size: 20px;
+  --reader-scale: 1;
+  --reader-font-size: var(--reader-base-font-size);
+  --reader-line-height-plain: 2.1;
+  --reader-line-height-ruby: 2.6;
+  --reader-paragraph-gap: 36px;
   --reader-measure: 720px;
   --layout-measure: 1120px;
 
@@ -115,6 +136,6 @@
 
 @media (max-width: 959px) {
   :root {
-    --reader-font-size: 19px;
+    --reader-base-font-size: 19px;
   }
 }

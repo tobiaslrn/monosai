@@ -15,30 +15,47 @@ function sentence(page: Page, index = 0): Locator {
   return page.locator('.sentence').nth(index);
 }
 
-function menu(page: Page): Locator {
-  return page.locator('mn-sentence-menu');
+function sentencePopover(page: Page): Locator {
+  return page.locator('mn-sentence-popover');
+}
+
+function wordDetails(page: Page): Locator {
+  return page.locator('mn-word-inspector');
+}
+
+function isDesktop(page: Page): boolean {
+  return (page.viewportSize()?.width ?? 0) >= 960;
 }
 
 /**
- * Opens the sentence menu the way the current input device would.
+ * Selects a sentence the way the current input device would.
  *
- * Desktop clicks the punctuation between words, which is sentence whitespace
- * rather than a token button; touch long-presses the sentence.
+ * Desktop presses the punctuation between words, which is sentence whitespace
+ * rather than a token button; touch long-presses the sentence. There is no
+ * control to click either way — the press is the control.
  */
-async function openSentenceMenu(page: Page, index = 0): Promise<void> {
+async function selectSentence(page: Page, index = 0): Promise<void> {
   const target = sentence(page, index);
-  if (page.viewportSize() !== null && (page.viewportSize()?.width ?? 0) >= 960) {
+  if (isDesktop(page)) {
     await target.locator('.token.is-plain').first().click();
   } else {
     const box = await target.boundingBox();
     await target.dispatchEvent('pointerdown', {
       pointerType: 'touch',
-      clientX: box?.x ?? 0,
-      clientY: box?.y ?? 0,
+      clientX: (box?.x ?? 0) + 2,
+      clientY: (box?.y ?? 0) + 2,
     });
-    await expect(menu(page)).toBeVisible({ timeout: 5_000 });
   }
-  await expect(menu(page)).toBeVisible();
+  await expect(sentencePopover(page)).toBeVisible({ timeout: 5_000 });
+}
+
+/** Opens the word popover, which is where grammar lives. */
+async function openWord(page: Page, surface: string): Promise<void> {
+  await page
+    .getByRole('button', { name: new RegExp(surface) })
+    .first()
+    .click();
+  await expect(wordDetails(page)).toBeVisible();
 }
 
 /**
@@ -57,24 +74,14 @@ async function waitForPopoverSettled(page: Page): Promise<void> {
     .toBe('1');
 }
 
-async function chooseMenuEntry(page: Page, name: RegExp): Promise<void> {
-  await menu(page).getByRole('button', { name }).click();
-  await expect(menu(page)).not.toBeAttached();
+async function dismissPopover(page: Page): Promise<void> {
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.mn-popover-pane')).toHaveCount(0);
 }
 
-/**
- * How many sentences the reading has stored translations for.
- *
- * Read from the panel's own summary rather than by counting rendered
- * translations, which only ever shows the mounted paragraph window.
- */
+/** How many translations are stored, read from the database rather than the page. */
 async function storedTranslationCount(page: Page): Promise<number> {
-  const line = await page.locator('mn-reading-status-panel').innerText();
-  if (line.includes('Translations: complete')) {
-    return page.locator('.sentence').count();
-  }
-  const matched = /Translations: (\d+) of (\d+)/.exec(line);
-  return matched === null ? 0 : Number(matched[1]);
+  return (await countOwnedRows(page))['translations'] ?? 0;
 }
 
 /** How many OpenRouter requests have been made so far. */
@@ -97,7 +104,9 @@ async function prepareReading(page: Page, text: string): Promise<ProviderCalls> 
  * profile changes.
  */
 test.describe('scenario 11 — per-sentence translation and grammar', () => {
-  test('translates and analyzes one sentence, then serves both from cache', async ({ page }) => {
+  test('translates one sentence and analyzes another, then serves both from cache', async ({
+    page,
+  }) => {
     const calls = await prepareReading(page, SAMPLE_TEXT);
 
     const afterSetup = callCount(calls);
@@ -105,55 +114,93 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
     expect(callCount(calls), 'opening a reading makes no request').toBe(afterSetup);
 
-    await openSentenceMenu(page);
-    await chooseMenuEntry(page, /Translate sentence/);
-    await expect(page.locator('mn-sentence-translation').first()).toContainText('EN:');
-    expect(callCount(calls) - afterSetup).toBe(1);
+    // Selecting a sentence is free; only the button inside it spends anything.
+    await selectSentence(page);
+    expect(callCount(calls), 'opening a sentence makes no request').toBe(afterSetup);
 
-    await openSentenceMenu(page);
-    await chooseMenuEntry(page, /Analyze grammar/);
-    await expect(page.locator('mn-sentence-grammar').first()).toBeVisible();
-    expect(callCount(calls) - afterSetup).toBe(2);
+    await sentencePopover(page)
+      .getByRole('button', { name: /Translate this sentence/ })
+      .click();
+    await expect(sentencePopover(page)).toContainText('EN:');
+    expect(callCount(calls) - afterSetup).toBe(1);
+    await dismissPopover(page);
+
+    // Grammar is asked for on the sentence, where everything that spends a
+    // request lives, and read back at the word it is about.
+    await selectSentence(page);
+    await sentencePopover(page)
+      .getByRole('button', { name: /Analyze grammar/ })
+      .click();
+    // Polled rather than asserted on the popover's text: an assertion that the
+    // offer is gone passes vacuously while the popover is still rendering.
+    await expect.poll(() => callCount(calls) - afterSetup, { timeout: 30_000 }).toBe(2);
+    await expect(sentencePopover(page)).not.toContainText('Analyze grammar');
+    await dismissPopover(page);
+
+    await openWord(page, '猫');
+    await expect(wordDetails(page)).toContainText('Grammar here');
+    await dismissPopover(page);
 
     // A reload re-reads both from storage, and asks for nothing.
     await page.reload();
-    await expect(page.locator('mn-sentence-translation').first()).toContainText('EN:');
-    await expect(page.locator('mn-sentence-grammar').first()).toBeVisible();
+    await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
+    await selectSentence(page);
+    await expect(sentencePopover(page)).toContainText('EN:');
     expect(callCount(calls) - afterSetup).toBe(2);
 
-    // Axe over the reader with both aids expanded, and again with the sentence
-    // menu open over them.
-    await expectNoSeriousAccessibilityViolations(page);
-
-    await openSentenceMenu(page);
     await waitForPopoverSettled(page);
     await expectNoSeriousAccessibilityViolations(page);
+  });
+
+  test('keeps the reading surface free of English however much is stored', async ({ page }) => {
+    const calls = await prepareReading(page, SAMPLE_TEXT);
+    const afterSetup = callCount(calls);
+
+    await selectSentence(page);
+    await sentencePopover(page)
+      .getByRole('button', { name: /Translate this sentence/ })
+      .click();
+    await expect(sentencePopover(page)).toContainText('EN:');
+    await dismissPopover(page);
+
+    // The translation exists, and the page it belongs to is unchanged by it.
+    expect(await storedTranslationCount(page)).toBe(1);
+    await expect(page.locator('article.text')).not.toContainText('EN:');
+    expect(callCount(calls) - afterSetup).toBe(1);
   });
 
   test('marks an analysis stale after a preset change and keeps both rows', async ({ page }) => {
     const calls = await prepareReading(page, SAMPLE_TEXT);
     const readerUrl = page.url();
+    const afterSetup = callCount(calls);
 
-    await openSentenceMenu(page);
-    await chooseMenuEntry(page, /Analyze grammar/);
-    await expect(page.locator('mn-sentence-grammar').first()).toBeVisible();
+    await selectSentence(page);
+    await sentencePopover(page)
+      .getByRole('button', { name: /Analyze grammar/ })
+      .click();
+    await expect.poll(() => callCount(calls), { timeout: 30_000 }).toBeGreaterThan(afterSetup);
+    await expect(sentencePopover(page)).not.toContainText('Analyze grammar');
     const afterFirstAnalysis = callCount(calls);
+    await dismissPopover(page);
 
     await page.goto('/#/grammar');
     await page.getByRole('radio', { name: /Everyday forms/ }).check();
     await expect(page.getByTestId('grammar-confirmation')).toContainText('Everyday forms');
 
     await page.goto(readerUrl);
-    await expect(page.locator('mn-sentence-grammar .stale').first()).toContainText(
-      'earlier grammar profile',
-    );
+    await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
     expect(callCount(calls), 'a stale aid is never refreshed on its own').toBe(afterFirstAnalysis);
 
-    await openSentenceMenu(page);
-    await chooseMenuEntry(page, /Re-analyze grammar/);
+    await openWord(page, '猫');
+    await expect(wordDetails(page)).toContainText('earlier grammar profile');
+    await dismissPopover(page);
 
-    await expect(page.locator('mn-sentence-grammar .stale')).toHaveCount(0);
-    expect(callCount(calls) - afterFirstAnalysis).toBe(1);
+    await selectSentence(page);
+    await sentencePopover(page)
+      .getByRole('button', { name: /Re-analyze grammar/ })
+      .click();
+    await expect.poll(() => callCount(calls) - afterFirstAnalysis, { timeout: 30_000 }).toBe(1);
+    await expect(sentencePopover(page)).not.toContainText('Re-analyze grammar');
     expect((await countOwnedRows(page))['grammarAnalyses'], 'the earlier analysis is kept').toBe(2);
   });
 
@@ -168,35 +215,57 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
     const afterSetup = callCount(calls);
 
-    await openSentenceMenu(page);
-    await chooseMenuEntry(page, /Translate sentence/);
+    await selectSentence(page);
+    await sentencePopover(page)
+      .getByRole('button', { name: /Translate this sentence/ })
+      .click();
 
     // The Japanese is untouched and the failure is offered as a retry.
     await expect(sentence(page)).toContainText('吾輩');
-    await openSentenceMenu(page);
-    await expect(menu(page).getByRole('button', { name: /Retry translation/ })).toBeVisible();
+    await expect(sentencePopover(page).getByRole('alert')).toBeVisible({ timeout: 30_000 });
 
-    await chooseMenuEntry(page, /Retry translation/);
-    await expect(page.locator('mn-sentence-translation').first()).toContainText('EN:');
+    await sentencePopover(page)
+      .getByRole('button', { name: /Try translating again/ })
+      .click();
+    await expect(sentencePopover(page)).toContainText('EN:', { timeout: 30_000 });
     expect(callCount(calls)).toBeGreaterThan(afterSetup);
   });
 
-  test('opens word details as a popover that Escape closes', async ({ page }) => {
+  test('opens one floating surface at a time, and closes it on Escape', async ({ page }) => {
     await prepareReading(page, SAMPLE_TEXT);
 
-    const token = page.getByRole('button', { name: new RegExp('猫') }).first();
-    await token.click();
+    await selectSentence(page);
+    await expect(sentencePopover(page)).toBeVisible();
 
-    const details = page.locator('mn-word-inspector');
-    await expect(details).toBeVisible();
-    await expect(page.locator('.mn-popover-pane')).toBeVisible();
+    // An open surface takes the next press as a dismissal, so reading the text
+    // underneath is never a click that does two things at once.
+    const token = page.getByRole('button', { name: new RegExp('猫') }).first();
+    await dismissPopover(page);
+
+    await token.click();
+    await expect(wordDetails(page)).toBeVisible();
+    await expect(sentencePopover(page)).toHaveCount(0);
     await waitForPopoverSettled(page);
     await expectNoSeriousAccessibilityViolations(page);
 
     await page.keyboard.press('Escape');
-
-    await expect(details).not.toBeAttached();
+    await expect(wordDetails(page)).not.toBeAttached();
     await expect(token).toBeFocused();
+  });
+
+  test('reaches the sentence from the word, without a pointer', async ({ page }) => {
+    // The keyboard has no whitespace to aim at, so the route in is the word.
+    // The control is laid out only while it holds focus.
+    await prepareReading(page, SAMPLE_TEXT);
+
+    await openWord(page, '猫');
+    const route = wordDetails(page).getByRole('button', { name: 'Open this sentence' });
+    await route.focus();
+    await expect(route).toBeVisible();
+    await route.press('Enter');
+
+    await expect(sentencePopover(page)).toBeVisible();
+    await expect(wordDetails(page)).toHaveCount(0);
   });
 });
 
@@ -205,6 +274,15 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
  * survives a reload, and resumes over only what is still missing.
  */
 test.describe('scenario 12 — whole-reading translation', () => {
+  function progress(page: Page): Locator {
+    return page.locator('mn-translation-progress');
+  }
+
+  async function startWholeReadingTranslation(page: Page): Promise<void> {
+    await page.getByRole('button', { name: 'Reading actions' }).click();
+    await page.getByRole('button', { name: /Translate \d+ sentences/ }).click();
+  }
+
   test('cancels mid-run, keeps what was translated, and resumes after a reload', async ({
     page,
   }) => {
@@ -214,17 +292,15 @@ test.describe('scenario 12 — whole-reading translation', () => {
     await importReading(page, LONG_TEXT);
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
 
-    const panel = page.locator('mn-reading-status-panel');
-    await expect(panel).toContainText('Translations: none yet');
+    // Nothing reports on the reading until a job is actually running.
+    await expect(progress(page).locator('.job')).toHaveCount(0);
 
-    await panel.getByRole('button', { name: 'Translate whole reading' }).click();
-    await expect(panel.getByRole('button', { name: 'Cancel' })).toBeVisible();
-    await expect(page.locator('mn-sentence-translation').first()).toBeVisible({ timeout: 30_000 });
+    await startWholeReadingTranslation(page);
+    await expect(progress(page).getByRole('button', { name: 'Stop' })).toBeVisible();
+    await expect.poll(() => storedTranslationCount(page), { timeout: 30_000 }).toBeGreaterThan(0);
 
-    await panel.getByRole('button', { name: 'Cancel' }).click();
-    await expect(panel).toContainText('Sentences already translated were kept.');
-
-    expect(await storedTranslationCount(page)).toBeGreaterThan(0);
+    await progress(page).getByRole('button', { name: 'Stop' }).click();
+    await expect(progress(page)).toContainText('Sentences already translated were kept.');
 
     // The cancelled batch's request is still held open by the stub, which is
     // what made it cancellable. It is released here so the resumed run is
@@ -240,15 +316,19 @@ test.describe('scenario 12 — whole-reading translation', () => {
     const storedAfterReload = await storedTranslationCount(page);
     expect(storedAfterReload).toBeGreaterThan(0);
     expect(storedAfterReload).toBeLessThan(SENTENCE_COUNT);
-    await expect(page.locator('mn-sentence-translation').first()).toBeVisible();
+    await expect(progress(page).locator('.job')).toHaveCount(0);
     expect(callCount(resumeCalls), 'opening an interrupted reading resumes nothing').toBe(0);
 
-    await panel.getByRole('button', { name: /Translate whole reading|Retry the rest/ }).click();
-    await expect(panel).toContainText('Translations: complete', { timeout: 30_000 });
-    await expect(panel).toContainText('Translation finished.');
+    await startWholeReadingTranslation(page);
+    await expect(progress(page)).toContainText('Translation finished.', { timeout: 30_000 });
+    expect(await storedTranslationCount(page)).toBe(SENTENCE_COUNT);
 
     // Only the sentences that were still missing were asked for: one batch,
     // not a second pass over the whole reading.
     expect(callCount(resumeCalls)).toBe(1);
+
+    // And the report leaves the reader when it is dismissed.
+    await progress(page).getByRole('button', { name: 'Dismiss' }).click();
+    await expect(progress(page).locator('.job')).toHaveCount(0);
   });
 });

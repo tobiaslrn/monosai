@@ -77,14 +77,20 @@ export class AppSettingsStore {
     }
   }
 
-  async setReaderPreference(
-    preference: keyof Omit<ReaderPreferences, 'updatedAt'>,
-    enabled: boolean,
+  /**
+   * Writes one reader preference.
+   *
+   * Generic over the key so a boolean aid and the numeric text scale share one
+   * optimistic write-and-roll-back path instead of two.
+   */
+  async setReaderPreference<K extends keyof Omit<ReaderPreferences, 'updatedAt'>>(
+    preference: K,
+    value: ReaderPreferences[K],
   ): Promise<void> {
     const previous = this.preferences();
-    this.preferences.set({ ...previous, [preference]: enabled });
+    this.preferences.set({ ...previous, [preference]: value });
 
-    const saved = await this.repository.updateReaderPreferences({ [preference]: enabled });
+    const saved = await this.repository.updateReaderPreferences({ [preference]: value });
     if (saved.ok) {
       this.preferences.set(saved.value);
       this.failure.set(null);

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { StructuralBaselineEntry } from '../language/structural-baseline';
+import { vocabularyItemId } from '../shared/ids';
 import { presentStatus } from './token-presentation';
-import type { TokenValidation } from './validation';
+import type { TokenValidation, TokenValidationCategory } from './validation';
 
 const BASELINE_STATUS: TokenValidation = {
   category: 'structural-baseline',
@@ -66,6 +67,41 @@ describe('presentStatus', () => {
       expect(presentation.structuralForm).toBeUndefined();
       expect(presentation.explanation).toContain('sentence-building grammar');
     }
+  });
+
+  it('marks unreviewed vocabulary and nothing else', () => {
+    // The reader marks warnings only. Every other category still carries its
+    // label and explanation for word details, but puts no ink under the word.
+    const marked: readonly TokenValidation[] = [
+      { category: 'not-in-snapshot' },
+      { category: 'unknown', reason: 'not-in-vocabulary' },
+    ];
+    const unmarked: readonly TokenValidation[] = [
+      { category: 'anki-exact', vocabularyItemIds: [] },
+      { category: 'anki-normalized', vocabularyItemIds: [], basis: 'inflection' },
+      {
+        category: 'anki-phrase',
+        vocabularyItemId: vocabularyItemId('v1'),
+        tokenSpan: { startTokenIndex: 0, endTokenIndex: 1 },
+      },
+      BASELINE_STATUS,
+      { category: 'entity', entityKind: 'number' },
+      { category: 'policy-exception', exceptionId: 'e1', explanationEn: 'Allowed by your policy.' },
+      { category: 'punctuation' },
+    ];
+
+    for (const status of marked) {
+      expect(presentStatus(status).marker, status.category).toBe('warning-vocabulary');
+    }
+    for (const status of unmarked) {
+      expect(presentStatus(status).marker, status.category).toBe('none');
+      expect(presentStatus(status).label.length, status.category).toBeGreaterThan(0);
+    }
+
+    const covered = new Set<TokenValidationCategory>(
+      [...marked, ...unmarked].map((status) => status.category),
+    );
+    expect(covered.size, 'every validation category is covered').toBe(9);
   });
 
   it('never attaches a form to a status that is not a baseline match', () => {

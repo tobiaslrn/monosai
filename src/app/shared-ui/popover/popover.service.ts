@@ -37,6 +37,14 @@ export interface PopoverOptions {
    * it never takes focus, never intercepts a pointer, and stays anchored.
    */
   readonly modal?: boolean;
+  /**
+   * Closes the popover as soon as the page scrolls.
+   *
+   * What a reader anchored to a word or a line should do when that line moves:
+   * following it would drag a card down the page while they are trying to read
+   * past it, so scrolling is taken as "done with this".
+   */
+  readonly closeOnScroll?: boolean;
 }
 
 export interface PopoverRef {
@@ -116,6 +124,24 @@ export class PopoverService {
       options.returnFocusTo?.focus();
       options.onClosed?.();
     };
+
+    if (options.closeOnScroll === true) {
+      // Armed a frame late and only for scrolls outside the card: a docked
+      // sheet blocks page scrolling by moving it, and that move must not read
+      // as the reader scrolling away from what they just opened.
+      const onScroll = (event: Event): void => {
+        if (!overlayRef.overlayElement.contains(event.target as Node)) {
+          close();
+        }
+      };
+      const frame = requestAnimationFrame(() => {
+        window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+      });
+      overlayRef.detachments().subscribe(() => {
+        cancelAnimationFrame(frame);
+        window.removeEventListener('scroll', onScroll, { capture: true });
+      });
+    }
 
     overlayRef.backdropClick().subscribe(close);
     overlayRef.keydownEvents().subscribe((event) => {

@@ -24,23 +24,27 @@ import { GrammarProfileStore } from '../../application/grammar/grammar-profile.s
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { LibraryStore } from '../../application/reading/library.store';
 import { describeDeletion } from '../../domain/reading/deletion-plan';
-import { findingsCoveringToken } from '../../domain/enrichment/finding-spans';
-import { readingId } from '../../domain/shared/ids';
+import { findingsCoveringToken, sentenceWideFindings } from '../../domain/enrichment/finding-spans';
+import { readingId, type SentenceId } from '../../domain/shared/ids';
+import { presentStatus } from '../../domain/reading/token-presentation';
+import { clampTextScale } from '../../domain/settings/settings';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PopoverService, type PopoverRef } from '../../shared-ui/popover/popover.service';
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
 import { ReaderAidsComponent } from './reader-aids.component';
+import { ReaderMenuComponent } from './reader-menu.component';
 import { ReaderParagraphComponent } from './reader-paragraph.component';
-import { ReadingStatusPanelComponent } from './reading-status-panel.component';
-import type { SentenceMenuRequest, TokenActivation } from './reader-sentence.component';
+import type { SentenceSelection } from './paragraph-gestures.directive';
+import type { SelectedWord, TokenActivation } from './reader-sentence.component';
+import type { UnknownWord } from './sentence-popover.component';
+import { SentencePopoverComponent } from './sentence-popover.component';
+import { TranslationProgressComponent } from './translation-progress.component';
 import {
-  SentenceMenuComponent,
-  sentenceMenuActions,
-  type SentenceMenuActionId,
-} from './sentence-menu.component';
-import { SentenceDetailsComponent } from './sentence-details.component';
-import { WordInspectorComponent } from './word-inspector.component';
+  NO_WORD_GRAMMAR,
+  WordInspectorComponent,
+  type WordGrammarState,
+} from './word-inspector.component';
 import { WordPreviewComponent } from './word-preview.component';
 
 /** How long a pointer must rest on a word before its preview appears. */
@@ -49,9 +53,14 @@ const PREVIEW_DELAY_MS = 250;
 /**
  * The reader.
  *
+ * The page is Japanese and nothing else. Every piece of English — a
+ * translation, a grammar note, a dictionary entry — is in a popover the learner
+ * opened deliberately, so scrolling a reading never means scrolling past
+ * commentary on it.
+ *
  * Opening a reading is entirely local: immutable text, stored token analyses,
  * the bundled dictionary, and locally computed status. No AI request happens on
- * open or when an aid is toggled.
+ * open, on selecting a sentence, or when an aid is toggled.
  */
 @Component({
   selector: 'mn-reader-page',
@@ -60,36 +69,47 @@ const PREVIEW_DELAY_MS = 250;
     RouterLink,
     IconComponent,
     ReaderAidsComponent,
+    ReaderMenuComponent,
     ReaderParagraphComponent,
     ReaderPopoverComponent,
-    ReadingStatusPanelComponent,
-    SentenceDetailsComponent,
-    SentenceMenuComponent,
+    SentencePopoverComponent,
+    TranslationProgressComponent,
     WordInspectorComponent,
     WordPreviewComponent,
   ],
   providers: [ReaderStore, WordInspectorStore, SentenceAidsStore],
   template: `
-    <div class="reader">
+    <div class="reader" [style.--reader-scale]="textScale()">
       <header class="bar">
-        <a class="icon-button" routerLink="/library" aria-label="Back to library">
-          <mn-icon name="back" />
-        </a>
-        <h1>{{ store.reading()?.title }}</h1>
-        <div class="bar-actions">
-          <span class="progress" aria-live="off">{{ store.percentRead() }}%</span>
-          <mn-reader-aids />
-          @if (store.reading()) {
-            <button
-              type="button"
-              class="icon-button"
-              aria-label="Delete this reading"
-              (click)="confirmDelete()"
-            >
-              <mn-icon name="delete" />
-            </button>
-          }
+        <div class="bar-row">
+          <a class="icon-button" routerLink="/library" aria-label="Back to library">
+            <mn-icon name="back" />
+          </a>
+          <h1>{{ store.reading()?.title }}</h1>
+          <div class="bar-actions">
+            <mn-reader-aids />
+            @if (store.reading(); as reading) {
+              <mn-reader-menu
+                [reading]="reading"
+                [isRunning]="translationJob.isRunning()"
+                (translateAll)="startWholeReadingTranslation()"
+                (cancelled)="translationJob.cancel()"
+                (deleteRequested)="confirmDelete()"
+              />
+            }
+          </div>
         </div>
+
+        <!--
+          A running job belongs with the header rather than over the text, and
+          it takes none of the page while nothing is running.
+        -->
+        <mn-translation-progress
+          [progress]="translationJob.progress()"
+          (cancelled)="translationJob.cancel()"
+          (retried)="retryWholeReadingTranslation()"
+          (dismissed)="translationJob.acknowledge()"
+        />
       </header>
 
       <main class="content" #content>
@@ -126,16 +146,6 @@ const PREVIEW_DELAY_MS = 250;
               </p>
             }
 
-            @if (store.reading(); as reading) {
-              <mn-reading-status-panel
-                [reading]="reading"
-                [progress]="translationJob.progress()"
-                (started)="startWholeReadingTranslation()"
-                (cancelled)="translationJob.cancel()"
-                (retried)="retryWholeReadingTranslation()"
-              />
-            }
-
             @if (store.hasMoreAbove()) {
               <div class="sentinel" #topSentinel aria-hidden="true"></div>
             }
@@ -147,13 +157,13 @@ const PREVIEW_DELAY_MS = 250;
                   [aids]="aids.aids()"
                   [furigana]="preferences().furigana"
                   [tokenSpacing]="preferences().tokenSpacing"
-                  [markers]="preferences().statusMarkers"
-                  [currentSentenceId]="currentSentenceId()"
-                  [selectedTokenId]="selectedTokenId()"
+                  [markers]="preferences().warningMarkers"
+                  [selectedSentenceId]="selectedSentenceId()"
+                  [selectedWord]="selectedWord()"
                   (activated)="inspect($event)"
                   (previewed)="previewWord($event)"
                   (previewEnded)="endPreview()"
-                  (menuRequested)="openSentenceMenu($event)"
+                  (sentenceSelected)="selectSentence($event)"
                 />
               }
             </article>
@@ -169,15 +179,15 @@ const PREVIEW_DELAY_MS = 250;
       </main>
     </div>
 
-    <ng-template #sentenceMenu>
-      <mn-reader-popover label="Sentence actions">
-        <mn-sentence-menu [actions]="menuActions()" (chosen)="runSentenceAction($event)" />
-      </mn-reader-popover>
-    </ng-template>
-
-    <ng-template #sentenceDetails>
+    <ng-template #sentencePopover>
       <mn-reader-popover label="Sentence details">
-        <mn-sentence-details [aids]="menuAids()" />
+        <mn-sentence-popover
+          [aids]="selectedSentenceAids()"
+          [canAnalyze]="canAnalyzeGrammar()"
+          [unknownWords]="selectedUnknownWords()"
+          (translate)="translateSelectedSentence()"
+          (analyzeGrammar)="analyzeSelectedSentence()"
+        />
       </mn-reader-popover>
     </ng-template>
 
@@ -187,17 +197,39 @@ const PREVIEW_DELAY_MS = 250;
 
     <ng-template #wordPopover>
       <mn-reader-popover label="Word details">
-        <mn-word-inspector [grammarFindings]="selectedWordFindings()" (closed)="closeInspector()" />
+        <mn-word-inspector
+          [grammar]="wordGrammar()"
+          (sentenceRequested)="openSentenceFromWord()"
+          (closed)="closeInspector()"
+        />
       </mn-reader-popover>
     </ng-template>
   `,
   styles: `
     /*
-     * One column at every width. Word details float over the text rather than
-     * taking a column of their own, so the reading measure never changes when
-     * a word is opened (ADR 0022).
+     * One column at every width. Word and sentence details float over the text
+     * rather than taking a column of their own, so the reading measure never
+     * changes when something is opened (ADR 0022).
+     */
+    /*
+     * Reading size is a learner setting, and vertical space follows it: the
+     * gaps a sentence is pressed in have to grow with the glyphs. Both are
+     * bounded, so the largest scale stays a page of prose rather than one
+     * sentence a screen.
      */
     .reader {
+      --reader-font-size: calc(var(--reader-base-font-size) * var(--reader-scale));
+      --reader-line-height-plain: clamp(1.75, calc(2.1 - (var(--reader-scale) - 1) * 0.25), 2.3);
+      /*
+       * Deliberately loose. The leading is not only room for ruby: it is the
+       * whitespace a sentence is pressed in, and at an ordinary leading almost
+       * every pixel of a line is a glyph, which left the sentence unreachable.
+       * The ratio eases off as the text grows, because the gap that matters is
+       * the one in pixels and large text already has it.
+       */
+      --reader-line-height-ruby: clamp(2.05, calc(2.6 - (var(--reader-scale) - 1) * 0.35), 2.8);
+      --reader-paragraph-gap: clamp(28px, calc(36px * var(--reader-scale)), 96px);
+
       display: grid;
       grid-template-rows: auto 1fr;
       grid-template-areas: 'bar' 'content';
@@ -215,18 +247,23 @@ const PREVIEW_DELAY_MS = 250;
       position: sticky;
       top: 0;
       z-index: 4;
-      display: flex;
       grid-area: bar;
-      gap: var(--space-2);
-      align-items: center;
+      /*
+       * A grid item is sized by its content unless it is allowed to shrink, and
+       * a long title would otherwise stretch the whole reader past its measure
+       * and push the actions off the screen.
+       */
+      min-width: 0;
       padding-block: var(--space-2);
       border-bottom: 1px solid var(--border-subtle);
       background: var(--surface-canvas);
     }
 
-    .content {
-      position: relative;
-      z-index: 0;
+    .bar-row {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+      min-width: 0;
     }
 
     h1 {
@@ -245,11 +282,6 @@ const PREVIEW_DELAY_MS = 250;
       align-items: center;
     }
 
-    .progress {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
     .icon-button {
       display: inline-flex;
       flex: none;
@@ -265,17 +297,16 @@ const PREVIEW_DELAY_MS = 250;
     }
 
     .content {
+      position: relative;
+      z-index: 0;
       grid-area: content;
       min-width: 0;
     }
 
     /* Room for the ruby above the first line of the reading. */
     .text {
-      padding-top: var(--space-2);
-    }
-
-    .text {
       max-width: var(--reader-measure);
+      padding-top: var(--space-2);
     }
 
     .notice {
@@ -315,42 +346,102 @@ export class ReaderPageComponent {
   private readonly content = viewChild<ElementRef<HTMLElement>>('content');
   private readonly wordPopover = viewChild.required<TemplateRef<unknown>>('wordPopover');
   private readonly wordPreview = viewChild.required<TemplateRef<unknown>>('wordPreview');
-  private readonly sentenceMenu = viewChild.required<TemplateRef<unknown>>('sentenceMenu');
-  private readonly sentenceDetails = viewChild.required<TemplateRef<unknown>>('sentenceDetails');
+  private readonly sentencePopover = viewChild.required<TemplateRef<unknown>>('sentencePopover');
   private readonly topSentinel = viewChild<ElementRef<HTMLElement>>('topSentinel');
   private readonly bottomSentinel = viewChild<ElementRef<HTMLElement>>('bottomSentinel');
 
-  private readonly menuRequestSignal = signal<SentenceMenuRequest | null>(null);
-  private readonly currentSentenceIdSignal = signal<string | null>(null);
-  protected readonly currentSentenceId = this.currentSentenceIdSignal.asReadonly();
+  private readonly selectedSentenceIdSignal = signal<SentenceId | null>(null);
+  /** The open sentence, tinted so a docked sheet is not orphaned from it. */
+  protected readonly selectedSentenceId = this.selectedSentenceIdSignal.asReadonly();
 
   protected readonly preferences = this.settings.readerPreferences;
 
-  protected readonly selectedTokenId = computed(() => this.inspector.selected()?.token.id ?? null);
+  /** Clamped here too: a stored row is external data like any other. */
+  protected readonly textScale = computed(() => clampTextScale(this.preferences().textScale));
 
-  /** The aids of the sentence whose menu or details are open. */
-  protected readonly menuAids = computed(() => {
-    const request = this.menuRequestSignal();
-    return request === null
-      ? NO_AIDS
-      : (this.aids.aids().get(request.sentence.sentence.id) ?? NO_AIDS);
-  });
-
-  protected readonly menuActions = computed(() => {
-    const request = this.menuRequestSignal();
-    const kind = this.store.reading()?.kind ?? 'imported';
-    return request === null ? [] : sentenceMenuActions(this.menuAids(), kind);
-  });
-
-  /** Item 6 of the inspector's content order, from what is already stored. */
-  protected readonly selectedWordFindings = computed(() => {
+  protected readonly selectedWord = computed<SelectedWord | null>(() => {
     const selected = this.inspector.selected();
-    if (selected === null) {
+    return selected === null
+      ? null
+      : { sentenceId: selected.sentence.id, tokenId: selected.token.id };
+  });
+
+  /** Every mounted sentence by id, for resolving what a press selected. */
+  private readonly sentencesById = computed(() => {
+    const byId = new Map<string, ReaderSentence>();
+    for (const paragraph of this.store.paragraphs()) {
+      for (const sentence of paragraph.sentences) {
+        byId.set(sentence.sentence.id, sentence);
+      }
+    }
+    return byId;
+  });
+
+  protected readonly selectedSentenceAids = computed(() => {
+    const sentenceId = this.selectedSentenceIdSignal();
+    return sentenceId === null ? NO_AIDS : (this.aids.aids().get(sentenceId) ?? NO_AIDS);
+  });
+
+  /**
+   * The words in the open sentence the learner's vocabulary does not cover —
+   * the same ones the page underlines, said in words.
+   *
+   * De-duplicated by surface, because a sentence repeating a word it does not
+   * know says nothing more the second time.
+   */
+  protected readonly selectedUnknownWords = computed<readonly UnknownWord[]>(() => {
+    const sentenceId = this.selectedSentenceIdSignal();
+    const sentence = sentenceId === null ? undefined : this.sentencesById().get(sentenceId);
+    const statuses = sentence?.statuses;
+    if (sentence === undefined || statuses === null || statuses === undefined) {
       return [];
     }
-    const grammar = this.aids.aids().get(selected.sentence.id)?.grammar ?? null;
-    return grammar === null ? [] : findingsCoveringToken(grammar.findings, selected.token);
+    const words: UnknownWord[] = [];
+    const seen = new Set<string>();
+    for (const token of sentence.tokens) {
+      const status = statuses.get(token.id);
+      if (status === undefined || seen.has(token.surface)) {
+        continue;
+      }
+      const presentation = presentStatus(status.validation);
+      if (presentation.marker === 'warning-vocabulary') {
+        seen.add(token.surface);
+        words.push({ surface: token.surface, label: presentation.label });
+      }
+    }
+    return words;
   });
+
+  /**
+   * The grammar around the open word.
+   *
+   * Findings are filtered to the ones whose span covers this word, so a note
+   * about a pattern elsewhere in the sentence is not attached to a word it says
+   * nothing about.
+   */
+  protected readonly wordGrammar = computed<WordGrammarState>(() => {
+    const selected = this.inspector.selected();
+    if (selected === null) {
+      return NO_WORD_GRAMMAR;
+    }
+    const aids = this.aids.aids().get(selected.sentence.id) ?? NO_AIDS;
+    const grammar = aids.grammar;
+    return {
+      findings: grammar === null ? [] : findingsCoveringToken(grammar.findings, selected.token),
+      sentenceFindings: grammar === null ? [] : sentenceWideFindings(grammar.findings),
+      analyzed: grammar !== null,
+      stale: aids.grammarStale,
+    };
+  });
+
+  /**
+   * A generated story was reviewed against the profile captured with it, so it
+   * is never re-analysed: that would judge frozen text by a profile it was
+   * never written for.
+   */
+  protected readonly canAnalyzeGrammar = computed(
+    () => (this.store.reading()?.kind ?? 'imported') === 'imported',
+  );
 
   private edgeObserver: IntersectionObserver | null = null;
   private sentenceObserver: IntersectionObserver | null = null;
@@ -398,8 +489,8 @@ export class ReaderPageComponent {
     effect(() => {
       // A job writes rows this page is displaying, so its progress is what
       // tells the reader to re-read them. Re-reading the reading row also
-      // refreshes the summaries the status panel counts, and that in turn
-      // re-runs the aid load above for the mounted window.
+      // refreshes the summaries the menu counts, and that in turn re-runs the
+      // aid load above for the mounted window.
       if (this.translationJob.progress().kind !== 'idle') {
         void this.store.refreshSummaries();
       }
@@ -441,6 +532,75 @@ export class ReaderPageComponent {
   }
 
   /**
+   * Opens a sentence where it was pressed.
+   *
+   * Opening costs nothing: the popover shows the stored translation, or the
+   * button that would fetch one. A stray press on a line is free.
+   */
+  protected selectSentence(selection: SentenceSelection): void {
+    const sentence = this.sentencesById().get(selection.sentenceId);
+    if (sentence === undefined) {
+      return;
+    }
+    this.endPreview();
+    this.openSentence(sentence.sentence.id, { x: selection.x, y: selection.y });
+  }
+
+  /**
+   * The route to a sentence that does not need a pointer.
+   *
+   * Selecting a sentence is a press on its whitespace, which a keyboard cannot
+   * aim; the words are already focus stops, so a reader arrives at the sentence
+   * through the word they stopped at.
+   */
+  protected openSentenceFromWord(): void {
+    const selected = this.inspector.selected();
+    if (selected === null) {
+      return;
+    }
+    const origin = document.querySelector<HTMLElement>(
+      `[data-sentence-id="${CSS.escape(selected.sentence.id)}"]`,
+    );
+    this.openSentence(
+      selected.sentence.id,
+      origin ?? this.content()?.nativeElement ?? document.body,
+    );
+  }
+
+  private openSentence(
+    sentenceId: SentenceId,
+    origin: { x: number; y: number } | HTMLElement,
+  ): void {
+    this.selectedSentenceIdSignal.set(sentenceId);
+    this.popover.open({
+      origin,
+      template: this.sentencePopover(),
+      viewContainerRef: this.viewContainerRef,
+      closeOnScroll: true,
+      onClosed: () => {
+        this.selectedSentenceIdSignal.set(null);
+      },
+    });
+  }
+
+  protected translateSelectedSentence(): void {
+    const sentenceId = this.selectedSentenceIdSignal();
+    if (sentenceId === null) {
+      return;
+    }
+    void this.aids.translateSentence(sentenceId).then(() => this.store.refreshSummaries());
+  }
+
+  /** Analyses the open sentence, because it was asked for. */
+  protected analyzeSelectedSentence(): void {
+    const sentenceId = this.selectedSentenceIdSignal();
+    if (sentenceId === null) {
+      return;
+    }
+    void this.aids.analyzeGrammar(sentenceId).then(() => this.store.refreshSummaries());
+  }
+
+  /**
    * Pins word details in a popover anchored to the word itself.
    *
    * Everything shown is local, so this stays a lookup in the bundled dictionary
@@ -458,6 +618,7 @@ export class ReaderPageComponent {
       template: this.wordPopover(),
       viewContainerRef: this.viewContainerRef,
       returnFocusTo: activation.origin,
+      closeOnScroll: true,
       onClosed: () => {
         this.inspector.close();
       },
@@ -469,73 +630,6 @@ export class ReaderPageComponent {
   }
 
   /**
-   * Opens the sentence menu where it was asked for: at the pointer for a
-   * whitespace click or a long press, and at the focus-revealed control when
-   * the keyboard asked.
-   */
-  protected openSentenceMenu(request: SentenceMenuRequest): void {
-    this.endPreview();
-    this.menuRequestSignal.set(request);
-    this.popover.open({
-      origin: request.origin,
-      template: this.sentenceMenu(),
-      viewContainerRef: this.viewContainerRef,
-      returnFocusTo: request.returnFocusTo,
-      onClosed: () => {
-        this.menuRequestSignal.set(null);
-      },
-    });
-  }
-
-  /**
-   * Runs one menu entry.
-   *
-   * Every entry that costs a request is an explicit choice made here and
-   * nowhere else: nothing in the reader translates or analyses on its own.
-   */
-  protected runSentenceAction(action: SentenceMenuActionId): void {
-    const request = this.menuRequestSignal();
-    if (request === null) {
-      return;
-    }
-    const sentenceId = request.sentence.sentence.id;
-
-    switch (action) {
-      case 'toggle-translation':
-        this.aids.toggleTranslation(sentenceId);
-        this.popover.close();
-        return;
-      case 'translate':
-        void this.aids.translateSentence(sentenceId).then(() => this.store.refreshSummaries());
-        this.popover.close();
-        return;
-      case 'analyze-grammar':
-        void this.aids.analyzeGrammar(sentenceId).then(() => this.store.refreshSummaries());
-        this.popover.close();
-        return;
-      case 'details':
-        this.showSentenceDetails(request);
-        return;
-    }
-  }
-
-  /** Swaps the menu for its details, keeping one floating surface open. */
-  private showSentenceDetails(request: SentenceMenuRequest): void {
-    // Opening dismisses the menu, and that dismissal clears the sentence the
-    // details are about, so the sentence is restored afterwards.
-    this.popover.open({
-      origin: request.origin,
-      template: this.sentenceDetails(),
-      viewContainerRef: this.viewContainerRef,
-      returnFocusTo: request.returnFocusTo,
-      onClosed: () => {
-        this.menuRequestSignal.set(null);
-      },
-    });
-    this.menuRequestSignal.set(request);
-  }
-
-  /**
    * Shows the concise hover preview, after a pause so that sweeping the pointer
    * across a line does not flash a card per word.
    *
@@ -544,7 +638,7 @@ export class ReaderPageComponent {
    * deliberately opened.
    */
   protected previewWord(activation: TokenActivation): void {
-    if (this.inspector.isOpen()) {
+    if (this.inspector.isOpen() || this.selectedSentenceIdSignal() !== null) {
       return;
     }
     this.cancelPreviewTimer();
@@ -629,7 +723,9 @@ export class ReaderPageComponent {
    * Tracks the primary viewport sentence.
    *
    * Progress follows stable sentence identity rather than a scroll offset, so it
-   * survives re-rendering, a changed window, and a later migration.
+   * survives re-rendering, a changed window, and a later migration. Nothing is
+   * drawn for it: where a reader stopped is the library's business, not an
+   * annotation on the text.
    */
   private observeSentences(): void {
     this.sentenceObserver?.disconnect();
@@ -669,7 +765,6 @@ export class ReaderPageComponent {
           .sort((left, right) => left.sentence.positionInReading - right.sentence.positionInReading)
           .at(0);
         if (primary !== undefined) {
-          this.currentSentenceIdSignal.set(primary.sentence.id);
           this.store.reportPosition(primary.sentence);
         }
       },

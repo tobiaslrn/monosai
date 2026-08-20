@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { findingsCoveringToken, tokensCoveredByConcerns, type SpannedToken } from './finding-spans';
+import {
+  findingsCoveringToken,
+  sentenceWideFindings,
+  tokensCoveredByConcerns,
+  type SpannedToken,
+} from './finding-spans';
 import type { GrammarFinding } from './records';
 
 const TOKENS: readonly SpannedToken[] = [
@@ -55,5 +60,25 @@ describe('findingsCoveringToken', () => {
 
   it('drops a finding whose span lies elsewhere in the sentence', () => {
     expect(findingsCoveringToken([finding({ startUtf16: 0, endUtf16: 2 })], TOKENS[2])).toEqual([]);
+  });
+});
+
+describe('sentenceWideFindings', () => {
+  it('keeps a finding that was said about the sentence rather than a word', () => {
+    // It marks nothing on the page, so if the word popover dropped it too the
+    // analysis the learner paid for would be unreadable anywhere.
+    const wide = finding();
+
+    expect(sentenceWideFindings([wide])).toEqual([wide]);
+  });
+
+  it('leaves a spanned finding to the word it covers', () => {
+    expect(sentenceWideFindings([finding({ startUtf16: 0, endUtf16: 2 })])).toEqual([]);
+  });
+
+  it('keeps one that supplied only half a span, which pins it to nothing', () => {
+    const half = finding({ startUtf16: 0 });
+
+    expect(sentenceWideFindings([half])).toEqual([half]);
   });
 });

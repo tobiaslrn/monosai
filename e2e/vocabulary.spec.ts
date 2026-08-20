@@ -169,7 +169,7 @@ test.describe('vocabulary', () => {
     expect(snapshots[0].uniqueEntryCount).toBe(1);
   });
 
-  test('marks known words in the reader once a snapshot is active', async ({ page }) => {
+  test('leaves known words unmarked in the reader once a snapshot is active', async ({ page }) => {
     // An import and a full refresh in one test, each of which loads a worker.
     test.setTimeout(180_000);
     await importReading(page, 'ねこを見る。');
@@ -191,8 +191,26 @@ test.describe('vocabulary', () => {
     await page.goto(readerUrl);
     await expect(page.getByText('no reviewed Anki vocabulary is set up')).toHaveCount(0);
 
-    // ねこ and 見る both came from the snapshot.
-    await expect(page.locator('.is-known').first()).toBeVisible({ timeout: 60_000 });
-    expect(await page.locator('.is-known').count()).toBeGreaterThanOrEqual(2);
+    // ねこ and 見る both came from the snapshot, and the reader marks warnings
+    // only: a word the learner has reviewed is simply text, and what its status
+    // says is in word details rather than under every line.
+    const known = page.getByRole('button', { name: /ねこ/ }).first();
+    await expect(known).toBeVisible({ timeout: 60_000 });
+
+    // The status is still there to be read, at the word. Polled by reopening,
+    // because a cold start classifies after the first paint.
+    await expect
+      .poll(
+        async () => {
+          await known.click();
+          const details = await page.locator('mn-word-inspector').innerText();
+          await page.keyboard.press('Escape');
+          return details;
+        },
+        { timeout: 60_000 },
+      )
+      .toContain('Known from Anki');
+
+    expect(await page.locator('.is-warning-vocabulary').count()).toBe(0);
   });
 });
