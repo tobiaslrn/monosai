@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { captureGrammarProfile } from '../../domain/grammar/profile-hash';
+import { captureGrammarProfile, grammarProfileHash } from '../../domain/grammar/profile-hash';
 import {
   DEFAULT_GRAMMAR_PROFILE_SELECTION,
   type GrammarProfileSelection,
@@ -78,6 +78,28 @@ export class GrammarProfileStore {
       register?.[this.selectionSignal().registerPreference] ?? '',
       this.selectionSignal().customGuidance,
     );
+  });
+
+  /**
+   * The hash the live profile would produce if a story were generated now.
+   *
+   * Stored grammar analyses record the profile hash they were judged against,
+   * so comparing against this is how an imported reading's analysis is known to
+   * predate the current profile. Null until the language bundle is loaded,
+   * because the structural baseline version is part of what is hashed and
+   * guessing it would produce a hash that matches nothing.
+   */
+  readonly liveProfileHash = computed(() => {
+    const baselineVersion = this.language.versions()?.structuralBaselineVersion ?? null;
+    const resolvedGuidance = this.resolvedGuidance();
+    if (baselineVersion === null || resolvedGuidance === '') {
+      return null;
+    }
+    return grammarProfileHash(this.hasher, {
+      resolvedGuidance,
+      registerPreference: this.selectionSignal().registerPreference,
+      structuralBaselineVersion: baselineVersion,
+    });
   });
 
   async load(): Promise<void> {

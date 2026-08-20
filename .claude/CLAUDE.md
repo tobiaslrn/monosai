@@ -46,12 +46,11 @@ Build Monosai according to the repository specifications. Read the relevant spec
 ## Subagents
 
 - Always set `model` explicitly on every Agent call. Never rely on the default.
-- `haiku`: repository research, file and symbol search, reading docs, gathering context, mechanical edits.
-- `sonnet`: routine implementation, tests, refactors, and reviews with a clear specification.
+- `haiku (high)/sonnet (low-mid)`: repository research, file and symbol search, gathering context.
 - `opus`: only for architecture, subtle debugging, or design decisions that genuinely need expert reasoning.
-- Default to the cheaper model when unsure. Escalate only after a cheaper model fails.
 - Match effort level to the task: low for lookups, medium for normal work, high only for genuinely hard problems.
 - Do not spawn a subagent for work that is faster done inline.
+- Implementing a plan can spawn research subagents to gather context, but implementation should happen inline.
 
 ## Git
 

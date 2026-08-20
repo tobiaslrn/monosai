@@ -20,6 +20,7 @@ import type { TokenStatusAssignment } from '../../domain/reading/validation';
         class="token"
         [class]="markerClass()"
         [class.is-selected]="selected()"
+        [class.has-concern]="grammarConcern()"
         (click)="activated.emit(token())"
         (focus)="previewed.emit(token())"
         (mouseenter)="previewed.emit(token())"
@@ -34,9 +35,14 @@ import type { TokenStatusAssignment } from '../../domain/reading/validation';
         @if (statusLabel(); as label) {
           <span class="mn-visually-hidden">, {{ label }}</span>
         }
+        @if (grammarConcern()) {
+          <span class="mn-visually-hidden">, grammar concern</span>
+        }
       </button>
     } @else {
-      <span class="token is-plain">{{ token().surface }}</span>
+      <span class="token is-plain" [class.has-concern]="grammarConcern()">{{
+        token().surface
+      }}</span>
     }
   `,
   styles: `
@@ -109,6 +115,16 @@ import type { TokenStatusAssignment } from '../../domain/reading/validation';
       border-radius: 4px;
     }
 
+    /*
+     * Only ever set when a finding supplied a span covering this token; a
+     * sentence-level finding marks the sentence instead. The tint is paired
+     * with a visually hidden label, so the meaning does not rely on colour.
+     */
+    .token.has-concern {
+      border-radius: 4px;
+      background: var(--status-warning-soft);
+    }
+
     .token.is-selected {
       background: var(--accent-secondary-soft);
       border-radius: 4px;
@@ -127,6 +143,8 @@ export class ReaderTokenComponent {
   readonly showFurigana = input(true);
   readonly showMarkers = input(true);
   readonly selected = input(false);
+  /** Set only when a finding supplies a span that covers this token. */
+  readonly grammarConcern = input(false);
 
   readonly activated = output<Token>();
   readonly previewed = output<Token>();
