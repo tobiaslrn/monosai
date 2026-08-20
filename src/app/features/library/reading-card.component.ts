@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Reading } from '../../domain/reading/reading';
-import { isComplete } from '../../domain/reading/summaries';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { completionLabel, grammarLabel } from './reading-summary-labels';
 
 /**
  * One library card.
@@ -51,6 +51,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       <ul class="status">
         <li>{{ reading().sentenceCount.toLocaleString('en') }} sentences</li>
         <li>{{ translationLabel() }}</li>
+        <li>{{ grammarLine() }}</li>
         <li>{{ audioLabel() }}</li>
       </ul>
 
@@ -206,11 +207,13 @@ export class ReadingCardComponent {
   });
 
   protected readonly translationLabel = computed(() =>
-    summaryLabel('Translations', this.reading().translationSummary),
+    completionLabel('Translations', this.reading().translationSummary),
   );
 
+  protected readonly grammarLine = computed(() => grammarLabel(this.reading().grammarSummary));
+
   protected readonly audioLabel = computed(() =>
-    summaryLabel('Audio', this.reading().audioSummary),
+    completionLabel('Audio', this.reading().audioSummary),
   );
 
   protected toggleMenu(): void {
@@ -221,17 +224,4 @@ export class ReadingCardComponent {
     this.menuOpenSignal.set(false);
     this.deleteRequested.emit(this.reading());
   }
-}
-
-function summaryLabel(
-  name: string,
-  summary: { readonly total: number; readonly completed: number; readonly failed: number },
-): string {
-  if (summary.completed === 0 && summary.failed === 0) {
-    return `${name}: none yet`;
-  }
-  if (isComplete(summary)) {
-    return `${name}: complete`;
-  }
-  return `${name}: ${String(summary.completed)} of ${String(summary.total)}`;
 }

@@ -188,11 +188,7 @@ describe('TranslationService', () => {
           .slice(0, MAX_TRANSLATION_BATCH)
           .map((sentence) => ({ id: sentence.id, textEn: 'EN.' })),
       ),
-      ok(
-        list
-          .slice(MAX_TRANSLATION_BATCH)
-          .map((sentence) => ({ id: sentence.id, textEn: 'EN.' })),
-      ),
+      ok(list.slice(MAX_TRANSLATION_BATCH).map((sentence) => ({ id: sentence.id, textEn: 'EN.' }))),
     );
 
     const outcome = await service.run(

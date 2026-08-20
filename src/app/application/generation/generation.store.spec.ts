@@ -454,7 +454,12 @@ describe('GenerationStore auxiliary review', () => {
         } else {
           const request = bed.provider.translationRequests[translateCallIndex - 1];
           bed.provider.translationQueue.push(
-            ok(request.sentences.map((sentence) => ({ id: sentence.id, textEn: `EN: ${sentence.textJa}` }))),
+            ok(
+              request.sentences.map((sentence) => ({
+                id: sentence.id,
+                textEn: `EN: ${sentence.textJa}`,
+              })),
+            ),
           );
         }
       }

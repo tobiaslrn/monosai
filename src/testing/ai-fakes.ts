@@ -197,6 +197,17 @@ export class StubTextProvider implements TextGenerationProvider {
   /** Runs just before each generation answer, so a test can cancel mid-flight. */
   beforeAnswer: (() => void) | null = null;
 
+  /**
+   * Answers translation requests directly instead of from the queue.
+   *
+   * A whole-reading job makes as many requests as its batching decides, which
+   * is the thing under test, so a queue primed with a fixed number of answers
+   * would decide the expected count in advance.
+   */
+  translateWith:
+    ((request: TranslationBatchRequest) => Result<readonly TranslationResult[], AiError>) | null =
+    null;
+
   constructor(private outcome: Result<ModelTest, AiError>) {}
 
   set result(outcome: Result<ModelTest, AiError>) {
@@ -265,6 +276,9 @@ export class StubTextProvider implements TextGenerationProvider {
     this.generationCalls.translate += 1;
     this.translationRequests.push(request);
     this.configs.push(config);
+    if (this.translateWith !== null) {
+      this.translationQueue.push(this.translateWith(request));
+    }
     return this.answer('translation', this.translationQueue, signal);
   }
 
@@ -383,5 +397,40 @@ export function ttsTest(speedApplied = true): TtsTest {
     mimeType: 'audio/mpeg',
     byteLength: bytes.byteLength,
     sample: new Blob([bytes], { type: 'audio/mpeg' }),
+  };
+}
+
+/**
+ * Wires a stub provider to answer grammar review and translation successfully
+ * by default, so specs about the story/exception-review/repair states do not
+ * each have to queue an auxiliary answer they are not testing.
+ *
+ * It only fills in a request that has not already been answered: a spec that
+ * pushes its own `grammarQueue`/`translationQueue` entry to test a failure
+ * still gets that entry consumed first, because `answer()` shifts in FIFO
+ * order and this pushes after whatever the spec already queued.
+ */
+export function autoAnswerAuxiliary(provider: StubTextProvider): void {
+  let answeredGrammar = 0;
+  let answeredTranslation = 0;
+  const previous = provider.beforeAnswer;
+  provider.beforeAnswer = () => {
+    previous?.();
+    if (provider.grammarRequests.length > answeredGrammar) {
+      provider.grammarQueue.push(ok({ findings: [] }));
+      answeredGrammar = provider.grammarRequests.length;
+    }
+    if (provider.translationRequests.length > answeredTranslation) {
+      const request = provider.translationRequests[provider.translationRequests.length - 1];
+      provider.translationQueue.push(
+        ok(
+          request.sentences.map((sentence) => ({
+            id: sentence.id,
+            textEn: `EN: ${sentence.textJa}`,
+          })),
+        ),
+      );
+      answeredTranslation = provider.translationRequests.length;
+    }
   };
 }

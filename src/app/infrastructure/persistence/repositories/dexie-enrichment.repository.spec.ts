@@ -131,7 +131,10 @@ describe('DexieEnrichmentRepository', () => {
     // never count toward completion once the caller's current key differs.
     await repository.storeTranslation(translation(0, 'stale-key'), currentTranslationKeys());
 
-    const summary = await repository.summarizeTranslations(draft.reading.id, currentTranslationKeys());
+    const summary = await repository.summarizeTranslations(
+      draft.reading.id,
+      currentTranslationKeys(),
+    );
 
     expect(summary.ok).toBe(true);
     if (!summary.ok) {
@@ -237,7 +240,9 @@ describe('DexieEnrichmentRepository', () => {
   it('summarizes audio completion against the current per-sentence cache keys', async () => {
     await repository.storeAudio(audio(0));
 
-    const audioKeys = new Map(draft.sentences.map((sentence, index) => [sentence.id, `audio-${index}`]));
+    const audioKeys = new Map(
+      draft.sentences.map((sentence, index) => [sentence.id, `audio-${index}`]),
+    );
     const current = await repository.summarizeAudio(draft.reading.id, audioKeys);
 
     const staleKeys = new Map(

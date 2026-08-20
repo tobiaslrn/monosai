@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { aiError } from '../../domain/ai/ai-error';
 import type { GrammarRunOutcome } from '../enrichment/grammar-analysis.service';
 import type { TranslationRunOutcome } from '../enrichment/translation.service';
 import { assertEnrichmentConsistent } from '../../infrastructure/persistence/repositories/integrity';
@@ -79,7 +80,9 @@ describe('StoryAssemblyService', () => {
   });
 
   describe('withAuxiliary', () => {
-    function translationSuccess(draft: ReturnType<StoryAssemblyService['build']>): TranslationRunOutcome {
+    function translationSuccess(
+      draft: ReturnType<StoryAssemblyService['build']>,
+    ): TranslationRunOutcome {
       return {
         records: draft.sentences.map((sentence, index) => ({
           id: `t${String(index)}`,
@@ -93,6 +96,7 @@ describe('StoryAssemblyService', () => {
           createdAt: 1_000,
         })),
         failures: [],
+        error: null,
       };
     }
 
@@ -177,6 +181,7 @@ describe('StoryAssemblyService', () => {
       const partial: TranslationRunOutcome = {
         records: succeeded.records.slice(0, 2),
         failures: [draft.sentences[2].id],
+        error: aiError('provider-unavailable', 'translation', 'The provider was unavailable.'),
       };
       const grammar: GrammarRunOutcome = { status: 'unavailable', records: [], reasonCode: 'x' };
 

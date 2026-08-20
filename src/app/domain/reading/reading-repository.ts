@@ -100,6 +100,14 @@ export interface ReadingRepository {
   ): Promise<Result<readonly TokenAnalysis[], StorageError>>;
   /** Sentence identity, content hash, and position only — for cache-key checks. */
   listSentenceRefs(readingId: ReadingId): Promise<Result<readonly SentenceRef[], StorageError>>;
+  /**
+   * The Japanese of specific sentences, in the order they appear in the
+   * reading. A whole-reading job resolves which sentences it still needs from
+   * `listSentenceRefs` first, so this only ever loads the text it will send.
+   */
+  loadSentences(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly Sentence[], StorageError>>;
   deleteReading(id: ReadingId): Promise<Result<void, StorageError>>;
   saveProgress(progress: ReadingProgress): Promise<Result<void, StorageError>>;
   getProgress(id: ReadingId): Promise<Result<ReadingProgress | null, StorageError>>;

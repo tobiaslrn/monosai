@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Hasher } from '../shared/hashing';
-import {
-  grammarCacheKey,
-  translationCacheKey,
-  translationConfigFingerprint,
-} from './cache-keys';
+import { grammarCacheKey, translationCacheKey, translationConfigFingerprint } from './cache-keys';
 
 const HASHER: Hasher = {
   algorithm: 'test-fnv1a',
@@ -35,9 +31,9 @@ describe('translationCacheKey', () => {
 
 describe('grammarCacheKey', () => {
   it('is stable for identical inputs', () => {
-    expect(
+    expect(grammarCacheKey(HASHER, 'content-hash', 'profile-hash', 'model-a', 'grammar/1')).toBe(
       grammarCacheKey(HASHER, 'content-hash', 'profile-hash', 'model-a', 'grammar/1'),
-    ).toBe(grammarCacheKey(HASHER, 'content-hash', 'profile-hash', 'model-a', 'grammar/1'));
+    );
   });
 
   it('changes when the profile hash changes', () => {

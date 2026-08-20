@@ -65,9 +65,7 @@ export function normalizeReview(
       isValidRange(text, startUtf16, endUtf16);
 
     normalized.push(
-      keepOffsets
-        ? finding
-        : { ...finding, startUtf16: undefined, endUtf16: undefined },
+      keepOffsets ? finding : { ...finding, startUtf16: undefined, endUtf16: undefined },
     );
   }
 
