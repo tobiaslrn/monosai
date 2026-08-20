@@ -15,6 +15,8 @@ export const PROMPT_VERSIONS = {
   story: 'story/1',
   repair: 'repair/1',
   'exception-review': 'exception-review/1',
+  grammar: 'grammar/1',
+  translation: 'translation/1',
 } as const;
 
 export type PromptTaskName = keyof typeof PROMPT_VERSIONS;
@@ -23,6 +25,8 @@ export const ALL_PROMPT_TASK_NAMES: readonly PromptTaskName[] = [
   'story',
   'repair',
   'exception-review',
+  'grammar',
+  'translation',
 ];
 
 /** The map stored in provenance, as a plain record the row schema accepts. */

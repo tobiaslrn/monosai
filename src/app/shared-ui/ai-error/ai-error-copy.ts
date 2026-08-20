@@ -147,6 +147,8 @@ export const AI_TASK_COPY: Record<AiTask, string> = {
   'story-generation': 'writing your story',
   'story-repair': 'repairing your story',
   'exception-review': 'checking your exception policy',
+  'grammar-review': 'reviewing the grammar',
+  translation: 'translating this sentence',
 };
 
 export function aiErrorCopy(error: AiError): AiErrorCopy {
