@@ -43,6 +43,16 @@ Build Monosai according to the repository specifications. Read the relevant spec
 - Include failure paths, boundary cases, cancellation, and accessibility.
 - Run relevant tests, linting, type checks, and the production build before considering work complete.
 
+## Subagents
+
+- Always set `model` explicitly on every Agent call. Never rely on the default.
+- `haiku`: repository research, file and symbol search, reading docs, gathering context, mechanical edits.
+- `sonnet`: routine implementation, tests, refactors, and reviews with a clear specification.
+- `opus`: only for architecture, subtle debugging, or design decisions that genuinely need expert reasoning.
+- Default to the cheaper model when unsure. Escalate only after a cheaper model fails.
+- Match effort level to the task: low for lookups, medium for normal work, high only for genuinely hard problems.
+- Do not spawn a subagent for work that is faster done inline.
+
 ## Git
 
 - Work directly on the current branch. Never create, switch, or delete branches.
