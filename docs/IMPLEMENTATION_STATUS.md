@@ -1011,12 +1011,172 @@ vocabulary snapshot in IndexedDB.
 
 ### Remaining work in later milestones
 
-- Grammar review and translation, the `auxiliary-review` states, and the
-  partial-failure completion summaries are Milestone 8; the stepper shows both
-  stages as Skipped until then.
-- A save that fails after acceptance keeps the candidate only as long as the
-  screen lives. The specified "keep the final result in session long enough to
-  retry saving" holds, but a dedicated retry action arrives with finalization in
-  Milestone 8.
+- Grammar review and translation, the `auxiliary-review` states, the
+  partial-failure completion summaries, and the retry-save action all landed in
+  Milestone 8A; the notes above describe Milestone 7 as it shipped.
 - No real model has generated a story end to end; only the routed stub has. That
   belongs to the Milestone 10 compatibility matrix.
+
+## Milestone 8A — Grammar, translation, and finalization (core)
+
+Everything below the reader UI: domain contracts, provider adapters, repository
+corrections, the generated-story auxiliary stage, the whole-reading translation
+job, and the library card. The reader surfaces — sentence popovers, the sentence
+menu, aid rendering, the reading status panel — are Milestone 8B and are the
+reason a translation stored here is not yet visible while reading.
+
+### Delivered
+
+#### Contracts, cache keys, and the rules a review is held to
+
+`domain/ai/` gains `grammar-review-request.ts` and `translation-request.ts`, the
+wire contracts, kept distinct from the stored `GrammarAnalysisRecord` and
+`TranslationRecord` the way `StoryCandidate` is distinct from `Sentence`.
+`MAX_TRANSLATION_BATCH = 10`, `planBatches`, and `matchTranslations` live with
+them; `matchTranslations` rejects a batch with an extra, missing, duplicate, or
+blank entry rather than accepting the rest, because a response that got one
+wrong cannot be trusted to have got the others right.
+
+`domain/enrichment/cache-keys.ts` derives every key and fingerprint through
+`hashCanonical` with a domain prefix, from model id, prompt version, content
+hash, and — for grammar — profile hash. Never from an API key.
+`grammar-normalization.ts` owns every §8 rule in one place: unknown sentence ids
+are dropped; an out-of-range, reversed, non-integer, or surrogate-splitting span
+has its offsets stripped and the finding kept at sentence level; a blank label
+or explanation invalidates that finding; the text is never re-worded. Only
+`inProfile === false` findings count as concerns, and in-profile findings still
+display.
+
+#### The provider layer, with the structured-request policy in one place
+
+`structured-request.ts` extracts `StructuredTaskRunner` out of the story
+adapter, so ADR 0020's "at most one format recovery per malformed structured
+response" exists once rather than being copied per task.
+`enrichment.adapter.ts` implements `reviewGrammar` and `translate` over it; a
+`matchTranslations` mismatch is a `malformed-response` and buys that single
+recovery. `PROTOCOL_LAYER` gave up its Japanese-writing sentence to a
+`JAPANESE_OUTPUT_LAYER` used only by story and repair — as written it forbade
+emitting translations, so it could not be sent on a translation task. The
+vocabulary policy layer is sent to neither new task. `OpenRouterTextProvider`
+loads enrichment behind a second lazy loader, so opening the reader does not
+pull the story-generation prompt chunk and Generate does not pull the
+enrichment prompts until it needs them.
+
+#### Repository corrections
+
+Four defects in the Milestone 1 enrichment repository, which had no consumers
+until now: `summarize()` compared a config fingerprint against a model id;
+`refreshTranslationSummary` counted every row for the reading, so output from a
+model no longer configured inflated current completeness;
+`storeGrammarAnalysis` wrote outside a transaction and never refreshed
+`grammarSummary`, leaving the library card permanently stale; and both list
+methods were unbounded per reading. Completeness is now defined the way
+`listSentenceIdsMissingTranslation` already defined it — a row exists whose
+`cacheKey` is the current key for that sentence — and the summarize and store
+methods take the caller's `ReadonlyMap<SentenceId, string>` so the refresh
+happens inside the same `rw` transaction as the write. See
+[ADR 0021](decisions/0021-enrichment-provider-port.md).
+
+`listTranslationsForSentences` / `listGrammarAnalysesForSentences` read through
+the `sentenceId` indexes that already existed, so a windowed reader will not
+load 50,000 characters' worth of records to render three paragraphs.
+`ReadingRepository` gains `listSentenceRefs` (identity, content hash, position —
+enough to tell whether a cached row is current, without loading text) and
+`loadSentences`.
+
+#### The generated auxiliary stage, and cancellation that is structurally safe
+
+Cache keys need real sentence ids and content hashes, which only exist once
+`StoryAssemblyService.build()` has assigned them. The accepted path is therefore
+`build()` (pure, writes nothing) → both auxiliary branches → `withAuxiliary()` →
+`save()`. Building early costs no I/O and makes "cancelling before finalization
+saves nothing" structural: the draft is a value in memory until one transaction
+writes it, and the generated path never calls a `store` method at all.
+
+The two branches run concurrently under one `auxiliary-review` state, which is
+cancellable; neither branch aborts the other and neither throws. Grammar failing
+saves the story with `grammarSummary: unavailable` — §8's "an unavailable or
+malformed review produces `unreviewed`, not zero warnings". A failed translation
+batch saves the story with a precise completion count. Both stages report their
+real outcome in the stepper: an unavailable review reads as failed, not skipped,
+because the run did ask and did not get one, and a partial translation names how
+much of the story it covered. `retrySave()` re-runs the save on the draft held
+in memory with zero provider calls.
+
+#### The whole-reading translation job
+
+`translation-job.store.ts` is headless and fully unit-testable: sentence refs →
+current keys → the sentences missing a current row → a persisted `AssetJob`,
+then sequential bounded batches with each success stored and each completion
+committed transactionally, so a reload can never claim progress its rows do not
+support. A stored job whose `configFingerprint` differs from the current one is
+closed rather than resumed. The job performs **no retry of its own** — the
+client already spends up to two capped-backoff transport retries per request, so
+a job that retried on top of that would multiply §12's budget; it records the
+failure, stops scheduling, and exposes Retry.
+
+Cancellation stops scheduling but keeps what is already stored, including a
+batch that came back before the cancel landed. A translation is an aid whose
+value does not depend on the rest of the reading, and discarding results the
+learner already paid for would be a worse answer to "stop" than keeping them.
+
+#### The library card and the saved panel tell the truth
+
+`reading-summary-labels.ts` holds an exhaustive switch over all four
+`GrammarSummary` branches and the completion wording, so the card stays
+presentational and the generate screen's saved panel words the same numbers the
+same way. The wording never implies the Japanese is wrong: grammar review is
+advisory, `unavailable` says the review did not happen, and concerns are
+reported as notes.
+
+### Specification scenarios covered
+
+| Scenario                                               | Where                                                                                                                                                                                          |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cancellation before `finalizing` saves nothing          | `generation.store.spec.ts` cancels during `auxiliary-review` and asserts zero translation rows; `e2e/generation.spec.ts` counts every owned store after cancelling with both branches in flight |
+| Auxiliary failure is not story failure                  | Grammar unavailable saves with `grammarSummary.state === 'unavailable'`; a failed batch saves with an exact `completed`/`failed` count                                                          |
+| Precise completion counts                               | `e2e/generation.spec.ts` — a thirteen-sentence story with one failed batch saves and reports `Translations: 10 of 13`                                                                           |
+| One format recovery per malformed structured response   | `enrichment.adapter.spec.ts` — prose costs exactly two calls; a duplicate id is malformed and never returned; no repeated recovery                                                              |
+| Bounded sequential batches, no self-retry               | `translation-job.store.spec.ts` — batches of at most ten in order; a failed batch means exactly one request and no further scheduling                                                           |
+| Resume reconciles with the cache                        | `translation-job.store.spec.ts` — after an interrupted run, only the sentences still missing are requested                                                                                      |
+| A configuration change starts a new job                 | `translation-job.store.spec.ts` — a changed model closes the old job rather than continuing it under one progress number                                                                        |
+| Historic-model rows do not inflate current completeness | `dexie-enrichment.repository.spec.ts`                                                                                                                                                          |
+| An inconsistent draft writes zero rows                  | `integrity.ts` refuses a mismatched `sourceContentHash` or an inconsistent summary; the repository spec asserts zero rows                                                                       |
+| No request on reader open                               | The job's `resume` does nothing when a reading has no unfinished job                                                                                                                           |
+
+### Verification
+
+| Command                | Result                                                      |
+| ---------------------- | ----------------------------------------------------------- |
+| `npm run format:check` | Pass                                                        |
+| `npm run lint`         | Pass (0 problems)                                            |
+| `npm run typecheck`    | Pass                                                        |
+| `npm test`             | Pass — 112 files, 1,260 tests                                |
+| `npm run build`        | Pass — 854.66 kB initial, 4.66 kB over the 850 kB budget      |
+| `npm run e2e`          | Pass — 162 tests (desktop-chrome, android-chrome), 2 skipped |
+
+### Assumptions and decisions
+
+- **Only `inProfile === false` findings count as concerns.** In-profile findings
+  still display; counting them would make a well-formed story look alarming.
+- **No story-level grammar notes in v1** — no field and no unused surface.
+- **Whole-reading grammar analysis does not exist.** `AssetJobKind` has no such
+  kind, and §8 makes imported analysis per-sentence and explicit.
+- **Whole-reading translation is offered for generated stories too.** That is how
+  a partial generated translation gets completed.
+- **Re-analysing a stale sentence writes a new row** under the new profile hash;
+  the stale row is kept and stays readable.
+- **A nonzero `CompletionSummary.failed` is written only by generated
+  finalization.** Any later successful store recomputes it to zero.
+
+### Remaining work in later milestones
+
+- The reader surfaces — sentence popovers, the sentence menu, aid rendering, and
+  the reading status panel that drives and displays the translation job — are
+  Milestone 8B. Until then a stored translation is real but not visible while
+  reading, and the job is reachable only from code.
+- E2E scenarios for imported sentence aids and for cancelling and resuming a
+  whole-reading job through the UI need 8B's surfaces and land there.
+- The initial bundle is 4.66 kB over its 850 kB budget. It was already 4.39 kB
+  over before this milestone, so 8A is not the cause, but the budget is now
+  worth either raising deliberately or paying down.

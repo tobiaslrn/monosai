@@ -3,7 +3,8 @@ import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GenerationStore } from '../../application/generation/generation.store';
-import { ok } from '../../domain/shared/result';
+import { aiError } from '../../domain/ai/ai-error';
+import { err, ok } from '../../domain/shared/result';
 import {
   configureGenerationTestBed,
   storyWithUnknown,
@@ -134,6 +135,40 @@ describe('GenerationStepperComponent', () => {
     const stages = stagesOf(element);
     expect(stages['Reviewing grammar']).toBe('pending');
     expect(stages['Translating']).toBe('pending');
+  });
+
+  it('reports a grammar review that never arrived as failed, not skipped', async () => {
+    const { element, store, fixture } = render();
+    bed.provider.storyQueue.push(ok(strictStory()));
+    bed.provider.grammarQueue.push(
+      err(aiError('provider-unavailable', 'grammar-review', 'The provider was unavailable.')),
+    );
+
+    await store.generate('micro', { premise: 'ねこの話。' });
+    fixture.detectChanges();
+
+    const stages = stagesOf(element);
+    // Skipped would claim the run did not need a review; it asked and got none.
+    expect(stages['Reviewing grammar']).toBe('failed');
+    // The story still saved, which is the whole point of an advisory branch.
+    expect(stages['Saving']).toBe('complete');
+    expect(element.textContent).toContain('unavailable');
+  });
+
+  it('names how much of the story a partial translation covered', async () => {
+    const { element, store, fixture } = render();
+    bed.provider.storyQueue.push(ok(strictStory()));
+    bed.provider.translationQueue.push(
+      err(aiError('provider-unavailable', 'translation', 'The provider was unavailable.')),
+    );
+
+    await store.generate('micro', { premise: 'ねこの話。' });
+    fixture.detectChanges();
+
+    const stages = stagesOf(element);
+    expect(stages['Translating']).toBe('failed');
+    expect(stages['Saving']).toBe('complete');
+    expect(element.textContent).toContain('0 of 4 translated');
   });
 
   it('reports an unsaved draft as everything but the save', async () => {

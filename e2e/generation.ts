@@ -108,6 +108,32 @@ export const STRICT_STORY = {
   ],
 } as const;
 
+/**
+ * A thirteen-sentence story, still built only from reviewed words.
+ *
+ * A `short` story is the only form long enough to need more than one
+ * translation batch, which is what makes a genuinely partial translation —
+ * some sentences translated, some not — reachable at all.
+ */
+export const LONG_STRICT_STORY = {
+  titleJa: '猫の一日',
+  sentences: [
+    '猫は庭で遊びます。',
+    '先生は公園を歩きます。',
+    '猫は魚を食べます。',
+    '夜に猫は寝ます。',
+    '犬は町を走ります。',
+    '学生は本を読みます。',
+    '友は手紙を書きます。',
+    '家族は電車で駅へ行きます。',
+    '鳥は空を見ます。',
+    '猫は水を飲みます。',
+    '学生は店で花を買います。',
+    '朝に犬は起きます。',
+    '家族は家へ帰ります。',
+  ],
+} as const;
+
 /** The same story with one word that is not in the snapshot. */
 export const STORY_WITH_UNKNOWN = {
   titleJa: '猫の朝',
