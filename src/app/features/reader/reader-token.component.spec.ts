@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
-import { ReaderTokenComponent } from './reader-token.component';
+import { ReaderTokenComponent, type TokenActivationSource } from './reader-token.component';
 
 function token(overrides: Partial<Token> = {}): Token {
   return {
@@ -37,7 +37,7 @@ class HostComponent {
   readonly status = signal<TokenStatusAssignment | null>(null);
   readonly furigana = signal(true);
   readonly markers = signal(true);
-  readonly activations: Token[] = [];
+  readonly activations: TokenActivationSource[] = [];
 }
 
 describe('ReaderTokenComponent', () => {
@@ -56,12 +56,15 @@ describe('ReaderTokenComponent', () => {
     expect(button?.textContent).toContain('猫');
   });
 
-  it('activates on click', () => {
+  it('activates on click, carrying the button the popover anchors to', () => {
     const fixture = render();
     const element = fixture.nativeElement as HTMLElement;
 
     element.querySelector('button')?.click();
+    const [activation] = fixture.componentInstance.activations;
     expect(fixture.componentInstance.activations).toHaveLength(1);
+    expect(activation.token.surface).toBe('猫');
+    expect(activation.origin).toBe(element.querySelector('button'));
   });
 
   it('activates on Enter and Space, because it is a native button', () => {

@@ -133,15 +133,15 @@ If input or reviewed boundaries changed, navigation/back/reload produces an acce
 
 - Compact sticky header: Back, title, reading progress, Aids, overflow metadata/delete.
 - Center reading column: 680–760px maximum text width.
-- Optional right inspector panel: 320–380px, opened by click/keyboard activation. A lightweight preview may appear on pointer hover, but never replaces the inspector.
+- Word details open as a floating popover anchored to the word, not as a right inspector panel (see ADR 0022). A lightweight preview appears on pointer hover, but never replaces the pinned popover.
 - Whole-reading player appears as a sticky footer only while preparing/playing or when explicitly opened.
 
 ### Mobile structure
 
 - Sticky header with Back, truncated title, Aids, and player status.
 - Full-width reading with 16px gutters.
-- Word details use an accessible bottom sheet. Focus returns to the word when dismissed.
-- Each sentence has a visible trailing action button. Long-press may open the same actions but is never the only route.
+- Word details use the same popover, docked to the bottom edge as a sheet below the desktop breakpoint (ADR 0022). Focus returns to the word when dismissed.
+- Sentence actions have no visible control at rest. Hovering a sentence tints it, clicking its whitespace (desktop) or long-pressing it (Android) opens the sentence menu, and a focus-revealed button at the end of each sentence opens the same menu from the keyboard, so long-press is never the only route.
 
 ### Text and token interaction
 

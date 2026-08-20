@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
+import type { GrammarFinding } from '../../domain/enrichment/records';
 import { PART_OF_SPEECH_LABELS } from '../../domain/reading/token';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
@@ -105,6 +106,16 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
           <h3 id="mn-inspector-context">In this sentence</h3>
           <p class="context" lang="ja">{{ word.sentence.japaneseText }}</p>
         </section>
+
+        @if (grammarFindings().length > 0) {
+          <section aria-labelledby="mn-inspector-grammar">
+            <h3 id="mn-inspector-grammar">Grammar here</h3>
+            @for (finding of grammarFindings(); track $index) {
+              <p class="finding-label">{{ finding.label }}</p>
+              <p lang="en">{{ finding.explanationEn }}</p>
+            }
+          </section>
+        }
 
         @if (nextAction(); as action) {
           <p class="next-action">{{ action }}</p>
@@ -217,6 +228,11 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       line-height: 1.8;
     }
 
+    .finding-label {
+      margin: 0;
+      font-weight: 600;
+    }
+
     .next-action {
       margin: 0;
       padding: var(--space-3);
@@ -233,6 +249,11 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 })
 export class WordInspectorComponent {
   protected readonly store = inject(WordInspectorStore);
+  /**
+   * Stored findings whose span covers this word. Never fetched here: word
+   * details show the grammar that already exists and nothing more.
+   */
+  readonly grammarFindings = input<readonly GrammarFinding[]>([]);
   readonly closed = output<void>();
 
   protected readonly partOfSpeech = computed(() => {
