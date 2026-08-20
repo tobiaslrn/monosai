@@ -5,6 +5,7 @@ import { storageError } from '../../domain/storage/storage-error';
 import {
   configureGenerationTestBed,
   shortStory,
+  story,
   storyWithUnknown,
   strictStory,
   type GenerationTestBed,
@@ -42,8 +43,8 @@ describe('GenerationStore strict pass', () => {
       story: 1,
       repair: 0,
       review: 0,
-      grammar: 0,
-      translate: 0,
+      grammar: 1,
+      translate: 1,
     });
     const state = bed.store.state();
     expect(state.kind).toBe('saved');
@@ -88,7 +89,7 @@ describe('GenerationStore strict pass', () => {
     expect(categories).not.toContain('not-in-snapshot');
   });
 
-  it('leaves the auxiliary summaries empty, which Milestone 8 fills in', async () => {
+  it('runs grammar review and translation before saving, and records the result', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
     await bed.store.generate('micro', PREMISE);
@@ -98,9 +99,13 @@ describe('GenerationStore strict pass', () => {
       expect.unreachable('expected a saved story');
       return;
     }
-    expect(state.reading.translationSummary).toEqual({ total: 4, completed: 0, failed: 0 });
-    expect(state.reading.grammarSummary).toEqual({ state: 'not-requested' });
+    expect(state.reading.translationSummary).toEqual({ total: 4, completed: 4, failed: 0 });
+    expect(state.reading.grammarSummary).toEqual({ state: 'complete', concernCount: 0 });
     expect(state.reading.audioSummary).toEqual({ total: 4, completed: 0, failed: 0 });
+    expect(bed.readings.readings[0]).toMatchObject({
+      translationSummary: { total: 4, completed: 4, failed: 0 },
+      grammarSummary: { state: 'complete', concernCount: 0 },
+    });
   });
 
   it('sends the whole reviewed allowlist and a hidden suggestion palette', async () => {
@@ -146,8 +151,8 @@ describe('GenerationStore exception review', () => {
       story: 1,
       repair: 0,
       review: 1,
-      grammar: 0,
-      translate: 0,
+      grammar: 1,
+      translate: 1,
     });
     const state = bed.store.state();
     expect(state.kind).toBe('saved');
@@ -173,8 +178,8 @@ describe('GenerationStore exception review', () => {
       story: 1,
       repair: 1,
       review: 0,
-      grammar: 0,
-      translate: 0,
+      grammar: 1,
+      translate: 1,
     });
   });
 
@@ -192,8 +197,8 @@ describe('GenerationStore exception review', () => {
       story: 1,
       repair: 1,
       review: 1,
-      grammar: 0,
-      translate: 0,
+      grammar: 1,
+      translate: 1,
     });
     expect(bed.store.state().kind).toBe('saved');
     const categories = bed.readings.frozenValidations
@@ -234,8 +239,8 @@ describe('GenerationStore repair', () => {
       story: 1,
       repair: 1,
       review: 1,
-      grammar: 0,
-      translate: 0,
+      grammar: 1,
+      translate: 1,
     });
     expect(bed.store.state().kind).toBe('saved');
     expect(bed.readings.provenance[0].repairAttempts).toBe(1);
@@ -251,8 +256,8 @@ describe('GenerationStore repair', () => {
       story: 1,
       repair: 1,
       review: 0,
-      grammar: 0,
-      translate: 0,
+      grammar: 1,
+      translate: 1,
     });
     expect(bed.provider.repairRequests[0].structureIssues[0].code).toBe(
       'sentence-count-out-of-range',
@@ -398,7 +403,127 @@ describe('GenerationStore failures', () => {
       return;
     }
     expect(state.error.code).toBe('quota');
+    expect(state.during).toBe('finalizing');
     expect(bed.readings.readings).toHaveLength(0);
+    expect(bed.readings.translations).toHaveLength(0);
+    expect(bed.readings.grammarAnalyses).toHaveLength(0);
+  });
+});
+
+describe('GenerationStore auxiliary review', () => {
+  let bed: GenerationTestBed;
+
+  beforeEach(() => {
+    bed = configureGenerationTestBed();
+  });
+
+  it('saves the story with an unavailable grammar summary when grammar review fails', async () => {
+    bed.provider.storyQueue.push(ok(strictStory()));
+    bed.provider.grammarQueue.push(
+      err(aiError('provider-unavailable', 'grammar-review', 'The provider is down.')),
+    );
+
+    await bed.store.generate('micro', PREMISE);
+
+    const state = bed.store.state();
+    expect(state.kind).toBe('saved');
+    if (state.kind !== 'saved') {
+      return;
+    }
+    expect(state.reading.grammarSummary).toEqual({
+      state: 'unavailable',
+      reasonCode: 'provider-unavailable',
+    });
+    expect(state.reading.translationSummary).toEqual({ total: 4, completed: 4, failed: 0 });
+    expect(bed.readings.grammarAnalyses).toHaveLength(0);
+  });
+
+  it('saves the story with an honest count when one translation batch fails', async () => {
+    const sentences = Array.from({ length: 13 }, () => 'ねこがいます。');
+    bed.provider.storyQueue.push(ok(story(sentences)));
+    bed.provider.beforeAnswer = () => {
+      if (bed.provider.grammarRequests.length > 0 && bed.provider.grammarQueue.length === 0) {
+        bed.provider.grammarQueue.push(ok({ findings: [] }));
+      }
+      const translateCallIndex = bed.provider.translationRequests.length;
+      if (translateCallIndex > 0 && bed.provider.translationQueue.length === 0) {
+        if (translateCallIndex === 2) {
+          bed.provider.translationQueue.push(
+            err(aiError('provider-unavailable', 'translation', 'The provider is down.')),
+          );
+        } else {
+          const request = bed.provider.translationRequests[translateCallIndex - 1];
+          bed.provider.translationQueue.push(
+            ok(request.sentences.map((sentence) => ({ id: sentence.id, textEn: `EN: ${sentence.textJa}` }))),
+          );
+        }
+      }
+    };
+
+    await bed.store.generate('short', PREMISE);
+
+    expect(bed.provider.generationCalls.translate).toBe(2);
+    const state = bed.store.state();
+    expect(state.kind).toBe('saved');
+    if (state.kind !== 'saved') {
+      return;
+    }
+    expect(state.reading.translationSummary).toEqual({ total: 13, completed: 10, failed: 3 });
+  });
+
+  it('cancels during auxiliary review and saves nothing, not even a translation that already arrived', async () => {
+    bed.provider.storyQueue.push(ok(strictStory()));
+    bed.provider.beforeAnswer = () => {
+      if (bed.store.state().kind === 'auxiliary-review') {
+        bed.store.cancel();
+      }
+    };
+
+    await bed.store.generate('micro', PREMISE);
+
+    const state = bed.store.state();
+    expect(state.kind).toBe('cancelled');
+    if (state.kind !== 'cancelled') {
+      return;
+    }
+    expect(state.during).toBe('auxiliary-review');
+    expect(bed.readings.readings).toHaveLength(0);
+    expect(bed.readings.translations).toHaveLength(0);
+    expect(bed.readings.grammarAnalyses).toHaveLength(0);
+  });
+
+  it('retries a finalizing failure without spending another provider call', async () => {
+    bed.readings.failSaveGeneratedWith = storageError('quota', 'The device is out of space.');
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    await bed.store.generate('micro', PREMISE);
+
+    expect(bed.store.state().kind).toBe('failed');
+    expect(bed.store.canRetrySave()).toBe(true);
+    const callsBeforeRetry = { ...bed.provider.generationCalls };
+
+    bed.readings.failSaveGeneratedWith = null;
+    await bed.store.retrySave();
+
+    expect(bed.provider.generationCalls).toEqual(callsBeforeRetry);
+    const state = bed.store.state();
+    expect(state.kind).toBe('saved');
+    if (state.kind !== 'saved') {
+      return;
+    }
+    expect(state.reading.translationSummary).toEqual({ total: 4, completed: 4, failed: 0 });
+    expect(bed.store.canRetrySave()).toBe(false);
+  });
+
+  it('makes exactly one grammar call and one translation batch call per bounded group', async () => {
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    await bed.store.generate('micro', PREMISE);
+
+    expect(bed.provider.generationCalls.grammar).toBe(1);
+    expect(bed.provider.generationCalls.translate).toBe(1);
+    expect(bed.provider.grammarRequests[0].sentences).toHaveLength(4);
+    expect(bed.provider.translationRequests[0].sentences).toHaveLength(4);
   });
 });
 

@@ -142,6 +142,16 @@ import { StoryFormComponent } from './story-form.component';
             <p data-testid="failure-context">{{ failureContext() }}</p>
             <p>{{ copy.primaryAction }}</p>
             <p class="mn-hint">{{ copy.escape }}</p>
+            @if (canRetrySave()) {
+              <button
+                type="button"
+                class="mn-button mn-button--primary"
+                data-testid="retry-save"
+                (click)="retrySave()"
+              >
+                Try saving again
+              </button>
+            }
             <button type="button" class="mn-button" data-testid="dismiss-failure" (click)="retry()">
               Back to the form
             </button>
@@ -245,6 +255,13 @@ export class GeneratePageComponent implements OnDestroy {
     return state.kind === 'failed' ? technicalCode(state.error) : null;
   });
 
+  protected readonly canRetrySave = computed(() => {
+    const state = this.state();
+    return (
+      state.kind === 'failed' && state.during === 'finalizing' && this.generation.canRetrySave()
+    );
+  });
+
   constructor() {
     void this.credential.load();
     void this.textModel.load();
@@ -264,6 +281,10 @@ export class GeneratePageComponent implements OnDestroy {
 
   protected cancel(): void {
     this.generation.cancel();
+  }
+
+  protected async retrySave(): Promise<void> {
+    await this.generation.retrySave();
   }
 
   /** Returns to the form with the draft intact, ready for another attempt. */

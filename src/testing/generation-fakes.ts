@@ -13,6 +13,7 @@ import { TEXT_GENERATION_PROVIDER } from '../app/application/shared/ai-tokens';
 import { LANGUAGE_RUNTIME } from '../app/application/shared/language-tokens';
 import {
   CLOCK,
+  ENRICHMENT_REPOSITORY,
   GRAMMAR_REPOSITORY,
   HASHER,
   ID_GENERATOR,
@@ -47,6 +48,7 @@ import { DEFAULT_EXCEPTION_POLICY } from '../app/domain/settings/settings';
 import type { SettingsRepository } from '../app/domain/settings/settings-repository';
 import type { VocabularyItem, VocabularySnapshot } from '../app/domain/vocabulary/snapshot';
 import { StubTextProvider, modelTest } from './ai-fakes';
+import { FakeEnrichmentRepository } from './enrichment-fakes';
 import { FakeLanguageRuntime } from './reading-fakes';
 import { FakeReadingRepository } from './reading-repository-fake';
 import { StubVocabularyRepository } from './vocabulary-fakes';
@@ -305,11 +307,47 @@ function snapshotFixture(uniqueEntryCount: number): VocabularySnapshot {
   };
 }
 
+/**
+ * Wires a stub provider to answer grammar review and translation successfully
+ * by default, so specs about the story/exception-review/repair states do not
+ * each have to queue an auxiliary answer they are not testing.
+ *
+ * It only fills in a request that has not already been answered: a spec that
+ * pushes its own `grammarQueue`/`translationQueue` entry to test a failure
+ * still gets that entry consumed first, because `answer()` shifts in FIFO
+ * order and this pushes after whatever the spec already queued.
+ */
+export function autoAnswerAuxiliary(provider: StubTextProvider): void {
+  let answeredGrammar = 0;
+  let answeredTranslation = 0;
+  const previous = provider.beforeAnswer;
+  provider.beforeAnswer = () => {
+    previous?.();
+    if (provider.grammarRequests.length > answeredGrammar) {
+      provider.grammarQueue.push(ok({ findings: [] }));
+      answeredGrammar = provider.grammarRequests.length;
+    }
+    if (provider.translationRequests.length > answeredTranslation) {
+      const request = provider.translationRequests[provider.translationRequests.length - 1];
+      provider.translationQueue.push(
+        ok(
+          request.sentences.map((sentence) => ({
+            id: sentence.id,
+            textEn: `EN: ${sentence.textJa}`,
+          })),
+        ),
+      );
+      answeredTranslation = provider.translationRequests.length;
+    }
+  };
+}
+
 export interface GenerationTestBed {
   readonly store: GenerationStore;
   readonly provider: StubTextProvider;
   readonly runtime: GenerationLanguageRuntime;
   readonly readings: FakeReadingRepository;
+  readonly enrichment: FakeEnrichmentRepository;
   readonly vocabulary: StubVocabularyRepository;
   readonly policy: StubPolicyRepository;
   /** Sets the captured exception policy for the next run. */
@@ -338,6 +376,7 @@ export function configureGenerationTestBed(
   const provider = new StubTextProvider(ok(modelTest()));
   const runtime = new GenerationLanguageRuntime();
   const readings = new FakeReadingRepository();
+  const enrichment = new FakeEnrichmentRepository();
   const vocabulary = new StubVocabularyRepository();
   const policyRepository = new StubPolicyRepository();
 
@@ -368,6 +407,7 @@ export function configureGenerationTestBed(
       { provide: TEXT_GENERATION_PROVIDER, useValue: provider },
       { provide: LANGUAGE_RUNTIME, useValue: runtime },
       { provide: READING_REPOSITORY, useValue: readings },
+      { provide: ENRICHMENT_REPOSITORY, useValue: enrichment },
       { provide: VOCABULARY_REPOSITORY, useValue: vocabulary },
       { provide: GRAMMAR_REPOSITORY, useValue: new StubGrammarRepository() },
       { provide: SETTINGS_REPOSITORY, useValue: policyRepository },
@@ -409,11 +449,14 @@ export function configureGenerationTestBed(
   const store = TestBed.inject(GenerationStore);
   const policy = TestBed.inject(ExceptionPolicyStore);
 
+  autoAnswerAuxiliary(provider);
+
   return {
     store,
     provider,
     runtime,
     readings,
+    enrichment,
     vocabulary,
     policy: policyRepository,
     setPolicy: async (text: string) => {
