@@ -26,11 +26,15 @@ import { VALIDATOR_VERSION } from '../../domain/language/analyzer-version';
 import type { LanguageError } from '../../domain/language/language-error';
 import type { SentenceTokens } from '../../domain/language/language-runtime';
 import type { GeneratedStory, StoryForm } from '../../domain/reading/reading';
+import type { GeneratedStoryDraft } from '../../domain/reading/reading-repository';
 import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import type { VocabularyItemId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
+import { EnrichmentKeysService } from '../enrichment/enrichment-keys.service';
+import { GrammarAnalysisService } from '../enrichment/grammar-analysis.service';
+import { TranslationService } from '../enrichment/translation.service';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { LanguageStore } from '../language/language.store';
 import { VocabularyClassificationService } from '../reading/vocabulary-classification.service';
@@ -78,6 +82,7 @@ export type GenerationState =
   | { readonly kind: 'validating' }
   | { readonly kind: 'exception-review'; readonly candidateCount: number }
   | { readonly kind: 'repairing'; readonly attempt: number }
+  | { readonly kind: 'auxiliary-review'; readonly grammar: BranchState; readonly translation: BranchState }
   | { readonly kind: 'finalizing' }
   | { readonly kind: 'saved'; readonly reading: GeneratedStory }
   | { readonly kind: 'invalid-draft'; readonly draft: InvalidDraft }
@@ -99,6 +104,9 @@ export type GenerationState =
       readonly during: RunningStateKind;
     };
 
+/** One auxiliary branch's progress, independent of the other's. */
+export type BranchState = { readonly status: 'running' } | { readonly status: 'done' };
+
 /** The states a run passes through, as opposed to the ones it ends in. */
 export type RunningStateKind =
   | 'checking-prerequisites'
@@ -108,6 +116,7 @@ export type RunningStateKind =
   | 'validating'
   | 'exception-review'
   | 'repairing'
+  | 'auxiliary-review'
   | 'finalizing';
 
 const IDLE: GenerationState = { kind: 'idle' };
@@ -121,6 +130,7 @@ const CANCELLABLE = new Set<GenerationState['kind']>([
   'validating',
   'exception-review',
   'repairing',
+  'auxiliary-review',
 ]);
 
 /**
@@ -184,6 +194,9 @@ export class GenerationStore {
   private readonly policy = inject(ExceptionPolicyStore);
   private readonly textModel = inject(TextModelStore);
   private readonly language = inject(LanguageStore);
+  private readonly enrichmentKeys = inject(EnrichmentKeysService);
+  private readonly translationService = inject(TranslationService);
+  private readonly grammarAnalysisService = inject(GrammarAnalysisService);
 
   private readonly stateSignal = signal<GenerationState>(IDLE);
   private readonly announcementSignal = signal('');
@@ -191,6 +204,12 @@ export class GenerationStore {
   private readonly reviewSignal = signal(0);
 
   private controller: AbortController | null = null;
+  /**
+   * The draft as it stood after the last auxiliary merge, kept in memory so a
+   * `finalizing` failure can be retried without calling the provider again.
+   * Cleared once it is safely saved.
+   */
+  private builtDraft: GeneratedStoryDraft | null = null;
 
   readonly state = this.stateSignal.asReadonly();
   readonly announcement = this.announcementSignal.asReadonly();
@@ -210,6 +229,11 @@ export class GenerationStore {
     );
   });
   readonly canCancel = computed(() => CANCELLABLE.has(this.stateSignal().kind));
+  /** Whether `retrySave` can currently do anything. */
+  readonly canRetrySave = computed(() => {
+    const state = this.stateSignal();
+    return state.kind === 'failed' && state.during === 'finalizing' && this.builtDraft !== null;
+  });
 
   /**
    * Runs one generation.
@@ -309,10 +333,26 @@ export class GenerationStore {
     this.controller?.abort();
   }
 
+  /**
+   * Resubmits the already-merged draft after a `finalizing` failure.
+   *
+   * Spends zero additional provider calls: grammar and translation already
+   * ran, and their results are kept in `builtDraft` exactly as they were
+   * merged. A no-op outside a retryable `finalizing` failure.
+   */
+  async retrySave(): Promise<void> {
+    if (!this.canRetrySave() || this.builtDraft === null) {
+      return;
+    }
+    const draft = this.builtDraft;
+    await this.persist(draft);
+  }
+
   /** Returns to the empty form, discarding an invalid draft or a finished run. */
   reset(): void {
     this.controller?.abort();
     this.controller = null;
+    this.builtDraft = null;
     this.repairSignal.set(0);
     this.reviewSignal.set(0);
     this.stateSignal.set(IDLE);
@@ -394,7 +434,14 @@ export class GenerationStore {
       const accepted = remaining.size === 0 && structureIssues.length === 0;
 
       if (accepted) {
-        await this.finalize(units, request, context, suggestedItemIds, review.approvals.size);
+        await this.finalize(
+          units,
+          request,
+          context,
+          suggestedItemIds,
+          review.approvals.size,
+          signal,
+        );
         return;
       }
 
@@ -630,17 +677,19 @@ export class GenerationStore {
     return spans;
   }
 
-  /** Writes the accepted story and its evidence in one transaction. */
+  /**
+   * Builds the accepted story, runs grammar review and translation
+   * concurrently against it, and writes the result and its evidence in one
+   * transaction.
+   */
   private async finalize(
     units: readonly AnalyzedUnit[],
     request: StoryGenerationRequest,
     context: CapturedContext,
     suggestedItemIds: readonly VocabularyItemId[],
     exceptionCount: number,
+    signal: AbortSignal,
   ): Promise<void> {
-    this.stateSignal.set({ kind: 'finalizing' });
-    this.announce('Saving the story. This cannot be cancelled.');
-
     const sentences: readonly AcceptedSentence[] = units
       .filter((unit) => unit.sentenceIndex !== null)
       .map((unit) => ({ textJa: unit.textJa, tokens: unit.tokens, statuses: unit.statuses }));
@@ -663,14 +712,74 @@ export class GenerationStore {
         : { specialInstructions: request.specialInstructions }),
     });
 
+    this.stateSignal.set({
+      kind: 'auxiliary-review',
+      grammar: { status: 'running' },
+      translation: { status: 'running' },
+    });
+    this.announce('Reviewing grammar and translating…');
+
+    const modelId = context.taskConfig.modelId;
+    const translationKeys = this.enrichmentKeys.translationKeys(
+      draft.sentences,
+      modelId,
+      PROMPT_VERSIONS.translation,
+    );
+    const grammarKeys = this.enrichmentKeys.grammarKeys(
+      draft.sentences,
+      modelId,
+      PROMPT_VERSIONS.grammar,
+      context.profile.profileHash,
+    );
+
+    const [grammarOutcome, translationOutcome] = await Promise.all([
+      this.grammarAnalysisService.run(
+        draft.sentences,
+        draft.reading.id,
+        grammarKeys,
+        context.profile.profileHash,
+        context.profile.resolvedGuidance,
+        context.profile.registerPreference,
+        modelId,
+        PROMPT_VERSIONS.grammar,
+        context.taskConfig,
+        signal,
+      ),
+      this.translationService.run(
+        draft.sentences,
+        draft.reading.id,
+        translationKeys,
+        modelId,
+        PROMPT_VERSIONS.translation,
+        context.taskConfig,
+        signal,
+      ),
+    ]);
+
+    if (isAborted(signal)) {
+      this.cancelled();
+      return;
+    }
+
+    const merged = this.assembly.withAuxiliary(draft, grammarOutcome, translationOutcome);
+    await this.persist(merged);
+  }
+
+  /** Saves a fully merged draft, the shared tail of `finalize` and `retrySave`. */
+  private async persist(draft: GeneratedStoryDraft): Promise<void> {
+    this.stateSignal.set({ kind: 'finalizing' });
+    this.announce('Saving the story. This cannot be cancelled.');
+
     const saved = await this.assembly.save(draft);
     this.controller = null;
     if (!saved.ok) {
+      this.builtDraft = draft;
       this.stateSignal.set({ kind: 'failed', error: saved.error, during: 'finalizing' });
       this.announce('The story could not be saved. Nothing was added to your library.');
       return;
     }
 
+    this.builtDraft = null;
     this.stateSignal.set({ kind: 'saved', reading: saved.value });
     this.announce(`Saved “${saved.value.title}” to your library.`);
   }
@@ -761,6 +870,7 @@ export class GenerationStore {
       case 'validating':
       case 'exception-review':
       case 'repairing':
+      case 'auxiliary-review':
       case 'finalizing':
         return kind;
       default:

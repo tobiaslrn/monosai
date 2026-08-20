@@ -45,6 +45,13 @@ function stageOf(state: GenerationState): StageKey | null {
       return 'exception-review';
     case 'repairing':
       return 'repairing';
+    case 'auxiliary-review':
+      // Grammar and translation run concurrently under one state; the earlier
+      // stage row stands in for "current" so the other stages' complete/pending
+      // logic still has a single index to compare against. The grammar and
+      // translating rows compute their own status from `state.grammar` /
+      // `state.translation` directly, not from this index.
+      return 'grammar';
     case 'finalizing':
     case 'saved':
       return 'saving';
@@ -57,11 +64,12 @@ function stageOf(state: GenerationState): StageKey | null {
 /**
  * Progress through one generation.
  *
- * Grammar review and translation are shown as Skipped rather than hidden:
- * Milestone 8 fills those stages in, and a stepper that silently omits them
- * would misrepresent what a saved story currently has. Optional stages that a
- * run genuinely did not need — the exception review with no policy, a repair
- * that never happened — are Skipped for the same reason.
+ * Grammar review and translation run concurrently once the Japanese is
+ * accepted, and their rows reflect real progress: each becomes Active while
+ * its branch is running and Complete once the run reaches `finalizing` or
+ * `saved`, whatever the other branch's outcome was. Optional stages that a run
+ * genuinely did not need — the exception review with no policy, a repair that
+ * never happened — are Skipped for the same reason as before.
  */
 @Component({
   selector: 'mn-generation-stepper',
@@ -118,6 +126,8 @@ export class GenerationStepperComponent {
         }…`;
       case 'repairing':
         return `Repairing the story (attempt ${String(state.attempt)} of 2)…`;
+      case 'auxiliary-review':
+        return 'Reviewing grammar and translating…';
       case 'finalizing':
         return 'Saving the story. This cannot be cancelled.';
       case 'saved':
@@ -147,9 +157,20 @@ export class GenerationStepperComponent {
     repairs: number,
     reviews: number,
   ): StepStatus {
-    // Milestone 7 saves with empty auxiliary summaries; Milestone 8 runs these.
     if (key === 'grammar' || key === 'translating') {
-      return 'skipped';
+      if (state.kind === 'auxiliary-review') {
+        const branch = key === 'grammar' ? state.grammar : state.translation;
+        return branch.status === 'running' ? 'active' : 'complete';
+      }
+      if (state.kind === 'finalizing' || state.kind === 'saved') {
+        return 'complete';
+      }
+      // An invalid draft never reached acceptance, so grammar and translation
+      // never ran — reporting them Complete here would claim work that never
+      // happened, unlike the stages the draft actually passed through.
+      if (state.kind === 'invalid-draft') {
+        return 'skipped';
+      }
     }
     // An unsaved draft ran everything except the save, so the stages it passed
     // report done rather than never started.

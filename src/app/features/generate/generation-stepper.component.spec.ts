@@ -99,6 +99,8 @@ describe('GenerationStepperComponent', () => {
     expect(stages['Validating vocabulary']).toBe('complete');
     expect(stages['Reviewing exceptions']).toBe('skipped');
     expect(stages['Repairing']).toBe('skipped');
+    expect(stages['Reviewing grammar']).toBe('complete');
+    expect(stages['Translating']).toBe('complete');
     expect(stages['Saving']).toBe('complete');
   });
 
@@ -126,12 +128,12 @@ describe('GenerationStepperComponent', () => {
     expect(element.querySelector('.detail')?.textContent).toContain('attempt 1 of 2');
   });
 
-  it('shows grammar review and translation as skipped, because Milestone 7 does not run them', () => {
+  it('starts grammar review and translation as pending, like every other stage', () => {
     const { element } = render();
 
     const stages = stagesOf(element);
-    expect(stages['Reviewing grammar']).toBe('skipped');
-    expect(stages['Translating']).toBe('skipped');
+    expect(stages['Reviewing grammar']).toBe('pending');
+    expect(stages['Translating']).toBe('pending');
   });
 
   it('reports an unsaved draft as everything but the save', async () => {
@@ -145,6 +147,8 @@ describe('GenerationStepperComponent', () => {
     const stages = stagesOf(element);
     expect(stages['Validating vocabulary']).toBe('complete');
     expect(stages['Repairing']).toBe('complete');
+    expect(stages['Reviewing grammar']).toBe('skipped');
+    expect(stages['Translating']).toBe('skipped');
     expect(stages['Saving']).toBe('skipped');
   });
 

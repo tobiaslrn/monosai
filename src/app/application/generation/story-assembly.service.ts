@@ -5,7 +5,13 @@ import { ANALYZER_VERSION } from '../../domain/language/analyzer-version';
 import { countCharacters } from '../../domain/reading/import-text';
 import type { GeneratedStory, StoryForm } from '../../domain/reading/reading';
 import type { GeneratedStoryDraft } from '../../domain/reading/reading-repository';
-import { emptyCompletion, NO_GRAMMAR_REVIEW } from '../../domain/reading/summaries';
+import { concernCount } from '../../domain/enrichment/grammar-normalization';
+import {
+  emptyCompletion,
+  grammarComplete,
+  grammarUnavailable,
+  NO_GRAMMAR_REVIEW,
+} from '../../domain/reading/summaries';
 import type { Paragraph, Sentence } from '../../domain/reading/text-hierarchy';
 import type { Token, TokenAnalysis } from '../../domain/reading/token';
 import type {
@@ -17,6 +23,8 @@ import { paragraphId, readingId, sentenceId } from '../../domain/shared/ids';
 import type { SnapshotId, VocabularyItemId } from '../../domain/shared/ids';
 import type { Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
+import type { GrammarRunOutcome } from '../enrichment/grammar-analysis.service';
+import type { TranslationRunOutcome } from '../enrichment/translation.service';
 import { CLOCK, HASHER, ID_GENERATOR, READING_REPOSITORY } from '../shared/repository-tokens';
 
 /** One accepted sentence with the analysis and statuses it was accepted on. */
@@ -159,6 +167,40 @@ export class StoryAssemblyService {
       provenance,
       translations: [],
       grammarAnalyses: [],
+    };
+  }
+
+  /**
+   * Merges the concurrent grammar/translation results into the built draft.
+   *
+   * The result must satisfy `assertEnrichmentConsistent`: the translation
+   * summary's `completed` count always equals `translation.records.length`,
+   * and a `complete` grammar status only ever comes from a run that produced
+   * exactly one record per sentence (`GrammarAnalysisService.run` guarantees
+   * this), so `grammarAnalyses.length` matches `sentences.length` whenever the
+   * summary claims completion.
+   */
+  withAuxiliary(
+    draft: GeneratedStoryDraft,
+    grammar: GrammarRunOutcome,
+    translation: TranslationRunOutcome,
+  ): GeneratedStoryDraft {
+    const translationSummary = {
+      total: draft.sentences.length,
+      completed: translation.records.length,
+      failed: translation.failures.length,
+    };
+
+    const grammarSummary =
+      grammar.status === 'unavailable'
+        ? grammarUnavailable(grammar.reasonCode)
+        : grammarComplete(concernCount(grammar.records.flatMap((record) => record.findings)));
+
+    return {
+      ...draft,
+      reading: { ...draft.reading, translationSummary, grammarSummary },
+      translations: translation.records,
+      grammarAnalyses: grammar.records,
     };
   }
 
