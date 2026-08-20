@@ -20,7 +20,15 @@ export type ChatContentKind =
   | 'story-duplicate-index'
   | 'story-too-short'
   | 'decisions-approved'
-  | 'decisions-rejected';
+  | 'decisions-rejected'
+  | 'grammar-complete'
+  | 'grammar-unavailable'
+  | 'grammar-invalid-offsets'
+  | 'grammar-unknown-sentence'
+  | 'translations-full'
+  | 'translations-partial'
+  | 'translations-duplicate-id'
+  | 'translations-extra-id';
 
 export type AudioKind = 'valid' | 'empty' | 'wrong-mime' | 'oversized';
 
@@ -126,6 +134,73 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
   'story-too-short': story(['ねこがいます。', 'ねこはねます。']),
   'decisions-approved': decisions('approved'),
   'decisions-rejected': decisions('rejected'),
+  'grammar-complete': JSON.stringify({
+    findings: [
+      {
+        sentenceId: 's0',
+        label: 'te-form request',
+        explanationEn: 'Uses the て-form to make a polite request.',
+        confidence: 'high',
+        inProfile: true,
+        startUtf16: 0,
+        endUtf16: 3,
+      },
+      {
+        sentenceId: 's1',
+        label: 'causative-passive',
+        explanationEn: 'Uses the causative-passive, which is beyond the given guidance.',
+        confidence: 'medium',
+        inProfile: false,
+      },
+    ],
+  }),
+  'grammar-unavailable': JSON.stringify({ findings: 'not-an-array' }),
+  'grammar-invalid-offsets': JSON.stringify({
+    findings: [
+      {
+        sentenceId: 's0',
+        label: 'reversed offsets',
+        explanationEn: 'Offsets are reversed, so the highlight cannot be anchored.',
+        confidence: 'low',
+        inProfile: true,
+        startUtf16: 5,
+        endUtf16: 2,
+      },
+    ],
+  }),
+  'grammar-unknown-sentence': JSON.stringify({
+    findings: [
+      {
+        sentenceId: 's99',
+        label: 'unrequested sentence',
+        explanationEn: 'Names a sentence id the caller never asked about.',
+        confidence: 'low',
+        inProfile: true,
+      },
+    ],
+  }),
+  'translations-full': JSON.stringify({
+    translations: [
+      { id: 's0', textEn: 'The cat is here.' },
+      { id: 's1', textEn: 'The cat sleeps.' },
+    ],
+  }),
+  'translations-partial': JSON.stringify({
+    translations: [{ id: 's0', textEn: 'The cat is here.' }],
+  }),
+  'translations-duplicate-id': JSON.stringify({
+    translations: [
+      { id: 's0', textEn: 'The cat is here.' },
+      { id: 's0', textEn: 'The cat is here, again.' },
+    ],
+  }),
+  'translations-extra-id': JSON.stringify({
+    translations: [
+      { id: 's0', textEn: 'The cat is here.' },
+      { id: 's1', textEn: 'The cat sleeps.' },
+      { id: 's7', textEn: 'An id nobody requested.' },
+    ],
+  }),
 };
 
 /** Bytes that stand in for an MP3. Decodability is decided by the fake decoder. */

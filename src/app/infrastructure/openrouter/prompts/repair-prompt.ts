@@ -1,6 +1,14 @@
 import type { StoryRepairRequest } from '../../../domain/ai/text-generation-provider';
 import { orderedSentences } from '../../../domain/ai/story-structure';
-import { POLICY_LAYER, PROTOCOL_LAYER, asData, assemble, listBlock } from './prompt-layers';
+import {
+  JAPANESE_OUTPUT_LAYER,
+  POLICY_LAYER,
+  PROTOCOL_LAYER,
+  asData,
+  assemble,
+  listBlock,
+  type AssembledPrompt,
+} from './prompt-layers';
 
 /**
  * Versioned task instructions for a targeted repair.
@@ -16,16 +24,12 @@ const TASK_LAYER = [
   'Replace every listed word with something the allowed vocabulary covers. Do not keep it, gloss it, or write it in kana instead.',
 ] as const;
 
-export interface AssembledPrompt {
-  readonly system: string;
-  readonly user: string;
-}
-
 export function buildRepairPrompt(request: StoryRepairRequest): AssembledPrompt {
   const range = request.original.sentenceRange;
   const system = assemble([
     PROTOCOL_LAYER,
     POLICY_LAYER,
+    JAPANESE_OUTPUT_LAYER,
     TASK_LAYER.join('\n'),
     `The repaired story must contain between ${String(range.min)} and ${String(range.max)} sentences.`,
   ]);

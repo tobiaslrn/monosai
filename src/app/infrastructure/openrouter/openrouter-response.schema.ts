@@ -158,3 +158,103 @@ export const EXCEPTION_DECISIONS_JSON_SCHEMA = {
     },
   },
 } as const;
+
+/**
+ * The grammar review's answer.
+ *
+ * Only schema shape is checked here: whether an offset is valid, whether a
+ * sentence id is one the caller actually asked about, and dropping findings
+ * that fail those checks are all judgements `domain/enrichment` makes with
+ * context this schema does not have (ai-pipelines section on grammar review).
+ */
+export const grammarReviewSchema = z.object({
+  findings: z
+    .array(
+      z.object({
+        sentenceId: z.string(),
+        label: z.string(),
+        explanationEn: z.string(),
+        confidence: z.enum(['low', 'medium', 'high']),
+        inProfile: z.boolean(),
+        startUtf16: z.number().int().optional(),
+        endUtf16: z.number().int().optional(),
+      }),
+    )
+    .max(128),
+});
+
+export type GrammarReviewPayload = z.infer<typeof grammarReviewSchema>;
+
+export const GRAMMAR_REVIEW_JSON_SCHEMA = {
+  name: 'monosai_grammar_review',
+  strict: true,
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['findings'],
+    properties: {
+      findings: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['sentenceId', 'label', 'explanationEn', 'confidence', 'inProfile'],
+          properties: {
+            sentenceId: { type: 'string' },
+            label: { type: 'string' },
+            explanationEn: { type: 'string' },
+            confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
+            inProfile: { type: 'boolean' },
+            startUtf16: { type: 'integer', minimum: 0 },
+            endUtf16: { type: 'integer', minimum: 0 },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+/**
+ * The translation batch's answer.
+ *
+ * Matching returned ids back to the request — rejecting a missing, extra,
+ * duplicate, or blank translation — is `matchTranslations` in
+ * `domain/ai/translation-request`, not this schema: this only checks that the
+ * reply is shaped like a list of `{ id, textEn }` pairs.
+ */
+export const translationsSchema = z.object({
+  translations: z
+    .array(
+      z.object({
+        id: z.string(),
+        textEn: z.string(),
+      }),
+    )
+    .max(64),
+});
+
+export type TranslationsPayload = z.infer<typeof translationsSchema>;
+
+export const TRANSLATIONS_JSON_SCHEMA = {
+  name: 'monosai_translations',
+  strict: true,
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['translations'],
+    properties: {
+      translations: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id', 'textEn'],
+          properties: {
+            id: { type: 'string' },
+            textEn: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+} as const;

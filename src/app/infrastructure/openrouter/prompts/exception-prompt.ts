@@ -1,5 +1,11 @@
 import type { ExceptionReviewRequest } from '../../../domain/ai/text-generation-provider';
-import { POLICY_LAYER, PROTOCOL_LAYER, asData, assemble } from './prompt-layers';
+import {
+  POLICY_LAYER,
+  PROTOCOL_LAYER,
+  asData,
+  assemble,
+  type AssembledPrompt,
+} from './prompt-layers';
 
 /** Versioned task instructions for judging candidate unknowns against a policy. */
 const TASK_LAYER = [
@@ -9,11 +15,6 @@ const TASK_LAYER = [
   '`explanationEn` is one plain English sentence saying which part of the policy applies and why. An explanation that only restates the verdict is discarded and the word stays unknown.',
   'When the policy does not clearly cover a candidate, reject it. Approval is not the safe default.',
 ] as const;
-
-export interface AssembledPrompt {
-  readonly system: string;
-  readonly user: string;
-}
 
 export function buildExceptionPrompt(request: ExceptionReviewRequest): AssembledPrompt {
   const system = assemble([PROTOCOL_LAYER, POLICY_LAYER, TASK_LAYER.join('\n')]);

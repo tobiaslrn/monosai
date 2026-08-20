@@ -1,9 +1,11 @@
 import type { Result } from '../shared/result';
 import type { AiError } from './ai-error';
 import type { ExceptionCandidate, ExceptionDecision } from './exception-review';
+import type { GrammarReviewRequest, GrammarReviewResult } from './grammar-review-request';
 import type { ModelTest, StructuredOutputMode, TextModelConfig } from './model-test';
 import type { StructureIssue } from './story-structure';
 import type { StoryCandidate, StoryGenerationRequest } from './story-request';
+import type { TranslationBatchRequest, TranslationResult } from './translation-request';
 
 /**
  * How one generation task should talk to the model.
@@ -51,8 +53,9 @@ export interface ExceptionReviewRequest {
 /**
  * The text side of the AI boundary.
  *
- * Grammar review and translation are added to this port by Milestone 8, so no
- * method here is ever unimplemented.
+ * Covers configuration testing, story generation and repair, exception
+ * review, grammar review, and translation — every text task Milestone 8
+ * needs, so no method here is ever unimplemented.
  */
 export interface TextGenerationProvider {
   testConfiguration(
@@ -77,4 +80,16 @@ export interface TextGenerationProvider {
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<readonly ExceptionDecision[], AiError>>;
+
+  reviewGrammar(
+    request: GrammarReviewRequest,
+    config: TextTaskConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<GrammarReviewResult, AiError>>;
+
+  translate(
+    request: TranslationBatchRequest,
+    config: TextTaskConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<readonly TranslationResult[], AiError>>;
 }

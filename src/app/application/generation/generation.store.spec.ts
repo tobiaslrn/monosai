@@ -38,7 +38,13 @@ describe('GenerationStore strict pass', () => {
 
     await bed.store.generate('micro', PREMISE);
 
-    expect(bed.provider.generationCalls).toEqual({ story: 1, repair: 0, review: 0 });
+    expect(bed.provider.generationCalls).toEqual({
+      story: 1,
+      repair: 0,
+      review: 0,
+      grammar: 0,
+      translate: 0,
+    });
     const state = bed.store.state();
     expect(state.kind).toBe('saved');
     if (state.kind !== 'saved') {
@@ -136,7 +142,13 @@ describe('GenerationStore exception review', () => {
 
     await bed.store.generate('micro', PREMISE);
 
-    expect(bed.provider.generationCalls).toEqual({ story: 1, repair: 0, review: 1 });
+    expect(bed.provider.generationCalls).toEqual({
+      story: 1,
+      repair: 0,
+      review: 1,
+      grammar: 0,
+      translate: 0,
+    });
     const state = bed.store.state();
     expect(state.kind).toBe('saved');
     if (state.kind !== 'saved') {
@@ -157,7 +169,13 @@ describe('GenerationStore exception review', () => {
 
     await bed.store.generate('micro', PREMISE);
 
-    expect(bed.provider.generationCalls).toEqual({ story: 1, repair: 1, review: 0 });
+    expect(bed.provider.generationCalls).toEqual({
+      story: 1,
+      repair: 1,
+      review: 0,
+      grammar: 0,
+      translate: 0,
+    });
   });
 
   it('repairs rather than accepting when the review itself fails', async () => {
@@ -170,7 +188,13 @@ describe('GenerationStore exception review', () => {
 
     await bed.store.generate('micro', PREMISE);
 
-    expect(bed.provider.generationCalls).toEqual({ story: 1, repair: 1, review: 1 });
+    expect(bed.provider.generationCalls).toEqual({
+      story: 1,
+      repair: 1,
+      review: 1,
+      grammar: 0,
+      translate: 0,
+    });
     expect(bed.store.state().kind).toBe('saved');
     const categories = bed.readings.frozenValidations
       .flatMap((validation) => validation.tokenStatuses)
@@ -206,7 +230,13 @@ describe('GenerationStore repair', () => {
 
     await bed.store.generate('micro', PREMISE);
 
-    expect(bed.provider.generationCalls).toEqual({ story: 1, repair: 1, review: 1 });
+    expect(bed.provider.generationCalls).toEqual({
+      story: 1,
+      repair: 1,
+      review: 1,
+      grammar: 0,
+      translate: 0,
+    });
     expect(bed.store.state().kind).toBe('saved');
     expect(bed.readings.provenance[0].repairAttempts).toBe(1);
   });
@@ -217,7 +247,13 @@ describe('GenerationStore repair', () => {
 
     await bed.store.generate('micro', PREMISE);
 
-    expect(bed.provider.generationCalls).toEqual({ story: 1, repair: 1, review: 0 });
+    expect(bed.provider.generationCalls).toEqual({
+      story: 1,
+      repair: 1,
+      review: 0,
+      grammar: 0,
+      translate: 0,
+    });
     expect(bed.provider.repairRequests[0].structureIssues[0].code).toBe(
       'sentence-count-out-of-range',
     );
@@ -245,7 +281,13 @@ describe('GenerationStore repair', () => {
 
     await bed.store.generate('micro', PREMISE);
 
-    expect(bed.provider.generationCalls).toEqual({ story: 1, repair: 2, review: 0 });
+    expect(bed.provider.generationCalls).toEqual({
+      story: 1,
+      repair: 2,
+      review: 0,
+      grammar: 0,
+      translate: 0,
+    });
     const state = bed.store.state();
     expect(state.kind).toBe('invalid-draft');
     if (state.kind !== 'invalid-draft') {
@@ -307,7 +349,13 @@ describe('GenerationStore failures', () => {
 
     await bed.store.generate('micro', PREMISE);
 
-    expect(bed.provider.generationCalls).toEqual({ story: 1, repair: 0, review: 0 });
+    expect(bed.provider.generationCalls).toEqual({
+      story: 1,
+      repair: 0,
+      review: 0,
+      grammar: 0,
+      translate: 0,
+    });
     const state = bed.store.state();
     expect(state.kind).toBe('failed');
     if (state.kind !== 'failed') {
