@@ -17,7 +17,7 @@ import type {
   ReadingRepository,
   SentenceRef,
 } from '../../../domain/reading/reading-repository';
-import type { ReadingGraph } from '../../../domain/reading/text-hierarchy';
+import type { ReadingGraph, Sentence } from '../../../domain/reading/text-hierarchy';
 import type { ContinueReadingTarget, ReadingProgress } from '../../../domain/reading/progress';
 import type { SentenceLocation } from '../../../domain/reading/reading-position';
 import type { TokenAnalysis } from '../../../domain/reading/token';
@@ -309,6 +309,29 @@ export class DexieReadingRepository implements ReadingRepository {
     }
     const parsed = parseBulkRecords(tokenAnalysisRowSchema, loaded.value, 'tokenAnalyses');
     return parsed.ok ? ok(parsed.value.map(toTokenAnalysis)) : parsed;
+  }
+
+  /** Primary-key lookups, ordered by position so batches follow the reading. */
+  async loadSentences(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly Sentence[], StorageError>> {
+    const loaded = await runStorage('sentences.load', () =>
+      this.db.sentences
+        .where('id')
+        .anyOf([...sentenceIds])
+        .toArray(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const parsed = parseRecords(sentenceRowSchema, loaded.value, 'sentences');
+    if (!parsed.ok) {
+      return parsed;
+    }
+    const sentences = parsed.value
+      .map(toSentence)
+      .sort((left, right) => left.positionInReading - right.positionInReading);
+    return ok(sentences);
   }
 
   /** A single indexed scan; never loads sentence text. */

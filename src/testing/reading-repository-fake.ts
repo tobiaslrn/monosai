@@ -295,6 +295,20 @@ export class FakeReadingRepository implements ReadingRepository {
     );
   }
 
+  loadSentences(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly Sentence[], StorageError>> {
+    const wanted = new Set(sentenceIds);
+    return Promise.resolve(
+      ok(
+        this.sentences
+          .filter((sentence) => wanted.has(sentence.id))
+          .slice()
+          .sort((left, right) => left.positionInReading - right.positionInReading),
+      ),
+    );
+  }
+
   listSentenceRefs(id: ReadingId): Promise<Result<readonly SentenceRef[], StorageError>> {
     return Promise.resolve(
       ok(

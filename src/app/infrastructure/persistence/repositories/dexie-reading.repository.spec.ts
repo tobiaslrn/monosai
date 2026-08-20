@@ -286,7 +286,9 @@ describe('DexieReadingRepository', () => {
       const draft = {
         ...base,
         translations: base.translations.map((record, index) =>
-          index === 0 ? { ...record, sourceContentHash: 'a-stale-hash-that-does-not-match' } : record,
+          index === 0
+            ? { ...record, sourceContentHash: 'a-stale-hash-that-does-not-match' }
+            : record,
         ),
       };
 

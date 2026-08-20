@@ -1,15 +1,27 @@
 import { Injectable, inject } from '@angular/core';
+import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import { matchTranslations, planBatches } from '../../domain/ai/translation-request';
 import type { TranslationRecord } from '../../domain/enrichment/records';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { ReadingId, SentenceId } from '../../domain/shared/ids';
+import type { Result } from '../../domain/shared/result';
+import type { StorageError } from '../../domain/storage/storage-error';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
 import { CLOCK, ENRICHMENT_REPOSITORY, ID_GENERATOR } from '../shared/repository-tokens';
 
 export interface TranslationRunOutcome {
   readonly records: readonly TranslationRecord[];
   readonly failures: readonly SentenceId[];
+  /**
+   * Why the first failed batch failed, or null when nothing failed.
+   *
+   * The generated path only needs the count, but a whole-reading job has to
+   * write a stable `errorCode` onto the persisted job item, and inventing one
+   * from a bare sentence id would lose the distinction between "the provider is
+   * down" and "the response did not match what was asked for".
+   */
+  readonly error: AiError | null;
 }
 
 /**
@@ -75,6 +87,7 @@ export class TranslationService {
     }
 
     const failures: SentenceId[] = [];
+    let error: AiError | null = null;
     const batches = planBatches(misses);
 
     for (const batch of batches) {
@@ -85,14 +98,25 @@ export class TranslationService {
         id: sentence.id,
         textJa: sentence.japaneseText,
       }));
-      const answered = await this.provider.translate({ sentences: requested, promptVersion }, config, signal);
+      const answered = await this.provider.translate(
+        { sentences: requested, promptVersion },
+        config,
+        signal,
+      );
       if (!answered.ok) {
         failures.push(...batch.map((sentence) => sentence.id));
+        error ??= answered.error;
         continue;
       }
       const matched = matchTranslations(requested, answered.value);
       if (!matched.ok) {
         failures.push(...batch.map((sentence) => sentence.id));
+        error ??= aiError(
+          'malformed-response',
+          'translation',
+          'The translations did not match the sentences that were sent.',
+          { detail: { issueCode: matched.error } },
+        );
         continue;
       }
       const sentenceById = new Map(batch.map((sentence) => [sentence.id, sentence]));
@@ -119,6 +143,36 @@ export class TranslationService {
       }
     }
 
-    return { records, failures };
+    return { records, failures, error };
+  }
+
+  /**
+   * Persists one translation and refreshes the reading's summary in the same
+   * transaction.
+   *
+   * Kept separate from `run` so the generated path can produce records without
+   * ever writing them: a cancelled generation then cannot have left a row
+   * behind, rather than depending on someone remembering not to store one. The
+   * whole-reading job and the imported per-sentence path call both in turn.
+   */
+  store(
+    record: TranslationRecord,
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<TranslationRecord, StorageError>> {
+    return this.enrichment.storeTranslation(record, currentCacheKeys);
+  }
+
+  /**
+   * Which sentences have no translation under the current keys.
+   *
+   * Completeness is "a row exists whose cache key is the current key for that
+   * sentence", so a model or prompt change makes previously translated
+   * sentences missing again without deleting anything.
+   */
+  missingSentenceIds(
+    readingId: ReadingId,
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    return this.enrichment.listSentenceIdsMissingTranslation(readingId, currentCacheKeys);
   }
 }

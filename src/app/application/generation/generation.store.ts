@@ -82,7 +82,11 @@ export type GenerationState =
   | { readonly kind: 'validating' }
   | { readonly kind: 'exception-review'; readonly candidateCount: number }
   | { readonly kind: 'repairing'; readonly attempt: number }
-  | { readonly kind: 'auxiliary-review'; readonly grammar: BranchState; readonly translation: BranchState }
+  | {
+      readonly kind: 'auxiliary-review';
+      readonly grammar: BranchState;
+      readonly translation: BranchState;
+    }
   | { readonly kind: 'finalizing' }
   | { readonly kind: 'saved'; readonly reading: GeneratedStory }
   | { readonly kind: 'invalid-draft'; readonly draft: InvalidDraft }

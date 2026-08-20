@@ -1,5 +1,10 @@
 import type { EnrichmentRepository } from '../app/domain/enrichment/enrichment-repository';
-import type { AudioAsset, AudioAssetSummary, GrammarAnalysisRecord, TranslationRecord } from '../app/domain/enrichment/records';
+import type {
+  AudioAsset,
+  AudioAssetSummary,
+  GrammarAnalysisRecord,
+  TranslationRecord,
+} from '../app/domain/enrichment/records';
 import type { CompletionSummary, GrammarSummary } from '../app/domain/reading/summaries';
 import type { AssetId, ReadingId, SentenceId } from '../app/domain/shared/ids';
 import { err, ok, type Result } from '../app/domain/shared/result';
@@ -32,7 +37,9 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
     );
   }
 
-  listTranslations(readingId: ReadingId): Promise<Result<readonly TranslationRecord[], StorageError>> {
+  listTranslations(
+    readingId: ReadingId,
+  ): Promise<Result<readonly TranslationRecord[], StorageError>> {
     return Promise.resolve(
       ok(this.translations.filter((record) => record.readingId === readingId)),
     );
@@ -45,9 +52,7 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
     return Promise.resolve(ok(this.translations.filter((record) => wanted.has(record.sentenceId))));
   }
 
-  storeTranslation(
-    record: TranslationRecord,
-  ): Promise<Result<TranslationRecord, StorageError>> {
+  storeTranslation(record: TranslationRecord): Promise<Result<TranslationRecord, StorageError>> {
     this.translations.push(record);
     return Promise.resolve(ok(record));
   }
@@ -84,7 +89,9 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
     return Promise.resolve(ok(record));
   }
 
-  listAudioSummaries(readingId: ReadingId): Promise<Result<readonly AudioAssetSummary[], StorageError>> {
+  listAudioSummaries(
+    readingId: ReadingId,
+  ): Promise<Result<readonly AudioAssetSummary[], StorageError>> {
     return Promise.resolve(
       ok(
         this.audio
