@@ -8,7 +8,7 @@ import {
   SAMPLE_TEXT,
 } from './reading';
 
-/** The inspector is a side panel on desktop and a bottom sheet on Android. */
+/** Word details are one floating popover at every width (ADR 0022). */
 function wordDetails(page: Page) {
   return page.locator('mn-word-inspector');
 }
@@ -85,12 +85,7 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     expect(external).toEqual([]);
   });
 
-  test('Escape closes the mobile word sheet and returns focus to its token', async ({ page }) => {
-    test.skip(
-      (page.viewportSize()?.width ?? 0) >= 960,
-      'the inspector is a side panel, not a dialog, at desktop widths',
-    );
-
+  test('Escape closes word details and returns focus to its token', async ({ page }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);

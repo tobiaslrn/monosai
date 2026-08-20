@@ -1171,12 +1171,170 @@ reported as notes.
 
 ### Remaining work in later milestones
 
-- The reader surfaces — sentence popovers, the sentence menu, aid rendering, and
-  the reading status panel that drives and displays the translation job — are
-  Milestone 8B. Until then a stored translation is real but not visible while
-  reading, and the job is reachable only from code.
+- The reader surfaces that make all of this visible are Milestone 8B, below.
 - E2E scenarios for imported sentence aids and for cancelling and resuming a
   whole-reading job through the UI need 8B's surfaces and land there.
 - The initial bundle is 4.66 kB over its 850 kB budget. It was already 4.39 kB
   over before this milestone, so 8A is not the cause, but the budget is now
   worth either raising deliberately or paying down.
+
+## Milestone 8B — Reader UI: floating popovers, sentence menu, aids
+
+Everything the learner sees and touches. 8A's records had nowhere to appear and
+its translation job was reachable only from code; this milestone renders both,
+and replaces the reader's two word-details containers with one.
+
+The rule the whole milestone is built around is unchanged: **opening a reading
+makes zero network requests**, and a missing aid is never fetched automatically.
+Every request in the reader begins with a menu entry or a panel button.
+
+### Delivered
+
+#### Aid state, read locally and bounded by the mounted window
+
+`application/enrichment/sentence-aids.store.ts` is provided by the reader page,
+not at the root, so leaving the reader drops its state and aborts anything in
+flight. `load(reading, sentences)` issues exactly 8A's two bounded per-sentence
+queries for the paragraphs currently mounted and nothing else, and runs again on
+every window change. It also re-derives when the text model or the live grammar
+profile finishes loading, because both decide cache keys and staleness and both
+arrive after the reader opens — a repeat of the same two local reads, which can
+no more reach a provider than the first pass could.
+
+Staleness branches on `reading.kind`, not on which hash is to hand: an imported
+analysis is stale when its `profileHash` differs from the live profile, and a
+generated story is never re-marked, because it is judged by the profile captured
+with it and re-analysing frozen text under a newer profile would say something
+the review never said.
+
+#### Aids are content, not popups
+
+`sentence-translation.component.ts` and `sentence-grammar.component.ts` render as
+`display: block` spans directly under their sentence — valid inside the `<p>` a
+paragraph already is — indented, tinted, `lang="en"`, and bound by interpolation
+only. `ReaderPreferences.translationsExpanded`, persisted and inert since
+Milestone 3, finally drives them, with a per-sentence override so one sentence
+can differ from the global aid. Confidence is a worded band, never a percentage.
+
+`domain/enrichment/finding-spans.ts` decides what a finding marks:
+`tokensCoveredByConcerns` marks a token only when an out-of-profile finding
+supplies a span covering it, so a sentence-level finding marks the sentence and
+nothing inside it; `findingsCoveringToken` feeds word details, and keeps
+in-profile findings, which are explanations rather than concerns.
+
+#### One floating popover, replacing the side panel and the sheet
+
+`shared-ui/popover/` holds `PopoverService` and `ReaderPopoverComponent`: one CDK
+overlay card for word details, the sentence menu, sentence details, and the hover
+preview. It flips above its anchor when there is no room below, is pushed back
+inside the viewport when neither position fits, traps focus, closes on `Escape`
+or a click away, returns focus to whatever opened it, and docks to the bottom
+edge as a sheet below the desktop breakpoint. Exactly one is open at a time.
+
+`WordInspectorSheetComponent` and the desktop inspector column are deleted, so
+the reading measure no longer changes when a word is opened.
+[ADR 0022](decisions/0022-reader-floating-popover.md) records the decision and
+`ux-ui-specification.md` section 6 the deviation.
+
+The hover preview the specification asks for now exists as the one non-modal
+variant — no backdrop, no focus, `pointer-events: none` — so it can never swallow
+the click that pins the word underneath it. Word details also gained content
+order item 6, the grammar explanation for a finding whose span covers the token.
+
+#### Nothing visible at rest
+
+Hovering a sentence tints it, with `box-decoration-break: clone` so the tint
+wraps across lines; that tint is the whole discoverability story. Clicking
+sentence whitespace opens the menu on desktop, long-pressing opens it on touch,
+and a focus-revealed button at the end of each sentence — the skip-link pattern —
+opens the same menu from the keyboard, naming its sentence, so long-press is
+never the only route.
+
+`sentence-gestures.directive.ts` owns the discrimination: token buttons stop
+their own click, so a click that reaches the sentence is whitespace by
+definition; a press that scrolls, drags, or ends in a text selection is not a
+long press; and the click a long press produces is swallowed in the capture
+phase, so pressing on a word opens the menu rather than that word's details.
+
+#### Explicit actions, one request each
+
+Menu entries come from an action array (`sentenceMenuActions`), so Milestone 9's
+sentence audio is one more entry rather than another branch — there is no audio
+entry today, because placeholder UI is forbidden.
+
+`sentence-enrichment.service.ts` performs one sentence's work: it resolves the
+model, the task config, and the reading-wide cache keys once per action, serves a
+stored result with no request at all, and writes through 8A's `store` methods so
+the reading's summary is refreshed in the same transaction.
+`GrammarAnalysisService` gained the `store` half it was missing. Grammar analysis
+waits for the language bundle before resolving the live profile, because the
+preset prose it hashes lives there and a reading opened seconds earlier may be
+the first thing that needs it — a local file read, not a request.
+
+`sentence-details.component.ts` shows model, prompt version, saved time, short
+profile hash, staleness, and the last failure rendered through the shared AI
+error copy. Provider text never reaches the screen.
+
+#### The reading status panel
+
+The reader carries translations x of N, grammar state, live job progress, and the
+only controls that start, cancel, or resume a whole-reading translation — the
+panel the specification's retry sentence refers to. Counts come from the
+reading's stored summaries, re-read after every write, so the panel reports what
+is saved rather than what a run believes it did. The summary wording moved from
+the library card to `shared-ui/reading-summary/`, shared by the card, the saved
+panel after a generation, and this panel.
+
+### Specification scenarios covered
+
+| Scenario | Where |
+| --- | --- |
+| Opening a reading makes zero requests | `sentence-aids.store.spec.ts` asserts no provider call and only the two bounded queries; `e2e/enrichment.spec.ts` reloads a reading with stored aids and counts zero |
+| An explicit action makes exactly one request | `sentence-aids.store.spec.ts` and scenario 11 — a repeat, and a reload, make none |
+| A failure leaves the sentence readable and retryable | `sentence-aids.store.spec.ts`; scenario 11 fails a translation twice over, keeps the Japanese, and retries successfully |
+| Preset change stales imported analyses only | `sentence-aids.store.spec.ts`; scenario 11 re-analyses and asserts both rows are kept |
+| A word click never opens the menu, and the reverse | `reader-sentence.component.spec.ts`, `sentence-gestures.directive.spec.ts` |
+| Long press does not fire after a scroll | `sentence-gestures.directive.spec.ts` — also for a drag, a lift, and a mouse press |
+| The popover traps focus, closes on Escape, restores it | `popover.service.spec.ts`; scenario 11 asserts it in the browser at both viewports |
+| The sheet variant appears below the breakpoint | `popover.service.spec.ts` |
+| Cancel keeps completed records, resume finishes the rest | `reading-status-panel.component.spec.ts`; scenario 12 cancels mid-run, reloads, and resumes in one further request |
+| A reading with nothing missing offers no start action | `reading-status-panel.component.spec.ts` |
+| Axe over the reader with aids, a popover, and the menu | `e2e/enrichment.spec.ts`, at desktop and Android viewports |
+
+### Verification
+
+| Command | Result |
+| --- | --- |
+| `npm run format:check` | Pass |
+| `npm run lint` | Pass (0 problems) |
+| `npm run typecheck` | Pass |
+| `npm test` | Pass — 119 files, 1,323 tests |
+| `npm run build` | Pass — 887.01 kB initial, 37.01 kB over the 850 kB budget |
+| `npm run e2e` | Pass — 172 tests (desktop-chrome, android-chrome), 1 skipped |
+
+### Assumptions and decisions
+
+- **Word details are a popover at every width**, replacing the side panel and the
+  bottom sheet (ADR 0022). The reading measure is now stable when a word opens.
+- **The popover is modal, with a transparent backdrop.** Opening a second word on
+  desktop therefore takes two clicks; reliable dismissal on touch and with a
+  keyboard is worth more than the click, and the hover preview answers "what is
+  that word" without one.
+- **A hover preview is a hint, not a surface**: non-modal, `pointer-events: none`,
+  and `aria-hidden`, because it repeats what the token button already announces.
+- **No audio entry in the sentence menu.** Sentence TTS is Milestone 9; the action
+  array is where it will slot in.
+- **Grammar analysis is offered for imported readings only**, matching section 8
+  and the staleness rule above.
+- **A cached aid is served without a write.** An action whose stored record
+  already matches the current cache key returns immediately rather than
+  re-storing an identical row.
+
+### Remaining work in later milestones
+
+- Sentence and whole-reading audio, and the sticky player, are Milestone 9. The
+  sentence menu's action array and the status panel are where both attach.
+- The initial bundle is now 37.01 kB over its 850 kB budget, up from 4.66 kB: the
+  CDK overlay's positioning strategies and the a11y focus trap are new weight
+  this milestone pulled in. The budget needs either raising deliberately or
+  paying down before release.

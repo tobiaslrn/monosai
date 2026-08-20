@@ -13,6 +13,13 @@ export interface SentenceGesture {
 }
 
 /**
+ * What the menu is anchored to: the pointer, or the sentence itself when the
+ * activation carried no position — a click synthesized by assistive technology
+ * reports (0, 0), and a menu in the corner of the window is not an answer.
+ */
+export type SentenceGestureOrigin = SentenceGesture | HTMLElement;
+
+/**
  * The two pointer routes into the sentence menu.
  *
  * Desktop clicks the sentence's whitespace — punctuation, the gaps between
@@ -30,7 +37,7 @@ export interface SentenceGesture {
  */
 @Directive({ selector: '[mnSentenceGestures]' })
 export class SentenceGesturesDirective {
-  readonly menuRequested = output<SentenceGesture>();
+  readonly menuRequested = output<SentenceGestureOrigin>();
 
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -54,7 +61,10 @@ export class SentenceGesturesDirective {
     if (hasTextSelection()) {
       return;
     }
-    this.menuRequested.emit({ x: event.clientX, y: event.clientY });
+    const positioned = event.clientX !== 0 || event.clientY !== 0;
+    this.menuRequested.emit(
+      positioned ? { x: event.clientX, y: event.clientY } : this.element.nativeElement,
+    );
   }
 
   @HostListener('pointerdown', ['$event'])

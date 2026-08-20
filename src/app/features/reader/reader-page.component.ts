@@ -18,6 +18,10 @@ import { TranslationJobStore } from '../../application/enrichment/translation-jo
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
+import { CredentialStore } from '../../application/settings/credential.store';
+import { LanguageStore } from '../../application/language/language.store';
+import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
+import { TextModelStore } from '../../application/settings/text-model.store';
 import { LibraryStore } from '../../application/reading/library.store';
 import { describeDeletion } from '../../domain/reading/deletion-plan';
 import { findingsCoveringToken } from '../../domain/enrichment/finding-spans';
@@ -299,6 +303,10 @@ export class ReaderPageComponent {
   protected readonly inspector = inject(WordInspectorStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly library = inject(LibraryStore);
+  private readonly credential = inject(CredentialStore);
+  private readonly textModel = inject(TextModelStore);
+  private readonly grammarProfile = inject(GrammarProfileStore);
+  private readonly language = inject(LanguageStore);
   private readonly popover = inject(PopoverService);
   private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
@@ -350,6 +358,17 @@ export class ReaderPageComponent {
   private previewRef: PopoverRef | null = null;
 
   constructor() {
+    // What a sentence action needs before it can key or send anything. Loading
+    // is a local read of stored settings; none of it contacts a provider, and
+    // no aid is requested as a result.
+    void this.credential.load();
+    void this.textModel.load();
+    void this.grammarProfile.load();
+    // The bundle the live grammar profile is resolved against. Already started
+    // at bootstrap; asking again is idempotent and keeps a reading opened
+    // straight after startup from showing an unresolved profile.
+    void this.language.initialize();
+
     effect(() => {
       void this.store.open(readingId(this.id()));
     });
