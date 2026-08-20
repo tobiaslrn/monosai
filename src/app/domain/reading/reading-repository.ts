@@ -2,6 +2,7 @@ import type { Result } from '../shared/result';
 import type { ParagraphId, ReadingId, SentenceId } from '../shared/ids';
 import type { StorageError } from '../storage/storage-error';
 import type { GenerationProvenance } from '../ai/generation-provenance';
+import type { GrammarAnalysisRecord, TranslationRecord } from '../enrichment/records';
 import type { GeneratedStory, ImportedReading, LibraryFilter, Reading } from './reading';
 import type { FrozenSentenceValidation } from './validation';
 import type { Paragraph, ReadingGraph, Sentence } from './text-hierarchy';
@@ -33,6 +34,16 @@ export interface GeneratedStoryDraft {
   readonly tokenAnalyses: readonly TokenAnalysis[];
   readonly frozenValidations: readonly FrozenSentenceValidation[];
   readonly provenance: GenerationProvenance;
+  readonly translations: readonly TranslationRecord[];
+  readonly grammarAnalyses: readonly GrammarAnalysisRecord[];
+}
+
+/** A sentence's identity, content hash, and position — enough to tell whether
+ * a cached enrichment row is still current, without loading its text. */
+export interface SentenceRef {
+  readonly id: SentenceId;
+  readonly contentHash: string;
+  readonly positionInReading: number;
 }
 
 export interface LibraryPageRequest {
@@ -87,6 +98,8 @@ export interface ReadingRepository {
   loadTokenAnalyses(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly TokenAnalysis[], StorageError>>;
+  /** Sentence identity, content hash, and position only — for cache-key checks. */
+  listSentenceRefs(readingId: ReadingId): Promise<Result<readonly SentenceRef[], StorageError>>;
   deleteReading(id: ReadingId): Promise<Result<void, StorageError>>;
   saveProgress(progress: ReadingProgress): Promise<Result<void, StorageError>>;
   getProgress(id: ReadingId): Promise<Result<ReadingProgress | null, StorageError>>;

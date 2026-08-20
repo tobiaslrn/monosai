@@ -157,6 +157,8 @@ export class StoryAssemblyService {
       tokenAnalyses,
       frozenValidations,
       provenance,
+      translations: [],
+      grammarAnalyses: [],
     };
   }
 

@@ -15,6 +15,7 @@ import type {
   LibraryPageRequest,
   ParagraphWindow,
   ReadingRepository,
+  SentenceRef,
 } from '../app/domain/reading/reading-repository';
 import type { Paragraph, ReadingGraph, Sentence } from '../app/domain/reading/text-hierarchy';
 import type { Token, TokenAnalysis } from '../app/domain/reading/token';
@@ -286,6 +287,20 @@ export class FakeReadingRepository implements ReadingRepository {
     const wanted = new Set(sentenceIds);
     return Promise.resolve(
       ok(this.tokenAnalyses.filter((analysis) => wanted.has(analysis.sentenceId))),
+    );
+  }
+
+  listSentenceRefs(id: ReadingId): Promise<Result<readonly SentenceRef[], StorageError>> {
+    return Promise.resolve(
+      ok(
+        this.sentences
+          .filter((sentence) => sentence.readingId === id)
+          .map((sentence) => ({
+            id: sentence.id,
+            contentHash: sentence.contentHash,
+            positionInReading: sentence.positionInReading,
+          })),
+      ),
     );
   }
 

@@ -1,7 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fixedClock } from '../../../domain/shared/clock';
 import { assetId } from '../../../domain/shared/ids';
-import type { AudioAsset, TranslationRecord } from '../../../domain/enrichment/records';
+import type {
+  AudioAsset,
+  GrammarAnalysisRecord,
+  TranslationRecord,
+} from '../../../domain/enrichment/records';
 import { createTestDatabase, destroyTestDatabase } from '../../../../testing/test-database';
 import { importedReadingFixture, uuid } from '../../../../testing/persistence-fixtures';
 import type { MonosaiDatabase } from '../monosai-db';
@@ -42,6 +46,25 @@ describe('DexieEnrichmentRepository', () => {
     };
   }
 
+  function grammarAnalysis(
+    index: number,
+    cacheKey = `grammar-${index}`,
+    findings: GrammarAnalysisRecord['findings'] = [],
+  ): GrammarAnalysisRecord {
+    return {
+      id: uuid(7900 + index),
+      cacheKey,
+      sentenceId: draft.sentences[index].id,
+      readingId: draft.reading.id,
+      sourceContentHash: draft.sentences[index].contentHash,
+      profileHash: 'profile-hash-1',
+      modelId: MODEL,
+      promptVersion: 'grammar-v1',
+      findings,
+      createdAt: 1_700_500_000_000 + index,
+    };
+  }
+
   function audio(index: number, cacheKey = `audio-${index}`): AudioAsset {
     return {
       id: assetId(uuid(7500 + index)),
@@ -59,8 +82,17 @@ describe('DexieEnrichmentRepository', () => {
     };
   }
 
+  /** Maps every fixture sentence to `translation-{index}`, the current key. */
+  function currentTranslationKeys(): Map<(typeof draft.sentences)[number]['id'], string> {
+    return new Map(draft.sentences.map((sentence, index) => [sentence.id, `translation-${index}`]));
+  }
+
+  function currentGrammarKeys(): Map<(typeof draft.sentences)[number]['id'], string> {
+    return new Map(draft.sentences.map((sentence, index) => [sentence.id, `grammar-${index}`]));
+  }
+
   it('stores and reads a translation by cache key', async () => {
-    await repository.storeTranslation(translation(0));
+    await repository.storeTranslation(translation(0), currentTranslationKeys());
 
     const loaded = await repository.getTranslationByCacheKey('translation-0');
 
@@ -70,15 +102,16 @@ describe('DexieEnrichmentRepository', () => {
   });
 
   it('writes idempotently for the same cache key', async () => {
-    await repository.storeTranslation(translation(0));
-    await repository.storeTranslation(translation(0));
+    await repository.storeTranslation(translation(0), currentTranslationKeys());
+    await repository.storeTranslation(translation(0), currentTranslationKeys());
 
     expect(await db.translations.count()).toBe(1);
   });
 
   it('updates the reading translation summary in the same transaction', async () => {
-    await repository.storeTranslation(translation(0));
-    await repository.storeTranslation(translation(1, 'translation-1'));
+    const cacheKeys = currentTranslationKeys();
+    await repository.storeTranslation(translation(0), cacheKeys);
+    await repository.storeTranslation(translation(1, 'translation-1'), cacheKeys);
 
     const reading = await readings.getReading(draft.reading.id);
 
@@ -93,8 +126,22 @@ describe('DexieEnrichmentRepository', () => {
     });
   });
 
+  it('does not let a historic-model translation row inflate completion', async () => {
+    // A row cached under an old model/prompt stays in the table, but it must
+    // never count toward completion once the caller's current key differs.
+    await repository.storeTranslation(translation(0, 'stale-key'), currentTranslationKeys());
+
+    const summary = await repository.summarizeTranslations(draft.reading.id, currentTranslationKeys());
+
+    expect(summary.ok).toBe(true);
+    if (!summary.ok) {
+      return;
+    }
+    expect(summary.value).toEqual({ total: draft.sentences.length, completed: 0, failed: 0 });
+  });
+
   it('lists sentences that still need a translation for the current configuration', async () => {
-    await repository.storeTranslation(translation(0));
+    await repository.storeTranslation(translation(0), currentTranslationKeys());
 
     const cacheKeys = new Map(
       draft.sentences.map((sentence, index) => [sentence.id, `translation-${index}`]),
@@ -106,6 +153,46 @@ describe('DexieEnrichmentRepository', () => {
       return;
     }
     expect(missing.value).toEqual([draft.sentences[1].id, draft.sentences[2].id]);
+  });
+
+  it('lists translations only for the requested sentences, not the whole reading', async () => {
+    const cacheKeys = currentTranslationKeys();
+    await repository.storeTranslation(translation(0), cacheKeys);
+    await repository.storeTranslation(translation(1, 'translation-1'), cacheKeys);
+    await repository.storeTranslation(translation(2, 'translation-2'), cacheKeys);
+
+    const bounded = await repository.listTranslationsForSentences([
+      draft.sentences[0].id,
+      draft.sentences[2].id,
+    ]);
+
+    expect(bounded.ok).toBe(true);
+    if (!bounded.ok) {
+      return;
+    }
+    expect(bounded.value.map((record) => record.sentenceId).sort()).toEqual(
+      [draft.sentences[0].id, draft.sentences[2].id].sort(),
+    );
+  });
+
+  it('rolls back a failed store, leaving the prior row and summary intact', async () => {
+    const cacheKeys = currentTranslationKeys();
+    await repository.storeTranslation(translation(0), cacheKeys);
+
+    const failure = new Error('disk unavailable');
+    failure.name = 'UnknownError';
+    vi.spyOn(db.readings, 'update').mockRejectedValueOnce(failure);
+
+    const result = await repository.storeTranslation(translation(1, 'translation-1'), cacheKeys);
+
+    expect(result.ok).toBe(false);
+    expect(await db.translations.count()).toBe(1);
+    const reading = await readings.getReading(draft.reading.id);
+    expect(reading.ok && reading.value?.translationSummary).toEqual({
+      total: draft.sentences.length,
+      completed: 1,
+      failed: 0,
+    });
   });
 
   it('stores audio and returns metadata without the blob', async () => {
@@ -147,11 +234,16 @@ describe('DexieEnrichmentRepository', () => {
     expect(loaded.value.blob.size).toBe(4);
   });
 
-  it('summarizes completion against the current configuration fingerprint', async () => {
+  it('summarizes audio completion against the current per-sentence cache keys', async () => {
     await repository.storeAudio(audio(0));
 
-    const current = await repository.summarizeAudio(draft.reading.id, 'tts-fingerprint');
-    const other = await repository.summarizeAudio(draft.reading.id, 'different-fingerprint');
+    const audioKeys = new Map(draft.sentences.map((sentence, index) => [sentence.id, `audio-${index}`]));
+    const current = await repository.summarizeAudio(draft.reading.id, audioKeys);
+
+    const staleKeys = new Map(
+      draft.sentences.map((sentence, index) => [sentence.id, `other-audio-${index}`]),
+    );
+    const other = await repository.summarizeAudio(draft.reading.id, staleKeys);
 
     expect(current.ok && current.value.completed).toBe(1);
     expect(other.ok && other.value.completed).toBe(0);
@@ -159,25 +251,17 @@ describe('DexieEnrichmentRepository', () => {
   });
 
   it('stores grammar analyses with their profile hash', async () => {
-    await repository.storeGrammarAnalysis({
-      id: uuid(7900),
-      cacheKey: 'grammar-0',
-      sentenceId: draft.sentences[0].id,
-      readingId: draft.reading.id,
-      sourceContentHash: draft.sentences[0].contentHash,
-      profileHash: 'profile-hash-1',
-      modelId: MODEL,
-      promptVersion: 'grammar-v1',
-      findings: [
+    await repository.storeGrammarAnalysis(
+      grammarAnalysis(0, 'grammar-0', [
         {
           label: 'が (subject marker)',
           explanationEn: 'Marks the subject of the sentence.',
           confidence: 'high',
           inProfile: true,
         },
-      ],
-      createdAt: 1_700_500_000_000,
-    });
+      ]),
+      currentGrammarKeys(),
+    );
 
     const loaded = await repository.getGrammarAnalysisByCacheKey('grammar-0');
 
@@ -185,10 +269,80 @@ describe('DexieEnrichmentRepository', () => {
     expect(loaded.ok && loaded.value?.findings[0].confidence).toBe('high');
   });
 
+  it('lists grammar analyses only for the requested sentences, not the whole reading', async () => {
+    const cacheKeys = currentGrammarKeys();
+    await repository.storeGrammarAnalysis(grammarAnalysis(0), cacheKeys);
+    await repository.storeGrammarAnalysis(grammarAnalysis(1), cacheKeys);
+    await repository.storeGrammarAnalysis(grammarAnalysis(2), cacheKeys);
+
+    const bounded = await repository.listGrammarAnalysesForSentences([draft.sentences[1].id]);
+
+    expect(bounded.ok).toBe(true);
+    if (!bounded.ok) {
+      return;
+    }
+    expect(bounded.value.map((record) => record.sentenceId)).toEqual([draft.sentences[1].id]);
+  });
+
+  describe('grammar summary', () => {
+    it('walks not-requested -> partial -> complete as current-key rows appear', async () => {
+      const notRequested = await repository.summarizeGrammar(draft.reading.id, new Map());
+      expect(notRequested.ok && notRequested.value).toEqual({ state: 'not-requested' });
+
+      const cacheKeys = currentGrammarKeys();
+      await repository.storeGrammarAnalysis(
+        grammarAnalysis(0, 'grammar-0', [
+          { label: 'a', explanationEn: 'a', confidence: 'high', inProfile: false },
+        ]),
+        cacheKeys,
+      );
+
+      const partial = await repository.summarizeGrammar(draft.reading.id, cacheKeys);
+      expect(partial.ok && partial.value).toEqual({
+        state: 'partial',
+        analyzedSentenceCount: 1,
+        concernCount: 1,
+      });
+
+      await repository.storeGrammarAnalysis(
+        grammarAnalysis(1, 'grammar-1', [
+          { label: 'b', explanationEn: 'b', confidence: 'high', inProfile: true },
+        ]),
+        cacheKeys,
+      );
+      await repository.storeGrammarAnalysis(
+        grammarAnalysis(2, 'grammar-2', [
+          { label: 'c', explanationEn: 'c', confidence: 'high', inProfile: false },
+        ]),
+        cacheKeys,
+      );
+
+      const complete = await repository.summarizeGrammar(draft.reading.id, cacheKeys);
+      expect(complete.ok && complete.value).toEqual({ state: 'complete', concernCount: 2 });
+    });
+
+    it('updates the reading grammar summary inside the same transaction as the write', async () => {
+      const cacheKeys = currentGrammarKeys();
+      await repository.storeGrammarAnalysis(
+        grammarAnalysis(0, 'grammar-0', [
+          { label: 'a', explanationEn: 'a', confidence: 'high', inProfile: false },
+        ]),
+        cacheKeys,
+      );
+
+      const reading = await readings.getReading(draft.reading.id);
+      expect(reading.ok && reading.value?.grammarSummary).toEqual({
+        state: 'partial',
+        analyzedSentenceCount: 1,
+        concernCount: 1,
+      });
+    });
+  });
+
   it('deletes a single audio clip without touching translations', async () => {
     const asset = audio(0);
     await repository.storeAudio(asset);
-    await repository.storeTranslation(translation(0));
+    await repository.storeTranslation(translation(0), currentTranslationKeys());
 
     await repository.deleteAudio(asset.id);
 
