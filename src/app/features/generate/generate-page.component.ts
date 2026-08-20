@@ -22,7 +22,10 @@ import { TextModelStore } from '../../application/settings/text-model.store';
 import { ExceptionPolicyStore } from '../../application/settings/exception-policy.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { technicalCode } from '../../domain/shared/errors';
-import { completionLabel, grammarLabel } from '../library/reading-summary-labels';
+import {
+  completionLabel,
+  grammarLabel,
+} from '../../shared-ui/reading-summary/reading-summary-labels';
 import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
@@ -89,6 +92,12 @@ import { StoryFormComponent } from './story-form.component';
             <li>{{ translationSummaryLabel() }}</li>
             <li>{{ grammarSummaryLabel() }}</li>
           </ul>
+          @if (hasMissingTranslations()) {
+            <p class="mn-hint">
+              Some sentences were not translated. The reader's status panel can translate the rest
+              whenever you want them.
+            </p>
+          }
           <div class="actions">
             <a class="mn-button mn-button--primary" [routerLink]="['/reader', reading.id]"
               >Read it now</a
@@ -241,6 +250,12 @@ export class GeneratePageComponent implements OnDestroy {
    * The saved story's auxiliary counts, worded exactly as the library card
    * words them, so the two places a learner sees them cannot disagree.
    */
+  /** Whether the saved story is missing translations the reader can finish. */
+  protected readonly hasMissingTranslations = computed(() => {
+    const summary = this.savedReading()?.translationSummary;
+    return summary !== undefined && summary.completed < summary.total;
+  });
+
   protected readonly translationSummaryLabel = computed(() => {
     const reading = this.savedReading();
     return reading === null ? '' : completionLabel('Translations', reading.translationSummary);

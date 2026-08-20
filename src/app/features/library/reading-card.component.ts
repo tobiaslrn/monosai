@@ -2,7 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, input, output, signal } f
 import { RouterLink } from '@angular/router';
 import type { Reading } from '../../domain/reading/reading';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { completionLabel, grammarLabel } from './reading-summary-labels';
+import {
+  completionLabel,
+  grammarLabel,
+} from '../../shared-ui/reading-summary/reading-summary-labels';
 
 /**
  * One library card.

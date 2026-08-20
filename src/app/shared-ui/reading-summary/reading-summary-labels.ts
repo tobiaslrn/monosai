@@ -2,11 +2,12 @@ import type { CompletionSummary, GrammarSummary } from '../../domain/reading/sum
 import { isComplete } from '../../domain/reading/summaries';
 
 /**
- * Library-card wording for a reading's denormalized summaries.
+ * Wording for a reading's denormalized summaries.
  *
- * Pure functions rather than component methods so the card stays presentational
- * and every branch — including the ones a card only reaches after a partial
- * generation — can be asserted without rendering.
+ * Shared rather than owned by one screen: a library card, the saved panel after
+ * a generation, and the reader's status panel all describe the same numbers,
+ * and three tables that must agree is how they start to disagree. Pure
+ * functions, so every branch can be asserted without rendering anything.
  */
 
 export function completionLabel(name: string, summary: CompletionSummary): string {
