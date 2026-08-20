@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import { concernCount } from '../../domain/enrichment/grammar-normalization';
 import type { GrammarAnalysisRecord, TranslationRecord } from '../../domain/enrichment/records';
@@ -103,6 +103,20 @@ export class SentenceAidsStore {
   readonly lastError = this.errorSignal.asReadonly();
 
   constructor() {
+    effect(() => {
+      // Cache keys and staleness are derived from the text model and the live
+      // grammar profile, both of which load after the reader opens. Re-deriving
+      // when they arrive is a repeat of the same two local reads — it can no
+      // more reach a provider than the first pass could.
+      this.textModel.settings();
+      this.grammarProfile.liveProfileHash();
+      const reading = this.readingSignal();
+      const sentences = this.sentencesSignal();
+      if (reading !== null && sentences.length > 0) {
+        void this.load(reading, sentences);
+      }
+    });
+
     inject(DestroyRef).onDestroy(() => {
       this.controller.abort();
     });

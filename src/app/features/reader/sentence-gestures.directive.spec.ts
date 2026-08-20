@@ -1,7 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SentenceGesturesDirective, type SentenceGesture } from './sentence-gestures.directive';
+import {
+  SentenceGesturesDirective,
+  type SentenceGestureOrigin,
+} from './sentence-gestures.directive';
 
 /** jsdom has no `PointerEvent`, so the two fields the directive reads are added. */
 function pointerEvent(
@@ -29,7 +32,7 @@ function pointerEvent(
   `,
 })
 class HostComponent {
-  readonly requests: SentenceGesture[] = [];
+  readonly requests: SentenceGestureOrigin[] = [];
   tokenClicks = 0;
 
   onToken(event: MouseEvent): void {
@@ -143,5 +146,15 @@ describe('SentenceGesturesDirective', () => {
     selection?.removeAllRanges();
 
     expect(fixture.componentInstance.requests).toEqual([]);
+  });
+
+  it('anchors to the sentence when a click carries no position', () => {
+    const fixture = render();
+    const sentence = sentenceOf(fixture);
+
+    // A click synthesized by assistive technology reports (0, 0).
+    sentence.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(fixture.componentInstance.requests).toEqual([sentence]);
   });
 });

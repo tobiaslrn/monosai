@@ -16,6 +16,7 @@ import { FakeReadingRepository } from '../../../testing/reading-repository-fake'
 import { FakeEnrichmentRepository } from '../../../testing/enrichment-fakes';
 import { err, ok } from '../../domain/shared/result';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
+import { LanguageStore } from '../language/language.store';
 import { AppSettingsStore } from '../settings/app-settings.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
@@ -186,6 +187,9 @@ function aidsProviders(
       provide: AppSettingsStore,
       useValue: { readerPreferences: signal(DEFAULT_READER_PREFERENCES) },
     },
+    // The service waits for the language bundle before resolving the profile;
+    // in a spec the profile hash is supplied directly, so it is already there.
+    { provide: LanguageStore, useValue: { initialize: () => Promise.resolve(true) } },
   ];
 }
 

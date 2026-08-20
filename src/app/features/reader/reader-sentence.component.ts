@@ -4,15 +4,18 @@ import type { ReaderSentence } from '../../application/reading/reader.store';
 import { tokensCoveredByConcerns } from '../../domain/enrichment/finding-spans';
 import type { Token } from '../../domain/reading/token';
 import { ReaderTokenComponent, type TokenActivationSource } from './reader-token.component';
-import { SentenceGesturesDirective, type SentenceGesture } from './sentence-gestures.directive';
+import {
+  SentenceGesturesDirective,
+  type SentenceGestureOrigin,
+} from './sentence-gestures.directive';
 import { SentenceGrammarComponent } from './sentence-grammar.component';
 import { SentenceTranslationComponent } from './sentence-translation.component';
 
 /** A request to open the sentence menu, and where to put it. */
 export interface SentenceMenuRequest {
   readonly sentence: ReaderSentence;
-  /** Viewport coordinates for a pointer, or the control that asked. */
-  readonly origin: SentenceGesture | HTMLElement;
+  /** Viewport coordinates for a pointer, or the element that asked. */
+  readonly origin: SentenceGestureOrigin;
   /** Where focus returns to; null when the menu was opened by a pointer. */
   readonly returnFocusTo: HTMLElement | null;
 }
@@ -123,7 +126,13 @@ export interface TokenActivation {
       clip-path: inset(50%);
     }
 
-    .sentence-actions:focus-visible {
+    /*
+     * Plain :focus rather than :focus-visible: the control is invisible at
+     * rest, so it must lay itself out whenever it holds focus — including when
+     * the popover hands focus back to it after closing, which :focus-visible
+     * may not match.
+     */
+    .sentence-actions:focus {
       position: static;
       width: auto;
       height: auto;
@@ -185,7 +194,7 @@ export class ReaderSentenceComponent {
       : tokensCoveredByConcerns(grammar.findings, this.entry().tokens);
   });
 
-  protected openMenuAt(origin: SentenceGesture): void {
+  protected openMenuAt(origin: SentenceGestureOrigin): void {
     this.menuRequested.emit({ sentence: this.entry(), origin, returnFocusTo: null });
   }
 

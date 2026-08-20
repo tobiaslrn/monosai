@@ -8,6 +8,7 @@ import type { ReadingId, SentenceId } from '../../domain/shared/ids';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
+import { LanguageStore } from '../language/language.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { READING_REPOSITORY } from '../shared/repository-tokens';
 import { EnrichmentKeysService } from './enrichment-keys.service';
@@ -49,6 +50,7 @@ export class SentenceEnrichmentService {
   private readonly keys = inject(EnrichmentKeysService);
   private readonly textModel = inject(TextModelStore);
   private readonly profile = inject(GrammarProfileStore);
+  private readonly language = inject(LanguageStore);
 
   /** The cache key a translation of this sentence would be stored under now. */
   translationKeyFor(sentence: Sentence): string {
@@ -116,6 +118,13 @@ export class SentenceEnrichmentService {
     readingId: ReadingId,
     signal: AbortSignal,
   ): Promise<EnrichmentResult<GrammarAnalysisRecord>> {
+    // The live profile hashes the preset prose, which lives in the language
+    // bundle. Opening a reading does not need that bundle, so an analysis
+    // requested moments after opening may be the first thing that does. This
+    // waits for the local assets rather than refusing; it is a file read, not a
+    // request.
+    await this.language.initialize();
+
     const profileHash = this.profile.liveProfileHash();
     if (profileHash === null) {
       return err({
@@ -123,7 +132,7 @@ export class SentenceEnrichmentService {
         error: aiError(
           'capability-unsupported',
           'grammar-review',
-          'The grammar profile is not ready yet.',
+          'The grammar profile could not be resolved, because the language assets are unavailable.',
           { detail: { capability: 'grammar-profile' } },
         ),
       });
