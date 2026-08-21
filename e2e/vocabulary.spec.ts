@@ -192,25 +192,19 @@ test.describe('vocabulary', () => {
     await expect(page.getByText('no reviewed Anki vocabulary is set up')).toHaveCount(0);
 
     // ねこ and 見る both came from the snapshot, and the reader marks warnings
-    // only: a word the learner has reviewed is simply text, and what its status
-    // says is in word details rather than under every line.
+    // only: a word the learner has reviewed is simply text, and nothing about
+    // its status is worth printing anywhere, on the page or in word details.
     const known = page.getByRole('button', { name: /ねこ/ }).first();
     await expect(known).toBeVisible({ timeout: 60_000 });
 
-    // The status is still there to be read, at the word. Polled by reopening,
-    // because a cold start classifies after the first paint.
+    // Polled because a cold start classifies after the first paint: a
+    // transient unmarked-but-unclassified word would also pass a single
+    // check, so this keeps sampling across that window instead of racing it.
     await expect
-      .poll(
-        async () => {
-          await known.click();
-          const details = await page.locator('mn-word-inspector').innerText();
-          await page.keyboard.press('Escape');
-          return details;
-        },
-        { timeout: 60_000 },
-      )
-      .toContain('Known from Anki');
+      .poll(() => page.locator('.is-warning-vocabulary').count(), { timeout: 60_000 })
+      .toBe(0);
 
-    expect(await page.locator('.is-warning-vocabulary').count()).toBe(0);
+    await known.click();
+    await expect(page.locator('mn-word-inspector')).not.toContainText('Review this word in Anki');
   });
 });

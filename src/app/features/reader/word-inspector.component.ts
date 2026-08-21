@@ -96,7 +96,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
           <ng-container *ngTemplateOutlet="grammarSection" />
         }
 
-        @if (store.presentation(); as presentation) {
+        @if (warningPresentation(); as presentation) {
           <section class="status" aria-labelledby="mn-inspector-status">
             <h3 id="mn-inspector-status">
               <span class="badge">{{ presentation.label }}</span>
@@ -159,7 +159,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
           }
         </section>
 
-        @if (!hasNotes() && grammar().analyzed) {
+        @if (!hasNotes() && grammar().stale) {
           <ng-container *ngTemplateOutlet="grammarSection" />
         }
 
@@ -192,10 +192,6 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         @for (finding of grammar().findings; track $index) {
           <p class="finding-label">{{ finding.label }}</p>
           <p lang="en">{{ finding.explanationEn }}</p>
-        } @empty {
-          @if (grammar().sentenceFindings.length === 0) {
-            <p class="mn-hint">Nothing here is outside your grammar profile.</p>
-          }
         }
 
         <!--
@@ -469,7 +465,19 @@ export class WordInspectorComponent {
     return state.kind === 'failed' ? state.error.code : '';
   });
 
-  protected readonly nextAction = computed(() => this.store.presentation()?.nextAction ?? null);
+  /**
+   * The status, only when it is a warning.
+   *
+   * "Known from Anki", "this is a particle" and the rest are three ways of
+   * saying the word is readable, and printing them here would just move the
+   * clutter the reader already keeps off the page into the inspector instead.
+   */
+  protected readonly warningPresentation = computed(() => {
+    const presentation = this.store.presentation();
+    return presentation?.marker === 'warning-vocabulary' ? presentation : null;
+  });
+
+  protected readonly nextAction = computed(() => this.warningPresentation()?.nextAction ?? null);
 
   protected expand(): void {
     this.expandedSignal.set(true);
