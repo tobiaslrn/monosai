@@ -21,14 +21,22 @@ jobs:
       - run: npm ci
       - name: Dependency audit (production)
         run: npm audit --omit=dev --audit-level=high
+      - name: Third-party licence check
+        run: npm run licenses:check
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
       - name: Language dataset schema, digest, and attribution check
         run: npm run assets:verify
+      - name: App icon structure and source digest check
+        run: npm run icons:verify
       - run: npm run test:coverage
       - name: Production build
         run: npm run build:pages -- --define MONOSAI_BUILD_COMMIT='"${{ github.sha }}"'
+      - name: Verify the GitHub Pages dist (base path, manifest, icons)
+        run: npm run verify-dist
+      - name: Bundle size report
+        run: npm run report-bundle:check
       - uses: actions/upload-artifact@v4
         with:
           name: dist
@@ -50,5 +58,24 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
+          path: playwright-report
+          retention-days: 7
+
+  e2e-pwa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: PWA suite against the production build (offline reload, installability, base path)
+        run: npm run e2e:pwa
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-pwa
           path: playwright-report
           retention-days: 7

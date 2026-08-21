@@ -26,6 +26,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "e2e": "playwright test",
+    "e2e:pwa": "playwright test --config=playwright.pwa.config.ts",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run assets:verify && npm run fixtures:verify && npm run test && npm run build",
     "assets:build": "node scripts/assets/build-language-assets.mjs",
     "assets:verify": "node scripts/assets/verify-language-assets.mjs",
@@ -37,6 +38,8 @@
     "report-bundle": "node scripts/report-bundle.mjs",
     "report-bundle:check": "node scripts/report-bundle.mjs --check",
     "serve-dist": "node scripts/serve-dist.mjs",
+    "licenses:build": "node scripts/licenses/check-licenses.mjs",
+    "licenses:check": "node scripts/licenses/check-licenses.mjs --check",
     "test:manual": "vitest run --config vitest.manual.config.ts"
   },
   "dependencies": {
