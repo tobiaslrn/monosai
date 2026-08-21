@@ -25,6 +25,27 @@ describe('bundled dictionary lookup', () => {
     expect(result.entries[0].senses[0].glossesEn).toContain('to eat');
   });
 
+  it('prefers the lemma when the surface is spelled like an unrelated word', () => {
+    // あり is both the stem of あります and the reading of 蟻, "ant". The verb tag
+    // is the only thing that tells them apart.
+    const result = index.lookup({ surface: 'あり', lemma: 'ある', partOfSpeech: 'verb' });
+
+    expect(result.matchedBy).toBe('lemma');
+    expect(
+      result.entries.some((entry) =>
+        entry.senses.some((sense) => sense.partsOfSpeech.includes('verb')),
+      ),
+    ).toBe(true);
+  });
+
+  it('returns an exact spelling whose part of speech disagrees rather than nothing', () => {
+    // A disagreeing tag is weaker evidence than no entry at all.
+    const result = index.lookup({ surface: '猫', partOfSpeech: 'verb' });
+
+    expect(result.matchedBy).toBe('surface');
+    expect(result.entries.length).toBeGreaterThan(0);
+  });
+
   it('finds a kana-only word', () => {
     const result = index.lookup({ surface: 'ありがとう' });
     expect(result.matchedBy).toBe('surface');

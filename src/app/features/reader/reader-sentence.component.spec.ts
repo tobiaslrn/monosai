@@ -5,7 +5,11 @@ import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentenc
 import type { ReaderSentence } from '../../application/reading/reader.store';
 import type { GrammarAnalysisRecord, TranslationRecord } from '../../domain/enrichment/records';
 import { paragraphId, readingId, sentenceId } from '../../domain/shared/ids';
-import { ReaderSentenceComponent, type TokenActivation } from './reader-sentence.component';
+import {
+  ReaderSentenceComponent,
+  type SelectedWord,
+  type TokenActivation,
+} from './reader-sentence.component';
 
 const READING_ID = readingId('r1');
 const SENTENCE_ID = sentenceId('s1');
@@ -38,6 +42,34 @@ const ENTRY: ReaderSentence = {
       surface: 'が',
       partOfSpeech: 'particle',
       dictionaryKeys: ['が'],
+      isPunctuation: false,
+    },
+  ],
+  statuses: null,
+};
+
+/** 名前 が あり ます: one noun, one particle, and one word split in two. */
+const INFLECTED: ReaderSentence = {
+  sentence: { ...ENTRY.sentence, japaneseText: 'あります。' },
+  tokens: [
+    {
+      id: 'i1',
+      startUtf16: 0,
+      endUtf16: 2,
+      surface: 'あり',
+      lemma: 'ある',
+      partOfSpeech: 'verb',
+      dictionaryKeys: ['あり'],
+      isPunctuation: false,
+    },
+    {
+      id: 'i2',
+      startUtf16: 2,
+      endUtf16: 4,
+      surface: 'ます',
+      lemma: 'ます',
+      partOfSpeech: 'auxiliary',
+      dictionaryKeys: ['ます'],
       isPunctuation: false,
     },
   ],
@@ -90,17 +122,19 @@ function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
   imports: [ReaderSentenceComponent],
   template: `<p>
     <mn-reader-sentence
-      [entry]="entry"
+      [entry]="entry()"
       [aids]="aids()"
       [selected]="selected()"
+      [selectedWord]="selectedWord()"
       (activated)="activations.push($event)"
     />
   </p>`,
 })
 class HostComponent {
-  readonly entry = ENTRY;
+  readonly entry = signal<ReaderSentence>(ENTRY);
   readonly aids = signal<SentenceAids>(NO_AIDS);
   readonly selected = signal(false);
+  readonly selectedWord = signal<SelectedWord | null>(null);
   readonly activations: TokenActivation[] = [];
 }
 
@@ -185,6 +219,31 @@ describe('ReaderSentenceComponent', () => {
 
     expect(opening).toHaveLength(1);
     expect(opening[0].textContent).toContain('猫');
+  });
+
+  it('activates the whole word, not the morpheme that was pressed', () => {
+    // あり on its own is 蟻, "ant": everything downstream must be about あります.
+    const fixture = render();
+    fixture.componentInstance.entry.set(INFLECTED);
+    fixture.detectChanges();
+
+    const buttons = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button.token')];
+    buttons[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const [activation] = fixture.componentInstance.activations;
+    expect(activation.token.surface, 'the pressed morpheme is still reported').toBe('ます');
+    expect(activation.word.surface).toBe('あります');
+    expect(activation.word.head.lemma).toBe('ある');
+  });
+
+  it('tints every part of the open word', () => {
+    const fixture = render();
+    fixture.componentInstance.entry.set(INFLECTED);
+    fixture.componentInstance.selectedWord.set({ sentenceId: SENTENCE_ID, tokenId: 'i2' });
+    fixture.detectChanges();
+
+    const selected = (fixture.nativeElement as HTMLElement).querySelectorAll('button.is-selected');
+    expect([...selected].map((element) => element.textContent.trim())).toEqual(['あり', 'ます']);
   });
 
   it('activates a word without the press reaching the paragraph', () => {

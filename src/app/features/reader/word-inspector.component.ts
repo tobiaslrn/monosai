@@ -12,6 +12,7 @@ import {
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import type { GrammarFinding } from '../../domain/enrichment/records';
 import { PART_OF_SPEECH_LABELS } from '../../domain/reading/token';
+import { wordReading } from '../../domain/reading/token-presentation';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
 /**
@@ -59,8 +60,8 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       <div class="inspector">
         <header>
           <div class="headword">
-            <p class="surface" lang="ja">{{ word.token.surface }}</p>
-            @if (word.token.readingHiragana; as reading) {
+            <p class="surface" lang="ja">{{ word.word.surface }}</p>
+            @if (reading(); as reading) {
               <p class="reading" lang="ja">{{ reading }}</p>
             }
           </div>
@@ -422,17 +423,29 @@ export class WordInspectorComponent {
     return grammar.findings.length > 0 || grammar.sentenceFindings.length > 0;
   });
 
-  /** The dictionary form, or null when the word is already in it. */
+  /** Suppressed for a kana word, where it would only repeat the headword. */
+  protected readonly reading = computed(() => {
+    const selected = this.store.selected();
+    return selected === null ? null : wordReading(selected.word);
+  });
+
+  /**
+   * The dictionary form, or null when the word is already in it.
+   *
+   * Taken from the word's head against the whole word, so あります is told it
+   * comes from ある rather than being compared with its own stem.
+   */
   protected readonly inflectedForm = computed(() => {
-    const token = this.store.selected()?.token;
-    if (token?.lemma === undefined || token.lemma === token.surface) {
+    const word = this.store.selected()?.word;
+    const lemma = word?.head.lemma;
+    if (word === undefined || lemma === undefined || lemma === word.surface) {
       return null;
     }
-    return token.lemma;
+    return lemma;
   });
 
   protected readonly partOfSpeech = computed(() => {
-    const pos = this.store.selected()?.token.partOfSpeech;
+    const pos = this.store.selected()?.word.head.partOfSpeech;
     return pos === undefined ? null : PART_OF_SPEECH_LABELS[pos];
   });
 

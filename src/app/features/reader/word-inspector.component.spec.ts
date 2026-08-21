@@ -6,6 +6,7 @@ import { WordInspectorStore } from '../../application/reading/word-inspector.sto
 import { LANGUAGE_RUNTIME } from '../../application/shared/language-tokens';
 import type { GrammarFinding } from '../../domain/enrichment/records';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
+import { wordAt } from '../../domain/reading/token-grouping';
 import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import { ok } from '../../domain/shared/result';
@@ -99,6 +100,7 @@ describe('WordInspectorComponent', () => {
   ) {
     await TestBed.inject(WordInspectorStore).inspect({
       token,
+      word: wordAt([token], 0),
       sentence: SENTENCE,
       status,
     });

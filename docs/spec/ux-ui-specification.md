@@ -185,6 +185,7 @@ sentence translated is laid out exactly like one with none.
 - Sentences have `lang="ja"`; translations have `lang="en"` inside their popover.
 - Tokens are interactive only if they have inspectable data. Use native buttons styled inline rather than click handlers on spans.
 - A word's target is the word itself: the button is the ruby base rather than the ruby's parent, and its own leading is reset so the box hugs the glyphs. The annotation above it and the leading around it belong to the sentence, so a press there opens the sentence rather than the word.
+- A press is about the whole word, never the morpheme under the pointer: あり and ます are one word, so pressing either opens あります, tints both, and looks up ある. Particles stay words of their own, because a particle is worth inspecting.
 - Desktop: hover/focus gives a concise preview; click/Enter/Space pins full details.
 - Android: tap opens full details. Tapping sentence whitespace does not conflict with a word tap.
 - Token spacing is implemented by layout gap/margins, not by modifying the stored Japanese string.
