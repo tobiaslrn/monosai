@@ -1,4 +1,3 @@
-import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -11,10 +10,10 @@ import {
 } from '@angular/core';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import type { GrammarFinding } from '../../domain/enrichment/records';
-import { PART_OF_SPEECH_LABELS } from '../../domain/reading/token';
+import type { DictionaryEntry } from '../../domain/language/dictionary';
 import { wordReading } from '../../domain/reading/token-presentation';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { WordDerivationComponent } from './word-derivation.component';
+import { WordFormSummaryComponent } from './word-form-summary.component';
 
 /**
  * What the reader knows about the grammar around one word.
@@ -37,6 +36,27 @@ export interface WordGrammarState {
 /** Meanings shown before the learner asks for the rest of the entry. */
 const COLLAPSED_SENSE_LIMIT = 2;
 
+/** Keeps the collapsed lookup to two meanings across all returned entries. */
+function limitEntries(
+  entries: readonly DictionaryEntry[],
+  limit: number,
+): readonly DictionaryEntry[] {
+  let remaining = limit;
+  const limited: DictionaryEntry[] = [];
+
+  for (const entry of entries) {
+    if (remaining === 0) {
+      break;
+    }
+    const senses = entry.senses.slice(0, remaining);
+    if (senses.length > 0) {
+      limited.push({ ...entry, senses });
+      remaining -= senses.length;
+    }
+  }
+  return limited;
+}
+
 export const NO_WORD_GRAMMAR: WordGrammarState = {
   findings: [],
   sentenceFindings: [],
@@ -55,22 +75,13 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 @Component({
   selector: 'mn-word-inspector',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, NgTemplateOutlet, WordDerivationComponent],
+  imports: [IconComponent, WordFormSummaryComponent],
   template: `
     @if (store.selected(); as word) {
       <div class="inspector">
         <header>
           <div class="headword">
-            <!--
-              Rendered per token so a step of the derivation can tint the part
-              of the word it is about: ない and the なかっ it is written as are
-              only obviously the same thing when the ladder can point at it.
-            -->
-            <p class="surface" lang="ja">
-              @for (part of word.word.tokens; track part.id) {
-                <span [class.tinted]="highlighted().includes(part.id)">{{ part.surface }}</span>
-              }
-            </p>
+            <p class="surface" lang="ja">{{ word.word.surface }}</p>
             @if (reading(); as reading) {
               <p class="reading" lang="ja">{{ reading }}</p>
             }
@@ -80,58 +91,12 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
           </button>
         </header>
 
-        <!--
-          A word that was inflected or added to is explained by the ladder that
-          built it, which already says the dictionary form and what each ending
-          does; printing those facts again above it would only repeat them.
-        -->
-        @if (store.derivation(); as derivation) {
-          <mn-word-derivation [derivation]="derivation" (highlighted)="highlighted.set($event)" />
-        } @else if (inflectedForm(); as lemma) {
-          <!--
-            Only when the dictionary form is not the form on the page.
-            Repeating the surface back at the learner taught them nothing.
-          -->
-          <dl class="facts">
-            <div>
-              <dt>Dictionary form</dt>
-              <dd lang="ja">{{ lemma }}</dd>
-            </div>
-            @if (partOfSpeech(); as pos) {
-              <div>
-                <dt>Part of speech</dt>
-                <dd>{{ pos }}</dd>
-              </div>
-            }
-          </dl>
+        @if (store.formSummary(); as formSummary) {
+          <mn-word-form-summary [summary]="formSummary" />
         }
 
-        <!--
-          A note the learner came here for should not sit below a dictionary
-          they have to scroll past: when this word carries one, it leads.
-        -->
-        @if (hasNotes()) {
-          <ng-container *ngTemplateOutlet="grammarSection" />
-        }
-
-        @if (warningPresentation(); as presentation) {
-          <section class="status" aria-labelledby="mn-inspector-status">
-            <h3 id="mn-inspector-status">
-              <span class="badge">{{ presentation.label }}</span>
-            </h3>
-            @if (presentation.structuralForm; as form) {
-              <p class="form-name">{{ form.nameEn }}</p>
-              <p>{{ form.descriptionEn }}</p>
-              @if (form.exampleJa; as example) {
-                <p class="form-example" lang="ja">{{ example }}</p>
-              }
-            }
-            <p>{{ presentation.explanation }}</p>
-          </section>
-        }
-
-        <section aria-labelledby="mn-inspector-dictionary">
-          <h3 id="mn-inspector-dictionary">Dictionary</h3>
+        <section class="dictionary-section" aria-labelledby="mn-inspector-dictionary">
+          <h3 id="mn-inspector-dictionary">Meanings</h3>
           @switch (store.dictionary().kind) {
             @case ('looking-up') {
               <p class="mn-hint" role="status">Looking up…</p>
@@ -177,8 +142,63 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
           }
         </section>
 
-        @if (!hasNotes() && grammar().stale) {
-          <ng-container *ngTemplateOutlet="grammarSection" />
+        @if (hasNotes() || grammar().stale) {
+          <section class="grammar-section" aria-labelledby="mn-inspector-grammar">
+            <h3 id="mn-inspector-grammar">Grammar here</h3>
+
+            @if (grammar().stale) {
+              <p class="mn-hint">
+                Analyzed under an earlier grammar profile. It can be re-analyzed from the sentence.
+              </p>
+            }
+
+            @if (grammarLabels().length > 0) {
+              <div class="grammar-labels" aria-label="Grammar findings">
+                @for (finding of grammar().findings; track $index) {
+                  <span class="finding-label">{{ finding.label }}</span>
+                }
+                @for (finding of grammar().sentenceFindings; track $index) {
+                  <span class="finding-label">
+                    {{ finding.label }} <span class="scope">whole sentence</span>
+                  </span>
+                }
+              </div>
+
+              <details class="grammar-details">
+                <summary>Details</summary>
+                <div class="grammar-explanations">
+                  @for (finding of grammar().findings; track $index) {
+                    <p lang="en">
+                      <strong>{{ finding.label }}</strong> — {{ finding.explanationEn }}
+                    </p>
+                  }
+                  @for (finding of grammar().sentenceFindings; track $index) {
+                    <p lang="en">
+                      <strong>{{ finding.label }}</strong>
+                      <span class="scope">whole sentence</span> —
+                      {{ finding.explanationEn }}
+                    </p>
+                  }
+                </div>
+              </details>
+            }
+          </section>
+        }
+
+        @if (warningPresentation(); as presentation) {
+          <section class="status" aria-labelledby="mn-inspector-status">
+            <h3 id="mn-inspector-status">
+              <span class="badge">{{ presentation.label }}</span>
+            </h3>
+            @if (presentation.structuralForm; as form) {
+              <p class="form-name">{{ form.nameEn }}</p>
+              <p>{{ form.descriptionEn }}</p>
+              @if (form.exampleJa; as example) {
+                <p class="form-example" lang="ja">{{ example }}</p>
+              }
+            }
+            <p>{{ presentation.explanation }}</p>
+          </section>
         }
 
         @if (nextAction(); as action) {
@@ -196,38 +216,12 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         </button>
       </div>
     }
-
-    <ng-template #grammarSection>
-      <section class="grammar-section" aria-labelledby="mn-inspector-grammar">
-        <h3 id="mn-inspector-grammar">Grammar here</h3>
-
-        @if (grammar().stale) {
-          <p class="mn-hint">
-            Analyzed under an earlier grammar profile. It can be re-analyzed from the sentence.
-          </p>
-        }
-
-        @for (finding of grammar().findings; track $index) {
-          <p class="finding-label">{{ finding.label }}</p>
-          <p lang="en">{{ finding.explanationEn }}</p>
-        }
-
-        <!--
-            Said about the sentence rather than any part of it, so no word could
-            be marked for it and every word has to carry it.
-          -->
-        @for (finding of grammar().sentenceFindings; track $index) {
-          <p class="finding-label">{{ finding.label }} <span class="scope">whole sentence</span></p>
-          <p lang="en">{{ finding.explanationEn }}</p>
-        }
-      </section>
-    </ng-template>
   `,
   styles: `
     .inspector {
       display: flex;
       flex-direction: column;
-      gap: var(--space-4);
+      gap: var(--space-3);
     }
 
     header {
@@ -237,10 +231,17 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       justify-content: space-between;
     }
 
+    .headword {
+      min-width: 0;
+    }
+
     .surface {
       margin: 0;
       font-family: var(--font-japanese);
       font-size: 28px;
+      font-weight: 700;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
     }
 
     .reading {
@@ -263,30 +264,9 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
     }
 
     h3 {
-      margin: 0 0 var(--space-2);
-      font-size: var(--text-md);
-    }
-
-    /* The part of the word the open ladder step is about. */
-    .tinted {
-      border-radius: var(--radius-control);
-      background: var(--accent-secondary-soft);
-    }
-
-    .facts {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-4);
-      margin: 0;
-    }
-
-    dt {
-      color: var(--text-secondary);
+      margin: 0 0 var(--space-1);
       font-size: var(--text-sm);
-    }
-
-    dd {
-      margin: 0;
+      font-weight: 600;
     }
 
     .badge {
@@ -313,23 +293,39 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       color: var(--text-secondary);
     }
 
-    .senses,
+    .senses {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .senses > li + li {
+      margin-top: var(--space-2);
+      padding-top: var(--space-2);
+      border-top: 1px solid var(--border-subtle);
+    }
+
     .glosses {
       margin: 0;
       padding-inline-start: var(--space-5);
     }
 
-    .senses > li + li {
-      margin-top: var(--space-3);
+    .glosses > li + li {
+      margin-top: var(--space-1);
     }
 
     .entry-forms {
       margin: 0 0 var(--space-1);
+      color: var(--text-secondary);
       font-family: var(--font-japanese);
+      font-size: var(--text-sm);
     }
 
     .more {
+      display: inline-flex;
+      align-items: center;
       min-height: var(--touch-target);
+      margin-top: var(--space-1);
       padding: 0;
       border: 0;
       background: none;
@@ -341,8 +337,36 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
     }
 
     .finding-label {
-      margin: 0;
+      display: inline-block;
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-pill);
+      background: var(--surface-sunken);
       font-weight: 600;
+    }
+
+    .grammar-labels {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-1) var(--space-2);
+    }
+
+    .grammar-details {
+      margin-top: var(--space-2);
+    }
+
+    .grammar-details summary {
+      min-height: var(--touch-target);
+      padding-block: var(--space-2);
+      cursor: pointer;
+    }
+
+    .grammar-explanations {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    .grammar-explanations p {
+      margin: var(--space-2) 0 0;
     }
 
     /* Ruled in the marker's own colour, so the section names the underline. */
@@ -440,18 +464,15 @@ export class WordInspectorComponent {
   readonly closed = output<void>();
   readonly sentenceRequested = output<void>();
 
-  /**
-   * The parts of the word the open ladder step covers.
-   *
-   * Held here rather than in the ladder because the headword it tints belongs
-   * to this component, and the two are only useful together.
-   */
-  protected readonly highlighted = signal<readonly string[]>([]);
-
-  /** Whether this word has grammar to read, which decides where the section goes. */
+  /** Whether this word has stored grammar findings to show. */
   protected readonly hasNotes = computed(() => {
     const grammar = this.grammar();
     return grammar.findings.length > 0 || grammar.sentenceFindings.length > 0;
+  });
+
+  protected readonly grammarLabels = computed(() => {
+    const grammar = this.grammar();
+    return [...grammar.findings, ...grammar.sentenceFindings].map((finding) => finding.label);
   });
 
   /** Suppressed for a kana word, where it would only repeat the headword. */
@@ -460,42 +481,21 @@ export class WordInspectorComponent {
     return selected === null ? null : wordReading(selected.word);
   });
 
-  /**
-   * The dictionary form, or null when the word is already in it.
-   *
-   * Taken from the word's head against the whole word, so あります is told it
-   * comes from ある rather than being compared with its own stem.
-   */
-  protected readonly inflectedForm = computed(() => {
-    const word = this.store.selected()?.word;
-    const lemma = word?.head.lemma;
-    if (word === undefined || lemma === undefined || lemma === word.surface) {
-      return null;
-    }
-    return lemma;
-  });
-
-  protected readonly partOfSpeech = computed(() => {
-    const pos = this.store.selected()?.word.head.partOfSpeech;
-    return pos === undefined ? null : PART_OF_SPEECH_LABELS[pos];
-  });
-
   protected readonly entries = computed(() => {
     const state = this.store.dictionary();
     return state.kind === 'found' ? state.entries : [];
   });
 
   /**
-   * The entries as shown. Collapsed, that is the first two meanings of the
-   * first entry.
+   * The entries as shown. Collapsed, this is the first two meanings across all
+   * returned entries.
    */
   protected readonly visibleEntries = computed(() => {
     const entries = this.entries();
     if (this.expandedSignal() || entries.length === 0) {
       return entries;
     }
-    const [first] = entries;
-    return [{ ...first, senses: first.senses.slice(0, COLLAPSED_SENSE_LIMIT) }];
+    return limitEntries(entries, COLLAPSED_SENSE_LIMIT);
   });
 
   protected readonly hiddenSenseCount = computed(() => {

@@ -41,7 +41,7 @@ const POLITE_ENDING: StructuralBaselineEntry = {
   descriptionEn: 'Polite copula, also inflecting to でしょう and でした.',
 };
 
-/** 小さい + です: the case the derivation ladder exists for. */
+/** 小さい + です: a compact polite-form lookup. */
 const POLITE_ADJECTIVE: readonly Token[] = [
   {
     id: 'p1',
@@ -160,8 +160,27 @@ describe('WordInspectorComponent', () => {
     const element = (await render(grammarWith({ findings: [FINDING], analyzed: true })))
       .nativeElement as HTMLElement;
 
-    expect(element.textContent).toContain('が as subject marker');
-    expect(element.textContent).toContain('Marks who performs the action.');
+    expect(element.querySelector('.grammar-labels')?.textContent).toContain('が as subject marker');
+    const details = element.querySelector<HTMLDetailsElement>('.grammar-details');
+    expect(details?.open).toBe(false);
+    expect(details?.querySelector('.grammar-explanations')?.textContent).toContain(
+      'Marks who performs the action.',
+    );
+  });
+
+  it('keeps grammar explanations behind one Details disclosure', async () => {
+    const fixture = await render(grammarWith({ findings: [FINDING], analyzed: true }));
+    const details = (fixture.nativeElement as HTMLElement).querySelector<HTMLDetailsElement>(
+      '.grammar-details',
+    );
+
+    details?.querySelector('summary')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(details?.open).toBe(true);
+    expect(details?.querySelector('.grammar-explanations')?.textContent).toContain(
+      'Marks who performs the action.',
+    );
   });
 
   /**
@@ -285,22 +304,61 @@ describe('WordInspectorComponent', () => {
     expect(element.textContent).toContain('Review this word in Anki');
   });
 
+  it('keeps the lookup content in surface, form, dictionary, grammar, status order', async () => {
+    entries = [entryWith(1)];
+    const element = (
+      await render(
+        grammarWith({ findings: [FINDING], analyzed: true }),
+        { ...TOKEN, surface: '歩いた', lemma: '歩く' },
+        { tokenId: TOKEN.id, validation: { category: 'unknown', reason: 'not-in-vocabulary' } },
+      )
+    ).nativeElement as HTMLElement;
+    const inspector = element.querySelector('.inspector')!;
+    const surface = inspector.querySelector('.surface');
+    const form = inspector.querySelector('.form-summary');
+    const dictionary = inspector.querySelector('#mn-inspector-dictionary');
+    const grammar = inspector.querySelector('.grammar-section');
+    const status = inspector.querySelector('.status');
+    const nextAction = inspector.querySelector('.next-action');
+
+    expect(surface).not.toBeNull();
+    expect(form).not.toBeNull();
+    expect(dictionary).not.toBeNull();
+    expect(grammar).not.toBeNull();
+    expect(status).not.toBeNull();
+    expect(nextAction).not.toBeNull();
+    expect(surface!.compareDocumentPosition(form!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      form!.compareDocumentPosition(dictionary!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      dictionary!.compareDocumentPosition(grammar!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      grammar!.compareDocumentPosition(status!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      status!.compareDocumentPosition(nextAction!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   describe('the dictionary form', () => {
     it('is shown when the word on the page is inflected', async () => {
       const element = (
         await render(NO_WORD_GRAMMAR, { ...TOKEN, surface: '歩いた', lemma: '歩く' })
       ).nativeElement as HTMLElement;
 
-      expect(element.textContent).toContain('Dictionary form');
-      expect(element.querySelector('.facts dd')?.textContent).toContain('歩く');
+      expect(element.querySelector('.dictionary-form')?.textContent).toContain('歩く');
+      expect(element.querySelector('.part-of-speech')?.textContent).toBe('noun');
     });
 
-    it('is left out when it is the same word already on the page', async () => {
+    it('still shows the dictionary form and part of speech for an uninflected word', async () => {
       const element = (await render(NO_WORD_GRAMMAR, { ...TOKEN, lemma: TOKEN.surface }))
         .nativeElement as HTMLElement;
 
-      expect(element.querySelector('.facts')).toBeNull();
-      expect(element.textContent).not.toContain('Part of speech');
+      expect(element.querySelector('.dictionary-form')?.textContent).toBe('猫');
+      expect(element.querySelector('.part-of-speech')?.textContent).toBe('noun');
+      expect(element.querySelector('.form-line')).toBeNull();
     });
   });
 
@@ -334,7 +392,7 @@ describe('WordInspectorComponent', () => {
     });
   });
 
-  describe('how a word is built', () => {
+  describe('compact form summary', () => {
     async function renderWord(tokens: readonly Token[]) {
       await TestBed.inject(WordInspectorStore).inspect({
         token: tokens[0],
@@ -347,63 +405,20 @@ describe('WordInspectorComponent', () => {
       return fixture.nativeElement as HTMLElement;
     }
 
-    it('reads as a ladder from the dictionary form to what is written', async () => {
+    it('shows dictionary form, part of speech, and the high-level form line', async () => {
       const element = await renderWord(POLITE_ADJECTIVE);
-      const cells = (selector: string): readonly string[] =>
-        [...element.querySelectorAll(`.derivation ${selector}`)].map((cell) =>
-          cell.textContent.trim(),
-        );
-
-      expect(cells('.base .form')).toEqual(['小さい']);
-      expect(cells('.base .effect')).toEqual(['dictionary form']);
-      expect(cells('.step .form')).toEqual(['です']);
-      expect(cells('.step .effect')).toEqual(['polite copula']);
-      expect(cells('.step .result')).toEqual(['小さいです']);
+      expect(element.querySelector('.dictionary-form')?.textContent).toBe('小さい');
+      expect(element.querySelector('.part-of-speech')?.textContent).toBe('i-adjective');
+      expect(element.querySelector('.form-line')?.textContent).toBe('Polite');
     });
 
-    it('says what the whole form is in one line', async () => {
-      const element = await renderWord(POLITE_ADJECTIVE);
-
-      expect(element.querySelector('.summary')?.textContent.trim()).toBe('Polite');
-    });
-
-    it('folds the explanation away until it is asked for', async () => {
-      const element = await renderWord(POLITE_ADJECTIVE);
-      const step = element.querySelector<HTMLButtonElement>('.step');
-
-      expect(step).not.toBeNull();
-      expect(element.querySelector('.detail')).toBeNull();
-      expect(step?.getAttribute('aria-expanded')).toBe('false');
-
-      step?.click();
-      TestBed.tick();
-
-      expect(step?.getAttribute('aria-expanded')).toBe('true');
-      expect(element.querySelector('.detail')?.textContent).toContain(
-        'Polite copula, also inflecting to でしょう and でした.',
-      );
-      expect(element.querySelector('.detail')?.id).toBe(step?.getAttribute('aria-controls'));
-    });
-
-    it('tints the part of the word a step is about', async () => {
-      const element = await renderWord(POLITE_ADJECTIVE);
-      const step = element.querySelector<HTMLButtonElement>('.step');
-
-      expect(element.querySelectorAll('.surface .tinted')).toHaveLength(0);
-
-      step?.dispatchEvent(new FocusEvent('focus'));
-      TestBed.tick();
-
-      const tinted = [...element.querySelectorAll('.surface .tinted')].map(
-        (span) => span.textContent,
-      );
-      expect(tinted).toEqual(['です']);
-    });
-
-    it('shows no ladder for a word that was never inflected or added to', async () => {
+    it('has no derivation controls or stem highlighting', async () => {
       const element = await renderWord([TOKEN]);
 
       expect(element.querySelector('.derivation')).toBeNull();
+      expect(element.querySelector('.step')).toBeNull();
+      expect(element.querySelector('.detail')).toBeNull();
+      expect(element.querySelector('.tinted')).toBeNull();
       expect(element.textContent).not.toContain('How it is built');
     });
   });

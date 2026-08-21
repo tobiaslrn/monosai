@@ -189,8 +189,9 @@ and library tags never leave that layer.
 
 It is what makes an inflection that adds no ending explainable: the ば of 行けば
 is a separate word and 行け as an order has no second token, so the head's own
-form is the only evidence either exists. The reader uses it to name those steps
-and to decide how an ending is written when it stands alone (ADR 0026).
+form is the only evidence either exists. The reader uses that evidence when it
+names compact form summaries; it does not infer a classification from the
+surface string (ADR 0028).
 
 ### Analyzer output integrity
 
@@ -299,4 +300,3 @@ Allowed normalization must be deterministic and explainable: Unicode form, kana 
 - All field content is rendered inert; malicious Anki HTML cannot execute.
 - Package parsing never extracts media or writes to the user's Anki collection.
 - The main thread remains responsive while parsing a 50,000-character chapter and a large supported package fixture.
-

@@ -9,7 +9,7 @@ import type { LanguageError } from '../../domain/language/language-error';
 import type { StructuralBaselineEntry } from '../../domain/language/structural-baseline';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { WordGroup } from '../../domain/reading/token-grouping';
-import { deriveWord, type WordDerivation } from '../../domain/reading/word-derivation';
+import { summarizeWordForm, type WordFormSummary } from '../../domain/reading/word-form-summary';
 import type { Token } from '../../domain/reading/token';
 import {
   presentStatus,
@@ -106,15 +106,10 @@ export class WordInspectorStore {
       ),
   );
 
-  /**
-   * How the open word was built from its dictionary form.
-   *
-   * `null` unless there is something to explain, which is what makes this a
-   * section that appears only when the word was inflected or added to.
-   */
-  readonly derivation = computed<WordDerivation | null>(() => {
+  /** The compact local form facts shown at the top of the word lookup. */
+  readonly formSummary = computed<WordFormSummary | null>(() => {
     const word = this.selectedSignal()?.word;
-    return word === undefined ? null : deriveWord(word, this.language.structuralBaselineMatcher());
+    return word === undefined ? null : summarizeWordForm(word);
   });
 
   readonly presentation = computed<TokenStatusPresentation | null>(() => {
