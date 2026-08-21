@@ -111,7 +111,13 @@
             "runner": "vitest",
             "setupFiles": ["src/testing/setup-unit-tests.ts"],
             "coverageExclude": ["src/testing/**", "src/main.ts", "**/*.spec.ts"],
-            "coverageReporters": ["text-summary", "html", "lcov"]
+            "coverageReporters": ["text-summary", "html", "lcov"],
+            "coverageThresholds": {
+              "statements": 85,
+              "lines": 85,
+              "functions": 85,
+              "branches": 80
+            }
           }
         }
       }
