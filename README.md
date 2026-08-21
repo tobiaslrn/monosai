@@ -1,57 +1,78 @@
 # Monosai
 
-Monosai is a local-first Japanese reading application. Paste Japanese or open a
-UTF-8 `.txt` file and read it with furigana, token spacing, part-of-speech
-information, compact dictionary glosses, and vocabulary markers. Anki
-vocabulary, story generation, translation, grammar review, and audio are
-optional additions that never gate basic reading.
+Monosai is a local-first reading app for people learning Japanese. Paste in
+some Japanese text, or open a `.txt` file, and Monosai shows it back to you
+with furigana, word spacing, part-of-speech hints, and short dictionary
+definitions — plus markers for words you already know from Anki.
 
-The specification lives in [docs/spec](docs/spec/README.md); progress against it
-is tracked in [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
-Installing Monosai, connecting Anki, and configuring OpenRouter are covered in
-[docs/setup.md](docs/setup.md); error codes and their recovery are in
-[docs/troubleshooting.md](docs/troubleshooting.md).
+Everything runs on your device. There's no account and no server storing your
+data. If you connect Anki or turn on optional AI features, only the requests
+you ask for leave your device.
 
-## Requirements
+## What it does
 
-- Node.js 24.x (or any version accepted by the pinned Angular CLI)
+- **Reading helper** — furigana, tokenization, and quick glosses for any
+  Japanese text you paste or open.
+- **Vocabulary awareness** — connect Anki (read-only) so Monosai can mark
+  words you've already learned.
+- **Works offline** — install it as an app and keep reading without a
+  connection, once the language data is downloaded.
+- **Optional extras** — story generation, translation, grammar explanations,
+  and audio, powered by OpenRouter if you choose to set it up. None of this
+  is required to just read.
+
+## Quick start (using the app)
+
+Monosai is a Progressive Web App, so most people don't need to build
+anything — just open it in Chrome:
+
+1. Go to the deployed site (`https://<owner>.github.io/monosai/`).
+2. Paste some Japanese text or open a `.txt` file.
+3. Optional: install it for offline use. Chrome will offer an "Install"
+   button in the address bar, or use **Settings → Install Monosai** inside
+   the app.
+
+Want to connect your Anki vocabulary or set up translation/story features?
+See the full [setup guide](docs/setup.md) — it walks through Anki, the
+Android bridge, and OpenRouter step by step. Running into an error code?
+Check [troubleshooting.md](docs/troubleshooting.md).
+
+## Running it yourself / building from source
+
+If you want to run a local copy or contribute to development:
+
+**You'll need:**
+
+- Node.js 24.x
 - npm 11+
-- Google Chrome (the only officially supported browser family)
+- Google Chrome (the only browser family we officially support)
 
-## Getting started
+**Get it running:**
 
 ```bash
 npm ci
 npm start
 ```
 
-The development server serves the app at <http://localhost:4200/>.
+This starts a dev server at <http://localhost:4200/>.
 
-## Everyday commands
+**Useful commands while developing:**
 
-| Command | Purpose |
+| Command | What it does |
 | --- | --- |
-| `npm start` | Development server |
+| `npm start` | Run the dev server |
 | `npm run build` | Production build |
-| `npm run build:pages` | Production build for the GitHub Pages base path |
-| `npm test` | Unit, component, and integration tests |
-| `npm run test:coverage` | Tests with coverage |
-| `npm run lint` | ESLint, including architectural import boundaries |
-| `npm run typecheck` | TypeScript project build |
-| `npm run format` / `npm run format:check` | Prettier |
-| `npm run e2e` | Playwright desktop and Android projects |
-| `npm run e2e:pwa` | Playwright against the production build (installability, offline reload, base path) |
-| `npm run assets:verify` | Language dataset schemas, digests, and attribution (offline) |
-| `npm run assets:build` | Rebuild the language bundle from pinned sources (needs network) |
-| `npm run icons:build` | Rasterize `data/brand/monosai-mark.svg` into the app icons |
-| `npm run icons:verify` | Check icon structure, dimensions, and source digest (offline) |
-| `npm run verify-dist` | Check a `pages` build's base path, manifest, and icon references |
-| `npm run report-bundle` / `report-bundle:check` | Initial vs lazy bundle size report, optionally gated on `bundle-budgets.json` |
-| `npm run licenses:build` / `licenses:check` | Regenerate/verify `docs/third-party-licenses.md` from production dependencies |
-| `npm run serve-dist` | Serve a `pages` build at `/monosai/` (needed to exercise the service worker locally) |
-| `npm run verify` | Format check, lint, typecheck, asset check, tests, production build |
+| `npm run build:pages` | Production build for GitHub Pages |
+| `npm test` | Run the test suite |
+| `npm run lint` | Lint the code |
+| `npm run typecheck` | Check TypeScript types |
+| `npm run e2e` | Run end-to-end tests (desktop and Android) |
+| `npm run verify` | Run everything: format check, lint, typecheck, tests, build |
 
-## Architecture
+There are a few more specialized scripts (rebuilding language data, icons,
+license reports, bundle-size checks) — see `package.json` for the full list.
+
+## For developers: how the project is organized
 
 ```text
 presentation (features, shared-ui, core layout)
@@ -60,57 +81,33 @@ presentation (features, shared-ui, core layout)
       infrastructure implements domain ports
 ```
 
-- `src/app/domain` — types, invariants, and ports; imports nothing else.
+- `src/app/domain` — plain types and rules, no framework dependencies.
 - `src/app/application` — use cases and state machines.
-- `src/app/infrastructure` — Dexie, workers, providers, hashing, PWA.
-- `src/app/features` — screens; they never import infrastructure directly.
-- `src/app/core` — bootstrap, routing, layout, platform facades, diagnostics.
-- `src/app/shared-ui` — bounded reusable presentation primitives.
-- `src/workers` — worker entry points and their implementations.
+- `src/app/infrastructure` — Dexie (storage), workers, providers, PWA logic.
+- `src/app/features` — the actual screens.
+- `src/app/core` — bootstrap, routing, layout.
+- `src/app/shared-ui` — reusable UI pieces.
+- `src/workers` — background worker code.
 
-Layer rules are enforced by ESLint (`import/no-restricted-paths`,
-`import/no-cycle`). Architectural decisions are recorded in
+These boundaries are enforced by ESLint, so a build will fail if a layer
+reaches into one it shouldn't. Bigger design decisions are written up in
 [docs/decisions](docs/decisions).
 
-## Language assets
+The full technical specification lives in [docs/spec](docs/spec/README.md),
+and progress against it is tracked in
+[docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
 
-Japanese analysis needs an offline bundle: the tokenizer runtime, a compact
-Japanese-English dictionary, the grammar catalog, and the structural baseline.
-They live under `public/assets/language/<version>/` next to a `manifest.json`
-that records each file's size, SHA-256 digest, licence, and attribution.
+## Language data
 
-- Preparation starts automatically once startup succeeds, and is never awaited,
-  so navigation and reading are available while the bundle downloads. Each file
-  is verified against its digest before use and then cached under its immutable
-  versioned URL. Settings reports progress and offers a retry after a failure.
-- `npm run assets:build` regenerates everything from the pinned sources in
-  `scripts/assets/sources.json` and the reviewed datasets in `data/language/`.
-  It needs network access and is the only thing that writes the bundle.
-- `npm run assets:verify` re-checks the committed bundle without network access
-  and runs in CI.
-- The tokenizer runtime is not committed: it ships from the locked npm package
-  and the Angular builder copies it into the versioned asset directory.
-
-Dataset choices, the gates they pass, and the rejected alternatives are recorded
-in [docs/decisions](docs/decisions).
-
-## Progressive Web App
-
-Monosai installs, reloads and reads offline, and offers updates without ever
-seizing control mid-form or mid-job — see [docs/setup.md](docs/setup.md) for
-the user-facing installation and offline guide, and
-[ADR 0027](docs/decisions/0027-pwa-caching-and-update-activation.md) for why
-the language bundle stays outside the service worker's own caching and why
-activation is user-driven. The brand mark
-(`data/brand/monosai-mark.svg`) and app icons are generated reproducibly with
-`npm run icons:build` using the Chromium already installed for Playwright, so
-no design tool or new dependency is required to regenerate them.
+Japanese analysis needs an offline data bundle (tokenizer, dictionary,
+grammar catalog) stored under `public/assets/language/<version>/`. It
+downloads automatically after the app starts, so you can keep reading while
+it loads in the background. `npm run assets:build` regenerates this bundle
+from source data if you're working on it; `npm run assets:verify` checks the
+committed bundle without needing network access.
 
 ## Deployment
 
-`.github/workflows/ci.yml` runs the quality gates on every push and pull
-request, including a production build's dist verification, a bundle size
-report, and a second Playwright suite (`e2e-pwa`) that exercises the service
-worker against that build. `.github/workflows/deploy.yml` publishes to GitHub
-Pages only after CI succeeds on `main`, using the `/monosai/` base path and a
-hash-routed SPA fallback.
+CI runs the quality checks (build, tests, bundle size, PWA behavior) on every
+push. Once CI passes on `main`, the app is published to GitHub Pages
+automatically.
