@@ -5,10 +5,6 @@ some Japanese text, or open a `.txt` file, and Monosai shows it back to you
 with furigana, word spacing, part-of-speech hints, and short dictionary
 definitions — plus markers for words you already know from Anki.
 
-Everything runs on your device. There's no account and no server storing your
-data. If you connect Anki or turn on optional AI features, only the requests
-you ask for leave your device.
-
 ## What it does
 
 - **Reading helper** — furigana, tokenization, and quick glosses for any
@@ -71,43 +67,3 @@ This starts a dev server at <http://localhost:4200/>.
 
 There are a few more specialized scripts (rebuilding language data, icons,
 license reports, bundle-size checks) — see `package.json` for the full list.
-
-## For developers: how the project is organized
-
-```text
-presentation (features, shared-ui, core layout)
-      -> application use cases
-            -> domain (types, invariants, ports)
-      infrastructure implements domain ports
-```
-
-- `src/app/domain` — plain types and rules, no framework dependencies.
-- `src/app/application` — use cases and state machines.
-- `src/app/infrastructure` — Dexie (storage), workers, providers, PWA logic.
-- `src/app/features` — the actual screens.
-- `src/app/core` — bootstrap, routing, layout.
-- `src/app/shared-ui` — reusable UI pieces.
-- `src/workers` — background worker code.
-
-These boundaries are enforced by ESLint, so a build will fail if a layer
-reaches into one it shouldn't. Bigger design decisions are written up in
-[docs/decisions](docs/decisions).
-
-The full technical specification lives in [docs/spec](docs/spec/README.md),
-and progress against it is tracked in
-[docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
-
-## Language data
-
-Japanese analysis needs an offline data bundle (tokenizer, dictionary,
-grammar catalog) stored under `public/assets/language/<version>/`. It
-downloads automatically after the app starts, so you can keep reading while
-it loads in the background. `npm run assets:build` regenerates this bundle
-from source data if you're working on it; `npm run assets:verify` checks the
-committed bundle without needing network access.
-
-## Deployment
-
-CI runs the quality checks (build, tests, bundle size, PWA behavior) on every
-push. Once CI passes on `main`, the app is published to GitHub Pages
-automatically.
