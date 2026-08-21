@@ -270,6 +270,23 @@ const ANALYSES: Readonly<Record<string, readonly Analysis[]>> = {
     },
   ],
   猫: [{ id: 't0', surface: '猫', lemma: '猫', partOfSpeech: 'noun' }],
+  猫である: [
+    { id: 't0', surface: '猫', lemma: '猫', partOfSpeech: 'noun' },
+    {
+      id: 't1',
+      surface: 'で',
+      lemma: 'だ',
+      partOfSpeech: 'auxiliary',
+      inflectionForm: 'continuative',
+    },
+    {
+      id: 't2',
+      surface: 'ある',
+      lemma: 'ある',
+      partOfSpeech: 'auxiliary',
+      inflectionForm: 'dictionary',
+    },
+  ],
   分かる: [
     {
       id: 't0',
@@ -381,6 +398,13 @@ describe('deriveWord', () => {
       'ませんでした · polite past negative → 行きませんでした',
     ]);
     expect(ladder(derive('行きません'))).toEqual(['ません · polite negative → 行きません']);
+  });
+
+  it('reads である as the written copula, not the てある helper verb', () => {
+    // IPADIC analyses である as だ (連用形, written で) followed by ある on its
+    // own, which a token-by-token walk would match against sb-aux-aru (書いて
+    // ある) rather than sb-copula-dearu. The run must collapse to である.
+    expect(ladder(derive('猫である'))).toEqual(['である · written copula → 猫である']);
   });
 
   it('treats the て of a helper verb as a seam rather than a step', () => {
