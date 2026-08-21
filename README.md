@@ -8,6 +8,9 @@ optional additions that never gate basic reading.
 
 The specification lives in [docs/spec](docs/spec/README.md); progress against it
 is tracked in [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
+Installing Monosai, connecting Anki, and configuring OpenRouter are covered in
+[docs/setup.md](docs/setup.md); error codes and their recovery are in
+[docs/troubleshooting.md](docs/troubleshooting.md).
 
 ## Requirements
 
@@ -37,8 +40,15 @@ The development server serves the app at <http://localhost:4200/>.
 | `npm run typecheck` | TypeScript project build |
 | `npm run format` / `npm run format:check` | Prettier |
 | `npm run e2e` | Playwright desktop and Android projects |
+| `npm run e2e:pwa` | Playwright against the production build (installability, offline reload, base path) |
 | `npm run assets:verify` | Language dataset schemas, digests, and attribution (offline) |
 | `npm run assets:build` | Rebuild the language bundle from pinned sources (needs network) |
+| `npm run icons:build` | Rasterize `data/brand/monosai-mark.svg` into the app icons |
+| `npm run icons:verify` | Check icon structure, dimensions, and source digest (offline) |
+| `npm run verify-dist` | Check a `pages` build's base path, manifest, and icon references |
+| `npm run report-bundle` / `report-bundle:check` | Initial vs lazy bundle size report, optionally gated on `bundle-budgets.json` |
+| `npm run licenses:build` / `licenses:check` | Regenerate/verify `docs/third-party-licenses.md` from production dependencies |
+| `npm run serve-dist` | Serve a `pages` build at `/monosai/` (needed to exercise the service worker locally) |
 | `npm run verify` | Format check, lint, typecheck, asset check, tests, production build |
 
 ## Architecture
@@ -84,9 +94,23 @@ that records each file's size, SHA-256 digest, licence, and attribution.
 Dataset choices, the gates they pass, and the rejected alternatives are recorded
 in [docs/decisions](docs/decisions).
 
+## Progressive Web App
+
+Monosai installs, reloads and reads offline, and offers updates without ever
+seizing control mid-form or mid-job — see [docs/setup.md](docs/setup.md) for
+the user-facing installation and offline guide, and
+[ADR 0027](docs/decisions/0027-pwa-caching-and-update-activation.md) for why
+the language bundle stays outside the service worker's own caching and why
+activation is user-driven. The brand mark
+(`data/brand/monosai-mark.svg`) and app icons are generated reproducibly with
+`npm run icons:build` using the Chromium already installed for Playwright, so
+no design tool or new dependency is required to regenerate them.
+
 ## Deployment
 
 `.github/workflows/ci.yml` runs the quality gates on every push and pull
-request. `.github/workflows/deploy.yml` publishes to GitHub Pages only after CI
-succeeds on `main`, using the `/monosai/` base path and a hash-routed SPA
-fallback.
+request, including a production build's dist verification, a bundle size
+report, and a second Playwright suite (`e2e-pwa`) that exercises the service
+worker against that build. `.github/workflows/deploy.yml` publishes to GitHub
+Pages only after CI succeeds on `main`, using the `/monosai/` base path and a
+hash-routed SPA fallback.
