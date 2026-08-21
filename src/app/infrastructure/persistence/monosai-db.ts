@@ -3,7 +3,6 @@ import { applySchema } from './migrations';
 import type {
   CredentialRow,
   ParagraphRow,
-  ReadingProgressRow,
   ReadingRow,
   SentenceRow,
   SettingsRow,
@@ -44,7 +43,6 @@ export class MonosaiDatabase extends Dexie {
   readonly translations!: Table<TranslationRow, string>;
   readonly grammarAnalyses!: Table<GrammarAnalysisRow, string>;
   readonly audioAssets!: Table<AudioAssetStoredRow, string>;
-  readonly readingProgress!: Table<ReadingProgressRow, string>;
   readonly assetJobs!: Table<AssetJobRow, string>;
   readonly generationProvenance!: Table<GenerationProvenanceRow, string>;
 

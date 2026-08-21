@@ -1,6 +1,4 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import type { ContinueReadingTarget } from '../../domain/reading/progress';
-import { progressPercent } from '../../domain/reading/reading-position';
 import type { LibraryFilter, Reading } from '../../domain/reading/reading';
 import type { ReadingId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
@@ -12,7 +10,7 @@ export const LIBRARY_PAGE_SIZE = 12;
 export type LibraryStatus = 'idle' | 'loading' | 'ready' | 'failed';
 
 /**
- * The library list, its filter, and Continue reading.
+ * The library list and its filter.
  *
  * Pages are read through the repository's bounded query, which returns only
  * `readings` rows: no sentences, token analyses, or audio blobs are touched to
@@ -28,7 +26,6 @@ export class LibraryStore {
   private readonly statusSignal = signal<LibraryStatus>('idle');
   private readonly hasMoreSignal = signal(false);
   private readonly loadingMoreSignal = signal(false);
-  private readonly continueSignal = signal<ContinueReadingTarget | null>(null);
   private readonly totalSignal = signal(0);
   private readonly errorSignal = signal<StorageError | null>(null);
   private readonly announcementSignal = signal('');
@@ -38,7 +35,6 @@ export class LibraryStore {
   readonly status = this.statusSignal.asReadonly();
   readonly hasMore = this.hasMoreSignal.asReadonly();
   readonly loadingMore = this.loadingMoreSignal.asReadonly();
-  readonly continueTarget = this.continueSignal.asReadonly();
   readonly totalReadings = this.totalSignal.asReadonly();
   readonly lastError = this.errorSignal.asReadonly();
   readonly announcement = this.announcementSignal.asReadonly();
@@ -51,14 +47,6 @@ export class LibraryStore {
   readonly hasNoReadings = computed(
     () => this.statusSignal() === 'ready' && this.totalSignal() === 0,
   );
-
-  readonly continuePercent = computed(() => {
-    const target = this.continueSignal();
-    if (target === null) {
-      return 0;
-    }
-    return progressPercent(target.progress?.positionInReading ?? 0, target.sentenceCount);
-  });
 
   async load(): Promise<void> {
     this.statusSignal.set('loading');
@@ -80,15 +68,8 @@ export class LibraryStore {
       return;
     }
 
-    const target = await this.readings.resolveContinueReading();
-    if (!target.ok) {
-      this.fail(target.error);
-      return;
-    }
-
     this.itemsSignal.set(page.value.items);
     this.hasMoreSignal.set(page.value.hasMore);
-    this.continueSignal.set(target.value);
     this.statusSignal.set('ready');
   }
 
@@ -130,12 +111,7 @@ export class LibraryStore {
     this.hasMoreSignal.set(page.value.hasMore);
   }
 
-  /**
-   * Deletes a reading and reloads.
-   *
-   * Continue reading is derived rather than stored, so reloading is what repairs
-   * the pointer when the deleted reading was the one it referred to.
-   */
+  /** Deletes a reading and reloads the current page. */
   async delete(id: ReadingId): Promise<boolean> {
     const title = this.itemsSignal().find((reading) => reading.id === id)?.title ?? 'The reading';
     const deleted = await this.readings.deleteReading(id);
@@ -149,7 +125,7 @@ export class LibraryStore {
     return true;
   }
 
-  /** Records that a reading was opened, so Continue reading points at it. */
+  /** Records that a reading was opened. */
   async markOpened(id: ReadingId): Promise<void> {
     await this.readings.markOpened(id, this.clock.now());
   }

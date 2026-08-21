@@ -6,7 +6,6 @@ import { describeDeletion } from '../../domain/reading/deletion-plan';
 import type { LibraryFilter, Reading } from '../../domain/reading/reading';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { ContinueReadingCardComponent } from './continue-reading-card.component';
 import { ReadingCardComponent } from './reading-card.component';
 
 interface FilterOption {
@@ -20,11 +19,11 @@ const FILTERS: readonly FilterOption[] = [
   { value: 'generated', label: 'Generated' },
 ];
 
-/** Library: Continue reading, filters, and the paginated reading list. */
+/** Library: filters and the paginated reading list. */
 @Component({
   selector: 'mn-library-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, ContinueReadingCardComponent, ReadingCardComponent],
+  imports: [RouterLink, IconComponent, ReadingCardComponent],
   template: `
     <div class="mn-page">
       <header>
@@ -39,10 +38,6 @@ const FILTERS: readonly FilterOption[] = [
           <button type="button" class="mn-button" (click)="reload()">Try again</button>
         </section>
       } @else {
-        @if (store.continueTarget(); as target) {
-          <mn-continue-reading-card [target]="target" [percent]="store.continuePercent()" />
-        }
-
         <div class="actions">
           <a class="mn-button mn-button--primary" routerLink="/add">
             <mn-icon name="add" [size]="18" />

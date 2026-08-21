@@ -36,7 +36,6 @@ export const SCHEMA_VERSIONS: readonly {
       translations: '&cacheKey, sentenceId, readingId',
       grammarAnalyses: '&cacheKey, sentenceId, readingId, profileHash',
       audioAssets: '&cacheKey, id, sentenceId, readingId',
-      readingProgress: '&readingId, lastOpenedAt',
       assetJobs: '&id, readingId, kind, state, [readingId+kind]',
       generationProvenance: '&id, readingId',
     },

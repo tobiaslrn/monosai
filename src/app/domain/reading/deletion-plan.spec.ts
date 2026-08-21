@@ -24,11 +24,10 @@ function reading(overrides: Partial<ImportedReading> = {}): ImportedReading {
 }
 
 describe('describeDeletion', () => {
-  it('always names the text, the sentence count, and the reading position', () => {
+  it('always names the text and the sentence count', () => {
     const plan = describeDeletion(reading());
     expect(plan.title).toBe('第一章');
     expect(plan.removes[0]).toBe('The text and 12 sentences');
-    expect(plan.removes).toContain('Your reading position');
     expect(plan.isPermanent).toBe(true);
   });
 
@@ -75,7 +74,6 @@ describe('OWNED_READING_STORES', () => {
     expect(new Set(OWNED_READING_STORES).size).toBe(OWNED_READING_STORES.length);
     expect(OWNED_READING_STORES).toContain('sentences');
     expect(OWNED_READING_STORES).toContain('tokenAnalyses');
-    expect(OWNED_READING_STORES).toContain('readingProgress');
   });
 
   it('does not claim shared data as owned', () => {

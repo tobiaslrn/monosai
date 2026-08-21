@@ -5,7 +5,7 @@ import { LibraryStore } from '../../application/reading/library.store';
 import { CLOCK, READING_REPOSITORY } from '../../application/shared/repository-tokens';
 import type { Reading } from '../../domain/reading/reading';
 import { fixedClock } from '../../domain/shared/clock';
-import { paragraphId, readingId, sentenceId } from '../../domain/shared/ids';
+import { readingId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
 import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/match-media';
 import { FakeReadingRepository } from '../../../testing/reading-repository-fake';
@@ -142,36 +142,6 @@ describe('LibraryPageComponent', () => {
     const live = element(fixture).querySelector('[aria-live="polite"]');
     expect(live?.getAttribute('role')).toBe('status');
     expect(live?.textContent).toContain('1 readings shown');
-  });
-
-  it('shows Continue reading with its progress', async () => {
-    repository.readings = [reading('a', 'imported', 1_000)];
-    repository.continueTarget = {
-      readingId: readingId('a'),
-      title: 'Reading a',
-      sentenceCount: 4,
-      progress: {
-        readingId: readingId('a'),
-        paragraphId: paragraphId('p'),
-        sentenceId: sentenceId('s'),
-        positionInReading: 1,
-        lastOpenedAt: 5,
-        updatedAt: 5,
-      },
-    };
-    const fixture = await render();
-
-    const card = element(fixture).querySelector('mn-continue-reading-card');
-    expect(card?.textContent).toContain('Continue reading');
-    // Position 1 of 4 sentences, counting the current sentence, is 50%.
-    expect(card?.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('50');
-  });
-
-  it('hides Continue reading when there is nothing to resume', async () => {
-    repository.readings = [reading('a', 'imported', 1_000)];
-    const fixture = await render();
-
-    expect(element(fixture).querySelector('mn-continue-reading-card')).toBeNull();
   });
 
   it('asks for confirmation before deleting and states what survives', async () => {
