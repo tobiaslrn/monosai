@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import {
   applyDecisions,
@@ -41,6 +41,7 @@ import { VocabularyClassificationService } from '../reading/vocabulary-classific
 import { ExceptionPolicyStore } from '../settings/exception-policy.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
+import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
 import { StoryAssemblyService, type AcceptedSentence } from './story-assembly.service';
@@ -218,6 +219,7 @@ export class GenerationStore {
   private readonly enrichmentKeys = inject(EnrichmentKeysService);
   private readonly translationService = inject(TranslationService);
   private readonly grammarAnalysisService = inject(GrammarAnalysisService);
+  private readonly busyRegistry = inject(AppBusyRegistry);
 
   private readonly stateSignal = signal<GenerationState>(IDLE);
   private readonly announcementSignal = signal('');
@@ -265,6 +267,15 @@ export class GenerationStore {
     const state = this.stateSignal();
     return state.kind === 'failed' && state.during === 'finalizing' && this.builtDraft !== null;
   });
+
+  constructor() {
+    effect((onCleanup) => {
+      this.busyRegistry.setBusy('generation', this.isBusy() ? 'a story is being generated' : null);
+      onCleanup(() => {
+        this.busyRegistry.setBusy('generation', null);
+      });
+    });
+  }
 
   /**
    * Runs one generation.

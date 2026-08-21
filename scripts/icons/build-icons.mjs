@@ -7,10 +7,7 @@ import { composeIconSvg } from './lib/compose-svg.mjs';
 import { sha256 } from '../assets/lib/fs-json.mjs';
 import { ICON_TARGETS, ICONS_OUTPUT_DIR, MARK_SOURCE_PATH } from './lib/layout.mjs';
 
-const LOCK_PATH = join(
-  dirname(fileURLToPath(import.meta.url)),
-  'icons.lock.json',
-);
+const LOCK_PATH = join(dirname(fileURLToPath(import.meta.url)), 'icons.lock.json');
 
 /**
  * Rasterises the committed brand mark into every icon the manifest declares,
@@ -40,7 +37,9 @@ async function main() {
         clip: { x: 0, y: 0, width: target.size, height: target.size },
       });
       await writeFile(join(ICONS_OUTPUT_DIR, target.file), buffer);
-      process.stdout.write(`wrote ${target.file} (${target.size}x${target.size}, ${target.variant})\n`);
+      process.stdout.write(
+        `wrote ${target.file} (${target.size}x${target.size}, ${target.variant})\n`,
+      );
     }
   } finally {
     await browser.close();

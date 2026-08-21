@@ -7,6 +7,7 @@ import type { ImportedReadingDraft } from '../../domain/reading/reading-reposito
 import { ok, type Result } from '../../domain/shared/result';
 import { storageError, type StorageError } from '../../domain/storage/storage-error';
 import { FakeLanguageRuntime, sequentialIdGenerator } from '../../../testing/reading-fakes';
+import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { ID_GENERATOR } from '../shared/repository-tokens';
 import { ImportStore } from './import.store';
 import { TextImportService, type SaveImportRequest } from './text-import.service';
@@ -78,6 +79,22 @@ describe('ImportStore', () => {
       ],
     });
     store = TestBed.inject(ImportStore);
+  });
+
+  describe('busy registry', () => {
+    it('registers as busy once there is unsaved pasted text, and clears when cleared', () => {
+      const busy = TestBed.inject(AppBusyRegistry);
+      TestBed.tick();
+      expect(busy.isBusy()).toBe(false);
+
+      store.setPastedText('こんにちは');
+      TestBed.tick();
+      expect(busy.isBusy()).toBe(true);
+
+      store.setPastedText('');
+      TestBed.tick();
+      expect(busy.isBusy()).toBe(false);
+    });
   });
 
   describe('input validation', () => {

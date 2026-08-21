@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import type { LanguageError } from '../../domain/language/language-error';
 import {
   applyAnalysis,
@@ -24,6 +24,7 @@ import {
 import type { ImportSource } from '../../domain/reading/reading';
 import type { ReadingId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
+import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { ID_GENERATOR } from '../shared/repository-tokens';
 import { TextImportService, type AnalysisProgress } from './text-import.service';
 
@@ -56,6 +57,7 @@ const IDLE: ImportBusy = { kind: 'idle' };
 export class ImportStore {
   private readonly imports = inject(TextImportService);
   private readonly ids = inject(ID_GENERATOR);
+  private readonly busyRegistry = inject(AppBusyRegistry);
 
   private readonly stepSignal = signal<ImportStep>('input');
   private readonly busySignal = signal<ImportBusy>(IDLE);
@@ -126,6 +128,18 @@ export class ImportStore {
   readonly isDirty = computed(
     () => this.savedIdSignal() === null && this.rawTextSignal().trim().length > 0,
   );
+
+  constructor() {
+    effect((onCleanup) => {
+      this.busyRegistry.setBusy(
+        'import-draft',
+        this.isDirty() ? 'an import draft is unsaved' : null,
+      );
+      onCleanup(() => {
+        this.busyRegistry.setBusy('import-draft', null);
+      });
+    });
+  }
 
   setPastedText(text: string): void {
     this.rawTextSignal.set(normalizeImportedText(text));

@@ -21,6 +21,7 @@ import { provideAnki } from './infrastructure/anki/anki.providers';
 import { provideLanguage } from './infrastructure/language/language.providers';
 import { provideOpenRouter } from './infrastructure/openrouter/openrouter.providers';
 import { providePersistence } from './infrastructure/persistence/persistence.providers';
+import { providePwa } from './infrastructure/pwa/pwa.providers';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -39,6 +40,7 @@ export const appConfig: ApplicationConfig = {
     provideLanguage(),
     provideAnki(),
     provideOpenRouter(),
+    providePwa(),
     provideInitializationSteps(),
     provideAppInitializer(() => {
       // Keeps the document theme attribute in sync with persisted settings.
