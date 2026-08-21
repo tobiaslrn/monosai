@@ -43,7 +43,7 @@
     "test:manual": "vitest run --config vitest.manual.config.ts"
   },
   "dependencies": {
-    "@angular/cdk": "^21.2.0",
+    "@angular/cdk": "^22.1.3",
     "@angular/common": "^22.1.3",
     "@angular/compiler": "^22.1.3",
     "@angular/core": "^22.1.3",
