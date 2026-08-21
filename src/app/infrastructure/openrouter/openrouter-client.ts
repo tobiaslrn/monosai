@@ -276,7 +276,7 @@ export class OpenRouterClient {
     response: Response,
     request: OpenRouterRequest,
   ): Promise<AiError> {
-    let envelope: z.infer<typeof providerErrorEnvelopeSchema> | null = null;
+    let envelope: z.infer<typeof providerErrorEnvelopeSchema> | null;
     try {
       const text = (await response.text()).slice(0, MAX_ERROR_BODY_BYTES);
       const parsed = providerErrorEnvelopeSchema.safeParse(JSON.parse(text));
