@@ -4,7 +4,10 @@ import { createTestDatabase, destroyTestDatabase } from '../../../testing/test-d
 import { importedReadingFixture, snapshotFixture } from '../../../testing/persistence-fixtures';
 import { CURRENT_SCHEMA_VERSION, SCHEMA_VERSIONS } from './migrations';
 import type { MonosaiDatabase } from './monosai-db';
-import { BrowserStorageMaintenance } from './browser-storage-maintenance';
+import {
+  BrowserStorageMaintenance,
+  resolveMaintenanceDependencies,
+} from './browser-storage-maintenance';
 import { DexieEnrichmentRepository } from './repositories/dexie-enrichment.repository';
 import { DexieReadingRepository } from './repositories/dexie-reading.repository';
 import { DexieVocabularyRepository } from './repositories/dexie-vocabulary.repository';
@@ -221,5 +224,83 @@ describe('BrowserStorageMaintenance', () => {
     const reading = await readings.getReading(draft.reading.id);
     expect(reading.ok && reading.value?.audioSummary.completed).toBe(0);
     expect(reading.ok && reading.value?.translationSummary.completed).toBe(1);
+  });
+
+  it('requests persistence and reports the refreshed status when a storage manager exists', async () => {
+    const persist = vi.fn(() => Promise.resolve(true));
+    const navigatorStub = {
+      storage: {
+        persisted: () => Promise.resolve(true),
+        persist,
+        estimate: () => Promise.resolve({ usage: 512, quota: 2048 }),
+      },
+    } as unknown as Navigator;
+
+    const status = await new BrowserStorageMaintenance(
+      db,
+      navigatorStub,
+      undefined,
+    ).requestPersistence();
+
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(status.persisted).toBe(true);
+  });
+
+  it('skips the persist call when the browser exposes no storage manager', async () => {
+    const status = await maintenance.requestPersistence();
+
+    expect(status).toEqual({
+      persisted: false,
+      canRequest: false,
+      usageBytes: null,
+      quotaBytes: null,
+    });
+  });
+
+  it('resets all data without touching caches when none are given', async () => {
+    const result = await maintenance.resetAllData();
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('clears every cache key when resetting all data', async () => {
+    const deleted: string[] = [];
+    const cachesStub = {
+      keys: () => Promise.resolve(['a', 'b']),
+      delete: (key: string) => {
+        deleted.push(key);
+        return Promise.resolve(true);
+      },
+    } as unknown as CacheStorage;
+
+    const result = await new BrowserStorageMaintenance(db, undefined, cachesStub).resetAllData();
+
+    expect(result.ok).toBe(true);
+    expect(deleted).toEqual(['a', 'b']);
+  });
+});
+
+describe('resolveMaintenanceDependencies', () => {
+  it('resolves nothing when there is no window', () => {
+    expect(resolveMaintenanceDependencies(null)).toEqual({
+      navigatorRef: undefined,
+      caches: undefined,
+    });
+  });
+
+  it('resolves the navigator without caches when the window lacks a cache store', () => {
+    const view = { navigator: {} } as unknown as Window;
+
+    const resolved = resolveMaintenanceDependencies(view);
+
+    expect(resolved.navigatorRef).toBe(view.navigator);
+    expect(resolved.caches).toBeUndefined();
+  });
+
+  it('resolves caches when the window exposes them', () => {
+    const cachesStub = {} as CacheStorage;
+    const view = { navigator: {}, caches: cachesStub } as unknown as Window;
+
+    expect(resolveMaintenanceDependencies(view).caches).toBe(cachesStub);
   });
 });
