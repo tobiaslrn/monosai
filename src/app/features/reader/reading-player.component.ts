@@ -305,10 +305,17 @@ export class ReadingPlayerComponent {
       case 'running':
         return `Sentence ${String(progress.counts.completed + 1)} of ${String(progress.counts.requested)}`;
       case 'cancelled':
-        return 'Stopped. Sentences already read aloud were kept.';
+        return progress.counts.requested === 0
+          ? 'Stopped.'
+          : 'Stopped. Sentences already read aloud were kept.';
       case 'failed':
-        // Audio stops at the sentence that failed, so the number completed is
-        // also where a retry picks up.
+        // A job that failed before it resolved what to send has no position to
+        // report; claiming one produced "sentence 1 of 0".
+        if (progress.counts.requested === 0) {
+          return 'Audio could not be prepared.';
+        }
+        // Otherwise audio stops at the sentence that failed, so the number
+        // completed is also where a retry picks up.
         return `Stopped at sentence ${String(progress.counts.completed + 1)} of ${String(progress.counts.requested)}. Earlier clips were kept.`;
     }
   });

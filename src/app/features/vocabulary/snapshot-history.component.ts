@@ -96,7 +96,7 @@ const PROVIDER_LABELS: Record<AnkiProviderKind, string> = {
        with its own foreground is what clears the contrast threshold at this
        size in both themes. */
     .badge {
-      padding: 2px var(--space-1);
+      padding: var(--space-1);
       border-radius: var(--radius-control);
       background: var(--status-success-soft);
       color: var(--status-success);

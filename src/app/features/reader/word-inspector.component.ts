@@ -271,7 +271,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 
     .badge {
       display: inline-block;
-      padding: 2px var(--space-2);
+      padding: var(--space-1) var(--space-2);
       border-radius: var(--radius-pill);
       background: var(--surface-sunken);
       font-size: var(--text-sm);

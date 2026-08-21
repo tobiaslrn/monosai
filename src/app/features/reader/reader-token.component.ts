@@ -133,8 +133,22 @@ export interface TokenActivationSource {
       border-radius: 4px;
     }
 
+    /*
+     * Ruby is sized so that a long reading does not stretch its base.
+     *
+     * A ruby annotation is laid out as an inline box over its base, and when it
+     * is wider the base is stretched to match: at 0.5em, はたけ over 畑 stretched
+     * a one-character word to 1.40x and tore a hole in the middle of the
+     * sentence, and みずうみ over 湖 reached 1.59x. A smaller size plus a slight
+     * negative tracking on the reading brings those to 1.23x and 1.42x.
+     *
+     * The size was chosen by reading real text in the browser, not by
+     * arithmetic: smaller closes the gaps further but the kana stop being
+     * legible, which would trade one failure for a worse one.
+     */
     rt {
-      font-size: 0.5em;
+      font-size: 0.44em;
+      letter-spacing: -0.02em;
       /* Ruby must not be dragged into the underline of its own token. */
       text-decoration: none;
     }

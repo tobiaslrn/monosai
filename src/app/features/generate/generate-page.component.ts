@@ -117,8 +117,9 @@ import { StoryFormComponent } from './story-form.component';
           </div>
         </section>
       } @else {
-        <section class="mn-panel" aria-labelledby="mn-generate-form-heading">
-          <h2 id="mn-generate-form-heading">Your story</h2>
+        <!-- Plain: the form is the page, so a border around it encloses nothing. -->
+        <section class="mn-panel mn-panel--plain" aria-labelledby="mn-generate-form-heading">
+          <h2 id="mn-generate-form-heading" class="mn-visually-hidden">Your story</h2>
           <mn-story-form
             [canGenerate]="canGenerate()"
             [disabled]="generation.isBusy()"
