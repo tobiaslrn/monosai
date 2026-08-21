@@ -11,7 +11,10 @@
   --text-on-action: #ffffff;
 
   --border-subtle: #dfe4dc;
-  --border-strong: #b9c1b5;
+  /* Must clear WCAG 1.4.11's 3:1 non-text contrast minimum against
+   * surface-canvas and surface-panel: this token outlines interactive
+   * control boundaries (buttons, text inputs), not decorative dividers. */
+  --border-strong: #778570;
 
   --action-primary: #4f6b59;
   --action-primary-hover: #405645;
@@ -60,7 +63,7 @@
   --text-on-action: #12150f;
 
   --border-subtle: #3a3f38;
-  --border-strong: #565d53;
+  --border-strong: #737c6f;
 
   --action-primary: #9dbfa8;
   --action-primary-hover: #b3d0bc;
