@@ -16,7 +16,6 @@ export const OWNED_READING_STORES = [
   'translations',
   'grammarAnalyses',
   'audioAssets',
-  'readingProgress',
   'assetJobs',
   'generationProvenance',
 ] as const;
@@ -61,7 +60,6 @@ export function describeDeletion(reading: Reading): DeletionPlan {
   if (reading.grammarSummary.state !== 'not-requested') {
     removes.push('Saved grammar analyses');
   }
-  removes.push('Your reading position');
 
   return {
     title: reading.title,

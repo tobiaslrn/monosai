@@ -18,8 +18,6 @@ import type {
   SentenceRef,
 } from '../../../domain/reading/reading-repository';
 import type { ReadingGraph, Sentence } from '../../../domain/reading/text-hierarchy';
-import type { ContinueReadingTarget, ReadingProgress } from '../../../domain/reading/progress';
-import type { SentenceLocation } from '../../../domain/reading/reading-position';
 import type { TokenAnalysis } from '../../../domain/reading/token';
 import { storageError, type StorageError } from '../../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../monosai-db';
@@ -27,7 +25,6 @@ import { parseBulkRecords, parseRecord, parseRecords } from '../record-validatio
 import { ROW_VERSION } from '../schemas/common.schema';
 import {
   paragraphRowSchema,
-  readingProgressRowSchema,
   readingRowSchema,
   sentenceRowSchema,
   tokenAnalysisRowSchema,
@@ -37,8 +34,6 @@ import {
   toGenerationProvenanceRow,
   toParagraph,
   toParagraphRow,
-  toProgress,
-  toProgressRow,
   toReading,
   toReadingRow,
   toSentence,
@@ -252,49 +247,6 @@ export class DexieReadingRepository implements ReadingRepository {
     );
   }
 
-  /**
-   * Two indexed point lookups: the sentence at the position, then the paragraph
-   * holding it. Neither reads the reading's other text.
-   */
-  async locateSentence(
-    id: ReadingId,
-    positionInReading: number,
-  ): Promise<Result<SentenceLocation | null, StorageError>> {
-    const loaded = await runStorage('sentences.locate', async () => {
-      const sentence = await this.db.sentences
-        .where('[readingId+positionInReading]')
-        .equals([id, positionInReading])
-        .first();
-      if (!sentence) {
-        return null;
-      }
-      const paragraph = await this.db.paragraphs.get(sentence.paragraphId);
-      return paragraph ? { sentence, paragraph } : null;
-    });
-    if (!loaded.ok) {
-      return loaded;
-    }
-    if (loaded.value === null) {
-      return ok(null);
-    }
-
-    const sentence = parseRecord(sentenceRowSchema, loaded.value.sentence, 'sentences');
-    if (!sentence.ok) {
-      return sentence;
-    }
-    const paragraph = parseRecord(paragraphRowSchema, loaded.value.paragraph, 'paragraphs');
-    if (!paragraph.ok) {
-      return paragraph;
-    }
-
-    return ok({
-      sentenceId: sentence.value.id,
-      paragraphId: paragraph.value.id,
-      paragraphPosition: paragraph.value.position,
-      positionInReading: sentence.value.positionInReading,
-    });
-  }
-
   async loadTokenAnalyses(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly TokenAnalysis[], StorageError>> {
@@ -369,7 +321,6 @@ export class DexieReadingRepository implements ReadingRepository {
           this.db.translations,
           this.db.grammarAnalyses,
           this.db.audioAssets,
-          this.db.readingProgress,
           this.db.assetJobs,
           this.db.generationProvenance,
         ],
@@ -383,66 +334,9 @@ export class DexieReadingRepository implements ReadingRepository {
           await this.db.paragraphs.where('readingId').equals(id).delete();
           await this.db.assetJobs.where('readingId').equals(id).delete();
           await this.db.generationProvenance.where('readingId').equals(id).delete();
-          await this.db.readingProgress.delete(id);
           await this.db.readings.delete(id);
         },
       );
-    });
-  }
-
-  saveProgress(progress: ReadingProgress): Promise<Result<void, StorageError>> {
-    return runStorage('readingProgress.save', async () => {
-      await this.db.transaction('rw', [this.db.readingProgress, this.db.readings], async () => {
-        await this.db.readingProgress.put(toProgressRow(progress));
-        await this.db.readings.update(progress.readingId, {
-          lastOpenedAt: progress.lastOpenedAt,
-        });
-      });
-    });
-  }
-
-  async getProgress(id: ReadingId): Promise<Result<ReadingProgress | null, StorageError>> {
-    const loaded = await runStorage('readingProgress.get', () => this.db.readingProgress.get(id));
-    if (!loaded.ok) {
-      return loaded;
-    }
-    if (!loaded.value) {
-      return ok(null);
-    }
-    const parsed = parseRecord(readingProgressRowSchema, loaded.value, 'readingProgress');
-    return parsed.ok ? ok(toProgress(parsed.value)) : parsed;
-  }
-
-  /**
-   * Continue reading points at the most recently opened surviving reading. It
-   * repairs itself after a deletion because the pointer is derived, not stored.
-   */
-  async resolveContinueReading(): Promise<Result<ContinueReadingTarget | null, StorageError>> {
-    const loaded = await runStorage('readings.continue', () =>
-      this.db.readings.where('lastOpenedAt').above(0).reverse().first(),
-    );
-    if (!loaded.ok) {
-      return loaded;
-    }
-    if (!loaded.value) {
-      return ok(null);
-    }
-
-    const reading = parseRecord(readingRowSchema, loaded.value, 'readings');
-    if (!reading.ok) {
-      return reading;
-    }
-
-    const progress = await this.getProgress(reading.value.id);
-    if (!progress.ok) {
-      return progress;
-    }
-
-    return ok({
-      readingId: reading.value.id,
-      title: reading.value.title,
-      progress: progress.value,
-      sentenceCount: reading.value.sentenceCount,
     });
   }
 

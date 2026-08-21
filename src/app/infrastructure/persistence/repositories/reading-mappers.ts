@@ -2,14 +2,12 @@ import type { GenerationProvenance } from '../../../domain/ai/generation-provena
 import type { Reading } from '../../../domain/reading/reading';
 import type { FrozenSentenceValidation } from '../../../domain/reading/validation';
 import type { Paragraph, Sentence } from '../../../domain/reading/text-hierarchy';
-import type { ReadingProgress } from '../../../domain/reading/progress';
 import type { TokenAnalysis } from '../../../domain/reading/token';
 import type { ReadingId } from '../../../domain/shared/ids';
 import { ROW_VERSION } from '../schemas/common.schema';
 import type { FrozenValidationRow, GenerationProvenanceRow } from '../schemas/generation.schema';
 import type {
   ParagraphRow,
-  ReadingProgressRow,
   ReadingRow,
   SentenceRow,
   TokenAnalysisRow,
@@ -61,15 +59,6 @@ export function toTokenAnalysis(row: TokenAnalysisRow): TokenAnalysis {
     analyzerVersion: row.analyzerVersion,
     tokens: row.tokens,
   };
-}
-
-export function toProgressRow(progress: ReadingProgress): ReadingProgressRow {
-  return { ...progress, v: ROW_VERSION };
-}
-
-export function toProgress(row: ReadingProgressRow): ReadingProgress {
-  const { v: _version, ...progress } = row;
-  return progress;
 }
 
 export function toFrozenValidationRow(

@@ -95,37 +95,10 @@ describe('reading window and cascade', () => {
     expect(unwrap(await repository.countParagraphs(draft.reading.id))).toBe(12);
   });
 
-  it('locates a sentence by its position in the reading', async () => {
-    const draft = await seed();
-
-    const located = unwrap(await repository.locateSentence(draft.reading.id, 9));
-    expect(located).not.toBeNull();
-    expect(located?.positionInReading).toBe(9);
-    // Two sentences per paragraph, so position 9 sits in paragraph 4.
-    expect(located?.paragraphPosition).toBe(4);
-    expect(located?.sentenceId).toBe(draft.sentences[9].id);
-  });
-
-  it('reports no location for a position past the end', async () => {
-    const draft = await seed();
-    expect(unwrap(await repository.locateSentence(draft.reading.id, 999))).toBeNull();
-  });
-
   it('deletes a reading with zero owned orphan rows', async () => {
     const draft = await seed();
     const other = importedReadingFixture({ seed: 7, paragraphTexts: [['別の話です。']] });
     unwrap(await repository.saveImportedReading(other));
-
-    unwrap(
-      await repository.saveProgress({
-        readingId: draft.reading.id,
-        paragraphId: draft.paragraphs[3].id,
-        sentenceId: draft.sentences[6].id,
-        positionInReading: 6,
-        lastOpenedAt: 1_700_000_100_000,
-        updatedAt: 1_700_000_100_000,
-      }),
-    );
 
     unwrap(await repository.deleteReading(draft.reading.id));
 
@@ -141,29 +114,6 @@ describe('reading window and cascade', () => {
     expect(await db.readings.count()).toBe(1);
     // The unrelated reading is untouched.
     expect(unwrap(await repository.getReading(other.reading.id))).not.toBeNull();
-  });
-
-  it('repairs Continue reading when the target is deleted', async () => {
-    const draft = await seed();
-    const other = importedReadingFixture({ seed: 7, paragraphTexts: [['別の話です。']] });
-    unwrap(await repository.saveImportedReading(other));
-
-    unwrap(await repository.markOpened(other.reading.id, 1_700_000_100_000));
-    unwrap(await repository.markOpened(draft.reading.id, 1_700_000_200_000));
-    expect(unwrap(await repository.resolveContinueReading())?.readingId).toBe(draft.reading.id);
-
-    unwrap(await repository.deleteReading(draft.reading.id));
-
-    const repaired = unwrap(await repository.resolveContinueReading());
-    expect(repaired?.readingId).toBe(other.reading.id);
-  });
-
-  it('reports no Continue reading once every opened reading is gone', async () => {
-    const draft = await seed();
-    unwrap(await repository.markOpened(draft.reading.id, 1_700_000_100_000));
-    unwrap(await repository.deleteReading(draft.reading.id));
-
-    expect(unwrap(await repository.resolveContinueReading())).toBeNull();
   });
 
   it('pages the library newest first without loading child data', async () => {

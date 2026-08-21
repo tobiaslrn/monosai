@@ -170,19 +170,6 @@ const SCROLL_SETTLE_MS = 1000;
             </section>
           }
           @case ('ready') {
-            @if (store.resumeTarget().basis === 'nearest') {
-              <p class="notice" role="status">
-                The sentence you stopped at has changed, so reading resumed at the nearest one.
-              </p>
-            }
-
-            @if (store.vocabularyNotConfigured()) {
-              <p class="notice">
-                Vocabulary markers are off because no reviewed Anki vocabulary is set up. Reading,
-                furigana, and word lookup all work without it.
-              </p>
-            }
-
             @if (store.hasMoreAbove()) {
               <div class="sentinel" #topSentinel aria-hidden="true"></div>
             }
@@ -370,16 +357,6 @@ const SCROLL_SETTLE_MS = 1000;
       padding-top: var(--space-2);
     }
 
-    .notice {
-      max-width: var(--reader-measure);
-      margin: 0 0 var(--space-4);
-      padding: var(--space-3);
-      border-radius: var(--radius-control);
-      background: var(--surface-sunken);
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
     .sentinel {
       height: 1px;
     }
@@ -537,14 +514,8 @@ export class ReaderPageComponent {
   );
 
   private edgeObserver: IntersectionObserver | null = null;
-  private sentenceObserver: IntersectionObserver | null = null;
   /**
    * Whether playback may scroll the page to the sentence it has reached.
-   *
-   * Deliberately its own state rather than anything to do with
-   * `reportPosition`, which is debounced reading progress for the library card:
-   * one is where the learner stopped reading, the other is where the audio has
-   * got to, and conflating them would have a paused player rewriting progress.
    *
    * A scroll the learner made themselves turns this off - they have said where
    * they want to look - and only an explicit Play, Next, or Previous turns it
@@ -595,7 +566,6 @@ export class ReaderPageComponent {
       }
       queueMicrotask(() => {
         this.observeEdges();
-        this.observeSentences();
       });
     });
 
@@ -656,23 +626,14 @@ export class ReaderPageComponent {
     window.addEventListener('wheel', suppressFollow, { passive: true });
     window.addEventListener('touchmove', suppressFollow, { passive: true });
 
-    const flushOnHide = (): void => {
-      if (document.visibilityState === 'hidden') {
-        void this.store.flushProgress();
-      }
-    };
-    document.addEventListener('visibilitychange', flushOnHide);
-
     inject(DestroyRef).onDestroy(() => {
       this.endPreview();
       this.popover.close();
-      document.removeEventListener('visibilitychange', flushOnHide);
       window.removeEventListener('scroll', suppressFollow);
       window.removeEventListener('wheel', suppressFollow);
       window.removeEventListener('touchmove', suppressFollow);
       this.edgeObserver?.disconnect();
-      this.sentenceObserver?.disconnect();
-      void this.store.close();
+      this.store.close();
     });
   }
 
@@ -957,62 +918,6 @@ export class ReaderPageComponent {
     }
     if (bottom) {
       this.edgeObserver.observe(bottom);
-    }
-  }
-
-  /**
-   * Tracks the primary viewport sentence.
-   *
-   * Progress follows stable sentence identity rather than a scroll offset, so it
-   * survives re-rendering, a changed window, and a later migration. Nothing is
-   * drawn for it: where a reader stopped is the library's business, not an
-   * annotation on the text.
-   */
-  private observeSentences(): void {
-    this.sentenceObserver?.disconnect();
-    const root = this.content()?.nativeElement;
-    if (!root) {
-      return;
-    }
-
-    const byElement = new Map<Element, ReaderSentence>();
-    for (const paragraph of this.store.paragraphs()) {
-      for (const sentence of paragraph.sentences) {
-        const element = root.querySelector(
-          `[data-sentence-id="${CSS.escape(sentence.sentence.id)}"]`,
-        );
-        if (element) {
-          byElement.set(element, sentence);
-        }
-      }
-    }
-    if (byElement.size === 0) {
-      return;
-    }
-
-    const visible = new Set<Element>();
-    this.sentenceObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            visible.add(entry.target);
-          } else {
-            visible.delete(entry.target);
-          }
-        }
-        const primary = [...visible]
-          .map((element) => byElement.get(element))
-          .filter((sentence): sentence is ReaderSentence => sentence !== undefined)
-          .sort((left, right) => left.sentence.positionInReading - right.sentence.positionInReading)
-          .at(0);
-        if (primary !== undefined) {
-          this.store.reportPosition(primary.sentence);
-        }
-      },
-      { threshold: 0.1 },
-    );
-    for (const element of byElement.keys()) {
-      this.sentenceObserver.observe(element);
     }
   }
 }

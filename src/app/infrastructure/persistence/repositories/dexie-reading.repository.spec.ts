@@ -395,43 +395,6 @@ describe('DexieReadingRepository', () => {
 
       expect(count.ok && count.value).toBe(3);
     });
-
-    it('locates the sentence and paragraph at a position through two indexed lookups', async () => {
-      const draft = importedReadingFixture();
-      await repository.saveImportedReading(draft);
-
-      const located = await repository.locateSentence(draft.reading.id, 1);
-
-      expect(located.ok).toBe(true);
-      if (!located.ok) {
-        return;
-      }
-      expect(located.value).toEqual({
-        sentenceId: draft.sentences[1].id,
-        paragraphId: draft.sentences[1].paragraphId,
-        paragraphPosition: draft.paragraphs[0].position,
-        positionInReading: 1,
-      });
-    });
-
-    it('returns null when no sentence occupies that position', async () => {
-      const draft = importedReadingFixture();
-      await repository.saveImportedReading(draft);
-
-      const located = await repository.locateSentence(draft.reading.id, 99);
-
-      expect(located.ok && located.value).toBeNull();
-    });
-
-    it('returns null when the sentence exists but its paragraph does not', async () => {
-      const draft = importedReadingFixture();
-      await repository.saveImportedReading(draft);
-      await db.paragraphs.delete(draft.sentences[0].paragraphId);
-
-      const located = await repository.locateSentence(draft.reading.id, 0);
-
-      expect(located.ok && located.value).toBeNull();
-    });
   });
 
   describe('library queries', () => {
@@ -523,50 +486,6 @@ describe('DexieReadingRepository', () => {
     });
   });
 
-  describe('progress and continue reading', () => {
-    it('stores progress by paragraph and sentence identity', async () => {
-      const draft = importedReadingFixture();
-      await repository.saveImportedReading(draft);
-
-      await repository.saveProgress({
-        readingId: draft.reading.id,
-        paragraphId: draft.paragraphs[0].id,
-        sentenceId: draft.sentences[1].id,
-        positionInReading: 1,
-        lastOpenedAt: 1_700_100_000_000,
-        updatedAt: 1_700_100_000_000,
-      });
-
-      const progress = await repository.getProgress(draft.reading.id);
-      expect(progress.ok && progress.value?.sentenceId).toBe(draft.sentences[1].id);
-
-      const continueTarget = await repository.resolveContinueReading();
-      expect(continueTarget.ok && continueTarget.value?.readingId).toBe(draft.reading.id);
-      expect(continueTarget.ok && continueTarget.value?.progress?.positionInReading).toBe(1);
-    });
-
-    it('points Continue reading at the most recently opened reading', async () => {
-      const older = importedReadingFixture({ seed: 11, title: 'Older' });
-      const newer = importedReadingFixture({ seed: 12, title: 'Newer' });
-      await repository.saveImportedReading(older);
-      await repository.saveImportedReading(newer);
-
-      await repository.markOpened(older.reading.id, 1_700_100_000_000);
-      await repository.markOpened(newer.reading.id, 1_700_100_500_000);
-
-      const target = await repository.resolveContinueReading();
-      expect(target.ok && target.value?.title).toBe('Newer');
-    });
-
-    it('returns no Continue reading target before anything is opened', async () => {
-      const draft = importedReadingFixture();
-      await repository.saveImportedReading(draft);
-
-      const target = await repository.resolveContinueReading();
-      expect(target.ok && target.value).toBeNull();
-    });
-  });
-
   describe('deletion', () => {
     it('removes every owned row and repairs Continue reading', async () => {
       const first = importedReadingFixture({ seed: 21, title: 'First' });
@@ -597,10 +516,6 @@ describe('DexieReadingRepository', () => {
       expect(await db.sentences.where('readingId').equals(second.reading.id).count()).toBe(0);
       expect(await db.tokenAnalyses.where('readingId').equals(second.reading.id).count()).toBe(0);
       expect(await db.translations.where('readingId').equals(second.reading.id).count()).toBe(0);
-      expect(await db.readingProgress.get(second.reading.id)).toBeUndefined();
-
-      const target = await repository.resolveContinueReading();
-      expect(target.ok && target.value?.title).toBe('First');
     });
 
     it('leaves other readings and their children untouched', async () => {
@@ -668,42 +583,6 @@ describe('DexieReadingRepository', () => {
       expect(graph.ok).toBe(false);
       expect(!graph.ok && graph.error.code).toBe('corrupt-record');
     });
-
-    it('reports a corrupt sentence row when locating a position', async () => {
-      const draft = importedReadingFixture();
-      await repository.saveImportedReading(draft);
-      // `positionInParagraph`, unlike `positionInReading`, is not part of the
-      // lookup index, so corrupting it does not stop the row from being found.
-      await db.sentences.update(draft.sentences[0].id, { positionInParagraph: -1 });
-
-      const located = await repository.locateSentence(draft.reading.id, 0);
-
-      expect(located.ok).toBe(false);
-      expect(!located.ok && located.error.code).toBe('corrupt-record');
-    });
-
-    it('reports a corrupt paragraph row when locating a position', async () => {
-      const draft = importedReadingFixture();
-      await repository.saveImportedReading(draft);
-      await db.paragraphs.update(draft.sentences[0].paragraphId, { position: -1 });
-
-      const located = await repository.locateSentence(draft.reading.id, 0);
-
-      expect(located.ok).toBe(false);
-      expect(!located.ok && located.error.code).toBe('corrupt-record');
-    });
-
-    it('reports a corrupt reading row when resolving Continue reading', async () => {
-      const draft = importedReadingFixture();
-      await repository.saveImportedReading(draft);
-      await repository.markOpened(draft.reading.id, 1_700_000_500_000);
-      await db.readings.update(draft.reading.id, { sentenceCount: -5 });
-
-      const target = await repository.resolveContinueReading();
-
-      expect(target.ok).toBe(false);
-      expect(!target.ok && target.error.code).toBe('corrupt-record');
-    });
   });
 
   describe('storage failures', () => {
@@ -731,36 +610,10 @@ describe('DexieReadingRepository', () => {
       });
       expect((await repository.countParagraphs(draft.reading.id)).ok).toBe(false);
 
-      vi.spyOn(db.sentences, 'where').mockImplementationOnce(() => {
-        throw failure;
-      });
-      expect((await repository.locateSentence(draft.reading.id, 0)).ok).toBe(false);
-
       vi.spyOn(db.tokenAnalyses, 'where').mockImplementationOnce(() => {
         throw failure;
       });
       expect((await repository.loadTokenAnalyses([draft.sentences[0].id])).ok).toBe(false);
-
-      vi.spyOn(db.readingProgress, 'get').mockRejectedValueOnce(failure);
-      expect((await repository.getProgress(draft.reading.id)).ok).toBe(false);
-
-      vi.spyOn(db.readings, 'where').mockImplementationOnce(() => {
-        throw failure;
-      });
-      expect((await repository.resolveContinueReading()).ok).toBe(false);
-    });
-
-    it('propagates a failure to read progress while resolving Continue reading', async () => {
-      const draft = importedReadingFixture();
-      await repository.saveImportedReading(draft);
-      await repository.markOpened(draft.reading.id, 1_700_000_500_000);
-      const failure = new Error('disk unavailable');
-      failure.name = 'UnknownError';
-      vi.spyOn(db.readingProgress, 'get').mockRejectedValueOnce(failure);
-
-      const target = await repository.resolveContinueReading();
-
-      expect(target.ok).toBe(false);
     });
   });
 });

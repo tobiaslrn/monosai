@@ -108,13 +108,3 @@ export const tokenAnalysisRowSchema = z.object({
   analyzerVersion: nonEmptyString,
   tokens: z.array(tokenSchema).readonly(),
 });
-
-export const readingProgressRowSchema = z.object({
-  v: rowVersionSchema,
-  readingId: readingIdSchema,
-  paragraphId: paragraphIdSchema,
-  sentenceId: sentenceIdSchema,
-  positionInReading: z.number().int().nonnegative(),
-  lastOpenedAt: timestampSchema,
-  updatedAt: timestampSchema,
-});

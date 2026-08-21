@@ -6,8 +6,6 @@ import type { GrammarAnalysisRecord, TranslationRecord } from '../enrichment/rec
 import type { GeneratedStory, ImportedReading, LibraryFilter, Reading } from './reading';
 import type { FrozenSentenceValidation } from './validation';
 import type { Paragraph, ReadingGraph, Sentence } from './text-hierarchy';
-import type { ContinueReadingTarget, ReadingProgress } from './progress';
-import type { SentenceLocation } from './reading-position';
 import type { TokenAnalysis } from './token';
 
 /** Everything persisted atomically when an imported reading is saved. */
@@ -87,14 +85,6 @@ export interface ReadingRepository {
    * text of a reading it is about to render a few paragraphs of.
    */
   countParagraphs(id: ReadingId): Promise<Result<number, StorageError>>;
-  /**
-   * Resolves one sentence position through bounded indexed lookups. Resume uses
-   * it instead of scanning the reading to find where a saved position landed.
-   */
-  locateSentence(
-    id: ReadingId,
-    positionInReading: number,
-  ): Promise<Result<SentenceLocation | null, StorageError>>;
   loadTokenAnalyses(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly TokenAnalysis[], StorageError>>;
@@ -109,9 +99,6 @@ export interface ReadingRepository {
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly Sentence[], StorageError>>;
   deleteReading(id: ReadingId): Promise<Result<void, StorageError>>;
-  saveProgress(progress: ReadingProgress): Promise<Result<void, StorageError>>;
-  getProgress(id: ReadingId): Promise<Result<ReadingProgress | null, StorageError>>;
-  resolveContinueReading(): Promise<Result<ContinueReadingTarget | null, StorageError>>;
   markOpened(id: ReadingId, openedAt: number): Promise<Result<void, StorageError>>;
 }
 

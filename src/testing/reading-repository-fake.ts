@@ -1,11 +1,9 @@
-import type { ContinueReadingTarget, ReadingProgress } from '../app/domain/reading/progress';
 import type {
   GeneratedStory,
   ImportedReading,
   LibraryFilter,
   Reading,
 } from '../app/domain/reading/reading';
-import type { SentenceLocation } from '../app/domain/reading/reading-position';
 import type { GenerationProvenance } from '../app/domain/ai/generation-provenance';
 import type { GrammarAnalysisRecord, TranslationRecord } from '../app/domain/enrichment/records';
 import type { FrozenSentenceValidation } from '../app/domain/reading/validation';
@@ -154,14 +152,10 @@ export class FakeReadingRepository implements ReadingRepository {
   paragraphs: Paragraph[] = [];
   sentences: Sentence[] = [];
   tokenAnalyses: TokenAnalysis[] = [];
-  readonly progress = new Map<ReadingId, ReadingProgress>();
-  continueTarget: ContinueReadingTarget | null = null;
-
   readonly deleted: ReadingId[] = [];
   readonly opened: { readonly id: ReadingId; readonly at: number }[] = [];
   readonly graphRequests: (ParagraphWindow | undefined)[] = [];
   readonly analysisRequests: (readonly SentenceId[])[] = [];
-  readonly savedProgress: ReadingProgress[] = [];
   frozenValidations: FrozenSentenceValidation[] = [];
   provenance: GenerationProvenance[] = [];
   translations: TranslationRecord[] = [];
@@ -172,8 +166,6 @@ export class FakeReadingRepository implements ReadingRepository {
   /** Set to make the matching read or write fail with a typed storage error. */
   failListWith: StorageError | null = null;
   failGraphWith: StorageError | null = null;
-  failProgressWith: StorageError | null = null;
-  failSaveProgressWith: StorageError | null = null;
 
   /** Adds one built reading and every row it owns. */
   add(rows: FakeReadingRows): FakeReadingRows {
@@ -263,28 +255,6 @@ export class FakeReadingRepository implements ReadingRepository {
     return Promise.resolve(ok(this.paragraphsOf(id).length));
   }
 
-  locateSentence(
-    id: ReadingId,
-    positionInReading: number,
-  ): Promise<Result<SentenceLocation | null, StorageError>> {
-    const sentence = this.sentences.find(
-      (candidate) =>
-        candidate.readingId === id && candidate.positionInReading === positionInReading,
-    );
-    if (sentence === undefined) {
-      return Promise.resolve(ok(null));
-    }
-    const paragraph = this.paragraphs.find((candidate) => candidate.id === sentence.paragraphId);
-    return Promise.resolve(
-      ok({
-        sentenceId: sentence.id,
-        paragraphId: sentence.paragraphId,
-        paragraphPosition: paragraph?.position ?? 0,
-        positionInReading: sentence.positionInReading,
-      }),
-    );
-  }
-
   loadTokenAnalyses(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly TokenAnalysis[], StorageError>> {
@@ -334,31 +304,7 @@ export class FakeReadingRepository implements ReadingRepository {
     this.tokenAnalyses = this.tokenAnalyses.filter(
       (analysis) => !orphaned.has(analysis.sentenceId),
     );
-    this.progress.delete(id);
-    if (this.continueTarget?.readingId === id) {
-      this.continueTarget = null;
-    }
     return Promise.resolve(ok(undefined));
-  }
-
-  saveProgress(progress: ReadingProgress): Promise<Result<void, StorageError>> {
-    if (this.failSaveProgressWith !== null) {
-      return Promise.resolve(err(this.failSaveProgressWith));
-    }
-    this.savedProgress.push(progress);
-    this.progress.set(progress.readingId, progress);
-    return Promise.resolve(ok(undefined));
-  }
-
-  getProgress(id: ReadingId): Promise<Result<ReadingProgress | null, StorageError>> {
-    if (this.failProgressWith !== null) {
-      return Promise.resolve(err(this.failProgressWith));
-    }
-    return Promise.resolve(ok(this.progress.get(id) ?? null));
-  }
-
-  resolveContinueReading(): Promise<Result<ContinueReadingTarget | null, StorageError>> {
-    return Promise.resolve(ok(this.continueTarget));
   }
 
   markOpened(id: ReadingId, openedAt: number): Promise<Result<void, StorageError>> {
