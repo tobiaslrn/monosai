@@ -36,7 +36,6 @@ import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PopoverService, type PopoverRef } from '../../shared-ui/popover/popover.service';
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
-import { AudioProgressComponent } from './audio-progress.component';
 import { ReaderAidsComponent } from './reader-aids.component';
 import { ReaderMenuComponent } from './reader-menu.component';
 import { ReaderParagraphComponent } from './reader-paragraph.component';
@@ -82,7 +81,6 @@ const SCROLL_SETTLE_MS = 1000;
   imports: [
     RouterLink,
     IconComponent,
-    AudioProgressComponent,
     ReaderAidsComponent,
     ReaderMenuComponent,
     ReaderParagraphComponent,
@@ -98,23 +96,36 @@ const SCROLL_SETTLE_MS = 1000;
     <div class="reader" [style.--reader-scale]="textScale()">
       <header class="bar">
         <div class="bar-row">
-          <a class="icon-button" routerLink="/library" aria-label="Back to library">
+          <a class="mn-icon-button" routerLink="/library" aria-label="Back to library">
             <mn-icon name="back" />
           </a>
           <h1>{{ store.reading()?.title }}</h1>
           <div class="bar-actions">
             <mn-reader-aids />
+            <!--
+              Always here, whether or not this reading has any audio. It is the
+              only place in the reader that says Monosai can read aloud at all,
+              and the panel behind it owns every audio state there is.
+            -->
+            <button
+              type="button"
+              class="mn-icon-button audio-button"
+              #audioButton
+              [class.is-busy]="audioJob.isRunning()"
+              [class.is-playing]="playback.isActive()"
+              [attr.aria-expanded]="audioPanelOpen()"
+              aria-haspopup="dialog"
+              [attr.aria-label]="audioButtonLabel()"
+              (click)="openAudioPanel()"
+            >
+              <mn-icon name="audio" />
+            </button>
             @if (store.reading(); as reading) {
               <mn-reader-menu
                 [reading]="reading"
                 [isRunning]="translationJob.isRunning()"
-                [audioRunning]="audioJob.isRunning()"
-                [canPlayAudio]="playback.canPlayWholeReading()"
                 (translateAll)="startWholeReadingTranslation()"
                 (cancelled)="translationJob.cancel()"
-                (prepareAudio)="startWholeReadingAudio()"
-                (cancelAudio)="audioJob.cancel()"
-                (playReading)="playWholeReading()"
                 (deleteRequested)="confirmDelete()"
               />
             }
@@ -131,25 +142,9 @@ const SCROLL_SETTLE_MS = 1000;
           (retried)="retryWholeReadingTranslation()"
           (dismissed)="translationJob.acknowledge()"
         />
-
-        <mn-audio-progress
-          [progress]="audioJob.progress()"
-          (cancelled)="audioJob.cancel()"
-          (retried)="retryWholeReadingAudio()"
-          (dismissed)="audioJob.acknowledge()"
-        />
-
-        <!--
-          Below the desktop breakpoint the player is part of the header rather
-          than a footer, which would otherwise sit on top of the reading it is
-          playing on a phone.
-        -->
-        @if (!viewport.isDesktop()) {
-          <mn-reading-player [compact]="true" [selectedSentenceId]="selectedSentenceId()" />
-        }
       </header>
 
-      <main class="content" [class.has-player]="showsDock()" #content>
+      <main class="content" #content>
         @switch (store.status()) {
           @case ('loading') {
             <p class="mn-hint" role="status">Opening…</p>
@@ -201,19 +196,21 @@ const SCROLL_SETTLE_MS = 1000;
             }
           }
         }
-        <!--
-          Fixed to the viewport and anchored to the reading column, rather than
-          sticky. A sticky element is clamped to its containing block, and a
-          footer is by definition the last thing in its own — so it had no room
-          to lift and simply sat at the end of the document.
-        -->
-        @if (showsDock()) {
-          <footer class="player-dock">
-            <mn-reading-player [selectedSentenceId]="selectedSentenceId()" />
-          </footer>
-        }
       </main>
     </div>
+
+    <ng-template #audioPanel>
+      <mn-reader-popover label="Reading audio">
+        <mn-reading-player
+          [progress]="audioJob.progress()"
+          [selectedSentenceId]="audioPanelSentenceId()"
+          (generate)="startWholeReadingAudio()"
+          (cancelGeneration)="audioJob.cancel()"
+          (retryGeneration)="retryWholeReadingAudio()"
+          (dismissJob)="audioJob.acknowledge()"
+        />
+      </mn-reader-popover>
+    </ng-template>
 
     <ng-template #sentencePopover>
       <mn-reader-popover label="Sentence details">
@@ -320,18 +317,28 @@ const SCROLL_SETTLE_MS = 1000;
       align-items: center;
     }
 
-    .icon-button {
-      display: inline-flex;
-      flex: none;
-      align-items: center;
-      justify-content: center;
-      width: var(--touch-target);
-      height: var(--touch-target);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-control);
-      background: var(--surface-raised);
-      color: var(--text-primary);
-      cursor: pointer;
+    .audio-button.is-playing {
+      border-color: transparent;
+      background: var(--action-primary);
+      color: var(--text-on-action);
+    }
+
+    /* A job is running behind a closed panel; the button is the only sign of it. */
+    .audio-button.is-busy {
+      color: var(--action-primary);
+      animation: audio-pulse 1.6s ease-in-out infinite;
+    }
+
+    @keyframes audio-pulse {
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .audio-button.is-busy {
+        animation: none;
+      }
     }
 
     .content {
@@ -339,16 +346,6 @@ const SCROLL_SETTLE_MS = 1000;
       z-index: 0;
       grid-area: content;
       min-width: 0;
-      /* What the docked player is pinned to horizontally. */
-      anchor-name: --mn-reader-content;
-    }
-
-    /*
-     * Room for the dock, so the last line of a reading is never permanently
-     * covered by it. Only reserved while the dock is actually there.
-     */
-    .content.has-player {
-      padding-bottom: calc(var(--touch-target) + var(--space-6));
     }
 
     /* Room for the ruby above the first line of the reading. */
@@ -359,22 +356,6 @@ const SCROLL_SETTLE_MS = 1000;
 
     .sentinel {
       height: 1px;
-    }
-
-    /*
-     * Pinned to the bottom of the viewport and to the width of the reading
-     * column, using the same CSS anchor positioning the overflow menu uses. A
-     * fixed box resolves against the viewport, which on desktop includes the
-     * sidebar, and the sidebar's width is a minmax the reader does not know —
-     * so the column anchors it rather than a hard-coded offset.
-     */
-    .player-dock {
-      position: fixed;
-      position-anchor: --mn-reader-content;
-      right: anchor(right);
-      bottom: var(--space-4);
-      left: anchor(left);
-      z-index: 4;
     }
   `,
 })
@@ -402,6 +383,8 @@ export class ReaderPageComponent {
   private readonly viewContainerRef = inject(ViewContainerRef);
 
   private readonly content = viewChild<ElementRef<HTMLElement>>('content');
+  private readonly audioButton = viewChild<ElementRef<HTMLElement>>('audioButton');
+  private readonly audioPanel = viewChild.required<TemplateRef<unknown>>('audioPanel');
   private readonly wordPopover = viewChild.required<TemplateRef<unknown>>('wordPopover');
   private readonly wordPreview = viewChild.required<TemplateRef<unknown>>('wordPreview');
   private readonly sentencePopover = viewChild.required<TemplateRef<unknown>>('sentencePopover');
@@ -497,17 +480,29 @@ export class ReaderPageComponent {
    * is never re-analysed: that would judge frozen text by a profile it was
    * never written for.
    */
+  private readonly audioPanelOpenSignal = signal(false);
+  protected readonly audioPanelOpen = this.audioPanelOpenSignal.asReadonly();
+
   /**
-   * Whether the desktop dock is on screen.
+   * The sentence that was open when the audio panel was opened.
    *
-   * Mirrors the player's own visibility rule so the content reserves room for
-   * exactly as long as something is there to cover it.
+   * Opening the panel closes the sentence popover, which clears the selection —
+   * so Start from this sentence has to remember what "this" meant a moment ago
+   * rather than reading a signal that has already been reset.
    */
-  protected readonly showsDock = computed(
-    () =>
-      this.viewport.isDesktop() &&
-      (this.playback.isActive() || this.playback.canPlayWholeReading()),
-  );
+  private readonly audioPanelSentenceIdSignal = signal<SentenceId | null>(null);
+  protected readonly audioPanelSentenceId = this.audioPanelSentenceIdSignal.asReadonly();
+
+  /** The audio button says its state out loud, because its icon never changes. */
+  protected readonly audioButtonLabel = computed(() => {
+    if (this.audioJob.isRunning()) {
+      return 'Audio, being generated';
+    }
+    if (this.playback.isActive()) {
+      return 'Audio, playing';
+    }
+    return this.playback.canPlayWholeReading() ? 'Audio, ready' : 'Audio';
+  });
 
   protected readonly canAnalyzeGrammar = computed(
     () => (this.store.reading()?.kind ?? 'imported') === 'imported',
@@ -667,9 +662,27 @@ export class ReaderPageComponent {
     void this.audioJob.retry(readingId(this.id()));
   }
 
-  /** Plays the whole reading, because the learner chose to. Never automatic. */
-  protected playWholeReading(): void {
-    void this.playback.play();
+  /**
+   * Opens the audio panel: anchored to its button on desktop, docked as a sheet
+   * on a phone. Nothing is loaded, requested, or played by opening it.
+   */
+  protected openAudioPanel(): void {
+    const origin = this.audioButton()?.nativeElement;
+    if (origin === undefined) {
+      return;
+    }
+    this.audioPanelSentenceIdSignal.set(this.selectedSentenceIdSignal());
+    this.audioPanelOpenSignal.set(true);
+    this.popover.open({
+      origin,
+      template: this.audioPanel(),
+      viewContainerRef: this.viewContainerRef,
+      returnFocusTo: origin,
+      onClosed: () => {
+        this.audioPanelOpenSignal.set(false);
+        this.audioPanelSentenceIdSignal.set(null);
+      },
+    });
   }
 
   /**

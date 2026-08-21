@@ -13,11 +13,9 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 /**
  * The reader's overflow menu.
  *
- * Everything that acts on the whole reading rather than on one sentence lives
- * here — which is the whole reason the page above it can be nothing but
- * Japanese. Whole-reading translation in particular is a real cost, so it is a
- * menu entry that says how much is missing rather than a strip that sat over
- * the text reporting on itself.
+ * What is left of it: translating the reading, and deleting it. Audio moved out
+ * to its own header button, and the per-button explanations went with the rest
+ * of the reader's prose — the labels are the whole message.
  *
  * A native popover anchored to its own button: `Escape`, a press outside, the
  * top layer, and closing when the Aids panel opens are all the platform's
@@ -31,7 +29,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     <div>
       <button
         type="button"
-        class="icon-button anchor-button"
+        class="mn-icon-button anchor-button"
         aria-label="Reading actions"
         popovertarget="mn-reader-menu-panel"
       >
@@ -47,47 +45,13 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
         aria-label="Reading actions"
       >
         @if (isRunning()) {
-          <button type="button" (click)="choose(cancelled)">
-            <span class="label">Stop translating</span>
-            <span class="mn-hint">Sentences already translated are kept.</span>
-          </button>
+          <button type="button" (click)="choose(cancelled)">Stop translating</button>
         } @else if (missingCount() > 0) {
-          <button type="button" (click)="choose(translateAll)">
-            <span class="label">{{ translateLabel() }}</span>
-            <span class="mn-hint">Sends every untranslated sentence to your text model.</span>
-          </button>
-        } @else {
-          <p class="mn-hint done">Every sentence is translated.</p>
-        }
-
-        <!--
-          Audio, the second whole-reading job. Preparing spends money per
-          sentence and is named with the count it would send, exactly as
-          translation is; playing spends nothing and is offered only once the
-          whole set exists, because a player that stopped in the middle of a
-          reading would be worse than no player.
-        -->
-        @if (audioRunning()) {
-          <button type="button" (click)="choose(cancelAudio)">
-            <span class="label">Stop preparing audio</span>
-            <span class="mn-hint">Sentences already read aloud are kept.</span>
-          </button>
-        } @else if (audioMissingCount() > 0) {
-          <button type="button" (click)="choose(prepareAudio)">
-            <span class="label">{{ audioLabel() }}</span>
-            <span class="mn-hint">Sends every sentence without audio to your speech model.</span>
-          </button>
-        }
-
-        @if (canPlayAudio()) {
-          <button type="button" (click)="choose(playReading)">
-            <span class="label">Play reading</span>
-            <span class="mn-hint">Reads the whole reading aloud from saved audio.</span>
-          </button>
+          <button type="button" (click)="choose(translateAll)">Translate reading</button>
         }
 
         <button type="button" class="danger" (click)="choose(deleteRequested)">
-          <span class="label">Delete reading</span>
+          Delete reading
         </button>
       </div>
     </div>
@@ -95,20 +59,6 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
   styles: `
     .anchor-button {
       anchor-name: --mn-reader-menu-anchor;
-    }
-
-    .icon-button {
-      display: inline-flex;
-      flex: none;
-      align-items: center;
-      justify-content: center;
-      width: var(--touch-target);
-      height: var(--touch-target);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-control);
-      background: var(--surface-raised);
-      color: var(--text-primary);
-      cursor: pointer;
     }
 
     /*
@@ -143,8 +93,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 
     .panel button {
       display: flex;
-      flex-direction: column;
-      gap: 2px;
+      align-items: center;
       width: 100%;
       min-height: var(--touch-target);
       padding: var(--space-2) var(--space-3);
@@ -162,32 +111,17 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       background: var(--surface-sunken);
     }
 
-    .danger .label {
+    .panel .danger {
       color: var(--status-danger);
-    }
-
-    .label {
-      font-weight: 500;
-    }
-
-    .done {
-      margin: 0;
-      padding: var(--space-2) var(--space-3);
     }
   `,
 })
 export class ReaderMenuComponent {
   readonly reading = input.required<Reading>();
   readonly isRunning = input(false);
-  readonly audioRunning = input(false);
-  /** The complete-set gate, resolved by the playback store the reader owns. */
-  readonly canPlayAudio = input(false);
 
   readonly translateAll = output<void>();
   readonly cancelled = output<void>();
-  readonly prepareAudio = output<void>();
-  readonly cancelAudio = output<void>();
-  readonly playReading = output<void>();
   readonly deleteRequested = output<void>();
 
   private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
@@ -196,24 +130,6 @@ export class ReaderMenuComponent {
   protected readonly missingCount = computed(() => {
     const summary = this.reading().translationSummary;
     return Math.max(summary.total - summary.completed, 0);
-  });
-
-  protected readonly translateLabel = computed(() => {
-    const missing = this.missingCount();
-    return missing === 1 ? 'Translate the last sentence' : `Translate ${String(missing)} sentences`;
-  });
-
-  /** Sentences with no clip under the current voice, from the stored summary. */
-  protected readonly audioMissingCount = computed(() => {
-    const summary = this.reading().audioSummary;
-    return Math.max(summary.total - summary.completed, 0);
-  });
-
-  protected readonly audioLabel = computed(() => {
-    const missing = this.audioMissingCount();
-    return missing === 1
-      ? 'Prepare audio for the last sentence'
-      : `Prepare audio for ${String(missing)} sentences`;
   });
 
   /** Chosen entries close the menu; dismissal without choosing is the platform's. */
