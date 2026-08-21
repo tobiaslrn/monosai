@@ -189,6 +189,27 @@ describe('ReadingPlayerComponent', () => {
       ).toContain('Saving failed: No room left.');
     });
 
+    /**
+     * A job that fails before it resolves which sentences it needs has no
+     * position to report. Deriving one from the counts said "sentence 1 of 0".
+     */
+    it('claims no position when the job never got as far as one', () => {
+      const fixture = render();
+      fixture.componentInstance.progress.set({
+        kind: 'failed',
+        counts: { total: 10, requested: 0, completed: 0, failed: 0 },
+        error: {
+          source: 'provider',
+          error: aiError('capability-unsupported', 'tts-synthesis', 'No voice.'),
+        },
+      });
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(element.textContent).toContain('Audio could not be prepared.');
+      expect(element.textContent).not.toContain('of 0');
+    });
+
     it('says what was kept after a cancellation', () => {
       const fixture = render();
       fixture.componentInstance.progress.set({

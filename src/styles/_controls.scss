@@ -63,11 +63,20 @@
   background: var(--surface-raised);
 }
 
+/*
+ * The one role for secondary text. There used to be several competing greys and
+ * sizes for the same job, which is how a page ends up with three kinds of quiet.
+ */
 .mn-hint {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--text-sm);
 }
 
+/*
+ * A grouped surface. It carries a border only where it separates its contents
+ * from something else; a panel wrapping the whole of a page separates nothing,
+ * and `mn-panel--plain` is that case.
+ */
 .mn-panel {
   display: flex;
   flex-direction: column;
@@ -78,16 +87,23 @@
   background: var(--surface-panel);
 }
 
+.mn-panel--plain {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/*
+ * Every page centres itself. Without a sidebar there is nothing else deciding
+ * where a page sits, and a column pinned to the left edge of a wide window is
+ * not a layout.
+ */
 .mn-page {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
   max-width: var(--layout-measure);
   margin-inline: auto;
-}
-
-.mn-page > header h1 {
-  font-size: 26px;
 }
 
 /*

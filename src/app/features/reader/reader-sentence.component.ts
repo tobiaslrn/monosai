@@ -90,8 +90,16 @@ export interface TokenActivation {
        * Inline padding lands at the start of a sentence and after its end, so
        * a tinted sentence is inset from the words around it rather than butted
        * against them, and the rounding follows each line fragment.
+       *
+       * It is cancelled by an equal negative margin, because the padding of two
+       * neighbouring sentences meets in the middle of a line: at 0.4em each,
+       * that was 0.8em of dead space between the end of one sentence and the
+       * start of the next, in the middle of running prose. The negative margin
+       * pulls the boxes back over each other so the text flows at its natural
+       * spacing while both the hit area and the tinted shape keep their inset.
        */
-      padding-inline: 0.4em;
+      padding-inline: 0.25em;
+      margin-inline: -0.25em;
       border-radius: var(--radius-control);
     }
 

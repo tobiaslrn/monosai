@@ -30,7 +30,8 @@ import { TextInputStepComponent } from './text-input-step.component';
         <p class="mn-hint">Check how the text was divided into sentences, then save.</p>
       }
 
-      <section class="mn-panel">
+      <!-- Plain: a panel wrapping the whole of a page separates it from nothing. -->
+      <section class="mn-panel mn-panel--plain">
         @if (store.step() === 'input') {
           <mn-text-input-step />
         } @else {
