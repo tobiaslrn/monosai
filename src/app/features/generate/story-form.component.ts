@@ -9,21 +9,19 @@ interface FormOption {
   readonly value: StoryForm;
   readonly label: string;
   readonly range: string;
-  readonly description: string;
 }
 
+/** The length is the whole difference, so the sentence count is the whole label. */
 const FORMS: readonly FormOption[] = [
   {
     value: 'micro',
     label: 'Micro',
     range: `${String(SENTENCE_RANGES.micro.min)}–${String(SENTENCE_RANGES.micro.max)} sentences`,
-    description: 'A few sentences. Quick to read and quick to check.',
   },
   {
     value: 'short',
     label: 'Short',
     range: `${String(SENTENCE_RANGES.short.min)}–${String(SENTENCE_RANGES.short.max)} sentences`,
-    description: 'A full short story with room for a beginning and an end.',
   },
 ];
 
@@ -74,7 +72,6 @@ const FORMS: readonly FormOption[] = [
           <span class="form-body">
             <span class="form-name">{{ option.label }}</span>
             <span class="form-range">{{ option.range }}</span>
-            <span class="form-description">{{ option.description }}</span>
           </span>
         </label>
       }
@@ -102,6 +99,11 @@ const FORMS: readonly FormOption[] = [
       </p>
     </div>
 
+    <!--
+      One line, immediately above the button that acts on it: what the story is
+      written from, and where each half of that is changed. It used to be said
+      three times on this screen, in three different places.
+    -->
     <p class="sources" data-testid="form-sources">
       Written from your
       <a routerLink="/vocabulary">{{ snapshotSummary() }}</a>
@@ -121,10 +123,6 @@ const FORMS: readonly FormOption[] = [
         <mn-icon name="generate" [size]="18" />
         <span>Generate story</span>
       </button>
-      <p class="network">
-        <mn-icon name="info" [size]="16" />
-        <span>This sends your premise and reviewed vocabulary to OpenRouter.</span>
-      </p>
     </div>
   `,
   styles: `
@@ -195,8 +193,7 @@ const FORMS: readonly FormOption[] = [
       font-weight: 600;
     }
 
-    .form-range,
-    .form-description {
+    .form-range {
       color: var(--text-secondary);
       font-size: var(--text-sm);
     }
@@ -212,15 +209,6 @@ const FORMS: readonly FormOption[] = [
       flex-wrap: wrap;
       gap: var(--space-3);
       align-items: center;
-    }
-
-    .network {
-      display: flex;
-      gap: var(--space-2);
-      align-items: center;
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
     }
   `,
 })

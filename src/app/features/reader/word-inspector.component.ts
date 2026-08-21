@@ -1,5 +1,14 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import type { GrammarFinding } from '../../domain/enrichment/records';
 import { PART_OF_SPEECH_LABELS } from '../../domain/reading/token';
@@ -22,6 +31,9 @@ export interface WordGrammarState {
   /** True only for an imported analysis judged against an older profile. */
   readonly stale: boolean;
 }
+
+/** Meanings shown before the learner asks for the rest of the entry. */
+const COLLAPSED_SENSE_LIMIT = 2;
 
 export const NO_WORD_GRAMMAR: WordGrammarState = {
   findings: [],
@@ -57,20 +69,24 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
           </button>
         </header>
 
-        <dl class="facts">
-          @if (word.token.lemma; as lemma) {
+        <!--
+          Only when the dictionary form is not the form on the page. Repeating
+          the surface back at the learner under a label taught them nothing.
+        -->
+        @if (inflectedForm(); as lemma) {
+          <dl class="facts">
             <div>
               <dt>Dictionary form</dt>
               <dd lang="ja">{{ lemma }}</dd>
             </div>
-          }
-          @if (partOfSpeech(); as pos) {
-            <div>
-              <dt>Part of speech</dt>
-              <dd>{{ pos }}</dd>
-            </div>
-          }
-        </dl>
+            @if (partOfSpeech(); as pos) {
+              <div>
+                <dt>Part of speech</dt>
+                <dd>{{ pos }}</dd>
+              </div>
+            }
+          </dl>
+        }
 
         <!--
           A note the learner came here for should not sit below a dictionary
@@ -94,10 +110,6 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
             }
             <p>{{ presentation.explanation }}</p>
           </section>
-        } @else {
-          <p class="mn-hint">
-            Connect Anki to see whether you have reviewed this word. Reading works without it.
-          </p>
         }
 
         <section aria-labelledby="mn-inspector-dictionary">
@@ -120,7 +132,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
             }
             @case ('found') {
               <ol class="senses">
-                @for (entry of entries(); track entry.id) {
+                @for (entry of visibleEntries(); track entry.id) {
                   <li>
                     @if (entry.writtenForms.length > 0) {
                       <p class="entry-forms" lang="ja">{{ entry.writtenForms.join('、') }}</p>
@@ -133,11 +145,21 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
                   </li>
                 }
               </ol>
+
+              <!--
+                Two meanings answer the question a learner stopped for. The rest
+                are a dictionary page, and asking for one is a press.
+              -->
+              @if (hiddenSenseCount() > 0) {
+                <button type="button" class="more" (click)="expand()">
+                  More ({{ hiddenSenseCount() }})
+                </button>
+              }
             }
           }
         </section>
 
-        @if (!hasNotes()) {
+        @if (!hasNotes() && grammar().analyzed) {
           <ng-container *ngTemplateOutlet="grammarSection" />
         }
 
@@ -172,13 +194,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
           <p lang="en">{{ finding.explanationEn }}</p>
         } @empty {
           @if (grammar().sentenceFindings.length === 0) {
-            <p class="mn-hint">
-              {{
-                grammar().analyzed
-                  ? 'Nothing here is outside your grammar profile.'
-                  : 'This sentence has not been analyzed.'
-              }}
-            </p>
+            <p class="mn-hint">Nothing here is outside your grammar profile.</p>
           }
         }
 
@@ -292,6 +308,18 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       font-family: var(--font-japanese);
     }
 
+    .more {
+      min-height: var(--touch-target);
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--text-primary);
+      font: inherit;
+      font-size: var(--text-sm);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
     .finding-label {
       margin: 0;
       font-weight: 600;
@@ -376,6 +404,16 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 export class WordInspectorComponent {
   protected readonly store = inject(WordInspectorStore);
 
+  private readonly expandedSignal = signal(false);
+
+  constructor() {
+    // A new word is a new lookup: it opens collapsed, whatever the last one did.
+    effect(() => {
+      this.store.selected();
+      this.expandedSignal.set(false);
+    });
+  }
+
   /** The grammar around this word, and whether it can still be analysed. */
   readonly grammar = input<WordGrammarState>(NO_WORD_GRAMMAR);
 
@@ -388,6 +426,15 @@ export class WordInspectorComponent {
     return grammar.findings.length > 0 || grammar.sentenceFindings.length > 0;
   });
 
+  /** The dictionary form, or null when the word is already in it. */
+  protected readonly inflectedForm = computed(() => {
+    const token = this.store.selected()?.token;
+    if (token?.lemma === undefined || token.lemma === token.surface) {
+      return null;
+    }
+    return token.lemma;
+  });
+
   protected readonly partOfSpeech = computed(() => {
     const pos = this.store.selected()?.token.partOfSpeech;
     return pos === undefined ? null : PART_OF_SPEECH_LABELS[pos];
@@ -398,12 +445,35 @@ export class WordInspectorComponent {
     return state.kind === 'found' ? state.entries : [];
   });
 
+  /**
+   * The entries as shown. Collapsed, that is the first two meanings of the
+   * first entry.
+   */
+  protected readonly visibleEntries = computed(() => {
+    const entries = this.entries();
+    if (this.expandedSignal() || entries.length === 0) {
+      return entries;
+    }
+    const [first] = entries;
+    return [{ ...first, senses: first.senses.slice(0, COLLAPSED_SENSE_LIMIT) }];
+  });
+
+  protected readonly hiddenSenseCount = computed(() => {
+    const total = this.entries().reduce((count, entry) => count + entry.senses.length, 0);
+    const shown = this.visibleEntries().reduce((count, entry) => count + entry.senses.length, 0);
+    return total - shown;
+  });
+
   protected readonly failureCode = computed(() => {
     const state = this.store.dictionary();
     return state.kind === 'failed' ? state.error.code : '';
   });
 
   protected readonly nextAction = computed(() => this.store.presentation()?.nextAction ?? null);
+
+  protected expand(): void {
+    this.expandedSignal.set(true);
+  }
 
   protected onClose(): void {
     this.closed.emit();

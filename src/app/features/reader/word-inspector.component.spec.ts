@@ -47,6 +47,19 @@ function grammarWith(overrides: Partial<WordGrammarState>): WordGrammarState {
   return { ...NO_WORD_GRAMMAR, ...overrides };
 }
 
+/** One dictionary entry with `count` distinct meanings. */
+function entryWith(count: number) {
+  return {
+    id: 'e1',
+    writtenForms: ['猫'],
+    readings: ['ねこ'],
+    senses: Array.from({ length: count }, (_unused, index) => ({
+      glossesEn: [`meaning ${String(index + 1)}`],
+      partsOfSpeech: [],
+    })),
+  };
+}
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [WordInspectorComponent],
@@ -61,22 +74,26 @@ class HostComponent {
 }
 
 describe('WordInspectorComponent', () => {
+  /** What the bundled dictionary returns for the next lookup. */
+  let entries: ReturnType<typeof entryWith>[];
+
   beforeEach(() => {
+    entries = [];
     TestBed.configureTestingModule({
       providers: [
         WordInspectorStore,
         {
           provide: LANGUAGE_RUNTIME,
-          useValue: { lookup: () => Promise.resolve(ok({ matchedBy: 'surface', entries: [] })) },
+          useValue: { lookup: () => Promise.resolve(ok({ matchedBy: 'surface', entries })) },
         },
         { provide: LanguageStore, useValue: { structuralBaseline: signal([]) } },
       ],
     });
   });
 
-  async function render(grammar: WordGrammarState = NO_WORD_GRAMMAR) {
+  async function render(grammar: WordGrammarState = NO_WORD_GRAMMAR, token: Token = TOKEN) {
     await TestBed.inject(WordInspectorStore).inspect({
-      token: TOKEN,
+      token,
       sentence: SENTENCE,
       status: null,
     });
@@ -94,9 +111,16 @@ describe('WordInspectorComponent', () => {
     expect(element.textContent).toContain('Marks who performs the action.');
   });
 
-  it('says a sentence is unanalyzed rather than implying it is clean', async () => {
+  /**
+   * A heading over a line saying nothing happened is not information. An
+   * unanalyzed sentence has no grammar section at all; the offer to analyse one
+   * lives on the sentence, where every request-spending action lives.
+   */
+  it('shows no grammar section at all for an unanalyzed sentence', async () => {
     const unanalyzed = (await render()).nativeElement as HTMLElement;
-    expect(unanalyzed.textContent).toContain('has not been analyzed');
+
+    expect(unanalyzed.querySelector('.grammar-section')).toBeNull();
+    expect(unanalyzed.textContent).not.toContain('Grammar here');
 
     TestBed.resetTestingModule();
   });
@@ -160,5 +184,65 @@ describe('WordInspectorComponent', () => {
       ?.click();
 
     expect(fixture.componentInstance.sentenceRequests).toBe(1);
+  });
+
+  /**
+   * Word details are a read-only local lookup, so nothing here should send the
+   * learner off to configure Anki. Reading works without it, and saying so at
+   * every word said it far too often.
+   */
+  it('says nothing about Anki when no vocabulary is configured', async () => {
+    const element = (await render()).nativeElement as HTMLElement;
+
+    expect(element.textContent).not.toContain('Connect Anki');
+  });
+
+  describe('the dictionary form', () => {
+    it('is shown when the word on the page is inflected', async () => {
+      const element = (
+        await render(NO_WORD_GRAMMAR, { ...TOKEN, surface: '歩いた', lemma: '歩く' })
+      ).nativeElement as HTMLElement;
+
+      expect(element.textContent).toContain('Dictionary form');
+      expect(element.querySelector('.facts dd')?.textContent).toContain('歩く');
+    });
+
+    it('is left out when it is the same word already on the page', async () => {
+      const element = (await render(NO_WORD_GRAMMAR, { ...TOKEN, lemma: TOKEN.surface }))
+        .nativeElement as HTMLElement;
+
+      expect(element.querySelector('.facts')).toBeNull();
+      expect(element.textContent).not.toContain('Part of speech');
+    });
+  });
+
+  describe('meanings', () => {
+    it('shows the first two and holds the rest behind More', async () => {
+      entries = [entryWith(5)];
+      const element = (await render()).nativeElement as HTMLElement;
+
+      expect(element.querySelectorAll('.glosses li')).toHaveLength(2);
+      expect(element.textContent).toContain('More (3)');
+    });
+
+    it('shows every meaning once More is pressed', async () => {
+      entries = [entryWith(5)];
+      const fixture = await render();
+      const element = fixture.nativeElement as HTMLElement;
+
+      element.querySelector<HTMLButtonElement>('.more')?.click();
+      fixture.detectChanges();
+
+      expect(element.querySelectorAll('.glosses li')).toHaveLength(5);
+      expect(element.querySelector('.more')).toBeNull();
+    });
+
+    it('offers no More when the entry is short enough to show whole', async () => {
+      entries = [entryWith(2)];
+      const element = (await render()).nativeElement as HTMLElement;
+
+      expect(element.querySelectorAll('.glosses li')).toHaveLength(2);
+      expect(element.querySelector('.more')).toBeNull();
+    });
   });
 });

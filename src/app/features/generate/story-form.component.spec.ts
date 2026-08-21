@@ -128,10 +128,18 @@ describe('StoryFormComponent', () => {
     expect(sources?.querySelectorAll('a')).toHaveLength(2);
   });
 
-  it('says a network request is coming and estimates no price', () => {
+  /**
+   * What the story is written from is said once, immediately above the button
+   * that acts on it, rather than three times across the screen. No price is
+   * estimated: a number that is wrong is worse than no number.
+   */
+  it('names its sources once, directly above the button, and estimates no price', () => {
     const { element } = render();
 
-    expect(element.querySelector('.network')?.textContent).toContain('OpenRouter');
+    const sources = element.querySelector('[data-testid="form-sources"]');
+    expect(sources?.textContent).toContain('Written from your');
+    expect(sources?.nextElementSibling?.querySelector('[data-testid="generate"]')).not.toBeNull();
+    expect(element.querySelectorAll('[data-testid="form-sources"]')).toHaveLength(1);
     expect(element.textContent.toLowerCase()).not.toContain('$');
     expect(element.textContent.toLowerCase()).not.toContain('cost');
   });

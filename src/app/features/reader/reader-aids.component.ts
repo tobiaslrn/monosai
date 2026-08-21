@@ -13,17 +13,13 @@ type AidToggle = 'furigana' | 'tokenSpacing' | 'warningMarkers';
 interface AidOption {
   readonly key: AidToggle;
   readonly label: string;
-  readonly description: string;
 }
 
+/** Labels only: each names the thing it switches, which is the whole message. */
 const AIDS: readonly AidOption[] = [
-  { key: 'furigana', label: 'Furigana', description: 'Readings above words that contain kanji.' },
-  { key: 'tokenSpacing', label: 'Word spacing', description: 'Extra space between words.' },
-  {
-    key: 'warningMarkers',
-    label: 'Warning markers',
-    description: 'Underline words you have not reviewed and grammar you may not know.',
-  },
+  { key: 'furigana', label: 'Furigana' },
+  { key: 'tokenSpacing', label: 'Word spacing' },
+  { key: 'warningMarkers', label: 'Warning markers' },
 ];
 
 /**
@@ -49,8 +45,6 @@ const AIDS: readonly AidOption[] = [
       </button>
 
       <div id="mn-aids-panel" popover class="panel" role="group" aria-label="Reading aids">
-        <p class="mn-hint">These apply to every reading on this device.</p>
-
         <div class="scale">
           <label for="mn-text-scale">Text size</label>
           <input
@@ -65,7 +59,6 @@ const AIDS: readonly AidOption[] = [
           />
           <span class="scale-value" aria-hidden="true">{{ scaleLabel() }}</span>
         </div>
-        <p class="mn-hint">Larger text is set more loosely, so the lines keep their air.</p>
 
         @for (aid of aids; track aid.key) {
           <label class="aid">
@@ -74,10 +67,7 @@ const AIDS: readonly AidOption[] = [
               [checked]="settings.readerPreferences()[aid.key]"
               (change)="toggleAid(aid.key, $event)"
             />
-            <span class="text">
-              <span class="label">{{ aid.label }}</span>
-              <span class="mn-hint">{{ aid.description }}</span>
-            </span>
+            <span>{{ aid.label }}</span>
           </label>
         }
       </div>
@@ -139,23 +129,10 @@ const AIDS: readonly AidOption[] = [
     .aid {
       display: flex;
       gap: var(--space-3);
-      align-items: flex-start;
+      align-items: center;
       min-height: var(--touch-target);
       padding: var(--space-1);
       cursor: pointer;
-    }
-
-    .aid input {
-      margin-top: 0.25em;
-    }
-
-    .text {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .label {
-      font-weight: 500;
     }
   `,
 })
