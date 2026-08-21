@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import type { ReaderSentence } from '../../application/reading/reader.store';
 import { tokensCoveredByConcerns } from '../../domain/enrichment/finding-spans';
+import { bunsetsuStarts, reviewedPhraseSpans } from '../../domain/reading/bunsetsu';
 import { ReaderTokenComponent, type TokenActivationSource } from './reader-token.component';
 
 /**
@@ -48,6 +49,7 @@ export interface TokenActivation {
     >
       @for (token of entry().tokens; track token.id) {
         <mn-reader-token
+          [class.starts-bunsetsu]="chunkStarts()[$index]"
           [token]="token"
           [status]="entry().statuses?.get(token.id) ?? null"
           [showFurigana]="furigana()"
@@ -66,8 +68,13 @@ export interface TokenActivation {
       display: inline;
     }
 
-    .sentence.is-spaced mn-reader-token {
-      margin-inline-end: 0.3em;
+    /*
+     * The gap falls between bunsetsu, not between morphemes, and there is none
+     * inside one — so it is wider than a per-token gap could be without the
+     * line falling apart.
+     */
+    .sentence.is-spaced mn-reader-token.starts-bunsetsu:not(:first-child) {
+      margin-inline-start: 0.5em;
     }
 
     /*
@@ -144,6 +151,18 @@ export class ReaderSentenceComponent {
   /** True for the sentence currently being read aloud. */
   readonly playing = input(false);
   readonly selectedWord = input<SelectedWord | null>(null);
+
+  /**
+   * Where the spacing aid may break the line.
+   *
+   * Computed from the whole sentence rather than per token, because whether a
+   * token opens a chunk depends on the one before it and on the reviewed
+   * phrases that cover it.
+   */
+  protected readonly chunkStarts = computed(() => {
+    const entry = this.entry();
+    return bunsetsuStarts(entry.tokens, reviewedPhraseSpans(entry.tokens, entry.statuses));
+  });
 
   protected readonly selectedTokenId = computed(() => {
     const word = this.selectedWord();
