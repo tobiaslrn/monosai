@@ -19,7 +19,7 @@ and what remains.
 | 8C — Reader surface rebuild              | Complete    |
 | 9 — TTS and playback                     | Complete    |
 | Reader-first rework                      | Complete    |
-| 10 — Release hardening                   | Not started |
+| 10 — Release hardening                   | Complete    |
 
 Sections marked **Superseded** describe what was built at the time and why.
 They are kept as the record; the Reader-first rework at the end of this document
@@ -1708,3 +1708,193 @@ a real import chosen for hard ruby cases (畑/はたけ, 湖/みずうみ, 妹/�
   position for those, not the whole apparatus back.
 - Milestone 9's open items are unchanged: no live TTS round trip has been
   exercised, and `language-worker-performance.spec.ts` remains timing-flaky.
+
+
+## Milestone 10 — Release hardening
+
+### Delivered
+
+- **Brand mark and app icons.** `data/brand/monosai-mark.svg` is authored as
+  pure vector paths — no `<text>`, no font references, so it rasterises
+  identically wherever it is built. `scripts/icons/build-icons.mjs` rasterises
+  it into `icon-192`, `icon-512`, `icon-maskable-512` (inset to the 80% safe
+  zone on a full-bleed background), and `apple-touch-icon-180` using the
+  Chromium already installed for Playwright — no new dependency.
+  `icons:verify` checks structure (PNG signature, exact pixel dimensions,
+  source SVG digest) rather than byte equality, since Chromium's PNG encoder
+  is not byte-identical across platforms.
+- **Web app manifest.** `public/manifest.webmanifest`, linked from
+  `index.html` along with an Apple touch icon. Relative `start_url`/`scope`
+  (`"./"`) so one committed file is correct at both `/` in development and
+  `/monosai/` on Pages. `theme_color`/`background_color` match the existing
+  `<meta name="theme-color">`.
+- **Service worker configuration**, rewritten from the untouched CLI default:
+  drops the phantom `/index.csr.html`; prefetches the app shell (including
+  `/*.js`, which covers the hashed lazy route chunks — what makes an offline
+  reload into the reader work) and a new `icons` group; excludes
+  `/assets/language/**` and `/assets/sqlite/**` from the generic `assets`
+  group, since those stay owned by the language bundle's own digest-verified
+  cache (see [ADR 0027](decisions/0027-pwa-caching-and-update-activation.md));
+  adds `navigationUrls` so a genuinely missing asset 404s instead of falling
+  back to `index.html`. `files` array negation (`!pattern`) is what makes the
+  exclusion work — `urls` does not support it and is for third-party CDN
+  patterns, not local build output.
+- **Update detection and controlled activation.** `AppUpdateChecker` port
+  (`domain/platform/app-update.port.ts`) and a `SwUpdate`-backed adapter
+  (`infrastructure/pwa`) surface `ready`, `installation-failed`,
+  `unrecoverable`, and `unsupported` as a typed union. `AppUpdateStore`
+  (`application/pwa`) checks after the existing `registerWhenStable:30000`
+  delay, on `visibilitychange`, and on a 30-minute interval.
+  `AppBusyRegistry` (`application/shared`) is a generic signal-backed set of
+  busy reasons that `GenerationStore`, `TranslationJobStore`, `AudioJobStore`,
+  and `ImportStore` each register into independently via `effect()`, with no
+  dependency on the update system. `activate()` and `reloadNow()` both refuse
+  outright while any reason is registered — the invariant the milestone
+  requires, asserted directly in `app-update.store.spec.ts`. The non-modal
+  `AppUpdateBannerComponent` (`role="status"`, `aria-live="polite"`, never a
+  dialog) renders in the app shell, suppressed on the reader route per
+  [ADR 0025](decisions/0025-reader-as-the-centre.md) and reachable from
+  Settings instead.
+- **Install UX.** `InstallPromptService` captures `beforeinstallprompt`
+  (`preventDefault()`, so Chrome's own mini-infobar never appears),
+  `appinstalled`, and reports standalone display-mode via the existing
+  `mediaQuerySignal` helper. The new **App** section in Settings — not folded
+  into the existing Storage section, which is a cohesive unit about
+  durability and deletion — is the one predictable place the install
+  affordance lives, alongside update checking and the current version.
+- **Coverage thresholds actually enforced.** `angular.json`'s
+  `coverageThresholds` (85% statements/lines/functions, 80% branches) closes
+  the gap where earlier milestones reported the gate passing without anything
+  checking it. Current coverage clears it with headroom (below).
+- **Bundle, dist, and licence CI gates.** `scripts/report-bundle.mjs`
+  classifies initial vs lazy chunks from the build's own esbuild metafile
+  (`ng build --stats-json`, added to `build:pages`) by following static
+  `import-statement` edges from `src/main.ts` and from what `index.html`
+  itself references — walking the dist directory alone cannot make this
+  distinction once esbuild has code-split it — and can gate on
+  `bundle-budgets.json`. `scripts/verify-dist.mjs` catches the defect class
+  that breaks a Pages subpath deployment and is invisible at
+  `localhost:4200`: a wrong `<base href>`, a reference that escapes
+  `/monosai/`, or one that does not resolve to an emitted file.
+  `scripts/licenses/check-licenses.mjs` resolves production dependencies
+  transitively from `package-lock.json` (via its `dev` flag, not
+  `package.json`'s direct `dependencies` alone) and fails on anything outside
+  a permissive allowlist, regenerating `docs/third-party-licenses.md`.
+  `scripts/serve-dist.mjs` is a dependency-free static server mounted at
+  `/monosai/`, needed because `ng serve` disables the service worker in
+  development (`isDevMode()`).
+- **PWA E2E suite against the production build.**
+  `playwright.pwa.config.ts` + `e2e-pwa/pwa.spec.ts`, served through
+  `scripts/serve-dist.mjs`: the manifest fetches, parses, and every declared
+  icon resolves; no same-origin request during the initial load escapes
+  `/monosai/`; and a saved reading opens after a real offline reload once the
+  worker has taken control — the half Milestone 3 explicitly left open.
+- **Token contrast checks — and a real fix.** `token-contrast.spec.ts` parses
+  `_tokens.scss` directly (not a duplicated literal palette) and computes
+  WCAG 2.2 contrast for every semantic foreground/background pairing in both
+  themes. Writing it found a real defect: `--border-strong` outlines
+  interactive control boundaries (buttons, text inputs) but was only 1.71:1
+  against `surface-canvas` in light mode (2.49:1 in dark) — under WCAG
+  1.4.11's 3:1 minimum for that role. Retuned to `#778570` / `#737c6f`
+  (same hue, same role), now 3.62:1 / 3.91:1 with headroom in both themes.
+- CI's `quality` job gained the licence check, `icons:verify`,
+  `verify-dist`, and the bundle report; a new `e2e-pwa` job runs the
+  production-build suite.
+
+### Checkpoint evidence
+
+| Command | Result |
+| --- | --- |
+| `npm run icons:build` && `npm run icons:verify` | Pass — 4 files, correct dimensions, source digest matches |
+| `npm run format:check` | Pass |
+| `npm run lint` | Pass |
+| `npm run typecheck` | Pass |
+| `npm run test:coverage` | Pass — 136 files, 1,592 tests. Statements 88.19%, branches 81.48%, functions 88.54%, lines 88.1% — all above the newly enforced 85/85/85/80 gate |
+| `npm run build:pages` | Pass |
+| `node scripts/verify-dist.mjs` | Pass — base path `/monosai/`, manifest and all four icons present and resolvable, no reference escapes the base path |
+| `npm run report-bundle:check` | Pass — initial 210.3 kB gzip (budget 260 kB), largest lazy chunk 75.7 kB (budget 100 kB) |
+| `npm run licenses:check` | Pass — 19 production dependencies, all permissively licensed (MIT/Apache-2.0/ISC/BSD-2-Clause/0BSD) |
+| `npm run e2e` | 205 passed, 1 skipped, 2 failed (pre-existing, unrelated — see below) |
+| `npm run e2e:pwa` | Pass — 8 passed, both viewports |
+
+Two `e2e/enrichment.spec.ts` failures (scenario 11, both projects) were
+observed during this milestone's verification but are pre-existing: the file
+is untouched by this milestone's changes, and the failure is the word
+inspector's grammar section now rendering ADR 0026's derivation-ladder
+breakdown for である where the test still expects literal "Grammar here"
+text. Flagged as a separate task rather than fixed here, since it is outside
+this milestone's scope and touches reader/grammar UI this milestone did not
+change.
+
+Browser verification: served the production build via `scripts/serve-dist.mjs`
+and opened `/monosai/` in Chrome. Confirmed the Settings → App section (Install
+button correctly disabled with explanation when no browser prompt has fired,
+Check for updates correctly reporting "not available" against a
+`registerWhenStable` worker that has not yet activated in a fresh dev session,
+version `0.1.0`); confirmed the Add text page's textarea and title-field
+borders are visibly stronger after the `--border-strong` fix; clean console
+throughout.
+
+### Assumptions and decisions
+
+- **Icons ship at three sizes plus the maskable variant, not the full range
+  some manifests declare** (no 72/96/128/144/152/384). Chrome's installability
+  criteria need only 192 and 512 with `any` and `maskable` purposes; the
+  Apple touch icon is the one non-manifest addition iOS actually reads. Fewer
+  generated artifacts, same installability guarantee.
+- **`ngsw-config.json`'s `assets` group additionally excludes `/icons/**`**,
+  beyond the two exclusions the milestone named. The dedicated `icons` group
+  already prefetches every icon; letting the generic `assets` group's
+  `*.png` pattern also match them would not break anything (Angular does not
+  error on a file matched by two groups) but would be a redundant, undocumented
+  second path to the same files, so it was excluded for clarity.
+- **`build:pages` now runs with `--stats-json`.** Not in the original script;
+  added because `report-bundle.mjs` needs esbuild's own metafile to correctly
+  classify initial vs lazy chunks — a file reachable only via `index.html`'s
+  `modulepreload` hints and static `import` edges, not `import()`, which the
+  dist directory alone cannot reveal once esbuild has code-split everything
+  into same-shaped `chunk-*.js` files.
+- **`AppBusyRegistry` is generic and reason-keyed, not a direct dependency
+  graph.** The plan's phrasing ("registered by the add-text unsaved draft,
+  `GenerationStore`, `TranslationJobStore`, and `AudioJobStore`") is
+  implemented as each of those four registering its own key via its own
+  `effect()`, rather than `AppUpdateStore` importing and querying each of
+  them directly — keeping `application/pwa` from depending on
+  `application/generation`, `application/enrichment`, and
+  `application/reading` all at once.
+- **The full manual `testing-and-delivery.md` §11 compatibility matrix stays
+  open**, recorded honestly in
+  [compatibility-matrix.md](compatibility-matrix.md) rather than claimed:
+  real Android hardware, a live OpenRouter key, and a deployed Pages URL are
+  all needed to close its remaining rows, and none was available here.
+
+### Open items
+
+- **Real Android 12 midrange device measurements** (worker init, memory,
+  reflow) — no device or emulator with a real AnkiConnect-compatible bridge
+  was available.
+- **A live OpenRouter text model and a live TTS model/voice round trip** —
+  carried over from Milestones 6 and 9, still without an API key.
+- **Install, update, and offline verification against the deployed Pages
+  URL** — needs a merge and a deploy; the local production-build suite
+  (`e2e:pwa`) is the closest verification possible without one.
+- **The manual screen-reader pass** in `testing-and-delivery.md` §6 — not
+  performed; automated accessibility coverage (axe, token contrast, reduced
+  motion) is not a substitute.
+- **The pre-existing timing flakiness in `language-worker-performance.spec.ts`**
+  — unrelated to this milestone, unchanged from Milestone 9's note.
+- **Storage-quota recovery (scenario 18) is covered at two layers, not
+  full E2E**: the existing `persistence-integrity.spec.ts` simulated
+  `QuotaExceededError` proves prior state survives, matching what was already
+  in place before this milestone. Forcing a real quota exhaustion in Chromium
+  would need a test-only production hook or gigabytes of writes; neither was
+  judged worth it, consistent with the milestone's own scope decision.
+- **Reflow at 320px/400% zoom and a systematic reduced-motion sweep across
+  every route** were not performed as a dedicated pass this milestone; the
+  existing per-feature Playwright specs (`app-shell.spec.ts` and others)
+  cover accessibility scans and some viewport checks, but not the specific
+  320px/400%-zoom/reduced-motion matrix `testing-and-delivery.md` §6
+  describes. Left for a follow-up pass focused specifically on that sweep.
+- **`e2e/enrichment.spec.ts` scenario 11 fails on both viewports**,
+  pre-existing and unrelated to this milestone (see Checkpoint evidence
+  above); flagged as a separate task.
