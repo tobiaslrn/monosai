@@ -23,7 +23,9 @@ export function provideInitializationSteps() {
             try {
               await database.open();
             } catch (thrown) {
-              throw new Error(mapStorageFailure(thrown, 'database.open').message, { cause: thrown });
+              throw new Error(mapStorageFailure(thrown, 'database.open').message, {
+                cause: thrown,
+              });
             }
           },
         },
