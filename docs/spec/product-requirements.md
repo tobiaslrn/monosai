@@ -152,11 +152,11 @@ The user explicitly requests analysis for one sentence. The response identifies 
 - Failure identifies the sentence and permits retry. Reading and translation remain available.
 - The player supports play, pause, resume, stop, current-sentence indication, progress, and starting from the current reading sentence.
 
-### UC-10: Resume, filter, and delete
+### UC-10: Browse, filter, and delete
 
-- Library is newest first and filters by All, Imported, and Generated.
-- A Continue reading card points to the most recently read non-deleted item and its saved sentence/paragraph position.
-- Deletion requires confirmation, removes the reading and its owned translations, grammar analyses, audio, progress, and token data in one transaction, and returns focus predictably.
+- Library is newest first and filters by All, Imported, and Generated. The filter appears only once the shelf holds at least eight readings.
+- A card shows the reading's title, the opening of its text in Japanese, and one line of metadata. Monosai records no reading position, so there is no Continue reading card and no progress indicator (ADR 0025).
+- Deletion requires confirmation, removes the reading and its owned translations, grammar analyses, audio, and token data in one transaction, and returns focus predictably.
 - Deleting a story does not delete a shared vocabulary snapshot.
 
 ## 4. Functional rules

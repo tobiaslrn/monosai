@@ -13,26 +13,40 @@
 
 ### Primary destinations
 
-- **Library**: returning home, Continue reading, filter, reading cards.
+Monosai is a reading application. The Reader is the centre, the Library is the
+shelf in front of it, and everything else is somewhere you go to change a
+setting and come back from. The information architecture says that rather than
+listing six equal destinations (ADR 0025).
+
+- **Library**: the shelf, and the one way to add to it.
+- **Reader**: the reading itself.
 - **Add text**: paste/file input, segmentation review, save.
 - **Generate**: prerequisites, premise form, progress, invalid draft.
-- **Vocabulary**: providers, source mappings, refresh results, snapshots.
-- **Grammar**: difficulty preset, register and wording, structural baseline explanation.
-- **Settings**: OpenRouter, TTS, exception policy, appearance, storage, install/update, reset.
+- **Settings**: OpenRouter, TTS, exception policy, appearance, storage, install/update, reset, and links to Vocabulary and Grammar.
+- **Vocabulary**: providers, source mappings, refresh results, snapshots. Reached from Settings.
+- **Grammar**: difficulty preset, register and wording, structural baseline explanation. Reached from Settings.
 
-The Reader is a focused child route reached from Library or finalization. It is not a permanent navigation item.
+### Navigation
 
-### Navigation by viewport
+There is no application-wide navigation at any viewport: no sidebar, no bottom
+bar, no More sheet. The application frame is a skip link and the main landmark.
 
-Desktop (>= 960px): persistent left sidebar with Library, Add text, Generate, Vocabulary, Grammar, and Settings. Collapse labels only below 1120px while retaining accessible names/tooltips.
+Every page carries its own way back, in a shared page header: a back link on
+the left, the page title, and any trailing control the page owns.
 
-Mobile (< 960px): bottom navigation with Library, Add, Generate, and More. More opens a full-height sheet containing Vocabulary, Grammar, and Settings. Hide bottom navigation in the focused reader; use a reader header with Back, title, and Aids.
+- Library → Settings (a gear in the trailing slot). The Library is the root, so it has no back link.
+- Reader, Add text, Generate, Settings → Library.
+- Vocabulary, Grammar → Settings.
+
+Adding a reading is one primary **New reading** button on the Library, which
+opens a chooser with **Paste text** and **Write with AI**. Generating is a
+branch of adding, not a destination of its own.
 
 ### Initial routing
 
-- Fresh profile: Add text page with a short statement that Anki and AI are optional.
-- Returning profile with readings: Library.
-- Returning profile without readings: Add text.
+The root route always resolves to the Library. An empty library states that in
+one line and offers the same **New reading** button, which is a truer first
+screen than a form the learner never asked for.
 - Deep links restore the requested route after initialization. If prerequisites are missing, preserve the intended destination and route to the relevant setup step.
 
 ## 3. Visual system
@@ -83,19 +97,32 @@ Exact final colors may be tuned only to meet contrast. Do not use semantic token
 
 ### Layout
 
-Desktop: maximum 1120px content width. Continue reading spans the first row; actions and filter tabs follow; cards use a responsive 2-column grid when space permits.
+Desktop: the page centres itself within the shared content width. The header
+(title plus the Settings gear) comes first, then **New reading**, then the
+cards in a responsive grid that fills the available width
+(`repeat(auto-fill, minmax(260px, 1fr))`).
 
-Mobile: single column. Continue reading appears first, then two equal primary buttons (**Add text**, **Generate**), then segmented filters.
+Mobile: single column, same order.
+
+Filter chips (All / Imported / Generated) appear only once the shelf holds at
+least eight readings. Below that they are chrome that can only ever hide one or
+two cards the learner can already see.
 
 ### Reading card content
 
-- Title and source badge: Imported or Generated.
-- Creation date/time in local format.
-- Story form for generated content; omit for imported.
-- Progress indicator and last-opened state.
-- Generated status summary: Strict, Exceptions, grammar warning count/unavailable, translation completion, audio completion.
-- Imported status summary: sentence count, translation completion, audio completion.
+A card shows the reading, not a report on it.
+
+- Title, linking into the Reader.
+- Two to three lines of the reading's opening in Japanese, clamped by line count. It is a preview: no furigana, no tap targets, no markers.
+- One quiet line: a relative date ("2 days ago"), and a small audio icon when the reading has audio.
 - Overflow menu with Delete. No edit, favorite, tags, export, or duplicate actions.
+
+Deliberately absent: absolute timestamps, sentence counts, story form, source
+badge, "Translations: none yet"-style aid summaries, and last-opened state.
+None of them changed a decision, and together they made a card a table.
+
+The excerpt is denormalized onto the `readings` row, so rendering a page of
+cards is still one bounded query.
 
 The premise is available in generated-story details/reader metadata but not required on every library card.
 
@@ -140,15 +167,15 @@ sentence translated is laid out exactly like one with none.
 
 ### Desktop structure
 
-- Compact sticky header: Back, title, Aids, and an overflow menu. No reading-progress figure (the library card carries it).
+- Compact sticky header: Back, title, Aids, an always-present Audio button, and an overflow menu. The title is single-line with an ellipsis and never displaces the controls. There is no reading-progress figure, because Monosai keeps no reading position (ADR 0025).
 - Center reading column: 680–760px maximum text width.
 - Word details and the sentence translation open as floating popovers anchored to what was pressed, never as a panel that takes a column (see ADR 0022). A lightweight preview appears on pointer hover, but never replaces the pinned popover.
 - Exactly one floating surface is open at a time; opening either closes the other, and scrolling closes both.
-- Whole-reading player appears as a sticky footer only while preparing/playing or when explicitly opened.
+- The audio panel opens anchored to the Audio button. There is no docked footer player: audio has one place and it is behind that button (section 6a).
 
 ### Mobile structure
 
-- Sticky header with Back, truncated title, Aids, overflow, and player status.
+- Sticky header with Back, truncated title, Aids, Audio, and overflow — the same controls as desktop, at the same touch target.
 - Full-width reading with 16px gutters.
 - Popovers dock to the bottom edge as a sheet below the desktop breakpoint (ADR 0022). Focus returns to the word when dismissed.
 
@@ -179,9 +206,14 @@ text size. There is no preference for showing translations or grammar, because
 neither is ever laid out on the page.
 
 Opening a sentence or a word requests nothing. Where an aid does not exist, the
-popover shows an explicit action — **Translate this sentence**, **Analyze this
-sentence's grammar**, **Generate audio** — and says that it sends this one
-sentence to the learner's model.
+sentence popover shows an explicit action, as a label and nothing else:
+**Translate**, **Grammar**, **Audio** (**Play** once a clip exists, and
+**… again** after a failure).
+
+Nothing is written under those buttons. That an AI action sends the sentence to
+the learner's own model is a property of the application, stated once in
+Settings; repeating it under every button that could trigger one is what made
+pressing a sentence feel expensive.
 
 ### Status presentation
 
@@ -237,18 +269,53 @@ there is no other surface it could be read on.
 
 ### Whole-reading actions
 
-- The overflow menu holds **Translate _n_ sentences** (the whole-reading job, named with the count it would send), **Prepare audio for _n_ sentences** (the same, for speech), **Play reading**, and **Delete reading**.
-- **Play reading** appears only when every sentence has a clip under the current voice. A reading whose set is incomplete has no whole-reading play entry, because a player that stopped in the middle of a reading would be worse than no player (ADR 0024).
-- A running job appears as a hairline progress row under the header with a stop, a retry for what is left, and a dismissal. It takes none of the page at rest, and no permanent status strip exists.
-- Per-sentence audio is generated and played from the sentence popover, alongside Translate and Analyze. No play control is printed on the reading surface itself, so pressing a sentence still costs nothing.
-- Audio never autoplays. Preparing a clip never plays it; playing is always a second, explicit action.
+- The overflow menu holds **Translate reading** (becoming **Stop translating** while it runs) and **Delete reading**. Labels only, no explanations.
+- **Translate reading** disappears once every sentence is translated, rather than becoming a line saying so.
+- A running **translation** job appears as a hairline progress row under the header with a stop, a retry for what is left, and a dismissal. It takes none of the page at rest, and no permanent status strip exists.
 - Generated stories are reviewed once against the profile captured with them and are never re-analyzed.
+
+## 6a. Audio
+
+The reader header carries an **Audio** button at all times, whether or not the
+reading has any audio. It is the only thing that tells a learner Monosai can
+read to them at all, and its accessible name states the current state (`Audio`,
+`Audio, ready`, `Audio, playing`, `Audio, being generated`). Its appearance
+follows that state, so a job running behind a closed panel is still visible.
+
+Pressing it opens the audio panel: anchored to the button on desktop, docked as
+a sheet on a phone, using the same floating surface as the reader's popovers
+(ADR 0022). Opening it loads nothing, requests nothing, and plays nothing.
+
+The panel owns every audio state there is (ADR 0025):
+
+| State | Panel content |
+| --- | --- |
+| No audio yet | The sentence count, and **Generate audio** |
+| Being generated | Progress bar, "Sentence 4 of 13", **Stop** |
+| Stopped or failed | What happened, the failure, **Try again**, **Dismiss** |
+| Ready | Transport (previous / play / next / stop), position bar, and **Start from this sentence** when one was open |
+
+- The transport appears only when every sentence has a clip under the current voice. A reading whose set is incomplete gets the failure state instead, because a player that stopped in the middle of a reading would be worse than no player (ADR 0024).
+- A job that fails before it resolves what to send reports no position, rather than deriving a nonsensical one from empty counts.
+- Per-sentence audio is generated and played from the sentence popover. No play control is printed on the reading surface itself, so pressing a sentence still costs nothing.
+- Audio never autoplays. Preparing a clip never plays it; playing is always a second, explicit action.
 
 ## 7. Generate
 
 ### Prerequisite panel
 
-Show three independently actionable checks: Text AI, vocabulary snapshot (>= 50), and premise. TTS is shown as optional and never blocks generation. Each failed check links to its configuration screen and preserves the generation draft.
+List only the prerequisites that are **not** met — Text AI, vocabulary snapshot
+(>= 50), premise — one line each, and drop the panel entirely once none are
+outstanding. A row of green ticks confirming a setup finished weeks ago is not
+information. Each line links to its configuration screen and preserves the
+generation draft.
+
+TTS never blocks generation, so it is not listed at all. The advisory grammar
+preset warning is the one non-blocking line that stays, because it is the one
+that costs money to ignore.
+
+What a generation is written from is stated once, immediately above the button
+that sends it, with links to Vocabulary and Grammar.
 
 The grammar preset is always set and is therefore not a check. It is shown as a read-only line naming the current preset and linking to Grammar. When the preset is far above what the snapshot can supply, that line carries a non-blocking warning.
 

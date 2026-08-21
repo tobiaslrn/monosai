@@ -145,10 +145,9 @@ second layer would silently multiply the retry budget.
 - Media Session is feature-detected behind its own adapter, so a browser without
   `navigator.mediaSession` satisfies the interface by doing nothing and the store
   stays testable without the API.
-- The desktop dock is `position: fixed`, anchored to the reading column with the
-  same CSS anchor positioning the overflow menu uses. `position: sticky` cannot
-  express it: a sticky box is clamped to its containing block, and a footer is by
-  definition the last thing in its own, so it had no room to lift and simply sat
-  at the end of the document. Anchoring rather than a hard-coded offset is
-  required because the desktop sidebar's width is a `minmax` the reader does not
-  know.
+- The player's placement is no longer part of this decision. ADR 0025 moved
+  every audio surface into one panel behind an always-present header button, so
+  the desktop dock and the compact header strip this ADR originally specified no
+  longer exist. What survives unchanged is the ownership split above and the
+  complete-set gate: an incomplete set yields no transport, and the panel now
+  explains that rather than leaving a control silently absent.
