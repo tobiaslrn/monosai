@@ -31,6 +31,8 @@
     "assets:verify": "node scripts/assets/verify-language-assets.mjs",
     "fixtures:build": "node scripts/fixtures/build-anki-fixtures.mjs",
     "fixtures:verify": "node scripts/fixtures/build-anki-fixtures.mjs --check",
+    "icons:build": "node scripts/icons/build-icons.mjs",
+    "icons:verify": "node scripts/icons/verify-icons.mjs",
     "test:manual": "vitest run --config vitest.manual.config.ts"
   },
   "dependencies": {
