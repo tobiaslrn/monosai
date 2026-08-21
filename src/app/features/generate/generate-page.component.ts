@@ -29,6 +29,7 @@ import {
 import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
+import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { GenerationStepperComponent } from './generation-stepper.component';
 import { InvalidDraftComponent } from './invalid-draft.component';
 import { PrerequisitePanelComponent } from './prerequisite-panel.component';
@@ -52,18 +53,13 @@ import { StoryFormComponent } from './story-form.component';
     ErrorScreenComponent,
     GenerationStepperComponent,
     InvalidDraftComponent,
+    PageHeaderComponent,
     PrerequisitePanelComponent,
     StoryFormComponent,
   ],
   template: `
     <div class="mn-page">
-      <header>
-        <h1>Generate</h1>
-        <p class="mn-hint">
-          Monosai writes a short Japanese story using only the words you have already reviewed in
-          Anki. Every word is checked on this device before anything is saved.
-        </p>
-      </header>
+      <mn-page-header heading="Write with AI" backTo="/library" backLabel="Back to library" />
 
       <p class="mn-visually-hidden" role="status" aria-live="polite" data-testid="generate-status">
         {{ generation.announcement() }}

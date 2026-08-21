@@ -105,6 +105,7 @@ export function buildReading(options: BuildReadingOptions = {}): FakeReadingRows
     sentenceCount: sentences.length,
     lastOpenedAt: null,
     characterCount: sentences.reduce((total, sentence) => total + sentence.japaneseText.length, 0),
+    excerpt: sentences.map((sentence) => sentence.japaneseText).join(''),
     translationSummary: { total: sentences.length, completed: 0, failed: 0 },
     grammarSummary: { state: 'not-requested' as const },
     audioSummary: { total: sentences.length, completed: 0, failed: 0 },

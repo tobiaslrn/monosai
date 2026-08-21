@@ -1,41 +1,46 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { Dialog } from '@angular/cdk/dialog';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { ViewportService } from '../platform/viewport.service';
-import { BottomNavComponent } from './bottom-nav.component';
-import { MoreSheetComponent, type MoreSheetData } from './more-sheet.component';
-import { routeChromeSignal } from '../routing/route-chrome';
-import { NAVIGATION_ITEMS, barItems, moreItems } from './navigation-items';
-import { SidebarNavComponent } from './sidebar-nav.component';
 
-/** Responsive application frame: desktop sidebar or mobile bottom navigation. */
+/**
+ * The application frame.
+ *
+ * Deliberately almost nothing: Monosai has no persistent navigation, because
+ * the reading is the application and a bar of six equal destinations said
+ * otherwise. Each page carries its own way back, so the frame owns only the
+ * skip link and the main landmark.
+ */
 @Component({
   selector: 'mn-app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, SidebarNavComponent, BottomNavComponent],
-  templateUrl: './app-shell.component.html',
-  styleUrl: './app-shell.component.scss',
+  imports: [RouterOutlet],
+  template: `
+    <a class="mn-skip-link" href="#mn-main">Skip to main content</a>
+
+    <main id="mn-main" class="main" tabindex="-1">
+      <router-outlet />
+    </main>
+  `,
+  styles: `
+    :host {
+      display: block;
+      min-height: 100dvh;
+    }
+
+    .main {
+      min-width: 0;
+      padding: var(--space-5) var(--space-4);
+      overflow-x: hidden;
+    }
+
+    .main:focus {
+      outline: none;
+    }
+
+    @media (min-width: 960px) {
+      .main {
+        padding: var(--space-6);
+      }
+    }
+  `,
 })
-export class AppShellComponent {
-  private readonly dialog = inject(Dialog);
-  protected readonly viewport = inject(ViewportService);
-
-  protected readonly chrome = routeChromeSignal();
-  protected readonly items = NAVIGATION_ITEMS;
-
-  /** The reader is a focused route: it hides bottom navigation on a phone. */
-  protected readonly showBottomNav = computed(
-    () => !this.viewport.isDesktop() && this.chrome() !== 'focused',
-  );
-  protected readonly barItems = computed(() => barItems(this.items));
-  protected readonly moreItems = computed(() => moreItems(this.items));
-
-  protected openMore(): void {
-    this.dialog.open<void, MoreSheetData>(MoreSheetComponent, {
-      data: { items: this.moreItems() },
-      ariaLabelledBy: 'mn-more-sheet-title',
-      panelClass: 'mn-sheet-panel',
-      hasBackdrop: true,
-    });
-  }
-}
+export class AppShellComponent {}

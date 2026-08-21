@@ -44,3 +44,23 @@ function concerns(count: number): string {
   }
   return count === 1 ? '1 note' : `${String(count)} notes`;
 }
+
+const RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+const DAY_MS = 86_400_000;
+
+/**
+ * When a reading was added, said the way a shelf says it.
+ *
+ * Rounded to whole days from local midnight, so something saved late last night
+ * reads as "yesterday" rather than as a number of hours. A library card is not
+ * a log: the exact timestamp told the learner nothing they could act on.
+ */
+export function relativeDay(timestamp: number, now: number): string {
+  const startOfDay = (value: number): number => {
+    const date = new Date(value);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime();
+  };
+  const days = Math.round((startOfDay(timestamp) - startOfDay(now)) / DAY_MS);
+  return days > -7 ? RELATIVE.format(days, 'day') : new Date(timestamp).toLocaleDateString();
+}

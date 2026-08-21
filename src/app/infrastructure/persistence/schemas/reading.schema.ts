@@ -20,6 +20,7 @@ const readingBaseShape = {
   lastOpenedAt: timestampSchema.nullable(),
   sentenceCount: z.number().int().nonnegative(),
   characterCount: z.number().int().nonnegative(),
+  excerpt: z.string(),
   translationSummary: completionSummarySchema,
   grammarSummary: grammarSummarySchema,
   audioSummary: completionSummarySchema,

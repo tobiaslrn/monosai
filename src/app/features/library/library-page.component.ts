@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import type { ElementRef, TemplateRef } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ViewContainerRef,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { RouterLink } from '@angular/router';
 import { LibraryStore } from '../../application/reading/library.store';
@@ -6,6 +16,10 @@ import { describeDeletion } from '../../domain/reading/deletion-plan';
 import type { LibraryFilter, Reading } from '../../domain/reading/reading';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+import { PopoverService } from '../../shared-ui/popover/popover.service';
+import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
+import { NewReadingMenuComponent } from './new-reading-menu.component';
 import { ReadingCardComponent } from './reading-card.component';
 
 interface FilterOption {
@@ -19,16 +33,32 @@ const FILTERS: readonly FilterOption[] = [
   { value: 'generated', label: 'Generated' },
 ];
 
-/** Library: filters and the paginated reading list. */
+/**
+ * How many readings a shelf has to hold before filtering it is worth a row of
+ * controls. Below this the chips only ever hide one or two cards the learner
+ * can already see.
+ */
+export const FILTER_VISIBILITY_THRESHOLD = 8;
+
+/** The library: the shelf of readings, and the one way to add another. */
 @Component({
   selector: 'mn-library-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, ReadingCardComponent],
+  imports: [
+    RouterLink,
+    IconComponent,
+    PageHeaderComponent,
+    ReaderPopoverComponent,
+    NewReadingMenuComponent,
+    ReadingCardComponent,
+  ],
   template: `
     <div class="mn-page">
-      <header>
-        <h1>Library</h1>
-      </header>
+      <mn-page-header heading="Library">
+        <a class="mn-icon-button" routerLink="/settings" aria-label="Settings">
+          <mn-icon name="settings" [size]="20" />
+        </a>
+      </mn-page-header>
 
       @if (store.status() === 'failed') {
         <section class="mn-panel" role="alert">
@@ -39,45 +69,37 @@ const FILTERS: readonly FilterOption[] = [
         </section>
       } @else {
         <div class="actions">
-          <a class="mn-button mn-button--primary" routerLink="/add">
+          <button
+            type="button"
+            class="mn-button mn-button--primary"
+            #newReading
+            [attr.aria-expanded]="menuOpen()"
+            aria-haspopup="dialog"
+            (click)="openNewReading()"
+          >
             <mn-icon name="add" [size]="18" />
-            <span>Add text</span>
-          </a>
-          <a class="mn-button" routerLink="/generate">
-            <mn-icon name="generate" [size]="18" />
-            <span>Generate</span>
-          </a>
+            <span>New reading</span>
+          </button>
         </div>
 
-        <div class="filters" role="group" aria-label="Filter readings">
-          @for (option of filters; track option.value) {
-            <button
-              type="button"
-              class="chip"
-              [attr.aria-pressed]="store.filter() === option.value"
-              [class.is-active]="store.filter() === option.value"
-              (click)="setFilter(option.value)"
-            >
-              {{ option.label }}
-            </button>
-          }
-        </div>
+        @if (showsFilters()) {
+          <div class="filters" role="group" aria-label="Filter readings">
+            @for (option of filters; track option.value) {
+              <button
+                type="button"
+                class="chip"
+                [attr.aria-pressed]="store.filter() === option.value"
+                [class.is-active]="store.filter() === option.value"
+                (click)="setFilter(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            }
+          </div>
+        }
 
         @if (store.hasNoReadings()) {
-          <section class="mn-panel empty">
-            <h2>Nothing saved yet</h2>
-            <p class="mn-hint">
-              Add Japanese you already have, and read it with furigana, word lookup, and offline
-              aids — no Anki connection or API key needed. Or connect Anki and an OpenRouter key,
-              and generate a short story from the words you have already reviewed.
-            </p>
-            <div class="actions">
-              <a class="mn-button mn-button--primary" routerLink="/add"
-                >Add Japanese you already have</a
-              >
-              <a class="mn-button" routerLink="/generate">Generate from reviewed Anki vocabulary</a>
-            </div>
-          </section>
+          <p class="mn-hint">Nothing saved yet.</p>
         } @else if (store.isEmpty()) {
           <p class="mn-hint">No {{ store.filter() }} readings yet.</p>
         } @else {
@@ -104,6 +126,12 @@ const FILTERS: readonly FilterOption[] = [
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ store.announcement() }}</p>
     </div>
+
+    <ng-template #newReadingMenu>
+      <mn-reader-popover label="New reading">
+        <mn-new-reading-menu (chosen)="closeNewReading()" />
+      </mn-reader-popover>
+    </ng-template>
   `,
   styles: `
     .actions {
@@ -135,33 +163,44 @@ const FILTERS: readonly FilterOption[] = [
       color: var(--text-on-action);
     }
 
+    /*
+     * Fills the width it is given rather than sitting as one narrow column on
+     * the left, now that no sidebar takes the rest of the page.
+     */
     .grid {
       display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: var(--space-4);
       margin: 0;
       padding: 0;
       list-style: none;
-    }
-
-    @media (min-width: 720px) {
-      .grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    .empty {
-      align-items: flex-start;
     }
   `,
 })
 export class LibraryPageComponent {
   protected readonly store = inject(LibraryStore);
   private readonly dialog = inject(Dialog);
+  private readonly popover = inject(PopoverService);
+  private readonly viewContainerRef = inject(ViewContainerRef);
+
+  private readonly newReading = viewChild<ElementRef<HTMLElement>>('newReading');
+  private readonly newReadingMenu = viewChild.required<TemplateRef<unknown>>('newReadingMenu');
 
   protected readonly filters = FILTERS;
 
+  private readonly menuOpenSignal = signal(false);
+  protected readonly menuOpen = this.menuOpenSignal.asReadonly();
+
+  /** Chips are chrome until there are enough readings for filtering to help. */
+  protected readonly showsFilters = computed(
+    () => this.store.totalReadings() >= FILTER_VISIBILITY_THRESHOLD,
+  );
+
   constructor() {
     void this.store.load();
+    inject(DestroyRef).onDestroy(() => {
+      this.popover.close();
+    });
   }
 
   protected reload(): void {
@@ -174,6 +213,31 @@ export class LibraryPageComponent {
 
   protected loadMore(): void {
     void this.store.loadMore();
+  }
+
+  /**
+   * Anchored to the button on desktop and docked as a sheet on a phone, using
+   * the same surface the reader's own popovers open in.
+   */
+  protected openNewReading(): void {
+    const origin = this.newReading()?.nativeElement;
+    if (origin === undefined) {
+      return;
+    }
+    this.menuOpenSignal.set(true);
+    this.popover.open({
+      origin,
+      template: this.newReadingMenu(),
+      viewContainerRef: this.viewContainerRef,
+      returnFocusTo: origin,
+      onClosed: () => {
+        this.menuOpenSignal.set(false);
+      },
+    });
+  }
+
+  protected closeNewReading(): void {
+    this.popover.close();
   }
 
   /**

@@ -27,8 +27,6 @@ export const APP_ROUTES: Routes = [
   {
     path: 'reader/:id',
     title: 'Reading · Monosai',
-    // The reader supplies its own header and hides the bottom navigation.
-    data: { chrome: 'focused' },
     loadComponent: () =>
       import('../../features/reader/reader-page.component').then((m) => m.ReaderPageComponent),
   },
@@ -54,8 +52,8 @@ export const APP_ROUTES: Routes = [
         (m) => m.SettingsPageComponent,
       ),
   },
-  // Root resolves to the Library or to Add text depending on whether this
-  // profile has any saved readings.
+  // Root always resolves to the Library, which shows its own way in when it is
+  // empty.
   { path: '', pathMatch: 'full', canActivate: [firstUseRedirect], children: [] },
   { path: '**', redirectTo: '' },
 ];

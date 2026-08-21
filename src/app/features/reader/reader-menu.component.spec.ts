@@ -15,6 +15,7 @@ function reading(completed: number, total: number, audioCompleted = 0): Reading 
     sentenceCount: total,
     lastOpenedAt: null,
     characterCount: 100,
+    excerpt: '本文です。',
     translationSummary: { total, completed, failed: 0 },
     grammarSummary: { state: 'not-requested' },
     audioSummary: { total, completed: audioCompleted, failed: 0 },

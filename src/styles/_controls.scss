@@ -89,3 +89,32 @@
 .mn-page > header h1 {
   font-size: 26px;
 }
+
+/*
+ * A square control carrying only an icon. Shared because the reader header, the
+ * page headers, and the card menus all need the same touch target and the same
+ * quiet border.
+ */
+.mn-icon-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.mn-icon-button:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+.mn-icon-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

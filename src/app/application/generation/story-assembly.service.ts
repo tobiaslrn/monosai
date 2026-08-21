@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import type { GenerationProvenance } from '../../domain/ai/generation-provenance';
 import { promptVersionRecord } from '../../domain/ai/prompt-versions';
 import { ANALYZER_VERSION } from '../../domain/language/analyzer-version';
+import { buildExcerpt } from '../../domain/reading/excerpt';
 import { countCharacters } from '../../domain/reading/import-text';
 import type { GeneratedStory, StoryForm } from '../../domain/reading/reading';
 import type { GeneratedStoryDraft } from '../../domain/reading/reading-repository';
@@ -128,6 +129,7 @@ export class StoryAssemblyService {
       sentenceCount: sentences.length,
       lastOpenedAt: null,
       characterCount: countCharacters(sourceText),
+      excerpt: buildExcerpt(sourceText),
       translationSummary: emptyCompletion(sentences.length),
       grammarSummary: NO_GRAMMAR_REVIEW,
       audioSummary: emptyCompletion(sentences.length),

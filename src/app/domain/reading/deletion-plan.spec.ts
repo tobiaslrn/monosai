@@ -13,6 +13,7 @@ function reading(overrides: Partial<ImportedReading> = {}): ImportedReading {
     sentenceCount: 12,
     lastOpenedAt: null,
     characterCount: 240,
+    excerpt: '第一章の冒頭です。',
     translationSummary: { total: 12, completed: 0, failed: 0 },
     grammarSummary: { state: 'not-requested' },
     audioSummary: { total: 12, completed: 0, failed: 0 },

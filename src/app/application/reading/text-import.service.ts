@@ -10,6 +10,7 @@ import { emptyCompletion, NO_GRAMMAR_REVIEW } from '../../domain/reading/summari
 import type { Paragraph, Sentence } from '../../domain/reading/text-hierarchy';
 import type { Token, TokenAnalysis } from '../../domain/reading/token';
 import { countCharacters } from '../../domain/reading/import-text';
+import { buildExcerpt } from '../../domain/reading/excerpt';
 import { hashCanonical } from '../../domain/shared/hashing';
 import { paragraphId, readingId, sentenceId } from '../../domain/shared/ids';
 import { err, ok, type Result } from '../../domain/shared/result';
@@ -182,6 +183,7 @@ export class TextImportService {
       sentenceCount: sentences.length,
       lastOpenedAt: null,
       characterCount: countCharacters(request.sourceText),
+      excerpt: buildExcerpt(request.sourceText),
       translationSummary: emptyCompletion(sentences.length),
       grammarSummary: NO_GRAMMAR_REVIEW,
       audioSummary: emptyCompletion(sentences.length),
