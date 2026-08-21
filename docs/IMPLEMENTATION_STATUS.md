@@ -53,7 +53,7 @@ states what replaced them.
   typecheck, Vitest unit tests, Playwright desktop + Android projects with an
   axe accessibility scan, GitHub Actions CI, and a Pages deployment workflow
   gated on CI success.
-- Icons come from the bundled Lucide set (`lucide-angular`), mapped to semantic
+- Icons come from the bundled Lucide set (`@lucide/angular`), mapped to semantic
   names in `src/app/shared-ui/icon/icon-set.ts`. No remote assets.
 
 ### Checkpoint evidence

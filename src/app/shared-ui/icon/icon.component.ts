@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { LucideAngularModule } from 'lucide-angular';
+import { LucideDynamicIcon } from '@lucide/angular';
 import { ICON_SET, type IconName } from './icon-set';
 
 /**
@@ -9,15 +9,15 @@ import { ICON_SET, type IconName } from './icon-set';
 @Component({
   selector: 'mn-icon',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [LucideDynamicIcon],
   template: `
-    <lucide-icon
-      [img]="icon()"
+    <svg
+      [lucideIcon]="icon()"
       [size]="size()"
       [strokeWidth]="1.8"
       aria-hidden="true"
       focusable="false"
-    />
+    ></svg>
   `,
   styles: `
     :host {
