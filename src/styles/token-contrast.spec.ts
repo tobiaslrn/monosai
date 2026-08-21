@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -12,7 +13,10 @@ import { describe, expect, it } from 'vitest';
  * sync with what this test checks.
  */
 
-const TOKENS_PATH = join(__dirname, '_tokens.scss');
+// `import.meta.url`, not `__dirname`: this file runs as an ES module under
+// the unit-test builder, and `__dirname` resolved to the repo root rather
+// than this directory once bundled for CI, which `import.meta.url` does not.
+const TOKENS_PATH = join(dirname(fileURLToPath(import.meta.url)), '_tokens.scss');
 
 type Palette = ReadonlyMap<string, string>;
 
