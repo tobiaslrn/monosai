@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
@@ -14,6 +14,7 @@ import {
   JOB_REPOSITORY,
   READING_REPOSITORY,
 } from '../shared/repository-tokens';
+import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { TextModelStore } from '../settings/text-model.store';
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { TranslationService } from './translation.service';
@@ -86,6 +87,7 @@ export class TranslationJobStore {
   private readonly hasher = inject(HASHER);
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
+  private readonly busyRegistry = inject(AppBusyRegistry);
 
   private readonly progressSignal = signal<TranslationJobProgress>(IDLE);
   private controller: AbortController | null = null;
@@ -96,6 +98,15 @@ export class TranslationJobStore {
     const kind = this.progressSignal().kind;
     return kind === 'preparing' || kind === 'running';
   });
+
+  constructor() {
+    effect(() => {
+      this.busyRegistry.setBusy(
+        'translation-job',
+        this.isRunning() ? 'a translation job is running' : null,
+      );
+    });
+  }
 
   /**
    * Translates everything in the reading that is missing a translation under

@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
 import { remainingSentenceIds, type AssetJob } from '../../domain/enrichment/jobs';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
@@ -10,6 +10,7 @@ import {
   JOB_REPOSITORY,
   READING_REPOSITORY,
 } from '../shared/repository-tokens';
+import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { AudioConfigurationService, type ResolvedAudioConfig } from './audio-configuration.service';
 import { AudioSynthesisService } from './audio-synthesis.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
@@ -81,6 +82,7 @@ export class AudioJobStore {
   private readonly keys = inject(EnrichmentKeysService);
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
+  private readonly busyRegistry = inject(AppBusyRegistry);
 
   private readonly progressSignal = signal<AudioJobProgress>(IDLE);
   private controller: AbortController | null = null;
@@ -91,6 +93,12 @@ export class AudioJobStore {
     const kind = this.progressSignal().kind;
     return kind === 'preparing' || kind === 'running';
   });
+
+  constructor() {
+    effect(() => {
+      this.busyRegistry.setBusy('audio-job', this.isRunning() ? 'an audio job is running' : null);
+    });
+  }
 
   /**
    * Reads everything in the reading that has no clip under the current voice.
