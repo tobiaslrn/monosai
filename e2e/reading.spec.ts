@@ -101,20 +101,17 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
 
     await expect(wordDetails(page)).toContainText('猫');
     await expect(wordDetails(page)).toContainText('cat');
-    // 猫 is already its own dictionary form, so the form table is left out
-    // rather than repeating the word on the page back under a label.
-    await expect(wordDetails(page)).not.toContainText('Dictionary form');
-    await expect(wordDetails(page)).not.toContainText('Part of speech');
+    // The compact form summary keeps the dictionary facts visible even when
+    // the word is already uninflected, while omitting a useless form line.
+    await expect(wordDetails(page).locator('.dictionary-form')).toHaveText('猫');
+    await expect(wordDetails(page).locator('.part-of-speech')).toHaveText('noun');
+    await expect(wordDetails(page).locator('.form-line')).toHaveCount(0);
     // The sentence is not repeated here: the learner is looking at it.
     await expect(wordDetails(page)).not.toContainText('In this sentence');
     expect(external).toEqual([]);
   });
 
-  /**
-   * The ladder is the answer to "what form is this?", so it is checked at both
-   * viewports: it is a press target on a phone as much as a line to read.
-   */
-  test('an inflected word is explained as a ladder from its dictionary form', async ({ page }) => {
+  test('an inflected word is a compact lookup with no derivation controls', async ({ page }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, '僕には分からなかった。昨日は学校へ行きませんでした。');
     await saveAndOpenReader(page);
@@ -122,30 +119,17 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     await openWordDetails(page, '分から');
     const details = wordDetails(page);
 
-    await expect(details.locator('.summary')).toHaveText('Plain · negative · past');
-    await expect(details.locator('.base .form')).toHaveText('分かる');
-    await expect(details.locator('.base .effect')).toHaveText('dictionary form');
-
-    // The ending is named as ない, never as the なかっ it is written as here:
-    // that stem is not a word and cannot be looked up.
-    await expect(details.locator('.step .form')).toHaveText(['ない', 'た']);
-    await expect(details.locator('.step .result')).toHaveText(['分からない', '分からなかった']);
-
-    // The explanation is behind a press rather than printed under every row.
-    await expect(details.locator('.detail')).toHaveCount(0);
-    await details.locator('.step').first().click();
-    await expect(details.locator('.detail')).toContainText('Negates a verb or auxiliary');
-    await expect(details.locator('.detail')).toContainText('Written here as なかっ');
+    await expect(details.locator('.surface')).toHaveText('分からなかった');
+    await expect(details.locator('.reading')).toHaveText('わからなかった');
+    await expect(details.locator('.dictionary-form')).toHaveText('分かる');
+    await expect(details.locator('.part-of-speech')).toHaveText('verb');
+    await expect(details.locator('.form-line')).toHaveText('Plain · negative · past');
+    await expect(details.locator('.derivation, .step, .detail, .tinted')).toHaveCount(0);
 
     await expectNoSeriousAccessibilityViolations(page);
   });
 
-  /**
-   * IPADIC analyses ませんでした as ます + ん + です + た, and walking those in
-   * order would offer 行きませんです as a step. It is collapsed into the ending
-   * learners are actually taught (ADR 0026).
-   */
-  test('an ending split finer than it is taught is shown as one step', async ({ page }) => {
+  test('a polite negative past keeps only the high-level form labels', async ({ page }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, '昨日は学校へ行きませんでした。');
     await saveAndOpenReader(page);
@@ -153,10 +137,27 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     await openWordDetails(page, '行き');
     const details = wordDetails(page);
 
-    await expect(details.locator('.summary')).toHaveText('Polite · negative · past');
-    await expect(details.locator('.step .form')).toHaveText(['ませんでした']);
-    await expect(details.locator('.step .result')).toHaveText(['行きませんでした']);
+    await expect(details.locator('.form-line')).toHaveText('Polite · negative · past');
     await expect(details).not.toContainText('行きませんです');
+    await expect(details.locator('.derivation, .step, .detail')).toHaveCount(0);
+  });
+
+  test('reaches More from the keyboard and expands all dictionary meanings', async ({ page }) => {
+    await page.goto('/#/add');
+    await pasteAndContinue(page, '昨日は行く。');
+    await saveAndOpenReader(page);
+
+    await openWordDetails(page, '行く');
+    const details = wordDetails(page);
+    const more = details.getByRole('button', { name: /^More/ });
+
+    await expect(more).toBeVisible();
+    await more.focus();
+    await expect(more).toBeFocused();
+    await more.press('Enter');
+
+    await expect(details.locator('.more')).toHaveCount(0);
+    await expect(details.locator('.glosses li').first()).toBeVisible();
   });
 
   test('Escape closes word details and returns focus to its token', async ({ page }) => {

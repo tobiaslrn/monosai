@@ -104,6 +104,31 @@ async function prepareReading(page: Page, text: string): Promise<ProviderCalls> 
  * profile changes.
  */
 test.describe('scenario 11 — per-sentence translation and grammar', () => {
+  test('keeps grammar labels compact and opens their Details disclosure by keyboard', async ({
+    page,
+  }) => {
+    await stubOpenRouter(page, { generation: { grammar: ['finding'] } });
+    await configureTextModel(page);
+    await importReading(page, SAMPLE_TEXT);
+    await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
+
+    await selectSentence(page);
+    await sentencePopover(page).getByRole('button', { name: 'Grammar', exact: true }).click();
+    await expect(
+      sentencePopover(page).getByRole('button', { name: 'Grammar', exact: true }),
+    ).toHaveCount(0);
+    await dismissPopover(page);
+
+    await openWord(page, '吾輩');
+    const details = wordDetails(page);
+    await expect(details.locator('.grammar-labels')).toContainText('te-form');
+    const disclosure = details.locator('.grammar-details summary');
+    await disclosure.focus();
+    await disclosure.press('Enter');
+    await expect(details.locator('.grammar-details')).toHaveAttribute('open', '');
+    await expect(details.locator('.grammar-explanations')).toBeVisible();
+  });
+
   test('translates one sentence and analyzes another, then serves both from cache', async ({
     page,
   }) => {
@@ -136,11 +161,11 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await dismissPopover(page);
 
     // The grammar review found nothing to say, so the AI grammar section is
-    // correctly absent (0 findings shows no notes, by design). 猫である is a
-    // derived word, so its own ladder explains である as the written copula
-    // without needing the review at all.
+    // correctly absent (0 findings shows no notes, by design). The word lookup
+    // remains a compact local dictionary/form lookup.
     await openWord(page, '猫');
-    await expect(wordDetails(page)).toContainText('written copula');
+    await expect(wordDetails(page).locator('.dictionary-form')).toHaveText('猫');
+    await expect(wordDetails(page).locator('.form-line')).toHaveCount(0);
     await dismissPopover(page);
 
     // A reload re-reads both from storage, and asks for nothing.

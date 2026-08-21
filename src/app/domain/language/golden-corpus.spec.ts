@@ -89,7 +89,7 @@ describe('golden language corpus', () => {
 
   /**
    * An inflection the shipped dictionary can emit and the mapping does not know
-   * would silently disappear from every derivation ladder, and no unit test over
+   * would silently disappear from every compact form summary, and no unit test over
    * invented tags would catch it.
    */
   it('maps every inflection form the shipped dictionary emits', async () => {

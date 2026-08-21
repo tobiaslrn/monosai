@@ -203,7 +203,7 @@ describe('WordInspectorStore', () => {
     expect(inspector.preview()?.word.surface).toBe('あります');
   });
 
-  it('reads the open word as a ladder from its dictionary form', async () => {
+  it('computes compact form facts for the open word', async () => {
     const inflected: readonly Token[] = [
       { ...token(), id: 'v1', surface: '飲み', lemma: '飲む', partOfSpeech: 'verb' },
       {
@@ -225,26 +225,23 @@ describe('WordInspectorStore', () => {
       status: null,
     });
 
-    expect(inspector.derivation()?.baseSurface).toBe('飲む');
-    expect(inspector.derivation()?.summaryEn).toEqual(['Polite']);
-    expect(inspector.derivation()?.steps).toEqual([
-      {
-        tokenIds: ['v2'],
-        attached: 'ます',
-        surface: 'ます',
-        effectEn: 'polite verb ending',
-        detailEn: 'Makes a verb polite, inflecting to ません, ました, and ましょう.',
-        resultingSurface: '飲みます',
-      },
-    ]);
+    expect(inspector.formSummary()).toEqual({
+      dictionaryForm: '飲む',
+      partOfSpeech: 'verb',
+      formLabels: ['Polite'],
+    });
   });
 
-  it('has nothing to say about a word that was never inflected or added to', async () => {
+  it('keeps the dictionary form while omitting an unsupported form line', async () => {
     const inspector = store();
 
     await inspector.inspect(word(null));
 
-    expect(inspector.derivation()).toBeNull();
+    expect(inspector.formSummary()).toEqual({
+      dictionaryForm: 'は',
+      partOfSpeech: 'particle',
+      formLabels: [],
+    });
   });
 
   it('resolves against the bundle that is loaded, not the one loaded at startup', async () => {

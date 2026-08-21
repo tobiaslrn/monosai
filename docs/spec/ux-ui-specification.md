@@ -169,10 +169,10 @@ sentence translated is laid out exactly like one with none.
 
 - Compact sticky header: Back, title, Aids, an always-present Audio button, and an overflow menu. The title is single-line with an ellipsis and never displaces the controls. There is no reading-progress figure, because Monosai keeps no reading position (ADR 0025).
 - Center reading column: 680–760px maximum text width.
-- Word details read an inflected word as a ladder from its dictionary form: 分かる, then ない for negation giving 分からない, then た for past giving 分からなかった. A one-line summary above it names the whole form — `Plain · negative · past` — because that is the question a learner stopped on an inflected word to ask.
-- Each step names the ending in the ending's own dictionary form, never the stem as written: なかっ exists only because た follows it, and a learner shown なかっ has been shown a string they can never look up. Pressing a step opens its fuller description and says how it is written here; hovering or focusing one tints that part of the headword, so ない and なかっ are visibly one thing. Descriptions stay folded away, which keeps the section shorter than a list of morphemes despite saying more.
-- Endings are named from the shipped structural baseline, so nothing is guessed and nothing costs a request; an ending the baseline does not cover falls back to its word class. A run the analyzer splits finer than it is taught is collapsed into the ending learners are given — ませんでした rather than ます, ん, です, た (see ADR 0026).
-- An inflection that adds no ending is still a step: 行け is named an imperative, and the 行け of 行けば a conditional stem, from the analyzer's inflection form. A word that was never inflected or added to shows its dictionary form and part of speech instead, because a one-rung ladder explains nothing.
+- Word details are a compact Yomitan-style lookup ordered as: surface form and reading; dictionary form and part of speech; a high-level form line; the first two dictionary meanings; stored grammar labels; and, when applicable, warning/status and the recommended next action. The surface form is prominent, and the dictionary line is compact — for example `分からなかった`, `わからなかった`, `分かる · verb`, `Plain · negative · past`.
+- The form line is derived only from analyzer evidence already stored locally: token lemmas, the analyzer's bounded inflection form, and the analyzed te-form seam. It uses ordered labels such as `Polite`, `Plain`, `negative`, `past`, `te-form`, `ongoing`, `conditional`, `imperative`, and `volitional`; it retains honest ambiguity as `passive / potential`; and it omits unsupported or uninflected classifications rather than guessing. A word with no useful form classification has no form line.
+- The dictionary shows the first two meanings across the returned entries by default. The existing **More** action reveals the remaining meanings. No intermediate forms, derivation rows, ending descriptions, stem highlighting, or derivation-specific pointer/focus behavior appear in the lookup.
+- Stored grammar findings appear after the dictionary as compact labels. Their existing explanatory text remains available behind one keyboard-accessible **Details** disclosure. A stale-analysis notice remains visible when applicable; grammar analysis remains an explicit sentence action and does not move into the word lookup.
 - Word details and the sentence translation open as floating popovers anchored to what was pressed, never as a panel that takes a column (see ADR 0022). A lightweight preview appears on pointer hover, but never replaces the pinned popover.
 - Exactly one floating surface is open at a time; opening either closes the other, and scrolling closes both.
 - The audio panel opens anchored to the Audio button. There is no docked footer player: audio has one place and it is behind that button (section 6a).
@@ -261,13 +261,12 @@ Read-only throughout. Nothing here spends a request, so a word can be opened as
 often as a learner likes without wondering what it cost.
 
 1. Surface form and reading.
-2. Lemma and part of speech.
-3. **Grammar, when this word has any** — the notes covering it, plus the ones said about the sentence as a whole, marked as such. A learner who pressed an underlined word came for this, so it must not sit below a dictionary they have to scroll past. It is ruled in the grammar marker's own colour, so the section names the underline that sent them there.
-4. Validation/status badge and plain-language explanation.
-5. Compact dictionary senses, numbered when multiple.
-6. Grammar, when this word has none: the empty state alone. Analysis is offered on the sentence.
-7. Recommended next action, such as "Review this word in Anki, then refresh vocabulary."
-8. A route to this word's sentence, laid out only while it holds focus — the keyboard's only way to a sentence, since selecting one is a press on whitespace it cannot aim.
+2. Dictionary form and part of speech.
+3. A high-level form line, omitted when the local analyzer evidence has no useful classification.
+4. The first two dictionary meanings, with the existing **More** action for the rest. Written forms are secondary, and the meanings remain a compact numbered list.
+5. Relevant stored grammar findings as compact labels. Their existing explanatory text is behind one collapsed, keyboard-accessible **Details** disclosure; a stale-analysis notice remains visible when applicable.
+6. Validation/status and the recommended next action, only when applicable.
+7. A route to this word's sentence, laid out only while it holds focus — the keyboard's only way to a sentence, since selecting one is a press on whitespace it cannot aim.
 
 The sentence is not repeated here: the learner is looking at it. A finding with
 no span marks nothing on the page, so every word of its sentence carries it —
@@ -451,4 +450,3 @@ No dedicated privacy/legal page or spending dashboard.
 - Touch targets remain usable without hover. A sentence is reached without a pointer through the word popover, since selecting one is a press on whitespace that a keyboard cannot aim.
 - Header panels are native popovers, so dismissal, Escape, the top layer, and mutual exclusivity are the platform's behaviour rather than bespoke listeners.
 - All audio begins only after explicit activation.
-

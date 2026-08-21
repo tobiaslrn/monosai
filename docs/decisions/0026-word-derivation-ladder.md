@@ -2,6 +2,9 @@
 
 Date: 2026-08-21
 Status: Accepted
+The presentation decision in this record is superseded by
+[0028](0028-word-form-summary-popup.md). The analyzer inflection-form mapping
+and other local evidence improvements introduced here remain accepted.
 Supersedes the presentation decided in
 [0015](0015-structural-baseline-stays-curated.md), which wired the matched
 baseline entry into the word inspector as a flat list of morphemes. The baseline

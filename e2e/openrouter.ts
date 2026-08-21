@@ -38,7 +38,8 @@ export interface GenerationStubs {
   /**
    * How each grammar review answers, in order. `unavailable` returns prose,
    * which is what an unusable review looks like on the wire once the adapter
-   * has spent its one format recovery.
+   * has spent its one format recovery. `finding` returns one span finding for
+   * keyboard/disclosure coverage in the reader.
    */
   readonly grammar?: readonly AuxiliaryOutcome[];
   /** How each translation batch answers, in order. */
@@ -52,7 +53,7 @@ export interface GenerationStubs {
  * count assertion meaningful; `unavailable` is unusable content, and `partial`
  * drops the last requested entry so the batch fails completeness validation.
  */
-export type AuxiliaryOutcome = 'ok' | 'unavailable' | 'partial' | 'hang';
+export type AuxiliaryOutcome = 'ok' | 'unavailable' | 'partial' | 'hang' | 'finding';
 
 /** Returned instead of content when this request must stay in flight. */
 const HANG = Symbol('hang');
@@ -262,6 +263,25 @@ export async function stubOpenRouter(
       served.grammar += 1;
       if (outcome === 'hang') {
         return HANG;
+      }
+      if (outcome === 'finding') {
+        const first = requestedSentences(text).at(0);
+        return JSON.stringify({
+          findings:
+            first === undefined
+              ? []
+              : [
+                  {
+                    sentenceId: first.id,
+                    label: 'te-form',
+                    explanationEn: 'Joins this clause to the next one.',
+                    confidence: 'high',
+                    inProfile: false,
+                    startUtf16: 0,
+                    endUtf16: 1,
+                  },
+                ],
+        });
       }
       // A review with no findings is a complete review, not a missing one.
       return outcome === 'unavailable' ? 'Sure, happy to help!' : JSON.stringify({ findings: [] });
