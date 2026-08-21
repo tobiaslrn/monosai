@@ -97,6 +97,32 @@ export interface UnknownWord {
           }
         </section>
       }
+
+      <!--
+        The only route to audio for one sentence. No play control is printed on
+        the page itself, so a sentence still costs nothing to press.
+      -->
+      <section class="audio" aria-labelledby="mn-sentence-audio">
+        <h3 id="mn-sentence-audio">Audio</h3>
+
+        @if (audioRunning()) {
+          <p class="mn-hint" role="status">Generating…</p>
+        } @else if (aids().audio !== null) {
+          <button type="button" class="mn-button" (click)="playAudio.emit()">
+            Play this sentence
+          </button>
+          <p class="mn-hint">Already saved. Playing it costs nothing.</p>
+        } @else {
+          <button type="button" class="mn-button" (click)="generateAudio.emit()">
+            {{ audioFailed() ? 'Try generating audio again' : 'Generate audio' }}
+          </button>
+          <p class="mn-hint">Sends this one sentence to your speech model.</p>
+        }
+
+        @if (audioFailure(); as failure) {
+          <p class="mn-error" role="alert">{{ failure }}</p>
+        }
+      </section>
     </div>
   `,
   styles: `
@@ -115,10 +141,20 @@ export interface UnknownWord {
 
     /* Ruled in each marker's own colour, so a section names its underline. */
     .grammar,
-    .vocabulary {
+    .vocabulary,
+    .audio {
       align-self: stretch;
       padding-inline-start: var(--space-3);
       border-inline-start: 2px solid var(--marker-grammar);
+    }
+
+    /* Audio is neither warning, so it is ruled in the neutral border. */
+    .audio {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      align-items: flex-start;
+      border-inline-start-color: var(--border-subtle);
     }
 
     .vocabulary {
@@ -194,6 +230,9 @@ export class SentencePopoverComponent {
 
   readonly translate = output<void>();
   readonly analyzeGrammar = output<void>();
+  /** Synthesizes this one sentence. Never plays it: producing is not hearing. */
+  readonly generateAudio = output<void>();
+  readonly playAudio = output<void>();
 
   protected readonly isRunning = computed(() => this.aids().translationAction.state === 'running');
 
@@ -222,8 +261,16 @@ export class SentencePopoverComponent {
     return aids.grammarStale ? 'Re-analyze grammar' : null;
   });
 
+  protected readonly audioRunning = computed(() => this.aids().audioAction.state === 'running');
+
+  protected readonly audioFailed = computed(() => this.aids().audioAction.state === 'failed');
+
   protected readonly failure = computed(() =>
     describeEnrichmentFailure(this.aids().translationAction.error),
+  );
+
+  protected readonly audioFailure = computed(() =>
+    describeEnrichmentFailure(this.aids().audioAction.error),
   );
 
   protected readonly grammarFailure = computed(() =>

@@ -14,7 +14,11 @@ and what remains.
 | 5 — Anki vocabulary                      | Complete    |
 | 6 — OpenRouter and settings              | Complete    |
 | 7 — Generation and local validation      | Complete    |
-| 8–10                                     | Not started |
+| 8A — Reader enrichment application layer | Complete    |
+| 8B — Reader UI: popovers, menu, aids     | Superseded  |
+| 8C — Reader surface rebuild              | Complete    |
+| 9 — TTS and playback                     | Complete    |
+| 10 — Release hardening                   | Not started |
 
 ## Milestone 0 — Repository and decision scaffolding
 
@@ -1322,8 +1326,9 @@ panel after a generation, and this panel.
   that word" without one.
 - **A hover preview is a hint, not a surface**: non-modal, `pointer-events: none`,
   and `aria-hidden`, because it repeats what the token button already announces.
-- **No audio entry in the sentence menu.** Sentence TTS is Milestone 9; the action
-  array is where it will slot in.
+- **No audio entry in the sentence menu.** Sentence TTS is Milestone 9.
+  _Superseded:_ ADR 0023 deleted the sentence menu. Audio attaches to the
+  sentence popover instead — see Milestone 9.
 - **Grammar analysis is offered for imported readings only**, matching section 8
   and the staleness rule above.
 - **A cached aid is served without a write.** An action whose stored record
@@ -1332,12 +1337,17 @@ panel after a generation, and this panel.
 
 ### Remaining work in later milestones
 
-- Sentence and whole-reading audio, and the sticky player, are Milestone 9. The
-  sentence menu's action array and the status panel are where both attach.
+- Sentence and whole-reading audio, and the sticky player, are Milestone 9.
+  _Superseded:_ this named the sentence menu and the reading status panel, both
+  of which ADR 0023 deleted. Milestone 9 attached sentence audio to the sentence
+  popover, the whole-reading job to the overflow menu and a hairline progress
+  row, and the player to a sticky footer on desktop and the sticky header below
+  the desktop breakpoint.
 - The initial bundle is now 37.01 kB over its 850 kB budget, up from 4.66 kB: the
   CDK overlay's positioning strategies and the a11y focus trap are new weight
   this milestone pulled in. The budget needs either raising deliberately or
-  paying down before release.
+  paying down before release. _Resolved in Milestone 9:_ raised deliberately to
+  950 kB warning / 1.1 MB error, with paying it down left to Milestone 10.
 
 ## Milestone 8C — Reader surface rebuild: Japanese only
 
@@ -1443,3 +1453,146 @@ dismissal, `Escape`, the top layer, and mutual exclusivity are the platform's.
   `translationsExpanded` removed, `statusMarkers` renamed `warningMarkers`,
   `textScale` added. Local development databases carrying the old row fail
   validation and are recreated.
+
+## Milestone 9 — TTS and playback
+
+Milestones 1 and 6 had left audio half-built and without a producer: an
+`AudioAsset` record, an `audioAssets` table keyed by `cacheKey`, a
+`'prepare-audio'` job kind, five repository methods, `TtsSettings`,
+`ttsFingerprint()`, and a working configuration test. Nothing had ever written an
+audio row. This milestone built the producer and everything above it, in one
+piece rather than split.
+
+The rule 8B and 8C were built around extends to audio and is what the suite
+asserts: opening a reading makes zero network requests, and nothing autoplays.
+Every clip is paid for by an explicit action, and every sound follows a second
+one.
+
+### Delivered
+
+#### Domain
+
+`TtsRequest`, `AudioPayload`, and `synthesize()` on the text-to-speech port;
+`'tts-synthesis'` in `AiTask` and its phrase in `ai-error-copy`; and the three
+key functions `domain-and-data-model.md` section 5 specifies —
+`audioOptionsFingerprint`, `audioCacheKey`, and `audioConfigFingerprint`. No key
+derives from a credential; `ttsFingerprint`'s key generation stays out of them
+because a cache key is stored and compared in the clear (ADR 0024).
+
+#### Infrastructure
+
+`audio-verification.ts` holds the one definition of "audio Monosai can store" —
+accepted MIME types, MIME normalization, and the decode check — so the
+configuration test and sentence synthesis cannot disagree about it. A clip the
+test accepted but synthesis refused would make a passing test a lie, and there is
+a spec asserting the two agree on all four refusal fixtures.
+`OpenRouterTtsSynthesizer` reuses the same request shape and the same
+one-retry-without-`speed` fallback (ADR 0018), and
+`OpenRouterTextToSpeechProvider` composes tester and synthesizer, lazy-loading
+the synthesizer so a learner who never turns on speech never pays for it in the
+initial bundle.
+
+#### Repository
+
+`refreshAudioSummary` counted every audio row for a reading without checking each
+row's `cacheKey` against the current one — the same defect 8A fixed for
+translations and grammar, flagged by its own source comment. It now runs inside
+the same `rw` transaction as the write and takes the caller's current keys. Added
+`listSentenceIdsMissingAudio` and `listAudioSummariesForCacheKeys`.
+
+#### Application
+
+`AudioConfigurationService` resolves the tested configuration once for both
+callers, so the sentence action and the job cannot disagree about whether a stale
+test may spend money. `AudioSynthesisService` follows ADR 0021's `run`/`store`
+split. `AudioJobStore` is the translation job's machine with two differences the
+specification insists on: strictly one request at a time in reading order, and
+stop at the first failure rather than skipping. `AudioPlaybackStore` is
+root-provided and owns the cursor, the complete-set gate, and the five stop
+triggers; the element and the object-URL lifecycle sit behind an `AudioPlayer`
+port so that "nothing plays without an explicit call" is unit-testable.
+
+#### Reader surfaces
+
+ADR 0023 had deleted the two surfaces 8B's notes named, so audio attached where
+the UX specification actually allows it: an audio section in the sentence
+popover, whole-reading entries in the overflow menu, a hairline
+`mn-audio-progress` row under the header, and `mn-reading-player` as a docked
+footer on desktop and a compact strip in the sticky header below the breakpoint.
+The sentence being read is tinted; the reader scrolls to it only when it is
+outside the viewport, and a scroll the learner makes themselves switches that off
+until the next explicit Play, Next, or Previous. That is its own state —
+`reportPosition` is debounced reading progress, and the two must not be
+conflated.
+
+### Fixed along the way
+
+- **Cancelling reported itself as a failure.** Cancelling aborts the request
+  already in flight, which arrives as a refusal; the job took the failure path and
+  offered a Retry for something the learner had just stopped. The signal now
+  decides which of the two it is. A clip that did arrive is still stored — it has
+  already been paid for.
+- **A reading with a repeated sentence could never be played.** `audioAssets` is
+  keyed by `cacheKey`, so two sentences with identical Japanese share one clip and
+  one row. Counting rows reported such a reading as permanently one clip short:
+  the menu kept offering to prepare audio, each run synthesized nothing because
+  nothing was missing, and the Play gate never opened. Coverage is now counted by
+  key throughout (ADR 0024). Sentences like `はい。` repeat in real text, so this
+  was not a corner case. Found during browser verification, not by the suite.
+- **The docked player did not dock.** `position: sticky; bottom: 0` cannot express
+  a footer: a sticky box is clamped to its containing block, and a footer is the
+  last thing in its own, so it had no room to lift and sat at the end of the
+  document. It is now fixed and anchored to the reading column with the same CSS
+  anchor positioning the overflow menu uses.
+
+### Verification
+
+| Command                | Result                                            |
+| ---------------------- | ------------------------------------------------- |
+| `npm run format:check` | Pass                                              |
+| `npm run lint`         | Pass                                              |
+| `npm run typecheck`    | Pass                                              |
+| `npm test`             | Pass — 129 files, 1,477 tests                     |
+| `npm run build`        | Pass — initial 878.86 kB, inside the new budget   |
+| `npm run e2e`          | Pass — 199 passed, 1 skipped, both viewports      |
+
+Browser verification covered the reader at 1280 px and 360 px in light and dark:
+the popover's audio section, the hairline progress row, the docked player, the
+currently-playing tint, zero horizontal overflow, and a clean console in all four
+combinations.
+
+`e2e/audio.spec.ts` covers scenario 13 on both projects. The fake provider
+returns real silent MPEG-1 Layer III frames rather than arbitrary bytes, because
+verification decodes what a provider returns before storing it — arbitrary bytes
+could never have reached a passing configuration test.
+
+### Assumptions and decisions
+
+- **The bundle budget was raised deliberately** to 950 kB warning / 1.1 MB error,
+  as Milestone 1 did for Dexie and Zod. The initial bundle is 878.86 kB. Paying it
+  down is Milestone 10's release hardening.
+- **`AudioConfigurationService` is a deviation from the plan**, which had the
+  configuration resolved separately in the sentence action and the job. Extracted
+  so the two cannot disagree; recorded in ADR 0024.
+- **The audio element sits behind a port** rather than literally inside the
+  playback store, also a deviation, also in ADR 0024.
+- **`listAudioSummariesForCacheKeys` replaced the planned
+  `listAudioSummariesForSentences`** for the duplicate-sentence reason above. It is
+  the same bound — one key per mounted sentence — resolved through the primary
+  key, and still loads no blob.
+- **The sentence popover's Play is not subject to the complete-set gate.** The
+  gate is a rule about reading a whole reading aloud; one stored clip is exactly
+  as playable on its own whether or not its neighbours exist.
+
+### Open items
+
+- **No real configured TTS model has been exercised.** The roadmap's checkpoint
+  requires a "real configured TTS test pass" against a live provider, and no API
+  key was available at implementation time. Every layer is covered by the fake
+  provider and by adapter fixtures over the routed stub, but the live round trip
+  is untested. Carried to Milestone 10's compatibility matrix rather than counted
+  as done here.
+- **`language-worker-performance.spec.ts` is timing-flaky on this machine**,
+  failing its 50 ms chunk budget with 50–65 ms on roughly half of runs.
+  Pre-existing and unrelated to this milestone; it passes on a quiet machine and
+  passed on the final run.

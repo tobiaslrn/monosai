@@ -162,16 +162,37 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     if (!loaded.ok) {
       return loaded;
     }
-    const metadata = loaded.value.map(stripBytes);
-    const parsed = parseRecords(audioAssetMetadataSchema, metadata, 'audioAssets');
-    return parsed.ok
-      ? ok(
-          parsed.value.map((row) => {
-            const { v: _version, ...summary } = row;
-            return summary;
-          }),
-        )
-      : parsed;
+    return toSummaries(loaded.value);
+  }
+
+  /**
+   * The same metadata, bounded to specific sentences through the `sentenceId`
+   * index, so the reader's mounted window never reads the whole reading — and,
+   * like every list query here, never touches `bytes`.
+   */
+  /**
+   * Metadata for a bounded set of clips, by cache key.
+   *
+   * Bounded by key rather than by sentence because the table is keyed by
+   * `cacheKey`: two sentences with identical Japanese share one clip, and a
+   * sentence-bounded read would miss the row for whichever of them did not
+   * happen to be stored under its own id. One key per mounted sentence is the
+   * same bound, resolved through the primary key, and it still never loads a
+   * blob.
+   */
+  async listAudioSummariesForCacheKeys(
+    cacheKeys: readonly string[],
+  ): Promise<Result<readonly AudioAssetSummary[], StorageError>> {
+    const loaded = await runStorage('audioAssets.listForCacheKeys', () =>
+      this.db.audioAssets
+        .where(':id')
+        .anyOf([...cacheKeys])
+        .toArray(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    return toSummaries(loaded.value);
   }
 
   async getAudioByCacheKey(cacheKey: string): Promise<Result<AudioAsset | null, StorageError>> {
@@ -193,14 +214,17 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     });
   }
 
-  async storeAudio(asset: AudioAsset): Promise<Result<AudioAssetSummary, StorageError>> {
+  async storeAudio(
+    asset: AudioAsset,
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<AudioAssetSummary, StorageError>> {
     const { blob, ...metadata } = asset;
     const bytes = await blob.arrayBuffer();
 
     const written = await runStorage('audioAssets.put', async () => {
       await this.db.transaction('rw', [this.db.audioAssets, this.db.readings], async () => {
         await this.db.audioAssets.put({ ...metadata, bytes, v: ROW_VERSION });
-        await this.refreshAudioSummary(asset.readingId);
+        await this.refreshAudioSummary(asset.readingId, currentCacheKeys);
       });
     });
     if (!written.ok) {
@@ -230,8 +254,7 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<CompletionSummary, StorageError>> {
     return runStorage('audioAssets.summarize', async () => {
-      const rows = await this.db.audioAssets.where('readingId').equals(readingId).toArray();
-      const completed = rows.filter((row) => cacheKeys.get(row.sentenceId) === row.cacheKey).length;
+      const completed = await this.currentAudioCount(readingId, cacheKeys);
       return { total: cacheKeys.size, completed, failed: 0 };
     });
   }
@@ -251,6 +274,26 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
   ): Promise<Result<readonly SentenceId[], StorageError>> {
     const loaded = await runStorage('translations.keys', () =>
       this.db.translations.where('readingId').equals(readingId).primaryKeys(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const stored = new Set(loaded.value);
+    const missing: SentenceId[] = [];
+    for (const [sentenceId, cacheKey] of cacheKeys) {
+      if (!stored.has(cacheKey)) {
+        missing.push(sentenceId);
+      }
+    }
+    return ok(missing);
+  }
+
+  async listSentenceIdsMissingAudio(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    const loaded = await runStorage('audioAssets.keys', () =>
+      this.db.audioAssets.where('readingId').equals(readingId).primaryKeys(),
     );
     if (!loaded.ok) {
       return loaded;
@@ -312,24 +355,53 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
   }
 
   /**
-   * `storeAudio` has no cache-key map to work from, so this stays a plain
-   * reading-wide count capped at the sentence total, unlike the corrected
-   * per-sentence-current logic in `summarizeAudio`.
+   * Counts the sentences whose current cache key has a stored clip.
+   *
+   * Two things this is deliberately not. It is not a plain reading-wide row
+   * count: that would let a clip produced by a model or voice that is no longer
+   * configured report the reading as complete, and the whole-reading Play gate
+   * is built directly on this number.
+   *
+   * It is also not a count of *rows*. `audioAssets` is keyed by `cacheKey`, so
+   * two sentences with identical Japanese share one clip and therefore one row
+   * — which is the point of a content-addressed cache. Counting rows would
+   * report such a reading as permanently one clip short, leaving a Prepare
+   * entry that synthesizes nothing and a Play gate that never opens.
    */
-  private async refreshAudioSummary(readingId: ReadingId): Promise<void> {
-    const reading = await this.db.readings.get(readingId);
-    if (!reading) {
-      return;
-    }
-    const completed = await this.db.audioAssets.where('readingId').equals(readingId).count();
+  private async currentAudioCount(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<number> {
+    const stored = new Set(
+      await this.db.audioAssets.where('readingId').equals(readingId).primaryKeys(),
+    );
+    return [...cacheKeys.values()].filter((cacheKey) => stored.has(cacheKey)).length;
+  }
+
+  private async refreshAudioSummary(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<void> {
+    const completed = await this.currentAudioCount(readingId, cacheKeys);
     await this.db.readings.update(readingId, {
-      audioSummary: {
-        total: reading.sentenceCount,
-        completed: Math.min(completed, reading.sentenceCount),
-        failed: 0,
-      },
+      audioSummary: { total: cacheKeys.size, completed, failed: 0 },
     });
   }
+}
+
+/** Metadata for stored rows, validated and stripped of bytes and row version. */
+function toSummaries(
+  rows: readonly AudioAssetStoredRow[],
+): Result<readonly AudioAssetSummary[], StorageError> {
+  const parsed = parseRecords(audioAssetMetadataSchema, rows.map(stripBytes), 'audioAssets');
+  return parsed.ok
+    ? ok(
+        parsed.value.map((row) => {
+          const { v: _version, ...summary } = row;
+          return summary;
+        }),
+      )
+    : parsed;
 }
 
 function stripBytes(row: AudioAssetStoredRow): Omit<AudioAssetStoredRow, 'bytes'> {

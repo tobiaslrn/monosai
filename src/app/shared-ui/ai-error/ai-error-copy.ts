@@ -149,6 +149,7 @@ export const AI_TASK_COPY: Record<AiTask, string> = {
   'exception-review': 'checking your exception policy',
   'grammar-review': 'reviewing the grammar',
   translation: 'translating this sentence',
+  'tts-synthesis': 'reading this sentence aloud',
 };
 
 export function aiErrorCopy(error: AiError): AiErrorCopy {

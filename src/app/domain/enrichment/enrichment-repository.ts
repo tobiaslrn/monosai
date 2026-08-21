@@ -52,8 +52,23 @@ export interface EnrichmentRepository {
   listAudioSummaries(
     readingId: ReadingId,
   ): Promise<Result<readonly AudioAssetSummary[], StorageError>>;
+  /**
+   * Metadata for specific clips, bounded by their cache keys, so the reader
+   * reads only the paragraphs it has mounted. Never loads blobs.
+   *
+   * Bounded by key rather than by sentence because the audio table is keyed by
+   * `cacheKey`: two sentences with identical Japanese share one clip and one
+   * row, so asking by sentence would miss it for one of them.
+   */
+  listAudioSummariesForCacheKeys(
+    cacheKeys: readonly string[],
+  ): Promise<Result<readonly AudioAssetSummary[], StorageError>>;
+  /** The playback read path: one clip, with its bytes, by cache key. */
   getAudioByCacheKey(cacheKey: string): Promise<Result<AudioAsset | null, StorageError>>;
-  storeAudio(asset: AudioAsset): Promise<Result<AudioAssetSummary, StorageError>>;
+  storeAudio(
+    asset: AudioAsset,
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<AudioAssetSummary, StorageError>>;
   deleteAudio(id: AssetId): Promise<Result<void, StorageError>>;
 
   summarizeTranslations(
@@ -69,6 +84,10 @@ export interface EnrichmentRepository {
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<GrammarSummary, StorageError>>;
   listSentenceIdsMissingTranslation(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<readonly SentenceId[], StorageError>>;
+  listSentenceIdsMissingAudio(
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<readonly SentenceId[], StorageError>>;

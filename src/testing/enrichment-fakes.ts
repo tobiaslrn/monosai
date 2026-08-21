@@ -23,9 +23,20 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
    * Which sentence ids each bounded per-sentence query was asked for, so a
    * spec can assert the reader reads only its mounted window.
    */
-  readonly perSentenceQueries: { translations: SentenceId[][]; grammar: SentenceId[][] } = {
+  /**
+   * What each bounded per-window read asked for, in order.
+   *
+   * Audio records cache keys rather than sentence ids, because that is what the
+   * audio table is keyed by: identical Japanese shares one clip.
+   */
+  readonly perSentenceQueries: {
+    translations: SentenceId[][];
+    grammar: SentenceId[][];
+    audio: string[][];
+  } = {
     translations: [],
     grammar: [],
+    audio: [],
   };
 
   translations: TranslationRecord[] = [];
@@ -118,6 +129,20 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
     );
   }
 
+  listAudioSummariesForCacheKeys(
+    cacheKeys: readonly string[],
+  ): Promise<Result<readonly AudioAssetSummary[], StorageError>> {
+    this.perSentenceQueries.audio.push([...cacheKeys]);
+    const wanted = new Set(cacheKeys);
+    return Promise.resolve(
+      ok(
+        this.audio
+          .filter((asset) => wanted.has(asset.cacheKey))
+          .map(({ blob: _blob, ...summary }) => summary),
+      ),
+    );
+  }
+
   getAudioByCacheKey(cacheKey: string): Promise<Result<AudioAsset | null, StorageError>> {
     return Promise.resolve(ok(this.audio.find((asset) => asset.cacheKey === cacheKey) ?? null));
   }
@@ -166,6 +191,16 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
       return Promise.resolve(ok({ state: 'not-requested' }));
     }
     return Promise.resolve(ok({ state: 'partial', analyzedSentenceCount, concernCount: 0 }));
+  }
+
+  listSentenceIdsMissingAudio(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    const missing = [...cacheKeys.entries()]
+      .filter(([, key]) => !this.audio.some((asset) => asset.cacheKey === key))
+      .map(([sentenceId]) => sentenceId);
+    return Promise.resolve(ok(missing));
   }
 
   listSentenceIdsMissingTranslation(

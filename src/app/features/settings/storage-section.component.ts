@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { StorageStore } from '../../application/settings/storage.store';
 
 function formatBytes(bytes: number | null): string {
@@ -69,11 +70,12 @@ function formatBytes(bytes: number | null): string {
           Clear audio cache
         </button>
         <p class="mn-hint">
-          Removes saved audio only. Readings, translations, and grammar results stay.
+          Removes saved audio only. Readings, translations, and grammar results stay. Anything being
+          read aloud stops first.
         </p>
         <p aria-live="polite" class="mn-hint">
           @if (storage.audioCleared()) {
-            Audio cache cleared.
+            Audio cache cleared{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
           }
         </p>
       </div>
@@ -162,8 +164,11 @@ function formatBytes(bytes: number | null): string {
 })
 export class StorageSectionComponent {
   private readonly document = inject(DOCUMENT);
+  private readonly playback = inject(AudioPlaybackStore);
   protected readonly storage = inject(StorageStore);
   protected readonly resetStage = signal<'idle' | 'confirming'>('idle');
+  /** Whether the clear that just ran also had to stop something playing. */
+  protected readonly stoppedPlayback = signal(false);
 
   protected readonly persistenceLabel = computed(() =>
     this.storage.status().persisted
@@ -181,7 +186,15 @@ export class StorageSectionComponent {
     void this.storage.requestPersistence();
   }
 
+  /**
+   * Clears the audio cache, having first stopped anything playing from it.
+   *
+   * The order matters and is the point: reporting an empty cache while a clip
+   * out of it is still audible would be a report the learner can hear is false.
+   */
   protected clearAudio(): void {
+    this.stoppedPlayback.set(this.playback.isActive());
+    this.playback.audioCacheCleared();
     void this.storage.clearAudioCache();
   }
 

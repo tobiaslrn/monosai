@@ -34,6 +34,14 @@
   --marker-vocabulary: #c9762f;
   --marker-grammar: #4f7ba8;
 
+  /*
+   * Not a marker: the tint on the sentence being read aloud. It is here beside
+   * them because it is the third and last thing the reading surface may colour,
+   * and it is deliberately distinct from the open sentence's tint, because a
+   * sentence can be open and playing at once.
+   */
+  --playing-sentence-soft: #f2e6d2;
+
   --focus-ring: #4a3c86;
   --shadow-raised: 0 1px 2px rgb(37 40 36 / 8%), 0 4px 12px rgb(37 40 36 / 6%);
   --shadow-overlay: 0 8px 32px rgb(37 40 36 / 16%);
@@ -69,6 +77,8 @@
 
   --marker-vocabulary: #e0a874;
   --marker-grammar: #8fb4dc;
+
+  --playing-sentence-soft: #3b3324;
 
   --focus-ring: #b7a9f0;
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 40%);

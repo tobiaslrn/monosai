@@ -3,8 +3,12 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import { aiError } from '../../domain/ai/ai-error';
-import type { GrammarAnalysisRecord, TranslationRecord } from '../../domain/enrichment/records';
-import { readingId, sentenceId } from '../../domain/shared/ids';
+import type {
+  AudioAssetSummary,
+  GrammarAnalysisRecord,
+  TranslationRecord,
+} from '../../domain/enrichment/records';
+import { assetId, readingId, sentenceId } from '../../domain/shared/ids';
 import { SentencePopoverComponent, type UnknownWord } from './sentence-popover.component';
 
 const SENTENCE_ID = sentenceId('s1');
@@ -45,6 +49,22 @@ function analysis(inProfile: boolean): GrammarAnalysisRecord {
   };
 }
 
+function clip(): AudioAssetSummary {
+  return {
+    id: assetId('a-1'),
+    sentenceId: SENTENCE_ID,
+    readingId: readingId('r1'),
+    sourceContentHash: 'hash-0',
+    modelId: 'vendor/tts',
+    voiceId: 'voice-a',
+    optionsFingerprint: 'options-fp',
+    mimeType: 'audio/mpeg',
+    byteLength: 512,
+    cacheKey: 'key-a1',
+    createdAt: 1,
+  };
+}
+
 function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
   return { ...NO_AIDS, ...overrides };
 }
@@ -58,6 +78,8 @@ function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
     [unknownWords]="unknownWords()"
     (translate)="requests = requests + 1"
     (analyzeGrammar)="analyses = analyses + 1"
+    (generateAudio)="syntheses = syntheses + 1"
+    (playAudio)="plays = plays + 1"
   />`,
 })
 class HostComponent {
@@ -66,6 +88,8 @@ class HostComponent {
   readonly unknownWords = signal<readonly UnknownWord[]>([]);
   requests = 0;
   analyses = 0;
+  syntheses = 0;
+  plays = 0;
 }
 
 describe('SentencePopoverComponent', () => {
@@ -242,5 +266,67 @@ describe('SentencePopoverComponent', () => {
     const rendered = host(render());
 
     expect(rendered.textContent).not.toContain('Words you may not know');
+  });
+
+  /**
+   * The only route to audio for one sentence. No play control is printed on the
+   * reading surface itself, so pressing a sentence still costs nothing.
+   */
+  describe('audio', () => {
+    function audioButton(rendered: HTMLElement, label: string): HTMLButtonElement | undefined {
+      return [...rendered.querySelectorAll('button')].find((button) =>
+        button.textContent.includes(label),
+      );
+    }
+
+    it('offers to generate audio, and says what that sends', () => {
+      const fixture = render();
+      const rendered = host(fixture);
+
+      expect(rendered.textContent).toContain('Sends this one sentence to your speech model.');
+      audioButton(rendered, 'Generate audio')?.click();
+
+      expect(fixture.componentInstance.syntheses).toBe(1);
+    });
+
+    /** Producing a clip is not hearing it: playing is a second explicit action. */
+    it('offers to play, and never generates, once a clip exists', () => {
+      const fixture = render(aidsWith({ audio: clip() }));
+      const rendered = host(fixture);
+
+      expect(rendered.textContent).not.toContain('Generate audio');
+      expect(rendered.textContent).toContain('Already saved. Playing it costs nothing.');
+      audioButton(rendered, 'Play this sentence')?.click();
+
+      expect(fixture.componentInstance.plays).toBe(1);
+      expect(fixture.componentInstance.syntheses).toBe(0);
+    });
+
+    it('reports that a clip is being produced, offering neither action', () => {
+      const rendered = host(render(aidsWith({ audioAction: { state: 'running', error: null } })));
+
+      expect(rendered.textContent).toContain('Generating…');
+      expect(rendered.textContent).not.toContain('Generate audio');
+      expect(rendered.textContent).not.toContain('Play this sentence');
+    });
+
+    it('offers a retry, and says what went wrong, after a failure', () => {
+      const rendered = host(
+        render(
+          aidsWith({
+            audioAction: {
+              state: 'failed',
+              error: {
+                source: 'provider',
+                error: aiError('provider-unavailable', 'tts-synthesis', 'Unavailable.'),
+              },
+            },
+          }),
+        ),
+      );
+
+      expect(rendered.textContent).toContain('Try generating audio again');
+      expect(rendered.querySelector('.audio [role="alert"]')).not.toBeNull();
+    });
   });
 });

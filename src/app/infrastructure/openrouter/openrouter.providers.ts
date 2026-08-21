@@ -7,6 +7,7 @@ import { CREDENTIAL_REPOSITORY } from '../../application/shared/repository-token
 import { createAudioDecoder } from './audio-decode';
 import { OpenRouterClient } from './openrouter-client';
 import { OpenRouterTextProvider } from './openrouter-text-provider';
+import { OpenRouterTextToSpeechProvider } from './openrouter-tts.provider';
 import { OpenRouterTextModelTester } from './text-model-test.adapter';
 import { OpenRouterTtsTester } from './tts-test.adapter';
 
@@ -20,8 +21,8 @@ function delay(ms: number): Promise<void> {
  * Every adapter shares one client, because the client is where the single
  * outbound request path, the credential boundary, and the retry limits live.
  * The ports stay separate so that a TTS failure cannot reach text readiness,
- * and the text port is composed from a tester and a generator so neither file
- * has to carry the other's job.
+ * and each port is composed from a tester and its task adapters so no file has
+ * to carry another's job.
  */
 export function provideOpenRouter(): Provider[] {
   const client = (): OpenRouterClient => {
@@ -54,7 +55,15 @@ export function provideOpenRouter(): Provider[] {
       provide: TEXT_TO_SPEECH_PROVIDER,
       useFactory: () => {
         const view = inject(DOCUMENT).defaultView;
-        return new OpenRouterTtsTester(client(), createAudioDecoder(view ?? globalThis.window));
+        const shared = client();
+        const decoder = createAudioDecoder(view ?? globalThis.window);
+        return new OpenRouterTextToSpeechProvider(
+          new OpenRouterTtsTester(shared, decoder),
+          // Loaded on the first synthesis, so a learner who never turns on
+          // speech never pays for it in the initial bundle.
+          async () =>
+            new (await import('./tts-synthesis.adapter')).OpenRouterTtsSynthesizer(shared, decoder),
+        );
       },
     },
   ];

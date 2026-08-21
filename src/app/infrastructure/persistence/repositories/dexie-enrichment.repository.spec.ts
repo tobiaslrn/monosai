@@ -91,6 +91,10 @@ describe('DexieEnrichmentRepository', () => {
     return new Map(draft.sentences.map((sentence, index) => [sentence.id, `grammar-${index}`]));
   }
 
+  function currentAudioKeys(): Map<(typeof draft.sentences)[number]['id'], string> {
+    return new Map(draft.sentences.map((sentence, index) => [sentence.id, `audio-${index}`]));
+  }
+
   it('stores and reads a translation by cache key', async () => {
     await repository.storeTranslation(translation(0), currentTranslationKeys());
 
@@ -199,7 +203,7 @@ describe('DexieEnrichmentRepository', () => {
   });
 
   it('stores audio and returns metadata without the blob', async () => {
-    const stored = await repository.storeAudio(audio(0));
+    const stored = await repository.storeAudio(audio(0), currentAudioKeys());
 
     expect(stored.ok).toBe(true);
     if (!stored.ok) {
@@ -210,8 +214,8 @@ describe('DexieEnrichmentRepository', () => {
   });
 
   it('lists audio summaries without loading blobs', async () => {
-    await repository.storeAudio(audio(0));
-    await repository.storeAudio(audio(1, 'audio-1'));
+    await repository.storeAudio(audio(0), currentAudioKeys());
+    await repository.storeAudio(audio(1, 'audio-1'), currentAudioKeys());
 
     const summaries = await repository.listAudioSummaries(draft.reading.id);
 
@@ -226,7 +230,7 @@ describe('DexieEnrichmentRepository', () => {
   });
 
   it('returns the blob only when the clip is requested by cache key', async () => {
-    await repository.storeAudio(audio(0));
+    await repository.storeAudio(audio(0), currentAudioKeys());
 
     const loaded = await repository.getAudioByCacheKey('audio-0');
 
@@ -238,7 +242,7 @@ describe('DexieEnrichmentRepository', () => {
   });
 
   it('summarizes audio completion against the current per-sentence cache keys', async () => {
-    await repository.storeAudio(audio(0));
+    await repository.storeAudio(audio(0), currentAudioKeys());
 
     const audioKeys = new Map(
       draft.sentences.map((sentence, index) => [sentence.id, `audio-${index}`]),
@@ -344,9 +348,178 @@ describe('DexieEnrichmentRepository', () => {
     });
   });
 
+  describe('audio completeness', () => {
+    /**
+     * The regression test for the defect Milestone 9 fixed.
+     *
+     * `refreshAudioSummary` counted every audio row for the reading without
+     * comparing each row's `cacheKey` against the current one, so a clip made
+     * by a voice the learner no longer uses counted toward "this reading has
+     * audio". The complete-set gate sits directly on this count, and
+     * `domain-and-data-model.md` section 6 forbids historical output from an old
+     * model counting toward current completeness.
+     */
+    it('refuses to count a row whose cache key is not the current one', async () => {
+      // Stored under the voice of the day, then judged under a new one.
+      await repository.storeAudio(audio(0), currentAudioKeys());
+
+      const newVoiceKeys = new Map(
+        draft.sentences.map((sentence, index) => [sentence.id, `new-voice-audio-${index}`]),
+      );
+      await repository.storeAudio(audio(1, 'new-voice-audio-1'), newVoiceKeys);
+
+      const reading = await readings.getReading(draft.reading.id);
+
+      // Two rows exist for this reading; exactly one is current.
+      expect(await db.audioAssets.count()).toBe(2);
+      expect(reading.ok && reading.value?.audioSummary).toEqual({
+        total: draft.sentences.length,
+        completed: 1,
+        failed: 0,
+      });
+    });
+
+    it('refreshes the reading summary inside the same transaction as the write', async () => {
+      const cacheKeys = currentAudioKeys();
+      await repository.storeAudio(audio(0), cacheKeys);
+      await repository.storeAudio(audio(1, 'audio-1'), cacheKeys);
+
+      const reading = await readings.getReading(draft.reading.id);
+
+      expect(reading.ok && reading.value?.audioSummary).toEqual({
+        total: draft.sentences.length,
+        completed: 2,
+        failed: 0,
+      });
+    });
+
+    it('lists only the sentences with no clip under the current keys', async () => {
+      const cacheKeys = currentAudioKeys();
+      await repository.storeAudio(audio(0), cacheKeys);
+
+      const missing = await repository.listSentenceIdsMissingAudio(draft.reading.id, cacheKeys);
+
+      expect(missing.ok).toBe(true);
+      if (!missing.ok) {
+        return;
+      }
+      expect(missing.value).toEqual(draft.sentences.slice(1).map((sentence) => sentence.id));
+    });
+
+    it('counts a stored clip as missing once the voice has changed', async () => {
+      await repository.storeAudio(audio(0), currentAudioKeys());
+
+      const staleKeys = new Map(
+        draft.sentences.map((sentence, index) => [sentence.id, `other-audio-${index}`]),
+      );
+      const missing = await repository.listSentenceIdsMissingAudio(draft.reading.id, staleKeys);
+
+      expect(missing.ok && missing.value).toHaveLength(draft.sentences.length);
+    });
+  });
+
+  describe('bounded audio metadata reads', () => {
+    it('reads only the requested clips, not the whole reading', async () => {
+      const cacheKeys = currentAudioKeys();
+      await repository.storeAudio(audio(0), cacheKeys);
+      await repository.storeAudio(audio(1, 'audio-1'), cacheKeys);
+      await repository.storeAudio(audio(2, 'audio-2'), cacheKeys);
+
+      const bounded = await repository.listAudioSummariesForCacheKeys(['audio-1']);
+
+      expect(bounded.ok).toBe(true);
+      if (!bounded.ok) {
+        return;
+      }
+      expect(bounded.value.map((summary) => summary.sentenceId)).toEqual([draft.sentences[1].id]);
+    });
+
+    /**
+     * The windowed reader calls this on every paragraph-window change. Pulling
+     * blobs would mean loading megabytes of MP3 to decide whether to print the
+     * word "Play".
+     */
+    it('goes through the primary key and returns no blob', async () => {
+      const cacheKeys = currentAudioKeys();
+      await repository.storeAudio(audio(0), cacheKeys);
+      await repository.storeAudio(audio(1, 'audio-1'), cacheKeys);
+      const where = vi.spyOn(db.audioAssets, 'where');
+
+      const bounded = await repository.listAudioSummariesForCacheKeys(['audio-0']);
+
+      expect(where).toHaveBeenCalledWith(':id');
+      expect(bounded.ok).toBe(true);
+      if (!bounded.ok) {
+        return;
+      }
+      for (const summary of bounded.value) {
+        expect('blob' in summary).toBe(false);
+        expect('bytes' in summary).toBe(false);
+      }
+    });
+
+    it('answers with nothing for a key that has no clip', async () => {
+      const bounded = await repository.listAudioSummariesForCacheKeys(['audio-0']);
+
+      expect(bounded.ok && bounded.value).toEqual([]);
+    });
+  });
+
+  /**
+   * `audioAssets` is keyed by `cacheKey`, so two sentences with identical
+   * Japanese share one clip and therefore one row — which is the point of a
+   * content-addressed cache.
+   *
+   * Counting rows rather than covered sentences reported such a reading as
+   * permanently one clip short: the menu kept offering to prepare audio, each
+   * run synthesized nothing because nothing was missing, and the Play gate
+   * never opened. Sentences like `はい。` repeat in real Japanese text, so this
+   * was not a corner case.
+   */
+  describe('sentences that share a clip', () => {
+    /** Maps two sentences onto one key, as identical Japanese would. */
+    function sharedKeys(): Map<(typeof draft.sentences)[number]['id'], string> {
+      const keys = currentAudioKeys();
+      keys.set(draft.sentences[1].id, 'audio-0');
+      return keys;
+    }
+
+    it('counts both sentences as complete from the one stored clip', async () => {
+      const cacheKeys = sharedKeys();
+
+      await repository.storeAudio(audio(0), cacheKeys);
+      await repository.storeAudio(audio(2, 'audio-2'), cacheKeys);
+
+      expect(await db.audioAssets.count()).toBe(2);
+      const reading = await readings.getReading(draft.reading.id);
+      expect(reading.ok && reading.value?.audioSummary).toEqual({
+        total: draft.sentences.length,
+        completed: draft.sentences.length,
+        failed: 0,
+      });
+    });
+
+    it('lists neither of them as missing once the shared clip exists', async () => {
+      const cacheKeys = sharedKeys();
+      await repository.storeAudio(audio(0), cacheKeys);
+
+      const missing = await repository.listSentenceIdsMissingAudio(draft.reading.id, cacheKeys);
+
+      expect(missing.ok && missing.value).toEqual([draft.sentences[2].id]);
+    });
+
+    it('finds the shared clip for the sentence that has no row of its own', async () => {
+      await repository.storeAudio(audio(0), sharedKeys());
+
+      const bounded = await repository.listAudioSummariesForCacheKeys(['audio-0']);
+
+      expect(bounded.ok && bounded.value).toHaveLength(1);
+    });
+  });
+
   it('deletes a single audio clip without touching translations', async () => {
     const asset = audio(0);
-    await repository.storeAudio(asset);
+    await repository.storeAudio(asset, currentAudioKeys());
     await repository.storeTranslation(translation(0), currentTranslationKeys());
 
     await repository.deleteAudio(asset.id);
