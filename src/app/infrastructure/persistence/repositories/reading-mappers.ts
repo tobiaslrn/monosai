@@ -6,12 +6,7 @@ import type { TokenAnalysis } from '../../../domain/reading/token';
 import type { ReadingId } from '../../../domain/shared/ids';
 import { ROW_VERSION } from '../schemas/common.schema';
 import type { FrozenValidationRow, GenerationProvenanceRow } from '../schemas/generation.schema';
-import type {
-  ParagraphRow,
-  ReadingRow,
-  SentenceRow,
-  TokenAnalysisRow,
-} from '../rows';
+import type { ParagraphRow, ReadingRow, SentenceRow, TokenAnalysisRow } from '../rows';
 
 export function toReadingRow(reading: Reading): ReadingRow {
   return { ...reading, v: ROW_VERSION };

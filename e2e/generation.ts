@@ -220,5 +220,5 @@ export async function prepareGeneration(page: Page, options: StubOptions): Promi
 
 export async function openGenerate(page: Page): Promise<void> {
   await page.goto('/#/generate');
-  await expect(page.getByRole('heading', { name: 'Generate', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Write with AI', level: 1 })).toBeVisible();
 }

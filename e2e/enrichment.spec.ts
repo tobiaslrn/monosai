@@ -118,9 +118,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await selectSentence(page);
     expect(callCount(calls), 'opening a sentence makes no request').toBe(afterSetup);
 
-    await sentencePopover(page)
-      .getByRole('button', { name: /Translate this sentence/ })
-      .click();
+    await sentencePopover(page).getByRole('button', { name: 'Translate', exact: true }).click();
     await expect(sentencePopover(page)).toContainText('EN:');
     expect(callCount(calls) - afterSetup).toBe(1);
     await dismissPopover(page);
@@ -128,13 +126,13 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     // Grammar is asked for on the sentence, where everything that spends a
     // request lives, and read back at the word it is about.
     await selectSentence(page);
-    await sentencePopover(page)
-      .getByRole('button', { name: /Analyze grammar/ })
-      .click();
+    await sentencePopover(page).getByRole('button', { name: 'Grammar', exact: true }).click();
     // Polled rather than asserted on the popover's text: an assertion that the
     // offer is gone passes vacuously while the popover is still rendering.
     await expect.poll(() => callCount(calls) - afterSetup, { timeout: 30_000 }).toBe(2);
-    await expect(sentencePopover(page)).not.toContainText('Analyze grammar');
+    await expect(
+      sentencePopover(page).getByRole('button', { name: 'Grammar', exact: true }),
+    ).toHaveCount(0);
     await dismissPopover(page);
 
     await openWord(page, '猫');
@@ -157,9 +155,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     const afterSetup = callCount(calls);
 
     await selectSentence(page);
-    await sentencePopover(page)
-      .getByRole('button', { name: /Translate this sentence/ })
-      .click();
+    await sentencePopover(page).getByRole('button', { name: 'Translate', exact: true }).click();
     await expect(sentencePopover(page)).toContainText('EN:');
     await dismissPopover(page);
 
@@ -175,11 +171,11 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     const afterSetup = callCount(calls);
 
     await selectSentence(page);
-    await sentencePopover(page)
-      .getByRole('button', { name: /Analyze grammar/ })
-      .click();
+    await sentencePopover(page).getByRole('button', { name: 'Grammar', exact: true }).click();
     await expect.poll(() => callCount(calls), { timeout: 30_000 }).toBeGreaterThan(afterSetup);
-    await expect(sentencePopover(page)).not.toContainText('Analyze grammar');
+    await expect(
+      sentencePopover(page).getByRole('button', { name: 'Grammar', exact: true }),
+    ).toHaveCount(0);
     const afterFirstAnalysis = callCount(calls);
     await dismissPopover(page);
 
@@ -196,11 +192,11 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await dismissPopover(page);
 
     await selectSentence(page);
-    await sentencePopover(page)
-      .getByRole('button', { name: /Re-analyze grammar/ })
-      .click();
+    await sentencePopover(page).getByRole('button', { name: 'Grammar again', exact: true }).click();
     await expect.poll(() => callCount(calls) - afterFirstAnalysis, { timeout: 30_000 }).toBe(1);
-    await expect(sentencePopover(page)).not.toContainText('Re-analyze grammar');
+    await expect(
+      sentencePopover(page).getByRole('button', { name: 'Grammar again', exact: true }),
+    ).toHaveCount(0);
     expect((await countOwnedRows(page))['grammarAnalyses'], 'the earlier analysis is kept').toBe(2);
   });
 
@@ -216,16 +212,14 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     const afterSetup = callCount(calls);
 
     await selectSentence(page);
-    await sentencePopover(page)
-      .getByRole('button', { name: /Translate this sentence/ })
-      .click();
+    await sentencePopover(page).getByRole('button', { name: 'Translate', exact: true }).click();
 
     // The Japanese is untouched and the failure is offered as a retry.
     await expect(sentence(page)).toContainText('吾輩');
     await expect(sentencePopover(page).getByRole('alert')).toBeVisible({ timeout: 30_000 });
 
     await sentencePopover(page)
-      .getByRole('button', { name: /Try translating again/ })
+      .getByRole('button', { name: 'Translate again', exact: true })
       .click();
     await expect(sentencePopover(page)).toContainText('EN:', { timeout: 30_000 });
     expect(callCount(calls)).toBeGreaterThan(afterSetup);
@@ -280,7 +274,7 @@ test.describe('scenario 12 — whole-reading translation', () => {
 
   async function startWholeReadingTranslation(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Reading actions' }).click();
-    await page.getByRole('button', { name: /Translate \d+ sentences/ }).click();
+    await page.getByRole('button', { name: 'Translate reading' }).click();
   }
 
   test('cancels mid-run, keeps what was translated, and resumes after a reload', async ({

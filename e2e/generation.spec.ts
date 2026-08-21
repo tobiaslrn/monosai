@@ -26,19 +26,15 @@ test.describe('generate prerequisites', () => {
     await stubOpenRouter(page);
     await openGenerate(page);
 
-    const checks = page.locator('[data-check]');
-    await expect(checks).toHaveCount(3);
-    await expect(page.locator('[data-check="text-model"]')).toHaveAttribute(
-      'data-satisfied',
-      'false',
-    );
+    // Only what is missing is listed, one line each.
+    await expect(page.locator('[data-check]')).toHaveCount(3);
     await expect(page.locator('[data-check="vocabulary"]')).toContainText('No vocabulary snapshot');
-    await expect(page.locator('[data-check="premise"]')).toHaveAttribute('data-satisfied', 'false');
     await expect(page.getByTestId('generate')).toBeDisabled();
 
-    // The preset is a read-only line, never a check, and TTS never blocks.
-    await expect(page.getByTestId('preset-line')).toContainText('Grammar preset');
-    await expect(page.getByTestId('tts-optional')).toContainText('optional');
+    // Text to speech is optional, so it never appears here at all.
+    await expect(page.getByText(/Text to speech is optional/)).toHaveCount(0);
+    // What a generation sends is said once, above the button that sends it.
+    await expect(page.getByTestId('form-sources')).toHaveCount(1);
 
     await expectNoSeriousAccessibilityViolations(page);
   });
@@ -49,7 +45,8 @@ test.describe('generate prerequisites', () => {
 
     await page.getByTestId('premise').fill(PREMISE);
     await page.getByRole('radio', { name: /Short/ }).check();
-    await expect(page.locator('[data-check="premise"]')).toHaveAttribute('data-satisfied', 'true');
+    // A satisfied prerequisite stops being listed rather than turning green.
+    await expect(page.locator('[data-check="premise"]')).toHaveCount(0);
 
     await page.locator('[data-check="text-model"]').getByRole('link').click();
     await expect(page).toHaveURL(/#\/settings/);
@@ -97,9 +94,10 @@ test.describe('generating a story', () => {
     await page.goto('/#/library');
     const card = page.locator('mn-reading-card').first();
     await expect(card).toContainText(STRICT_STORY.titleJa);
-    await expect(card).toContainText('Generated');
-    await expect(card).toContainText('Translations: complete');
-    await expect(card).toContainText('Grammar: reviewed, no notes');
+    // The card shows the story, not a report on it. Its aid counts are still
+    // confirmed on the panel that saved it, just above.
+    await expect(card.locator('.excerpt[lang="ja"]')).toContainText('猫');
+    await expect(card).not.toContainText('Translations:');
 
     // The card's title is the link into the reader.
     await card.getByRole('link', { name: STRICT_STORY.titleJa }).click();
@@ -236,8 +234,8 @@ test.describe('generating a story', () => {
 
     await page.goto('/#/library');
     const card = page.locator('mn-reading-card').first();
-    await expect(card).toContainText('Translations: 10 of 13');
-    await expect(card).toContainText('Grammar: unavailable');
+    await expect(card).toContainText(LONG_STRICT_STORY.titleJa);
+    await expect(card).not.toContainText('Grammar:');
   });
 
   test('reports a provider failure without adding anything to the library', async ({ page }) => {
