@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { LanguageStore } from '../app/application/language/language.store';
 import { VocabularyClassificationService } from '../app/application/reading/vocabulary-classification.service';
@@ -252,6 +253,7 @@ export function configureVocabularyTestBed(): VocabularyTestBed {
 
   TestBed.configureTestingModule({
     providers: [
+      provideRouter([]),
       SnapshotBuilder,
       SourceMappingStore,
       VocabularyRefreshStore,

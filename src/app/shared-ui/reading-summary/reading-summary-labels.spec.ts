@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GrammarSummary } from '../../domain/reading/summaries';
-import { completionLabel, grammarLabel } from './reading-summary-labels';
+import { completionLabel, grammarLabel, relativeDay } from './reading-summary-labels';
 
 describe('completionLabel', () => {
   it('reports nothing attempted as none yet', () => {
@@ -51,5 +51,26 @@ describe('grammarLabel', () => {
     for (const { summary } of cases) {
       expect(grammarLabel(summary)).not.toMatch(/error|invalid|wrong/i);
     }
+  });
+});
+
+describe('relativeDay', () => {
+  const noon = new Date(2026, 7, 21, 12, 0, 0).getTime();
+
+  it('says today for another moment on the same day', () => {
+    expect(relativeDay(new Date(2026, 7, 21, 1, 30, 0).getTime(), noon)).toBe('today');
+  });
+
+  it('says yesterday for late the previous night rather than a count of hours', () => {
+    expect(relativeDay(new Date(2026, 7, 20, 23, 45, 0).getTime(), noon)).toBe('yesterday');
+  });
+
+  it('counts whole days within the last week', () => {
+    expect(relativeDay(new Date(2026, 7, 18, 9, 0, 0).getTime(), noon)).toBe('3 days ago');
+  });
+
+  it('falls back to a date once a relative day stops being useful', () => {
+    const old = new Date(2026, 0, 4, 9, 0, 0).getTime();
+    expect(relativeDay(old, noon)).toBe(new Date(old).toLocaleDateString());
   });
 });

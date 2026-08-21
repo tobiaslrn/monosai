@@ -119,6 +119,7 @@ export function importedReadingFixture(options: ImportedFixtureOptions = {}): Im
     lastOpenedAt: null,
     sentenceCount: sentences.length,
     characterCount,
+    excerpt: paragraphs[0]?.sourceText ?? '',
     translationSummary: { total: sentences.length, completed: 0, failed: 0 },
     grammarSummary: { state: 'not-requested' },
     audioSummary: { total: sentences.length, completed: 0, failed: 0 },
@@ -144,6 +145,7 @@ export function generatedStoryFixture(
     lastOpenedAt: null,
     sentenceCount: 5,
     characterCount: 60,
+    excerpt: '生成された話です。',
     translationSummary: { total: 5, completed: 5, failed: 0 },
     grammarSummary: { state: 'complete', concernCount: 0 },
     audioSummary: { total: 5, completed: 0, failed: 0 },
@@ -254,6 +256,7 @@ export function generatedStoryDraftFixture(
     id,
     sentenceCount: sentences.length,
     characterCount: sourceText.length,
+    excerpt: sourceText,
     translationSummary: {
       total: translations.length,
       completed: translations.length,

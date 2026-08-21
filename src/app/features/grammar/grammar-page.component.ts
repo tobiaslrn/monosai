@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
+import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { GuidanceSectionComponent } from './guidance-section.component';
 import { PresetPickerComponent } from './preset-picker.component';
 import { REGISTER_LABELS } from './register-labels';
@@ -12,16 +13,20 @@ const STALE_NOTICE = 'Existing grammar analyses are now out of date.';
 @Component({
   selector: 'mn-grammar-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PresetPickerComponent, GuidanceSectionComponent, StructuralBaselineSectionComponent],
+  imports: [
+    PageHeaderComponent,
+    PresetPickerComponent,
+    GuidanceSectionComponent,
+    StructuralBaselineSectionComponent,
+  ],
   template: `
     <div class="mn-page">
-      <header>
-        <h1>Grammar</h1>
-        <p class="mn-hint">
-          Monosai uses this to pitch generated stories and to judge what is new to you in imported
-          text. Changing it marks existing grammar analyses as stale.
-        </p>
-      </header>
+      <mn-page-header heading="Grammar" backTo="/settings" backLabel="Back to settings" />
+
+      <p class="mn-hint">
+        Monosai uses this to pitch generated stories and to judge what is new to you in imported
+        text. Changing it marks existing grammar analyses as stale.
+      </p>
 
       <!--
         Announced rather than shown as a toast: the change has already been saved,

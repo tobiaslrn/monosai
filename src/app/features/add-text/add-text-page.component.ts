@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { ImportStore } from '../../application/reading/import.store';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { ReviewStepComponent } from './review-step.component';
 import { TextInputStepComponent } from './text-input-step.component';
 
@@ -17,21 +18,17 @@ import { TextInputStepComponent } from './text-input-step.component';
 @Component({
   selector: 'mn-add-text-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TextInputStepComponent, ReviewStepComponent, IconComponent],
+  imports: [TextInputStepComponent, ReviewStepComponent, IconComponent, PageHeaderComponent],
   providers: [ImportStore],
   template: `
     <div class="mn-page">
-      <header>
-        <h1>Add text</h1>
-        @if (store.step() === 'input') {
-          <p class="mn-hint">
-            Paste Japanese or open a UTF-8 text file. Anki and AI are optional — reading, furigana,
-            and word lookup all work without them.
-          </p>
-        } @else {
-          <p class="mn-hint">Check how the text was divided into sentences, then save.</p>
-        }
-      </header>
+      <mn-page-header heading="Add text" backTo="/library" backLabel="Back to library" />
+
+      @if (store.step() === 'input') {
+        <p class="mn-hint">Paste Japanese, or open a UTF-8 text file.</p>
+      } @else {
+        <p class="mn-hint">Check how the text was divided into sentences, then save.</p>
+      }
 
       <section class="mn-panel">
         @if (store.step() === 'input') {

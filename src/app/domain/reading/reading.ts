@@ -16,6 +16,11 @@ interface ReadingBase {
   /** Denormalized for library cards and Continue reading; null until opened. */
   readonly lastOpenedAt: number | null;
   readonly characterCount: number;
+  /**
+   * The opening of the text, denormalized so a shelf of library cards can show
+   * Japanese without loading any reading's sentences.
+   */
+  readonly excerpt: string;
   readonly translationSummary: CompletionSummary;
   readonly grammarSummary: GrammarSummary;
   readonly audioSummary: CompletionSummary;

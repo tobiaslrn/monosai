@@ -1,29 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/match-media';
+import { describe, expect, it } from 'vitest';
 import { AppShellComponent } from './app-shell.component';
 
 describe('AppShellComponent', () => {
-  let media: FakeMediaMatcher;
-
-  beforeEach(() => {
-    media = installFakeMatchMedia(1280);
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
-  });
-
-  afterEach(() => {
-    media.restore();
-  });
-
   function render() {
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
     const fixture = TestBed.createComponent(AppShellComponent);
     fixture.detectChanges();
-    return fixture;
+    return fixture.nativeElement as HTMLElement;
   }
 
   it('renders a skip link and a focusable main landmark', () => {
-    const element = render().nativeElement as HTMLElement;
+    const element = render();
 
     const skip = element.querySelector('a.mn-skip-link');
     expect(skip?.getAttribute('href')).toBe('#mn-main');
@@ -33,33 +22,9 @@ describe('AppShellComponent', () => {
     expect(main?.getAttribute('tabindex')).toBe('-1');
   });
 
-  it('shows the sidebar navigation on desktop widths', () => {
-    const element = render().nativeElement as HTMLElement;
+  it('carries no application-wide navigation', () => {
+    const element = render();
 
-    expect(element.querySelector('mn-sidebar-nav')).not.toBeNull();
-    expect(element.querySelector('mn-bottom-nav')).toBeNull();
-    expect(element.querySelector('nav')?.getAttribute('aria-label')).toBe('Primary');
-  });
-
-  it('shows bottom navigation on mobile widths', () => {
-    media.setWidth(1280);
-    const fixture = render();
-    media.setWidth(400);
-    fixture.detectChanges();
-
-    const element = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector('mn-bottom-nav')).not.toBeNull();
-    expect(element.querySelector('mn-sidebar-nav')).toBeNull();
-  });
-
-  it('labels every navigation destination with visible text', () => {
-    const element = render().nativeElement as HTMLElement;
-    const links = [...element.querySelectorAll('mn-sidebar-nav a')];
-
-    expect(links.length).toBeGreaterThan(0);
-    for (const link of links) {
-      expect(link.textContent.trim().length).toBeGreaterThan(0);
-      expect(link.getAttribute('href')).toBeTruthy();
-    }
+    expect(element.querySelector('nav')).toBeNull();
   });
 });

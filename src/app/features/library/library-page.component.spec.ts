@@ -9,7 +9,7 @@ import { readingId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
 import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/match-media';
 import { FakeReadingRepository } from '../../../testing/reading-repository-fake';
-import { LibraryPageComponent } from './library-page.component';
+import { FILTER_VISIBILITY_THRESHOLD, LibraryPageComponent } from './library-page.component';
 
 function reading(id: string, kind: 'imported' | 'generated', createdAt: number): Reading {
   const base = {
@@ -20,6 +20,7 @@ function reading(id: string, kind: 'imported' | 'generated', createdAt: number):
     sentenceCount: 4,
     lastOpenedAt: null,
     characterCount: 40,
+    excerpt: '猫が好きです。',
     translationSummary: { total: 4, completed: 0, failed: 0 },
     grammarSummary: { state: 'not-requested' as const },
     audioSummary: { total: 4, completed: 0, failed: 0 },
@@ -87,12 +88,44 @@ describe('LibraryPageComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('explains both paths when nothing is saved yet', async () => {
+  function newReadingButton(
+    fixture: Awaited<ReturnType<typeof render>>,
+  ): HTMLButtonElement | null {
+    return element(fixture).querySelector<HTMLButtonElement>('.actions button');
+  }
+
+  /** Enough readings that the filter chips are worth showing. */
+  function shelf(): Reading[] {
+    return Array.from({ length: FILTER_VISIBILITY_THRESHOLD }, (_unused, index) =>
+      reading(`r${String(index)}`, index % 2 === 0 ? 'imported' : 'generated', 1_000 + index),
+    );
+  }
+
+  it('says one line and offers the one button when nothing is saved yet', async () => {
     const fixture = await render();
 
     expect(element(fixture).textContent).toContain('Nothing saved yet');
-    expect(element(fixture).textContent).toContain('Add Japanese you already have');
     expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(0);
+    expect(newReadingButton(fixture)).not.toBeNull();
+  });
+
+  it('offers both ways in from the one New reading button', async () => {
+    const fixture = await render();
+
+    newReadingButton(fixture)?.click();
+    await settle(fixture);
+
+    const menu = document.querySelector('mn-new-reading-menu');
+    const links = [...(menu?.querySelectorAll('a') ?? [])];
+    expect(links.map((link) => link.textContent.trim())).toEqual(['Paste text', 'Write with AI']);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/add', '/generate']);
+  });
+
+  it('hides the filter chips until the shelf is large enough to need them', async () => {
+    repository.readings = [reading('a', 'imported', 1_000), reading('b', 'generated', 2_000)];
+    const fixture = await render();
+
+    expect(element(fixture).querySelectorAll('.chip')).toHaveLength(0);
   });
 
   it('lists saved readings newest first', async () => {
@@ -110,7 +143,7 @@ describe('LibraryPageComponent', () => {
   });
 
   it('exposes filters as pressed-state chips and filters the list', async () => {
-    repository.readings = [reading('a', 'imported', 1_000), reading('b', 'generated', 2_000)];
+    repository.readings = shelf();
     const fixture = await render();
 
     const chips = [...element(fixture).querySelectorAll<HTMLButtonElement>('.chip')];
@@ -123,8 +156,7 @@ describe('LibraryPageComponent', () => {
     chips[1].click();
     await settle(fixture);
 
-    expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(1);
-    expect(element(fixture).textContent).toContain('Reading a');
+    expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(4);
     expect(
       [...element(fixture).querySelectorAll('.chip')].map((chip) =>
         chip.getAttribute('aria-pressed'),
@@ -133,7 +165,7 @@ describe('LibraryPageComponent', () => {
   });
 
   it('announces the filtered result in a polite live region', async () => {
-    repository.readings = [reading('a', 'imported', 1_000)];
+    repository.readings = shelf();
     const fixture = await render();
 
     element(fixture).querySelectorAll<HTMLButtonElement>('.chip')[1].click();
@@ -141,7 +173,7 @@ describe('LibraryPageComponent', () => {
 
     const live = element(fixture).querySelector('[aria-live="polite"]');
     expect(live?.getAttribute('role')).toBe('status');
-    expect(live?.textContent).toContain('1 readings shown');
+    expect(live?.textContent).toContain('4 readings shown');
   });
 
   it('asks for confirmation before deleting and states what survives', async () => {

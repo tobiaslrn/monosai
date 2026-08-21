@@ -5,6 +5,7 @@ import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-
 import { canRefreshMappings } from '../../domain/anki/mapping-validation';
 import { technicalCode } from '../../domain/shared/errors';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
+import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { copyForFailure } from './anki-error-copy';
 import { MappingEditorComponent } from './mapping-editor.component';
 import { ProviderSelectionComponent } from './provider-selection.component';
@@ -20,6 +21,7 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
   providers: [VocabularyRefreshStore],
   imports: [
     ErrorScreenComponent,
+    PageHeaderComponent,
     MappingEditorComponent,
     ProviderSelectionComponent,
     RefreshStepperComponent,
@@ -28,13 +30,12 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
   ],
   template: `
     <div class="mn-page">
-      <header>
-        <h1>Vocabulary</h1>
-        <p class="mn-hint">
-          Monosai reads the words you have already reviewed in Anki so it can mark what is familiar
-          while you read. It only ever reads, and never changes your collection.
-        </p>
-      </header>
+      <mn-page-header heading="Vocabulary" backTo="/settings" backLabel="Back to settings" />
+
+      <p class="mn-hint">
+        Monosai reads the words you have already reviewed in Anki so it can mark what is familiar
+        while you read. It only ever reads, and never changes your collection.
+      </p>
 
       <p
         class="mn-visually-hidden"

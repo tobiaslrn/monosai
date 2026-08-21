@@ -1,17 +1,20 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { CLOCK } from '../../application/shared/repository-tokens';
 import type { Reading } from '../../domain/reading/reading';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import {
-  completionLabel,
-  grammarLabel,
-} from '../../shared-ui/reading-summary/reading-summary-labels';
+import { relativeDay } from '../../shared-ui/reading-summary/reading-summary-labels';
 
 /**
  * One library card.
  *
- * Everything shown comes from the denormalized `readings` row, so rendering a
- * page of cards never loads sentences, token analyses, or audio blobs.
+ * It shows the reading rather than a report on it: the title, the opening in
+ * Japanese, and one quiet line saying when it arrived. Everything comes from the
+ * denormalized `readings` row, so a shelf of cards is still one bounded query.
+ *
+ * The excerpt is a preview and nothing more — no furigana, no tap targets, no
+ * markers. Those belong to the reader, and putting them here would make a card
+ * look like something you could read from.
  */
 @Component({
   selector: 'mn-reading-card',
@@ -44,23 +47,17 @@ import {
         </div>
       </div>
 
-      <p class="meta">
-        <span class="badge" [class.is-generated]="reading().kind === 'generated'">{{
-          reading().kind === 'generated' ? 'Generated' : 'Imported'
-        }}</span>
-        <span>{{ createdLabel() }}</span>
-      </p>
-
-      <ul class="status">
-        <li>{{ reading().sentenceCount.toLocaleString('en') }} sentences</li>
-        <li>{{ translationLabel() }}</li>
-        <li>{{ grammarLine() }}</li>
-        <li>{{ audioLabel() }}</li>
-      </ul>
-
-      @if (reading().lastOpenedAt !== null) {
-        <p class="opened">Last opened {{ openedLabel() }}</p>
+      @if (reading().excerpt) {
+        <p class="excerpt" lang="ja" aria-hidden="true">{{ reading().excerpt }}</p>
       }
+
+      <p class="meta">
+        <span>{{ addedLabel() }}</span>
+        @if (hasAudio()) {
+          <mn-icon name="audio" [size]="16" />
+          <span class="mn-visually-hidden">Has audio</span>
+        }
+      </p>
     </article>
   `,
   styles: `
@@ -94,6 +91,23 @@ import {
 
     h3 a:hover {
       text-decoration: underline;
+    }
+
+    /*
+     * Clamped rather than truncated at a character count: three lines of the
+     * card's own width is what makes a shelf of cards the same height, whatever
+     * the glyphs are.
+     */
+    .excerpt {
+      display: -webkit-box;
+      flex: 1;
+      margin: 0;
+      overflow: hidden;
+      color: var(--text-secondary);
+      font-family: var(--font-japanese);
+      line-height: 1.7;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
     }
 
     .menu-anchor {
@@ -156,37 +170,8 @@ import {
 
     .meta {
       display: flex;
-      flex-wrap: wrap;
       gap: var(--space-2);
       align-items: center;
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .badge {
-      padding: 2px var(--space-2);
-      border-radius: var(--radius-pill);
-      background: var(--action-primary-soft);
-      color: var(--text-primary);
-    }
-
-    .badge.is-generated {
-      background: var(--accent-secondary-soft);
-    }
-
-    .status {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3);
-      margin: 0;
-      padding: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      list-style: none;
-    }
-
-    .opened {
       margin: 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);
@@ -197,27 +182,16 @@ export class ReadingCardComponent {
   readonly reading = input.required<Reading>();
   readonly deleteRequested = output<Reading>();
 
+  private readonly clock = inject(CLOCK);
+
   private readonly menuOpenSignal = signal(false);
   protected readonly menuOpen = this.menuOpenSignal.asReadonly();
 
-  protected readonly createdLabel = computed(() =>
-    new Date(this.reading().createdAt).toLocaleString(),
+  protected readonly addedLabel = computed(() =>
+    relativeDay(this.reading().createdAt, this.clock.now()),
   );
 
-  protected readonly openedLabel = computed(() => {
-    const openedAt = this.reading().lastOpenedAt;
-    return openedAt === null ? '' : new Date(openedAt).toLocaleDateString();
-  });
-
-  protected readonly translationLabel = computed(() =>
-    completionLabel('Translations', this.reading().translationSummary),
-  );
-
-  protected readonly grammarLine = computed(() => grammarLabel(this.reading().grammarSummary));
-
-  protected readonly audioLabel = computed(() =>
-    completionLabel('Audio', this.reading().audioSummary),
-  );
+  protected readonly hasAudio = computed(() => this.reading().audioSummary.completed > 0);
 
   protected toggleMenu(): void {
     this.menuOpenSignal.update((open) => !open);
