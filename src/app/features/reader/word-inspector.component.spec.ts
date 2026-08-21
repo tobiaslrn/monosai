@@ -7,6 +7,7 @@ import { LANGUAGE_RUNTIME } from '../../application/shared/language-tokens';
 import type { GrammarFinding } from '../../domain/enrichment/records';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { Token } from '../../domain/reading/token';
+import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import { ok } from '../../domain/shared/result';
 import { paragraphId, readingId, sentenceId } from '../../domain/shared/ids';
 import {
@@ -91,11 +92,15 @@ describe('WordInspectorComponent', () => {
     });
   });
 
-  async function render(grammar: WordGrammarState = NO_WORD_GRAMMAR, token: Token = TOKEN) {
+  async function render(
+    grammar: WordGrammarState = NO_WORD_GRAMMAR,
+    token: Token = TOKEN,
+    status: TokenStatusAssignment | null = null,
+  ) {
     await TestBed.inject(WordInspectorStore).inspect({
       token,
       sentence: SENTENCE,
-      status: null,
+      status,
     });
     const fixture = TestBed.createComponent(HostComponent);
     fixture.componentInstance.grammar.set(grammar);
@@ -125,10 +130,16 @@ describe('WordInspectorComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  it('distinguishes an analyzed sentence with nothing to report', async () => {
+  /**
+   * A heading over a line saying nothing happened is not information: an
+   * analyzed sentence with nothing to report about this word gets no grammar
+   * section at all, same as an unanalyzed one.
+   */
+  it('shows no grammar section for an analyzed sentence with nothing to report', async () => {
     const element = (await render(grammarWith({ analyzed: true }))).nativeElement as HTMLElement;
 
-    expect(element.textContent).toContain('Nothing here is outside your grammar profile.');
+    expect(element.querySelector('.grammar-section')).toBeNull();
+    expect(element.textContent).not.toContain('Nothing here is outside your grammar profile.');
   });
 
   it('spends nothing: every action lives on the sentence', async () => {
@@ -195,6 +206,35 @@ describe('WordInspectorComponent', () => {
     const element = (await render()).nativeElement as HTMLElement;
 
     expect(element.textContent).not.toContain('Connect Anki');
+  });
+
+  /**
+   * The reader marks warnings and nothing else: a word already reviewed is
+   * simply readable, and saying so in the inspector is the same clutter as
+   * saying it on the page.
+   */
+  it('shows no status section for a word that needs no warning', async () => {
+    const element = (
+      await render(NO_WORD_GRAMMAR, TOKEN, {
+        tokenId: TOKEN.id,
+        validation: { category: 'anki-exact', vocabularyItemIds: [] },
+      })
+    ).nativeElement as HTMLElement;
+
+    expect(element.querySelector('.status')).toBeNull();
+    expect(element.textContent).not.toContain('Known from Anki');
+  });
+
+  it('shows the status section for a word that needs a warning', async () => {
+    const element = (
+      await render(NO_WORD_GRAMMAR, TOKEN, {
+        tokenId: TOKEN.id,
+        validation: { category: 'unknown', reason: 'not-in-vocabulary' },
+      })
+    ).nativeElement as HTMLElement;
+
+    expect(element.querySelector('.status')?.textContent).toContain('Unknown vocabulary');
+    expect(element.textContent).toContain('Review this word in Anki');
   });
 
   describe('the dictionary form', () => {
