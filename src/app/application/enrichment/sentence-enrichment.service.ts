@@ -2,7 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
-import type { GrammarAnalysisRecord, TranslationRecord } from '../../domain/enrichment/records';
+import type {
+  AudioAssetSummary,
+  GrammarAnalysisRecord,
+  TranslationRecord,
+} from '../../domain/enrichment/records';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { ReadingId, SentenceId } from '../../domain/shared/ids';
 import { err, ok, type Result } from '../../domain/shared/result';
@@ -11,6 +15,8 @@ import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { LanguageStore } from '../language/language.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { READING_REPOSITORY } from '../shared/repository-tokens';
+import { AudioConfigurationService } from './audio-configuration.service';
+import { AudioSynthesisService } from './audio-synthesis.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { GrammarAnalysisService } from './grammar-analysis.service';
 import { TranslationService } from './translation.service';
@@ -47,6 +53,8 @@ export class SentenceEnrichmentService {
   private readonly readings = inject(READING_REPOSITORY);
   private readonly translation = inject(TranslationService);
   private readonly grammar = inject(GrammarAnalysisService);
+  private readonly audio = inject(AudioSynthesisService);
+  private readonly audioConfig = inject(AudioConfigurationService);
   private readonly keys = inject(EnrichmentKeysService);
   private readonly textModel = inject(TextModelStore);
   private readonly profile = inject(GrammarProfileStore);
@@ -70,6 +78,28 @@ export class SentenceEnrichmentService {
           this.textModel.settings().modelId,
           PROMPT_VERSIONS.grammar,
           this.profile.liveProfileHash() ?? '',
+        )
+        .get(sentence.id) ?? ''
+    );
+  }
+
+  /**
+   * The cache key a clip of this sentence would be stored under now, or the
+   * empty string when no tested configuration exists — which is never a stored
+   * key, so an unconfigured reader simply never matches one.
+   */
+  audioKeyFor(sentence: Sentence): string {
+    const config = this.audioConfig.resolve('tts-synthesis');
+    if (!config.ok) {
+      return '';
+    }
+    return (
+      this.keys
+        .audioKeys(
+          [sentence],
+          config.value.modelId,
+          config.value.voiceId,
+          config.value.optionsFingerprint,
         )
         .get(sentence.id) ?? ''
     );
@@ -172,6 +202,57 @@ export class SentenceEnrichmentService {
     }
 
     const stored = await this.grammar.store(record, context.value.cacheKeys);
+    return stored.ok ? ok(stored.value) : err({ source: 'storage', error: stored.error });
+  }
+
+  /**
+   * Reads one sentence aloud, because the learner asked for it.
+   *
+   * Resolves model, voice, and speed from `TtsStore` rather than
+   * `TextModelStore`: speech is configured and tested separately, and a working
+   * text model says nothing about whether a voice exists.
+   */
+  async synthesizeAudio(
+    sentence: Sentence,
+    readingId: ReadingId,
+    signal: AbortSignal,
+  ): Promise<EnrichmentResult<AudioAssetSummary>> {
+    const config = this.audioConfig.resolve('tts-synthesis');
+    if (!config.ok) {
+      return err({ source: 'provider', error: config.error });
+    }
+
+    const refs = await this.readings.listSentenceRefs(readingId);
+    if (!refs.ok) {
+      return err({ source: 'storage', error: refs.error });
+    }
+    // Keys for the whole reading: the write refreshes its summary in the same
+    // transaction, and a summary computed from one sentence would be a lie.
+    const cacheKeys = this.keys.audioKeys(
+      refs.value,
+      config.value.modelId,
+      config.value.voiceId,
+      config.value.optionsFingerprint,
+    );
+    const cacheKey = cacheKeys.get(sentence.id);
+    if (cacheKey === undefined) {
+      return err({
+        source: 'provider',
+        error: aiError(
+          'capability-unsupported',
+          'tts-synthesis',
+          'This sentence is no longer part of the reading.',
+          { detail: { capability: 'text-to-speech' } },
+        ),
+      });
+    }
+
+    const produced = await this.audio.run(sentence, readingId, cacheKey, config.value, signal);
+    if (!produced.ok) {
+      return err({ source: 'provider', error: produced.error });
+    }
+
+    const stored = await this.audio.store(produced.value, cacheKeys);
     return stored.ok ? ok(stored.value) : err({ source: 'storage', error: stored.error });
   }
 

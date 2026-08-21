@@ -1,7 +1,11 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import { concernCount } from '../../domain/enrichment/grammar-normalization';
-import type { GrammarAnalysisRecord, TranslationRecord } from '../../domain/enrichment/records';
+import type {
+  AudioAssetSummary,
+  GrammarAnalysisRecord,
+  TranslationRecord,
+} from '../../domain/enrichment/records';
 import { chooseAnalysis } from '../../domain/enrichment/staleness';
 import type { Reading } from '../../domain/reading/reading';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
@@ -10,6 +14,7 @@ import type { StorageError } from '../../domain/storage/storage-error';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { ENRICHMENT_REPOSITORY } from '../shared/repository-tokens';
+import { AudioConfigurationService } from './audio-configuration.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { SentenceEnrichmentService, type EnrichmentFailure } from './sentence-enrichment.service';
 
@@ -34,36 +39,53 @@ export const IDLE_ACTION: AidAction = { state: 'idle', error: null };
 export interface SentenceAids {
   readonly translation: TranslationRecord | null;
   readonly grammar: GrammarAnalysisRecord | null;
+  /**
+   * The stored clip for the current TTS configuration, or null.
+   *
+   * Only a clip under the current cache key appears here: an older voice's clip
+   * is valid historical output, but offering to play it would be offering a
+   * voice the learner is no longer configured for.
+   */
+  readonly audio: AudioAssetSummary | null;
   /** True only for an imported analysis judged against an older profile. */
   readonly grammarStale: boolean;
   /** Findings outside the profile — what the grammar marker actually marks. */
   readonly concernCount: number;
   readonly translationAction: AidAction;
   readonly grammarAction: AidAction;
+  readonly audioAction: AidAction;
 }
 
 export const NO_AIDS: SentenceAids = {
   translation: null,
   grammar: null,
+  audio: null,
   grammarStale: false,
   concernCount: 0,
   translationAction: IDLE_ACTION,
   grammarAction: IDLE_ACTION,
+  audioAction: IDLE_ACTION,
 };
 
 /** What one local read found for a sentence, before preferences are applied. */
 interface StoredAids {
   readonly translation: TranslationRecord | null;
   readonly grammar: GrammarAnalysisRecord | null;
+  readonly audio: AudioAssetSummary | null;
   readonly grammarStale: boolean;
 }
 
 interface SentenceActions {
   readonly translation: AidAction;
   readonly grammar: AidAction;
+  readonly audio: AidAction;
 }
 
-const NO_ACTIONS: SentenceActions = { translation: IDLE_ACTION, grammar: IDLE_ACTION };
+const NO_ACTIONS: SentenceActions = {
+  translation: IDLE_ACTION,
+  grammar: IDLE_ACTION,
+  audio: IDLE_ACTION,
+};
 
 /**
  * The translations and grammar findings for the sentences currently mounted.
@@ -72,10 +94,10 @@ const NO_ACTIONS: SentenceActions = { translation: IDLE_ACTION, grammar: IDLE_AC
  * drops the state and aborts anything in flight instead of keeping one
  * reading's aids alive behind another's.
  *
- * `load` is **local only**: it reads the two bounded per-sentence queries and
- * nothing else. Opening a reading, scrolling it, and toggling an aid therefore
- * make zero network requests — a missing aid is fetched only by an explicit
- * action.
+ * `load` is **local only**: it reads the three bounded per-sentence queries and
+ * nothing else, and the audio one reads metadata rather than blobs. Opening a
+ * reading, scrolling it, and toggling an aid therefore make zero network
+ * requests — a missing aid is fetched only by an explicit action.
  */
 @Injectable()
 export class SentenceAidsStore {
@@ -84,6 +106,7 @@ export class SentenceAidsStore {
   private readonly keys = inject(EnrichmentKeysService);
   private readonly textModel = inject(TextModelStore);
   private readonly grammarProfile = inject(GrammarProfileStore);
+  private readonly audioConfig = inject(AudioConfigurationService);
 
   private readonly readingSignal = signal<Reading | null>(null);
   private readonly sentencesSignal = signal<readonly Sentence[]>([]);
@@ -104,12 +127,13 @@ export class SentenceAidsStore {
 
   constructor() {
     effect(() => {
-      // Cache keys and staleness are derived from the text model and the live
-      // grammar profile, both of which load after the reader opens. Re-deriving
-      // when they arrive is a repeat of the same two local reads — it can no
-      // more reach a provider than the first pass could.
+      // Cache keys and staleness are derived from the text model, the live
+      // grammar profile, and the TTS configuration, all of which load after the
+      // reader opens. Re-deriving when they arrive is a repeat of the same three
+      // local reads — it can no more reach a provider than the first pass could.
       this.textModel.settings();
       this.grammarProfile.liveProfileHash();
+      this.audioConfig.resolve('tts-synthesis');
       const reading = this.readingSignal();
       const sentences = this.sentencesSignal();
       if (reading !== null && sentences.length > 0) {
@@ -134,10 +158,12 @@ export class SentenceAidsStore {
       merged.set(sentence.id, {
         translation: found?.translation ?? null,
         grammar,
+        audio: found?.audio ?? null,
         grammarStale: found?.grammarStale ?? false,
         concernCount: grammar === null ? 0 : concernCount(grammar.findings),
         translationAction: action.translation,
         grammarAction: action.grammar,
+        audioAction: action.audio,
       });
     }
     return merged;
@@ -158,9 +184,14 @@ export class SentenceAidsStore {
     }
 
     const sentenceIds = sentences.map((sentence) => sentence.id);
-    const [translations, analyses] = await Promise.all([
+    // Audio is asked for by key rather than by sentence, because the audio
+    // table is keyed by `cacheKey`: two sentences with identical Japanese share
+    // one clip, and asking by sentence would report one of them as having none.
+    const audioKeys = [...new Set(this.audioKeys(sentences).values())];
+    const [translations, analyses, clips] = await Promise.all([
       this.enrichment.listTranslationsForSentences(sentenceIds),
       this.enrichment.listGrammarAnalysesForSentences(sentenceIds),
+      this.enrichment.listAudioSummariesForCacheKeys(audioKeys),
     ]);
     if (!translations.ok) {
       this.errorSignal.set(translations.error);
@@ -170,9 +201,15 @@ export class SentenceAidsStore {
       this.errorSignal.set(analyses.error);
       return;
     }
+    if (!clips.ok) {
+      this.errorSignal.set(clips.error);
+      return;
+    }
 
     this.errorSignal.set(null);
-    this.storedSignal.set(this.assemble(reading, sentences, translations.value, analyses.value));
+    this.storedSignal.set(
+      this.assemble(reading, sentences, translations.value, analyses.value, clips.value),
+    );
   }
 
   /**
@@ -252,6 +289,38 @@ export class SentenceAidsStore {
   }
 
   /**
+   * Reads one sentence aloud, because the learner asked for it.
+   *
+   * A sentence whose stored clip already matches the current configuration
+   * returns immediately: no request, no write, no state change. Producing a
+   * clip never starts it — playing is a separate, equally explicit action.
+   */
+  async synthesizeSentence(sentenceId: SentenceId): Promise<void> {
+    const target = this.actionable(sentenceId, 'audio');
+    if (target === null) {
+      return;
+    }
+    const stored = this.storedSignal().get(sentenceId);
+    const audio = stored?.audio ?? null;
+    if (audio !== null && audio.cacheKey === this.sentenceEnrichment.audioKeyFor(target.sentence)) {
+      return;
+    }
+
+    this.setAction(sentenceId, 'audio', { state: 'running', error: null });
+    const result = await this.sentenceEnrichment.synthesizeAudio(
+      target.sentence,
+      target.reading.id,
+      this.controller.signal,
+    );
+    if (!result.ok) {
+      this.setAction(sentenceId, 'audio', { state: 'failed', error: result.error });
+      return;
+    }
+    this.replaceStored(sentenceId, { ...emptyStored(stored), audio: result.value });
+    this.setAction(sentenceId, 'audio', IDLE_ACTION);
+  }
+
+  /**
    * The reading and sentence an action applies to, or null when the sentence
    * is no longer mounted or the same action is already running for it.
    */
@@ -285,6 +354,24 @@ export class SentenceAidsStore {
     );
   }
 
+  /**
+   * The keys the current voice would use, or an empty map when no tested
+   * configuration exists — so an unconfigured reader matches no stored clip
+   * rather than offering to play one produced by a voice that is gone.
+   */
+  private audioKeys(sentences: readonly Sentence[]): ReadonlyMap<SentenceId, string> {
+    const config = this.audioConfig.resolve('tts-synthesis');
+    if (!config.ok) {
+      return new Map();
+    }
+    return this.keys.audioKeys(
+      sentences,
+      config.value.modelId,
+      config.value.voiceId,
+      config.value.optionsFingerprint,
+    );
+  }
+
   private grammarKeys(sentences: readonly Sentence[]): ReadonlyMap<SentenceId, string> {
     return this.keys.grammarKeys(
       sentences,
@@ -299,13 +386,16 @@ export class SentenceAidsStore {
     sentences: readonly Sentence[],
     translations: readonly TranslationRecord[],
     analyses: readonly GrammarAnalysisRecord[],
+    clips: readonly AudioAssetSummary[],
   ): ReadonlyMap<SentenceId, StoredAids> {
     const translationKeys = this.translationKeys(sentences);
     const grammarKeys = this.grammarKeys(sentences);
+    const audioKeys = this.audioKeys(sentences);
     const liveProfileHash = this.grammarProfile.liveProfileHash();
 
     const translationsBySentence = groupBySentence(translations);
     const analysesBySentence = groupBySentence(analyses);
+    const clipsByCacheKey = new Map(clips.map((clip) => [clip.cacheKey, clip]));
 
     const stored = new Map<SentenceId, StoredAids>();
     for (const sentence of sentences) {
@@ -317,9 +407,13 @@ export class SentenceAidsStore {
         analysesBySentence.get(sentence.id) ?? [],
         grammarKeys.get(sentence.id) ?? '',
       );
+      const currentAudioKey = audioKeys.get(sentence.id);
+      const audio =
+        currentAudioKey === undefined ? null : (clipsByCacheKey.get(currentAudioKey) ?? null);
       stored.set(sentence.id, {
         translation: translation?.record ?? null,
         grammar: grammar?.record ?? null,
+        audio,
         grammarStale:
           grammar !== null && isStaleAgainstProfile(reading, grammar.record, liveProfileHash),
       });
@@ -349,7 +443,7 @@ function isStaleAgainstProfile(
 }
 
 function emptyStored(stored: StoredAids | undefined): StoredAids {
-  return stored ?? { translation: null, grammar: null, grammarStale: false };
+  return stored ?? { translation: null, grammar: null, audio: null, grammarStale: false };
 }
 
 function groupBySentence<T extends { readonly sentenceId: SentenceId }>(

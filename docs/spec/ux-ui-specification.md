@@ -237,8 +237,11 @@ there is no other surface it could be read on.
 
 ### Whole-reading actions
 
-- The overflow menu holds **Translate _n_ sentences** (the whole-reading job, named with the count it would send) and **Delete reading**.
+- The overflow menu holds **Translate _n_ sentences** (the whole-reading job, named with the count it would send), **Prepare audio for _n_ sentences** (the same, for speech), **Play reading**, and **Delete reading**.
+- **Play reading** appears only when every sentence has a clip under the current voice. A reading whose set is incomplete has no whole-reading play entry, because a player that stopped in the middle of a reading would be worse than no player (ADR 0024).
 - A running job appears as a hairline progress row under the header with a stop, a retry for what is left, and a dismissal. It takes none of the page at rest, and no permanent status strip exists.
+- Per-sentence audio is generated and played from the sentence popover, alongside Translate and Analyze. No play control is printed on the reading surface itself, so pressing a sentence still costs nothing.
+- Audio never autoplays. Preparing a clip never plays it; playing is always a second, explicit action.
 - Generated stories are reviewed once against the profile captured with them and are never re-analyzed.
 
 ## 7. Generate

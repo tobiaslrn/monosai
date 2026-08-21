@@ -2,6 +2,8 @@ import type { AudioDecoder } from '../app/infrastructure/openrouter/audio-decode
 import { OpenRouterEnricher } from '../app/infrastructure/openrouter/enrichment.adapter';
 import { OpenRouterClient } from '../app/infrastructure/openrouter/openrouter-client';
 import { OpenRouterTextProvider } from '../app/infrastructure/openrouter/openrouter-text-provider';
+import { OpenRouterTextToSpeechProvider } from '../app/infrastructure/openrouter/openrouter-tts.provider';
+import { OpenRouterTtsSynthesizer } from '../app/infrastructure/openrouter/tts-synthesis.adapter';
 import { OpenRouterStoryGenerator } from '../app/infrastructure/openrouter/story-generation.adapter';
 import { OpenRouterTextModelTester } from '../app/infrastructure/openrouter/text-model-test.adapter';
 import { OpenRouterTtsTester } from '../app/infrastructure/openrouter/tts-test.adapter';
@@ -20,7 +22,11 @@ import type {
   TextGenerationProvider,
   TextTaskConfig,
 } from '../app/domain/ai/text-generation-provider';
-import type { TextToSpeechProvider } from '../app/domain/ai/text-to-speech-provider';
+import type {
+  AudioPayload,
+  TextToSpeechProvider,
+  TtsRequest,
+} from '../app/domain/ai/text-to-speech-provider';
 import type {
   TranslationBatchRequest,
   TranslationResult,
@@ -120,7 +126,7 @@ export interface OpenRouterHarness {
   readonly server: FakeOpenRouterServer;
   readonly client: OpenRouterClient;
   readonly text: OpenRouterTextProvider;
-  readonly tts: OpenRouterTtsTester;
+  readonly tts: OpenRouterTextToSpeechProvider;
   /** Every backoff wait the client performed, in order. */
   readonly sleeps: number[];
 }
@@ -163,7 +169,12 @@ export function openRouterHarness(options: HarnessOptions = {}): OpenRouterHarne
       () => Promise.resolve(new OpenRouterStoryGenerator(client)),
       () => Promise.resolve(new OpenRouterEnricher(client)),
     ),
-    tts: new OpenRouterTtsTester(client, fakeAudioDecoder(options.decodable ?? true)),
+    tts: (() => {
+      const decoder = fakeAudioDecoder(options.decodable ?? true);
+      return new OpenRouterTextToSpeechProvider(new OpenRouterTtsTester(client, decoder), () =>
+        Promise.resolve(new OpenRouterTtsSynthesizer(client, decoder)),
+      );
+    })(),
   };
 }
 
@@ -303,6 +314,18 @@ export class StubTextProvider implements TextGenerationProvider {
 export class StubTtsProvider implements TextToSpeechProvider {
   calls = 0;
 
+  /** Every synthesis request that reached the provider, in order. */
+  readonly synthesized: TtsRequest[] = [];
+
+  /**
+   * Answers synthesis directly rather than from a queue.
+   *
+   * How many clips a whole-reading job asks for is the thing under test, so a
+   * queue primed with a fixed number of answers would decide the expected count
+   * in advance. The default answers every request with a small valid clip.
+   */
+  synthesizeWith: (request: TtsRequest) => Result<AudioPayload, AiError> = () => ok(audioPayload());
+
   constructor(private outcome: Result<TtsTest, AiError>) {}
 
   set result(outcome: Result<TtsTest, AiError>) {
@@ -315,6 +338,21 @@ export class StubTtsProvider implements TextToSpeechProvider {
     void signal;
     return Promise.resolve(this.outcome);
   }
+
+  synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
+    this.synthesized.push(input);
+    if (signal.aborted) {
+      return Promise.resolve(
+        err(aiError('cancelled', 'tts-synthesis', 'The request was cancelled.')),
+      );
+    }
+    return Promise.resolve(this.synthesizeWith(input));
+  }
+}
+
+/** A small clip that stands in for a real MP3 in application-layer tests. */
+export function audioPayload(byteLength = 512, speedApplied = true): AudioPayload {
+  return { bytes: new ArrayBuffer(byteLength), mimeType: 'audio/mpeg', speedApplied };
 }
 
 /**

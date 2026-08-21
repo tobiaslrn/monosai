@@ -1,5 +1,9 @@
 import { Injectable, inject } from '@angular/core';
-import { grammarCacheKey, translationCacheKey } from '../../domain/enrichment/cache-keys';
+import {
+  audioCacheKey,
+  grammarCacheKey,
+  translationCacheKey,
+} from '../../domain/enrichment/cache-keys';
 import type { SentenceId } from '../../domain/shared/ids';
 import { HASHER } from '../shared/repository-tokens';
 
@@ -10,8 +14,8 @@ export interface KeyableSentence {
 }
 
 /**
- * Computes the per-sentence cache keys grammar review and translation key
- * their cached results on.
+ * Computes the per-sentence cache keys grammar review, translation, and audio
+ * key their cached results on.
  *
  * A sentence's cache key needs its real content hash, which only exists once
  * `StoryAssemblyService.build` has produced the draft — so this service is
@@ -48,6 +52,25 @@ export class EnrichmentKeysService {
       sentences.map((sentence) => [
         sentence.id,
         grammarCacheKey(this.hasher, sentence.contentHash, profileHash, modelId, promptVersion),
+      ]),
+    );
+  }
+
+  /**
+   * There is no prompt version here: a clip is what a voice did with a sentence,
+   * not what a prompt asked a model to say about it. Everything that changes the
+   * audio is in `optionsFingerprint` instead.
+   */
+  audioKeys(
+    sentences: readonly KeyableSentence[],
+    modelId: string,
+    voiceId: string,
+    optionsFingerprint: string,
+  ): ReadonlyMap<SentenceId, string> {
+    return new Map(
+      sentences.map((sentence) => [
+        sentence.id,
+        audioCacheKey(this.hasher, sentence.contentHash, modelId, voiceId, optionsFingerprint),
       ]),
     );
   }

@@ -13,6 +13,8 @@ import {
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { Router, RouterLink } from '@angular/router';
+import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
+import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
@@ -22,7 +24,9 @@ import { CredentialStore } from '../../application/settings/credential.store';
 import { LanguageStore } from '../../application/language/language.store';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
+import { TtsStore } from '../../application/settings/tts.store';
 import { LibraryStore } from '../../application/reading/library.store';
+import { ViewportService } from '../../core/platform/viewport.service';
 import { describeDeletion } from '../../domain/reading/deletion-plan';
 import { findingsCoveringToken, sentenceWideFindings } from '../../domain/enrichment/finding-spans';
 import { readingId, type SentenceId } from '../../domain/shared/ids';
@@ -32,6 +36,7 @@ import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PopoverService, type PopoverRef } from '../../shared-ui/popover/popover.service';
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
+import { AudioProgressComponent } from './audio-progress.component';
 import { ReaderAidsComponent } from './reader-aids.component';
 import { ReaderMenuComponent } from './reader-menu.component';
 import { ReaderParagraphComponent } from './reader-paragraph.component';
@@ -39,6 +44,7 @@ import type { SentenceSelection } from './paragraph-gestures.directive';
 import type { SelectedWord, TokenActivation } from './reader-sentence.component';
 import type { UnknownWord } from './sentence-popover.component';
 import { SentencePopoverComponent } from './sentence-popover.component';
+import { ReadingPlayerComponent } from './reading-player.component';
 import { TranslationProgressComponent } from './translation-progress.component';
 import {
   NO_WORD_GRAMMAR,
@@ -49,6 +55,14 @@ import { WordPreviewComponent } from './word-preview.component';
 
 /** How long a pointer must rest on a word before its preview appears. */
 const PREVIEW_DELAY_MS = 250;
+
+/**
+ * How long a smooth scroll is allowed to keep emitting events before a scroll
+ * counts as the learner's again. Generous, because a smooth scroll's duration
+ * is the browser's to choose and treating our own scroll as theirs would turn
+ * following off after the very first advance.
+ */
+const SCROLL_SETTLE_MS = 1000;
 
 /**
  * The reader.
@@ -68,10 +82,12 @@ const PREVIEW_DELAY_MS = 250;
   imports: [
     RouterLink,
     IconComponent,
+    AudioProgressComponent,
     ReaderAidsComponent,
     ReaderMenuComponent,
     ReaderParagraphComponent,
     ReaderPopoverComponent,
+    ReadingPlayerComponent,
     SentencePopoverComponent,
     TranslationProgressComponent,
     WordInspectorComponent,
@@ -92,8 +108,13 @@ const PREVIEW_DELAY_MS = 250;
               <mn-reader-menu
                 [reading]="reading"
                 [isRunning]="translationJob.isRunning()"
+                [audioRunning]="audioJob.isRunning()"
+                [canPlayAudio]="playback.canPlayWholeReading()"
                 (translateAll)="startWholeReadingTranslation()"
                 (cancelled)="translationJob.cancel()"
+                (prepareAudio)="startWholeReadingAudio()"
+                (cancelAudio)="audioJob.cancel()"
+                (playReading)="playWholeReading()"
                 (deleteRequested)="confirmDelete()"
               />
             }
@@ -110,9 +131,25 @@ const PREVIEW_DELAY_MS = 250;
           (retried)="retryWholeReadingTranslation()"
           (dismissed)="translationJob.acknowledge()"
         />
+
+        <mn-audio-progress
+          [progress]="audioJob.progress()"
+          (cancelled)="audioJob.cancel()"
+          (retried)="retryWholeReadingAudio()"
+          (dismissed)="audioJob.acknowledge()"
+        />
+
+        <!--
+          Below the desktop breakpoint the player is part of the header rather
+          than a footer, which would otherwise sit on top of the reading it is
+          playing on a phone.
+        -->
+        @if (!viewport.isDesktop()) {
+          <mn-reading-player [compact]="true" [selectedSentenceId]="selectedSentenceId()" />
+        }
       </header>
 
-      <main class="content" #content>
+      <main class="content" [class.has-player]="showsDock()" #content>
         @switch (store.status()) {
           @case ('loading') {
             <p class="mn-hint" role="status">Opening…</p>
@@ -159,6 +196,7 @@ const PREVIEW_DELAY_MS = 250;
                   [tokenSpacing]="preferences().tokenSpacing"
                   [markers]="preferences().warningMarkers"
                   [selectedSentenceId]="selectedSentenceId()"
+                  [playingSentenceId]="playback.currentSentenceId()"
                   [selectedWord]="selectedWord()"
                   (activated)="inspect($event)"
                   (previewed)="previewWord($event)"
@@ -176,6 +214,17 @@ const PREVIEW_DELAY_MS = 250;
             }
           }
         }
+        <!--
+          Fixed to the viewport and anchored to the reading column, rather than
+          sticky. A sticky element is clamped to its containing block, and a
+          footer is by definition the last thing in its own — so it had no room
+          to lift and simply sat at the end of the document.
+        -->
+        @if (showsDock()) {
+          <footer class="player-dock">
+            <mn-reading-player [selectedSentenceId]="selectedSentenceId()" />
+          </footer>
+        }
       </main>
     </div>
 
@@ -187,6 +236,8 @@ const PREVIEW_DELAY_MS = 250;
           [unknownWords]="selectedUnknownWords()"
           (translate)="translateSelectedSentence()"
           (analyzeGrammar)="analyzeSelectedSentence()"
+          (generateAudio)="synthesizeSelectedSentence()"
+          (playAudio)="playSelectedSentence()"
         />
       </mn-reader-popover>
     </ng-template>
@@ -301,6 +352,16 @@ const PREVIEW_DELAY_MS = 250;
       z-index: 0;
       grid-area: content;
       min-width: 0;
+      /* What the docked player is pinned to horizontally. */
+      anchor-name: --mn-reader-content;
+    }
+
+    /*
+     * Room for the dock, so the last line of a reading is never permanently
+     * covered by it. Only reserved while the dock is actually there.
+     */
+    .content.has-player {
+      padding-bottom: calc(var(--touch-target) + var(--space-6));
     }
 
     /* Room for the ruby above the first line of the reading. */
@@ -322,6 +383,22 @@ const PREVIEW_DELAY_MS = 250;
     .sentinel {
       height: 1px;
     }
+
+    /*
+     * Pinned to the bottom of the viewport and to the width of the reading
+     * column, using the same CSS anchor positioning the overflow menu uses. A
+     * fixed box resolves against the viewport, which on desktop includes the
+     * sidebar, and the sidebar's width is a minmax the reader does not know —
+     * so the column anchors it rather than a hard-coded offset.
+     */
+    .player-dock {
+      position: fixed;
+      position-anchor: --mn-reader-content;
+      right: anchor(right);
+      bottom: var(--space-4);
+      left: anchor(left);
+      z-index: 4;
+    }
   `,
 })
 export class ReaderPageComponent {
@@ -331,11 +408,15 @@ export class ReaderPageComponent {
   protected readonly store = inject(ReaderStore);
   protected readonly aids = inject(SentenceAidsStore);
   protected readonly translationJob = inject(TranslationJobStore);
+  protected readonly audioJob = inject(AudioJobStore);
+  protected readonly playback = inject(AudioPlaybackStore);
+  protected readonly viewport = inject(ViewportService);
   protected readonly inspector = inject(WordInspectorStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly library = inject(LibraryStore);
   private readonly credential = inject(CredentialStore);
   private readonly textModel = inject(TextModelStore);
+  private readonly tts = inject(TtsStore);
   private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly language = inject(LanguageStore);
   private readonly popover = inject(PopoverService);
@@ -439,12 +520,41 @@ export class ReaderPageComponent {
    * is never re-analysed: that would judge frozen text by a profile it was
    * never written for.
    */
+  /**
+   * Whether the desktop dock is on screen.
+   *
+   * Mirrors the player's own visibility rule so the content reserves room for
+   * exactly as long as something is there to cover it.
+   */
+  protected readonly showsDock = computed(
+    () =>
+      this.viewport.isDesktop() &&
+      (this.playback.isActive() || this.playback.canPlayWholeReading()),
+  );
+
   protected readonly canAnalyzeGrammar = computed(
     () => (this.store.reading()?.kind ?? 'imported') === 'imported',
   );
 
   private edgeObserver: IntersectionObserver | null = null;
   private sentenceObserver: IntersectionObserver | null = null;
+  /**
+   * Whether playback may scroll the page to the sentence it has reached.
+   *
+   * Deliberately its own state rather than anything to do with
+   * `reportPosition`, which is debounced reading progress for the library card:
+   * one is where the learner stopped reading, the other is where the audio has
+   * got to, and conflating them would have a paused player rewriting progress.
+   *
+   * A scroll the learner made themselves turns this off - they have said where
+   * they want to look - and only an explicit Play, Next, or Previous turns it
+   * back on (`ai-pipelines.md` section 11).
+   */
+  private followPlayback = true;
+  /** True while our own `scrollIntoView` is emitting scroll events. */
+  private scrollingProgrammatically = false;
+  /** The navigation count the follow state was last reconciled against. */
+  private lastNavigation = 0;
   private previewTimer: ReturnType<typeof setTimeout> | null = null;
   private previewRef: PopoverRef | null = null;
 
@@ -455,6 +565,9 @@ export class ReaderPageComponent {
     void this.credential.load();
     void this.textModel.load();
     void this.grammarProfile.load();
+    // The saved speech model and voice, for the same reason: keying a stored
+    // clip and offering to play one both need them, and reading them is local.
+    void this.tts.load();
     // The bundle the live grammar profile is resolved against. Already started
     // at bootstrap; asking again is idempotent and keeps a reading opened
     // straight after startup from showing an unresolved profile.
@@ -496,6 +609,53 @@ export class ReaderPageComponent {
       }
     });
 
+    effect(() => {
+      // Which clips exist, re-read whenever the reading changes and whenever
+      // the audio job has written more. Two local reads and no sound: the
+      // player appears because a set is complete, never because it started.
+      const reading = this.store.reading();
+      this.audioJob.progress();
+      this.tts.settings();
+      if (reading !== null) {
+        void this.playback.prepare(reading);
+      }
+    });
+
+    effect(() => {
+      // The audio job writes rows the menu counts, exactly as translation does.
+      if (this.audioJob.progress().kind !== 'idle') {
+        void this.store.refreshSummaries();
+      }
+    });
+
+    effect(() => {
+      // Follow the sentence being read, but only into view and only while the
+      // learner has not scrolled away themselves.
+      const navigation = this.playback.explicitNavigation();
+      if (navigation !== this.lastNavigation) {
+        this.lastNavigation = navigation;
+        this.followPlayback = true;
+      }
+      const sentenceId = this.playback.currentSentenceId();
+      if (sentenceId !== null && this.followPlayback) {
+        queueMicrotask(() => {
+          this.revealSentence(sentenceId);
+        });
+      }
+    });
+
+    const suppressFollow = (): void => {
+      // Only a scroll the learner made themselves counts. The programmatic one
+      // in `revealSentence` sets its own guard, so following never switches
+      // itself off.
+      if (!this.scrollingProgrammatically) {
+        this.followPlayback = false;
+      }
+    };
+    window.addEventListener('scroll', suppressFollow, { passive: true });
+    window.addEventListener('wheel', suppressFollow, { passive: true });
+    window.addEventListener('touchmove', suppressFollow, { passive: true });
+
     const flushOnHide = (): void => {
       if (document.visibilityState === 'hidden') {
         void this.store.flushProgress();
@@ -507,6 +667,9 @@ export class ReaderPageComponent {
       this.endPreview();
       this.popover.close();
       document.removeEventListener('visibilitychange', flushOnHide);
+      window.removeEventListener('scroll', suppressFollow);
+      window.removeEventListener('wheel', suppressFollow);
+      window.removeEventListener('touchmove', suppressFollow);
       this.edgeObserver?.disconnect();
       this.sentenceObserver?.disconnect();
       void this.store.close();
@@ -529,6 +692,23 @@ export class ReaderPageComponent {
 
   protected retryWholeReadingTranslation(): void {
     void this.translationJob.retry(readingId(this.id()));
+  }
+
+  /**
+   * Reads aloud everything in the reading that has no clip for the current
+   * voice. The only whole-reading audio request, and it starts here.
+   */
+  protected startWholeReadingAudio(): void {
+    void this.audioJob.start(readingId(this.id()));
+  }
+
+  protected retryWholeReadingAudio(): void {
+    void this.audioJob.retry(readingId(this.id()));
+  }
+
+  /** Plays the whole reading, because the learner chose to. Never automatic. */
+  protected playWholeReading(): void {
+    void this.playback.play();
   }
 
   /**
@@ -589,6 +769,34 @@ export class ReaderPageComponent {
       return;
     }
     void this.aids.translateSentence(sentenceId).then(() => this.store.refreshSummaries());
+  }
+
+  /**
+   * Synthesizes the open sentence, because it was asked for.
+   *
+   * Producing a clip never plays it: the popover then offers Play, which is a
+   * second explicit action.
+   */
+  protected synthesizeSelectedSentence(): void {
+    const sentenceId = this.selectedSentenceIdSignal();
+    if (sentenceId === null) {
+      return;
+    }
+    void this.aids.synthesizeSentence(sentenceId).then(async () => {
+      await this.store.refreshSummaries();
+      const reading = this.store.reading();
+      if (reading !== null) {
+        await this.playback.prepare(reading);
+      }
+    });
+  }
+
+  /** Plays the open sentence and stops at its end. */
+  protected playSelectedSentence(): void {
+    const sentenceId = this.selectedSentenceIdSignal();
+    if (sentenceId !== null) {
+      void this.playback.playSentence(sentenceId);
+    }
   }
 
   /** Analyses the open sentence, because it was asked for. */
@@ -687,8 +895,41 @@ export class ReaderPageComponent {
       tone: 'danger',
     });
     if (confirmed && (await this.library.delete(reading.id))) {
+      // Before navigating: a deleted reading must not go on being read aloud.
+      this.playback.readingDeleted(reading.id);
       await this.router.navigate(['/library']);
     }
+  }
+
+  /**
+   * Brings the sentence being read into view, and only if it is not already.
+   *
+   * Scrolling a sentence that is already on screen would jerk the page on every
+   * advance, which is exactly the behaviour that makes a follow-along player
+   * unusable. A sentence outside the mounted window has no element yet and is
+   * simply left alone.
+   */
+  private revealSentence(sentenceId: SentenceId): void {
+    const element = document.querySelector<HTMLElement>(
+      `[data-sentence-id="${CSS.escape(sentenceId)}"]`,
+    );
+    if (element === null) {
+      return;
+    }
+    const box = element.getBoundingClientRect();
+    if (box.top >= 0 && box.bottom <= window.innerHeight) {
+      return;
+    }
+    this.scrollingProgrammatically = true;
+    element.scrollIntoView({
+      block: 'center',
+      behavior: this.viewport.prefersReducedMotion() ? 'auto' : 'smooth',
+    });
+    // Released after the scroll has settled, so the events it emits are not
+    // mistaken for the learner scrolling away from the player.
+    setTimeout(() => {
+      this.scrollingProgrammatically = false;
+    }, SCROLL_SETTLE_MS);
   }
 
   /** Extends the mounted window when a sentinel at either edge scrolls in. */

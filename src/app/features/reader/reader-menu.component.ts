@@ -60,6 +60,32 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
           <p class="mn-hint done">Every sentence is translated.</p>
         }
 
+        <!--
+          Audio, the second whole-reading job. Preparing spends money per
+          sentence and is named with the count it would send, exactly as
+          translation is; playing spends nothing and is offered only once the
+          whole set exists, because a player that stopped in the middle of a
+          reading would be worse than no player.
+        -->
+        @if (audioRunning()) {
+          <button type="button" (click)="choose(cancelAudio)">
+            <span class="label">Stop preparing audio</span>
+            <span class="mn-hint">Sentences already read aloud are kept.</span>
+          </button>
+        } @else if (audioMissingCount() > 0) {
+          <button type="button" (click)="choose(prepareAudio)">
+            <span class="label">{{ audioLabel() }}</span>
+            <span class="mn-hint">Sends every sentence without audio to your speech model.</span>
+          </button>
+        }
+
+        @if (canPlayAudio()) {
+          <button type="button" (click)="choose(playReading)">
+            <span class="label">Play reading</span>
+            <span class="mn-hint">Reads the whole reading aloud from saved audio.</span>
+          </button>
+        }
+
         <button type="button" class="danger" (click)="choose(deleteRequested)">
           <span class="label">Delete reading</span>
         </button>
@@ -153,9 +179,15 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 export class ReaderMenuComponent {
   readonly reading = input.required<Reading>();
   readonly isRunning = input(false);
+  readonly audioRunning = input(false);
+  /** The complete-set gate, resolved by the playback store the reader owns. */
+  readonly canPlayAudio = input(false);
 
   readonly translateAll = output<void>();
   readonly cancelled = output<void>();
+  readonly prepareAudio = output<void>();
+  readonly cancelAudio = output<void>();
+  readonly playReading = output<void>();
   readonly deleteRequested = output<void>();
 
   private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
@@ -169,6 +201,19 @@ export class ReaderMenuComponent {
   protected readonly translateLabel = computed(() => {
     const missing = this.missingCount();
     return missing === 1 ? 'Translate the last sentence' : `Translate ${String(missing)} sentences`;
+  });
+
+  /** Sentences with no clip under the current voice, from the stored summary. */
+  protected readonly audioMissingCount = computed(() => {
+    const summary = this.reading().audioSummary;
+    return Math.max(summary.total - summary.completed, 0);
+  });
+
+  protected readonly audioLabel = computed(() => {
+    const missing = this.audioMissingCount();
+    return missing === 1
+      ? 'Prepare audio for the last sentence'
+      : `Prepare audio for ${String(missing)} sentences`;
   });
 
   /** Chosen entries close the menu; dismissal without choosing is the platform's. */

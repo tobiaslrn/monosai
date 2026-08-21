@@ -11,7 +11,13 @@ import { DEFAULT_READER_PREFERENCES } from '../../domain/settings/settings';
 import type { Hasher } from '../../domain/shared/hashing';
 import { paragraphId, readingId, sentenceId, snapshotId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
-import { autoAnswerAuxiliary, modelTest, StubTextProvider } from '../../../testing/ai-fakes';
+import {
+  autoAnswerAuxiliary,
+  modelTest,
+  StubTextProvider,
+  StubTtsProvider,
+  ttsTest,
+} from '../../../testing/ai-fakes';
 import { FakeReadingRepository } from '../../../testing/reading-repository-fake';
 import { FakeEnrichmentRepository } from '../../../testing/enrichment-fakes';
 import { err, ok } from '../../domain/shared/result';
@@ -19,7 +25,8 @@ import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { LanguageStore } from '../language/language.store';
 import { AppSettingsStore } from '../settings/app-settings.store';
 import { TextModelStore } from '../settings/text-model.store';
-import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
+import { TtsStore } from '../settings/tts.store';
+import { TEXT_GENERATION_PROVIDER, TEXT_TO_SPEECH_PROVIDER } from '../shared/ai-tokens';
 import {
   CLOCK,
   ENRICHMENT_REPOSITORY,
@@ -37,6 +44,8 @@ import { TranslationService } from './translation.service';
 const READING_ID = readingId('r1');
 const MODEL_ID = 'vendor/model';
 const LIVE_PROFILE_HASH = 'profile-live';
+const TTS_MODEL_ID = 'vendor/tts';
+const VOICE_ID = 'voice-a';
 const HASH: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
 
 function sentences(count: number): Sentence[] {
@@ -141,12 +150,32 @@ function analysisFor(
 }
 
 /** Everything the aids store and its enrichment service need, with fakes. */
+/**
+ * The saved speech configuration a spec runs under.
+ *
+ * `readiness` rather than a raw settings row, because that is the one thing the
+ * audio action actually gates on: an untested configuration must refuse before
+ * anything is keyed or sent.
+ */
+interface TtsStub {
+  readonly readiness: ReturnType<typeof signal<'ready' | 'not-configured' | 'stale-test'>>;
+  readonly provider: StubTtsProvider;
+}
+
+function ttsStub(readiness: 'ready' | 'not-configured' | 'stale-test' = 'ready'): TtsStub {
+  return {
+    readiness: signal(readiness),
+    provider: new StubTtsProvider(ok(ttsTest())),
+  };
+}
+
 function aidsProviders(
   enrichment: FakeEnrichmentRepository,
   readings: FakeReadingRepository,
   provider: StubTextProvider,
   liveProfileHash: ReturnType<typeof signal<string | null>>,
   modelId = MODEL_ID,
+  tts: TtsStub = ttsStub(),
 ): unknown[] {
   let nextId = 0;
   return [
@@ -169,6 +198,20 @@ function aidsProviders(
       },
     },
     { provide: TEXT_GENERATION_PROVIDER, useValue: provider },
+    { provide: TEXT_TO_SPEECH_PROVIDER, useValue: tts.provider },
+    {
+      provide: TtsStore,
+      useValue: {
+        readiness: tts.readiness,
+        settings: signal({
+          modelId: TTS_MODEL_ID,
+          voiceId: VOICE_ID,
+          speed: 1,
+          lastTestedAt: 1,
+          lastTestFingerprint: 'fp',
+        }),
+      },
+    },
     {
       provide: TextModelStore,
       useValue: {

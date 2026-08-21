@@ -1,8 +1,8 @@
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { TtsConfig, TtsTest } from '../../domain/ai/model-test';
-import type { TextToSpeechProvider } from '../../domain/ai/text-to-speech-provider';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { AudioDecoder } from './audio-decode';
+import { verifyAudio } from './audio-verification';
 import type { AudioResponse, OpenRouterClient } from './openrouter-client';
 import { AUDIO_REQUEST_TIMEOUT_MS, AUDIO_SPEECH_PATH } from './openrouter-endpoints';
 
@@ -20,8 +20,6 @@ export const TTS_TEST_PHRASE = 'これはテストです。';
 /** MP3 is requested because it is the format the audio cache stores. */
 const REQUESTED_FORMAT = 'mp3';
 
-const ACCEPTED_MIME_TYPES: readonly string[] = ['audio/mpeg', 'audio/mp3'];
-
 /**
  * Verifies one exact TTS model, voice, and speed against the provider.
  *
@@ -30,8 +28,11 @@ const ACCEPTED_MIME_TYPES: readonly string[] = ['audio/mpeg', 'audio/mp3'];
  * generation. At most two requests are made — the configured one, and one
  * without `speed` if the provider refuses that parameter — so an unsupported
  * option is reported rather than silently pretended.
+ *
+ * What counts as storable audio lives in `audio-verification.ts`, shared with
+ * synthesis, so a passing test can never accept a clip synthesis would refuse.
  */
-export class OpenRouterTtsTester implements TextToSpeechProvider {
+export class OpenRouterTtsTester {
   constructor(
     private readonly client: OpenRouterClient,
     private readonly decoder: AudioDecoder,
@@ -102,29 +103,18 @@ export class OpenRouterTtsTester implements TextToSpeechProvider {
     voiceId: string,
     speedApplied: boolean,
   ): Promise<Result<TtsTest, AiError>> {
-    const mimeType = response.mimeType.split(';')[0]?.trim() ?? '';
-    if (!ACCEPTED_MIME_TYPES.includes(mimeType)) {
-      return err(
-        aiError('audio-invalid', TASK, 'The provider returned audio Monosai cannot store.', {
-          detail: { modelId, voiceId, issueCode: 'unsupported-mime' },
-        }),
-      );
-    }
-    if (!(await this.decoder.canDecode(response.bytes, mimeType))) {
-      return err(
-        aiError('audio-invalid', TASK, 'The returned clip could not be decoded for playback.', {
-          detail: { modelId, voiceId, issueCode: 'undecodable' },
-        }),
-      );
+    const verified = await verifyAudio(response, this.decoder, { task: TASK, modelId, voiceId });
+    if (!verified.ok) {
+      return verified;
     }
 
     return ok({
       modelId,
       voiceId,
       speedApplied,
-      mimeType,
-      byteLength: response.bytes.byteLength,
-      sample: new Blob([response.bytes], { type: mimeType }),
+      mimeType: verified.value.declaredMimeType,
+      byteLength: verified.value.bytes.byteLength,
+      sample: new Blob([verified.value.bytes], { type: verified.value.declaredMimeType }),
     });
   }
 }

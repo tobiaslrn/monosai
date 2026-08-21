@@ -5,6 +5,7 @@ import {
   saveApiKey,
   stubOpenRouter,
   textModelReadiness,
+  ttsReadiness,
   type StubOptions,
 } from './openrouter';
 
@@ -19,6 +20,8 @@ import {
  */
 
 export const TEXT_MODEL = 'vendor/text-model';
+export const TTS_MODEL = 'vendor/tts-model';
+export const TTS_VOICE = 'sakura';
 
 /**
  * Reviewed expressions, comfortably over the fifty the specification requires.
@@ -178,6 +181,21 @@ export async function configureTextModel(page: Page): Promise<void> {
   await page.getByTestId('text-model-input').fill(TEXT_MODEL);
   await page.getByTestId('test-text-model').click();
   await expectReadiness(textModelReadiness(page), 'ready');
+}
+
+/**
+ * Configures and tests a speech model and voice.
+ *
+ * Nothing may be synthesized until the exact saved configuration has passed its
+ * own test (`ai-pipelines.md` section 11 step 1), so every audio journey starts
+ * here rather than by writing a settings row.
+ */
+export async function configureTts(page: Page): Promise<void> {
+  await page.goto('/#/settings');
+  await page.getByTestId('tts-model-input').fill(TTS_MODEL);
+  await page.getByTestId('tts-voice-input').fill(TTS_VOICE);
+  await page.getByTestId('test-tts').click();
+  await expectReadiness(ttsReadiness(page), 'ready');
 }
 
 /** Builds a real snapshot from the scripted collection. */

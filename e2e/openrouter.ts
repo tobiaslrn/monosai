@@ -71,7 +71,48 @@ export interface ExceptionReply {
 export interface StubOptions {
   readonly chat?: ChatOutcome;
   readonly audio?: AudioOutcome;
+  /**
+   * How each synthesis request answers, in order, overriding `audio`.
+   *
+   * A whole-reading preparation run that fails at sentence N is a sequence, not
+   * a single outcome: the run has to succeed N-1 times and then refuse, so that
+   * "clips 1..N-1 remain and Retry resumes at N" is testable at all. A sequence
+   * that runs out repeats its last entry.
+   */
+  readonly audioSequence?: readonly AudioOutcome[];
+  /**
+   * How long each synthesis response is held before it is fulfilled.
+   *
+   * Preparing a whole reading against an instant stub finishes before a click
+   * on Stop can land, which makes "cancelling mid-run keeps the clips already
+   * produced" untestable. A small delay makes the middle of a run a place the
+   * test can actually be.
+   */
+  readonly audioDelayMs?: number;
   readonly generation?: GenerationStubs;
+}
+
+/**
+ * A short run of silent MPEG-1 Layer III frames.
+ *
+ * It has to be real MP3 rather than arbitrary bytes, because verification
+ * decodes what a provider returns before anything stores it: a clip this
+ * browser cannot play is refused at the moment it is produced rather than the
+ * first time the learner presses play. Constant-length silent frames are the
+ * smallest thing that genuinely decodes.
+ */
+const MP3_FRAME_BYTES = 417;
+const MP3_FRAME_COUNT = 24;
+
+function silentMp3(): Buffer {
+  const frame = Buffer.alloc(MP3_FRAME_BYTES);
+  // MPEG-1 Layer III, no CRC, 128 kbps, 44.1 kHz, joint stereo. The payload is
+  // left zeroed, which decodes to silence.
+  frame[0] = 0xff;
+  frame[1] = 0xfb;
+  frame[2] = 0x90;
+  frame[3] = 0x64;
+  return Buffer.concat(Array.from({ length: MP3_FRAME_COUNT }, () => frame));
 }
 
 /** Names of the JSON schemas the generation and enrichment adapters send. */
@@ -133,13 +174,19 @@ export async function stubOpenRouter(
 ): Promise<ProviderCalls> {
   const urls: string[] = [];
   const served = { story: 0, repair: 0, decisions: 0, grammar: 0, translations: 0 };
+  let audioRequests = 0;
 
   await page.route(OPENROUTER_PATTERN, async (route) => {
     const url = route.request().url();
     urls.push(url);
 
     if (url.includes('/audio/speech')) {
-      const audio = options.audio ?? { kind: 'valid' };
+      const audio = nextOf(options.audioSequence, audioRequests) ??
+        options.audio ?? { kind: 'valid' };
+      audioRequests += 1;
+      if (options.audioDelayMs !== undefined) {
+        await new Promise((resolve) => setTimeout(resolve, options.audioDelayMs));
+      }
       if (audio.kind === 'status') {
         await providerError(route, audio.status, audio.message ?? 'Refused');
         return;
@@ -147,7 +194,7 @@ export async function stubOpenRouter(
       await route.fulfill({
         status: 200,
         contentType: audio.kind === 'wrong-mime' ? 'application/json' : 'audio/mpeg',
-        body: Buffer.alloc(2048, 1),
+        body: audio.kind === 'wrong-mime' ? Buffer.alloc(2048, 1) : silentMp3(),
       });
       return;
     }

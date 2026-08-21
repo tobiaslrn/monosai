@@ -2,11 +2,15 @@ import type { Hasher } from '../shared/hashing';
 import { hashCanonical } from '../shared/hashing';
 
 /**
- * Cache keys and fingerprints for translation and grammar review.
+ * Cache keys and fingerprints for translation, grammar review, and audio.
  *
  * Every key is derived only from model id, prompt version, content hash, and
- * (for grammar) profile hash — never from an API key or any other secret, so a
- * cache key is safe to store and compare without touching credentials.
+ * (for grammar) profile hash or (for audio) voice and synthesis options — never
+ * from an API key or any other secret, so a cache key is safe to store and
+ * compare without touching credentials. `ttsFingerprint`'s key generation
+ * deliberately stays out of these: a test fingerprint records whether a
+ * configuration was proved to work, while a cache key records what a stored
+ * clip is, and replacing a key does not change any clip already produced.
  */
 
 export function translationCacheKey(
@@ -52,5 +56,59 @@ export function translationConfigFingerprint(
   return hashCanonical(hasher, 'translation-config', {
     modelId,
     promptVersion,
+  });
+}
+
+/**
+ * The canonical synthesis options a clip was produced under.
+ *
+ * Everything a provider is asked for that changes the audio itself, and nothing
+ * else. It is hashed separately from the cache key because the stored
+ * `AudioAsset` carries it as its own field: two clips that differ only in speed
+ * are distinguishable without re-deriving the whole key.
+ */
+export function audioOptionsFingerprint(
+  hasher: Hasher,
+  options: { readonly responseFormat: string; readonly speed: number },
+): string {
+  return hashCanonical(hasher, 'tts-options', {
+    responseFormat: options.responseFormat,
+    speed: options.speed,
+  });
+}
+
+export function audioCacheKey(
+  hasher: Hasher,
+  sentenceContentHash: string,
+  modelId: string,
+  voiceId: string,
+  optionsFingerprint: string,
+): string {
+  return hashCanonical(hasher, 'tts', {
+    sentenceContentHash,
+    modelId,
+    voiceId,
+    optionsFingerprint,
+  });
+}
+
+/**
+ * Whether a stored audio row still matches the current configuration.
+ *
+ * Deliberately excludes the sentence content hash, for the same reason
+ * `translationConfigFingerprint` does: a whole-reading job compares one
+ * fingerprint against the job it may resume, and a fingerprint that changed per
+ * sentence could never match.
+ */
+export function audioConfigFingerprint(
+  hasher: Hasher,
+  modelId: string,
+  voiceId: string,
+  optionsFingerprint: string,
+): string {
+  return hashCanonical(hasher, 'tts-config', {
+    modelId,
+    voiceId,
+    optionsFingerprint,
   });
 }

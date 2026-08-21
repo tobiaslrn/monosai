@@ -43,6 +43,7 @@ export interface TokenActivation {
       lang="ja"
       [class.is-spaced]="tokenSpacing()"
       [class.is-selected]="selected()"
+      [class.is-playing]="playing()"
       [attr.data-sentence-id]="entry().sentence.id"
     >
       @for (token of entry().tokens; track token.id) {
@@ -113,6 +114,16 @@ export interface TokenActivation {
     .sentence.is-selected:hover {
       background: var(--action-primary-soft);
     }
+
+    /*
+     * The sentence being read aloud. A tint rather than an outline, so a line
+     * does not change height as playback moves through the paragraph, and a
+     * different one from the open sentence, because both can be true at once.
+     */
+    .sentence.is-playing,
+    .sentence.is-playing:hover {
+      background: var(--playing-sentence-soft);
+    }
   `,
 })
 export class ReaderSentenceComponent {
@@ -122,6 +133,8 @@ export class ReaderSentenceComponent {
   readonly tokenSpacing = input(true);
   readonly markers = input(true);
   readonly selected = input(false);
+  /** True for the sentence currently being read aloud. */
+  readonly playing = input(false);
   readonly selectedWord = input<SelectedWord | null>(null);
 
   protected readonly selectedTokenId = computed(() => {

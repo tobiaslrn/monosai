@@ -14,7 +14,8 @@ export type AiTask =
   | 'story-repair'
   | 'exception-review'
   | 'grammar-review'
-  | 'translation';
+  | 'translation'
+  | 'tts-synthesis';
 
 export const ALL_AI_TASKS: readonly AiTask[] = [
   'text-model-test',
@@ -24,4 +25,5 @@ export const ALL_AI_TASKS: readonly AiTask[] = [
   'exception-review',
   'grammar-review',
   'translation',
+  'tts-synthesis',
 ];

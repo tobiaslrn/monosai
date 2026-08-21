@@ -179,20 +179,23 @@ describe('BrowserStorageMaintenance', () => {
     const draft = importedReadingFixture();
     await readings.saveImportedReading(draft);
 
-    await enrichment.storeAudio({
-      id: assetId(uuid(9100)),
-      sentenceId: draft.sentences[0].id,
-      readingId: draft.reading.id,
-      sourceContentHash: draft.sentences[0].contentHash,
-      modelId: 'vendor/tts',
-      voiceId: 'voice-a',
-      optionsFingerprint: 'fingerprint',
-      mimeType: 'audio/mpeg',
-      byteLength: 2,
-      blob: new Blob([new Uint8Array([1, 2])], { type: 'audio/mpeg' }),
-      cacheKey: 'audio-key',
-      createdAt: 1_700_800_000_000,
-    });
+    await enrichment.storeAudio(
+      {
+        id: assetId(uuid(9100)),
+        sentenceId: draft.sentences[0].id,
+        readingId: draft.reading.id,
+        sourceContentHash: draft.sentences[0].contentHash,
+        modelId: 'vendor/tts',
+        voiceId: 'voice-a',
+        optionsFingerprint: 'fingerprint',
+        mimeType: 'audio/mpeg',
+        byteLength: 2,
+        blob: new Blob([new Uint8Array([1, 2])], { type: 'audio/mpeg' }),
+        cacheKey: 'audio-key',
+        createdAt: 1_700_800_000_000,
+      },
+      new Map([[draft.sentences[0].id, 'audio-key']]),
+    );
     await enrichment.storeTranslation(
       {
         id: uuid(9200),

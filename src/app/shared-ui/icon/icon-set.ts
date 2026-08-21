@@ -12,8 +12,13 @@ import {
   type LucideIconData,
   Menu,
   Merge,
+  Pause,
+  Play,
   Plus,
   Scissors,
+  SkipBack,
+  SkipForward,
+  Square,
   Search,
   Settings,
   Sparkles,
@@ -52,6 +57,11 @@ export const ICON_SET = {
   upload: Upload,
   info: Info,
   aids: Type,
+  play: Play,
+  pause: Pause,
+  stop: Square,
+  'skip-forward': SkipForward,
+  'skip-back': SkipBack,
 } as const satisfies Record<string, LucideIconData>;
 
 export type IconName = keyof typeof ICON_SET;
