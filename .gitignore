@@ -28,3 +28,4 @@ npm-debug.log
 .DS_Store
 Thumbs.db
 /.asset-cache
+.claude/settings.local.json
