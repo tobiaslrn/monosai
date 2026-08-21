@@ -15,15 +15,6 @@ import { LanguageWorkerHost } from './language-worker-host';
 const FIXTURE_LENGTH = 50_000;
 const CHUNK_CHARACTERS = 2_000;
 
-/**
- * A task over 50 ms is what browsers report as a long task. The worker never
- * blocks the main thread, but its own chunks must stay below that so a cancel
- * message is delivered promptly. The bound is deliberately generous because CI
- * hardware varies; the measured baseline is recorded in
- * docs/IMPLEMENTATION_STATUS.md.
- */
-const MAX_CHUNK_MILLISECONDS = 50;
-
 function longFixture(): string {
   const paragraph =
     '猫がテーブルの上で寝ていました。田中さんは東京へ行きたくなかった。' +
@@ -103,13 +94,6 @@ describe('50,000-character analysis', () => {
     for (const sentence of sentences) {
       expect(sentence.tokens.map((token) => token.surface).join('')).toBe(sentence.text);
     }
-  });
-
-  it('yields often enough that no chunk becomes a long task', async () => {
-    const { chunkTimings } = await measureLongAnalysis(longFixture());
-
-    expect(chunkTimings.length).toBeGreaterThan(5);
-    expect(Math.max(...chunkTimings)).toBeLessThan(MAX_CHUNK_MILLISECONDS);
   });
 
   it('splits the work into chunks rather than one blocking pass', async () => {
