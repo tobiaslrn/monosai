@@ -2,6 +2,7 @@ import {
   DICTIONARY_RESULT_LIMIT,
   type DictionaryEntry,
   type DictionaryLookup,
+  type DictionaryMatchBasis,
   type DictionaryQuery,
 } from '../../app/domain/language/dictionary';
 import { normalizeLookupKey } from '../../app/domain/language/kana';
@@ -70,22 +71,47 @@ export class DictionaryIndex {
   }
 
   /**
-   * Applies the documented lookup order: exact surface, exact lemma, reading
-   * with a compatible part of speech, then the canonical orthographic variants
-   * the dataset groups into one entry.
+   * The exact hits for a query, in the order they are preferred.
+   *
+   * A word looked up under an inflected spelling carries its dictionary form as
+   * the lemma, and both are exact keys.
+   */
+  private exactCandidates(query: DictionaryQuery): readonly [DictionaryMatchBasis, number[]][] {
+    const candidates: [DictionaryMatchBasis, number[]][] = [];
+    const bySurface = this.exact.get(query.surface);
+    if (bySurface !== undefined) {
+      candidates.push(['surface', [...bySurface]]);
+    }
+    if (query.lemma !== undefined && query.lemma.length > 0 && query.lemma !== query.surface) {
+      const byLemma = this.exact.get(query.lemma);
+      if (byLemma !== undefined) {
+        candidates.push(['lemma', [...byLemma]]);
+      }
+    }
+    return candidates;
+  }
+
+  /**
+   * Applies the documented lookup order: exact spelling with a compatible part
+   * of speech, exact lemma, reading with a compatible part of speech, an exact
+   * spelling whose part of speech did not agree, and finally the canonical
+   * orthographic variants the dataset groups into one entry.
+   *
+   * The part of speech gates the exact hits rather than only the reading,
+   * because a spelling can be shared by unrelated words: the あり of あります is
+   * spelled like 蟻, "ant", and only the analyzer's verb tag tells them apart.
+   * An incompatible exact hit is still returned when nothing else matched — a
+   * disagreeing tag is weaker evidence than no entry at all.
    */
   lookup(query: DictionaryQuery): DictionaryLookup {
     const limit = query.limit ?? DICTIONARY_RESULT_LIMIT;
+    const candidates = this.exactCandidates(query);
 
-    const bySurface = this.exact.get(query.surface);
-    if (bySurface !== undefined) {
-      return { matchedBy: 'surface', entries: this.resolve(bySurface, limit) };
-    }
-
-    if (query.lemma !== undefined && query.lemma.length > 0) {
-      const byLemma = this.exact.get(query.lemma);
-      if (byLemma !== undefined) {
-        return { matchedBy: 'lemma', entries: this.resolve(byLemma, limit) };
+    for (const [basis, indexes] of candidates) {
+      const narrowed =
+        query.partOfSpeech === undefined ? indexes : this.compatible(indexes, query.partOfSpeech);
+      if (narrowed.length > 0) {
+        return { matchedBy: basis, entries: this.resolve(narrowed, limit) };
       }
     }
 
@@ -100,6 +126,11 @@ export class DictionaryIndex {
           return { matchedBy: 'reading', entries: this.resolve(filtered, limit) };
         }
       }
+    }
+
+    const fallback = candidates.at(0);
+    if (fallback !== undefined) {
+      return { matchedBy: fallback[0], entries: this.resolve(fallback[1], limit) };
     }
 
     for (const candidate of [query.surface, query.lemma]) {

@@ -201,10 +201,17 @@ Bundle a compact common-word Japanese–English dataset. Dataset selection must:
 
 Build a compact lookup artifact at development time. Do not import the raw source into Dexie per user. Lookup order:
 
-1. Exact surface.
-2. Exact lemma.
+1. Exact surface plus compatible POS.
+2. Exact lemma plus compatible POS.
 3. Reading plus compatible POS.
-4. Canonical orthographic variants supplied by the dataset.
+4. Exact surface or lemma whose POS disagrees.
+5. Canonical orthographic variants supplied by the dataset.
+
+A query is about a whole word, not a morpheme: the surface is the word as
+written and the lemma and POS come from its head. POS gates the exact steps
+because a spelling can be shared by unrelated words — the あり of あります is
+spelled like 蟻, "ant" — and a disagreeing tag is still better evidence than no
+entry, which is why step 4 exists.
 
 Return a bounded number of prioritized common senses. The UI shows “No bundled definition” when none is found and never silently makes an online lookup.
 

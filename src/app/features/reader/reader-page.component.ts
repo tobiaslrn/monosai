@@ -791,6 +791,7 @@ export class ReaderPageComponent {
   protected inspect(activation: TokenActivation): void {
     void this.inspector.inspect({
       token: activation.token,
+      word: activation.word,
       sentence: activation.sentence.sentence,
       status: activation.sentence.statuses?.get(activation.token.id) ?? null,
     });
@@ -826,7 +827,7 @@ export class ReaderPageComponent {
     this.cancelPreviewTimer();
     this.previewTimer = setTimeout(() => {
       this.previewTimer = null;
-      void this.inspector.previewWord(activation.token);
+      void this.inspector.previewWord(activation.word);
       this.previewRef = this.popover.open({
         origin: activation.origin,
         template: this.wordPreview(),

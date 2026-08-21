@@ -1,5 +1,6 @@
 import { readingAddsInformation } from '../language/kana';
 import type { StructuralBaselineEntry } from '../language/structural-baseline';
+import type { WordGroup } from './token-grouping';
 import type { Token } from './token';
 import type { TokenValidation, TokenValidationCategory } from './validation';
 
@@ -153,4 +154,18 @@ export function rubyFor(token: Token): string | null {
     return null;
   }
   return readingAddsInformation(token.surface, reading) ? reading : null;
+}
+
+/**
+ * The reading shown beside a word, or null when it would only repeat it.
+ *
+ * The same rule as `rubyFor`, applied to a whole word: あります under あります
+ * told the learner nothing, whereas のみます under 飲みます is the point.
+ */
+export function wordReading(word: WordGroup): string | null {
+  const reading = word.readingHiragana;
+  if (reading === undefined) {
+    return null;
+  }
+  return readingAddsInformation(word.surface, reading) ? reading : null;
 }

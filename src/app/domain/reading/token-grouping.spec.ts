@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { vocabularyItemId } from '../shared/ids';
-import { bunsetsuStarts, reviewedPhraseSpans } from './bunsetsu';
+import { bunsetsuStarts, reviewedPhraseSpans, wordAt, wordStarts } from './token-grouping';
 import type { PartOfSpeech, Token } from './token';
 import type { TokenStatusAssignment } from './validation';
 
@@ -39,6 +39,11 @@ function chunks(tokens: readonly Token[], starts: readonly boolean[]): readonly 
 function group(...specs: readonly string[]): readonly string[] {
   const tokens = sentence(...specs);
   return chunks(tokens, bunsetsuStarts(tokens));
+}
+
+function words(...specs: readonly string[]): readonly string[] {
+  const tokens = sentence(...specs);
+  return chunks(tokens, wordStarts(tokens));
 }
 
 describe('bunsetsuStarts', () => {
@@ -142,5 +147,83 @@ describe('reviewedPhraseSpans', () => {
 
   it('has no spans while vocabulary is not configured', () => {
     expect(reviewedPhraseSpans(tokens, null)).toEqual([]);
+  });
+});
+
+describe('wordStarts', () => {
+  it('keeps a conjugated verb whole, so its stem is never looked up alone', () => {
+    // あり on its own is 蟻, "ant". The word is あります.
+    expect(words('あり:verb', 'ます:auxiliary')).toEqual(['あります']);
+  });
+
+  it('leaves a particle a word of its own, unlike bunsetsu grouping', () => {
+    // A particle is worth inspecting: it is what the learner does not know yet.
+    expect(words('名前:noun', 'が:particle', 'あり:verb', 'ます:auxiliary')).toEqual([
+      '名前',
+      'が',
+      'あります',
+    ]);
+  });
+
+  it('keeps a helper verb with the te-form it completes', () => {
+    expect(words('食べ:verb', 'て:particle', 'いる:auxiliary')).toEqual(['食べている']);
+  });
+
+  it('swallows no particle that is not binding a helper verb', () => {
+    // The same て, with nothing after it to bind to.
+    expect(words('食べ:verb', 'て:particle')).toEqual(['食べ', 'て']);
+    expect(words('本:noun', 'で:particle', '猫:noun')).toEqual(['本', 'で', '猫']);
+  });
+
+  it('keeps a prefix, a suffix, and a counter with the word they belong to', () => {
+    expect(words('ご:prefix', '飯:noun')).toEqual(['ご飯']);
+    expect(words('田中:proper-noun', 'さん:suffix')).toEqual(['田中さん']);
+    expect(words('三:number', '匹:counter')).toEqual(['三匹']);
+  });
+
+  it('never joins a word across punctuation', () => {
+    expect(words('猫:noun', '。:punctuation', 'ます:auxiliary')).toEqual(['猫', '。', 'ます']);
+  });
+});
+
+describe('wordAt', () => {
+  const tokens = sentence(
+    '名前:noun',
+    'が:particle',
+    'あり:verb',
+    'ます:auxiliary',
+    '。:punctuation',
+  );
+
+  it('resolves the same word from any part of it', () => {
+    for (const index of [2, 3]) {
+      const word = wordAt(tokens, index);
+      expect(word.surface).toBe('あります');
+      expect(word.span).toEqual({ startTokenIndex: 2, endTokenIndex: 3 });
+    }
+  });
+
+  it('makes the content token the head, so the lemma looked up is the verb', () => {
+    expect(wordAt(tokens, 3).head.surface).toBe('あり');
+  });
+
+  it('skips a prefix when choosing the head', () => {
+    const prefixed = sentence('ご:prefix', '飯:noun');
+
+    expect(wordAt(prefixed, 0).head.surface).toBe('飯');
+    expect(wordAt(prefixed, 0).surface).toBe('ご飯');
+  });
+
+  it('composes the reading only when every part has one', () => {
+    const complete = [
+      { ...tokens[2], readingHiragana: 'あり' },
+      { ...tokens[3], readingHiragana: 'ます' },
+    ];
+    expect(wordAt(complete, 0).readingHiragana).toBe('あります');
+    expect(wordAt([complete[0], tokens[3]], 0).readingHiragana).toBeUndefined();
+  });
+
+  it('resolves a single-token word to itself', () => {
+    expect(wordAt(tokens, 0)).toMatchObject({ surface: '名前', head: tokens[0] });
   });
 });

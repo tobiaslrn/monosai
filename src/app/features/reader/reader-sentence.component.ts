@@ -2,7 +2,12 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import type { ReaderSentence } from '../../application/reading/reader.store';
 import { tokensCoveredByConcerns } from '../../domain/enrichment/finding-spans';
-import { bunsetsuStarts, reviewedPhraseSpans } from '../../domain/reading/bunsetsu';
+import {
+  bunsetsuStarts,
+  reviewedPhraseSpans,
+  wordAt,
+  type WordGroup,
+} from '../../domain/reading/token-grouping';
 import { ReaderTokenComponent, type TokenActivationSource } from './reader-token.component';
 
 /**
@@ -19,6 +24,14 @@ export interface SelectedWord {
 export interface TokenActivation {
   readonly sentence: ReaderSentence;
   readonly token: TokenActivationSource['token'];
+  /**
+   * The whole word the token belongs to.
+   *
+   * Resolved here because only the sentence has the tokens around the one that
+   * was pressed, and everything downstream — the dictionary lookup, the
+   * headword, the highlight — is about the word rather than the morpheme.
+   */
+  readonly word: WordGroup;
   /** The token's own button, which the word popover is anchored to. */
   readonly origin: HTMLElement;
 }
@@ -54,7 +67,7 @@ export interface TokenActivation {
           [status]="entry().statuses?.get(token.id) ?? null"
           [showFurigana]="furigana()"
           [showMarkers]="markers()"
-          [selected]="selectedTokenId() === token.id"
+          [selected]="selectedTokenIds().has(token.id)"
           [grammarConcern]="markers() && concernTokenIds().has(token.id)"
           (activated)="onActivated($event)"
           (previewed)="onPreviewed($event)"
@@ -164,9 +177,24 @@ export class ReaderSentenceComponent {
     return bunsetsuStarts(entry.tokens, reviewedPhraseSpans(entry.tokens, entry.statuses));
   });
 
-  protected readonly selectedTokenId = computed(() => {
-    const word = this.selectedWord();
-    return word !== null && word.sentenceId === this.entry().sentence.id ? word.tokenId : null;
+  /**
+   * The tokens tinted as the open word.
+   *
+   * A word is one thing to the learner even when the analyzer split it into a
+   * stem and an ending, so opening あります highlights あります rather than the
+   * half of it that was pressed.
+   */
+  protected readonly selectedTokenIds = computed(() => {
+    const selected = this.selectedWord();
+    const entry = this.entry();
+    if (selected?.sentenceId !== entry.sentence.id) {
+      return new Set<string>();
+    }
+    const index = entry.tokens.findIndex((token) => token.id === selected.tokenId);
+    if (index < 0) {
+      return new Set<string>();
+    }
+    return new Set(wordAt(entry.tokens, index).tokens.map((token) => token.id));
   });
 
   readonly activated = output<TokenActivation>();
@@ -188,10 +216,17 @@ export class ReaderSentenceComponent {
   });
 
   protected onActivated(activation: TokenActivationSource): void {
-    this.activated.emit({ sentence: this.entry(), ...activation });
+    this.activated.emit(this.withWord(activation));
   }
 
   protected onPreviewed(activation: TokenActivationSource): void {
-    this.previewed.emit({ sentence: this.entry(), ...activation });
+    this.previewed.emit(this.withWord(activation));
+  }
+
+  private withWord(activation: TokenActivationSource): TokenActivation {
+    const entry = this.entry();
+    // The token was rendered from this sentence, so it is always one of these.
+    const index = entry.tokens.findIndex((token) => token.id === activation.token.id);
+    return { sentence: entry, ...activation, word: wordAt(entry.tokens, Math.max(index, 0)) };
   }
 }

@@ -1,9 +1,14 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import type { DictionaryEntry, DictionaryMatchBasis } from '../../domain/language/dictionary';
+import type {
+  DictionaryEntry,
+  DictionaryMatchBasis,
+  DictionaryQuery,
+} from '../../domain/language/dictionary';
 import { DICTIONARY_RESULT_LIMIT } from '../../domain/language/dictionary';
 import type { LanguageError } from '../../domain/language/language-error';
 import type { StructuralBaselineEntry } from '../../domain/language/structural-baseline';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
+import type { WordGroup } from '../../domain/reading/token-grouping';
 import type { Token } from '../../domain/reading/token';
 import {
   presentStatus,
@@ -27,7 +32,10 @@ export type DictionaryState =
   | { readonly kind: 'failed'; readonly error: LanguageError };
 
 export interface InspectedWord {
+  /** The morpheme that was pressed, which status and grammar are keyed by. */
   readonly token: Token;
+  /** The whole word it belongs to: what is shown and what is looked up. */
+  readonly word: WordGroup;
   readonly sentence: Sentence;
   readonly status: TokenStatusAssignment | null;
 }
@@ -40,8 +48,26 @@ export interface InspectedWord {
  * follows the pointer around (`ux-ui-specification.md:154`).
  */
 export interface WordPreview {
-  readonly token: Token;
+  readonly word: WordGroup;
   readonly glossEn: string | null;
+}
+
+/**
+ * The dictionary query for a word.
+ *
+ * The whole word is the surface, and the head's lemma and part of speech are
+ * what the entry is looked up under: querying an inflected stem on its own
+ * found the wrong word entirely — the あり of あります matched 蟻, "ant".
+ */
+function queryFor(word: WordGroup, limit: number): DictionaryQuery {
+  const head = word.head;
+  return {
+    surface: word.surface,
+    limit,
+    lemma: head.lemma ?? head.surface,
+    ...(word.readingHiragana === undefined ? {} : { readingHiragana: word.readingHiragana }),
+    ...(head.partOfSpeech === undefined ? {} : { partOfSpeech: head.partOfSpeech }),
+  };
 }
 
 /**
@@ -101,15 +127,7 @@ export class WordInspectorStore {
     this.lookupToken += 1;
     const token = this.lookupToken;
 
-    const result = await this.runtime.lookup({
-      surface: word.token.surface,
-      limit: DICTIONARY_RESULT_LIMIT,
-      ...(word.token.lemma === undefined ? {} : { lemma: word.token.lemma }),
-      ...(word.token.readingHiragana === undefined
-        ? {}
-        : { readingHiragana: word.token.readingHiragana }),
-      ...(word.token.partOfSpeech === undefined ? {} : { partOfSpeech: word.token.partOfSpeech }),
-    });
+    const result = await this.runtime.lookup(queryFor(word.word, DICTIONARY_RESULT_LIMIT));
 
     if (token !== this.lookupToken) {
       return;
@@ -132,24 +150,18 @@ export class WordInspectorStore {
    * text must not overwrite the word the learner deliberately pinned, and a
    * preview that never arrives is simply not shown.
    */
-  async previewWord(token: Token): Promise<void> {
+  async previewWord(word: WordGroup): Promise<void> {
     this.previewLookupToken += 1;
     const lookup = this.previewLookupToken;
-    this.previewSignal.set({ token, glossEn: null });
+    this.previewSignal.set({ word, glossEn: null });
 
-    const result = await this.runtime.lookup({
-      surface: token.surface,
-      limit: 1,
-      ...(token.lemma === undefined ? {} : { lemma: token.lemma }),
-      ...(token.readingHiragana === undefined ? {} : { readingHiragana: token.readingHiragana }),
-      ...(token.partOfSpeech === undefined ? {} : { partOfSpeech: token.partOfSpeech }),
-    });
+    const result = await this.runtime.lookup(queryFor(word, 1));
 
     if (lookup !== this.previewLookupToken || !result.ok) {
       return;
     }
     const glosses = result.value.entries.at(0)?.senses.at(0)?.glossesEn ?? [];
-    this.previewSignal.set({ token, glossEn: glosses.length === 0 ? null : glosses.join('; ') });
+    this.previewSignal.set({ word, glossEn: glosses.length === 0 ? null : glosses.join('; ') });
   }
 
   clearPreview(): void {

@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
+import { wordReading } from '../../domain/reading/token-presentation';
 
 /**
  * The hover preview.
@@ -16,8 +17,8 @@ import { WordInspectorStore } from '../../application/reading/word-inspector.sto
   template: `
     @if (store.preview(); as preview) {
       <span class="preview">
-        <span class="surface" lang="ja">{{ preview.token.surface }}</span>
-        @if (preview.token.readingHiragana; as reading) {
+        <span class="surface" lang="ja">{{ preview.word.surface }}</span>
+        @if (reading(); as reading) {
           <span class="reading" lang="ja">{{ reading }}</span>
         }
         @if (preview.glossEn; as gloss) {
@@ -58,4 +59,10 @@ import { WordInspectorStore } from '../../application/reading/word-inspector.sto
 })
 export class WordPreviewComponent {
   protected readonly store = inject(WordInspectorStore);
+
+  /** Suppressed for a kana word, where it would only repeat the surface. */
+  protected readonly reading = computed(() => {
+    const preview = this.store.preview();
+    return preview === null ? null : wordReading(preview.word);
+  });
 }

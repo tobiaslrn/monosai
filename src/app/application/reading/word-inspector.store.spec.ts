@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { DictionaryQuery } from '../../domain/language/dictionary';
 import type { StructuralBaselineEntry } from '../../domain/language/structural-baseline';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { Token } from '../../domain/reading/token';
+import { wordAt } from '../../domain/reading/token-grouping';
 import type { TokenValidation } from '../../domain/reading/validation';
 import { ok } from '../../domain/shared/result';
 import { paragraphId, readingId, sentenceId } from '../../domain/shared/ids';
@@ -48,6 +50,7 @@ function sentence(): Sentence {
 function word(validation: TokenValidation | null): InspectedWord {
   return {
     token: token(),
+    word: wordAt([token()], 0),
     sentence: sentence(),
     status: validation === null ? null : { tokenId: 't1', validation },
   };
@@ -114,6 +117,70 @@ describe('WordInspectorStore', () => {
     await inspector.inspect(word(null));
 
     expect(inspector.presentation()).toBeNull();
+  });
+
+  it('looks up the whole word under its dictionary form', async () => {
+    // The あり of あります is spelled like 蟻, "ant". The query has to be about
+    // the word — surface あります, lemma ある, tagged as a verb — or the reader
+    // hands the learner an unrelated entry.
+    const queries: DictionaryQuery[] = [];
+    TestBed.overrideProvider(LANGUAGE_RUNTIME, {
+      useValue: {
+        lookup: (query: DictionaryQuery) => {
+          queries.push(query);
+          return Promise.resolve(ok({ matchedBy: 'lemma', entries: [] }));
+        },
+      },
+    });
+    const inflected: readonly Token[] = [
+      { ...token(), id: 'v1', surface: 'あり', lemma: 'ある', partOfSpeech: 'verb' },
+      { ...token(), id: 'v2', surface: 'ます', lemma: 'ます', partOfSpeech: 'auxiliary' },
+    ];
+
+    await store().inspect({
+      token: inflected[1],
+      word: wordAt(inflected, 1),
+      sentence: sentence(),
+      status: null,
+    });
+
+    expect(queries).toHaveLength(1);
+    expect(queries[0]).toMatchObject({ surface: 'あります', lemma: 'ある', partOfSpeech: 'verb' });
+  });
+
+  it('previews the same word a press would pin', async () => {
+    const queries: DictionaryQuery[] = [];
+    TestBed.overrideProvider(LANGUAGE_RUNTIME, {
+      useValue: {
+        lookup: (query: DictionaryQuery) => {
+          queries.push(query);
+          return Promise.resolve(
+            ok({
+              matchedBy: 'lemma',
+              entries: [
+                {
+                  id: 'e1',
+                  writtenForms: [],
+                  readings: [],
+                  senses: [{ partsOfSpeech: [], glossesEn: ['to be'] }],
+                },
+              ],
+            }),
+          );
+        },
+      },
+    });
+    const inflected: readonly Token[] = [
+      { ...token(), id: 'v1', surface: 'あり', lemma: 'ある', partOfSpeech: 'verb' },
+      { ...token(), id: 'v2', surface: 'ます', lemma: 'ます', partOfSpeech: 'auxiliary' },
+    ];
+    const inspector = store();
+
+    await inspector.previewWord(wordAt(inflected, 0));
+
+    expect(queries[0]).toMatchObject({ surface: 'あります', lemma: 'ある' });
+    expect(inspector.preview()).toMatchObject({ glossEn: 'to be' });
+    expect(inspector.preview()?.word.surface).toBe('あります');
   });
 
   it('resolves against the bundle that is loaded, not the one loaded at startup', async () => {
