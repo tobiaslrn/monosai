@@ -65,10 +65,17 @@ import { StoryFormComponent } from './story-form.component';
         {{ generation.announcement() }}
       </p>
 
-      <section class="mn-panel" aria-labelledby="mn-generate-checks-heading">
-        <h2 id="mn-generate-checks-heading">Before you generate</h2>
-        <mn-prerequisite-panel [checks]="checks()" [preset]="presetLine()" />
-      </section>
+      <!--
+        Only while something is actually missing. A panel confirming a setup the
+        learner finished long ago is a permanent header on a screen they came to
+        write on.
+      -->
+      @if (hasBlockers()) {
+        <section class="mn-panel" aria-labelledby="mn-generate-checks-heading">
+          <h2 id="mn-generate-checks-heading" class="mn-visually-hidden">Before you generate</h2>
+          <mn-prerequisite-panel [checks]="checks()" [preset]="presetLine()" />
+        </section>
+      }
 
       @if (state().kind === 'invalid-draft') {
         <section class="mn-panel" aria-labelledby="mn-generate-draft-heading">
@@ -227,6 +234,14 @@ export class GeneratePageComponent implements OnDestroy {
   });
 
   protected readonly canGenerate = computed(() => allPrerequisitesMet(this.checks()));
+
+  /**
+   * Whether anything is worth saying before the form. The advisory preset
+   * warning counts: it is the one line here that costs money to ignore.
+   */
+  protected readonly hasBlockers = computed(
+    () => !this.canGenerate() || this.presetLine().warning !== null,
+  );
 
   protected readonly isFinished = computed(() =>
     ['saved', 'cancelled', 'invalid-draft'].includes(this.state().kind),

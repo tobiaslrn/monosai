@@ -31,8 +31,7 @@ import {
 
     <p class="mn-hint">
       {{ store.sentenceCount().toLocaleString('en') }} sentences in
-      {{ paragraphCount().toLocaleString('en') }} paragraphs. Split or merge any sentence Monosai
-      divided differently from how you read it.
+      {{ paragraphCount().toLocaleString('en') }} paragraphs.
     </p>
 
     @if (store.editFailure(); as failure) {

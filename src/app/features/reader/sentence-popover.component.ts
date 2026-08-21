@@ -25,6 +25,11 @@ export interface UnknownWord {
  * Every action that spends a request is here and nowhere else, so word details
  * stay a read-only lookup and a stray press on a line costs nothing. Opening a
  * sentence requests nothing by itself.
+ *
+ * The actions are three labels with nothing written under them. What an AI
+ * action sends is a property of the application, said once in Settings, and
+ * repeating it three times per popover is what made a sentence feel expensive
+ * to press.
  */
 @Component({
   selector: 'mn-sentence-popover',
@@ -35,11 +40,6 @@ export interface UnknownWord {
         <p class="translation" lang="en">{{ translation.textEn }}</p>
       } @else if (isRunning()) {
         <p class="mn-hint" role="status">Translating…</p>
-      } @else {
-        <button type="button" class="mn-button" (click)="translate.emit()">
-          {{ hasFailed() ? 'Try translating again' : 'Translate this sentence' }}
-        </button>
-        <p class="mn-hint">Sends this one sentence to your text model.</p>
       }
 
       @if (failure(); as failure) {
@@ -62,67 +62,53 @@ export interface UnknownWord {
               </li>
             }
           </ul>
-          <p class="mn-hint">Open one in the sentence for its dictionary entry.</p>
         </section>
       }
 
-      @if (concerns().length > 0 || grammarOffer() !== null || grammarRunning()) {
+      @if (concerns().length > 0) {
         <section class="grammar" aria-labelledby="mn-sentence-grammar">
           <h3 id="mn-sentence-grammar">Grammar</h3>
-
           @for (finding of concerns(); track $index) {
             <p class="finding-label">{{ finding.label }}</p>
             <p class="finding-text" lang="en">{{ finding.explanationEn }}</p>
-          } @empty {
-            @if (analyzed()) {
-              <p class="mn-hint">Nothing here is outside your grammar profile.</p>
-            }
-          }
-
-          @if (concerns().length > 0) {
-            <p class="mn-hint">Each note is also on the word it is about.</p>
-          }
-
-          @if (grammarRunning()) {
-            <p class="mn-hint" role="status">Analyzing…</p>
-          } @else if (grammarOffer(); as offer) {
-            <button type="button" class="mn-button" (click)="analyzeGrammar.emit()">
-              {{ offer }}
-            </button>
-            <p class="mn-hint">Sends this one sentence to your text model.</p>
-          }
-
-          @if (grammarFailure(); as failure) {
-            <p class="mn-error" role="alert">{{ failure }}</p>
           }
         </section>
       }
 
+      @if (grammarRunning()) {
+        <p class="mn-hint" role="status">Analyzing…</p>
+      }
+      @if (grammarFailure(); as failure) {
+        <p class="mn-error" role="alert">{{ failure }}</p>
+      }
+
+      @if (audioRunning()) {
+        <p class="mn-hint" role="status">Generating…</p>
+      }
+      @if (audioFailure(); as failure) {
+        <p class="mn-error" role="alert">{{ failure }}</p>
+      }
+
       <!--
-        The only route to audio for one sentence. No play control is printed on
-        the page itself, so a sentence still costs nothing to press.
+        Every action that spends a request, as three labels and nothing else.
+        What an AI action sends is said once, in Settings, rather than under each
+        button that could trigger one.
       -->
-      <section class="audio" aria-labelledby="mn-sentence-audio">
-        <h3 id="mn-sentence-audio">Audio</h3>
-
-        @if (audioRunning()) {
-          <p class="mn-hint" role="status">Generating…</p>
-        } @else if (aids().audio !== null) {
-          <button type="button" class="mn-button" (click)="playAudio.emit()">
-            Play this sentence
-          </button>
-          <p class="mn-hint">Already saved. Playing it costs nothing.</p>
-        } @else {
-          <button type="button" class="mn-button" (click)="generateAudio.emit()">
-            {{ audioFailed() ? 'Try generating audio again' : 'Generate audio' }}
-          </button>
-          <p class="mn-hint">Sends this one sentence to your speech model.</p>
+      <div class="actions">
+        @if (translateOffer(); as offer) {
+          <button type="button" class="mn-button" (click)="translate.emit()">{{ offer }}</button>
         }
 
-        @if (audioFailure(); as failure) {
-          <p class="mn-error" role="alert">{{ failure }}</p>
+        @if (grammarOffer(); as offer) {
+          <button type="button" class="mn-button" (click)="analyzeGrammar.emit()">
+            {{ offer }}
+          </button>
         }
-      </section>
+
+        @if (audioOffer(); as offer) {
+          <button type="button" class="mn-button" (click)="audioAction()">{{ offer }}</button>
+        }
+      </div>
     </div>
   `,
   styles: `
@@ -141,31 +127,28 @@ export interface UnknownWord {
 
     /* Ruled in each marker's own colour, so a section names its underline. */
     .grammar,
-    .vocabulary,
-    .audio {
+    .vocabulary {
       align-self: stretch;
       padding-inline-start: var(--space-3);
       border-inline-start: 2px solid var(--marker-grammar);
-    }
-
-    /* Audio is neither warning, so it is ruled in the neutral border. */
-    .audio {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      align-items: flex-start;
-      border-inline-start-color: var(--border-subtle);
     }
 
     .vocabulary {
       border-inline-start-color: var(--marker-vocabulary);
     }
 
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      align-self: stretch;
+    }
+
     .words {
       display: flex;
       flex-direction: column;
       gap: var(--space-1);
-      margin: 0 0 var(--space-2);
+      margin: 0;
       padding: 0;
       list-style: none;
     }
@@ -208,10 +191,6 @@ export interface UnknownWord {
       font-size: var(--text-sm);
     }
 
-    .grammar .mn-hint {
-      margin-top: var(--space-2);
-    }
-
     .mn-error {
       color: var(--status-danger);
     }
@@ -236,13 +215,18 @@ export class SentencePopoverComponent {
 
   protected readonly isRunning = computed(() => this.aids().translationAction.state === 'running');
 
-  protected readonly hasFailed = computed(() => this.aids().translationAction.state === 'failed');
+  /** Null once a translation is stored: the English above it is the answer. */
+  protected readonly translateOffer = computed(() => {
+    const aids = this.aids();
+    if (aids.translation !== null || aids.translationAction.state === 'running') {
+      return null;
+    }
+    return aids.translationAction.state === 'failed' ? 'Translate again' : 'Translate';
+  });
 
   protected readonly concerns = computed(
     () => this.aids().grammar?.findings.filter((finding) => !finding.inProfile) ?? [],
   );
-
-  protected readonly analyzed = computed(() => this.aids().grammar !== null);
 
   protected readonly grammarRunning = computed(() => this.aids().grammarAction.state === 'running');
 
@@ -252,18 +236,34 @@ export class SentencePopoverComponent {
     if (!this.canAnalyze()) {
       return null;
     }
+    if (aids.grammarAction.state === 'running') {
+      return null;
+    }
     if (aids.grammarAction.state === 'failed') {
-      return 'Try analyzing again';
+      return 'Grammar again';
     }
     if (aids.grammar === null) {
-      return 'Analyze grammar';
+      return 'Grammar';
     }
-    return aids.grammarStale ? 'Re-analyze grammar' : null;
+    return aids.grammarStale ? 'Grammar again' : null;
   });
 
   protected readonly audioRunning = computed(() => this.aids().audioAction.state === 'running');
 
-  protected readonly audioFailed = computed(() => this.aids().audioAction.state === 'failed');
+  /**
+   * One button for both halves of audio: producing a clip and playing it are
+   * never the same press, so the label says which one this is.
+   */
+  protected readonly audioOffer = computed(() => {
+    const aids = this.aids();
+    if (aids.audioAction.state === 'running') {
+      return null;
+    }
+    if (aids.audio !== null) {
+      return 'Play';
+    }
+    return aids.audioAction.state === 'failed' ? 'Audio again' : 'Audio';
+  });
 
   protected readonly failure = computed(() =>
     describeEnrichmentFailure(this.aids().translationAction.error),
@@ -276,4 +276,12 @@ export class SentencePopoverComponent {
   protected readonly grammarFailure = computed(() =>
     describeEnrichmentFailure(this.aids().grammarAction.error),
   );
+
+  protected audioAction(): void {
+    if (this.aids().audio === null) {
+      this.generateAudio.emit();
+      return;
+    }
+    this.playAudio.emit();
+  }
 }

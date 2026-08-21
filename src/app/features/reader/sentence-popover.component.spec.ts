@@ -108,7 +108,7 @@ describe('SentencePopoverComponent', () => {
   /** The popover has more than one button now, so tests name the one they mean. */
   function translateButton(rendered: HTMLElement): HTMLButtonElement | undefined {
     return [...rendered.querySelectorAll('button')].find((button) =>
-      /Translate this sentence|Try translating again/.test(button.textContent),
+      /^Translate( again)?$/.test(button.textContent.trim()),
     );
   }
 
@@ -131,12 +131,17 @@ describe('SentencePopoverComponent', () => {
     );
   });
 
-  it('offers the one action that spends a request, and says what it sends', () => {
+  /**
+   * Labels only. What an AI action sends is a property of the application, said
+   * once in Settings; repeating it under three buttons is what made pressing a
+   * sentence feel expensive.
+   */
+  it('offers the action as a label, with nothing written under it', () => {
     const fixture = render();
     const rendered = host(fixture);
 
-    expect(rendered.textContent).toContain('Sends this one sentence to your text model');
-    rendered.querySelector('button')?.click();
+    expect(rendered.textContent).not.toContain('Sends this one sentence');
+    translateButton(rendered)?.click();
 
     expect(fixture.componentInstance.requests).toBe(1);
   });
@@ -173,7 +178,7 @@ describe('SentencePopoverComponent', () => {
       ),
     );
 
-    expect(rendered.querySelector('button')?.textContent).toContain('Try translating again');
+    expect(translateButton(rendered)?.textContent).toContain('Translate again');
     expect(rendered.querySelector('[role="alert"]')?.textContent).not.toContain(
       'raw provider text',
     );
@@ -186,28 +191,26 @@ describe('SentencePopoverComponent', () => {
 
     expect(rendered.textContent).toContain('Grammar');
     expect(rendered.textContent).toContain('である copula');
-    expect(rendered.textContent).toContain('Each note is also on the word it is about.');
   });
 
   it('leaves grammar the learner already knows to the word', () => {
     // In-profile notes under every sentence are what buried the Japanese.
     const rendered = host(render(aidsWith({ grammar: analysis(true) })));
 
-    expect(rendered.textContent).not.toContain('Each note is also on the word');
+    expect(rendered.querySelector('.grammar')).toBeNull();
     expect(rendered.textContent).not.toContain('である copula');
   });
 
-  it('offers grammar analysis here, and says what it sends', () => {
+  it('offers grammar analysis here', () => {
     const fixture = render();
     const rendered = host(fixture);
-    const analyze = [...rendered.querySelectorAll('button')].find((button) =>
-      button.textContent.includes('Analyze grammar'),
+    const analyze = [...rendered.querySelectorAll('button')].find(
+      (button) => button.textContent.trim() === 'Grammar',
     );
 
     analyze?.click();
 
     expect(fixture.componentInstance.analyses).toBe(1);
-    expect(rendered.textContent).toContain('Sends this one sentence to your text model');
   });
 
   it('never offers analysis for a generated story', () => {
@@ -215,15 +218,17 @@ describe('SentencePopoverComponent', () => {
     // would judge frozen text by a profile it was never written for.
     const rendered = host(render(NO_AIDS, false));
 
-    expect(rendered.textContent).not.toContain('Analyze grammar');
+    expect(
+      [...rendered.querySelectorAll('.actions button')].map((button) => button.textContent.trim()),
+    ).not.toContain('Grammar');
   });
 
   it('offers re-analysis only while an analysis is stale', () => {
     const current = host(render(aidsWith({ grammar: analysis(false) })));
-    expect(current.textContent).not.toContain('Re-analyze grammar');
+    expect(current.textContent).not.toContain('Grammar again');
 
     const stale = host(render(aidsWith({ grammar: analysis(false), grammarStale: true })));
-    expect(stale.textContent).toContain('Re-analyze grammar');
+    expect(stale.textContent).toContain('Grammar again');
   });
 
   it('keeps a failed analysis retryable, in Monosai wording', () => {
@@ -241,7 +246,7 @@ describe('SentencePopoverComponent', () => {
       ),
     );
 
-    expect(rendered.textContent).toContain('Try analyzing again');
+    expect(rendered.textContent).toContain('Grammar again');
     expect(rendered.querySelector('[role="alert"]')?.textContent).not.toContain('raw text');
   });
 
@@ -279,12 +284,12 @@ describe('SentencePopoverComponent', () => {
       );
     }
 
-    it('offers to generate audio, and says what that sends', () => {
+    it('offers to generate audio, as a label and nothing more', () => {
       const fixture = render();
       const rendered = host(fixture);
 
-      expect(rendered.textContent).toContain('Sends this one sentence to your speech model.');
-      audioButton(rendered, 'Generate audio')?.click();
+      expect(rendered.textContent).not.toContain('speech model');
+      audioButton(rendered, 'Audio')?.click();
 
       expect(fixture.componentInstance.syntheses).toBe(1);
     });
@@ -293,10 +298,13 @@ describe('SentencePopoverComponent', () => {
     it('offers to play, and never generates, once a clip exists', () => {
       const fixture = render(aidsWith({ audio: clip() }));
       const rendered = host(fixture);
+      const labels = [...rendered.querySelectorAll('.actions button')].map((button) =>
+        button.textContent.trim(),
+      );
 
-      expect(rendered.textContent).not.toContain('Generate audio');
-      expect(rendered.textContent).toContain('Already saved. Playing it costs nothing.');
-      audioButton(rendered, 'Play this sentence')?.click();
+      expect(labels).toContain('Play');
+      expect(labels).not.toContain('Audio');
+      audioButton(rendered, 'Play')?.click();
 
       expect(fixture.componentInstance.plays).toBe(1);
       expect(fixture.componentInstance.syntheses).toBe(0);
@@ -305,9 +313,13 @@ describe('SentencePopoverComponent', () => {
     it('reports that a clip is being produced, offering neither action', () => {
       const rendered = host(render(aidsWith({ audioAction: { state: 'running', error: null } })));
 
+      const labels = [...rendered.querySelectorAll('.actions button')].map((button) =>
+        button.textContent.trim(),
+      );
+
       expect(rendered.textContent).toContain('Generating…');
-      expect(rendered.textContent).not.toContain('Generate audio');
-      expect(rendered.textContent).not.toContain('Play this sentence');
+      expect(labels).not.toContain('Audio');
+      expect(labels).not.toContain('Play');
     });
 
     it('offers a retry, and says what went wrong, after a failure', () => {
@@ -325,8 +337,8 @@ describe('SentencePopoverComponent', () => {
         ),
       );
 
-      expect(rendered.textContent).toContain('Try generating audio again');
-      expect(rendered.querySelector('.audio [role="alert"]')).not.toBeNull();
+      expect(rendered.textContent).toContain('Audio again');
+      expect(rendered.querySelector('[role="alert"]')).not.toBeNull();
     });
   });
 });
