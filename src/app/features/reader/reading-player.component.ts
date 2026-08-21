@@ -1,107 +1,137 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
+import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
 import type { SentenceId } from '../../domain/shared/ids';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
+
+/** What the panel is showing, resolved from the job first and playback second. */
+export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
 
 /**
- * The whole-reading player.
+ * Everything to do with a reading's audio, in one panel.
  *
- * Two shapes of the same controls, because the reader has two shapes: a sticky
- * footer on desktop, and a compact strip inside the sticky header below the
- * desktop breakpoint, where a footer would sit on top of the reading it is
- * playing (`ux-ui-specification.md` lines 141–151).
+ * Generating it, watching that run, recovering from a failure, and playing the
+ * result used to be three surfaces in three places — a menu entry, a hairline in
+ * the header, and a player that only appeared once the whole set existed. A
+ * learner had no way to find out the application could read to them at all. The
+ * header's audio button is always there, and this is what it opens.
  *
  * It reads the root playback store directly rather than being handed its state,
- * because playback is application-wide: a footer and a header strip that were
- * each given their own copy would be two players to keep in step.
+ * because playback is application-wide and outlives the panel being open.
  *
- * **Nothing here starts on mount.** The component renders only when something
- * is already playing or when the complete set exists to be started, and even
- * then the first sound is the learner pressing Play.
+ * **Nothing here starts on mount.** Opening the panel loads no audio and sends
+ * no request: the first sound and the first spend are both a press.
  */
 @Component({
   selector: 'mn-reading-player',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent],
   template: `
-    @if (visible()) {
-      <div class="player" [class.is-compact]="compact()" role="group" aria-label="Reading player">
-        @if (compact()) {
-          <p class="position" role="status">{{ positionLabel() }}</p>
+    <div class="player" role="group" aria-label="Reading audio">
+      @switch (mode()) {
+        @case ('generating') {
+          <div
+            class="bar"
+            role="progressbar"
+            aria-label="Preparing audio for this reading"
+            [attr.aria-valuenow]="jobPercent()"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <span class="fill" [style.inline-size.%]="jobPercent()"></span>
+          </div>
+          <div class="row">
+            <p class="line" role="status">{{ jobLine() }}</p>
+            <button type="button" class="quiet" (click)="cancelGeneration.emit()">Stop</button>
+          </div>
         }
 
-        <div class="controls">
-          <button
-            type="button"
-            class="icon-button"
-            aria-label="Previous sentence"
-            [disabled]="!store.isActive()"
-            (click)="previous()"
-          >
-            <mn-icon name="skip-back" [size]="18" />
-          </button>
-
-          @if (isPlaying()) {
-            <button
-              type="button"
-              class="icon-button primary"
-              aria-label="Pause"
-              (click)="store.pause()"
-            >
-              <mn-icon name="pause" [size]="20" />
-            </button>
-          } @else {
-            <button
-              type="button"
-              class="icon-button primary"
-              [attr.aria-label]="playLabel()"
-              [disabled]="isLoading()"
-              (click)="play()"
-            >
-              <mn-icon name="play" [size]="20" />
-            </button>
+        @case ('stopped') {
+          <div class="row">
+            <p class="line" role="status">{{ jobLine() }}</p>
+          </div>
+          @if (jobFailure(); as failure) {
+            <p class="mn-error" role="alert">{{ failure }}</p>
           }
+          <div class="row">
+            <button type="button" class="mn-button" (click)="retryGeneration.emit()">
+              Try again
+            </button>
+            <button type="button" class="quiet" (click)="dismissJob.emit()">Dismiss</button>
+          </div>
+        }
 
-          <button
-            type="button"
-            class="icon-button"
-            aria-label="Next sentence"
-            [disabled]="!store.isActive()"
-            (click)="next()"
-          >
-            <mn-icon name="skip-forward" [size]="18" />
-          </button>
-
-          <button
-            type="button"
-            class="icon-button"
-            aria-label="Stop"
-            [disabled]="!store.isActive()"
-            (click)="store.stop()"
-          >
-            <mn-icon name="stop" [size]="18" />
-          </button>
-        </div>
-
-        @if (!compact()) {
-          <div class="track">
-            <div
-              class="bar"
-              role="progressbar"
-              aria-label="Position in this reading"
-              [attr.aria-valuenow]="percent()"
-              aria-valuemin="0"
-              aria-valuemax="100"
+        @case ('ready') {
+          <div class="controls">
+            <button
+              type="button"
+              class="mn-icon-button"
+              aria-label="Previous sentence"
+              [disabled]="!store.isActive()"
+              (click)="previous()"
             >
-              <span class="fill" [style.inline-size.%]="percent()"></span>
-            </div>
-            <p class="position" role="status">{{ positionLabel() }}</p>
+              <mn-icon name="skip-back" [size]="18" />
+            </button>
+
+            @if (isPlaying()) {
+              <button
+                type="button"
+                class="mn-icon-button primary"
+                aria-label="Pause"
+                (click)="store.pause()"
+              >
+                <mn-icon name="pause" [size]="20" />
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="mn-icon-button primary"
+                [attr.aria-label]="playLabel()"
+                [disabled]="isLoading()"
+                (click)="play()"
+              >
+                <mn-icon name="play" [size]="20" />
+              </button>
+            }
+
+            <button
+              type="button"
+              class="mn-icon-button"
+              aria-label="Next sentence"
+              [disabled]="!store.isActive()"
+              (click)="next()"
+            >
+              <mn-icon name="skip-forward" [size]="18" />
+            </button>
+
+            <button
+              type="button"
+              class="mn-icon-button"
+              aria-label="Stop"
+              [disabled]="!store.isActive()"
+              (click)="store.stop()"
+            >
+              <mn-icon name="stop" [size]="18" />
+            </button>
           </div>
 
+          <div
+            class="bar"
+            role="progressbar"
+            aria-label="Position in this reading"
+            [attr.aria-valuenow]="percent()"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <span class="fill" [style.inline-size.%]="percent()"></span>
+          </div>
+          <p class="line" role="status">{{ positionLabel() }}</p>
+
           <!--
-            Start from where the learner is rather than from the top, for a
-            reading resumed halfway. Offered only when a sentence is actually
-            open, because "here" needs somewhere to mean.
+            Start from where the learner is rather than from the top. Offered
+            only when a sentence was open when the panel was opened, because
+            "this sentence" needs somewhere to mean.
           -->
           @if (canStartFromSelection()) {
             <button type="button" class="quiet" (click)="playFromSelection()">
@@ -110,72 +140,44 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
           }
         }
 
-        @if (failureMessage(); as message) {
-          <p class="mn-error" role="alert">{{ message }}</p>
+        @case ('absent') {
+          <p class="line">{{ sentenceCountLabel() }}</p>
+          <button type="button" class="mn-button mn-button--primary" (click)="generate.emit()">
+            Generate audio
+          </button>
         }
-      </div>
-    }
+      }
+
+      @if (failureMessage(); as message) {
+        <p class="mn-error" role="alert">{{ message }}</p>
+      }
+    </div>
   `,
   styles: `
     .player {
       display: flex;
+      flex-direction: column;
       gap: var(--space-3);
-      align-items: center;
-      padding: var(--space-2) var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
-    }
-
-    /* In the header there is room for the transport and a position, and no more. */
-    .player.is-compact {
-      gap: var(--space-2);
-      padding: var(--space-1) var(--space-2);
-      border: 0;
-      border-radius: 0;
-      background: none;
-      box-shadow: none;
+      min-width: 15rem;
     }
 
     .controls {
       display: flex;
-      flex: none;
       gap: var(--space-1);
       align-items: center;
-    }
-
-    .icon-button {
-      display: inline-flex;
-      flex: none;
-      align-items: center;
       justify-content: center;
-      width: var(--touch-target);
-      height: var(--touch-target);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-control);
-      background: var(--surface-raised);
-      color: var(--text-primary);
-      cursor: pointer;
     }
 
-    .icon-button.primary {
+    .mn-icon-button.primary {
       border-color: transparent;
       background: var(--action-primary);
       color: var(--text-on-action);
     }
 
-    .icon-button:disabled {
-      opacity: 0.45;
-      cursor: default;
-    }
-
-    .track {
+    .row {
       display: flex;
-      flex: 1;
-      flex-direction: column;
-      gap: var(--space-1);
-      min-width: 0;
+      gap: var(--space-3);
+      align-items: center;
     }
 
     .bar {
@@ -192,17 +194,14 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       transition: inline-size var(--motion-medium) ease-out;
     }
 
-    .position {
+    .line {
+      flex: 1;
       margin: 0;
-      overflow: hidden;
       color: var(--text-secondary);
       font-size: var(--text-sm);
-      white-space: nowrap;
-      text-overflow: ellipsis;
     }
 
     .quiet {
-      flex: none;
       min-height: var(--touch-target);
       padding-inline: var(--space-2);
       border: 0;
@@ -215,7 +214,6 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     }
 
     .mn-error {
-      flex: 1;
       margin: 0;
       color: var(--status-danger);
       font-size: var(--text-sm);
@@ -231,21 +229,30 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 export class ReadingPlayerComponent {
   protected readonly store = inject(AudioPlaybackStore);
 
-  /** The header strip below the desktop breakpoint, rather than the footer. */
-  readonly compact = input(false);
-  /** The sentence the learner has open, which Start from here means. */
+  readonly progress = input.required<AudioJobProgress>();
+  /** The sentence that was open when the panel was opened, for Start from here. */
   readonly selectedSentenceId = input<SentenceId | null>(null);
 
+  readonly generate = output<void>();
+  readonly cancelGeneration = output<void>();
+  readonly retryGeneration = output<void>();
+  readonly dismissJob = output<void>();
+
   /**
-   * Shown while playing, and while a complete set exists to start.
-   *
-   * A reading with no audio prepared has no player at all: an always-present
-   * bar with everything disabled would be a permanent strip over the text,
-   * which is exactly what the reading surface does not have.
+   * The job wins over playback, because a job that has just stopped is what the
+   * learner is waiting on: showing a transport instead would answer a question
+   * they did not ask.
    */
-  protected readonly visible = computed(
-    () => this.store.isActive() || this.store.canPlayWholeReading(),
-  );
+  protected readonly mode = computed<PlayerMode>(() => {
+    const progress = this.progress();
+    if (progress.kind === 'preparing' || progress.kind === 'running') {
+      return 'generating';
+    }
+    if (progress.kind === 'failed' || progress.kind === 'cancelled') {
+      return 'stopped';
+    }
+    return this.store.canPlayWholeReading() || this.store.isActive() ? 'ready' : 'absent';
+  });
 
   protected readonly isPlaying = computed(() => this.store.status() === 'playing');
 
@@ -269,9 +276,54 @@ export class ReadingPlayerComponent {
     return `Sentence ${String(position)} of ${String(total)}`;
   });
 
+  protected readonly sentenceCountLabel = computed(() => {
+    const total = this.store.sentenceCount();
+    return `${String(total)} ${total === 1 ? 'sentence' : 'sentences'}`;
+  });
+
   protected readonly canStartFromSelection = computed(
     () => this.selectedSentenceId() !== null && this.store.canPlayWholeReading(),
   );
+
+  protected readonly jobPercent = computed(() => {
+    const progress = this.progress();
+    if (progress.kind === 'idle' || progress.kind === 'preparing') {
+      return 0;
+    }
+    const { completed, requested } = progress.counts;
+    return requested === 0 ? 100 : Math.round((completed / requested) * 100);
+  });
+
+  protected readonly jobLine = computed(() => {
+    const progress = this.progress();
+    switch (progress.kind) {
+      case 'idle':
+      case 'complete':
+        return '';
+      case 'preparing':
+        return 'Preparing…';
+      case 'running':
+        return `Sentence ${String(progress.counts.completed + 1)} of ${String(progress.counts.requested)}`;
+      case 'cancelled':
+        return 'Stopped. Sentences already read aloud were kept.';
+      case 'failed':
+        // Audio stops at the sentence that failed, so the number completed is
+        // also where a retry picks up.
+        return `Stopped at sentence ${String(progress.counts.completed + 1)} of ${String(progress.counts.requested)}. Earlier clips were kept.`;
+    }
+  });
+
+  protected readonly jobFailure = computed(() => {
+    const progress = this.progress();
+    if (progress.kind !== 'failed') {
+      return null;
+    }
+    if (progress.error.source === 'storage') {
+      return `Saving failed: ${progress.error.error.message}`;
+    }
+    const copy = aiErrorCopy(progress.error.error);
+    return `${copy.heading} while ${aiTaskCopy(progress.error.error.task)}. ${copy.primaryAction}`;
+  });
 
   protected readonly failureMessage = computed(() => {
     const failure = this.store.failure();
