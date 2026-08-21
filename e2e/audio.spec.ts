@@ -19,8 +19,28 @@ function sentencePopover(page: Page): Locator {
   return page.locator('mn-sentence-popover');
 }
 
-function player(page: Page): Locator {
-  return page.getByRole('group', { name: 'Reading player' });
+/**
+ * The audio panel. It is a popover, so it exists only while it is open — the
+ * header's audio button is the only thing about audio that is always there.
+ */
+function audioPanel(page: Page): Locator {
+  return page.getByRole('group', { name: 'Reading audio' });
+}
+
+function audioButton(page: Page): Locator {
+  return page.locator('.bar-actions').getByRole('button', { name: /^Audio/ });
+}
+
+async function openAudioPanel(page: Page): Promise<void> {
+  await audioButton(page).click();
+  await expect(audioPanel(page)).toBeVisible();
+}
+
+/** Waits for a whole-reading run to finish, which is the panel becoming a transport. */
+async function expectAudioReady(page: Page): Promise<void> {
+  await expect(audioPanel(page).getByRole('button', { name: 'Play this reading' })).toBeVisible({
+    timeout: 60_000,
+  });
 }
 
 function isDesktop(page: Page): boolean {
@@ -74,6 +94,11 @@ async function openReaderMenu(page: Page): Promise<void> {
   await expect(page.getByRole('group', { name: 'Reading actions' })).toBeVisible();
 }
 
+/** The sentence popover's own audio action, which is a label and nothing else. */
+function sentenceAudioAction(page: Page, label: string): Locator {
+  return sentencePopover(page).getByRole('button', { name: label, exact: true });
+}
+
 /** How many clips are stored, read from the database rather than the page. */
 async function storedClipCount(page: Page): Promise<number> {
   return (await countOwnedRows(page))['audioAssets'] ?? 0;
@@ -114,10 +139,8 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await selectSentence(page);
     expect(synthesisCount(calls), 'opening a sentence synthesizes nothing').toBe(afterSetup);
 
-    await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expect(page.getByRole('button', { name: 'Play this sentence' })).toBeVisible({
-      timeout: 15_000,
-    });
+    await sentenceAudioAction(page, 'Audio').click();
+    await expect(sentenceAudioAction(page, 'Play')).toBeVisible({ timeout: 15_000 });
 
     expect(synthesisCount(calls) - afterSetup, 'exactly one clip was requested').toBe(1);
     expect(await storedClipCount(page)).toBe(1);
@@ -128,16 +151,14 @@ test.describe('scenario 13 — audio preparation and playback', () => {
   }) => {
     const calls = await prepareReading(page);
     await selectSentence(page);
-    await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expect(page.getByRole('button', { name: 'Play this sentence' })).toBeVisible({
-      timeout: 15_000,
-    });
+    await sentenceAudioAction(page, 'Audio').click();
+    await expect(sentenceAudioAction(page, 'Play')).toBeVisible({ timeout: 15_000 });
     const afterFirst = synthesisCount(calls);
 
     // The same sentence again, in the same session.
     await dismissPopover(page);
     await selectSentence(page);
-    await expect(page.getByRole('button', { name: 'Play this sentence' })).toBeVisible();
+    await expect(sentenceAudioAction(page, 'Play')).toBeVisible();
     expect(synthesisCount(calls), 'a stored clip is offered, not re-made').toBe(afterFirst);
 
     // And after a reload, which is where the cache has to survive.
@@ -145,27 +166,29 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
     expect(callCount(calls), 'opening a reading makes no request at all').toBe(callCount(calls));
     await selectSentence(page);
-    await expect(page.getByRole('button', { name: 'Play this sentence' })).toBeVisible();
+    await expect(sentenceAudioAction(page, 'Play')).toBeVisible();
     expect(synthesisCount(calls)).toBe(afterFirst);
   });
 
   test('opens a reading with stored audio silently, and plays nothing', async ({ page }) => {
     const calls = await prepareReading(page);
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: /Prepare audio for/ }).click();
-    await expect(page.getByText('Audio is ready for the whole reading.')).toBeVisible({
-      timeout: 60_000,
-    });
+    await openAudioPanel(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioReady(page);
 
     const afterPreparation = callCount(calls);
     await page.reload();
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
-    await expect(player(page)).toBeVisible();
+
+    // The panel is closed by the reload, so nothing about audio is on the page
+    // until it is asked for again — and asking costs nothing.
+    await expect(audioPanel(page)).toHaveCount(0);
+    await openAudioPanel(page);
 
     expect(callCount(calls), 'opening a prepared reading requests nothing').toBe(afterPreparation);
     // Nothing autoplays: the transport is offered, and the reading is silent
     // until the learner presses play.
-    await expect(page.getByRole('button', { name: 'Stop' })).toBeDisabled();
+    await expect(audioPanel(page).getByRole('button', { name: 'Stop' })).toBeDisabled();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
   });
 
@@ -190,30 +213,29 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     });
     const afterSetup = synthesisCount(calls);
 
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: /Prepare audio for/ }).click();
-    await expect(page.getByText(/Stopped at sentence 3 of 4/)).toBeVisible({ timeout: 60_000 });
+    await openAudioPanel(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expect(audioPanel(page).getByText(/Stopped at sentence 3 of 4/)).toBeVisible({
+      timeout: 60_000,
+    });
 
     // The clips already produced are kept: they cost money and are exactly as
     // playable individually as they were.
     expect(await storedClipCount(page)).toBe(2);
     expect(synthesisCount(calls) - afterSetup, 'nothing after the failure was scheduled').toBe(3);
 
-    // The gate stays shut: a set with a hole in it cannot be played end to end.
-    await expect(player(page)).toBeHidden();
-    await openReaderMenu(page);
-    await expect(page.getByRole('button', { name: 'Play reading' })).toHaveCount(0);
-    await page.keyboard.press('Escape');
+    // The gate stays shut: a set with a hole in it cannot be played end to end,
+    // so the panel offers the failure and its recovery rather than a transport.
+    await expect(audioPanel(page).getByRole('button', { name: 'Play this reading' })).toHaveCount(
+      0,
+    );
 
-    await page.getByRole('button', { name: 'Retry' }).click();
-    await expect(page.getByText('Audio is ready for the whole reading.')).toBeVisible({
-      timeout: 60_000,
-    });
+    await page.getByRole('button', { name: 'Try again' }).click();
+    await expectAudioReady(page);
 
     // Two more requests, for the sentence that failed and the one after it.
     expect(synthesisCount(calls) - afterSetup).toBe(5);
     expect(await storedClipCount(page)).toBe(SENTENCE_COUNT);
-    await expect(player(page)).toBeVisible();
   });
 
   test('keeps completed clips when a run is stopped, and finishes them after a reload', async ({
@@ -221,13 +243,13 @@ test.describe('scenario 13 — audio preparation and playback', () => {
   }) => {
     const calls = await prepareReading(page, { audioDelayMs: 500 });
 
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: /Prepare audio for/ }).click();
+    await openAudioPanel(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
     // Stopped in the middle rather than at the start, so what is asserted is
     // that finished clips survive rather than that none were made.
-    await expect(page.getByText(/Reading 2 of 4/)).toBeVisible({ timeout: 30_000 });
-    await page.getByRole('button', { name: 'Stop', exact: true }).click();
-    await expect(page.getByText(/Sentences already read aloud were kept/)).toBeVisible({
+    await expect(audioPanel(page).getByText(/Sentence 2 of 4/)).toBeVisible({ timeout: 30_000 });
+    await audioPanel(page).getByRole('button', { name: 'Stop', exact: true }).click();
+    await expect(audioPanel(page).getByText(/Sentences already read aloud were kept/)).toBeVisible({
       timeout: 60_000,
     });
 
@@ -240,11 +262,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
     expect(synthesisCount(calls), 'a stopped run is not restarted on open').toBe(afterStop);
 
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: /Prepare audio for/ }).click();
-    await expect(page.getByText('Audio is ready for the whole reading.')).toBeVisible({
-      timeout: 60_000,
-    });
+    await openAudioPanel(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioReady(page);
 
     expect(synthesisCount(calls) - afterStop, 'only what was still missing was requested').toBe(
       SENTENCE_COUNT - stopped,
@@ -254,33 +274,27 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
   test('plays the reading on request and stops on request', async ({ page }) => {
     await prepareReading(page);
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: /Prepare audio for/ }).click();
-    await expect(page.getByText('Audio is ready for the whole reading.')).toBeVisible({
-      timeout: 60_000,
-    });
+    await openAudioPanel(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioReady(page);
 
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: 'Play reading' }).click();
+    await audioPanel(page).getByRole('button', { name: 'Play this reading' }).click();
 
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
-    await expect(player(page).getByText(/Sentence \d+ of 4/)).toBeVisible();
+    await expect(audioPanel(page).getByText(/Sentence \d+ of 4/)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Stop' }).click();
+    await audioPanel(page).getByRole('button', { name: 'Stop' }).click();
 
     await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Stop' })).toBeDisabled();
+    await expect(audioPanel(page).getByRole('button', { name: 'Stop' })).toBeDisabled();
   });
 
   test('clearing the audio cache stops playback and empties the summaries', async ({ page }) => {
     await prepareReading(page);
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: /Prepare audio for/ }).click();
-    await expect(page.getByText('Audio is ready for the whole reading.')).toBeVisible({
-      timeout: 60_000,
-    });
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: 'Play reading' }).click();
+    await openAudioPanel(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioReady(page);
+    await audioPanel(page).getByRole('button', { name: 'Play this reading' }).click();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
 
     await page.goto('/#/settings');
@@ -292,21 +306,19 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
   test('deleting the reading stops playback', async ({ page }) => {
     await prepareReading(page);
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: /Prepare audio for/ }).click();
-    await expect(page.getByText('Audio is ready for the whole reading.')).toBeVisible({
-      timeout: 60_000,
-    });
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: 'Play reading' }).click();
+    await openAudioPanel(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioReady(page);
+    await audioPanel(page).getByRole('button', { name: 'Play this reading' }).click();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
+    await page.keyboard.press('Escape');
 
     await openReaderMenu(page);
     await page.getByRole('button', { name: 'Delete reading' }).click();
     await page.getByRole('button', { name: 'Delete permanently' }).click();
 
     await expect(page).toHaveURL(/#\/library/);
-    await expect(player(page)).toHaveCount(0);
+    await expect(audioPanel(page)).toHaveCount(0);
     expect(await storedClipCount(page)).toBe(0);
   });
 
@@ -314,15 +326,14 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     page,
   }) => {
     await prepareReading(page);
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: /Prepare audio for/ }).click();
-    await expect(page.getByText('Audio is ready for the whole reading.')).toBeVisible({
-      timeout: 60_000,
-    });
-    await expect(player(page)).toBeVisible();
+    await openAudioPanel(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioReady(page);
+    await waitForPopoverSettled(page);
 
     await expectNoSeriousAccessibilityViolations(page);
 
+    await page.keyboard.press('Escape');
     await selectSentence(page);
     await expect(sentencePopover(page)).toBeVisible();
     await waitForPopoverSettled(page);

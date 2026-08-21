@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import type { Reading } from '../../domain/reading/reading';

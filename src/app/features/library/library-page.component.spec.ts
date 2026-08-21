@@ -88,9 +88,7 @@ describe('LibraryPageComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  function newReadingButton(
-    fixture: Awaited<ReturnType<typeof render>>,
-  ): HTMLButtonElement | null {
+  function newReadingButton(fixture: Awaited<ReturnType<typeof render>>): HTMLButtonElement | null {
     return element(fixture).querySelector<HTMLButtonElement>('.actions button');
   }
 

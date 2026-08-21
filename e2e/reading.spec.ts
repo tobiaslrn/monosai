@@ -27,12 +27,33 @@ async function openWordDetails(page: Page, surface: string): Promise<void> {
  * AI request at any point.
  */
 test.describe('scenario 1 — paste, review, save, inspect', () => {
-  test('a first visit lands on Add text and needs no setup', async ({ page }) => {
+  /**
+   * An empty library is the first screen, not a form nobody asked for. It says
+   * one line and offers the one button that fills it.
+   */
+  test('a first visit lands on an empty library and needs no setup', async ({ page }) => {
     await page.goto('/');
 
+    await expect(page).toHaveURL(/#\/library/);
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+    await expect(page.getByText('Nothing saved yet')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'New reading' })).toBeVisible();
+  });
+
+  test('New reading offers both ways in, and Paste text reaches the reader', async ({ page }) => {
+    await page.goto('/#/library');
+
+    await page.getByRole('button', { name: 'New reading' }).click();
+    const chooser = page.getByRole('dialog', { name: 'New reading' });
+    await expect(chooser.getByRole('link', { name: 'Paste text' })).toBeVisible();
+    await expect(chooser.getByRole('link', { name: 'Write with AI' })).toBeVisible();
+
+    await chooser.getByRole('link', { name: 'Paste text' }).click();
     await expect(page).toHaveURL(/#\/add/);
-    await expect(page.getByRole('heading', { name: 'Add text', level: 1 })).toBeVisible();
-    await expect(page.getByText(/Anki and AI are optional/)).toBeVisible();
+
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+    await expect(page.locator('mn-reader-paragraph')).toHaveCount(2);
   });
 
   test('paste, review the sentences, save, and read', async ({ page }) => {
@@ -79,8 +100,11 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     await openWordDetails(page, '猫');
 
     await expect(wordDetails(page)).toContainText('猫');
-    await expect(wordDetails(page)).toContainText('Noun');
     await expect(wordDetails(page)).toContainText('cat');
+    // 猫 is already its own dictionary form, so the form table is left out
+    // rather than repeating the word on the page back under a label.
+    await expect(wordDetails(page)).not.toContainText('Dictionary form');
+    await expect(wordDetails(page)).not.toContainText('Part of speech');
     // The sentence is not repeated here: the learner is looking at it.
     await expect(wordDetails(page)).not.toContainText('In this sentence');
     expect(external).toEqual([]);
@@ -101,15 +125,22 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     await expect(token).toBeFocused();
   });
 
-  test('the reader states that vocabulary is not configured rather than marking every word', async ({
+  /**
+   * With no Anki vocabulary set up there is nothing to mark, and the reader
+   * says so by marking nothing. It used to print a notice above every reading
+   * that could not be dismissed, which cost four lines on a phone to repeat
+   * what the absence of underlines already said.
+   */
+  test('marks no words when vocabulary is not configured, and says nothing about it', async ({
     page,
   }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
-    await expect(page.getByText(/Vocabulary markers are off/)).toBeVisible();
     await expect(page.locator('.is-warning-vocabulary')).toHaveCount(0);
+    await expect(page.getByText(/Vocabulary markers are off/)).toHaveCount(0);
+    await expect(page.getByRole('main').getByText(/Anki/)).toHaveCount(0);
   });
 
   test('the reading surface is Japanese, with no controls printed on it', async ({ page }) => {
@@ -282,32 +313,34 @@ test.describe('scenario 2 — file import and its errors', () => {
 });
 
 /** End-to-end scenario 14: filtering, resume, deletion cascade, and repair. */
-test.describe('scenario 14 — library, progress, deletion', () => {
-  test('filters by source and shows both readings under All', async ({ page }) => {
+test.describe('scenario 14 — library, filtering, deletion', () => {
+  /**
+   * A card shows the reading, not a report on it: the title, its opening in
+   * Japanese, and one line saying when it arrived.
+   */
+  test('a card shows the reading opening in Japanese and one line of metadata', async ({
+    page,
+  }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
     await page.goto('/#/library');
 
-    await expect(page.locator('mn-reading-card')).toHaveCount(1);
-
-    await page.getByRole('button', { name: 'Generated' }).click();
-    await expect(page.getByText('No generated readings yet')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Imported' }).click();
-    await expect(page.locator('mn-reading-card')).toHaveCount(1);
-    await expect(page.getByRole('button', { name: 'Imported' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    const card = page.locator('mn-reading-card');
+    await expect(card).toContainText('第一章');
+    await expect(card.locator('.excerpt[lang="ja"]')).toContainText('吾輩は猫である');
+    await expect(card).toContainText('today');
+    // None of the counters the card used to be built from.
+    await expect(card).not.toContainText('sentences');
+    await expect(card).not.toContainText('none yet');
+    await expect(card).not.toContainText('Last opened');
   });
 
-  test('Continue reading appears after a reading is opened', async ({ page }) => {
+  /** Chips are chrome until there are enough readings for filtering to help. */
+  test('hides the filter chips on a shelf too small to need them', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
     await page.goto('/#/library');
 
-    const card = page.locator('mn-continue-reading-card');
-    await expect(card).toContainText('Continue reading');
-    await expect(card).toContainText('第一章');
-    await expect(card.getByRole('progressbar')).toBeVisible();
+    await expect(page.locator('mn-reading-card')).toHaveCount(1);
+    await expect(page.getByRole('group', { name: 'Filter readings' })).toHaveCount(0);
   });
 
   test('deleting asks first, then leaves zero owned orphan rows', async ({ page }) => {
@@ -341,20 +374,18 @@ test.describe('scenario 14 — library, progress, deletion', () => {
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
   });
 
-  test('Continue reading repairs itself when its target is deleted', async ({ page }) => {
+  test('deleting one reading leaves the others on the shelf', async ({ page }) => {
     await importReading(page, '最初の話です。', '第一章');
     await importReading(page, '二番目の話です。', '第二章');
     await page.goto('/#/library');
-
-    // The most recently opened reading is the one Continue reading points at.
-    await expect(page.locator('mn-continue-reading-card')).toContainText('第二章');
+    await expect(page.locator('mn-reading-card')).toHaveCount(2);
 
     await page.getByRole('button', { name: 'Actions for 第二章' }).click();
     await page.getByRole('button', { name: 'Delete' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete permanently' }).click();
 
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
-    await expect(page.locator('mn-continue-reading-card')).toContainText('第一章');
+    await expect(page.locator('mn-reading-card')).toContainText('第一章');
   });
 
   test('a returning profile with readings opens the library', async ({ page }) => {
@@ -405,7 +436,12 @@ test.describe('scenario 15 — offline reading', () => {
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
 
     await context.setOffline(true);
-    await page.getByRole('button', { name: 'Imported' }).click();
+    // Navigating inside the running application, because serving the shell
+    // after a full reload is the service worker's job in Milestone 10. What
+    // this proves is that listing the library needs nothing but local data.
+    await page.getByRole('link', { name: '第一章' }).click();
+    await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
+    await page.getByRole('link', { name: 'Back to library' }).click();
 
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
     await expect(page.locator('mn-reading-card')).toContainText('第一章');
