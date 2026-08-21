@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+import { AppSectionComponent } from './app-section.component';
 import { AppearanceSectionComponent } from './appearance-section.component';
 import { DiagnosticsSectionComponent } from './diagnostics-section.component';
 import { GenerationPolicySectionComponent } from './generation-policy-section.component';
@@ -21,6 +22,7 @@ import { TtsSectionComponent } from './tts-section.component';
     AppearanceSectionComponent,
     LanguageAssetsSectionComponent,
     StorageSectionComponent,
+    AppSectionComponent,
     DiagnosticsSectionComponent,
   ],
   template: `
@@ -33,6 +35,7 @@ import { TtsSectionComponent } from './tts-section.component';
       <mn-appearance-section />
       <mn-language-assets-section />
       <mn-storage-section />
+      <mn-app-section />
       <mn-diagnostics-section />
     </div>
   `,
