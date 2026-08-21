@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { LanguageAssetManifest } from '../app/domain/language/language-assets';
+import {
+  compileStructuralBaseline,
+  type StructuralBaseline,
+  type StructuralBaselineMatcher,
+} from '../app/domain/language/structural-baseline';
 import type { Token } from '../app/domain/reading/token';
 import { mapRawTokens } from '../workers/language/token-mapping';
 import type { TokenizerRuntime } from '../workers/language/tokenizer-runtime';
@@ -39,6 +44,23 @@ export function sharedTokenizerRuntime(): Promise<TokenizerRuntime> {
     module.createLinderaRuntime(readBundleFile('tokenizer/lindera_wasm_bg.wasm')),
   );
   return sharedRuntime;
+}
+
+let sharedBaseline: StructuralBaselineMatcher | null = null;
+
+/**
+ * The real structural baseline, compiled from the committed bundle.
+ *
+ * Anything named from the baseline is only meaningful against the dataset that
+ * actually ships, for the same reason the tokenizer is used directly.
+ */
+export function sharedStructuralBaseline(): StructuralBaselineMatcher {
+  sharedBaseline ??= compileStructuralBaseline(
+    JSON.parse(
+      new TextDecoder().decode(readBundleFile('structural-baseline.json')),
+    ) as StructuralBaseline,
+  );
+  return sharedBaseline;
 }
 
 export async function analyzeSentence(text: string): Promise<readonly Token[]> {

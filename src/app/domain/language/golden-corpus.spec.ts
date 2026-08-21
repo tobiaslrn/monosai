@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeSentence, surfacesOf } from '../../../testing/language-runtime';
+import {
+  analyzeSentence,
+  sharedTokenizerRuntime,
+  surfacesOf,
+} from '../../../testing/language-runtime';
+import { mapInflectionForm } from '../../../workers/language/ipadic-inflection';
 import { ANALYZER_VERSION, VALIDATOR_VERSION } from './analyzer-version';
 import { tokensCoverSentence } from './analyzed-text';
 import {
@@ -34,6 +39,9 @@ describe('golden language corpus', () => {
         }
         if (expected.partOfSpeech !== undefined) {
           expect(token.partOfSpeech).toBe(expected.partOfSpeech);
+        }
+        if (expected.inflectionForm !== undefined) {
+          expect(token.inflectionForm).toBe(expected.inflectionForm);
         }
         if (expected.isPunctuation !== undefined) {
           expect(token.isPunctuation).toBe(expected.isPunctuation);
@@ -77,5 +85,29 @@ describe('golden language corpus', () => {
     const tokens = await analyzeSentence('食べ物');
     const first = tokens[0];
     expect(readingAddsInformation(first.surface, first.readingHiragana ?? '')).toBe(true);
+  });
+
+  /**
+   * An inflection the shipped dictionary can emit and the mapping does not know
+   * would silently disappear from every derivation ladder, and no unit test over
+   * invented tags would catch it.
+   */
+  it('maps every inflection form the shipped dictionary emits', async () => {
+    const runtime = await sharedTokenizerRuntime();
+    const sample = [
+      '行きませんでした。食べさせられたくなかった。読んでいる。行けば。行こう。行け。',
+      '見せてしまった。してください。食べなければならない。高くない。学生でした。',
+      '見ろ。せよ。走れ。大きな花。良うございます。ありがとうございました。行かず。',
+      '楽しゅうございます。同じ本。飲みたがる。静かである。行くらしい。降りそうだ。',
+      '大した人。飲もう。いらっしゃいませ。行ったり来たり。読みつつ書きながら。',
+    ].join('');
+
+    const unmapped = runtime
+      .tokenize(sample)
+      .filter((token) => token.inflectionForm.length > 0)
+      .filter((token) => mapInflectionForm(token) === undefined)
+      .map((token) => token.inflectionForm);
+
+    expect([...new Set(unmapped)]).toEqual([]);
   });
 });

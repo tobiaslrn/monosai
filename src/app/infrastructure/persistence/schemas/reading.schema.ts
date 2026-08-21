@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import {
+  INFLECTION_FORM_LABELS,
+  PART_OF_SPEECH_LABELS,
+  type InflectionForm,
+  type PartOfSpeech,
+} from '../../../domain/reading/token';
+import {
   completionSummarySchema,
   grammarSummarySchema,
   nonEmptyString,
@@ -69,6 +75,17 @@ export const sentenceRowSchema = z.object({
   contentHash: nonEmptyString,
 });
 
+/**
+ * Both enums are derived from the domain records rather than restated here, so
+ * a new word class or inflection form cannot be accepted by the type system and
+ * rejected by the store.
+ */
+const partOfSpeechValues = Object.keys(PART_OF_SPEECH_LABELS) as [PartOfSpeech, ...PartOfSpeech[]];
+const inflectionFormValues = Object.keys(INFLECTION_FORM_LABELS) as [
+  InflectionForm,
+  ...InflectionForm[],
+];
+
 export const tokenSchema = z.object({
   id: nonEmptyString,
   startUtf16: z.number().int().nonnegative(),
@@ -76,28 +93,8 @@ export const tokenSchema = z.object({
   surface: z.string(),
   lemma: z.string().optional(),
   readingHiragana: z.string().optional(),
-  partOfSpeech: z
-    .enum([
-      'noun',
-      'proper-noun',
-      'pronoun',
-      'verb',
-      'adjective-i',
-      'adjective-na',
-      'adverb',
-      'determiner',
-      'conjunction',
-      'particle',
-      'auxiliary',
-      'prefix',
-      'suffix',
-      'counter',
-      'number',
-      'interjection',
-      'symbol',
-      'other',
-    ])
-    .optional(),
+  partOfSpeech: z.enum(partOfSpeechValues).optional(),
+  inflectionForm: z.enum(inflectionFormValues).optional(),
   dictionaryKeys: z.array(z.string()).readonly(),
   isPunctuation: z.boolean(),
 });

@@ -7,7 +7,7 @@
  * invalid for new classification and are recomputed from the immutable source
  * text; they are never silently reinterpreted.
  */
-export const ANALYZER_VERSION = 'analyzer/1';
+export const ANALYZER_VERSION = 'analyzer/2';
 
 /** Bump when classification precedence or normalization rules change. */
 export const VALIDATOR_VERSION = 'validator/1';

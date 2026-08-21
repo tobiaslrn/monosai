@@ -110,6 +110,55 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     expect(external).toEqual([]);
   });
 
+  /**
+   * The ladder is the answer to "what form is this?", so it is checked at both
+   * viewports: it is a press target on a phone as much as a line to read.
+   */
+  test('an inflected word is explained as a ladder from its dictionary form', async ({ page }) => {
+    await page.goto('/#/add');
+    await pasteAndContinue(page, '僕には分からなかった。昨日は学校へ行きませんでした。');
+    await saveAndOpenReader(page);
+
+    await openWordDetails(page, '分から');
+    const details = wordDetails(page);
+
+    await expect(details.locator('.summary')).toHaveText('Plain · negative · past');
+    await expect(details.locator('.base .form')).toHaveText('分かる');
+    await expect(details.locator('.base .effect')).toHaveText('dictionary form');
+
+    // The ending is named as ない, never as the なかっ it is written as here:
+    // that stem is not a word and cannot be looked up.
+    await expect(details.locator('.step .form')).toHaveText(['ない', 'た']);
+    await expect(details.locator('.step .result')).toHaveText(['分からない', '分からなかった']);
+
+    // The explanation is behind a press rather than printed under every row.
+    await expect(details.locator('.detail')).toHaveCount(0);
+    await details.locator('.step').first().click();
+    await expect(details.locator('.detail')).toContainText('Negates a verb or auxiliary');
+    await expect(details.locator('.detail')).toContainText('Written here as なかっ');
+
+    await expectNoSeriousAccessibilityViolations(page);
+  });
+
+  /**
+   * IPADIC analyses ませんでした as ます + ん + です + た, and walking those in
+   * order would offer 行きませんです as a step. It is collapsed into the ending
+   * learners are actually taught (ADR 0026).
+   */
+  test('an ending split finer than it is taught is shown as one step', async ({ page }) => {
+    await page.goto('/#/add');
+    await pasteAndContinue(page, '昨日は学校へ行きませんでした。');
+    await saveAndOpenReader(page);
+
+    await openWordDetails(page, '行き');
+    const details = wordDetails(page);
+
+    await expect(details.locator('.summary')).toHaveText('Polite · negative · past');
+    await expect(details.locator('.step .form')).toHaveText(['ませんでした']);
+    await expect(details.locator('.step .result')).toHaveText(['行きませんでした']);
+    await expect(details).not.toContainText('行きませんです');
+  });
+
   test('Escape closes word details and returns focus to its token', async ({ page }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);

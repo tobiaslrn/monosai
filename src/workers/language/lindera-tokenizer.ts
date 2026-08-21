@@ -14,7 +14,15 @@ interface LinderaToken {
   readonly partOfSpeechSubcategory3?: unknown;
   readonly baseForm?: unknown;
   readonly reading?: unknown;
+  /**
+   * The library names these two the other way round from their content: what it
+   * calls `conjugationType` is IPADIC's 活用形 (the inflected shape, 未然形), and
+   * what it calls `conjugationForm` is 活用型 (the paradigm, 五段・ラ行). They are
+   * read under the library's names here and handed on under accurate ones, so
+   * the confusion stops at this file.
+   */
   readonly conjugationType?: unknown;
+  readonly conjugationForm?: unknown;
 }
 
 function text(value: unknown): string {
@@ -42,7 +50,8 @@ function toRawToken(token: LinderaToken): RawToken | null {
     subcategory3: text(token.partOfSpeechSubcategory3),
     baseForm: text(token.baseForm),
     reading: text(token.reading),
-    conjugationType: text(token.conjugationType),
+    inflectionForm: text(token.conjugationType),
+    conjugationClass: text(token.conjugationForm),
   };
 }
 

@@ -1,5 +1,6 @@
 import { katakanaToHiragana, normalizeLookupKey } from '../../app/domain/language/kana';
 import type { Token } from '../../app/domain/reading/token';
+import { mapInflectionForm } from './ipadic-inflection';
 import { isPunctuationToken, mapPartOfSpeech } from './ipadic-mapping';
 import type { RawToken } from './tokenizer-runtime';
 
@@ -79,6 +80,7 @@ export function mapRawTokens(text: string, rawTokens: readonly RawToken[]): read
     const reading = katakanaToHiragana(raw.reading);
     const lemma = raw.baseForm.length > 0 ? raw.baseForm : undefined;
     const partOfSpeech = mapPartOfSpeech(raw);
+    const inflectionForm = mapInflectionForm(raw);
     tokens.push({
       id: `t${String(tokens.length)}`,
       startUtf16: start,
@@ -87,6 +89,7 @@ export function mapRawTokens(text: string, rawTokens: readonly RawToken[]): read
       ...(lemma === undefined ? {} : { lemma }),
       ...(reading.length === 0 ? {} : { readingHiragana: reading }),
       ...(partOfSpeech === undefined ? {} : { partOfSpeech }),
+      ...(inflectionForm === undefined ? {} : { inflectionForm }),
       dictionaryKeys: dictionaryKeysFor(surface, raw.baseForm, reading),
       isPunctuation: isPunctuationToken(raw),
     });

@@ -43,6 +43,42 @@ export const PART_OF_SPEECH_LABELS: Record<PartOfSpeech, string> = {
 };
 
 /**
+ * Bounded inflection-form enum: which shape a conjugating word is in.
+ *
+ * The analyzer reports this for every verb, i-adjective, auxiliary, and copula.
+ * It is what tells 行け (imperative) apart from 行け (conditional stem of 行けば),
+ * and it is the only evidence for an inflection that adds no ending of its own.
+ * Library-specific tags never leave infrastructure, exactly as with
+ * `PartOfSpeech`.
+ */
+export type InflectionForm =
+  | 'dictionary'
+  | 'irrealis'
+  | 'irrealis-volitional'
+  | 'continuative'
+  | 'continuative-ta'
+  | 'continuative-te'
+  | 'hypothetical'
+  | 'imperative'
+  | 'attributive'
+  | 'stem'
+  | 'other';
+
+export const INFLECTION_FORM_LABELS: Record<InflectionForm, string> = {
+  dictionary: 'Dictionary form',
+  irrealis: 'Negative stem',
+  'irrealis-volitional': 'Volitional stem',
+  continuative: 'Continuative stem',
+  'continuative-ta': 'Past stem',
+  'continuative-te': 'Te stem',
+  hypothetical: 'Conditional stem',
+  imperative: 'Imperative',
+  attributive: 'Attributive',
+  stem: 'Bare stem',
+  other: 'Other',
+};
+
+/**
  * One analyzed span of a sentence.
  *
  * Offsets are UTF-16 code-unit indexes into the immutable sentence text, so the
@@ -56,6 +92,8 @@ export interface Token {
   readonly lemma?: string;
   readonly readingHiragana?: string;
   readonly partOfSpeech?: PartOfSpeech;
+  /** Absent for a word class that does not inflect, and for an untagged token. */
+  readonly inflectionForm?: InflectionForm;
   readonly dictionaryKeys: readonly string[];
   readonly isPunctuation: boolean;
 }
