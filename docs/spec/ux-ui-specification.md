@@ -188,6 +188,7 @@ sentence translated is laid out exactly like one with none.
 - Desktop: hover/focus gives a concise preview; click/Enter/Space pins full details.
 - Android: tap opens full details. Tapping sentence whitespace does not conflict with a word tap.
 - Token spacing is implemented by layout gap/margins, not by modifying the stored Japanese string.
+- The gap falls between bunsetsu, not between analyzer morphemes. A content word keeps its particles, auxiliaries, inflection, suffixes, and counters; a prefix keeps the word it modifies; punctuation keeps the chunk it closes; and a reviewed multi-token phrase is never broken into. Spacing every morpheme printed 目 が あり ます, which is the analyzer's view of the sentence rather than the learner's.
 
 ### Selecting a sentence
 

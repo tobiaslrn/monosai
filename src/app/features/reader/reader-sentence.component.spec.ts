@@ -177,6 +177,16 @@ describe('ReaderSentenceComponent', () => {
     expect(marked[0].textContent).toContain('が');
   });
 
+  it('opens a gap between bunsetsu rather than between morphemes', () => {
+    // The spacing aid must not print analyzer internals: が belongs to the noun
+    // it marks, so no gap is drawn before it.
+    const element = render().nativeElement as HTMLElement;
+    const opening = [...element.querySelectorAll('mn-reader-token.starts-bunsetsu')];
+
+    expect(opening).toHaveLength(1);
+    expect(opening[0].textContent).toContain('猫');
+  });
+
   it('activates a word without the press reaching the paragraph', () => {
     const fixture = render();
     const element = fixture.nativeElement as HTMLElement;
