@@ -1,7 +1,14 @@
 # 0012 — Resume basis: exact, nearest, or beginning, stated rather than hidden
 
 Date: 2026-08-18
-Status: Accepted
+Status: Superseded by [0025](0025-reader-as-the-centre.md)
+
+> Superseded on 2026-08-21. Monosai no longer records a reading position at
+> all: the `readingProgress` table, `resolveResumeTarget`, and the three-state
+> basis below were removed with Continue reading, and the reader opens every
+> reading at its first paragraph. The reasoning is kept because the question it
+> answered — what to tell a learner when a saved position no longer resolves
+> exactly — returns unchanged if a reading position is ever reintroduced.
 
 ## Context
 

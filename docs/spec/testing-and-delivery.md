@@ -30,7 +30,7 @@ Test pure domain functions and state transitions without Angular TestBed when po
 - Keyboard/touch activation of chips, token buttons, sentence menus, dialogs, bottom sheets, and progress controls.
 - Focus trapping/restoration and live-region messaging.
 - Reader aid switches and global preference propagation.
-- Library filters, cards, Continue reading, and confirmation flows.
+- Library filters, cards and their excerpts, the New reading chooser, and confirmation flows.
 - Required error presentation and recovery actions.
 
 Use real semantic DOM queries. Avoid tests coupled to private component methods or CSS class names.
@@ -97,8 +97,8 @@ Core E2E scenarios:
 10. Grammar unavailable and partial translation failure -> saved story with correct statuses/retry.
 11. Imported sentence translation/grammar cache and stale profile behavior.
 12. Whole-reading translation cancel/resume.
-13. Audio preparation fail/cancel/resume/complete/play/stop.
-14. Library filtering, progress restore, deletion cascade, Continue reading repair.
+13. Audio preparation fail/cancel/resume/complete/play/stop, all through the reader's audio panel.
+14. Library filtering, card content, deletion cascade.
 15. Offline reload and allowed/blocked operations.
 16. Service-worker update prompt preserves unsaved input/active jobs.
 17. Key replacement/removal and absence from DOM/logs/errors.

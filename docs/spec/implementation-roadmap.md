@@ -1,5 +1,12 @@
 # Implementation roadmap
 
+> **Superseded in part by [ADR 0025](../decisions/0025-reader-as-the-centre.md).**
+> Milestone 0's responsive navigation shells and Milestone 3's Continue reading
+> and reading progress were built as written and then deliberately removed once
+> the whole interface could be seen together. The milestone text below is left
+> as the record of what was planned and built; the current behaviour is in
+> `ux-ui-specification.md` and `domain-and-data-model.md`.
+
 ## 1. Execution rules
 
 Implement milestones in order. A milestone is complete only after its verification checkpoint passes; do not build later UI on fake architecture that violates the specified ports. Small vertical slices are preferred over creating every empty folder at once.

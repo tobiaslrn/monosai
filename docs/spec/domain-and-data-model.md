@@ -33,6 +33,8 @@ interface ReadingBase {
   updatedAt: number; // metadata/aid summary only; source text is immutable
   sentenceCount: number;
   characterCount: number;
+  lastOpenedAt: number | null;
+  excerpt: string; // the opening, denormalized for the library card
   translationSummary: CompletionSummary;
   grammarSummary: GrammarSummary;
   audioSummary: CompletionSummary;
@@ -57,7 +59,16 @@ interface GeneratedStory extends ReadingBase {
 }
 ```
 
-`updatedAt` changes for progress summaries, cached aids, or metadata migration. It must never imply source editing.
+`updatedAt` changes for aid summaries or metadata migration. It must never imply source editing.
+
+`excerpt` is a bounded, whitespace-collapsed prefix of the source text, written
+once when the reading is saved. It exists so a shelf of library cards can show
+Japanese without loading any reading's sentences. It is a preview, never the
+text: the reader always renders from the sentences themselves.
+
+There is no reading position. Monosai does not record where a learner stopped,
+and the reader opens every reading at its first paragraph (ADR 0025).
+`lastOpenedAt` remains, as ordering metadata only.
 
 ### Text hierarchy
 
@@ -308,7 +319,6 @@ frozenValidations        &sentenceId, snapshotId
 translations             &cacheKey, sentenceId
 grammarAnalyses          &cacheKey, sentenceId, profileHash
 audioAssets              &cacheKey, sentenceId, readingId
-readingProgress          &readingId, lastOpenedAt
 assetJobs                &id, readingId, kind, state
 generationProvenance     &id, readingId
 ```
@@ -317,7 +327,11 @@ Implement indexes needed by specified queries only. Do not index large text, tok
 
 ### Library denormalization
 
-The `readings` row includes the summaries required by library cards: counts/status, last opened time, and Continue-reading eligibility. Repository transactions recalculate these when enrichment changes. The library query does not join/load sentence children.
+The `readings` row includes everything a library card renders: the aid
+summaries, the last opened time, and the excerpt. Repository transactions
+recalculate the summaries when enrichment changes; the excerpt is written once
+and never changes, because the source text never does. The library query does
+not join or load sentence children.
 
 ## 5. Cache keys
 

@@ -14,8 +14,8 @@ by what is actually near the viewport, not by reading length.
 
 `paragraph-window.ts` needed three numbers and one behavioral choice:
 
-- how many paragraphs to mount around the resume position when a reading first
-  opens (`WINDOW_RADIUS`),
+- how many paragraphs to mount around the anchor when a reading first opens
+  (`WINDOW_RADIUS`),
 - how many to add when the learner scrolls past an edge (`WINDOW_STEP`),
 - a hard ceiling on paragraphs mounted at once (`MAXIMUM_MOUNTED_PARAGRAPHS`),
   and
@@ -26,7 +26,9 @@ by what is actually near the viewport, not by reading length.
 
 `WINDOW_RADIUS = 3`, `WINDOW_STEP = 3`, `MAXIMUM_MOUNTED_PARAGRAPHS = 15`. A
 reading opens with up to `2 × radius + 1 = 7` paragraphs mounted, centred on the
-resume position (or the beginning, when there is nothing to resume). Reaching
+anchor. Since ADR 0025 removed the reading position the anchor is always the
+first paragraph, so `windowAround` clamps at the start and an opening reading
+mounts 4. Reaching
 either edge mounts `step` more paragraphs on that side; once the window would
 exceed the maximum, `extendWindow` trims the far side by the same amount it
 grew, so the window **moves** rather than accumulating. This was measured at

@@ -18,7 +18,12 @@ and what remains.
 | 8B — Reader UI: popovers, menu, aids     | Superseded  |
 | 8C — Reader surface rebuild              | Complete    |
 | 9 — TTS and playback                     | Complete    |
+| Reader-first rework                      | Complete    |
 | 10 — Release hardening                   | Not started |
+
+Sections marked **Superseded** describe what was built at the time and why.
+They are kept as the record; the Reader-first rework at the end of this document
+states what replaced them.
 
 ## Milestone 0 — Repository and decision scaffolding
 
@@ -32,7 +37,10 @@ and what remains.
   follows `prefers-color-scheme`; an explicit choice pins `data-theme`.
 - Responsive application shell: desktop sidebar (collapsing to icons with
   accessible names below 1120px), mobile bottom navigation with a full-height
-  More sheet, skip link, and a focusable `main` landmark.
+  More sheet, skip link, and a focusable `main` landmark. **Superseded by the
+  Reader-first rework**, which removed all application-wide navigation
+  ([ADR 0025](decisions/0025-reader-as-the-centre.md)); the skip link and the
+  `main` landmark survive.
 - Bootstrap state machine (`AppInitializerService`) with ordered DI-provided
   initialization steps, a fatal recovery screen with Retry, and a shared
   `mn-error-screen` that states what failed and whether data was saved.
@@ -297,6 +305,11 @@ than asserted, because they are developer-hardware figures.
 
 ## Milestone 3 — Reader vertical slice
 
+> Parts of this milestone were later removed by the Reader-first rework at the
+> end of this document: reading progress, Continue reading, `reading-position.ts`,
+> `locateSentence`, and the library card's status summaries. What follows is the
+> record of what was built here.
+
 ### Delivered
 
 - **Language protocol version 2**: a new `analyze-sentences` batch operation
@@ -329,7 +342,8 @@ than asserted, because they are developer-hardware figures.
 - **Routing**: `/library`, `/add`, `/reader/:id`; `first-use.resolver.ts` sends
   a profile with readings to the Library and everything else to Add text;
   `route-chrome.ts` marks the reader as a focused route so bottom navigation is
-  hidden there; `withComponentInputBinding()` feeds the reading id to the
+  hidden (**superseded**: there is no navigation to hide, and both the mechanism
+  and the route data were removed) there; `withComponentInputBinding()` feeds the reading id to the
   reader.
 
 ### Defects found and fixed along the way
@@ -412,7 +426,7 @@ and why the window moves rather than growing.
 - [0009 — Language protocol version 2 and `analyze-sentences`](decisions/0009-language-protocol-v2-analyze-sentences.md)
 - [0010 — Sentence text drops the line breaks and padding that end a segment](decisions/0010-sentence-text-boundary-trimming.md)
 - [0011 — Paragraph window bound, radius, step, and moving rather than growing](decisions/0011-paragraph-window-bounds.md)
-- [0012 — Resume basis: exact, nearest, or beginning, stated rather than hidden](decisions/0012-resume-basis.md)
+- [0012 — Resume basis: exact, nearest, or beginning, stated rather than hidden](decisions/0012-resume-basis.md) — superseded by 0025
 - [0013 — The CDK overlay and a11y stylesheets are a hard build requirement](decisions/0013-cdk-overlay-stylesheet-requirement.md)
 - **No sentence action row.** Translate, audio, grammar analysis, and sentence
   details arrive with Milestones 7–9. `ux-ui-specification.md`'s reader section
@@ -1596,3 +1610,101 @@ could never have reached a passing configuration test.
   failing its 50 ms chunk budget with 50–65 ms on roughly half of runs.
   Pre-existing and unrelated to this milestone; it passes on a quiet machine and
   passed on the final run.
+
+
+## Reader-first rework
+
+Cross-cutting, not a roadmap milestone. Recorded in
+[ADR 0025](decisions/0025-reader-as-the-centre.md), which supersedes
+[0012](decisions/0012-resume-basis.md) and revises the placement half of
+[0024](decisions/0024-audio-cache-and-playback-ownership.md).
+
+### Delivered
+
+**Reading progress removed.** `ReadingProgress`, `ContinueReadingTarget`, the
+`readingProgress` store, `reading-position.ts`, `locateSentence`, the debounced
+position writes, and the Continue reading hero are gone. The reader opens at the
+first paragraph. Per the project's pre-release schema rule the existing version 1
+was edited in place rather than a migration added, so local development
+databases must be recreated. `lastOpenedAt` survives as ordering metadata.
+
+**Navigation dissolved.** `sidebar-nav`, `bottom-nav`, `more-sheet`,
+`navigation-items.ts`, and `route-chrome.ts` are deleted; `AppShellComponent` is
+a skip link, `<main>`, and the outlet. A shared `mn-page-header` gives every page
+a back link and a trailing slot. Settings gained a `learning-data-section` with
+Vocabulary and Grammar as two stateful rows. `firstUseRedirect` always resolves
+to `/library`, and `ViewportService.isSidebarCompact` went with the sidebar.
+
+**Library as a shelf.** Cards show the title, the reading's opening in Japanese,
+and one relative-date line with an audio icon where a reading has audio. The
+excerpt is a new denormalized `excerpt` field on the `readings` row, built by
+`domain/reading/excerpt.ts` at save time, so the library is still one bounded
+query. One **New reading** button opens a chooser (Paste text / Write with AI)
+on the existing `PopoverService`, which already anchors on desktop and docks as
+a sheet on mobile. Filter chips appear from eight readings up.
+
+**Audio in one place.** An always-present header button opens a panel that owns
+generation, progress, failure, and playback. `audio-progress.component.ts` is
+deleted, the docked footer and compact strip are gone, and the menu's three
+audio entries left with them. The panel remembers which sentence was open when
+it was opened, because opening it closes the sentence popover that held the
+selection.
+
+**Text cut back to labels.** The sentence popover is three labelled actions; the
+aids panel is a slider and three labelled switches; the overflow menu is two
+entries. Word details drop the Anki prompt, show the dictionary form only when
+it differs from the surface, cap meanings at two behind **More**, and render no
+grammar section for an unanalyzed sentence. Generate lists only unmet
+prerequisites and hides the panel when there are none.
+
+**Typography.** Furigana at `0.44em` with `-0.02em` tracking; sentence padding
+`0.25em` cancelled by an equal negative margin.
+
+### Verification
+
+| Command                | Result                                        |
+| ---------------------- | --------------------------------------------- |
+| `npm run format:check` | Pass                                          |
+| `npm run lint`         | Pass                                          |
+| `npm run typecheck`    | Pass                                          |
+| `npm test`             | Pass — 1,439 tests                            |
+| `npm run build`        | Pass                                          |
+| `npm run e2e`          | Pass — 203 passed, 1 skipped, both viewports  |
+
+Browser verification at 1280x800, 800x900, and 375x812 in light and dark, against
+a real import chosen for hard ruby cases (畑/はたけ, 湖/みずうみ, 妹/いもうと):
+
+| Checked | Result |
+| --- | --- |
+| Ruby base stretch | 畑 1.40x → 1.23x, 湖 1.59x → 1.42x, measured in the page |
+| Ruby legibility | 0.42em was measurably tighter but harder to read; 0.44em chosen by reading it, which is what the plan asked for |
+| Inter-sentence flow | Net advance between neighbouring sentences is 0, against 0.8em before |
+| Wrapped sentence | `box-decoration-break: clone` shape holds across a line break, and no glyph moves on hover |
+| Audio panel | Visible with no audio; generation, its failure, and its recovery all inside the panel |
+| Reader header at 375px | A 32-character title ellipsizes to 87.5px and all three controls stay inside the bar |
+| Keyboard | Header order is Back → Aids → Audio → menu; the panel takes focus, Escape closes it, focus returns to the button |
+| Console | Clean throughout |
+
+### Assumptions and decisions
+
+- **The library still sorts by `createdAt`, not by `lastOpenedAt`.** Pagination
+  uses `createdAt` as its cursor, and re-sorting would have meant reworking a
+  bounded query for a shelf whose order the plan did not ask to change.
+- **`0.44em` rather than the plan's suggested `0.42em` for ruby.** The plan gave
+  0.42em as a guideline and made browser-checked legibility the deciding test.
+  0.44em keeps almost all of the stretch reduction and is legibly better.
+- **Adjacent sentence boxes now overlap by 10px.** That is inherent to
+  compensating the padding with a negative margin, which is what the plan
+  specified to keep both the hit area and the tinted shape. Only the trailing
+  padding of a sentence is affected, never its glyphs.
+- **A job that fails before resolving what to send reports no position.** It
+  previously derived one from empty counts and rendered "sentence 1 of 0"; found
+  during browser verification of the no-API-key path.
+
+### Open items
+
+- **A learner who leaves a long import loses their place.** Accepted with the
+  removal of reading progress. If long imports become common the answer is a
+  position for those, not the whole apparatus back.
+- Milestone 9's open items are unchanged: no live TTS round trip has been
+  exercised, and `language-worker-performance.spec.ts` remains timing-flaky.

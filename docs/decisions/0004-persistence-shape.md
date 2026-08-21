@@ -40,8 +40,9 @@ Library queries therefore read one table, never join sentence children, and
 never touch audio bytes. Enrichment writes update the owning reading's summary
 inside the same transaction, so a summary cannot outlive the data it describes.
 
-Continue reading is derived from `readings.lastOpenedAt` rather than stored as a
-pointer, so deleting a reading repairs it automatically.
+`lastOpenedAt` is ordering metadata and nothing more. Continue reading and the
+`readingProgress` table it was derived alongside were removed in ADR 0025;
+Monosai records no reading position.
 
 ## Credential isolation
 
