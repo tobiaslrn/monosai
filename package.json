@@ -17,7 +17,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "build:pages": "ng build --configuration pages",
+    "build:pages": "ng build --configuration pages --stats-json",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:coverage": "ng test --coverage",
@@ -33,6 +33,10 @@
     "fixtures:verify": "node scripts/fixtures/build-anki-fixtures.mjs --check",
     "icons:build": "node scripts/icons/build-icons.mjs",
     "icons:verify": "node scripts/icons/verify-icons.mjs",
+    "verify-dist": "node scripts/verify-dist.mjs",
+    "report-bundle": "node scripts/report-bundle.mjs",
+    "report-bundle:check": "node scripts/report-bundle.mjs --check",
+    "serve-dist": "node scripts/serve-dist.mjs",
     "test:manual": "vitest run --config vitest.manual.config.ts"
   },
   "dependencies": {
