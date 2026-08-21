@@ -135,8 +135,12 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     ).toHaveCount(0);
     await dismissPopover(page);
 
+    // The grammar review found nothing to say, so the AI grammar section is
+    // correctly absent (0 findings shows no notes, by design). 猫である is a
+    // derived word, so its own ladder explains である as the written copula
+    // without needing the review at all.
     await openWord(page, '猫');
-    await expect(wordDetails(page)).toContainText('Grammar here');
+    await expect(wordDetails(page)).toContainText('written copula');
     await dismissPopover(page);
 
     // A reload re-reads both from storage, and asks for nothing.
