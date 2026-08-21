@@ -35,6 +35,18 @@ export const ENDING_COMBINATIONS: readonly EndingCombination[] = [
     effectEn: 'polite negative',
     detailEn: 'The polite negative, standing where ます would.',
   },
+  {
+    // IPADIC analyses である as だ (連用形, written で) followed by the
+    // free-standing auxiliary ある, so a token-by-token walk matches ある
+    // against the てある helper-verb entry (書いてある) rather than the written
+    // copula the baseline already names separately as sb-copula-dearu. Naming
+    // the run here, the same way ません is named, keeps that single-token
+    // matcher untouched and lets である read as the one thing it is taught as.
+    lemmas: ['だ', 'ある'],
+    writtenForm: 'である',
+    effectEn: 'written copula',
+    detailEn: 'Formal written copula used in essays and reports.',
+  },
 ];
 
 /**
