@@ -1,8 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DictionaryQuery } from '../../domain/language/dictionary';
-import type { StructuralBaselineEntry } from '../../domain/language/structural-baseline';
+import {
+  compileStructuralBaseline,
+  type StructuralBaselineEntry,
+} from '../../domain/language/structural-baseline';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { Token } from '../../domain/reading/token';
 import { wordAt } from '../../domain/reading/token-grouping';
@@ -70,7 +73,15 @@ describe('WordInspectorStore', () => {
           provide: LANGUAGE_RUNTIME,
           useValue: { lookup: () => Promise.resolve(ok({ matchedBy: 'surface', entries: [] })) },
         },
-        { provide: LanguageStore, useValue: { structuralBaseline: baseline } },
+        {
+          provide: LanguageStore,
+          useValue: {
+            structuralBaseline: baseline,
+            structuralBaselineMatcher: computed(() =>
+              compileStructuralBaseline({ version: '1', entries: baseline() }),
+            ),
+          },
+        },
       ],
     });
   });

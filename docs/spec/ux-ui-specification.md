@@ -169,6 +169,7 @@ sentence translated is laid out exactly like one with none.
 
 - Compact sticky header: Back, title, Aids, an always-present Audio button, and an overflow menu. The title is single-line with an ellipsis and never displaces the controls. There is no reading-progress figure, because Monosai keeps no reading position (ADR 0025).
 - Center reading column: 680–760px maximum text width.
+- Word details name the parts of a word the analyzer split, head first: 小さい as an i-adjective, then です as the polite copula. Endings are named from the shipped structural baseline, so nothing is guessed and nothing costs a request; an ending the baseline does not cover falls back to its word class. A word that was never split shows its dictionary form and part of speech instead, because a one-item composition explains nothing.
 - Word details and the sentence translation open as floating popovers anchored to what was pressed, never as a panel that takes a column (see ADR 0022). A lightweight preview appears on pointer hover, but never replaces the pinned popover.
 - Exactly one floating surface is open at a time; opening either closes the other, and scrolling closes both.
 - The audio panel opens anchored to the Audio button. There is no docked footer player: audio has one place and it is behind that button (section 6a).

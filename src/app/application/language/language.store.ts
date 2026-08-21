@@ -4,7 +4,11 @@ import type { LanguageAssetAttribution } from '../../domain/language/language-as
 import { allAttributions } from '../../domain/language/language-assets';
 import type { LanguageRuntimeInfo } from '../../domain/language/language-runtime';
 import type { GrammarPreset, RegisterGuidance } from '../../domain/grammar/presets';
-import type { StructuralBaselineEntry } from '../../domain/language/structural-baseline';
+import type {
+  StructuralBaselineEntry,
+  StructuralBaselineMatcher,
+} from '../../domain/language/structural-baseline';
+import { compileStructuralBaseline } from '../../domain/language/structural-baseline';
 import { LANGUAGE_ASSET_SOURCE, LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { SETTINGS_REPOSITORY } from '../shared/repository-tokens';
 
@@ -40,6 +44,22 @@ export class LanguageStore {
   readonly structuralBaseline = computed<readonly StructuralBaselineEntry[]>(
     () => this.infoSignal()?.structuralBaselineEntries ?? [],
   );
+  /**
+   * The baseline compiled for matching a token against it.
+   *
+   * Compiled from whichever bundle is active rather than once at startup, and
+   * memoized, because a word can be opened many times while reading.
+   */
+  readonly structuralBaselineMatcher = computed<StructuralBaselineMatcher | null>(() => {
+    const info = this.infoSignal();
+    return info === null
+      ? null
+      : compileStructuralBaseline({
+          version: info.versions.structuralBaselineVersion,
+          entries: info.structuralBaselineEntries,
+        });
+  });
+
   readonly grammarPresets = computed<readonly GrammarPreset[]>(
     () => this.infoSignal()?.grammarPresets ?? [],
   );

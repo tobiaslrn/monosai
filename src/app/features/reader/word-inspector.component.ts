@@ -71,22 +71,44 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         </header>
 
         <!--
-          Only when the dictionary form is not the form on the page. Repeating
-          the surface back at the learner under a label taught them nothing.
+          A word the analyzer split is explained by its parts instead: they say
+          the dictionary form and the word class in the order they are stacked,
+          so printing the same two facts above them would only repeat it.
         -->
-        @if (inflectedForm(); as lemma) {
-          <dl class="facts">
-            <div>
-              <dt>Dictionary form</dt>
-              <dd lang="ja">{{ lemma }}</dd>
-            </div>
-            @if (partOfSpeech(); as pos) {
+        @if (store.composition(); as parts) {
+          @if (parts.length > 0) {
+            <section class="composition" aria-labelledby="mn-inspector-composition">
+              <h3 id="mn-inspector-composition">How it is built</h3>
+              <ol>
+                @for (part of parts; track part.tokenId) {
+                  <li>
+                    <span class="part" lang="ja">{{ part.surface }}</span>
+                    <span class="part-label">{{ part.label }}</span>
+                    @if (part.detailEn; as detail) {
+                      <span class="part-detail">{{ detail }}</span>
+                    }
+                  </li>
+                }
+              </ol>
+            </section>
+          } @else if (inflectedForm(); as lemma) {
+            <!--
+              Only when the dictionary form is not the form on the page.
+              Repeating the surface back at the learner taught them nothing.
+            -->
+            <dl class="facts">
               <div>
-                <dt>Part of speech</dt>
-                <dd>{{ pos }}</dd>
+                <dt>Dictionary form</dt>
+                <dd lang="ja">{{ lemma }}</dd>
               </div>
-            }
-          </dl>
+              @if (partOfSpeech(); as pos) {
+                <div>
+                  <dt>Part of speech</dt>
+                  <dd>{{ pos }}</dd>
+                </div>
+              }
+            </dl>
+          }
         }
 
         <!--
@@ -248,6 +270,45 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
     h3 {
       margin: 0 0 var(--space-2);
       font-size: var(--text-md);
+    }
+
+    /*
+     * A stack rather than a row: the order is the point, and each line reads
+     * as the piece followed by what it does.
+     */
+    .composition ol {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .composition li {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-1) var(--space-2);
+      align-items: baseline;
+    }
+
+    .part {
+      font-family: var(--font-japanese);
+    }
+
+    .part-label {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    /*
+     * The description takes the whole width under its piece, so a long line
+     * never squeezes the Japanese it belongs to into one character per line.
+     */
+    .part-detail {
+      flex-basis: 100%;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
     }
 
     .facts {

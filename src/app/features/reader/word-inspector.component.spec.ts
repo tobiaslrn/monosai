@@ -5,6 +5,10 @@ import { LanguageStore } from '../../application/language/language.store';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import { LANGUAGE_RUNTIME } from '../../application/shared/language-tokens';
 import type { GrammarFinding } from '../../domain/enrichment/records';
+import {
+  compileStructuralBaseline,
+  type StructuralBaselineEntry,
+} from '../../domain/language/structural-baseline';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { wordAt } from '../../domain/reading/token-grouping';
 import type { Token } from '../../domain/reading/token';
@@ -27,6 +31,39 @@ const TOKEN: Token = {
   dictionaryKeys: ['猫'],
   isPunctuation: false,
 };
+
+const POLITE_ENDING: StructuralBaselineEntry = {
+  id: 'sb-copula-desu',
+  category: 'copula',
+  forms: ['です'],
+  partsOfSpeech: ['auxiliary'],
+  nameEn: 'です (polite copula)',
+  descriptionEn: 'Polite copula, also inflecting to でしょう and でした.',
+};
+
+/** 小さい + です: the case the composition section exists for. */
+const POLITE_ADJECTIVE: readonly Token[] = [
+  {
+    id: 'p1',
+    startUtf16: 0,
+    endUtf16: 3,
+    surface: '小さい',
+    lemma: '小さい',
+    partOfSpeech: 'adjective-i',
+    dictionaryKeys: ['小さい'],
+    isPunctuation: false,
+  },
+  {
+    id: 'p2',
+    startUtf16: 3,
+    endUtf16: 5,
+    surface: 'です',
+    lemma: 'です',
+    partOfSpeech: 'auxiliary',
+    dictionaryKeys: ['です'],
+    isPunctuation: false,
+  },
+];
 
 const SENTENCE: Sentence = {
   id: sentenceId('s1'),
@@ -88,7 +125,15 @@ describe('WordInspectorComponent', () => {
           provide: LANGUAGE_RUNTIME,
           useValue: { lookup: () => Promise.resolve(ok({ matchedBy: 'surface', entries })) },
         },
-        { provide: LanguageStore, useValue: { structuralBaseline: signal([]) } },
+        {
+          provide: LanguageStore,
+          useValue: {
+            structuralBaseline: signal([]),
+            structuralBaselineMatcher: signal(
+              compileStructuralBaseline({ version: '1', entries: [POLITE_ENDING] }),
+            ),
+          },
+        },
       ],
     });
   });
@@ -285,6 +330,39 @@ describe('WordInspectorComponent', () => {
 
       expect(element.querySelectorAll('.glosses li')).toHaveLength(2);
       expect(element.querySelector('.more')).toBeNull();
+    });
+  });
+
+  describe('how a word is built', () => {
+    async function renderWord(tokens: readonly Token[]) {
+      await TestBed.inject(WordInspectorStore).inspect({
+        token: tokens[0],
+        word: wordAt(tokens, 0),
+        sentence: SENTENCE,
+        status: null,
+      });
+      const fixture = TestBed.createComponent(HostComponent);
+      fixture.detectChanges();
+      return fixture.nativeElement as HTMLElement;
+    }
+
+    it('names each part of a split word in order', async () => {
+      const element = await renderWord(POLITE_ADJECTIVE);
+      const parts = [...element.querySelectorAll('.composition li')].map((item) =>
+        item.textContent.replace(/\s+/g, ' ').trim(),
+      );
+
+      expect(parts).toEqual([
+        '小さいi-adjective',
+        'ですです (polite copula)Polite copula, also inflecting to でしょう and でした.',
+      ]);
+    });
+
+    it('shows no composition for a word that was never split', async () => {
+      const element = await renderWord([TOKEN]);
+
+      expect(element.querySelector('.composition')).toBeNull();
+      expect(element.textContent).not.toContain('How it is built');
     });
   });
 });
