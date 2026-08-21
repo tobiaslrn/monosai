@@ -7,5 +7,13 @@
     "rootDir": "./src",
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src/**/*.d.ts", "src/**/*.spec.ts", "src/**/*.manual.ts", "src/testing/**/*.ts"]
+  "include": ["src/**/*.d.ts", "src/**/*.spec.ts", "src/**/*.manual.ts", "src/testing/**/*.ts"],
+  "angularCompilerOptions": {
+    "extendedDiagnostics": {
+      "checks": {
+        "nullishCoalescingNotNullable": "suppress",
+        "optionalChainNotNullable": "suppress"
+      }
+    }
+  }
 }
