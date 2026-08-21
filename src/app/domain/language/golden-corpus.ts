@@ -18,6 +18,7 @@ export interface GoldenTokenExpectation {
   readonly lemma?: string;
   readonly readingHiragana?: string;
   readonly partOfSpeech?: string;
+  readonly inflectionForm?: string;
   readonly isPunctuation?: boolean;
 }
 
@@ -56,8 +57,15 @@ export const GOLDEN_ANALYSIS_CASES: readonly GoldenAnalysisCase[] = [
     text: '行きませんでした',
     surfaces: ['行き', 'ませ', 'ん', 'でし', 'た'],
     tokens: {
-      0: { surface: '行き', lemma: '行く', readingHiragana: 'いき', partOfSpeech: 'verb' },
-      1: { surface: 'ませ', lemma: 'ます', partOfSpeech: 'auxiliary' },
+      0: {
+        surface: '行き',
+        lemma: '行く',
+        readingHiragana: 'いき',
+        partOfSpeech: 'verb',
+        inflectionForm: 'continuative',
+      },
+      1: { surface: 'ませ', lemma: 'ます', partOfSpeech: 'auxiliary', inflectionForm: 'irrealis' },
+      2: { surface: 'ん', lemma: 'ん', partOfSpeech: 'auxiliary', inflectionForm: 'dictionary' },
     },
   },
   {
@@ -65,8 +73,14 @@ export const GOLDEN_ANALYSIS_CASES: readonly GoldenAnalysisCase[] = [
     text: '来なかった',
     surfaces: ['来', 'なかっ', 'た'],
     tokens: {
-      0: { surface: '来', lemma: '来る', partOfSpeech: 'verb' },
-      1: { surface: 'なかっ', lemma: 'ない', partOfSpeech: 'auxiliary' },
+      0: { surface: '来', lemma: '来る', partOfSpeech: 'verb', inflectionForm: 'irrealis' },
+      1: {
+        surface: 'なかっ',
+        lemma: 'ない',
+        partOfSpeech: 'auxiliary',
+        inflectionForm: 'continuative-ta',
+      },
+      2: { surface: 'た', lemma: 'た', partOfSpeech: 'auxiliary', inflectionForm: 'dictionary' },
     },
   },
   {

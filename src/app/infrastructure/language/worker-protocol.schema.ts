@@ -1,8 +1,13 @@
 import { z } from 'zod';
 import { snapshotId, vocabularyItemId } from '../../domain/shared/ids';
+import { INFLECTION_FORM_LABELS, type InflectionForm } from '../../domain/reading/token';
 import { languageAssetManifestSchema, partOfSpeechSchema } from './language-asset.schema';
 
 const nonEmpty = z.string().min(1);
+
+const inflectionFormSchema = z.enum(
+  Object.keys(INFLECTION_FORM_LABELS) as [InflectionForm, ...InflectionForm[]],
+);
 
 const tokenSchema = z.object({
   id: nonEmpty,
@@ -12,6 +17,7 @@ const tokenSchema = z.object({
   lemma: z.string().optional(),
   readingHiragana: z.string().optional(),
   partOfSpeech: partOfSpeechSchema.optional(),
+  inflectionForm: inflectionFormSchema.optional(),
   dictionaryKeys: z.array(z.string()),
   isPunctuation: z.boolean(),
 });

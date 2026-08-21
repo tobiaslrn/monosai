@@ -9,7 +9,7 @@ import type { LanguageError } from '../../domain/language/language-error';
 import type { StructuralBaselineEntry } from '../../domain/language/structural-baseline';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { WordGroup } from '../../domain/reading/token-grouping';
-import { composeWord, type WordPart } from '../../domain/reading/word-composition';
+import { deriveWord, type WordDerivation } from '../../domain/reading/word-derivation';
 import type { Token } from '../../domain/reading/token';
 import {
   presentStatus,
@@ -107,14 +107,14 @@ export class WordInspectorStore {
   );
 
   /**
-   * The parts of the open word, named in order.
+   * How the open word was built from its dictionary form.
    *
-   * Empty unless the analyzer split the word, which is what makes this a
-   * section that appears only when there is something to explain.
+   * `null` unless there is something to explain, which is what makes this a
+   * section that appears only when the word was inflected or added to.
    */
-  readonly composition = computed<readonly WordPart[]>(() => {
+  readonly derivation = computed<WordDerivation | null>(() => {
     const word = this.selectedSignal()?.word;
-    return word === undefined ? [] : composeWord(word, this.language.structuralBaselineMatcher());
+    return word === undefined ? null : deriveWord(word, this.language.structuralBaselineMatcher());
   });
 
   readonly presentation = computed<TokenStatusPresentation | null>(() => {

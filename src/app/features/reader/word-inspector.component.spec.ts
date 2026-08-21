@@ -41,7 +41,7 @@ const POLITE_ENDING: StructuralBaselineEntry = {
   descriptionEn: 'Polite copula, also inflecting to でしょう and でした.',
 };
 
-/** 小さい + です: the case the composition section exists for. */
+/** 小さい + です: the case the derivation ladder exists for. */
 const POLITE_ADJECTIVE: readonly Token[] = [
   {
     id: 'p1',
@@ -60,6 +60,7 @@ const POLITE_ADJECTIVE: readonly Token[] = [
     surface: 'です',
     lemma: 'です',
     partOfSpeech: 'auxiliary',
+    inflectionForm: 'dictionary',
     dictionaryKeys: ['です'],
     isPunctuation: false,
   },
@@ -346,22 +347,63 @@ describe('WordInspectorComponent', () => {
       return fixture.nativeElement as HTMLElement;
     }
 
-    it('names each part of a split word in order', async () => {
+    it('reads as a ladder from the dictionary form to what is written', async () => {
       const element = await renderWord(POLITE_ADJECTIVE);
-      const parts = [...element.querySelectorAll('.composition li')].map((item) =>
-        item.textContent.replace(/\s+/g, ' ').trim(),
-      );
+      const cells = (selector: string): readonly string[] =>
+        [...element.querySelectorAll(`.derivation ${selector}`)].map((cell) =>
+          cell.textContent.trim(),
+        );
 
-      expect(parts).toEqual([
-        '小さいi-adjective',
-        'ですです (polite copula)Polite copula, also inflecting to でしょう and でした.',
-      ]);
+      expect(cells('.base .form')).toEqual(['小さい']);
+      expect(cells('.base .effect')).toEqual(['dictionary form']);
+      expect(cells('.step .form')).toEqual(['です']);
+      expect(cells('.step .effect')).toEqual(['polite copula']);
+      expect(cells('.step .result')).toEqual(['小さいです']);
     });
 
-    it('shows no composition for a word that was never split', async () => {
+    it('says what the whole form is in one line', async () => {
+      const element = await renderWord(POLITE_ADJECTIVE);
+
+      expect(element.querySelector('.summary')?.textContent.trim()).toBe('Polite');
+    });
+
+    it('folds the explanation away until it is asked for', async () => {
+      const element = await renderWord(POLITE_ADJECTIVE);
+      const step = element.querySelector<HTMLButtonElement>('.step');
+
+      expect(step).not.toBeNull();
+      expect(element.querySelector('.detail')).toBeNull();
+      expect(step?.getAttribute('aria-expanded')).toBe('false');
+
+      step?.click();
+      TestBed.tick();
+
+      expect(step?.getAttribute('aria-expanded')).toBe('true');
+      expect(element.querySelector('.detail')?.textContent).toContain(
+        'Polite copula, also inflecting to でしょう and でした.',
+      );
+      expect(element.querySelector('.detail')?.id).toBe(step?.getAttribute('aria-controls'));
+    });
+
+    it('tints the part of the word a step is about', async () => {
+      const element = await renderWord(POLITE_ADJECTIVE);
+      const step = element.querySelector<HTMLButtonElement>('.step');
+
+      expect(element.querySelectorAll('.surface .tinted')).toHaveLength(0);
+
+      step?.dispatchEvent(new FocusEvent('focus'));
+      TestBed.tick();
+
+      const tinted = [...element.querySelectorAll('.surface .tinted')].map(
+        (span) => span.textContent,
+      );
+      expect(tinted).toEqual(['です']);
+    });
+
+    it('shows no ladder for a word that was never inflected or added to', async () => {
       const element = await renderWord([TOKEN]);
 
-      expect(element.querySelector('.composition')).toBeNull();
+      expect(element.querySelector('.derivation')).toBeNull();
       expect(element.textContent).not.toContain('How it is built');
     });
   });

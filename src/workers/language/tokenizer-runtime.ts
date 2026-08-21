@@ -14,7 +14,10 @@ export interface RawToken {
   readonly subcategory3: string;
   readonly baseForm: string;
   readonly reading: string;
-  readonly conjugationType: string;
+  /** 活用形: which inflected shape this token is in — 未然形, 連用タ接続, 基本形. */
+  readonly inflectionForm: string;
+  /** 活用型: which paradigm it inflects by — 五段・ラ行, 一段, 特殊・ナイ. */
+  readonly conjugationClass: string;
 }
 
 export interface TokenizerRuntime {

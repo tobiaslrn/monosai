@@ -16,6 +16,15 @@ import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { LanguageStore } from '../language/language.store';
 import { WordInspectorStore, type InspectedWord } from './word-inspector.store';
 
+const POLITE_ENDING: StructuralBaselineEntry = {
+  id: 'sb-aux-masu',
+  category: 'auxiliary',
+  forms: ['ます'],
+  partsOfSpeech: ['auxiliary'],
+  nameEn: 'ます (polite verb ending)',
+  descriptionEn: 'Makes a verb polite, inflecting to ません, ました, and ましょう.',
+};
+
 const TOPIC_MARKER: StructuralBaselineEntry = {
   id: 'sb-particle-wa',
   category: 'particle',
@@ -192,6 +201,50 @@ describe('WordInspectorStore', () => {
     expect(queries[0]).toMatchObject({ surface: 'あります', lemma: 'ある' });
     expect(inspector.preview()).toMatchObject({ glossEn: 'to be' });
     expect(inspector.preview()?.word.surface).toBe('あります');
+  });
+
+  it('reads the open word as a ladder from its dictionary form', async () => {
+    const inflected: readonly Token[] = [
+      { ...token(), id: 'v1', surface: '飲み', lemma: '飲む', partOfSpeech: 'verb' },
+      {
+        ...token(),
+        id: 'v2',
+        surface: 'ます',
+        lemma: 'ます',
+        partOfSpeech: 'auxiliary',
+        inflectionForm: 'dictionary',
+      },
+    ];
+    baseline.set([TOPIC_MARKER, POLITE_ENDING]);
+    const inspector = store();
+
+    await inspector.inspect({
+      token: inflected[0],
+      word: wordAt(inflected, 0),
+      sentence: sentence(),
+      status: null,
+    });
+
+    expect(inspector.derivation()?.baseSurface).toBe('飲む');
+    expect(inspector.derivation()?.summaryEn).toEqual(['Polite']);
+    expect(inspector.derivation()?.steps).toEqual([
+      {
+        tokenIds: ['v2'],
+        attached: 'ます',
+        surface: 'ます',
+        effectEn: 'polite verb ending',
+        detailEn: 'Makes a verb polite, inflecting to ません, ました, and ましょう.',
+        resultingSurface: '飲みます',
+      },
+    ]);
+  });
+
+  it('has nothing to say about a word that was never inflected or added to', async () => {
+    const inspector = store();
+
+    await inspector.inspect(word(null));
+
+    expect(inspector.derivation()).toBeNull();
   });
 
   it('resolves against the bundle that is loaded, not the one loaded at startup', async () => {

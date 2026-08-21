@@ -14,6 +14,7 @@ import type { GrammarFinding } from '../../domain/enrichment/records';
 import { PART_OF_SPEECH_LABELS } from '../../domain/reading/token';
 import { wordReading } from '../../domain/reading/token-presentation';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { WordDerivationComponent } from './word-derivation.component';
 
 /**
  * What the reader knows about the grammar around one word.
@@ -54,13 +55,22 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 @Component({
   selector: 'mn-word-inspector',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, NgTemplateOutlet],
+  imports: [IconComponent, NgTemplateOutlet, WordDerivationComponent],
   template: `
     @if (store.selected(); as word) {
       <div class="inspector">
         <header>
           <div class="headword">
-            <p class="surface" lang="ja">{{ word.word.surface }}</p>
+            <!--
+              Rendered per token so a step of the derivation can tint the part
+              of the word it is about: ない and the なかっ it is written as are
+              only obviously the same thing when the ladder can point at it.
+            -->
+            <p class="surface" lang="ja">
+              @for (part of word.word.tokens; track part.id) {
+                <span [class.tinted]="highlighted().includes(part.id)">{{ part.surface }}</span>
+              }
+            </p>
             @if (reading(); as reading) {
               <p class="reading" lang="ja">{{ reading }}</p>
             }
@@ -71,44 +81,29 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         </header>
 
         <!--
-          A word the analyzer split is explained by its parts instead: they say
-          the dictionary form and the word class in the order they are stacked,
-          so printing the same two facts above them would only repeat it.
+          A word that was inflected or added to is explained by the ladder that
+          built it, which already says the dictionary form and what each ending
+          does; printing those facts again above it would only repeat them.
         -->
-        @if (store.composition(); as parts) {
-          @if (parts.length > 0) {
-            <section class="composition" aria-labelledby="mn-inspector-composition">
-              <h3 id="mn-inspector-composition">How it is built</h3>
-              <ol>
-                @for (part of parts; track part.tokenId) {
-                  <li>
-                    <span class="part" lang="ja">{{ part.surface }}</span>
-                    <span class="part-label">{{ part.label }}</span>
-                    @if (part.detailEn; as detail) {
-                      <span class="part-detail">{{ detail }}</span>
-                    }
-                  </li>
-                }
-              </ol>
-            </section>
-          } @else if (inflectedForm(); as lemma) {
-            <!--
-              Only when the dictionary form is not the form on the page.
-              Repeating the surface back at the learner taught them nothing.
-            -->
-            <dl class="facts">
+        @if (store.derivation(); as derivation) {
+          <mn-word-derivation [derivation]="derivation" (highlighted)="highlighted.set($event)" />
+        } @else if (inflectedForm(); as lemma) {
+          <!--
+            Only when the dictionary form is not the form on the page.
+            Repeating the surface back at the learner taught them nothing.
+          -->
+          <dl class="facts">
+            <div>
+              <dt>Dictionary form</dt>
+              <dd lang="ja">{{ lemma }}</dd>
+            </div>
+            @if (partOfSpeech(); as pos) {
               <div>
-                <dt>Dictionary form</dt>
-                <dd lang="ja">{{ lemma }}</dd>
+                <dt>Part of speech</dt>
+                <dd>{{ pos }}</dd>
               </div>
-              @if (partOfSpeech(); as pos) {
-                <div>
-                  <dt>Part of speech</dt>
-                  <dd>{{ pos }}</dd>
-                </div>
-              }
-            </dl>
-          }
+            }
+          </dl>
         }
 
         <!--
@@ -272,43 +267,10 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       font-size: var(--text-md);
     }
 
-    /*
-     * A stack rather than a row: the order is the point, and each line reads
-     * as the piece followed by what it does.
-     */
-    .composition ol {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .composition li {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-1) var(--space-2);
-      align-items: baseline;
-    }
-
-    .part {
-      font-family: var(--font-japanese);
-    }
-
-    .part-label {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    /*
-     * The description takes the whole width under its piece, so a long line
-     * never squeezes the Japanese it belongs to into one character per line.
-     */
-    .part-detail {
-      flex-basis: 100%;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
+    /* The part of the word the open ladder step is about. */
+    .tinted {
+      border-radius: var(--radius-control);
+      background: var(--accent-secondary-soft);
     }
 
     .facts {
@@ -477,6 +439,14 @@ export class WordInspectorComponent {
 
   readonly closed = output<void>();
   readonly sentenceRequested = output<void>();
+
+  /**
+   * The parts of the word the open ladder step covers.
+   *
+   * Held here rather than in the ladder because the headword it tints belongs
+   * to this component, and the two are only useful together.
+   */
+  protected readonly highlighted = signal<readonly string[]>([]);
 
   /** Whether this word has grammar to read, which decides where the section goes. */
   protected readonly hasNotes = computed(() => {

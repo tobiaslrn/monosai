@@ -171,7 +171,7 @@ The implementation agent selects the concrete tokenizer. It must:
 
 - run fully offline in current Chrome/Android Chrome;
 - run inside a Web Worker;
-- return surface, lemma/base form, reading, and part of speech;
+- return surface, lemma/base form, reading, part of speech, and inflection form;
 - preserve offsets against original text;
 - support Japanese inflection needed for known-form matching;
 - initialize within documented mobile memory/time budgets;
@@ -179,6 +179,18 @@ The implementation agent selects the concrete tokenizer. It must:
 - pass the golden corpus in testing-and-delivery.md.
 
 Default selection rule: use the smallest maintained browser-compatible tokenizer that passes every gate. Kuromoji.js is the fallback candidate if no better maintained option passes. Wrap it behind `Tokenizer`; no feature imports its library types.
+
+### Inflection form
+
+The analyzer reports which shape a conjugating word is in — dictionary form,
+irrealis, continuative, hypothetical, imperative — alongside its part of speech.
+It is mapped onto a bounded enum in infrastructure, exactly as part of speech is,
+and library tags never leave that layer.
+
+It is what makes an inflection that adds no ending explainable: the ば of 行けば
+is a separate word and 行け as an order has no second token, so the head's own
+form is the only evidence either exists. The reader uses it to name those steps
+and to decide how an ending is written when it stands alone (ADR 0026).
 
 ### Analyzer output integrity
 
