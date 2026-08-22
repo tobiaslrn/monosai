@@ -21,29 +21,20 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
   template: `
     <div class="providers">
       <article class="provider">
-        <h3>Local Anki connection</h3>
+        <h3>AnkiConnect access</h3>
         <p class="mn-hint">
-          Reads directly from Anki while it is running on this device, through AnkiConnect on a
-          computer or a compatible bridge on Android. Monosai only ever reads.
+          Reads directly from Anki while it is running on this device through AnkiConnect. Monosai
+          only ever reads.
         </p>
         <div class="actions">
           <button
             type="button"
             class="mn-button"
             [disabled]="refresh.isBusy()"
-            (click)="connectDesktop()"
-            data-testid="connect-desktop"
+            (click)="connectAnkiConnect()"
+            data-testid="connect-ankiconnect"
           >
-            Test desktop connection
-          </button>
-          <button
-            type="button"
-            class="mn-button"
-            [disabled]="refresh.isBusy()"
-            (click)="connectAndroid()"
-            data-testid="connect-android"
-          >
-            Test Android bridge
+            Test AnkiConnect access
           </button>
         </div>
       </article>
@@ -143,14 +134,9 @@ export class ProviderSelectionComponent {
   private readonly fileNameSignal = signal<string | null>(null);
   protected readonly fileName = this.fileNameSignal.asReadonly();
 
-  protected connectDesktop(): void {
+  protected connectAnkiConnect(): void {
     this.fileNameSignal.set(null);
     void this.refresh.connect(this.createConnection('desktop-connect'));
-  }
-
-  protected connectAndroid(): void {
-    this.fileNameSignal.set(null);
-    void this.refresh.connect(this.createConnection('android-connect'));
   }
 
   protected choosePackage(event: Event): void {

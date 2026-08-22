@@ -30,7 +30,7 @@ test.describe('vocabulary', () => {
   test('offers both sources and refuses to refresh before one is connected', async ({ page }) => {
     await openVocabulary(page);
 
-    await expect(page.getByRole('button', { name: 'Test desktop connection' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Test AnkiConnect access' })).toBeVisible();
     await expect(page.getByTestId('mapping-locked')).toBeVisible();
     await expect(page.getByTestId('start-refresh')).toBeDisabled();
     await expect(page.getByTestId('refresh-blocked')).toContainText('Connect to a vocabulary');
@@ -119,7 +119,7 @@ test.describe('vocabulary', () => {
     await refuseAnkiConnect(page);
     await openVocabulary(page);
 
-    await page.getByRole('button', { name: 'Test desktop connection' }).click();
+    await page.getByRole('button', { name: 'Test AnkiConnect access' }).click();
 
     const alert = page.getByRole('alert');
     await expect(alert).toContainText('Anki', { timeout: 30_000 });
@@ -152,7 +152,7 @@ test.describe('vocabulary', () => {
     });
 
     await openVocabulary(page);
-    await page.getByRole('button', { name: 'Test desktop connection' }).click();
+    await page.getByRole('button', { name: 'Test AnkiConnect access' }).click();
     await expect(page.getByTestId('add-mapping')).toBeVisible({ timeout: 30_000 });
 
     await page.getByTestId('add-mapping').click();
