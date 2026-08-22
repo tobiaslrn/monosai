@@ -285,7 +285,11 @@ export class SentenceEnrichmentService {
 
     return ok({
       modelId: settings.modelId,
-      taskConfig: { modelId: settings.modelId, structuredOutput },
+      taskConfig: {
+        modelId: settings.modelId,
+        structuredOutput,
+        reasoningEffort: settings.reasoningEffort,
+      },
       cacheKeys: keysFor(refs.value, settings.modelId),
     });
   }

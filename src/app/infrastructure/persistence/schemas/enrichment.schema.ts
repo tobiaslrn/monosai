@@ -56,7 +56,7 @@ export const audioAssetMetadataSchema = z.object({
   modelId: nonEmptyString,
   voiceId: nonEmptyString,
   optionsFingerprint: nonEmptyString,
-  mimeType: z.enum(['audio/mpeg', 'audio/pcm']),
+  mimeType: z.enum(['audio/mpeg', 'audio/pcm', 'audio/wav']),
   byteLength: z.number().int().positive(),
   createdAt: timestampSchema,
 });

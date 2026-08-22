@@ -1,5 +1,6 @@
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { ModelTest, StructuredOutputMode, TextModelConfig } from '../../domain/ai/model-test';
+import { isGeminiModel } from '../../domain/ai/tts-configuration';
 import { err, ok, type Result } from '../../domain/shared/result';
 import { extractJsonObject } from './json-content';
 import type { OpenRouterClient } from './openrouter-client';
@@ -27,7 +28,7 @@ const JSON_CONTRACT_REMINDER =
   'Your previous reply was not a single valid JSON object. Reply with exactly {"ok": true, "language": "ja"} and nothing else: no prose, no code fences.';
 
 /** A compatibility probe needs a handful of tokens; a runaway reply is a failure. */
-const MAX_PROBE_TOKENS = 64;
+const MAX_PROBE_TOKENS = 512;
 
 /**
  * Verifies one exact text model against the provider.
@@ -58,7 +59,7 @@ export class OpenRouterTextModelTester {
       );
     }
 
-    const native = await this.probe(modelId, 'native-schema', signal);
+    const native = await this.probe(modelId, config.reasoningEffort, 'native-schema', signal);
     if (native.ok) {
       return ok({ modelId, structuredOutput: 'native-schema' });
     }
@@ -75,7 +76,7 @@ export class OpenRouterTextModelTester {
       return native;
     }
 
-    const recovered = await this.probe(modelId, 'json-contract', signal);
+    const recovered = await this.probe(modelId, config.reasoningEffort, 'json-contract', signal);
     if (!recovered.ok) {
       return recovered;
     }
@@ -84,6 +85,7 @@ export class OpenRouterTextModelTester {
 
   private async probe(
     modelId: string,
+    reasoningEffort: string | null | undefined,
     mode: StructuredOutputMode,
     signal?: AbortSignal,
   ): Promise<Result<null, AiError>> {
@@ -98,6 +100,7 @@ export class OpenRouterTextModelTester {
           model: modelId,
           temperature: 0,
           max_tokens: MAX_PROBE_TOKENS,
+          ...reasoningRequest(modelId, reasoningEffort),
           messages: [
             { role: 'system', content: PROBE_SYSTEM_PROMPT },
             {
@@ -157,4 +160,9 @@ export class OpenRouterTextModelTester {
       { detail: { issueCode } },
     );
   }
+}
+
+function reasoningRequest(modelId: string, configured: string | null | undefined): object {
+  const effort = configured ?? (isGeminiModel(modelId) ? 'minimal' : null);
+  return effort === null ? {} : { reasoning: { effort, exclude: true } };
 }

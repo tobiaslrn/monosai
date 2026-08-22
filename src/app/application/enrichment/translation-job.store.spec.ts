@@ -69,6 +69,9 @@ async function configure(): Promise<JobTestBed> {
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
     structuredOutput: 'native-schema',
+    reasoningEffort: null,
+    activePresetId: null,
+    presets: [],
   });
 
   let counter = 0;

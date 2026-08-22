@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import {
   DOCUMENT,
   ChangeDetectionStrategy,
@@ -7,77 +8,88 @@ import {
   signal,
 } from '@angular/core';
 import { CredentialStore } from '../../application/settings/credential.store';
-import { MAX_TTS_SPEED, MIN_TTS_SPEED, TtsStore } from '../../application/settings/tts.store';
-import { isGeminiTtsModel } from '../../domain/ai/tts-configuration';
+import { TtsStore } from '../../application/settings/tts.store';
+import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
+import { openAddModelDialog } from './add-model-dialog.component';
 import { ConfigurationStatusComponent } from './configuration-status.component';
 
-/**
- * The exact TTS model, voice, and speed.
- *
- * Its status is deliberately its own: a voice that does not work says nothing
- * about the text model, and nothing here can block reading or generation. The
- * verified sample plays only when the learner asks for it — audio never starts
- * on its own.
- */
+/** The active registered TTS preset, with an independent compatibility test. */
 @Component({
   selector: 'mn-tts-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ConfigurationStatusComponent],
   template: `
     <section class="mn-panel" aria-labelledby="mn-tts-heading">
-      <h2 id="mn-tts-heading">Voice (optional)</h2>
-      <p class="mn-hint">
-        Optional. Reading and story generation work fully without it, and a failure here never
-        affects the text model.
-      </p>
-
-      <div class="mn-field">
-        <label for="mn-tts-model">Exact TTS model ID</label>
-        <input
-          id="mn-tts-model"
-          type="text"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="vendor/model-name"
-          data-testid="tts-model-input"
-          [value]="tts.draft().modelId"
-          (input)="onModelInput($event)"
-        />
-        @if (geminiTts()) {
+      <div class="section-heading">
+        <div>
+          <h2 id="mn-tts-heading">Voice (optional)</h2>
           <p class="mn-hint">
-            Gemini voice names are case sensitive. Use a voice listed by OpenRouter, for example
-            <strong>Kore</strong>, <strong>Puck</strong>, or <strong>Aoede</strong>.
+            Reading and story generation work fully without it. A voice failure never affects the
+            text model.
           </p>
-        }
+        </div>
+        <button
+          type="button"
+          class="mn-button"
+          data-testid="add-tts-model"
+          [disabled]="!credential.isConfigured()"
+          (click)="addModel()"
+        >
+          Add model
+        </button>
       </div>
 
-      <div class="mn-field">
-        <label for="mn-tts-voice">Exact voice ID (optional for Gemini)</label>
-        <input
-          id="mn-tts-voice"
-          type="text"
-          autocomplete="off"
-          spellcheck="false"
-          data-testid="tts-voice-input"
-          [value]="tts.draft().voiceId"
-          (input)="onVoiceInput($event)"
-        />
-      </div>
+      @if (tts.presets().length > 0) {
+        <div class="preset-picker">
+          <div class="mn-field">
+            <label for="mn-tts-preset">Active voice model</label>
+            <select
+              id="mn-tts-preset"
+              data-testid="tts-preset-select"
+              [value]="tts.activePresetId() ?? ''"
+              (change)="selectPreset($event)"
+            >
+              <option value="" disabled>Choose a voice model</option>
+              @for (preset of tts.presets(); track preset.id) {
+                <option [value]="preset.id">{{ preset.name }}</option>
+              }
+            </select>
+          </div>
+          <button
+            type="button"
+            class="mn-button remove-model"
+            data-testid="remove-tts-model"
+            [disabled]="activePreset() === null"
+            (click)="removeActiveModel()"
+          >
+            Remove
+          </button>
+        </div>
+      } @else {
+        <div class="empty-state">
+          <span aria-hidden="true">♫</span>
+          <div>
+            <strong>No registered voice models</strong>
+            <p>Add one if you want Monosai to read generated Japanese aloud.</p>
+          </div>
+        </div>
+      }
 
-      <div class="mn-field">
-        <label for="mn-tts-speed">Speed</label>
-        <input
-          id="mn-tts-speed"
-          type="range"
-          [min]="minSpeed"
-          [max]="maxSpeed"
-          step="0.05"
-          data-testid="tts-speed-input"
-          [value]="tts.draft().speed"
-          (input)="onSpeedInput($event)"
-        />
-        <p class="mn-hint">{{ speedLabel() }}</p>
-      </div>
+      @if (activePreset(); as preset) {
+        <div class="preset-summary">
+          <div>
+            <span>Model ID</span><strong>{{ preset.modelId }}</strong>
+          </div>
+          <div>
+            <span>Voice</span><strong>{{ preset.voiceId }}</strong>
+          </div>
+          <div>
+            <span>Speed</span><strong>{{ preset.speed.toFixed(2) }}×</strong>
+          </div>
+        </div>
+      } @else if (tts.settings().modelId !== '') {
+        <p class="mn-hint">Current unregistered model: {{ tts.settings().modelId }}</p>
+      }
 
       <div class="actions-row">
         <button
@@ -93,10 +105,6 @@ import { ConfigurationStatusComponent } from './configuration-status.component';
         @if (tts.action() === 'testing') {
           <button type="button" class="mn-button" data-testid="cancel-tts-test" (click)="cancel()">
             Cancel
-          </button>
-        } @else if (tts.hasUnsavedChanges()) {
-          <button type="button" class="mn-button" data-testid="save-tts" (click)="save()">
-            Save
           </button>
         }
 
@@ -134,61 +142,163 @@ import { ConfigurationStatusComponent } from './configuration-status.component';
     </section>
   `,
   styles: `
+    .section-heading,
     .actions-row {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
       gap: var(--space-2);
     }
 
+    .section-heading h2,
+    .empty-state p {
+      margin: 0;
+    }
+    .actions-row {
+      justify-content: flex-start;
+    }
+
+    .preset-picker {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: var(--space-2);
+    }
+
+    .remove-model {
+      color: var(--status-danger);
+    }
+
+    .empty-state {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-control);
+      background: var(--surface-sunken);
+    }
+
+    .empty-state > span {
+      display: grid;
+      width: 2.5rem;
+      height: 2.5rem;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent-secondary-soft);
+      color: var(--accent-secondary);
+      font-size: 1.2rem;
+    }
+
+    .empty-state p,
+    .preset-summary span {
+      color: var(--text-secondary);
+    }
+
+    .preset-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-control);
+      background: var(--surface-sunken);
+    }
+
+    .preset-summary div {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+    .preset-summary span {
+      font-size: var(--text-sm);
+    }
+    .preset-summary strong {
+      overflow-wrap: anywhere;
+    }
     .warning {
       margin: 0;
       color: var(--status-danger);
+    }
+
+    @media (max-width: 32rem) {
+      .section-heading {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .preset-picker {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+      .preset-summary {
+        grid-template-columns: 1fr 1fr;
+      }
+      .preset-summary div:first-child {
+        grid-column: 1 / -1;
+      }
     }
   `,
 })
 export class TtsSectionComponent {
   private readonly document = inject(DOCUMENT);
-  private readonly credential = inject(CredentialStore);
+  private readonly dialog = inject(Dialog);
+  protected readonly credential = inject(CredentialStore);
   protected readonly tts = inject(TtsStore);
-
-  protected readonly minSpeed = MIN_TTS_SPEED;
-  protected readonly maxSpeed = MAX_TTS_SPEED;
-
   private audio: HTMLAudioElement | null = null;
   private objectUrl: string | null = null;
-
   protected readonly playing = signal(false);
 
-  protected readonly speedLabel = computed(() => `${this.tts.draft().speed.toFixed(2)}×`);
-  protected readonly geminiTts = computed(() => isGeminiTtsModel(this.tts.draft().modelId));
-
+  protected readonly activePreset = computed(() => {
+    const activeId = this.tts.activePresetId();
+    return this.tts.presets().find((preset) => preset.id === activeId) ?? null;
+  });
   protected readonly canTest = computed(
     () =>
       this.tts.action() === 'idle' &&
       this.credential.isConfigured() &&
-      this.tts.draft().modelId.trim() !== '' &&
-      (this.tts.draft().voiceId.trim() !== '' || this.geminiTts()),
+      this.tts.settings().modelId !== '' &&
+      this.tts.settings().voiceId !== '',
   );
 
   constructor() {
     void this.tts.load();
   }
 
-  protected onModelInput(event: Event): void {
-    this.tts.setDraft({ modelId: (event.target as HTMLInputElement).value });
+  protected async addModel(): Promise<void> {
+    const result = await openAddModelDialog(this.dialog, { kind: 'tts' });
+    if (result?.kind === 'tts') {
+      await this.tts.registerPreset(result.preset);
+    }
   }
 
-  protected onVoiceInput(event: Event): void {
-    this.tts.setDraft({ voiceId: (event.target as HTMLInputElement).value });
-  }
-
-  protected onSpeedInput(event: Event): void {
-    this.tts.setDraft({ speed: Number((event.target as HTMLInputElement).value) });
-  }
-
-  protected save(): void {
+  protected selectPreset(event: Event): void {
     this.stop();
-    void this.tts.save();
+    void this.tts.selectPreset((event.target as HTMLSelectElement).value);
+  }
+
+  protected async removeActiveModel(): Promise<void> {
+    const preset = this.activePreset();
+    if (preset === null) {
+      return;
+    }
+    const confirmed = await openConfirmDialog(this.dialog, {
+      title: `Remove ${preset.name}?`,
+      message: 'This removes the registered voice preset from this device.',
+      details: [
+        `${preset.modelId} · ${preset.voiceId}`,
+        'Your readings and saved audio stay untouched.',
+      ],
+      footnote: 'If another voice becomes active, test it before synthesis.',
+      confirmLabel: 'Remove voice',
+      cancelLabel: 'Keep voice',
+      tone: 'danger',
+    });
+    if (confirmed) {
+      this.stop();
+      await this.tts.removePreset(preset.id);
+    }
   }
 
   protected test(): void {
@@ -200,7 +310,6 @@ export class TtsSectionComponent {
     this.tts.cancelTest();
   }
 
-  /** Playback starts only from this click, and only for the verified clip. */
   protected play(sample: Blob): void {
     if (this.playing()) {
       this.stop();

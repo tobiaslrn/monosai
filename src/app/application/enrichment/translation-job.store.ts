@@ -223,7 +223,11 @@ export class TranslationJobStore {
     const context: JobContext = {
       readingId,
       modelId: settings.modelId,
-      taskConfig: { modelId: settings.modelId, structuredOutput },
+      taskConfig: {
+        modelId: settings.modelId,
+        structuredOutput,
+        reasoningEffort: settings.reasoningEffort,
+      },
       cacheKeys: this.keys.translationKeys(
         refs.value,
         settings.modelId,

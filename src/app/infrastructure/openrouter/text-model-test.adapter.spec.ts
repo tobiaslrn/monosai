@@ -34,6 +34,31 @@ describe('OpenRouterTextModelTester structured output', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('gives Gemini enough output budget and requests minimal reasoning', async () => {
+    const modelId = 'google/gemini-3.1-flash-lite-preview';
+    const harness = test({ knownTextModels: [modelId] });
+
+    const result = await harness.text.testConfiguration({ modelId });
+
+    expect(result.ok).toBe(true);
+    expect(harness.server.requests[0]?.body).toMatchObject({
+      max_tokens: 512,
+      reasoning: { effort: 'minimal', exclude: true },
+    });
+  });
+
+  it('uses the reasoning effort selected in the registered preset', async () => {
+    const modelId = 'google/gemini-3.6-flash';
+    const harness = test({ knownTextModels: [modelId] });
+
+    await harness.text.testConfiguration({ modelId, reasoningEffort: 'high' });
+
+    expect(harness.server.requests[0]?.body['reasoning']).toEqual({
+      effort: 'high',
+      exclude: true,
+    });
+  });
+
   it('falls back to the JSON contract when the provider refuses the schema', async () => {
     const { harness, result } = await run({ supportsJsonSchema: false });
 

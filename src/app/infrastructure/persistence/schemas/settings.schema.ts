@@ -18,6 +18,7 @@ export const readerPreferencesSchema = z.object({
 
 export const textModelSettingsSchema = z.object({
   modelId: z.string(),
+  reasoningEffort: z.string().nullable().default(null),
   lastTestFingerprint: z.string().nullable(),
   lastTestedAt: timestampSchema.nullable(),
   // Recorded by a successful test so generation opens in the mode this model
@@ -25,6 +26,18 @@ export const textModelSettingsSchema = z.object({
   // is also what a row written before the field existed means: an absent value
   // is the untested state, so it is defaulted rather than treated as corrupt.
   structuredOutput: z.enum(['native-schema', 'json-contract']).nullable().default(null),
+  activePresetId: z.string().nullable().default(null),
+  presets: z
+    .array(
+      z.object({
+        id: nonEmptyString,
+        name: nonEmptyString,
+        modelId: nonEmptyString,
+        reasoningEffort: z.string().nullable(),
+      }),
+    )
+    .readonly()
+    .default([]),
 });
 
 export const ttsSettingsSchema = z.object({
@@ -33,6 +46,19 @@ export const ttsSettingsSchema = z.object({
   speed: z.number().positive().max(4),
   lastTestFingerprint: z.string().nullable(),
   lastTestedAt: timestampSchema.nullable(),
+  activePresetId: z.string().nullable().default(null),
+  presets: z
+    .array(
+      z.object({
+        id: nonEmptyString,
+        name: nonEmptyString,
+        modelId: nonEmptyString,
+        voiceId: nonEmptyString,
+        speed: z.number().positive().max(4),
+      }),
+    )
+    .readonly()
+    .default([]),
 });
 
 export const exceptionPolicySchema = z.object({

@@ -205,6 +205,50 @@ describe('TextModelStore', () => {
   });
 
   describe('save', () => {
+    it('registers and selects presets with their reasoning effort', async () => {
+      const store = await ready();
+
+      await store.registerPreset({
+        id: 'gemini-flash',
+        name: 'Gemini Flash',
+        modelId: 'google/gemini-flash',
+        reasoningEffort: 'low',
+      });
+
+      expect(store.activePresetId()).toBe('gemini-flash');
+      expect(settings.textModel).toMatchObject({
+        modelId: 'google/gemini-flash',
+        reasoningEffort: 'low',
+        activePresetId: 'gemini-flash',
+      });
+      expect(store.readiness()).toBe('untested');
+    });
+
+    it('removes the active preset and activates the next registered model', async () => {
+      const store = await ready();
+      await store.registerPreset({
+        id: 'first',
+        name: 'First',
+        modelId: 'vendor/first',
+        reasoningEffort: null,
+      });
+      await store.registerPreset({
+        id: 'second',
+        name: 'Second',
+        modelId: 'vendor/second',
+        reasoningEffort: 'low',
+      });
+
+      await store.removePreset('second');
+
+      expect(store.presets().map((preset) => preset.id)).toEqual(['first']);
+      expect(settings.textModel).toMatchObject({
+        activePresetId: 'first',
+        modelId: 'vendor/first',
+      });
+      expect(store.readiness()).toBe('untested');
+    });
+
     it('reverts nothing and reports a storage failure', async () => {
       const store = await ready();
       settings.failWrites = storageError('unavailable', 'closed');

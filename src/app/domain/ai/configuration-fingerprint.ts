@@ -11,10 +11,10 @@ import type { TextModelConfig, TtsConfig } from './model-test';
 export const AI_ENDPOINT_VERSION = 'openrouter-v1';
 
 /** Bumped when the text compatibility test itself changes what it proves. */
-export const TEXT_MODEL_TEST_VERSION = 1;
+export const TEXT_MODEL_TEST_VERSION = 2;
 
 /** Bumped when the TTS compatibility test itself changes what it proves. */
-export const TTS_TEST_VERSION = 1;
+export const TTS_TEST_VERSION = 2;
 
 /**
  * How many times the saved key has changed, used in place of the key.
@@ -38,6 +38,7 @@ export function textModelFingerprint(
   return hashCanonical(hasher, 'text-model-test', {
     keyGeneration,
     modelId: config.modelId,
+    reasoningEffort: config.reasoningEffort ?? null,
     endpointVersion: AI_ENDPOINT_VERSION,
     testVersion: TEXT_MODEL_TEST_VERSION,
   });

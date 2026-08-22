@@ -127,7 +127,7 @@ export class OpenRouterClient {
 
   /** Sends a synthesis request and returns the raw clip for validation. */
   async postAudio(request: OpenRouterRequest): Promise<Result<AudioResponse, AiError>> {
-    const raw = await this.send(request, 'audio/mpeg', MAX_AUDIO_RESPONSE_BYTES);
+    const raw = await this.send(request, 'audio/*', MAX_AUDIO_RESPONSE_BYTES);
     if (!raw.ok) {
       return raw;
     }

@@ -1,11 +1,16 @@
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { TtsConfig, TtsTest } from '../../domain/ai/model-test';
-import { resolveTtsVoice, supportsTtsSpeed } from '../../domain/ai/tts-configuration';
+import {
+  isGeminiTtsModel,
+  resolveTtsVoice,
+  supportsTtsSpeed,
+} from '../../domain/ai/tts-configuration';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { AudioDecoder } from './audio-decode';
 import { verifyAudio } from './audio-verification';
 import type { AudioResponse, OpenRouterClient } from './openrouter-client';
 import { AUDIO_REQUEST_TIMEOUT_MS, AUDIO_SPEECH_PATH } from './openrouter-endpoints';
+import { geminiPcmToWav } from './pcm-audio';
 
 const TASK = 'tts-test';
 
@@ -99,7 +104,7 @@ export class OpenRouterTtsTester {
         model: modelId,
         voice: voiceId,
         input: TTS_TEST_PHRASE,
-        response_format: REQUESTED_FORMAT,
+        response_format: isGeminiTtsModel(modelId) ? 'pcm' : REQUESTED_FORMAT,
         ...(speed === undefined ? {} : { speed }),
       },
     });
@@ -111,7 +116,8 @@ export class OpenRouterTtsTester {
     voiceId: string,
     speedApplied: boolean,
   ): Promise<Result<TtsTest, AiError>> {
-    const verified = await verifyAudio(response, this.decoder, { task: TASK, modelId, voiceId });
+    const normalized = isGeminiTtsModel(modelId) ? geminiPcmToWav(response) : response;
+    const verified = await verifyAudio(normalized, this.decoder, { task: TASK, modelId, voiceId });
     if (!verified.ok) {
       return verified;
     }

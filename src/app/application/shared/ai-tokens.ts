@@ -1,6 +1,7 @@
 import { InjectionToken } from '@angular/core';
 import type { TextGenerationProvider } from '../../domain/ai/text-generation-provider';
 import type { TextToSpeechProvider } from '../../domain/ai/text-to-speech-provider';
+import type { ModelCatalog } from '../../domain/ai/model-catalog';
 
 /**
  * Injection tokens for the AI ports.
@@ -16,3 +17,5 @@ export const TEXT_GENERATION_PROVIDER = new InjectionToken<TextGenerationProvide
 export const TEXT_TO_SPEECH_PROVIDER = new InjectionToken<TextToSpeechProvider>(
   'monosai.text-to-speech-provider',
 );
+
+export const MODEL_CATALOG = new InjectionToken<ModelCatalog>('monosai.model-catalog');

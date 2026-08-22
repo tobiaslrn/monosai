@@ -181,6 +181,38 @@ export async function stubOpenRouter(
     const url = route.request().url();
     urls.push(url);
 
+    if (url.includes('/api/v1/model/')) {
+      const marker = '/api/v1/model/';
+      const modelId = decodeURIComponent(url.slice(url.indexOf(marker) + marker.length));
+      const tts = modelId.includes('tts');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id: modelId,
+            name: tts ? 'Test voice model' : 'Test text model',
+            canonical_slug: modelId,
+            context_length: 32_768,
+            created: 0,
+            default_parameters: null,
+            architecture: {
+              modality: tts ? 'text->audio' : 'text->text',
+              input_modalities: ['text'],
+              output_modalities: [tts ? 'audio' : 'text'],
+            },
+            supported_parameters: tts ? ['response_format'] : ['reasoning', 'structured_outputs'],
+            supported_voices: tts ? ['sakura', 'Kore'] : [],
+            links: { details: `https://openrouter.ai/${modelId}` },
+            per_request_limits: null,
+            pricing: { prompt: '0', completion: '0' },
+            top_provider: { is_moderated: false },
+          },
+        }),
+      });
+      return;
+    }
+
     if (url.includes('/audio/speech')) {
       const audio = nextOf(options.audioSequence, audioRequests) ??
         options.audio ?? { kind: 'valid' };
@@ -349,4 +381,25 @@ export async function saveApiKey(page: Page, key = 'e2e-placeholder-key'): Promi
   await page.getByTestId('api-key-input').fill(key);
   await page.getByTestId('save-key').click();
   await expect(page.getByTestId('credential-state')).toContainText('Key saved');
+}
+
+/** Registers a text-model preset through the same discovery dialog learners use. */
+export async function addTextModel(page: Page, modelId: string): Promise<void> {
+  await page.getByTestId('add-text-model').click();
+  await page.getByTestId('add-model-id').fill(modelId);
+  await page.getByTestId('dialog-discover-model').click();
+  await expect(page.getByText('Preset options')).toBeVisible();
+  await page.getByTestId('save-model-preset').click();
+  await expect(page.getByTestId('text-preset-select')).toBeVisible();
+}
+
+/** Registers a voice-model preset through capability-aware model and voice dropdowns. */
+export async function addTtsModel(page: Page, modelId: string, voiceId = 'sakura'): Promise<void> {
+  await page.getByTestId('add-tts-model').click();
+  await page.getByTestId('add-model-id').fill(modelId);
+  await page.getByTestId('dialog-discover-model').click();
+  await expect(page.getByText('Preset options')).toBeVisible();
+  await page.getByTestId('voice-select').selectOption(voiceId);
+  await page.getByTestId('save-model-preset').click();
+  await expect(page.getByTestId('tts-preset-select')).toBeVisible();
 }

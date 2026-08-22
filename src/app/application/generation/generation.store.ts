@@ -564,7 +564,11 @@ export class GenerationStore {
         profile: profile.value,
         policyText: policy.text,
         policyHash: policy.policyHash,
-        taskConfig: { modelId: settings.modelId, structuredOutput },
+        taskConfig: {
+          modelId: settings.modelId,
+          structuredOutput,
+          reasoningEffort: settings.reasoningEffort,
+        },
       },
     };
   }

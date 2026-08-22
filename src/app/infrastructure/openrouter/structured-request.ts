@@ -2,6 +2,7 @@ import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import type { StructuredOutputMode } from '../../domain/ai/model-test';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
+import { isGeminiModel } from '../../domain/ai/tts-configuration';
 import { err, ok, type Result } from '../../domain/shared/result';
 import { extractJsonObject } from './json-content';
 import type { OpenRouterClient } from './openrouter-client';
@@ -77,6 +78,7 @@ export class StructuredTaskRunner {
         body: {
           model: request.config.modelId,
           max_tokens: request.maxTokens,
+          ...reasoningRequest(request.config.modelId, request.config.reasoningEffort),
           messages: [
             {
               role: 'system',
@@ -141,4 +143,9 @@ export class StructuredTaskRunner {
       { detail: { issueCode } },
     );
   }
+}
+
+function reasoningRequest(modelId: string, configured: string | null | undefined): object {
+  const effort = configured ?? (isGeminiModel(modelId) ? 'minimal' : null);
+  return effort === null ? {} : { reasoning: { effort, exclude: true } };
 }

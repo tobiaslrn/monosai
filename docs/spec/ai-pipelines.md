@@ -2,7 +2,7 @@
 
 ## 1. Provider boundary
 
-V1 uses OpenRouter only. The learner supplies one API key, one exact text-model ID, one exact TTS-model ID, and one exact voice ID. Text and TTS configurations are tested separately. TTS is optional and never blocks reading or story generation.
+V1 uses OpenRouter only. The learner supplies one API key and registers reusable text and TTS presets from exact OpenRouter model IDs. The add-model dialog discovers advisory model metadata through OpenRouter's official TypeScript SDK and presents supported reasoning efforts and voices as choices. A Gemini-specific voice ID is optional and resolves to `Kore` when omitted. Text and TTS configurations are selected and tested separately. TTS is optional and never blocks reading or story generation.
 
 All task prompts are internal, versioned assets. V1 exposes only one per-generation **Special instructions** field and one global natural-language **Exception policy**. Raw prompts and reusable profiles are future work.
 
@@ -26,7 +26,7 @@ Every outbound request:
 
 ### Text model test
 
-The test sends a minimal structured task to the exact model ID and verifies authentication, model access, response decoding, and required structured-output behavior. Store a success fingerprint of key-presence generation, model ID, endpoint version, and test version. Changing relevant settings marks it stale.
+The test sends a minimal structured task to the exact model ID and verifies authentication, model access, response decoding, and required structured-output behavior. Store a success fingerprint of key-presence generation, model ID, selected reasoning effort, endpoint version, and test version. Changing relevant settings marks it stale.
 
 If the model supports provider-native structured output, use it. Otherwise use a strict JSON contract plus schema validation and one format-recovery request. A model that cannot pass the compatibility test cannot be used for generation even if ordinary chat works.
 
@@ -223,7 +223,7 @@ User cancellation differs from auxiliary failure: cancellation before finalizati
 
 ### Sentence synthesis
 
-Input is the exact saved Japanese sentence. Build the cache key from content, TTS model, voice, response format, speed, and provider options. Request MP3 unless the configured provider cannot support it and a supported browser-decodable format has been explicitly adopted. Validate content type, response size, and audio decode before storage.
+Input is the exact saved Japanese sentence. Build the cache key from content, TTS model, voice, response format, speed, and provider options. Request MP3 unless the configured provider cannot support it. Gemini TTS through OpenRouter requests its native 24 kHz, 16-bit mono PCM and wraps it in a WAV container before browser decoding and storage. Validate content type, response size, and audio decode before storage.
 
 ### Whole-reading preparation
 

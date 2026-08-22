@@ -3,7 +3,11 @@ import type { AiError } from '../../domain/ai/ai-error';
 import { ttsFingerprint } from '../../domain/ai/configuration-fingerprint';
 import { readinessOf, type ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import { resolveTtsVoice } from '../../domain/ai/tts-configuration';
-import { DEFAULT_TTS_SETTINGS, type TtsSettings } from '../../domain/settings/settings';
+import {
+  DEFAULT_TTS_SETTINGS,
+  type TtsPreset,
+  type TtsSettings,
+} from '../../domain/settings/settings';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { TEXT_TO_SPEECH_PROVIDER } from '../shared/ai-tokens';
 import { CLOCK, HASHER, SETTINGS_REPOSITORY } from '../shared/repository-tokens';
@@ -61,6 +65,8 @@ export class TtsStore {
   readonly sample = this.sampleSignal.asReadonly();
 
   readonly lastTestedAt = computed(() => this.settingsSignal().lastTestedAt);
+  readonly presets = computed(() => this.settingsSignal().presets);
+  readonly activePresetId = computed(() => this.settingsSignal().activePresetId);
 
   readonly hasUnsavedChanges = computed(() => {
     const draft = this.draftSignal();
@@ -102,6 +108,79 @@ export class TtsStore {
     this.draftSignal.update((draft) => ({ ...draft, ...patch }));
   }
 
+  async registerPreset(preset: TtsPreset): Promise<boolean> {
+    const current = this.settingsSignal();
+    const presets = [...current.presets.filter((item) => item.id !== preset.id), preset];
+    const saved = await this.repository.updateTtsSettings({
+      presets,
+      activePresetId: preset.id,
+      modelId: preset.modelId,
+      voiceId: preset.voiceId,
+      speed: preset.speed,
+      lastTestFingerprint: null,
+      lastTestedAt: null,
+    });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    this.draftSignal.set({
+      modelId: preset.modelId,
+      voiceId: preset.voiceId,
+      speed: preset.speed,
+    });
+    this.testFailureSignal.set(null);
+    this.sampleSignal.set(null);
+    return true;
+  }
+
+  async selectPreset(id: string): Promise<boolean> {
+    if (this.settingsSignal().activePresetId === id) {
+      return true;
+    }
+    const preset = this.settingsSignal().presets.find((item) => item.id === id);
+    return preset === undefined ? false : this.registerPreset(preset);
+  }
+
+  async removePreset(id: string): Promise<boolean> {
+    const current = this.settingsSignal();
+    const removed = current.presets.find((preset) => preset.id === id);
+    if (removed === undefined) {
+      return true;
+    }
+    const presets = current.presets.filter((preset) => preset.id !== id);
+    const replacement = current.activePresetId === id ? (presets[0] ?? null) : null;
+    const saved = await this.repository.updateTtsSettings({
+      presets,
+      ...(current.activePresetId === id
+        ? {
+            activePresetId: replacement?.id ?? null,
+            modelId: replacement?.modelId ?? '',
+            voiceId: replacement?.voiceId ?? '',
+            speed: replacement?.speed ?? DEFAULT_TTS_SETTINGS.speed,
+            lastTestFingerprint: null,
+            lastTestedAt: null,
+          }
+        : {}),
+    });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    this.draftSignal.set({
+      modelId: saved.value.modelId,
+      voiceId: saved.value.voiceId,
+      speed: saved.value.speed,
+    });
+    this.testFailureSignal.set(null);
+    this.storageFailureSignal.set(null);
+    this.speedAppliedSignal.set(null);
+    this.sampleSignal.set(null);
+    return true;
+  }
+
   async save(): Promise<boolean> {
     this.actionSignal.set('saving');
     const saved = await this.persistDraft();
@@ -119,6 +198,7 @@ export class TtsStore {
       modelId: draft.modelId.trim(),
       voiceId: resolveTtsVoice(draft.modelId, draft.voiceId),
       speed: clampSpeed(draft.speed),
+      activePresetId: null,
     };
 
     const saved = await this.repository.updateTtsSettings(patch);
