@@ -98,33 +98,36 @@ Exact final colors may be tuned only to meet contrast. Do not use semantic token
 ### Layout
 
 Desktop: the page centres itself within a wide shelf measure. The Library
-header carries the small Monosai mark and wordmark before the page title, with
-the Settings gear in the trailing slot. **New reading** comes next, followed
-by cards in a responsive three-column shelf that fills the available width
-(`repeat(auto-fill, minmax(300px, 1fr))`). The lockup is Library chrome only;
-it does not enter the Reader.
+header carries the small Monosai mark and wordmark, with the Settings gear in
+the trailing slot. A **Library** heading and **New reading** action come next.
+Readings form one compact, full-width list grouped under **Today**,
+**Yesterday**, **Earlier this week**, and **Older**; empty date groups are not
+shown. The lockup is Library chrome only; it does not enter the Reader.
 
-Mobile: single column, same order.
+Mobile: same order and date groups. At narrow phone widths the mark and
+**Library** remain while the redundant Monosai wordmark gives way, preserving
+the Settings touch target without shrinking the destination title.
 
 Filter chips (All / Imported / Generated) appear only once the shelf holds at
 least eight readings. Below that they are chrome that can only ever hide one or
 two cards the learner can already see.
 
-### Reading card content
+### Reading row content
 
-A card shows the reading, not a report on it.
+A row identifies the reading without repeating its contents.
 
-- Title, linking into the Reader.
-- Two to three lines of the reading's opening in Japanese, clamped by line count. It is a preview: no furigana, no tap targets, no markers.
-- One quiet line: a relative date ("2 days ago"), and a small audio icon when the reading has audio.
+- Title; its link covers the row and opens the Reader.
+- One quiet line with the character count.
+- **Audio available** with a small audio icon when at least one saved clip exists.
 - Overflow menu with Delete. No edit, favorite, tags, export, or duplicate actions.
 
-Deliberately absent: absolute timestamps, sentence counts, story form, source
-badge, "Translations: none yet"-style aid summaries, and last-opened state.
-None of them changed a decision, and together they made a card a table.
+Deliberately absent: story excerpts, absolute timestamps, sentence counts,
+story form, source badge, "Translations: none yet"-style aid summaries, and
+last-opened state. None of them changed a decision, and together they made the
+library harder to scan.
 
-The excerpt is denormalized onto the `readings` row, so rendering a page of
-cards is still one bounded query.
+Character and audio availability are denormalized onto the `readings` row, so
+rendering a page remains one bounded query and never loads audio bytes.
 
 The premise is available in generated-story details/reader metadata but not required on every library card.
 

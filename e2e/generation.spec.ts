@@ -92,9 +92,8 @@ test.describe('generating a story', () => {
     await page.goto('/#/library');
     const card = page.locator('mn-reading-card').first();
     await expect(card).toContainText(STRICT_STORY.titleJa);
-    // The card shows the story, not a report on it. Its aid counts are still
-    // confirmed on the panel that saved it, just above.
-    await expect(card.locator('.excerpt[lang="ja"]')).toContainText('猫');
+    await expect(card).toContainText(/\d+ characters/);
+    await expect(card).not.toContainText('庭で遊びます');
     await expect(card).not.toContainText('Translations:');
 
     // The card's title is the link into the reader.

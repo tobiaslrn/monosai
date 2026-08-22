@@ -1,39 +1,31 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  input,
-  output,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CLOCK } from '../../application/shared/repository-tokens';
 import type { Reading } from '../../domain/reading/reading';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { relativeDay } from '../../shared-ui/reading-summary/reading-summary-labels';
 
-/**
- * One library card.
- *
- * It shows the reading rather than a report on it: the title, the opening in
- * Japanese, and one quiet line saying when it arrived. Everything comes from the
- * denormalized `readings` row, so a shelf of cards is still one bounded query.
- *
- * The excerpt is a preview and nothing more — no furigana, no tap targets, no
- * markers. Those belong to the reader, and putting them here would make a card
- * look like something you could read from.
- */
+/** One compact library row, with only the metadata useful before opening it. */
 @Component({
   selector: 'mn-reading-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, IconComponent],
   template: `
-    <article class="card">
+    <article class="reading-row">
       <div class="head">
-        <h3>
-          <a [routerLink]="['/reader', reading().id]">{{ reading().title }}</a>
-        </h3>
+        <div class="copy">
+          <h3>
+            <a [routerLink]="['/reader', reading().id]">{{ reading().title }}</a>
+          </h3>
+          <p class="meta">
+            <span>{{ characterLabel() }}</span>
+            @if (hasAudio()) {
+              <span class="separator" aria-hidden="true">·</span>
+              <span class="audio-available">
+                <mn-icon name="audio" [size]="16" />
+                <span>Audio available</span>
+              </span>
+            }
+          </p>
+        </div>
         <div class="menu-anchor">
           <button
             type="button"
@@ -54,39 +46,30 @@ import { relativeDay } from '../../shared-ui/reading-summary/reading-summary-lab
           }
         </div>
       </div>
-
-      @if (reading().excerpt) {
-        <p class="excerpt" lang="ja" aria-hidden="true">{{ reading().excerpt }}</p>
-      }
-
-      <p class="meta">
-        <span>{{ addedLabel() }}</span>
-        @if (hasAudio()) {
-          <mn-icon name="audio" [size]="16" />
-          <span class="mn-visually-hidden">Has audio</span>
-        }
-      </p>
     </article>
   `,
   styles: `
-    .card {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      height: 100%;
-      min-height: 272px;
-      padding: var(--space-5);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-raised);
+    .reading-row {
+      position: relative;
+      min-height: 76px;
+      padding: var(--space-3) var(--space-1) var(--space-3) var(--space-3);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: background-color var(--motion-fast) ease-out;
+    }
+
+    .reading-row:hover {
+      background: var(--surface-sunken);
     }
 
     .head {
       display: flex;
-      gap: var(--space-2);
-      align-items: flex-start;
+      gap: var(--space-3);
+      align-items: center;
       justify-content: space-between;
+    }
+
+    .copy {
+      min-width: 0;
     }
 
     h3 {
@@ -101,30 +84,20 @@ import { relativeDay } from '../../shared-ui/reading-summary/reading-summary-lab
       text-decoration: none;
     }
 
-    h3 a:hover {
-      text-decoration: underline;
+    h3 a::after {
+      position: absolute;
+      inset: 0;
+      content: '';
     }
 
-    /*
-     * Clamped rather than truncated at a character count: three lines of the
-     * card's own width is what makes a shelf of cards the same height, whatever
-     * the glyphs are.
-     */
-    .excerpt {
-      display: -webkit-box;
-      flex: 1;
-      margin: 0;
-      overflow: hidden;
-      color: var(--text-secondary);
-      font-family: var(--font-japanese);
-      font-size: var(--text-md);
-      line-height: 1.8;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 3;
+    .reading-row:has(h3 a:focus-visible) {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
     }
 
     .menu-anchor {
       position: relative;
+      z-index: 1;
       flex: none;
     }
 
@@ -183,11 +156,18 @@ import { relativeDay } from '../../shared-ui/reading-summary/reading-summary-lab
 
     .meta {
       display: flex;
-      gap: var(--space-2);
+      flex-wrap: wrap;
+      gap: var(--space-1);
       align-items: center;
-      margin: 0;
+      margin: var(--space-1) 0 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);
+    }
+
+    .audio-available {
+      display: inline-flex;
+      gap: var(--space-1);
+      align-items: center;
     }
   `,
 })
@@ -195,15 +175,13 @@ export class ReadingCardComponent {
   readonly reading = input.required<Reading>();
   readonly deleteRequested = output<Reading>();
 
-  private readonly clock = inject(CLOCK);
-
   private readonly menuOpenSignal = signal(false);
   protected readonly menuOpen = this.menuOpenSignal.asReadonly();
 
-  protected readonly addedLabel = computed(() =>
-    relativeDay(this.reading().createdAt, this.clock.now()),
-  );
-
+  protected readonly characterLabel = computed(() => {
+    const count = this.reading().characterCount;
+    return count === 1 ? '1 character' : `${String(count)} characters`;
+  });
   protected readonly hasAudio = computed(() => this.reading().audioSummary.completed > 0);
 
   protected toggleMenu(): void {

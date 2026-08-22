@@ -391,11 +391,8 @@ test.describe('scenario 2 — file import and its errors', () => {
 
 /** End-to-end scenario 14: filtering, resume, deletion cascade, and repair. */
 test.describe('scenario 14 — library, filtering, deletion', () => {
-  /**
-   * A card shows the reading, not a report on it: the title, its opening in
-   * Japanese, and one line saying when it arrived.
-   */
-  test('a card shows the reading opening in Japanese and one line of metadata', async ({
+  /** A compact row identifies the reading without repeating its contents. */
+  test('a dated library row shows the title and character count without a preview', async ({
     page,
   }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
@@ -403,12 +400,13 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
     const card = page.locator('mn-reading-card');
     await expect(card).toContainText('第一章');
-    await expect(card.locator('.excerpt[lang="ja"]')).toContainText('吾輩は猫である');
-    await expect(card).toContainText('today');
-    // None of the counters the card used to be built from.
+    await expect(page.getByRole('heading', { name: 'Today', level: 2 })).toBeVisible();
+    await expect(card).toContainText(/\d+ characters/);
+    await expect(card).not.toContainText('吾輩は猫である');
     await expect(card).not.toContainText('sentences');
     await expect(card).not.toContainText('none yet');
     await expect(card).not.toContainText('Last opened');
+    await expect(card.getByRole('button', { name: 'Read' })).toHaveCount(0);
   });
 
   /** Chips are chrome until there are enough readings for filtering to help. */
