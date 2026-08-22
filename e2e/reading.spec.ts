@@ -286,6 +286,30 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     expect(afterReload).toBeGreaterThan(before);
   });
 
+  test('keeps every Reader action usable in the compact 320px header', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    const header = page.locator('.bar-row');
+    await expect(header.getByRole('link', { name: 'Back to library' })).toBeVisible();
+    await expect(header.getByRole('button', { name: 'Aids' })).toBeVisible();
+    await expect(header.getByRole('button', { name: /^Audio/ })).toBeVisible();
+    await expect(header.getByRole('button', { name: 'Reading actions' })).toBeVisible();
+    await expect(page.locator('mn-reader-aids .anchor-label')).toBeHidden();
+
+    const bounds = await header.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, viewport: window.innerWidth };
+    });
+    expect(bounds.left).toBeGreaterThanOrEqual(0);
+    expect(bounds.right).toBeLessThanOrEqual(bounds.viewport);
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
+  });
+
   test('has no serious accessibility violations across the workflow', async ({ page }) => {
     await page.goto('/#/add');
     await expectNoSeriousAccessibilityViolations(page);

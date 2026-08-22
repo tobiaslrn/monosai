@@ -184,7 +184,7 @@ sentence translated is laid out exactly like one with none.
 
 ### Mobile structure
 
-- Sticky header with Back, truncated title, Aids, Audio, and overflow — the same controls as desktop, at the same touch target.
+- Sticky header with Back, truncated title, Aids, Audio, and overflow — the same controls as desktop, at the same touch target. Below 480px, Aids keeps its accessible name and touch target but drops its visible label so the title and all four controls fit without horizontal scrolling.
 - Full-width reading with 16px gutters.
 - Sentence and word popovers remain compact, bounded cards anchored under or beside the pressed text below the desktop breakpoint as well as above it. They flip above or push inside the viewport when needed; they do not become bottom sheets. Focus returns to the word when dismissed.
 - The audio player remains a compact fixed card at every width, inset from the viewport edges and lifted above the safe-area inset; it is not a modal sheet.

@@ -16,7 +16,9 @@
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
-  transition: background-color var(--motion-fast) ease-out;
+  transition:
+    background-color var(--motion-fast) ease-out,
+    transform var(--motion-fast) ease-out;
 }
 
 .mn-button:hover:not(:disabled) {
@@ -26,6 +28,10 @@
 .mn-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.mn-button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .mn-button--primary {
@@ -87,6 +93,12 @@
   background: var(--surface-panel);
 }
 
+@media (max-width: 600px) {
+  .mn-panel {
+    padding: var(--space-4);
+  }
+}
+
 .mn-panel--plain {
   padding: 0;
   border: 0;
@@ -124,6 +136,9 @@
   background: var(--surface-raised);
   color: var(--text-primary);
   cursor: pointer;
+  transition:
+    background-color var(--motion-fast) ease-out,
+    transform var(--motion-fast) ease-out;
 }
 
 .mn-icon-button:hover:not(:disabled) {
@@ -133,4 +148,8 @@
 .mn-icon-button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.mn-icon-button:active:not(:disabled) {
+  transform: translateY(1px);
 }

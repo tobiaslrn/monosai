@@ -29,7 +29,7 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
       return {
         key: state.kind,
         title: 'Generating your story',
-        detail: 'The model is writing the Japanese. This is usually the longest step.',
+        detail: 'Writing your story. This is usually the longest step.',
       };
     case 'parsing':
       return {
