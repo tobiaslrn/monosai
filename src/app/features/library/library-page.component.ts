@@ -16,7 +16,6 @@ import { describeDeletion } from '../../domain/reading/deletion-plan';
 import type { LibraryFilter, Reading } from '../../domain/reading/reading';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { PopoverService } from '../../shared-ui/popover/popover.service';
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
 import { NewReadingMenuComponent } from './new-reading-menu.component';
@@ -47,18 +46,23 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   imports: [
     RouterLink,
     IconComponent,
-    PageHeaderComponent,
     ReaderPopoverComponent,
     NewReadingMenuComponent,
     ReadingCardComponent,
   ],
   template: `
-    <div class="mn-page">
-      <mn-page-header heading="Library">
+    <div class="mn-page library-page">
+      <header class="library-head">
+        <div class="identity">
+          <img class="mark" src="icons/icon-192.png" alt="" width="40" height="40" />
+          <span class="wordmark">Monosai</span>
+          <span class="identity-divider" aria-hidden="true"></span>
+          <h1>Library</h1>
+        </div>
         <a class="mn-icon-button" routerLink="/settings" aria-label="Settings">
           <mn-icon name="settings" [size]="20" />
         </a>
-      </mn-page-header>
+      </header>
 
       @if (store.status() === 'failed') {
         <section class="mn-panel" role="alert">
@@ -134,6 +138,61 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     </ng-template>
   `,
   styles: `
+    .library-page {
+      max-width: 1120px;
+      gap: var(--space-7);
+      padding-top: var(--space-4);
+    }
+
+    .library-head {
+      display: flex;
+      gap: var(--space-4);
+      align-items: center;
+      justify-content: space-between;
+      min-width: 0;
+    }
+
+    .identity {
+      display: flex;
+      gap: var(--space-3);
+      align-items: center;
+      min-width: 0;
+    }
+
+    .mark {
+      flex: none;
+      border-radius: 10px;
+    }
+
+    .wordmark,
+    .identity h1 {
+      font-family: var(--font-japanese);
+      letter-spacing: -0.02em;
+    }
+
+    .wordmark {
+      color: var(--text-primary);
+      font-size: 24px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .identity-divider {
+      width: 1px;
+      height: 32px;
+      background: var(--border-subtle);
+    }
+
+    .identity h1 {
+      min-width: 0;
+      margin: 0;
+      overflow: hidden;
+      font-size: 28px;
+      font-weight: 500;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
     .actions {
       display: flex;
       flex-wrap: wrap;
@@ -169,11 +228,25 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
      */
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: var(--space-4);
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: var(--space-5);
       margin: 0;
       padding: 0;
       list-style: none;
+    }
+
+    @media (max-width: 959px) {
+      .library-page {
+        gap: var(--space-5);
+      }
+
+      .wordmark {
+        font-size: 21px;
+      }
+
+      .identity h1 {
+        font-size: 24px;
+      }
     }
   `,
 })

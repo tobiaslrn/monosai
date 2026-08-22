@@ -102,6 +102,9 @@ describe('LibraryPageComponent', () => {
   it('says one line and offers the one button when nothing is saved yet', async () => {
     const fixture = await render();
 
+    expect(element(fixture).querySelector('.mark')?.getAttribute('src')).toBe('icons/icon-192.png');
+    expect(element(fixture).querySelector('.wordmark')?.textContent).toBe('Monosai');
+    expect(element(fixture).querySelector('h1')?.textContent).toBe('Library');
     expect(element(fixture).textContent).toContain('Nothing saved yet');
     expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(0);
     expect(newReadingButton(fixture)).not.toBeNull();
