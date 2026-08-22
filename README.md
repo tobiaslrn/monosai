@@ -1,8 +1,15 @@
-# Monosai
+<div align="center">
+  <img src="data/brand/monosai-mark.svg" alt="Monosai Logo" width="96" height="96" style="border-radius: 12px;"/>
+  <h1>Monosai</h1>
+  <p><b>Local-first Japanese reading app with furigana, glosses, and Anki integration</b></p>
+  <p>
+    <a href="https://<owner>.github.io/monosai/"><b>Launch App</b></a> •
+    <a href="docs/setup.md">Setup Guide</a> •
+    <a href="docs/troubleshooting.md">Troubleshooting</a>
+  </p>
+</div>
 
-<p align="center">
-  <img src="data/brand/monosai-mark.svg" alt="Monosai leaf mark" width="128" />
-</p>
+<hr />
 
 Monosai is a local-first reading app for people learning Japanese. Paste in
 some Japanese text, or open a `.txt` file, and Monosai shows it back to you
