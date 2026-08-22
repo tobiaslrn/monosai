@@ -62,6 +62,24 @@ describe('OpenRouterTtsSynthesizer', () => {
     expect(harness.server.requests[1]?.body['input']).toBe(SENTENCE);
   });
 
+  it('synthesizes with Gemini TTS without sending its unsupported speed option', async () => {
+    const modelId = 'google/gemini-3.1-flash-tts-preview';
+    const harness = run({ knownTtsModels: [modelId] });
+
+    const result = await harness.tts.synthesize(
+      { ...REQUEST, modelId },
+      new AbortController().signal,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.speedApplied).toBe(false);
+    expect(harness.server.callCount).toBe(1);
+    expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
+  });
+
   it('rejects audio in a format the cache cannot store', async () => {
     const result = await run({ audio: 'wrong-mime' }).tts.synthesize(
       REQUEST,

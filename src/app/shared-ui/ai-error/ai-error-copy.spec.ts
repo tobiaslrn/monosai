@@ -33,6 +33,13 @@ describe('AI_ERROR_COPY', () => {
       AI_ERROR_COPY.authentication.heading,
     );
   });
+
+  it('does not describe a TTS capability failure as a structured-text failure', () => {
+    const copy = aiErrorCopy(aiError('capability-unsupported', 'tts-test', 'x'));
+
+    expect(copy.primaryAction).toContain('TTS model and voice');
+    expect(copy.escape).not.toContain('structured replies');
+  });
 });
 
 describe('AI_TASK_COPY', () => {

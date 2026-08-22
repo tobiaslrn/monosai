@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
 import { ttsFingerprint } from '../../domain/ai/configuration-fingerprint';
 import { readinessOf, type ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
+import { resolveTtsVoice } from '../../domain/ai/tts-configuration';
 import { DEFAULT_TTS_SETTINGS, type TtsSettings } from '../../domain/settings/settings';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { TEXT_TO_SPEECH_PROVIDER } from '../shared/ai-tokens';
@@ -116,7 +117,7 @@ export class TtsStore {
     const draft = this.draftSignal();
     const patch = {
       modelId: draft.modelId.trim(),
-      voiceId: draft.voiceId.trim(),
+      voiceId: resolveTtsVoice(draft.modelId, draft.voiceId),
       speed: clampSpeed(draft.speed),
     };
 

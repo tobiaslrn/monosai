@@ -40,6 +40,8 @@ export interface FakeOpenRouterOptions {
   readonly knownVoices?: readonly string[];
   /** When false, a request carrying `response_format` is refused with a 400. */
   readonly supportsJsonSchema?: boolean;
+  /** Parameter named by that rejection; null simulates a generic upstream error. */
+  readonly jsonSchemaErrorParam?: string | null;
   /** When false, a request carrying `speed` is refused with a 400. */
   readonly supportsSpeed?: boolean;
   readonly content?: ChatContentKind;
@@ -304,9 +306,13 @@ export class FakeOpenRouterServer {
     if (body['response_format'] !== undefined && this.options.supportsJsonSchema === false) {
       return this.providerError(
         400,
-        'This model does not support the response_format parameter',
+        this.options.jsonSchemaErrorParam === null
+          ? 'Invalid request for this model'
+          : 'This model does not support the response_format parameter',
         {},
-        'response_format',
+        this.options.jsonSchemaErrorParam === null
+          ? undefined
+          : (this.options.jsonSchemaErrorParam ?? 'response_format'),
       );
     }
 

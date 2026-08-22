@@ -66,9 +66,11 @@ export class OpenRouterTextModelTester {
     // Two distinct reasons to fall back, both bounded to a single extra
     // request: the provider refused the schema parameter outright, or it
     // accepted it and the model still answered in the wrong shape.
-    const refusedSchema =
-      native.error.code === 'capability-unsupported' &&
-      native.error.detail?.capability === 'structured-output';
+    // This request has only one optional capability: `response_format` with a
+    // JSON schema. Some upstreams (including Gemini through OpenRouter) report
+    // a generic invalid-request parameter instead of naming response_format,
+    // so any capability rejection here is safe to recover without the schema.
+    const refusedSchema = native.error.code === 'capability-unsupported';
     if (!refusedSchema && native.error.code !== 'malformed-response') {
       return native;
     }

@@ -51,9 +51,10 @@ export class StructuredTaskRunner {
       return first;
     }
 
-    const refusedSchema =
-      first.error.code === 'capability-unsupported' &&
-      first.error.detail?.capability === 'structured-output';
+    // A native-schema attempt has no other optional capability. Upstreams do
+    // not consistently name `response_format` in 400 responses, so a generic
+    // capability rejection is also eligible for the one bounded recovery.
+    const refusedSchema = first.error.code === 'capability-unsupported';
     if (!refusedSchema && first.error.code !== 'malformed-response') {
       return first;
     }

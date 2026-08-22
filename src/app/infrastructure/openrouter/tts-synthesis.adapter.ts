@@ -1,5 +1,6 @@
 import type { AiError } from '../../domain/ai/ai-error';
 import type { AudioPayload, TtsRequest } from '../../domain/ai/text-to-speech-provider';
+import { resolveTtsVoice, supportsTtsSpeed } from '../../domain/ai/tts-configuration';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { AudioDecoder } from './audio-decode';
 import { verifyAudio } from './audio-verification';
@@ -28,9 +29,17 @@ export class OpenRouterTtsSynthesizer {
   ) {}
 
   async synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
-    const withSpeed = await this.request(input, input.speed, signal);
+    const resolved = { ...input, voiceId: resolveTtsVoice(input.modelId, input.voiceId) };
+    if (!supportsTtsSpeed(resolved.modelId)) {
+      const withoutSpeed = await this.request(resolved, undefined, signal);
+      return withoutSpeed.ok
+        ? this.verify(withoutSpeed.value, resolved, false)
+        : err(withoutSpeed.error);
+    }
+
+    const withSpeed = await this.request(resolved, resolved.speed, signal);
     if (withSpeed.ok) {
-      return this.verify(withSpeed.value, input, true);
+      return this.verify(withSpeed.value, resolved, true);
     }
 
     const speedRefused =
@@ -40,11 +49,11 @@ export class OpenRouterTtsSynthesizer {
       return err(withSpeed.error);
     }
 
-    const withoutSpeed = await this.request(input, undefined, signal);
+    const withoutSpeed = await this.request(resolved, undefined, signal);
     if (!withoutSpeed.ok) {
       return err(withoutSpeed.error);
     }
-    return this.verify(withoutSpeed.value, input, false);
+    return this.verify(withoutSpeed.value, resolved, false);
   }
 
   private request(

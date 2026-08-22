@@ -46,6 +46,21 @@ describe('OpenRouterTextModelTester structured output', () => {
     expect(harness.server.requests[1]?.body['response_format']).toBeUndefined();
   });
 
+  it('falls back when a Gemini upstream reports only a generic request rejection', async () => {
+    const { harness, result } = await run({
+      supportsJsonSchema: false,
+      jsonSchemaErrorParam: null,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.structuredOutput).toBe('json-contract');
+    expect(harness.server.callCount).toBe(2);
+    expect(harness.server.requests[1]?.body['response_format']).toBeUndefined();
+  });
+
   it('recovers once from a badly shaped first answer', async () => {
     const { harness, result } = await run({ content: 'prose', recoveryContent: 'valid' });
 

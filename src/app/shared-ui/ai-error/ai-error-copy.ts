@@ -153,6 +153,16 @@ export const AI_TASK_COPY: Record<AiTask, string> = {
 };
 
 export function aiErrorCopy(error: AiError): AiErrorCopy {
+  if (
+    error.code === 'capability-unsupported' &&
+    (error.task === 'tts-test' || error.task === 'tts-synthesis')
+  ) {
+    return {
+      ...AI_ERROR_COPY['capability-unsupported'],
+      primaryAction: 'Check the exact TTS model and voice IDs, then test again.',
+      escape: 'Voice names are model-specific and case sensitive. Text-to-speech is optional.',
+    };
+  }
   return AI_ERROR_COPY[error.code];
 }
 
