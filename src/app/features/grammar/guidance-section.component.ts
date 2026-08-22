@@ -49,6 +49,7 @@ import { REGISTER_LABELS } from './register-labels';
             Edit this to describe what you can read. It replaces the preset wording.
           </span>
           <textarea
+            class="mn-control"
             rows="8"
             [attr.maxlength]="maximumLength"
             [value]="draft()"
@@ -57,20 +58,22 @@ import { REGISTER_LABELS } from './register-labels';
         </label>
         <p class="mn-hint">{{ draft().length }} of {{ maximumLength }} characters</p>
         <div class="actions">
-          <button type="button" (click)="save()">Save wording</button>
-          <button type="button" class="mn-secondary" (click)="cancel()">Cancel</button>
+          <button type="button" class="mn-button mn-button--primary" (click)="save()">
+            Save wording
+          </button>
+          <button type="button" class="mn-button" (click)="cancel()">Cancel</button>
           @if (store.isCustomGuidance()) {
-            <button type="button" class="mn-secondary" (click)="reset()">Reset to preset</button>
+            <button type="button" class="mn-button" (click)="reset()">Reset to preset</button>
           }
         </div>
       } @else {
         <p class="guidance">{{ store.resolvedGuidance() }}</p>
         <div class="actions">
-          <button type="button" (click)="edit()">
+          <button type="button" class="mn-button" (click)="edit()">
             {{ store.isCustomGuidance() ? 'Edit my wording' : 'Use my own wording' }}
           </button>
           @if (store.isCustomGuidance()) {
-            <button type="button" class="mn-secondary" (click)="reset()">Reset to preset</button>
+            <button type="button" class="mn-button" (click)="reset()">Reset to preset</button>
           }
         </div>
         @if (store.isCustomGuidance()) {
@@ -101,12 +104,6 @@ import { REGISTER_LABELS } from './register-labels';
       gap: var(--space-2);
     }
 
-    textarea {
-      width: 100%;
-      min-height: 44px;
-      font: inherit;
-    }
-
     .guidance {
       margin: 0;
       padding: var(--space-3);
@@ -119,10 +116,6 @@ import { REGISTER_LABELS } from './register-labels';
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-2);
-    }
-
-    button {
-      min-height: 44px;
     }
   `,
 })

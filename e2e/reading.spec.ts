@@ -71,6 +71,24 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     await expect(page.locator('mn-reader-paragraph')).toHaveCount(2);
   });
 
+  test('keeps reader actions reachable and dismisses their menu predictably', async ({ page }) => {
+    await importReading(page, SAMPLE_TEXT, 'Reader actions');
+
+    const toggle = page.getByRole('button', { name: 'Reading actions' });
+    const menu = page.getByRole('menu', { name: 'Reading actions' });
+    await expect(toggle).toBeVisible();
+
+    await toggle.click();
+    await expect(menu).toBeVisible();
+    await page.getByRole('heading', { name: 'Reader actions', level: 1 }).click();
+    await expect(menu).toBeHidden();
+
+    await toggle.click();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await expect(toggle).toBeFocused();
+  });
+
   test('reading text carries Japanese language metadata and whole-token ruby', async ({ page }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
@@ -314,12 +332,15 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     await expect(header.getByRole('link', { name: 'Back to library' })).toBeVisible();
     await expect(header.getByRole('button', { name: /^Audio/ })).toBeVisible();
     await expect(header.getByRole('button', { name: 'Aids' })).toBeVisible();
-    await expect(header.getByRole('button', { name: 'Reading actions' })).toHaveCount(0);
+    await expect(header.getByRole('button', { name: 'Reading actions' })).toBeVisible();
 
-    const actions = header.locator('.bar-actions > button, .bar-actions > mn-reader-aids');
-    await expect(actions).toHaveCount(2);
-    await expect(actions.nth(0)).toHaveClass(/audio-button/);
-    await expect(actions.nth(1)).toHaveJSProperty('tagName', 'MN-READER-AIDS');
+    const actions = header.locator(
+      '.bar-actions > button, .bar-actions > mn-reader-aids, .bar-actions > mn-reader-menu',
+    );
+    await expect(actions).toHaveCount(3);
+    await expect(actions.nth(0)).toHaveJSProperty('tagName', 'MN-READER-AIDS');
+    await expect(actions.nth(1)).toHaveClass(/audio-button/);
+    await expect(actions.nth(2)).toHaveJSProperty('tagName', 'MN-READER-MENU');
 
     const bounds = await header.evaluate((element) => {
       const rect = element.getBoundingClientRect();
@@ -394,12 +415,31 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await expect(page.getByRole('group', { name: 'Filter readings' })).toHaveCount(0);
   });
 
+  test('dismisses a reading actions menu on outside press and Escape', async ({ page }) => {
+    await importReading(page, SAMPLE_TEXT, '第一章');
+    await page.goto('/#/library');
+
+    const toggle = page.getByRole('button', { name: 'Actions for 第一章' });
+    const menu = page.getByRole('menu', { name: '第一章 actions' });
+
+    await toggle.click();
+    await expect(menu).toBeVisible();
+    await page.getByRole('heading', { name: 'Library', level: 1 }).click();
+    await expect(menu).toBeHidden();
+
+    await toggle.click();
+    await expect(menu).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await expect(toggle).toBeFocused();
+  });
+
   test('deleting asks first, then leaves zero owned orphan rows', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
     await page.goto('/#/library');
 
     await page.getByRole('button', { name: 'Actions for 第一章' }).click();
-    await page.getByRole('button', { name: 'Delete' }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
 
     const dialog = page.getByRole('alertdialog');
     await expect(dialog).toContainText('The text and 3 sentences');
@@ -419,7 +459,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await page.goto('/#/library');
 
     await page.getByRole('button', { name: 'Actions for 第一章' }).click();
-    await page.getByRole('button', { name: 'Delete' }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Keep it' }).click();
 
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
@@ -432,7 +472,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await expect(page.locator('mn-reading-card')).toHaveCount(2);
 
     await page.getByRole('button', { name: 'Actions for 第二章' }).click();
-    await page.getByRole('button', { name: 'Delete' }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete permanently' }).click();
 
     await expect(page.locator('mn-reading-card')).toHaveCount(1);

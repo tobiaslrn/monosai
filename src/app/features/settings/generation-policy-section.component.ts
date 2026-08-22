@@ -52,9 +52,8 @@ import {
         >
           Save policy
         </button>
+        <p role="status" class="mn-hint" data-testid="policy-state">{{ stateLabel() }}</p>
       </div>
-
-      <p role="status" class="mn-hint" data-testid="policy-state">{{ stateLabel() }}</p>
 
       @if (policy.failure(); as failure) {
         <p role="alert" class="warning">{{ failure.message }}</p>
@@ -66,6 +65,7 @@ import {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-2);
+      align-items: center;
     }
 
     .warning {

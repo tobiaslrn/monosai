@@ -43,7 +43,7 @@ const STALE_NOTICE = 'Existing grammar analyses are now out of date.';
             The reading levels ship with the language bundle, which could not be loaded. Your saved
             profile is unchanged.
           </p>
-          <button type="button" (click)="retry()">Try again</button>
+          <button type="button" class="mn-button" (click)="retry()">Try again</button>
         </section>
       } @else {
         <section class="mn-panel" aria-labelledby="mn-grammar-level-heading">

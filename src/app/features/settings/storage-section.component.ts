@@ -47,8 +47,8 @@ function formatBytes(bytes: number | null): string {
         </div>
       </dl>
 
-      @if (storage.status().canRequest) {
-        <div class="actions">
+      <div class="actions-row">
+        @if (storage.status().canRequest) {
           <button
             type="button"
             class="mn-button"
@@ -57,10 +57,7 @@ function formatBytes(bytes: number | null): string {
           >
             Ask the browser to keep Monosai data
           </button>
-        </div>
-      }
-
-      <div class="actions">
+        }
         <button
           type="button"
           class="mn-button"
@@ -69,18 +66,18 @@ function formatBytes(bytes: number | null): string {
         >
           Clear audio cache
         </button>
-        <p class="mn-hint">
-          Removes saved audio only. Readings, translations, and grammar results stay. Anything being
-          read aloud stops first.
-        </p>
-        <p aria-live="polite" class="mn-hint">
-          @if (storage.audioCleared()) {
-            Audio cache cleared{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
-          }
-        </p>
       </div>
+      <p class="mn-hint">
+        Clearing audio leaves readings, translations, and grammar results in place. Playback stops
+        first if necessary.
+      </p>
+      <p aria-live="polite" class="mn-hint">
+        @if (storage.audioCleared()) {
+          Audio cache cleared{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
+        }
+      </p>
 
-      <details class="danger" data-testid="danger-zone">
+      <details class="danger mn-disclosure" data-testid="danger-zone">
         <summary>Danger zone</summary>
         <div class="danger-content">
           <p class="mn-hint">
@@ -125,10 +122,10 @@ function formatBytes(bytes: number | null): string {
     }
 
     dl div {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: minmax(12rem, 20rem) minmax(0, 1fr);
       gap: var(--space-2);
-      justify-content: space-between;
+      align-items: baseline;
     }
 
     dt {
@@ -139,7 +136,6 @@ function formatBytes(bytes: number | null): string {
       margin: 0;
     }
 
-    .actions,
     .danger {
       display: flex;
       flex-direction: column;
@@ -153,12 +149,7 @@ function formatBytes(bytes: number | null): string {
     }
 
     .danger summary {
-      display: flex;
-      align-items: center;
-      min-height: var(--touch-target);
       color: var(--status-danger);
-      font-weight: 500;
-      cursor: pointer;
     }
 
     .danger-content {
@@ -173,6 +164,13 @@ function formatBytes(bytes: number | null): string {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-2);
+    }
+
+    @media (max-width: 36rem) {
+      dl div {
+        grid-template-columns: 1fr;
+        gap: var(--space-1);
+      }
     }
 
     .confirm,

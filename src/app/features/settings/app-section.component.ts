@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
-import { readBuildInfo } from '../../core/diagnostics/build-info';
 import { InstallPromptService } from '../../core/platform/install-prompt.service';
 
 /**
@@ -22,14 +21,11 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
           <dt>Installed</dt>
           <dd>{{ install.isStandalone() ? 'Yes' : 'No' }}</dd>
         </div>
-        <div>
-          <dt>Version</dt>
-          <dd>{{ build.appVersion }}</dd>
-        </div>
       </dl>
 
-      @if (!install.isStandalone()) {
-        <div class="actions">
+      @let update = updates.status();
+      <div class="actions">
+        @if (!install.isStandalone()) {
           <button
             type="button"
             class="mn-button"
@@ -38,16 +34,7 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
           >
             Install Monosai
           </button>
-          @if (!install.canInstall()) {
-            <p class="mn-hint">
-              Your browser has not offered installation yet, or Monosai is already installed.
-            </p>
-          }
-        </div>
-      }
-
-      @let update = updates.status();
-      <div class="actions">
+        }
         <button
           type="button"
           class="mn-button"
@@ -56,8 +43,12 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
         >
           Check for updates
         </button>
-        <p class="mn-hint" aria-live="polite">{{ updateStatusLabel(update) }}</p>
       </div>
+
+      @if (!install.isStandalone() && !install.canInstall()) {
+        <p class="mn-hint">Installation is not available from this browser right now.</p>
+      }
+      <p class="mn-hint" aria-live="polite">{{ updateStatusLabel(update) }}</p>
     </section>
   `,
   styles: `
@@ -69,10 +60,10 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
     }
 
     dl div {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: minmax(10rem, 16rem) minmax(0, 1fr);
       gap: var(--space-2);
-      justify-content: space-between;
+      align-items: baseline;
     }
 
     dt {
@@ -85,18 +76,21 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
 
     .actions {
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
       gap: var(--space-2);
-      align-items: flex-start;
       margin-top: var(--space-4);
+    }
+
+    @media (max-width: 32rem) {
+      dl div {
+        grid-template-columns: 1fr auto;
+      }
     }
   `,
 })
 export class AppSectionComponent {
   protected readonly install = inject(InstallPromptService);
   protected readonly updates = inject(AppUpdateStore);
-  protected readonly build = readBuildInfo();
-
   protected async installApp(): Promise<void> {
     await this.install.install();
   }

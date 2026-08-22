@@ -41,13 +41,14 @@ export interface ConfirmDialogData {
       }
 
       <div class="actions">
-        <button type="button" class="mn-button" (click)="cancel()">{{ data.cancelLabel }}</button>
+        <button type="button" class="mn-button" cdkFocusInitial (click)="cancel()">
+          {{ data.cancelLabel }}
+        </button>
         <button
           type="button"
           class="mn-button"
           [class.mn-button--danger]="data.tone === 'danger'"
           [class.mn-button--primary]="data.tone !== 'danger'"
-          cdkFocusInitial
           (click)="confirm()"
         >
           {{ data.confirmLabel }}

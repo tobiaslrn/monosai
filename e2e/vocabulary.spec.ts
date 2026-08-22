@@ -69,6 +69,22 @@ test.describe('vocabulary', () => {
     await expectNoSeriousAccessibilityViolations(page);
   });
 
+  test('dismisses the add-source menu without triggering another action', async ({ page }) => {
+    await openVocabulary(page);
+    const toggle = page.getByTestId('add-source');
+    const menu = page.getByRole('menu', { name: 'Source kind' });
+
+    await openAddSource(page);
+    await page.getByRole('heading', { name: 'Sources', level: 2 }).click();
+    await expect(menu).toBeHidden();
+
+    await toggle.click();
+    await expect(menu).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await expect(toggle).toBeFocused();
+  });
+
   test('combines pasted and Anki sources automatically in the same list', async ({ page }) => {
     test.setTimeout(120_000);
     await stubAnkiConnect(page, ankiAnswers(['ねこ', '食べる']));

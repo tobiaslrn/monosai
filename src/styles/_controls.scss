@@ -18,6 +18,8 @@
   cursor: pointer;
   transition:
     background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out,
+    color var(--motion-fast) ease-out,
     transform var(--motion-fast) ease-out;
 }
 
@@ -59,14 +61,101 @@
   font-weight: 500;
 }
 
-.mn-field input,
-.mn-field textarea,
-.mn-field select {
+:where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select) {
+  width: 100%;
   min-height: var(--touch-target);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
   background: var(--surface-raised);
+  color: var(--text-primary);
+  line-height: 1.4;
+  transition:
+    background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out,
+    box-shadow var(--motion-fast) ease-out;
+}
+
+:where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select):hover:not(:disabled) {
+  border-color: var(--action-primary);
+}
+
+:where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select):disabled {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+:where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select)[aria-invalid='true'] {
+  border-color: var(--status-danger);
+}
+
+:where(select.mn-control, .mn-field select) {
+  appearance: none;
+  padding-inline-end: calc(var(--space-6) + var(--space-1));
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
+    linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
+  background-repeat: no-repeat;
+  background-position:
+    calc(100% - 17px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 5px 5px;
+}
+
+textarea.mn-control,
+.mn-field textarea {
+  resize: vertical;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  accent-color: var(--action-primary);
+}
+
+input[type='range'] {
+  min-height: var(--touch-target);
+  margin: 0;
+  accent-color: var(--action-primary);
+}
+
+/*
+ * Disclosure rows use an app-owned chevron instead of the sharp browser
+ * marker, while retaining native details/summary semantics and behaviour.
+ */
+.mn-disclosure > summary {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: var(--touch-target);
+  padding-block: var(--space-1);
+  list-style: none;
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mn-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mn-disclosure > summary::before {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  content: '';
+  transform: rotate(-45deg);
+  transition: transform var(--motion-fast) ease-out;
+}
+
+.mn-disclosure[open] > summary::before {
+  transform: rotate(45deg) translate(-1px, -1px);
 }
 
 /*
@@ -138,6 +227,7 @@
   cursor: pointer;
   transition:
     background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out,
     transform var(--motion-fast) ease-out;
 }
 

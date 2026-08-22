@@ -1,10 +1,21 @@
 import { DOCUMENT } from '@angular/common';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
+import { LanguageStore } from '../../application/language/language.store';
 import { DATABASE_SCHEMA_VERSION } from '../../application/shared/repository-tokens';
 import type { Logger } from '../../application/shared/diagnostics';
 import { LOGGER } from '../../application/shared/diagnostics';
 import { DiagnosticsSectionComponent } from './diagnostics-section.component';
+
+const languageStoreFake = {
+  status: signal<'ready'>('ready'),
+  info: signal(null),
+  versions: signal(null),
+  lastError: signal(null),
+  attributions: signal([]),
+  initialize: vi.fn(),
+};
 
 function loggerFake(entries = 1): {
   readonly logger: Logger;
@@ -46,6 +57,7 @@ describe('DiagnosticsSectionComponent', () => {
       providers: [
         { provide: LOGGER, useValue: fake.logger },
         { provide: DATABASE_SCHEMA_VERSION, useValue: 5 },
+        { provide: LanguageStore, useValue: languageStoreFake },
       ],
     });
     const documentRef = TestBed.inject(DOCUMENT);
@@ -75,6 +87,7 @@ describe('DiagnosticsSectionComponent', () => {
       providers: [
         { provide: LOGGER, useValue: fake.logger },
         { provide: DATABASE_SCHEMA_VERSION, useValue: 5 },
+        { provide: LanguageStore, useValue: languageStoreFake },
       ],
     });
     const documentRef = TestBed.inject(DOCUMENT);
@@ -102,6 +115,7 @@ describe('DiagnosticsSectionComponent', () => {
       providers: [
         { provide: LOGGER, useValue: fake.logger },
         { provide: DATABASE_SCHEMA_VERSION, useValue: 5 },
+        { provide: LanguageStore, useValue: languageStoreFake },
       ],
     });
     const fixture = TestBed.createComponent(DiagnosticsSectionComponent);

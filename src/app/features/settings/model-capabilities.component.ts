@@ -29,7 +29,7 @@ import { aiErrorCopy } from '../../shared-ui/ai-error/ai-error-copy';
             <span>{{ model.supportedVoices.length }} voices</span>
           }
         </div>
-        <details>
+        <details class="mn-disclosure">
           <summary>Technical details</summary>
           <div class="technical">
             @if (model.reasoning; as reasoning) {
@@ -111,11 +111,6 @@ import { aiErrorCopy } from '../../shared-ui/ai-error/ai-error-copy';
       border-radius: var(--radius-pill);
       background: var(--surface-panel);
       font-size: var(--text-sm);
-    }
-    summary {
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-weight: 600;
     }
     .technical {
       display: flex;

@@ -44,7 +44,7 @@ interface CategoryGroup {
     @if (groups().length === 0) {
       <p class="mn-hint">Language assets are still loading.</p>
     } @else {
-      <details>
+      <details class="mn-disclosure">
         <summary>
           Show all {{ entryCount() }} forms
           <span class="mn-hint">({{ groups().length }} categories)</span>
@@ -80,17 +80,6 @@ interface CategoryGroup {
     }
   `,
   styles: `
-    summary {
-      min-height: 44px;
-      padding: var(--space-2) 0;
-      cursor: pointer;
-    }
-
-    summary:focus-visible {
-      outline: 2px solid var(--focus-ring);
-      outline-offset: 2px;
-    }
-
     .groups {
       display: flex;
       flex-direction: column;

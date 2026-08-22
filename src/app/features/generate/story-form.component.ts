@@ -366,11 +366,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       .story-settings {
         padding: var(--space-4);
       }
-
-      .actions,
-      .actions .mn-button {
-        width: 100%;
-      }
     }
 
     .generation-sources {

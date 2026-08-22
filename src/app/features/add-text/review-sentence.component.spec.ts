@@ -138,6 +138,31 @@ describe('ReviewSentenceComponent', () => {
     expect(element(fixture).querySelector('.menu')).toBeNull();
   });
 
+  it('closes the menu on outside pointer input without swallowing the target', () => {
+    const fixture = render();
+    openMenu(fixture);
+    const outside = document.createElement('button');
+    document.body.append(outside);
+
+    outside.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(element(fixture).querySelector('.menu')).toBeNull();
+    outside.remove();
+  });
+
+  it('closes the menu on Escape and returns focus to its toggle', () => {
+    const fixture = render();
+    openMenu(fixture);
+    const menuItem = element(fixture).querySelector<HTMLButtonElement>('.menu button');
+
+    menuItem?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(element(fixture).querySelector('.menu')).toBeNull();
+    expect(document.activeElement).toBe(element(fixture).querySelector('.toggle'));
+  });
+
   it('marks a sentence that is still awaiting analysis', () => {
     const fixture = render();
     fixture.componentInstance.sentence.set({ id: 's1', text: '猫が寝た。', tokens: null });

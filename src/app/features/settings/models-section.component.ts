@@ -1,5 +1,13 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import type { ElementRef } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { CredentialStore } from '../../application/settings/credential.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
@@ -19,13 +27,36 @@ interface ModelRow {
   selector: 'mn-models-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [],
+  host: {
+    '(document:pointerdown)': 'onDocumentPointerDown($event)',
+    '(document:keydown.escape)': 'closeAddMenu($event)',
+  },
   template: `
     <section class="mn-panel models" aria-labelledby="mn-models-heading">
       <div class="heading-row">
         <h2 id="mn-models-heading">Models</h2>
-        <details class="add-menu">
-          <summary class="mn-button" data-testid="add-model">Add model</summary>
-          <div class="menu" role="menu" aria-label="Model type">
+        <div class="add-menu">
+          <button
+            #addMenuButton
+            type="button"
+            class="mn-button add-menu-button"
+            popovertarget="mn-add-model-menu"
+            aria-haspopup="menu"
+            aria-controls="mn-add-model-menu"
+            [attr.aria-expanded]="addMenuOpen()"
+            data-testid="add-model"
+          >
+            Add model
+          </button>
+          <div
+            #addMenu
+            id="mn-add-model-menu"
+            class="menu"
+            popover
+            role="menu"
+            aria-label="Model type"
+            (toggle)="onAddMenuToggle($event)"
+          >
             <button
               type="button"
               role="menuitem"
@@ -38,10 +69,10 @@ interface ModelRow {
               Audio model
             </button>
           </div>
-        </details>
+        </div>
       </div>
 
-      <details class="key-card" open>
+      <details class="key-card mn-disclosure" open>
         <summary>API key · {{ credential.isConfigured() ? 'Saved' : 'Not configured' }}</summary>
         <div class="key-controls">
           <p class="mn-visually-hidden" role="status" data-testid="credential-state">
@@ -54,46 +85,50 @@ interface ModelRow {
           <label for="mn-openrouter-key">{{
             credential.isConfigured() ? 'Replace key' : 'API key'
           }}</label>
-          <input
-            id="mn-openrouter-key"
-            type="password"
-            autocomplete="off"
-            spellcheck="false"
-            data-testid="api-key-input"
-            [value]="keyDraft()"
-            (input)="onKeyInput($event)"
-          />
-          <div class="actions">
-            <button
-              type="button"
-              class="mn-button mn-button--primary"
-              data-testid="save-key"
-              [disabled]="keyDraft().trim() === '' || credential.action() !== 'idle'"
-              (click)="saveKey()"
-            >
-              {{ credential.isConfigured() ? 'Replace key' : 'Save key' }}
-            </button>
-            @if (credential.isConfigured()) {
+          <div class="credential-row">
+            <input
+              class="mn-control"
+              id="mn-openrouter-key"
+              type="password"
+              autocomplete="off"
+              spellcheck="false"
+              data-testid="api-key-input"
+              [placeholder]="credential.isConfigured() ? '••••••••••••••••' : 'Paste your key'"
+              [value]="keyDraft()"
+              (input)="onKeyInput($event)"
+            />
+            <div class="actions">
               <button
                 type="button"
-                class="mn-button mn-button--danger"
-                data-testid="remove-key"
-                (click)="removeKey()"
+                class="mn-button mn-button--primary"
+                data-testid="save-key"
+                [disabled]="keyDraft().trim() === '' || credential.action() !== 'idle'"
+                (click)="saveKey()"
               >
-                Remove key
+                Save
               </button>
-            }
+              @if (credential.isConfigured()) {
+                <button
+                  type="button"
+                  class="mn-button mn-button--danger"
+                  data-testid="remove-key"
+                  (click)="removeKey()"
+                >
+                  Remove
+                </button>
+              }
+            </div>
           </div>
-          <p class="mn-hint" role="status">Saved keys are never displayed.</p>
         </div>
       </details>
 
       <section class="defaults" aria-labelledby="mn-defaults-heading">
-        <h3 id="mn-defaults-heading">Defaults</h3>
-        <div class="default-grid">
-          <label
-            >Text
+        <h3 id="mn-defaults-heading">Default models</h3>
+        <div class="default-list">
+          <label class="default-row">
+            <span>Text</span>
             <select
+              class="mn-control"
               data-testid="text-preset-select"
               [value]="text.activePresetId() ?? ''"
               (change)="setTextDefault($event)"
@@ -104,9 +139,10 @@ interface ModelRow {
               }
             </select>
           </label>
-          <label
-            >Audio
+          <label class="default-row">
+            <span>Audio</span>
             <select
+              class="mn-control"
               data-testid="tts-preset-select"
               [value]="tts.activePresetId() ?? ''"
               (change)="setAudioDefault($event)"
@@ -117,9 +153,10 @@ interface ModelRow {
               }
             </select>
           </label>
-          <label
-            >Grammar judgement
+          <label class="default-row">
+            <span>Grammar judgement</span>
             <select
+              class="mn-control"
               data-testid="default-grammar-model"
               [value]="text.grammarPresetId() ?? ''"
               (change)="setGrammarDefault($event)"
@@ -222,6 +259,7 @@ interface ModelRow {
                     <label
                       ><span>Reasoning</span
                       ><input
+                        class="mn-control"
                         type="text"
                         [value]="textPreset.reasoningEffort ?? ''"
                         (change)="updateReasoning(textPreset.id, $event)"
@@ -231,6 +269,7 @@ interface ModelRow {
                     <label
                       ><span>Voice</span
                       ><input
+                        class="mn-control"
                         type="text"
                         [value]="audio.voiceId"
                         (change)="updateVoice(audio.id, $event)"
@@ -238,6 +277,7 @@ interface ModelRow {
                     <label
                       ><span>Speed</span
                       ><input
+                        class="mn-control"
                         type="number"
                         min="0.5"
                         max="2"
@@ -259,33 +299,41 @@ interface ModelRow {
         </ul>
       }
 
-      <details class="key-card">
+      <details class="key-card mn-disclosure">
         <summary>Generation settings</summary>
         <div class="key-controls">
-          <label for="mn-story-token-budget">Story token budget</label>
-          <input
-            id="mn-story-token-budget"
-            type="number"
-            min="4096"
-            max="32768"
-            step="1"
-            data-testid="story-token-budget-input"
-            [value]="text.storyTokenBudgetDraft()"
-            [attr.aria-invalid]="!text.isStoryTokenBudgetValid()"
-            (input)="setBudget($event)"
-          />
-          <button
-            type="button"
-            class="mn-button"
-            data-testid="save-story-token-budget"
-            [disabled]="!text.isStoryTokenBudgetValid() || !text.hasUnsavedStoryTokenBudget()"
-            (click)="saveBudget()"
-          >
-            Save budget
-          </button>
-          <p class="mn-hint" data-testid="story-token-budget-state">
-            {{ text.hasUnsavedStoryTokenBudget() ? 'Unsaved changes.' : 'Saved.' }}
-          </p>
+          <div class="budget-setting">
+            <label for="mn-story-token-budget">Story token budget</label>
+            <input
+              id="mn-story-token-budget"
+              class="mn-control"
+              type="number"
+              min="4096"
+              max="32768"
+              step="1"
+              data-testid="story-token-budget-input"
+              [value]="text.storyTokenBudgetDraft()"
+              [attr.aria-invalid]="!text.isStoryTokenBudgetValid()"
+              (input)="setBudget($event)"
+            />
+            <button
+              type="button"
+              class="mn-button"
+              data-testid="save-story-token-budget"
+              [disabled]="!text.isStoryTokenBudgetValid() || !text.hasUnsavedStoryTokenBudget()"
+              (click)="saveBudget()"
+            >
+              Save
+            </button>
+            <p
+              class="budget-state"
+              [class.is-unsaved]="text.hasUnsavedStoryTokenBudget()"
+              data-testid="story-token-budget-state"
+              role="status"
+            >
+              {{ text.hasUnsavedStoryTokenBudget() ? 'Unsaved' : 'Saved' }}
+            </p>
+          </div>
         </div>
       </details>
     </section>
@@ -312,26 +360,27 @@ interface ModelRow {
       margin: 0;
     }
     .add-menu {
-      position: relative;
+      display: flex;
     }
-    .add-menu summary {
-      list-style: none;
-      cursor: pointer;
-    }
-    .add-menu summary::-webkit-details-marker {
-      display: none;
+    .add-menu-button {
+      anchor-name: --mn-add-model-anchor;
     }
     .menu {
       position: absolute;
+      position-anchor: --mn-add-model-anchor;
+      position-area: bottom span-left;
       z-index: 3;
-      inset-inline-end: 0;
-      top: calc(100% + var(--space-1));
+      inset: auto;
       min-width: 11rem;
+      margin: var(--space-1) 0 0;
       padding: var(--space-1);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-control);
       background: var(--surface-panel);
       box-shadow: var(--shadow-overlay);
+    }
+    .menu:not(:popover-open) {
+      display: none;
     }
     .menu button {
       width: 100%;
@@ -365,15 +414,40 @@ interface ModelRow {
       gap: var(--space-2);
       padding-top: var(--space-2);
     }
-    .default-grid {
+    .credential-row {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: var(--space-3);
-      margin-top: var(--space-2);
+      grid-template-columns: minmax(12rem, 1fr) auto;
+      gap: var(--space-2);
+      align-items: center;
     }
-    .default-grid label {
+    .budget-setting {
       display: grid;
-      gap: var(--space-1);
+      grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 10rem) auto auto;
+      gap: var(--space-2);
+      align-items: center;
+    }
+    .budget-state {
+      color: var(--status-success);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .budget-state.is-unsaved {
+      color: var(--status-warning);
+    }
+    .default-list {
+      display: grid;
+      margin: var(--space-2) calc(-1 * var(--space-3)) calc(-1 * var(--space-3));
+    }
+    .default-row {
+      display: grid;
+      grid-template-columns: minmax(10rem, 1fr) minmax(14rem, 20rem);
+      gap: var(--space-3);
+      align-items: center;
+      padding: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+    }
+    .default-row > span {
       font-weight: 600;
     }
     .model-list {
@@ -441,18 +515,24 @@ interface ModelRow {
       text-align: center;
     }
     @media (max-width: 42rem) {
-      .default-grid {
+      .default-row {
         grid-template-columns: 1fr;
+        gap: var(--space-1);
       }
       .model-main {
         align-items: flex-start;
         flex-direction: column;
       }
-      .row-actions {
-        width: 100%;
+      .credential-row {
+        grid-template-columns: 1fr;
       }
-      .row-actions .mn-button {
-        flex: 1;
+    }
+    @media (max-width: 30rem) {
+      .budget-setting {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+      }
+      .budget-setting label {
+        grid-column: 1 / -1;
       }
     }
   `,
@@ -465,6 +545,10 @@ export class ModelsSectionComponent {
   protected readonly keyDraft = signal('');
   protected readonly expanded = signal<string | null>(null);
   protected readonly testing = signal<string | null>(null);
+  protected readonly addMenuOpen = signal(false);
+  private readonly addMenu = viewChild.required<ElementRef<HTMLElement>>('addMenu');
+  private readonly addMenuButton =
+    viewChild.required<ElementRef<HTMLButtonElement>>('addMenuButton');
 
   protected readonly rows = computed<readonly ModelRow[]>(() => {
     const rows = new Map<string, ModelRow>();
@@ -519,9 +603,41 @@ export class ModelsSectionComponent {
     if (confirmed) await this.credential.remove();
   }
   protected async add(kind: AddModelKind): Promise<void> {
+    this.hideAddMenu();
     const result = await openAddModelDialog(this.dialog, { kind });
     if (result?.kind === 'text') await this.text.registerPreset(result.preset);
     if (result?.kind === 'tts') await this.tts.registerPreset(result.preset);
+  }
+
+  protected onAddMenuToggle(event: Event): void {
+    this.addMenuOpen.set((event.currentTarget as HTMLElement).matches(':popover-open'));
+  }
+
+  protected closeAddMenu(event: Event): void {
+    const menu = this.addMenu().nativeElement;
+    if (!menu.matches(':popover-open')) {
+      return;
+    }
+    event.preventDefault();
+    this.hideAddMenu();
+  }
+
+  protected onDocumentPointerDown(event: PointerEvent): void {
+    const menu = this.addMenu().nativeElement;
+    if (!menu.matches(':popover-open') || !(event.target instanceof Node)) {
+      return;
+    }
+    if (menu.contains(event.target) || this.addMenuButton().nativeElement.contains(event.target)) {
+      return;
+    }
+    this.hideAddMenu();
+  }
+
+  private hideAddMenu(): void {
+    const menu = this.addMenu().nativeElement;
+    if (typeof menu.hidePopover === 'function' && menu.matches(':popover-open')) {
+      menu.hidePopover();
+    }
   }
   protected setTextDefault(event: Event): void {
     const id = (event.target as HTMLSelectElement).value;

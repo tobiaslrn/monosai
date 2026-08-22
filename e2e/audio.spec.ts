@@ -88,7 +88,7 @@ async function dismissPopover(page: Page): Promise<void> {
 
 async function openReaderMenu(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Reading actions' }).click();
-  await expect(page.getByRole('group', { name: 'Reading actions' })).toBeVisible();
+  await expect(page.getByRole('menu', { name: 'Reading actions' })).toBeVisible();
 }
 
 /** The sentence popover's own audio action, which is a label and nothing else. */
@@ -455,7 +455,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await page.keyboard.press('Escape');
 
     await openReaderMenu(page);
-    await page.getByRole('button', { name: 'Delete reading' }).click();
+    await page.getByRole('menuitem', { name: 'Delete reading' }).click();
     await page.getByRole('button', { name: 'Delete permanently' }).click();
 
     await expect(page).toHaveURL(/#\/library/);

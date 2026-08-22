@@ -303,7 +303,7 @@ test.describe('scenario 12 — whole-reading translation', () => {
 
   async function startWholeReadingTranslation(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Reading actions' }).click();
-    await page.getByRole('button', { name: 'Translate reading' }).click();
+    await page.getByRole('menuitem', { name: 'Translate reading' }).click();
   }
 
   test('cancels mid-run, keeps what was translated, and resumes after a reload', async ({
