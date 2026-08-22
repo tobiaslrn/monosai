@@ -86,16 +86,55 @@ import { REGISTER_LABELS } from './register-labels';
     fieldset {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: var(--space-3);
       margin: 0;
       padding: 0;
       border: 0;
     }
 
+    fieldset + fieldset {
+      margin-top: var(--space-1);
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    legend {
+      margin-bottom: var(--space-2);
+      font-weight: 600;
+    }
+
     .options {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--space-3);
+      gap: var(--space-2);
+    }
+
+    .options label {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      min-height: var(--touch-target);
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-control);
+      background: var(--surface-panel);
+      cursor: pointer;
+    }
+
+    .options label:has(input:checked) {
+      border-color: var(--action-primary);
+      background: var(--action-primary-soft);
+    }
+
+    .options input {
+      flex: 0 0 auto;
+      margin: 0;
+    }
+
+    fieldset > .mn-hint {
+      max-width: 46rem;
+      margin: 0;
+      line-height: 1.5;
     }
 
     .field {
@@ -116,6 +155,17 @@ import { REGISTER_LABELS } from './register-labels';
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-2);
+    }
+
+    @media (max-width: 32rem) {
+      .options {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      .options label {
+        width: 100%;
+      }
     }
   `,
 })

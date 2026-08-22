@@ -1,6 +1,5 @@
 import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { LanguageStore } from '../../application/language/language.store';
 import { DATABASE_SCHEMA_VERSION } from '../../application/shared/repository-tokens';
 import {
   AI_ENDPOINT_VERSION,
@@ -10,13 +9,11 @@ import {
 import { EXCEPTION_PROMPT_VERSION } from '../../domain/ai/exception-policy-hash';
 import { readBuildInfo } from '../../core/diagnostics/build-info';
 import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnostics';
-import { LanguageAssetsSectionComponent } from './language-assets-section.component';
 
 /** Local build identity. Never contains user content or credentials. */
 @Component({
   selector: 'mn-diagnostics-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LanguageAssetsSectionComponent],
   template: `
     <section class="mn-panel" aria-labelledby="mn-diagnostics-heading">
       <h2 id="mn-diagnostics-heading">Troubleshooting</h2>
@@ -36,9 +33,6 @@ import { LanguageAssetsSectionComponent } from './language-assets-section.compon
         <p class="status" role="status">Diagnostics copied.</p>
       } @else if (copyStatus() === 'failed') {
         <p class="status" role="status">Diagnostics could not be copied on this browser.</p>
-      }
-      @if (language.status() === 'failed') {
-        <mn-language-assets-section />
       }
       <details class="mn-disclosure advanced">
         <summary>Advanced technical details</summary>
@@ -64,9 +58,6 @@ import { LanguageAssetsSectionComponent } from './language-assets-section.compon
             <dd>{{ promptVersions }}</dd>
           </div>
         </dl>
-        @if (language.status() !== 'failed') {
-          <mn-language-assets-section />
-        }
       </details>
     </section>
   `,
@@ -118,7 +109,6 @@ import { LanguageAssetsSectionComponent } from './language-assets-section.compon
 export class DiagnosticsSectionComponent {
   private readonly documentRef = inject(DOCUMENT);
   private readonly logger = inject(LOGGER);
-  protected readonly language = inject(LanguageStore);
   protected readonly copyStatus = signal<'idle' | 'copied' | 'failed'>('idle');
   protected readonly build = readBuildInfo();
   protected readonly schemaVersion = inject(DATABASE_SCHEMA_VERSION);

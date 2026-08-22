@@ -3,36 +3,41 @@ import { readSettingsRecord } from './storage';
 
 const BUNDLE_PREFIX = '/assets/language/1/';
 
-function statusOf(page: Page) {
-  return page.getByTestId('language-status');
+interface LanguageAssetsRecord {
+  readonly value?: {
+    readonly tokenizerVersion?: string;
+    readonly dictionaryVersion?: string;
+  };
 }
 
-function expectPrepared(page: Page) {
-  return expect(statusOf(page)).toContainText('Ready:', { timeout: 120_000 });
+async function languageAssetsRecord(page: Page): Promise<LanguageAssetsRecord | null> {
+  return (await readSettingsRecord(page, 'language-assets')) as LanguageAssetsRecord | null;
+}
+
+async function expectPrepared(page: Page): Promise<LanguageAssetsRecord> {
+  await expect
+    .poll(
+      async () => {
+        const record = await languageAssetsRecord(page);
+        return Boolean(record?.value?.tokenizerVersion && record.value.dictionaryVersion);
+      },
+      { timeout: 120_000 },
+    )
+    .toBe(true);
+
+  return (await languageAssetsRecord(page)) ?? {};
 }
 
 test.describe('offline language assets', () => {
   test('prepares, verifies, and activates the bundle without being asked', async ({ page }) => {
     await page.goto('/#/settings');
 
-    await expectPrepared(page);
+    const record = await expectPrepared(page);
+    expect(record.value?.tokenizerVersion).toBeTruthy();
+    expect(record.value?.dictionaryVersion).toBeTruthy();
 
     await page.getByText('Advanced technical details').click();
-    const versions = page.getByTestId('language-versions');
-    await expect(versions).toBeHidden();
-    await page.getByTestId('language-versions-toggle').click();
-    await expect(versions).toContainText('Tokenizer');
-    await expect(versions).toContainText('Structural baseline');
-
-    const record = (await readSettingsRecord(page, 'language-assets')) as {
-      value?: { tokenizerVersion?: string; dictionaryVersion?: string };
-    } | null;
-    expect(record?.value?.tokenizerVersion).toBeTruthy();
-    expect(record?.value?.dictionaryVersion).toBeTruthy();
-
-    await page.getByText('Data sources and licences').click();
-    await expect(page.getByTestId('language-attributions')).toContainText('JMdict');
-    await expect(page.getByTestId('language-attributions')).toContainText('IPADIC');
+    await expect(page.getByText('Language support')).toHaveCount(0);
   });
 
   test('renders and navigates while the bundle is still downloading', async ({ page }) => {
@@ -87,16 +92,15 @@ test.describe('offline language assets', () => {
       }),
     );
 
-    await page.goto('/#/settings');
+    await page.goto('/#/grammar');
 
-    const failure = page.getByTestId('language-error');
+    const failure = page.getByRole('heading', { name: 'Language assets are unavailable' });
     await expect(failure).toBeVisible({ timeout: 120_000 });
-    await expect(failure).toContainText('integrity');
-    await expect(failure).toContainText('language/asset-integrity-mismatch');
 
-    // The app is still usable and nothing was activated.
-    await expect(page.getByTestId('language-versions')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    // The feature-level recovery remains actionable even though Settings no
+    // longer exposes implementation details.
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+    expect(await languageAssetsRecord(page)).toBeNull();
   });
 
   test('recovers when the corrupted asset is served correctly again', async ({ page }) => {
@@ -113,11 +117,14 @@ test.describe('offline language assets', () => {
       await route.fallback();
     });
 
-    await page.goto('/#/settings');
-    await expect(page.getByTestId('language-error')).toBeVisible({ timeout: 120_000 });
+    await page.goto('/#/grammar');
+    await expect(
+      page.getByRole('heading', { name: 'Language assets are unavailable' }),
+    ).toBeVisible({ timeout: 120_000 });
 
     corrupt = false;
-    await page.getByTestId('language-retry').click();
+    await page.getByRole('button', { name: 'Try again' }).click();
     await expectPrepared(page);
+    await expect(page.getByRole('radiogroup', { name: 'Reading level' })).toBeVisible();
   });
 });

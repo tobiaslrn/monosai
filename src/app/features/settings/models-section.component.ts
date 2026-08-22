@@ -73,7 +73,7 @@ interface ModelRow {
       </div>
 
       <details class="key-card mn-disclosure" open>
-        <summary>API key · {{ credential.isConfigured() ? 'Saved' : 'Not configured' }}</summary>
+        <summary>API key</summary>
         <div class="key-controls">
           <p class="mn-visually-hidden" role="status" data-testid="credential-state">
             {{
@@ -82,9 +82,7 @@ interface ModelRow {
                 : 'No key saved.'
             }}
           </p>
-          <label for="mn-openrouter-key">{{
-            credential.isConfigured() ? 'Replace key' : 'API key'
-          }}</label>
+          <label class="mn-visually-hidden" for="mn-openrouter-key">API key</label>
           <div class="credential-row">
             <input
               class="mn-control"
@@ -325,14 +323,6 @@ interface ModelRow {
             >
               Save
             </button>
-            <p
-              class="budget-state"
-              [class.is-unsaved]="text.hasUnsavedStoryTokenBudget()"
-              data-testid="story-token-budget-state"
-              role="status"
-            >
-              {{ text.hasUnsavedStoryTokenBudget() ? 'Unsaved' : 'Saved' }}
-            </p>
           </div>
         </div>
       </details>
@@ -422,18 +412,10 @@ interface ModelRow {
     }
     .budget-setting {
       display: grid;
-      grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 10rem) auto auto;
+      grid-template-columns: auto minmax(8rem, 10rem) auto;
       gap: var(--space-2);
       align-items: center;
-    }
-    .budget-state {
-      color: var(--status-success);
-      font-size: var(--text-sm);
-      font-weight: 600;
-      white-space: nowrap;
-    }
-    .budget-state.is-unsaved {
-      color: var(--status-warning);
+      justify-content: start;
     }
     .default-list {
       display: grid;
@@ -529,7 +511,7 @@ interface ModelRow {
     }
     @media (max-width: 30rem) {
       .budget-setting {
-        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-columns: minmax(0, 1fr) auto;
       }
       .budget-setting label {
         grid-column: 1 / -1;
