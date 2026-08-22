@@ -1,7 +1,7 @@
 <div align="center">
   <img src="data/brand/monosai-mark.svg" alt="Monosai logo" width="128" height="128" />
   <h1>Monosai</h1>
-  <p>A Japanese reader that gives you help when you need it.</p>
+  <p>Japanese reading practice made from the words you already know.</p>
   <p>
     <a href="https://tobiaslrn.github.io/monosai/"><b>Open Monosai</b></a> ·
     <a href="docs/setup.md">Setup guide</a> ·
@@ -9,21 +9,17 @@
   </p>
 </div>
 
-## Spend more time reading Japanese
+## Why this exists
 
-Reading real Japanese is one of the best ways to learn, but looking up every
-word can quickly become tiring. Monosai puts the most useful reading aids in
-one place, so you can stay with the text instead of moving between different
-apps and websites.
+Monosai is for the very beginning of learning Japanese, when you barely know
+any words but still want to practice reading. I built it while studying a
+frequency deck because I could not find suitable reading material. Monosai can
+generate very simple stories from your reviewed Anki vocabulary and chosen
+grammar level, starting from about 50 known expressions.
 
-Paste Japanese text or open a `.txt` file. Monosai adds hiragana readings above
-kanji, word spacing and highlighting for unfamiliar words and grammar. Press a
-word to open the built-in dictionary, or press a sentence when you want more
-help. You decide which aids to use, while the Japanese text stays at the centre
-of the screen.
-
-Your readings, settings and vocabulary data stay on your device. After the
-first download, the reader also works offline.
+You can also paste any Japanese text or open a `.txt` file. Monosai adds
+hiragana readings, word spacing, unfamiliar-word highlights and a built-in
+dictionary.
 
 ## What you can do
 
@@ -35,18 +31,14 @@ first download, the reader also works offline.
 - Use Anki as a vocabulary source and see which words are still unknown.
 - Translate individual sentences with optional AI.
 - Generate Japanese audio and listen with the built-in audio player.
-- Create short stories based on your known vocabulary and grammar level.
+- Create very simple stories from about 50 reviewed expressions.
 - Install Monosai like a normal app on your computer or Android device.
 
 ## Use your Anki vocabulary
 
-Monosai can use the words you have reviewed in Anki as your vocabulary source.
-It compares them with each reading and marks the words you may not know yet.
-This gives you a quick idea of how difficult a text will be and where you may
-need help.
-
-Your Anki vocabulary is also used for AI story generation. Monosai asks the AI
-to stay close to the words you know, which makes the story easier to read.
+Monosai uses the words you have reviewed in Anki as your vocabulary source. It
+marks words you may not know and keeps generated stories within your known
+vocabulary, apart from the basic Japanese needed to form sentences.
 
 Monosai only reads from Anki. It never changes your cards or study history.
 
@@ -61,8 +53,7 @@ The [setup guide](docs/setup.md) explains both options step by step.
 
 ## Optional AI features
 
-The reader, dictionary and Anki features do not need AI. AI is an optional
-extra for learners who want more help or new reading material.
+The reader, dictionary and Anki features do not need AI.
 
 AI can:
 
@@ -70,7 +61,7 @@ AI can:
 - review and explain grammar;
 - create text-to-speech audio and play it in the built-in audio player;
 - write short Japanese stories based on your reviewed Anki vocabulary and the
-  grammar level you choose.
+  grammar level you choose, starting from about 50 known expressions.
 
 Monosai is strictly **bring your own key**. For now, OpenRouter is the only
 supported AI service. Add your own OpenRouter API key and model choices in
