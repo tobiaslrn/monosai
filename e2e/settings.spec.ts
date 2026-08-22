@@ -8,7 +8,7 @@ test.describe('settings persistence', () => {
 
     await expect(page.locator('main section.mn-panel > h2')).toHaveText([
       'Your setup',
-      'Appearance and reading',
+      'Appearance',
       'AI text features',
       'Voice (optional)',
       'Generation policy',
@@ -32,18 +32,14 @@ test.describe('settings persistence', () => {
     await expect(page.getByRole('radio', { name: 'Dark' })).toBeChecked();
   });
 
-  test('remembers reader aid preferences across a reload', async ({ page }) => {
+  test('leaves reader aid controls to the Reader Aids panel', async ({ page }) => {
     await page.goto('/#/settings');
 
-    const furigana = page.getByRole('checkbox', { name: 'Furigana' });
-    await expect(furigana).toBeChecked();
-    await furigana.uncheck();
-    await expectSettingPersisted(page, 'reader-preferences', 'furigana', false);
-
-    await page.reload();
-
-    await expect(page.getByRole('checkbox', { name: 'Furigana' })).not.toBeChecked();
-    await expect(page.getByRole('checkbox', { name: 'Token spacing' })).toBeChecked();
+    await expect(page.getByRole('group', { name: 'Reading aids' })).toHaveCount(0);
+    await expect(page.getByRole('slider', { name: 'Text size' })).toHaveCount(0);
+    await expect(page.getByRole('checkbox', { name: 'Furigana' })).toHaveCount(0);
+    await expect(page.getByRole('checkbox', { name: 'Token spacing' })).toHaveCount(0);
+    await expect(page.getByRole('checkbox', { name: 'Warning markers' })).toHaveCount(0);
   });
 
   test('creates the local database and reports its schema version', async ({ page }) => {
