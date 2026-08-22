@@ -114,6 +114,8 @@ describe('DexieSourceMappingRepository', () => {
 
   const mapping = {
     id: sourceMappingId(uuid(8400)),
+    kind: 'anki-connect' as const,
+    label: 'Anki · Core Japanese · Expression',
     providerKind: 'desktop-connect' as const,
     deckName: 'Core Japanese',
     deckScope: 'deck-and-subdecks' as const,
@@ -122,13 +124,15 @@ describe('DexieSourceMappingRepository', () => {
     enabled: true,
     createdAt: 1_700_700_000_000,
     updatedAt: 1_700_700_000_000,
+    lastSyncedAt: null,
+    automaticSync: true,
   };
 
   it('stores a mapping with its exact deck scope', async () => {
     await repository.save(mapping);
 
     const listed = await repository.list();
-    expect(listed.ok && listed.value[0].deckScope).toBe('deck-and-subdecks');
+    expect(listed.ok && listed.value[0]).toMatchObject({ deckScope: 'deck-and-subdecks' });
   });
 
   it('toggles enablement without losing configuration', async () => {
@@ -137,7 +141,7 @@ describe('DexieSourceMappingRepository', () => {
     const disabled = await repository.setEnabled(mapping.id, false);
 
     expect(disabled.ok && disabled.value.enabled).toBe(false);
-    expect(disabled.ok && disabled.value.expressionFieldName).toBe('Expression');
+    expect(disabled.ok && disabled.value).toMatchObject({ expressionFieldName: 'Expression' });
   });
 
   it('reports a missing mapping instead of creating one', async () => {
@@ -148,7 +152,7 @@ describe('DexieSourceMappingRepository', () => {
       return;
     }
     expect(missing.error.code).toBe('not-found');
-    expect(await db.sourceMappings.count()).toBe(0);
+    expect(await db.vocabularySources.count()).toBe(0);
   });
 
   it('removes a mapping', async () => {

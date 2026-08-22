@@ -385,7 +385,11 @@ Cancel remains available until saving begins. During saving it is disabled for t
 
 Show the unsaved Japanese with unknown markers, an issue list, repair-attempt count, and actions **Try a new generation**, **Change premise/instructions**, and **Close**. No Save anyway action exists. Closing loses the draft after confirmation.
 
-## 8. Vocabulary
+## 8. Vocabulary sources
+
+The page presents a single list of independently enabled sources feeding one
+combined current vocabulary. Source cards use source-specific controls rather
+than forcing every source through Anki terminology.
 
 ### Provider selection
 
@@ -396,6 +400,14 @@ Cards explain:
 
 Connection tests show a specific state and never claim the app can start Anki or install another application automatically.
 
+- Pasted list: a local source created from a named multiline value with one
+  expression per line. Show the parsed non-empty line count and exact duplicate
+  count before saving. Editing or disabling it rebuilds the combined vocabulary
+  without requiring Anki.
+- AnkiConnect cards expose an “Automatically sync while Anki is available”
+  control. Automatic failures are non-modal and always state that the current
+  vocabulary was kept.
+
 ### Mapping editor
 
 Each mapping has provider source, deck, note type, expression field, enabled toggle, and Remove. Dropdown options come only from the provider/package. Changing deck updates compatible note types; changing note type updates fields. Stale mappings are retained but marked invalid until fixed or removed.
@@ -404,9 +416,19 @@ Each mapping has provider source, deck, note type, expression field, enabled tog
 
 Show summary cards rather than raw records: cards queried, reviewed matches, non-empty values, duplicates, unique vocabulary, rejected empty values, and warnings/errors. Confirmation replaces the current vocabulary. Provide a downloadable dump nowhere in v1.
 
+An explicit manual Anki/package refresh retains this review step. Automatic
+AnkiConnect refresh applies a healthy result directly, except that an unexpected
+empty result requires review. Pasted-list saves are explicit edits and apply
+immediately after their parsed summary is shown beside the editor.
+
 ### Current vocabulary
 
 Show the updated time, unique count, mapping summary, source kind, and number of generated stories using the current vocabulary. There is no snapshot history or deletion UI in v1.
+
+Outside the reader, a compact global status may show “Checking Anki…”, “Vocabulary
+updated”, or “Anki unavailable — current vocabulary kept”, with actions to retry
+or manage sources. Do not show routine unavailable notifications repeatedly and
+do not add application chrome to the reading surface.
 
 ## 9. Grammar
 

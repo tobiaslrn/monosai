@@ -301,7 +301,7 @@ describe('WordInspectorComponent', () => {
     ).nativeElement as HTMLElement;
 
     expect(element.querySelector('.status')?.textContent).toContain('Unknown vocabulary');
-    expect(element.textContent).toContain('Review this word in Anki');
+    expect(element.textContent).toContain('Add this expression to one of your vocabulary sources');
   });
 
   it('keeps the lookup content in surface, form, dictionary, grammar, status order', async () => {

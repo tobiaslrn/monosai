@@ -16,18 +16,18 @@ function snapshot(uniqueEntryCount: number): VocabularySnapshot {
     createdAt: 0,
     status: 'complete',
     uniqueEntryCount,
-    mappingIds: [],
-    providerKinds: ['package'],
+    sourceIds: [],
+    sourceKinds: ['anki-package'],
     analyzerVersion: 'analyzer/1',
     normalizationVersion: 'normalization/1',
     stats: {
-      mappingsQueried: 1,
-      reviewedEligibleNotes: uniqueEntryCount,
+      sourcesQueried: 1,
+      entriesRead: uniqueEntryCount,
       nonEmptyValues: uniqueEntryCount,
       rejectedEmptyValues: 0,
       duplicateOccurrences: 0,
       uniqueExpressions: uniqueEntryCount,
-      providerWarnings: [],
+      sourceWarnings: [],
     },
   };
 }

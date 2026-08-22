@@ -161,8 +161,8 @@ describe('VocabularyRefreshStore', () => {
 
       // ねこ twice, plus 見る, 犬, お腹 が 空いた; the blank value is rejected.
       expect(state.summary.stats).toMatchObject({
-        mappingsQueried: 1,
-        reviewedEligibleNotes: 6,
+        sourcesQueried: 1,
+        entriesRead: 6,
         nonEmptyValues: 5,
         rejectedEmptyValues: 1,
         duplicateOccurrences: 1,
@@ -175,7 +175,7 @@ describe('VocabularyRefreshStore', () => {
 
       const state = store.state();
       if (state.kind !== 'awaiting-confirmation') return;
-      const expressions = state.summary.commit.items.map((item) => item.visibleExpression);
+      const expressions = state.summary.prepared.commit.items.map((item) => item.visibleExpression);
 
       expect(expressions).toContain('ねこ');
       expect(expressions).toContain('犬');
@@ -187,8 +187,10 @@ describe('VocabularyRefreshStore', () => {
 
       const state = store.state();
       if (state.kind !== 'awaiting-confirmation') return;
-      const neko = state.summary.commit.items.find((item) => item.visibleExpression === 'ねこ');
-      const records = state.summary.commit.provenance.filter(
+      const neko = state.summary.prepared.commit.items.find(
+        (item) => item.visibleExpression === 'ねこ',
+      );
+      const records = state.summary.prepared.commit.provenance.filter(
         (record) => record.vocabularyItemId === neko?.id,
       );
 
@@ -214,7 +216,7 @@ describe('VocabularyRefreshStore', () => {
 
       const state = store.state();
       if (state.kind !== 'awaiting-confirmation') return;
-      expect(state.summary.stats.providerWarnings).toEqual(['Nothing has been reviewed.']);
+      expect(state.summary.stats.sourceWarnings).toEqual(['Nothing has been reviewed.']);
     });
 
     it('prepares an empty snapshot when nothing was ever reviewed', async () => {

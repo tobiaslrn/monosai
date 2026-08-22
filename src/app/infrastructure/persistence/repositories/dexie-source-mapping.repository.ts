@@ -1,60 +1,126 @@
 import { err, ok, type Result } from '../../../domain/shared/result';
-import type { SourceMappingId } from '../../../domain/shared/ids';
-import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
-import type { SourceMappingRepository } from '../../../domain/vocabulary/source-mapping-repository';
+import type { VocabularySourceId } from '../../../domain/shared/ids';
+import type { VocabularySourceRepository } from '../../../domain/vocabulary/vocabulary-source-repository';
+import type {
+  VocabularySource,
+  VocabularySourceCache,
+} from '../../../domain/vocabulary/vocabulary-source';
 import { storageError, type StorageError } from '../../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../monosai-db';
-import { parseRecords } from '../record-validation';
+import { parseRecord, parseRecords } from '../record-validation';
 import { ROW_VERSION } from '../schemas/common.schema';
-import { sourceMappingRowSchema, type SourceMappingRow } from '../schemas/vocabulary.schema';
+import {
+  vocabularySourceCacheRowSchema,
+  vocabularySourceRowSchema,
+  type VocabularySourceCacheRow,
+  type VocabularySourceRow,
+} from '../schemas/vocabulary.schema';
 import { runStorage } from './storage-operation';
 
 /** Source mappings are few, so enablement is filtered in memory rather than indexed. */
-export class DexieSourceMappingRepository implements SourceMappingRepository {
+export class DexieSourceMappingRepository implements VocabularySourceRepository {
   constructor(private readonly db: MonosaiDatabase) {}
 
-  async list(): Promise<Result<readonly SourceMapping[], StorageError>> {
-    const loaded = await runStorage('sourceMappings.list', () => this.db.sourceMappings.toArray());
+  async list(): Promise<Result<readonly VocabularySource[], StorageError>> {
+    const loaded = await runStorage('vocabularySources.list', () =>
+      this.db.vocabularySources.toArray(),
+    );
     if (!loaded.ok) {
       return loaded;
     }
-    const parsed = parseRecords(sourceMappingRowSchema, loaded.value, 'sourceMappings');
-    return parsed.ok ? ok(parsed.value.map(toMapping)) : parsed;
+    const parsed = parseRecords(vocabularySourceRowSchema, loaded.value, 'vocabularySources');
+    return parsed.ok
+      ? ok(
+          parsed.value
+            .map(toSource)
+            .sort(
+              (left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id),
+            ),
+        )
+      : parsed;
   }
 
-  async save(mapping: SourceMapping): Promise<Result<SourceMapping, StorageError>> {
-    const written = await runStorage('sourceMappings.put', () =>
-      this.db.sourceMappings.put({ ...mapping, v: ROW_VERSION }),
+  async save(source: VocabularySource): Promise<Result<VocabularySource, StorageError>> {
+    const row = parseRecord(
+      vocabularySourceRowSchema,
+      { ...source, v: ROW_VERSION },
+      `vocabularySources:${source.id}`,
     );
-    return written.ok ? ok(mapping) : written;
+    if (!row.ok) {
+      return row;
+    }
+    const written = await runStorage('vocabularySources.put', () =>
+      this.db.vocabularySources.put(row.value),
+    );
+    return written.ok ? ok(source) : written;
   }
 
-  remove(id: SourceMappingId): Promise<Result<void, StorageError>> {
-    return runStorage('sourceMappings.delete', async () => {
-      await this.db.sourceMappings.delete(id);
+  remove(id: VocabularySourceId): Promise<Result<void, StorageError>> {
+    return runStorage('vocabularySources.delete', async () => {
+      await this.db.transaction(
+        'rw',
+        [this.db.vocabularySources, this.db.vocabularySourceCaches],
+        async () => {
+          await this.db.vocabularySources.delete(id);
+          await this.db.vocabularySourceCaches.delete(id);
+        },
+      );
     });
   }
 
   async setEnabled(
-    id: SourceMappingId,
+    id: VocabularySourceId,
     enabled: boolean,
-  ): Promise<Result<SourceMapping, StorageError>> {
-    const loaded = await runStorage('sourceMappings.get', () => this.db.sourceMappings.get(id));
+  ): Promise<Result<VocabularySource, StorageError>> {
+    const loaded = await runStorage('vocabularySources.get', () =>
+      this.db.vocabularySources.get(id),
+    );
     if (!loaded.ok) {
       return loaded;
     }
     if (!loaded.value) {
       return err(storageError('not-found', 'That vocabulary source no longer exists.'));
     }
-    const updated: SourceMappingRow = { ...loaded.value, enabled };
-    const written = await runStorage('sourceMappings.put', () =>
-      this.db.sourceMappings.put(updated),
+    const parsed = parseRecord(vocabularySourceRowSchema, loaded.value, `vocabularySources:${id}`);
+    if (!parsed.ok) {
+      return parsed;
+    }
+    const updated: VocabularySourceRow = { ...parsed.value, enabled };
+    const written = await runStorage('vocabularySources.put', () =>
+      this.db.vocabularySources.put(updated),
     );
-    return written.ok ? ok(toMapping(updated)) : written;
+    return written.ok ? ok(toSource(updated)) : written;
+  }
+
+  async readCaches(
+    sourceIds: readonly VocabularySourceId[],
+  ): Promise<Result<readonly VocabularySourceCache[], StorageError>> {
+    const loaded = await runStorage('vocabularySourceCaches.read', () =>
+      this.db.vocabularySourceCaches.bulkGet([...sourceIds]),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const rows = loaded.value.filter((row): row is VocabularySourceCacheRow => row !== undefined);
+    const parsed = parseRecords(vocabularySourceCacheRowSchema, rows, 'vocabularySourceCaches');
+    return parsed.ok ? ok(parsed.value.map(toCache)) : parsed;
+  }
+
+  replaceCaches(caches: readonly VocabularySourceCache[]): Promise<Result<void, StorageError>> {
+    return runStorage('vocabularySourceCaches.replace', async () => {
+      await this.db.vocabularySourceCaches.bulkPut(
+        caches.map((cache) => ({ ...cache, v: ROW_VERSION })),
+      );
+    });
   }
 }
 
-function toMapping(row: SourceMappingRow): SourceMapping {
-  const { v: _version, ...mapping } = row;
-  return mapping;
+function toSource(row: VocabularySourceRow): VocabularySource {
+  const { v: _version, ...source } = row;
+  return source;
+}
+
+function toCache(row: VocabularySourceCacheRow): VocabularySourceCache {
+  const { v: _version, ...cache } = row;
+  return cache;
 }

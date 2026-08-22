@@ -50,20 +50,20 @@ export interface StructuralFormDetail {
 const PRESENTATIONS: Record<TokenValidationCategory, TokenStatusPresentation> = {
   'anki-exact': {
     marker: 'none',
-    label: 'Known from Anki',
-    explanation: 'You have reviewed this expression in Anki.',
+    label: 'Known vocabulary',
+    explanation: 'This expression is in your current vocabulary.',
     nextAction: null,
   },
   'anki-normalized': {
     marker: 'none',
     label: 'Known normalized form',
-    explanation: 'This is an inflected or respelled form of an expression you have reviewed.',
+    explanation: 'This is an inflected or respelled form of an expression in your vocabulary.',
     nextAction: null,
   },
   'anki-phrase': {
     marker: 'none',
-    label: 'Known from Anki',
-    explanation: 'These words together match a phrase you have reviewed.',
+    label: 'Known vocabulary phrase',
+    explanation: 'These words together match a phrase in your current vocabulary.',
     nextAction: null,
   },
   'structural-baseline': {
@@ -88,14 +88,14 @@ const PRESENTATIONS: Record<TokenValidationCategory, TokenStatusPresentation> = 
   'not-in-snapshot': {
     marker: 'warning-vocabulary',
     label: 'Not in current vocabulary',
-    explanation: 'This word is not in your most recent reviewed vocabulary.',
-    nextAction: 'Review this word in Anki, then refresh your vocabulary.',
+    explanation: 'This word is not in your current vocabulary.',
+    nextAction: 'Add this expression to one of your vocabulary sources.',
   },
   unknown: {
     marker: 'warning-vocabulary',
     label: 'Unknown vocabulary',
-    explanation: 'This word could not be matched to your reviewed vocabulary.',
-    nextAction: 'Review this word in Anki, then refresh your vocabulary.',
+    explanation: 'This word could not be matched to your current vocabulary.',
+    nextAction: 'Add this expression to one of your vocabulary sources.',
   },
   punctuation: {
     marker: 'none',

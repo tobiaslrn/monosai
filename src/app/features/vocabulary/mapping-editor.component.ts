@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
+import { VocabularySyncService } from '../../application/vocabulary/vocabulary-sync.service';
 import type { StaleReason } from '../../domain/anki/mapping-validation';
 import type { SourceMappingId } from '../../domain/shared/ids';
 import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
@@ -32,7 +34,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
       </p>
     } @else {
       <ul class="mappings">
-        @for (mapping of store.mappings(); track mapping.id) {
+        @for (mapping of connectedMappings(); track mapping.id) {
           <li class="mapping" [class.is-stale]="staleReason(mapping.id) !== null">
             <div class="fields">
               <label class="mn-field">
@@ -107,6 +109,17 @@ const STALE_REASONS: Record<StaleReason, string> = {
                 <span>Use this source</span>
               </label>
 
+              @if (mapping.kind === 'anki-connect') {
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    [checked]="mapping.automaticSync"
+                    (change)="setAutomaticSync(mapping, $event)"
+                  />
+                  <span>Sync automatically while Anki is available</span>
+                </label>
+              }
+
               <button
                 type="button"
                 class="mn-button mn-button--danger"
@@ -143,6 +156,11 @@ const STALE_REASONS: Record<StaleReason, string> = {
         <mn-icon name="add" />
         Add a source
       </button>
+
+      @if (sourceChangeError(); as error) {
+        <p class="stale" role="alert">{{ error }}</p>
+      }
+      <p class="mn-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
     }
   `,
   styles: `
@@ -209,6 +227,10 @@ const STALE_REASONS: Record<StaleReason, string> = {
 export class MappingEditorComponent {
   protected readonly store = inject(SourceMappingStore);
   protected readonly refresh = inject(VocabularyRefreshStore);
+  private readonly sync = inject(VocabularySyncService);
+  private readonly history = inject(SnapshotHistoryStore);
+  protected readonly sourceChangeError = signal<string | null>(null);
+  protected readonly announcement = signal('');
 
   protected readonly deckNames = computed(
     () => this.refresh.catalog()?.decks.map((deck) => deck.name) ?? [],
@@ -216,6 +238,12 @@ export class MappingEditorComponent {
   protected readonly noteTypeNames = computed(
     () => this.refresh.catalog()?.noteTypes.map((noteType) => noteType.name) ?? [],
   );
+  protected readonly connectedMappings = computed(() => {
+    const kind = this.refresh.providerKind();
+    return kind === null
+      ? []
+      : this.store.mappings().filter((mapping) => mapping.providerKind === kind);
+  });
 
   /**
    * Stale mappings, derived from the store's resolution.
@@ -259,7 +287,7 @@ export class MappingEditorComponent {
       return;
     }
     await this.store.add({
-      providerKind: 'package',
+      providerKind: this.refresh.providerKind() ?? 'package',
       deckName: deck,
       deckScope: 'deck-only',
       noteTypeName: noteType,
@@ -299,10 +327,29 @@ export class MappingEditorComponent {
 
   protected async setEnabled(mapping: SourceMapping, event: Event): Promise<void> {
     await this.store.setEnabled(mapping.id, readChecked(event));
+    await this.rebuildAfterSourceChange('Updated the combined vocabulary.');
+  }
+
+  protected async setAutomaticSync(mapping: SourceMapping, event: Event): Promise<void> {
+    await this.store.setAutomaticSync(mapping.id, readChecked(event));
   }
 
   protected async remove(id: SourceMappingId): Promise<void> {
     await this.store.remove(id);
+    await this.rebuildAfterSourceChange('Removed the source and updated the vocabulary.');
+  }
+
+  private async rebuildAfterSourceChange(successMessage: string): Promise<void> {
+    const rebuilt = await this.sync.rebuild();
+    if (!rebuilt.ok) {
+      this.sourceChangeError.set(
+        `${rebuilt.error.message} The previous current vocabulary is unchanged.`,
+      );
+      return;
+    }
+    this.sourceChangeError.set(null);
+    this.announcement.set(successMessage);
+    await this.history.load();
   }
 }
 

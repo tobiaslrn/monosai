@@ -1,15 +1,17 @@
 import type { SnapshotId, VocabularyItemId } from '../shared/ids';
+import type { VocabularySourceId } from '../shared/ids';
+import type { VocabularySourceKind } from './vocabulary-source';
 
-export type AnkiProviderKind = 'desktop-connect' | 'android-connect' | 'package';
+export type { AnkiProviderKind } from './vocabulary-source';
 
 export interface SnapshotStats {
-  readonly mappingsQueried: number;
-  readonly reviewedEligibleNotes: number;
+  readonly sourcesQueried: number;
+  readonly entriesRead: number;
   readonly nonEmptyValues: number;
   readonly rejectedEmptyValues: number;
   readonly duplicateOccurrences: number;
   readonly uniqueExpressions: number;
-  readonly providerWarnings: readonly string[];
+  readonly sourceWarnings: readonly string[];
 }
 
 /** Complete current vocabulary result of one successful refresh. */
@@ -18,8 +20,8 @@ export interface VocabularySnapshot {
   readonly createdAt: number;
   readonly status: 'complete';
   readonly uniqueEntryCount: number;
-  readonly mappingIds: readonly string[];
-  readonly providerKinds: readonly AnkiProviderKind[];
+  readonly sourceIds: readonly VocabularySourceId[];
+  readonly sourceKinds: readonly VocabularySourceKind[];
   readonly analyzerVersion: string;
   readonly normalizationVersion: string;
   readonly stats: SnapshotStats;
@@ -42,11 +44,13 @@ export interface VocabularyItem {
 
 export interface VocabularyProvenance {
   readonly vocabularyItemId: VocabularyItemId;
-  readonly sourceMappingId: string;
-  readonly deckName: string;
-  readonly noteTypeName: string;
-  readonly fieldName: string;
-  readonly sourceNoteId?: string;
+  readonly sourceId: VocabularySourceId;
+  readonly sourceKind: VocabularySourceKind;
+  readonly sourceLabel: string;
+  readonly deckName?: string;
+  readonly noteTypeName?: string;
+  readonly fieldName?: string;
+  readonly sourceRecordId?: string;
 }
 
 /** Minimum unique entries before story generation becomes available. */

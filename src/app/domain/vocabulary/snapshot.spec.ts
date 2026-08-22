@@ -12,18 +12,18 @@ function snapshotWith(uniqueEntryCount: number): VocabularySnapshot {
     createdAt: 0,
     status: 'complete',
     uniqueEntryCount,
-    mappingIds: [],
-    providerKinds: [],
+    sourceIds: [],
+    sourceKinds: [],
     analyzerVersion: 'v1',
     normalizationVersion: 'v1',
     stats: {
-      mappingsQueried: 0,
-      reviewedEligibleNotes: 0,
+      sourcesQueried: 0,
+      entriesRead: 0,
       nonEmptyValues: 0,
       rejectedEmptyValues: 0,
       duplicateOccurrences: 0,
       uniqueExpressions: 0,
-      providerWarnings: [],
+      sourceWarnings: [],
     },
   };
 }

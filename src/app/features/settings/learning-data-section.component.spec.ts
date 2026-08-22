@@ -7,7 +7,7 @@ describe('formatVocabularyState', () => {
   });
 
   it('names an Anki package without claiming that AnkiConnect is connected', () => {
-    expect(formatVocabularyState({ uniqueEntryCount: 1_240, providerKinds: ['package'] })).toBe(
+    expect(formatVocabularyState({ uniqueEntryCount: 1_240, sourceKinds: ['anki-package'] })).toBe(
       '1,240 unique expressions · Anki package',
     );
   });
@@ -16,7 +16,7 @@ describe('formatVocabularyState', () => {
     expect(
       formatVocabularyState({
         uniqueEntryCount: 50,
-        providerKinds: ['desktop-connect', 'android-connect'],
+        sourceKinds: ['anki-connect'],
       }),
     ).toBe('50 unique expressions · AnkiConnect');
   });

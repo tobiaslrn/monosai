@@ -76,8 +76,8 @@ describe('VocabularyPageComponent', () => {
         heading.textContent.trim(),
       ),
     ).toEqual([
-      'Where your vocabulary comes from',
-      'Which decks and fields to read',
+      'Add a vocabulary source',
+      'Anki decks and fields',
       'Refresh',
       'Current vocabulary',
     ]);

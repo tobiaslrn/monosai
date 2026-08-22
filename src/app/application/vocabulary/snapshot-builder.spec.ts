@@ -2,17 +2,28 @@ import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { mappingFor } from '../../../testing/anki-provider-contract';
 import { configureVocabularyTestBed } from '../../../testing/vocabulary-fakes';
-import type { ExtractedEntry } from '../../domain/anki/anki-provider';
 import { ANALYZER_VERSION, NORMALIZATION_VERSION } from '../../domain/language/analyzer-version';
-import { SnapshotBuilder } from './snapshot-builder';
+import { vocabularySourceId } from '../../domain/shared/ids';
+import type { TextListVocabularySource } from '../../domain/vocabulary/vocabulary-source';
+import { SnapshotBuilder, type SourceEntry } from './snapshot-builder';
 
 const MAPPING = mappingFor();
+const TEXT_SOURCE: TextListVocabularySource = {
+  id: vocabularySourceId('22222222-2222-4222-8222-222222222222'),
+  kind: 'text-list',
+  label: 'My textbook',
+  content: 'ねこ',
+  enabled: true,
+  createdAt: 1,
+  updatedAt: 1,
+  lastSyncedAt: 1,
+};
 
-function entry(rawFieldValue: string | undefined, sourceNoteId?: string): ExtractedEntry {
+function entry(rawValue: string | undefined, sourceRecordId?: string): SourceEntry {
   return {
-    sourceMappingId: MAPPING.id,
-    ...(rawFieldValue === undefined ? {} : { rawFieldValue }),
-    ...(sourceNoteId === undefined ? {} : { sourceNoteId }),
+    sourceId: MAPPING.id,
+    ...(rawValue === undefined ? {} : { rawValue }),
+    ...(sourceRecordId === undefined ? {} : { sourceRecordId }),
   };
 }
 
@@ -24,11 +35,10 @@ describe('SnapshotBuilder', () => {
     builder = TestBed.inject(SnapshotBuilder);
   });
 
-  async function build(entries: readonly ExtractedEntry[]) {
+  async function build(entries: readonly SourceEntry[]) {
     const built = await builder.build({
       entries,
-      mappings: [MAPPING],
-      providerKinds: ['package'],
+      sources: [MAPPING],
       warnings: [],
     });
     if (!built.ok) {
@@ -64,11 +74,13 @@ describe('SnapshotBuilder', () => {
     const built = await build([entry('ねこ', 'n1')]);
 
     expect(built.commit.provenance[0]).toMatchObject({
-      sourceMappingId: MAPPING.id,
+      sourceId: MAPPING.id,
+      sourceKind: 'anki-package',
+      sourceLabel: 'Anki · Core Japanese · Expression',
       deckName: 'Core Japanese',
       noteTypeName: 'Basic',
       fieldName: 'Expression',
-      sourceNoteId: 'n1',
+      sourceRecordId: 'n1',
     });
   });
 
@@ -105,8 +117,8 @@ describe('SnapshotBuilder', () => {
   it('records which mappings and providers produced the snapshot', async () => {
     const built = await build([entry('ねこ')]);
 
-    expect(built.commit.snapshot.mappingIds).toEqual([MAPPING.id]);
-    expect(built.commit.snapshot.providerKinds).toEqual(['package']);
+    expect(built.commit.snapshot.sourceIds).toEqual([MAPPING.id]);
+    expect(built.commit.snapshot.sourceKinds).toEqual(['anki-package']);
     expect(built.commit.snapshot.status).toBe('complete');
   });
 
@@ -132,8 +144,7 @@ describe('SnapshotBuilder', () => {
     await builder.build(
       {
         entries: [entry('ねこ'), entry('犬')],
-        mappings: [MAPPING],
-        providerKinds: [],
+        sources: [MAPPING],
         warnings: [],
       },
       (update) => progress.push(update),
@@ -148,5 +159,32 @@ describe('SnapshotBuilder', () => {
 
     expect(built.commit.items).toEqual([]);
     expect(built.stats.uniqueExpressions).toBe(0);
+  });
+
+  it('merges duplicates across source kinds while retaining both provenances', async () => {
+    const built = await builder.build({
+      entries: [entry('<b>ねこ</b>', 'anki-note'), { sourceId: TEXT_SOURCE.id, rawValue: 'ねこ' }],
+      sources: [MAPPING, TEXT_SOURCE],
+      warnings: [],
+    });
+    if (!built.ok) throw new Error(built.error.message);
+
+    expect(built.value.commit.items).toHaveLength(1);
+    expect(built.value.commit.provenance.map((record) => record.sourceKind)).toEqual([
+      'anki-package',
+      'text-list',
+    ]);
+    expect(built.value.commit.snapshot.sourceKinds).toEqual(['anki-package', 'text-list']);
+  });
+
+  it('treats pasted-list values as literal text rather than Anki HTML', async () => {
+    const built = await builder.build({
+      entries: [{ sourceId: TEXT_SOURCE.id, rawValue: '<b>literal</b>' }],
+      sources: [TEXT_SOURCE],
+      warnings: [],
+    });
+    if (!built.ok) throw new Error(built.error.message);
+
+    expect(built.value.commit.items[0].visibleExpression).toBe('<b>literal</b>');
   });
 });

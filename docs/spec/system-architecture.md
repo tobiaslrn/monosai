@@ -126,6 +126,13 @@ interface AnkiVocabularyProvider {
   ): AsyncIterable<AnkiExtractionEvent>;
 }
 
+interface VocabularySourceRepository {
+  list(): Promise<Result<readonly VocabularySource[], StorageError>>;
+  save(source: VocabularySource): Promise<Result<VocabularySource, StorageError>>;
+  readCaches(sourceIds: readonly VocabularySourceId[]): Promise<Result<readonly VocabularySourceCache[], StorageError>>;
+  replaceCaches(caches: readonly VocabularySourceCache[]): Promise<Result<void, StorageError>>;
+}
+
 interface TextGenerationProvider {
   testConfiguration(config: TextModelConfig, signal?: AbortSignal): Promise<Result<ModelTest, AiError>>;
   writeStory(input: StoryGenerationRequest, signal: AbortSignal): Promise<Result<StoryCandidate, AiError>>;

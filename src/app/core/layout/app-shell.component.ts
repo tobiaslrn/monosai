@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AppUpdateBannerComponent } from './app-update-banner.component';
+import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.component';
 
 /**
  * The application frame.
@@ -16,12 +17,13 @@ import { AppUpdateBannerComponent } from './app-update-banner.component';
 @Component({
   selector: 'mn-app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, AppUpdateBannerComponent],
+  imports: [RouterOutlet, AppUpdateBannerComponent, VocabularySyncBannerComponent],
   template: `
     <a class="mn-skip-link" href="#mn-main">Skip to main content</a>
 
     @if (!isReaderRoute()) {
       <mn-app-update-banner />
+      <mn-vocabulary-sync-banner />
     }
 
     <main id="mn-main" class="main" tabindex="-1">

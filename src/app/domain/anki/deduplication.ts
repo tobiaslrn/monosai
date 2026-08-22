@@ -1,13 +1,9 @@
-import type { SnapshotId, SourceMappingId, VocabularyItemId } from '../shared/ids';
+import type { SnapshotId, VocabularyItemId } from '../shared/ids';
 import type { VocabularyItem, VocabularyProvenance, VocabularyToken } from '../vocabulary/snapshot';
 
 /** One accepted field value with everything needed to become a vocabulary item. */
 export interface PreparedEntry {
-  readonly sourceMappingId: SourceMappingId;
-  readonly deckName: string;
-  readonly noteTypeName: string;
-  readonly fieldName: string;
-  readonly sourceNoteId?: string;
+  readonly provenance: Omit<VocabularyProvenance, 'vocabularyItemId'>;
   readonly visibleExpression: string;
   readonly canonicalExpression: string;
   readonly expressionHash: string;
@@ -22,7 +18,7 @@ export interface MergeResult {
 }
 
 function provenanceKey(itemId: VocabularyItemId, entry: PreparedEntry): string {
-  return `${itemId} ${entry.sourceMappingId} ${entry.sourceNoteId ?? ''}`;
+  return `${itemId} ${entry.provenance.sourceId} ${entry.provenance.sourceRecordId ?? ''}`;
 }
 
 /**
@@ -70,14 +66,7 @@ export function mergeEntries(
       continue;
     }
     seenProvenance.add(key);
-    provenance.push({
-      vocabularyItemId: item.id,
-      sourceMappingId: entry.sourceMappingId,
-      deckName: entry.deckName,
-      noteTypeName: entry.noteTypeName,
-      fieldName: entry.fieldName,
-      ...(entry.sourceNoteId === undefined ? {} : { sourceNoteId: entry.sourceNoteId }),
-    });
+    provenance.push({ vocabularyItemId: item.id, ...entry.provenance });
   }
 
   return { items: [...itemsByHash.values()], provenance, duplicateOccurrences };

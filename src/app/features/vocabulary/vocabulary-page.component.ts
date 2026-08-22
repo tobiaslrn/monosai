@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
+import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/automatic-anki-sync.coordinator';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import { canRefreshMappings } from '../../domain/anki/mapping-validation';
@@ -12,6 +13,7 @@ import { ProviderSelectionComponent } from './provider-selection.component';
 import { RefreshStepperComponent } from './refresh-stepper.component';
 import { RefreshSummaryComponent } from './refresh-summary.component';
 import { SnapshotHistoryComponent } from './snapshot-history.component';
+import { TextListSourceComponent } from './text-list-source.component';
 
 @Component({
   selector: 'mn-vocabulary-page',
@@ -27,14 +29,15 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
     RefreshStepperComponent,
     RefreshSummaryComponent,
     SnapshotHistoryComponent,
+    TextListSourceComponent,
   ],
   template: `
     <div class="mn-page">
       <mn-page-header heading="Vocabulary" backTo="/settings" backLabel="Back to settings" />
 
       <p class="mn-hint">
-        Monosai reads the words you have already reviewed in Anki so it can mark what is familiar
-        while you read. It only ever reads, and never changes your collection.
+        Combine vocabulary you already know from Anki or your own pasted lists. Sources stay on this
+        device, and Monosai only ever reads from Anki.
       </p>
 
       <p
@@ -47,8 +50,10 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
       </p>
 
       <section class="mn-panel" aria-labelledby="mn-vocab-source-heading">
-        <h2 id="mn-vocab-source-heading">Where your vocabulary comes from</h2>
+        <h2 id="mn-vocab-source-heading">Add a vocabulary source</h2>
         <mn-provider-selection />
+        <div class="source-divider"></div>
+        <mn-text-list-source />
       </section>
 
       @if (failure(); as copy) {
@@ -66,12 +71,23 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
       }
 
       <section class="mn-panel" aria-labelledby="mn-vocab-mapping-heading">
-        <h2 id="mn-vocab-mapping-heading">Which decks and fields to read</h2>
+        <h2 id="mn-vocab-mapping-heading">Anki decks and fields</h2>
         <mn-mapping-editor />
       </section>
 
       <section class="mn-panel" aria-labelledby="mn-vocab-refresh-heading">
         <h2 id="mn-vocab-refresh-heading">Refresh</h2>
+
+        @if (automaticStatus(); as status) {
+          <div class="automatic-status" [class.needs-attention]="status.attention">
+            <span>{{ status.message }}</span>
+            @if (status.retry) {
+              <button type="button" class="mn-button" (click)="retryAutomaticSync()">
+                Retry now
+              </button>
+            }
+          </div>
+        }
 
         @if (refresh.isBusy() || isFinished()) {
           <mn-refresh-stepper />
@@ -124,14 +140,64 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
     .recovery p {
       margin: 0 0 var(--space-1);
     }
+
+    .source-divider {
+      height: 1px;
+      margin: var(--space-4) 0;
+      background: var(--border-subtle);
+    }
+
+    .automatic-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+      padding: var(--space-2);
+      border-radius: var(--radius-control);
+      background: var(--surface-raised);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    .automatic-status.needs-attention {
+      background: var(--status-warning-soft);
+      color: var(--text-primary);
+    }
   `,
 })
 export class VocabularyPageComponent {
   protected readonly refresh = inject(VocabularyRefreshStore);
   protected readonly mappings = inject(SourceMappingStore);
   private readonly history = inject(SnapshotHistoryStore);
+  private readonly automatic = inject(AutomaticAnkiSyncCoordinator, { optional: true });
 
   protected readonly state = this.refresh.state;
+  protected readonly automaticStatus = computed(() => {
+    const status = this.automatic?.status();
+    switch (status?.kind) {
+      case undefined:
+      case 'idle':
+        return null;
+      case 'checking':
+        return {
+          message: 'Checking Anki for reviewed vocabulary…',
+          attention: false,
+          retry: false,
+        };
+      case 'updated':
+        return {
+          message: `Automatic sync updated the combined vocabulary to ${String(status.snapshot.uniqueEntryCount)} unique expressions.`,
+          attention: false,
+          retry: false,
+        };
+      case 'waiting':
+        return { message: status.message, attention: false, retry: true };
+      case 'attention':
+        return { message: status.message, attention: true, retry: true };
+    }
+  });
 
   protected readonly isFinished = computed(() =>
     ['complete', 'cancelled'].includes(this.state().kind),
@@ -196,5 +262,9 @@ export class VocabularyPageComponent {
 
   protected cancel(): void {
     this.refresh.cancel();
+  }
+
+  protected retryAutomaticSync(): void {
+    void this.automatic?.trigger(true);
   }
 }

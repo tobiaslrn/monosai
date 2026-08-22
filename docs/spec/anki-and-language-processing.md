@@ -1,12 +1,19 @@
-# Anki integration and language processing
+# Vocabulary sources, Anki integration, and language processing
 
 ## 1. Non-negotiable rules
 
 - All Anki access is read-only.
 - The production code contains an allowlist of permitted actions; it does not expose a generic action method to application code.
-- Source selection is explicit: deck, note type, and expression field.
+- Vocabulary sources are explicit, independently enabled records. Anki sources
+  select a deck, note type, and expression field; text-list sources contain one
+  literal expression per line.
 - A vocabulary item is eligible only when at least one associated card in the selected deck has been reviewed at least once.
-- Refresh is manual and produces a new immutable combined snapshot.
+- Every source keeps its most recent successfully read entries locally. Updating
+  one source rebuilds one immutable combined snapshot from all enabled source
+  caches; an unavailable source never erases its last successful entries.
+- AnkiConnect sources may refresh automatically after startup and when the app
+  returns to the foreground. Automatic work is non-blocking, rate-limited, and
+  never makes application startup fail.
 - Ordinary generated vocabulary validity is determined locally, never by the LLM.
 - Provider limitations and missing review evidence are reported rather than guessed around.
 
@@ -48,6 +55,17 @@ Accept `.apkg` and `.colpkg` chosen by the user. Process entirely in a dedicated
 
 Package support must be fixture-driven across representative current Anki Desktop and AnkiDroid exports. The implementation agent must document supported collection members/schema versions in diagnostics and tests. Unsupported versions fail clearly; do not attempt destructive in-place conversion.
 
+### Pasted text list
+
+Accept text pasted by the learner and store it locally as a named source. Normalize
+line endings, trim surrounding Unicode whitespace, and ignore blank lines. Each
+remaining line is one literal vocabulary expression: preserve internal whitespace,
+punctuation, slashes, phrases, and spelling. Exact canonical duplicates merge in
+the combined snapshot while provenance retains every contributing source.
+
+Editing a text list updates only that source cache and rebuilds the combined
+snapshot. It must not require Anki or network access.
+
 ## 3. Capability model
 
 ```ts
@@ -73,7 +91,13 @@ UI messaging must preserve these distinctions.
 
 A browser cannot see why a local request failed, so no variant may be inferred that the application has no evidence for. A page served from anywhere other than `http://localhost` or `http://127.0.0.1` is outside AnkiConnect's default origin allowlist and is refused by the add-on, which is reported as `origin-not-allowed` with the page's own origin as the cause. See ADR 0017.
 
-## 4. Source mappings
+## 4. Vocabulary sources
+
+Vocabulary source configuration is a discriminated union. Shared fields are a
+stable id, learner-facing label, enabled state, timestamps, and source kind.
+Anki sources additionally contain provider kind and the mapping below. Text-list
+sources contain their normalized local text. Provider-specific fields must never
+be faked on another source kind.
 
 ```ts
 interface SourceMapping {
@@ -92,7 +116,23 @@ interface SourceMapping {
 - Multiple mappings may point at one deck when note types/fields differ.
 - Selecting a parent deck follows the provider's normal deck-query semantics and includes descendants only if the displayed label explicitly says so. Store the exact query scope with the mapping.
 - A mapping is stale when a selected identifier no longer exists. Stale mappings block refresh until repaired/disabled/removed.
-- Refresh always combines all enabled mappings into one snapshot. There is no per-generation source selection.
+- A source refresh replaces only that source's cache. Snapshot rebuilding always
+  combines the latest successful caches of all enabled sources. There is no
+  per-generation source selection.
+
+### Automatic AnkiConnect synchronization
+
+- Automatic sync applies only to enabled desktop/Android connection sources that
+  opt in. Package and pasted-list sources are never polled.
+- Trigger after successful app initialization and when a hidden app becomes
+  visible or regains focus. Coalesce concurrent triggers and enforce a cooldown.
+- Unavailable, offline, timeout, and cancellation results are non-destructive.
+  Keep the current snapshot and retry later.
+- Probe, discover, validate every enabled mapping for that provider, and read all
+  entries before replacing any source cache.
+- If a valid result is unexpectedly empty while that source previously contained
+  entries, hold it for explicit user confirmation instead of silently emptying it.
+- Do not use service-worker Background Sync and do not cache Anki HTTP responses.
 
 ## 5. Reviewed eligibility
 

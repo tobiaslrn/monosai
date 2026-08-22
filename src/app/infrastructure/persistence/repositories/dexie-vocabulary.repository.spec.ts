@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fixedClock } from '../../../domain/shared/clock';
-import { snapshotId, vocabularyItemId } from '../../../domain/shared/ids';
+import { snapshotId, vocabularyItemId, vocabularySourceId } from '../../../domain/shared/ids';
 import { createTestDatabase, destroyTestDatabase } from '../../../../testing/test-database';
 import {
   generatedStoryFixture,
@@ -146,7 +146,8 @@ describe('DexieVocabularyRepository', () => {
     const commit = snapshotFixture(9, 2);
     const extraProvenance = {
       ...commit.provenance[0],
-      sourceMappingId: uuid(4711),
+      sourceId: vocabularySourceId(uuid(4711)),
+      sourceLabel: 'Second deck',
       deckName: 'Second deck',
     };
     await repository.commitSnapshot({

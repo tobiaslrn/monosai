@@ -20,6 +20,7 @@ import {
   sentenceId,
   snapshotId,
   vocabularyItemId,
+  vocabularySourceId,
   type ReadingId,
   type SnapshotId,
 } from '../app/domain/shared/ids';
@@ -308,7 +309,9 @@ export function snapshotFixture(seed: number, entryCount = 3): SnapshotCommit {
 
   const provenance: VocabularyProvenance[] = items.map((item) => ({
     vocabularyItemId: item.id,
-    sourceMappingId: uuid(seed * 1000 + 700),
+    sourceId: vocabularySourceId(uuid(seed * 1000 + 700)),
+    sourceKind: 'anki-connect',
+    sourceLabel: 'Anki · Core Japanese · Expression',
     deckName: 'Core Japanese',
     noteTypeName: 'Basic',
     fieldName: 'Expression',
@@ -319,18 +322,18 @@ export function snapshotFixture(seed: number, entryCount = 3): SnapshotCommit {
     createdAt: 1_700_000_100_000,
     status: 'complete',
     uniqueEntryCount: items.length,
-    mappingIds: [provenance[0].sourceMappingId],
-    providerKinds: ['desktop-connect'],
+    sourceIds: [provenance[0].sourceId],
+    sourceKinds: ['anki-connect'],
     analyzerVersion: 'test-analyzer-1',
     normalizationVersion: 'test-normalizer-1',
     stats: {
-      mappingsQueried: 1,
-      reviewedEligibleNotes: items.length,
+      sourcesQueried: 1,
+      entriesRead: items.length,
       nonEmptyValues: items.length,
       rejectedEmptyValues: 0,
       duplicateOccurrences: 1,
       uniqueExpressions: items.length,
-      providerWarnings: [],
+      sourceWarnings: [],
     },
   };
 
