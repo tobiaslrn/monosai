@@ -61,6 +61,15 @@ describe('VocabularyRefreshStore', () => {
     await store.refresh();
   }
 
+  it('can refresh and commit in one automatic interaction', async () => {
+    await connect();
+    await configure([BASIC]);
+
+    await store.refreshAndCommit();
+
+    expect(store.state().kind).toBe('complete');
+  });
+
   describe('connecting', () => {
     it('starts idle', () => {
       expect(store.state()).toEqual({ kind: 'idle' });

@@ -313,6 +313,14 @@ export class VocabularyRefreshStore {
     );
   }
 
+  /** Reads the connected source and applies a valid result immediately. */
+  async refreshAndCommit(): Promise<void> {
+    await this.refresh();
+    if (this.stateSignal().kind === 'awaiting-confirmation') {
+      await this.confirm();
+    }
+  }
+
   /**
    * Replaces the prepared vocabulary and makes it current.
    *

@@ -3,151 +3,228 @@ import {
   ANKI_PROVIDER_FACTORY,
   PACKAGE_PROVIDER_FACTORY,
 } from '../../application/shared/anki-tokens';
+import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
+import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
+import type { AnkiProviderKind } from '../../domain/vocabulary/snapshot';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { TextListSourceComponent } from './text-list-source.component';
 
-/**
- * Choosing where reviewed vocabulary comes from.
- *
- * Both paths are presented as equally legitimate. The package path is the
- * fallback in the sense that it always works, including when the browser will
- * not allow a local connection at all, so it is never framed as a lesser
- * option.
- */
+type AddMode = 'closed' | 'choices' | 'text';
+
+/** One entry point for every kind of vocabulary source. */
 @Component({
   selector: 'mn-provider-selection',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent],
+  host: {
+    '[class.is-editor]': "mode() === 'text'",
+  },
+  imports: [IconComponent, TextListSourceComponent],
   template: `
-    <div class="providers">
-      <article class="provider">
-        <h3>AnkiConnect access</h3>
-        <p class="mn-hint">
-          Reads directly from Anki while it is running on this device through AnkiConnect. Monosai
-          only ever reads.
-        </p>
-        <div class="actions">
-          <button
-            type="button"
-            class="mn-button"
-            [disabled]="refresh.isBusy()"
-            (click)="connectAnkiConnect()"
-            data-testid="connect-ankiconnect"
-          >
-            Test AnkiConnect access
-          </button>
-        </div>
-      </article>
+    <div class="add-source">
+      @if (mode() !== 'text') {
+        <button
+          type="button"
+          class="mn-button mn-button--primary"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="mode() === 'choices'"
+          (click)="toggleMenu()"
+          data-testid="add-source"
+        >
+          <mn-icon name="add" /> Add source
+        </button>
 
-      <article class="provider">
-        <h3>Anki package</h3>
-        <p class="mn-hint">
-          Reads an <code>.apkg</code> or <code>.colpkg</code> you export from Anki. The file is
-          processed entirely on this device and is never uploaded.
-        </p>
-        <div class="actions">
-          <label class="mn-button file">
-            <mn-icon name="upload" />
-            Choose a package
-            <input
-              type="file"
-              accept=".apkg,.colpkg"
+        @if (mode() === 'choices') {
+          <div class="menu" role="menu" aria-label="Source kind">
+            <button
+              type="button"
+              class="menu-item"
+              role="menuitem"
               [disabled]="refresh.isBusy()"
-              (change)="choosePackage($event)"
-              data-testid="package-input"
-            />
-          </label>
-          @if (fileName(); as name) {
-            <span class="file-name">{{ name }}</span>
-          }
+              (click)="connectAnkiConnect()"
+              data-testid="connect-ankiconnect"
+            >
+              <strong>Anki</strong>
+            </button>
+            <button
+              type="button"
+              class="menu-item"
+              role="menuitem"
+              [disabled]="refresh.isBusy()"
+              (click)="packageInput.click()"
+            >
+              <strong>Anki package</strong>
+            </button>
+            <button
+              type="button"
+              class="menu-item"
+              role="menuitem"
+              (click)="mode.set('text')"
+              data-testid="add-text-source"
+            >
+              <strong>Pasted list</strong>
+            </button>
+          </div>
+          <input
+            #packageInput
+            class="file-input"
+            type="file"
+            aria-label="Choose Anki package"
+            aria-hidden="true"
+            tabindex="-1"
+            accept=".apkg,.colpkg"
+            [disabled]="refresh.isBusy()"
+            (change)="choosePackage($event)"
+            data-testid="package-input"
+          />
+        }
+      } @else {
+        <div class="editor-head">
+          <h3>Add pasted list</h3>
+          <button type="button" class="mn-button" (click)="mode.set('choices')">Back</button>
         </div>
-      </article>
+        <mn-text-list-source (saved)="close()" (cancelled)="mode.set('choices')" />
+      }
     </div>
   `,
   styles: `
-    .providers {
+    :host {
+      position: relative;
+      display: block;
+    }
+
+    :host.is-editor {
+      flex-basis: 100%;
+      width: 100%;
+    }
+
+    .add-source {
       display: grid;
-      gap: var(--space-3);
-    }
-
-    @media (min-width: 720px) {
-      .providers {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
-    .provider {
-      display: flex;
-      flex-direction: column;
+      justify-items: end;
       gap: var(--space-2);
-      padding: var(--space-3);
+    }
+
+    .editor-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+      width: 100%;
+    }
+
+    .editor-head h3 {
+      margin: 0;
+    }
+
+    .menu {
+      position: absolute;
+      z-index: 10;
+      top: calc(100% + var(--space-1));
+      right: 0;
+      display: grid;
+      width: min(20rem, calc(100vw - var(--space-4)));
+      padding: var(--space-1);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-card);
+      background: var(--surface-panel);
+      box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 12%);
     }
 
-    .provider h3 {
-      margin: 0;
-      font-size: var(--text-md);
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      align-items: center;
-      margin-top: auto;
-    }
-
-    /* The input is visually replaced by its label, which stays keyboard
-       reachable because the input keeps its focus ring. */
-    .file {
+    .menu-item {
       position: relative;
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-1);
+      display: grid;
+      gap: 0.15rem;
+      min-height: var(--touch-target);
+      padding: var(--space-2);
+      border: 0;
+      border-radius: var(--radius-control);
+      background: transparent;
+      color: var(--text-primary);
+      text-align: left;
       cursor: pointer;
     }
 
-    .file input {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
+    .menu-item:hover {
+      background: var(--surface-raised);
     }
 
-    .file:focus-within {
+    .menu-item:focus-within,
+    .menu-item:focus-visible {
       outline: var(--focus-ring);
-      outline-offset: 2px;
     }
 
-    .file-name {
-      font-size: var(--text-sm);
-      color: var(--text-secondary);
+    .file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    mn-text-list-source {
+      width: 100%;
     }
   `,
 })
 export class ProviderSelectionComponent {
   protected readonly refresh = inject(VocabularyRefreshStore);
+  private readonly mappings = inject(SourceMappingStore);
+  private readonly history = inject(SnapshotHistoryStore);
   private readonly createConnection = inject(ANKI_PROVIDER_FACTORY);
   private readonly createPackage = inject(PACKAGE_PROVIDER_FACTORY);
 
-  private readonly fileNameSignal = signal<string | null>(null);
-  protected readonly fileName = this.fileNameSignal.asReadonly();
+  protected readonly mode = signal<AddMode>('closed');
 
-  protected connectAnkiConnect(): void {
-    this.fileNameSignal.set(null);
-    void this.refresh.connect(this.createConnection('desktop-connect'));
+  protected close(): void {
+    this.mode.set('closed');
   }
 
-  protected choosePackage(event: Event): void {
+  protected toggleMenu(): void {
+    this.mode.update((mode) => (mode === 'choices' ? 'closed' : 'choices'));
+  }
+
+  protected async connectAnkiConnect(): Promise<void> {
+    await this.connectAndAdd('desktop-connect', this.createConnection('desktop-connect'));
+  }
+
+  protected async choosePackage(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.item(0);
     if (file === null || file === undefined) {
       return;
     }
-    this.fileNameSignal.set(file.name);
-    void this.refresh.connect(
+    await this.connectAndAdd(
+      'package',
       this.createPackage({ fileName: file.name, bytes: () => file.arrayBuffer() }),
     );
+  }
+
+  private async connectAndAdd(
+    providerKind: AnkiProviderKind,
+    provider: Parameters<VocabularyRefreshStore['connect']>[0],
+  ): Promise<void> {
+    await this.refresh.connect(provider);
+    const catalog = this.refresh.catalog();
+    const deck =
+      catalog?.decks.find((candidate) => candidate.name !== 'Default')?.name ??
+      catalog?.decks.at(0)?.name;
+    const noteType = catalog?.noteTypes.at(0);
+    const expressionFieldName = noteType?.fieldNames.at(0);
+    if (deck === undefined || noteType === undefined || expressionFieldName === undefined) {
+      return;
+    }
+    const source = await this.mappings.add({
+      providerKind,
+      deckName: deck,
+      deckScope: 'deck-only',
+      noteTypeName: noteType.name,
+      expressionFieldName,
+    });
+    if (source === null) {
+      return;
+    }
+    await this.refresh.refreshAndCommit();
+    await this.history.load();
+    this.close();
   }
 }

@@ -4,9 +4,14 @@ import { SourceMappingStore } from '../../application/vocabulary/source-mapping.
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import { VocabularySyncService } from '../../application/vocabulary/vocabulary-sync.service';
 import type { StaleReason } from '../../domain/anki/mapping-validation';
-import type { SourceMappingId } from '../../domain/shared/ids';
+import type { VocabularySourceId } from '../../domain/shared/ids';
 import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
+import type {
+  TextListVocabularySource,
+  VocabularySource,
+} from '../../domain/vocabulary/vocabulary-source';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { TextListSourceComponent } from './text-list-source.component';
 
 const STALE_REASONS: Record<StaleReason, string> = {
   'deck-missing': 'That deck is no longer in your collection.',
@@ -14,177 +19,194 @@ const STALE_REASONS: Record<StaleReason, string> = {
   'field-missing': 'That field is no longer part of the note type.',
 };
 
-/**
- * The source mappings a refresh reads from.
- *
- * Every value comes from the discovered catalog: the deck, note type, and field
- * are all dropdowns, never free text, so a mapping cannot name something the
- * provider does not have. A mapping whose target has since disappeared is kept
- * and marked invalid rather than removed, because silently dropping it would
- * change what the next refresh reads without saying so.
- */
+/** One list for every source, with shared lifecycle controls and source-specific settings. */
 @Component({
   selector: 'mn-mapping-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent],
+  imports: [IconComponent, TextListSourceComponent],
   template: `
-    @if (!refresh.mappingEditorEnabled()) {
-      <p class="mn-hint" data-testid="mapping-locked">
-        Connect to a vocabulary source above to choose which decks and fields to read.
-      </p>
-    } @else {
-      <ul class="mappings">
-        @for (mapping of connectedMappings(); track mapping.id) {
-          <li class="mapping" [class.is-stale]="staleReason(mapping.id) !== null">
+    <ul class="sources">
+      @for (source of store.sources(); track source.id) {
+        <li class="source" [class.is-stale]="isStale(source)">
+          <div class="source-head">
+            <div class="identity">
+              <strong>{{ source.label }}</strong>
+              <span class="kind">{{ kindLabel(source) }}</span>
+              @if (source.kind === 'anki-connect' && source.automaticSync) {
+                <span class="sync-badge">Auto-sync</span>
+              }
+            </div>
+            <div class="source-actions">
+              <label class="check">
+                <input
+                  type="checkbox"
+                  [checked]="source.enabled"
+                  [disabled]="refresh.isBusy()"
+                  (change)="setEnabled(source.id, $event)"
+                />
+                <span>Enabled</span>
+              </label>
+              @if (source.kind === 'text-list') {
+                <button type="button" class="mn-button" (click)="toggleEdit(source.id)">
+                  {{ editingId() === source.id ? 'Close' : 'Edit' }}
+                </button>
+              }
+              <button
+                type="button"
+                class="mn-button mn-button--danger"
+                [disabled]="refresh.isBusy()"
+                (click)="remove(source.id)"
+                [attr.aria-label]="'Remove ' + source.label"
+              >
+                <mn-icon name="delete" /> Remove
+              </button>
+            </div>
+          </div>
+
+          @if (source.kind === 'text-list') {
+            @if (editingId() === source.id) {
+              <mn-text-list-source
+                [source]="source"
+                (saved)="finishEdit()"
+                (cancelled)="finishEdit()"
+              />
+            } @else {
+              <p class="details">{{ textEntryCount(source) }} entries</p>
+            }
+          } @else if (canConfigure(source)) {
             <div class="fields">
               <label class="mn-field">
                 <span>Deck</span>
                 <select
                   aria-label="Deck"
-                  [value]="mapping.deckName"
-                  (change)="setDeck(mapping, $event)"
-                  [attr.aria-invalid]="staleReason(mapping.id) === 'deck-missing' ? 'true' : null"
+                  [disabled]="refresh.isBusy()"
+                  [value]="source.deckName"
+                  (change)="setDeck(source, $event)"
                 >
                   @for (deck of deckNames(); track deck) {
-                    <option [value]="deck" [selected]="deck === mapping.deckName">
-                      {{ deck }}
-                    </option>
+                    <option [value]="deck">{{ deck }}</option>
                   }
                 </select>
               </label>
-
               <label class="mn-field">
                 <span>Note type</span>
                 <select
                   aria-label="Note type"
-                  [value]="mapping.noteTypeName"
-                  (change)="setNoteType(mapping, $event)"
-                  [attr.aria-invalid]="
-                    staleReason(mapping.id) === 'note-type-missing' ? 'true' : null
-                  "
+                  [disabled]="refresh.isBusy()"
+                  [value]="source.noteTypeName"
+                  (change)="setNoteType(source, $event)"
                 >
                   @for (noteType of noteTypeNames(); track noteType) {
-                    <option [value]="noteType" [selected]="noteType === mapping.noteTypeName">
-                      {{ noteType }}
-                    </option>
+                    <option [value]="noteType">{{ noteType }}</option>
                   }
                 </select>
               </label>
-
               <label class="mn-field">
                 <span>Expression field</span>
                 <select
                   aria-label="Expression field"
-                  [value]="mapping.expressionFieldName"
-                  (change)="setField(mapping, $event)"
-                  [attr.aria-invalid]="staleReason(mapping.id) === 'field-missing' ? 'true' : null"
+                  [disabled]="refresh.isBusy()"
+                  [value]="source.expressionFieldName"
+                  (change)="setField(source, $event)"
                 >
-                  @for (field of fieldsFor(mapping.noteTypeName); track field) {
-                    <option [value]="field" [selected]="field === mapping.expressionFieldName">
-                      {{ field }}
-                    </option>
+                  @for (field of fieldsFor(source.noteTypeName); track field) {
+                    <option [value]="field">{{ field }}</option>
                   }
                 </select>
               </label>
             </div>
-
-            <div class="row">
-              @if (hasChildren(mapping.deckName)) {
-                <label class="check">
-                  <input
-                    type="checkbox"
-                    [checked]="mapping.deckScope === 'deck-and-subdecks'"
-                    (change)="setScope(mapping, $event)"
-                  />
-                  <span>Include subdecks of {{ mapping.deckName }}</span>
-                </label>
-              }
-
-              <label class="check">
+            @if (hasChildren(source.deckName)) {
+              <label class="check subdecks">
                 <input
                   type="checkbox"
-                  [checked]="mapping.enabled"
-                  (change)="setEnabled(mapping, $event)"
+                  [disabled]="refresh.isBusy()"
+                  [checked]="source.deckScope === 'deck-and-subdecks'"
+                  (change)="setScope(source, $event)"
                 />
-                <span>Use this source</span>
+                <span>Include subdecks</span>
               </label>
-
-              @if (mapping.kind === 'anki-connect') {
-                <label class="check">
-                  <input
-                    type="checkbox"
-                    [checked]="mapping.automaticSync"
-                    (change)="setAutomaticSync(mapping, $event)"
-                  />
-                  <span>Sync automatically while Anki is available</span>
-                </label>
-              }
-
-              <button
-                type="button"
-                class="mn-button mn-button--danger"
-                (click)="remove(mapping.id)"
-                [attr.aria-label]="
-                  'Remove ' + mapping.deckName + ' ' + mapping.expressionFieldName + ' source'
-                "
-              >
-                <mn-icon name="delete" />
-                Remove
-              </button>
-            </div>
-
-            @if (staleReason(mapping.id); as reason) {
-              <p class="stale" role="alert">
-                {{ staleMessage(reason) }} Repair it, switch it off, or remove it before refreshing.
-              </p>
             }
-          </li>
-        } @empty {
-          <li class="empty mn-hint">
-            No sources yet. Add one to choose which deck and field Monosai reads.
-          </li>
-        }
-      </ul>
+          } @else {
+            <p class="details">
+              {{ source.deckName }} · {{ source.noteTypeName }} · {{ source.expressionFieldName }}
+            </p>
+          }
 
-      <button
-        type="button"
-        class="mn-button mn-button--primary"
-        [disabled]="deckNames().length === 0 || refresh.isBusy()"
-        (click)="add()"
-        data-testid="add-mapping"
-      >
-        <mn-icon name="add" />
-        Add a source
-      </button>
-
-      @if (sourceChangeError(); as error) {
-        <p class="stale" role="alert">{{ error }}</p>
+          @if (staleReason(source); as reason) {
+            <p class="stale" role="alert">
+              {{ staleMessage(reason) }} Reconnect this source to repair it.
+            </p>
+          }
+        </li>
+      } @empty {
+        <li class="empty mn-hint" data-testid="mapping-locked">No sources yet.</li>
       }
-      <p class="mn-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
+    </ul>
+
+    @if (sourceChangeError(); as error) {
+      <p class="stale" role="alert">{{ error }}</p>
     }
+    <p class="mn-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
   `,
   styles: `
-    .mappings {
-      list-style: none;
-      margin: 0 0 var(--space-3);
-      padding: 0;
-      display: grid;
-      gap: var(--space-3);
+    .source-head,
+    .identity,
+    .source-actions,
+    .check {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
     }
 
-    .mapping {
+    .source-head {
+      justify-content: space-between;
+    }
+
+    .details,
+    .stale {
+      margin: 0;
+    }
+
+    .sources {
       display: grid;
       gap: var(--space-2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .source {
+      display: grid;
+      gap: var(--space-3);
       padding: var(--space-3);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-card);
     }
 
-    .mapping.is-stale {
+    .source.is-stale {
       border-color: var(--status-danger);
     }
 
-    /* Cards rather than a table, so nothing scrolls sideways at 320px. */
+    .source-head,
+    .source-actions {
+      flex-wrap: wrap;
+    }
+
+    .kind,
+    .sync-badge {
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: var(--surface-raised);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    .sync-badge {
+      background: var(--status-success-soft);
+      color: var(--status-success);
+      font-weight: 600;
+    }
+
     .fields {
       display: grid;
       gap: var(--space-2);
@@ -196,31 +218,26 @@ const STALE_REASONS: Record<StaleReason, string> = {
       }
     }
 
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--space-3);
-    }
-
     .check {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-1);
       min-height: var(--touch-target);
       font-size: var(--text-sm);
     }
 
+    .details {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
     .stale {
-      margin: 0;
       color: var(--status-danger);
       font-size: var(--text-sm);
     }
 
     .empty {
-      padding: var(--space-3);
+      padding: var(--space-4);
       border: 1px dashed var(--border-subtle);
       border-radius: var(--radius-card);
+      text-align: center;
     }
   `,
 })
@@ -229,29 +246,16 @@ export class MappingEditorComponent {
   protected readonly refresh = inject(VocabularyRefreshStore);
   private readonly sync = inject(VocabularySyncService);
   private readonly history = inject(SnapshotHistoryStore);
+
+  protected readonly editingId = signal<VocabularySourceId | null>(null);
   protected readonly sourceChangeError = signal<string | null>(null);
   protected readonly announcement = signal('');
-
   protected readonly deckNames = computed(
     () => this.refresh.catalog()?.decks.map((deck) => deck.name) ?? [],
   );
   protected readonly noteTypeNames = computed(
     () => this.refresh.catalog()?.noteTypes.map((noteType) => noteType.name) ?? [],
   );
-  protected readonly connectedMappings = computed(() => {
-    const kind = this.refresh.providerKind();
-    return kind === null
-      ? []
-      : this.store.mappings().filter((mapping) => mapping.providerKind === kind);
-  });
-
-  /**
-   * Stale mappings, derived from the store's resolution.
-   *
-   * Because the resolution is itself derived from the mapping list and the
-   * catalog, repairing a mapping clears its warning as soon as the change is
-   * saved rather than when the next refresh runs.
-   */
   private readonly staleById = computed(
     () =>
       new Map(
@@ -259,18 +263,33 @@ export class MappingEditorComponent {
       ),
   );
 
-  protected staleReason(id: SourceMappingId): StaleReason | null {
-    return this.staleById().get(id) ?? null;
+  protected kindLabel(source: VocabularySource): string {
+    switch (source.kind) {
+      case 'anki-connect':
+        return 'Anki';
+      case 'anki-package':
+        return 'Anki package';
+      case 'text-list':
+        return 'Pasted list';
+    }
+  }
+
+  protected canConfigure(source: SourceMapping): boolean {
+    return (
+      this.refresh.providerKind() === source.providerKind && this.refresh.mappingEditorEnabled()
+    );
+  }
+
+  protected isStale(source: VocabularySource): boolean {
+    return source.kind !== 'text-list' && this.staleById().has(source.id);
+  }
+
+  protected staleReason(source: VocabularySource): StaleReason | null {
+    return source.kind === 'text-list' ? null : (this.staleById().get(source.id) ?? null);
   }
 
   protected staleMessage(reason: StaleReason): string {
     return STALE_REASONS[reason];
-  }
-
-  protected hasChildren(deckName: string): boolean {
-    return (
-      this.refresh.catalog()?.decks.find((deck) => deck.name === deckName)?.hasChildren === true
-    );
   }
 
   protected fieldsFor(noteTypeName: string): readonly string[] {
@@ -280,71 +299,76 @@ export class MappingEditorComponent {
     );
   }
 
-  protected async add(): Promise<void> {
-    const deck = this.deckNames().at(0);
-    const noteType = this.noteTypeNames().at(0);
-    if (deck === undefined || noteType === undefined) {
-      return;
-    }
-    await this.store.add({
-      providerKind: this.refresh.providerKind() ?? 'package',
-      deckName: deck,
-      deckScope: 'deck-only',
-      noteTypeName: noteType,
-      expressionFieldName: this.fieldsFor(noteType)[0] ?? '',
-    });
+  protected hasChildren(deckName: string): boolean {
+    return (
+      this.refresh.catalog()?.decks.find((deck) => deck.name === deckName)?.hasChildren === true
+    );
   }
 
-  protected async setDeck(mapping: SourceMapping, event: Event): Promise<void> {
-    await this.store.update(mapping.id, { deckName: readValue(event) });
+  protected textEntryCount(source: TextListVocabularySource): number {
+    return source.content.split('\n').filter((line) => line.trim().length > 0).length;
   }
 
-  /**
-   * Changing the note type re-picks the field.
-   *
-   * The old field almost certainly does not exist on the new note type, and
-   * leaving it would make the mapping instantly stale for a reason the learner
-   * did not cause.
-   */
-  protected async setNoteType(mapping: SourceMapping, event: Event): Promise<void> {
+  protected toggleEdit(id: VocabularySourceId): void {
+    this.editingId.update((current) => (current === id ? null : id));
+  }
+
+  protected finishEdit(): void {
+    this.editingId.set(null);
+  }
+
+  protected async setDeck(source: SourceMapping, event: Event): Promise<void> {
+    await this.store.update(source.id, { deckName: readValue(event) });
+    await this.applyConnectedSourceChange();
+  }
+
+  protected async setNoteType(source: SourceMapping, event: Event): Promise<void> {
     const noteTypeName = readValue(event);
     const fields = this.fieldsFor(noteTypeName);
-    const expressionFieldName = fields.includes(mapping.expressionFieldName)
-      ? mapping.expressionFieldName
-      : (fields[0] ?? '');
-    await this.store.update(mapping.id, { noteTypeName, expressionFieldName });
+    await this.store.update(source.id, {
+      noteTypeName,
+      expressionFieldName: fields.includes(source.expressionFieldName)
+        ? source.expressionFieldName
+        : (fields[0] ?? ''),
+    });
+    await this.applyConnectedSourceChange();
   }
 
-  protected async setField(mapping: SourceMapping, event: Event): Promise<void> {
-    await this.store.update(mapping.id, { expressionFieldName: readValue(event) });
+  protected async setField(source: SourceMapping, event: Event): Promise<void> {
+    await this.store.update(source.id, { expressionFieldName: readValue(event) });
+    await this.applyConnectedSourceChange();
   }
 
-  protected async setScope(mapping: SourceMapping, event: Event): Promise<void> {
-    await this.store.update(mapping.id, {
+  protected async setScope(source: SourceMapping, event: Event): Promise<void> {
+    await this.store.update(source.id, {
       deckScope: readChecked(event) ? 'deck-and-subdecks' : 'deck-only',
     });
+    await this.applyConnectedSourceChange();
   }
 
-  protected async setEnabled(mapping: SourceMapping, event: Event): Promise<void> {
-    await this.store.setEnabled(mapping.id, readChecked(event));
+  protected async setEnabled(id: VocabularySourceId, event: Event): Promise<void> {
+    await this.store.setEnabled(id, readChecked(event));
     await this.rebuildAfterSourceChange('Updated the combined vocabulary.');
   }
 
-  protected async setAutomaticSync(mapping: SourceMapping, event: Event): Promise<void> {
-    await this.store.setAutomaticSync(mapping.id, readChecked(event));
-  }
-
-  protected async remove(id: SourceMappingId): Promise<void> {
+  protected async remove(id: VocabularySourceId): Promise<void> {
     await this.store.remove(id);
     await this.rebuildAfterSourceChange('Removed the source and updated the vocabulary.');
+  }
+
+  private async applyConnectedSourceChange(): Promise<void> {
+    await this.refresh.refreshAndCommit();
+    if (this.refresh.state().kind === 'complete') {
+      this.sourceChangeError.set(null);
+      this.announcement.set('Updated the source and combined vocabulary.');
+      await this.history.load();
+    }
   }
 
   private async rebuildAfterSourceChange(successMessage: string): Promise<void> {
     const rebuilt = await this.sync.rebuild();
     if (!rebuilt.ok) {
-      this.sourceChangeError.set(
-        `${rebuilt.error.message} The previous current vocabulary is unchanged.`,
-      );
+      this.sourceChangeError.set(`${rebuilt.error.message} The previous vocabulary is unchanged.`);
       return;
     }
     this.sourceChangeError.set(null);

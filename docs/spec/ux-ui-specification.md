@@ -393,37 +393,47 @@ than forcing every source through Anki terminology.
 
 ### Provider selection
 
-Cards explain:
+One **Add source** button follows the source list. It expands in place into three
+source kinds:
 
 - AnkiConnect access: preferred when AnkiConnect or a compatible local bridge is running.
 - Anki package: fallback using `.apkg` or `.colpkg`, processed locally.
 
-Connection tests show a specific state and never claim the app can start Anki or install another application automatically.
+Connection attempts show a specific error when needed and never claim the app
+can start Anki or install another application automatically.
 
 - Pasted list: a local source created from a named multiline value with one
   expression per line. Show the parsed non-empty line count and exact duplicate
   count before saving. Editing or disabling it rebuilds the combined vocabulary
   without requiring Anki.
-- AnkiConnect cards expose an “Automatically sync while Anki is available”
-  control. Automatic failures are non-modal and always state that the current
-  vocabulary was kept.
+- AnkiConnect sources always sync while Anki is available. Automatic failures
+  are non-modal and always state that the current vocabulary was kept.
 
 ### Mapping editor
 
-Each mapping has provider source, deck, note type, expression field, enabled toggle, and Remove. Dropdown options come only from the provider/package. Changing deck updates compatible note types; changing note type updates fields. Stale mappings are retained but marked invalid until fixed or removed.
+Anki and pasted-list sources appear in the same list and share Enabled and
+Remove controls. Source-specific configuration stays within its row: Anki has
+deck, note type, expression field, and subdeck settings; a pasted list has its
+named multiline editor. Dropdown options come only from the provider/package.
+Stale mappings are retained but marked invalid until fixed or removed.
 
-### Refresh review
+### Updating
 
-Show summary cards rather than raw records: cards queried, reviewed matches, non-empty values, duplicates, unique vocabulary, rejected empty values, and warnings/errors. Confirmation replaces the current vocabulary. Provide a downloadable dump nowhere in v1.
-
-An explicit manual Anki/package refresh retains this review step. Automatic
-AnkiConnect refresh applies a healthy result directly, except that an unexpected
-empty result requires review. Pasted-list saves are explicit edits and apply
-immediately after their parsed summary is shown beside the editor.
+There is no manual refresh section or confirmation step. Adding a source,
+changing its configuration, editing it, enabling it, pausing it, or removing it
+updates the combined vocabulary immediately. AnkiConnect also refreshes on
+startup, focus, and its background interval while Anki is available. Detailed
+query/analyse progress remains an implementation state exposed to assistive
+technology, not a permanent dashboard. Failures keep the previous vocabulary
+and offer a specific recovery path.
 
 ### Current vocabulary
 
-Show the updated time, unique count, mapping summary, source kind, and number of generated stories using the current vocabulary. There is no snapshot history or deletion UI in v1.
+The compact **Current** section leads with the unique count, then shows the
+updated time, enabled source count, and number of generated stories using the
+current vocabulary. The source-management section is simply **Sources**; avoid
+repeating page context in explanatory headings. There is no snapshot history or
+deletion UI in v1.
 
 Outside the reader, a compact global status may show “Checking Anki…”, “Vocabulary
 updated”, or “Anki unavailable — current vocabulary kept”, with actions to retry
