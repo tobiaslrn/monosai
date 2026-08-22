@@ -382,7 +382,7 @@ Show the unsaved Japanese with unknown markers, an issue list, repair-attempt co
 
 Cards explain:
 
-- Local Anki connection: preferred when desktop AnkiConnect or the Android-compatible bridge is running.
+- AnkiConnect access: preferred when AnkiConnect or a compatible local bridge is running.
 - Anki package: fallback using `.apkg` or `.colpkg`, processed locally.
 
 Connection tests show a specific state and never claim the app can start Anki or install another application automatically.

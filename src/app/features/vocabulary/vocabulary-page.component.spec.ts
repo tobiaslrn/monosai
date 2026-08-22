@@ -96,7 +96,8 @@ describe('VocabularyPageComponent', () => {
   it('offers both source paths', async () => {
     const { element } = await render();
 
-    expect(element.querySelector('[data-testid="connect-desktop"]')).not.toBeNull();
+    expect(element.querySelector('[data-testid="connect-ankiconnect"]')).not.toBeNull();
+    expect(element.querySelector('[data-testid="connect-android"]')).toBeNull();
     expect(element.querySelector('[data-testid="package-input"]')).not.toBeNull();
   });
 

@@ -201,7 +201,7 @@ export async function configureTts(page: Page): Promise<void> {
 /** Builds a real snapshot from the scripted collection. */
 export async function buildSnapshot(page: Page): Promise<void> {
   await page.goto('/#/vocabulary');
-  await page.getByRole('button', { name: 'Test desktop connection' }).click();
+  await page.getByRole('button', { name: 'Test AnkiConnect access' }).click();
   await expect(page.getByTestId('add-mapping')).toBeVisible({ timeout: 30_000 });
   await page.getByTestId('add-mapping').click();
   await page.getByTestId('start-refresh').click();
