@@ -109,7 +109,7 @@ Translation/audio batch jobs are persisted because they may be long-running. The
 
 ### Global state
 
-Limit application-wide signals to initialization, network state, active snapshot summary, grammar-profile readiness, reader preferences, install/update state, and active audio playback. Feature lists and forms remain feature-local.
+Limit application-wide signals to initialization, network state, current vocabulary summary, grammar-profile readiness, reader preferences, install/update state, and active audio playback. Feature lists and forms remain feature-local.
 
 ## 5. Internal ports
 
@@ -157,7 +157,7 @@ Repository ports use domain objects, explicit page/cursor types, and atomic use-
 2. Open Dexie and run migrations transactionally.
 3. Load settings and reader preferences.
 4. Validate language-asset manifest and initialize the worker lazily; basic navigation must not wait for the worker.
-5. Resolve active snapshot and grammar readiness.
+5. Resolve current vocabulary and grammar readiness.
 6. Register service worker in production.
 7. Resolve route/first-use destination.
 
@@ -167,7 +167,7 @@ If database initialization fails, show a recovery screen with Retry and Full res
 
 Required transactions:
 
-- Create vocabulary snapshot: snapshot, vocabulary items, source provenance, statistics; set active only after all succeed.
+- Replace current vocabulary: snapshot, vocabulary items, source provenance, and statistics; keep one stable snapshot identity and update settings only after all succeed.
 - Save imported reading: reading, paragraphs, sentences, token analyses, initial progress.
 - Save generated story: reading, captured configuration/profile/policy, paragraphs/sentences, frozen token validation, available translations/grammar review.
 - Delete reading: all owned children and assets, then repair Continue-reading pointer.
@@ -244,4 +244,3 @@ Online-only: OpenRouter tests and tasks, local Anki HTTP refresh when unavailabl
 ## 12. Observability without telemetry
 
 All diagnostics remain local and ephemeral unless naturally persisted as task status. Provide structured, redacted console logs in development only. Production error screens may show a copyable technical code and build version, never the API key, authorization header, full vocabulary, premise, reading text, or provider response body.
-

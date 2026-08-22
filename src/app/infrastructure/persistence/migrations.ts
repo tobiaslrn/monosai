@@ -22,6 +22,7 @@ export const SCHEMA_VERSIONS: readonly {
       settings: '&key',
       credentials: '&key',
       sourceMappings: '&id, providerKind, [deckName+noteTypeName]',
+      // One current row; the repository replaces it atomically on refresh.
       vocabularySnapshots: '&id, createdAt, uniqueEntryCount',
       vocabularyItems: '&id, snapshotId, [snapshotId+expressionHash]',
       vocabularyProvenance: '++id, vocabularyItemId, sourceMappingId',

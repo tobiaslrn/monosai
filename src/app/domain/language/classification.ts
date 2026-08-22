@@ -139,7 +139,7 @@ export function classifyTokens(
 }
 
 /**
- * Classifies against the active snapshot, or reports that vocabulary is not
+ * Classifies against the current snapshot, or reports that vocabulary is not
  * configured when there is none.
  */
 export function classifyAgainstSnapshot(

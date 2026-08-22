@@ -24,7 +24,7 @@ export type OwnedReadingStore = (typeof OWNED_READING_STORES)[number];
 
 /** Data a reading never owns, which deletion must leave alone. */
 export const PRESERVED_ON_DELETE: readonly string[] = [
-  'Your reviewed vocabulary snapshots',
+  'Your reviewed vocabulary',
   'Your grammar profile',
   'Your settings and saved key',
 ];

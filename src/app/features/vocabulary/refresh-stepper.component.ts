@@ -109,9 +109,9 @@ export class RefreshStepperComponent {
       case 'awaiting-confirmation':
         return `Found ${String(state.summary.stats.uniqueExpressions)} unique expressions.`;
       case 'committing':
-        return 'Saving the snapshot. This cannot be cancelled.';
+        return 'Updating current vocabulary. This cannot be cancelled.';
       case 'complete':
-        return `Saved ${String(state.snapshot.uniqueEntryCount)} unique expressions.`;
+        return `Updated ${String(state.snapshot.uniqueEntryCount)} unique expressions.`;
       case 'cancelled':
         return 'Cancelled. Nothing was saved.';
       case 'idle':

@@ -62,11 +62,13 @@ export async function openVocabulary(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Vocabulary', level: 1 })).toBeVisible();
 }
 
-/** Reads the committed vocabulary snapshots straight from IndexedDB. */
-export async function readSnapshots(page: Page): Promise<readonly { uniqueEntryCount: number }[]> {
+/** Reads the committed current vocabulary rows straight from IndexedDB. */
+export async function readSnapshots(
+  page: Page,
+): Promise<readonly { id: string; uniqueEntryCount: number }[]> {
   return page.evaluate(
     () =>
-      new Promise<{ uniqueEntryCount: number }[]>((resolve, reject) => {
+      new Promise<{ id: string; uniqueEntryCount: number }[]>((resolve, reject) => {
         const request = indexedDB.open('monosai');
         request.onerror = () => {
           reject(new Error('could not open the Monosai database'));
@@ -84,7 +86,7 @@ export async function readSnapshots(page: Page): Promise<readonly { uniqueEntryC
             .getAll();
           read.onsuccess = () => {
             db.close();
-            resolve(read.result as { uniqueEntryCount: number }[]);
+            resolve(read.result as { id: string; uniqueEntryCount: number }[]);
           };
           read.onerror = () => {
             db.close();

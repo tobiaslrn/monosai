@@ -31,7 +31,7 @@ This suite supersedes both earlier Monosai drafts wherever they conflict. The fo
 - Both story forms become available at 50 unique reviewed entries; story length is not tied to vocabulary count.
 - The grammar profile is one choice from six ordered difficulty presets carrying prose guidance, plus a register preference and an optional user-edited variant. There is no rule catalog and no per-rule selection.
 - Reader aids start enabled globally rather than opening in a natural-text-only mode.
-- Imported readings use the newest completed vocabulary snapshot. Generated stories retain their creation snapshot.
+- Imported readings use the current vocabulary snapshot. Generated stories retain the stable current-snapshot identity and their frozen validation evidence.
 - Individual readings can be deleted. Search, editing, export, backup, and sync remain excluded.
 - The bundled dictionary is a compact common-word dictionary only.
 - Whole-reading audio is fully prepared before playback; successful clips survive cancellation.
@@ -57,7 +57,7 @@ The concrete tokenizer and open grammar dataset are implementation-time dependen
 | [UX/UI specification](ux-ui-specification.md) | Navigation, screens, interactions, responsive behavior, visual system, accessibility |
 | [System architecture](system-architecture.md) | Modules, dependency rules, runtime topology, workers, offline/PWA behavior, security boundaries |
 | [Domain and data model](domain-and-data-model.md) | Canonical types, persistence schema, identity, immutability, caching, migrations |
-| [Anki and language processing](anki-and-language-processing.md) | Provider adapters, package import, snapshots, parsing, dictionary, furigana, validation |
+| [Anki and language processing](anki-and-language-processing.md) | Provider adapters, package import, current vocabulary, parsing, dictionary, furigana, validation |
 | [AI pipelines](ai-pipelines.md) | OpenRouter configuration and generation, repair, translation, grammar, exception, and TTS workflows |
 | [Testing and delivery](testing-and-delivery.md) | Test layers, fixtures, quality gates, CI, deployment, manual acceptance |
 | [Implementation roadmap](implementation-roadmap.md) | Ordered build milestones, checkpoints, and definition of done |
@@ -70,12 +70,12 @@ The concrete tokenizer and open grammar dataset are implementation-time dependen
 | Imported reading | Learner-supplied pasted text or UTF-8 text-file content. |
 | Generated story | Vocabulary-validated Japanese produced by the story pipeline. |
 | Source mapping | One explicit deck + note type + expression field selection. |
-| Vocabulary snapshot | An immutable, deduplicated set of eligible visible field values created by a refresh. |
-| Active snapshot | The newest successfully completed snapshot. Failed/cancelled refreshes never become active. |
+| Vocabulary snapshot | The one current, deduplicated set of eligible visible field values created by the latest successful refresh. |
+| Current snapshot | The single successfully completed vocabulary row. A refresh replaces it atomically; failed/cancelled refreshes leave it unchanged. |
 | Structural baseline | Versioned grammar/function material that is always allowed to form Japanese sentences. It is not starter content vocabulary. |
 | Grammar profile | The learner's device-wide difficulty preset, register preference, and optional user-edited guidance. |
 | Exception policy | One device-wide natural-language policy evaluated by AI for otherwise unknown generated vocabulary. |
-| Known | Locally validated against the story snapshot or active snapshot, as appropriate. |
+| Known | Locally validated against frozen story evidence or the current snapshot, as appropriate. |
 | Exception | Not known through Anki, but accepted by the AI exception review under the captured policy. |
 | Unknown | Not accepted by any authoritative validation category. |
 | Auxiliary aid | Translation, advisory grammar analysis, or audio. Failure does not invalidate vocabulary-valid Japanese. |
@@ -111,7 +111,6 @@ Do not silently broaden v1. If a dependency cannot satisfy its acceptance gate, 
 - Ordinary vocabulary validation is local and authoritative.
 - Color is never the sole carrier of meaning.
 - Existing accepted content stays usable through network, provider, model, and Anki outages.
-- Stored history is reproducible: generated content captures its snapshot, grammar profile, exception policy, model, and prompt-version provenance.
+- Stored history is reproducible: generated content captures its current-snapshot identity, frozen validation evidence, grammar profile, exception policy, model, and prompt-version provenance.
 - The application never displays, logs, exports, or includes the saved OpenRouter key in error reports.
 - No user content is sent anywhere except in direct response to an AI action described in the AI pipeline specification.
-

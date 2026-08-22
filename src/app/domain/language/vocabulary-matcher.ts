@@ -121,7 +121,7 @@ function longestMatch(
 }
 
 /**
- * Compiles one immutable vocabulary snapshot into the matcher used by
+ * Compiles one vocabulary snapshot result into the matcher used by
  * classification.
  *
  * Three indexes are built: exact canonical surfaces, normalized single-token

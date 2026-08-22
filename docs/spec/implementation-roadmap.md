@@ -99,7 +99,7 @@ Each milestone should leave the main branch production-buildable. Commit generat
 
 - Implement desktop and Android-compatible local HTTP adapters with read-action allowlists, timeouts, capability negotiation, runtime schemas, and typed errors.
 - Implement package worker with archive safety, supported DB/schema adapters, discovery, reviewed eligibility, and cleanup.
-- Implement provider selection, connection states, mapping editor, manual refresh stepper, results confirmation, and snapshot history.
+- Implement provider selection, connection states, mapping editor, manual refresh stepper, results confirmation, and the current-vocabulary summary.
 - Analyze literal field expressions, deduplicate exact canonicals, retain provenance, compile snapshot matcher, and activate atomically.
 - Integrate latest-snapshot classification into imported Reader.
 
@@ -107,8 +107,8 @@ Each milestone should leave the main branch production-buildable. Commit generat
 
 - Shared provider contracts and all Anki/package fixtures pass.
 - Code review proves no write action is reachable.
-- Failure/cancellation leaves active snapshot unchanged.
-- Snapshot >= 50 updates generation readiness; imported markers follow newest snapshot.
+- Failure/cancellation leaves current vocabulary unchanged.
+- Current vocabulary >= 50 updates generation readiness; imported markers follow the current vocabulary.
 
 ## 8. Milestone 6 — OpenRouter and settings
 
@@ -206,4 +206,3 @@ Do not release when any of these remain:
 ## 14. Future seams, not v1 work
 
 The defined ports and provenance support future providers, prompt profiles, larger dictionary packs, exports/backups, search, sync/backend accounts, native Android integration, and additional import formats. Do not implement placeholder UI or speculative tables for these. Add them later through migrations and new adapters when requirements exist.
-

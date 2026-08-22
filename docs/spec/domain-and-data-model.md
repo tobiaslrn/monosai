@@ -111,7 +111,7 @@ interface Token {
 
 Offsets use UTF-16 code units because they index JavaScript strings. Tests must include surrogate pairs and combining marks. The rendered sentence is reconstructed from untouched source slices; token output may not silently drop characters.
 
-### Vocabulary snapshots
+### Current vocabulary snapshot
 
 ```ts
 interface VocabularySnapshot {
@@ -145,7 +145,7 @@ interface VocabularyProvenance {
 }
 ```
 
-Snapshots are append-only. A failed refresh is represented by a transient refresh job, not a snapshot row with an incomplete status. Active snapshot identity is stored in settings and changed in the creation transaction.
+There is one current snapshot row. A successful refresh replaces that row, its items, and its provenance atomically while reusing the current snapshot identity, so generated stories keep a stable link. A failed refresh is represented by a transient refresh job, not a snapshot row with an incomplete status. Current snapshot identity is stored in settings and changed in the replacement transaction.
 
 ### Grammar
 
@@ -217,7 +217,7 @@ interface FrozenSentenceValidation {
 }
 ```
 
-Imported status is derived/cached against the active snapshot and uses `not-in-snapshot`, never a generated-story acceptance error. Generated status is frozen and uses `unknown` only for unsaved drafts; accepted generated rows cannot contain that category.
+Imported status is derived/cached against the current snapshot and uses `not-in-snapshot`, never a generated-story acceptance error. Generated status is frozen and uses `unknown` only for unsaved drafts; accepted generated rows cannot contain that category.
 
 ### Enrichment and provenance
 
@@ -380,7 +380,7 @@ Delete reading cascade:
 1. Stop/cancel active jobs and playback for reading.
 2. Delete audio, translations, grammar analyses, validations, token analyses, sentences, paragraphs, progress, generation provenance/profile captures owned only by the reading, and the reading row.
 3. Recompute Continue-reading pointer.
-4. Leave vocabulary snapshots, the global grammar profile, source mappings, settings, and credentials.
+4. Leave the current vocabulary, the global grammar profile, source mappings, settings, and credentials.
 
 Clear audio deletes all audio blobs and audio jobs, resets reading audio summaries, and stops playback. Full reset deletes the database and application Cache Storage after confirmations.
 
@@ -402,7 +402,7 @@ Required semantic methods include:
 - Reading graph loading by paragraph window and sentence details.
 - Reading deletion and progress update.
 - Source mapping CRUD and refresh configuration validation.
-- Atomic snapshot commit/list/active resolution.
+- Atomic current-vocabulary replacement/list/current resolution.
 - Vocabulary matcher input streaming by snapshot rather than a monolithic UI array.
 - Live grammar profile CRUD/capture/hash.
 - Translation/grammar/audio get-by-current-key, store idempotently, and summarize.
@@ -420,4 +420,3 @@ Repository implementations translate storage failures into `StorageError` varian
 - Imported readings can exist with no vocabulary snapshot and no AI configuration.
 - Deleting any reading produces zero owned orphan rows in integrity tests.
 - Simulated quota failures leave the previously committed state intact and report whether partial batch assets were committed before the failure.
-

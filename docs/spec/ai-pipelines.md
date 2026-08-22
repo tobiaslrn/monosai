@@ -109,7 +109,7 @@ Any cancellable state may transition to `cancelled`; cancelled generations persi
 
 ### Prerequisite check
 
-Require tested text configuration, active snapshot >= 50 unique entries, nonempty grammar profile, and valid premise. Capture snapshot, grammar profile, structural baseline, exception policy, model ID, and prompt versions before the first request. Later setting changes do not affect the active job.
+Require tested text configuration, current snapshot >= 50 unique entries, nonempty grammar profile, and valid premise. Capture the current snapshot identity, grammar profile, structural baseline, exception policy, model ID, and prompt versions before the first request. Later setting changes do not affect the active job.
 
 ### Writing and structural checks
 

@@ -79,7 +79,7 @@ describe('VocabularyPageComponent', () => {
       'Where your vocabulary comes from',
       'Which decks and fields to read',
       'Refresh',
-      'Snapshots',
+      'Current vocabulary',
     ]);
   });
 
@@ -172,15 +172,15 @@ describe('VocabularyPageComponent', () => {
     const alert = element.querySelector('[role="alert"]');
 
     expect(alert?.textContent).toContain('Anki refused this address');
-    expect(alert?.textContent).toContain('still active');
+    expect(alert?.textContent).toContain('still current');
     expect(alert?.textContent).toContain('package');
     expect(alert?.textContent).toContain('anki/origin-not-allowed');
   });
 
-  it('shows an empty snapshot history before any refresh', async () => {
+  it('shows an empty current vocabulary state before any refresh', async () => {
     const { element } = await render();
-    expect(text(element, '[data-testid="snapshot-history"]')).toContain(
-      'No vocabulary snapshots yet',
+    expect(text(element, '[data-testid="current-snapshot"]')).toContain(
+      'No vocabulary snapshot yet',
     );
   });
 });

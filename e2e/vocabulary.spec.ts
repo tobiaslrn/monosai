@@ -34,12 +34,14 @@ test.describe('vocabulary', () => {
     await expect(page.getByTestId('mapping-locked')).toBeVisible();
     await expect(page.getByTestId('start-refresh')).toBeDisabled();
     await expect(page.getByTestId('refresh-blocked')).toContainText('Connect to a vocabulary');
-    await expect(page.getByTestId('snapshot-history')).toContainText('No vocabulary snapshots yet');
+    await expect(page.getByTestId('current-snapshot')).toContainText('No vocabulary snapshot yet');
 
     await expectNoSeriousAccessibilityViolations(page);
   });
 
-  test('imports a package, maps a field, and saves a snapshot', async ({ page }) => {
+  test('imports a package, maps a field, and stores one current vocabulary row', async ({
+    page,
+  }) => {
     // Opening a package starts a worker and loads SQLite, and the refresh
     // tokenizes every expression, so this needs more than the default budget.
     test.setTimeout(120_000);
@@ -62,18 +64,31 @@ test.describe('vocabulary', () => {
     expect(await readSnapshots(page)).toHaveLength(0);
 
     await page.getByTestId('confirm-refresh').click();
-    await expect(page.getByTestId('snapshot-history')).toContainText('Active', {
+    await expect(page.getByTestId('current-snapshot')).toContainText('Current', {
       timeout: 30_000,
     });
 
     const snapshots = await readSnapshots(page);
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0].uniqueEntryCount).toBe(4);
+    const firstSnapshotId = snapshots[0].id;
+
+    await page.getByTestId('start-refresh').click();
+    await expect(page.getByTestId('confirm-refresh')).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('confirm-refresh').click();
+    await expect(page.getByTestId('current-snapshot')).toContainText('Current', {
+      timeout: 30_000,
+    });
+
+    const replaced = await readSnapshots(page);
+    expect(replaced).toHaveLength(1);
+    expect(replaced[0].id).toBe(firstSnapshotId);
+    expect(replaced[0].uniqueEntryCount).toBe(4);
 
     await expectNoSeriousAccessibilityViolations(page);
   });
 
-  test('discards a prepared snapshot without saving it', async ({ page }) => {
+  test('discards a prepared refresh without changing vocabulary', async ({ page }) => {
     await openVocabulary(page);
     await connectPackage(page, CONTRACT_PACKAGE);
     await page.getByTestId('add-mapping').click();
@@ -107,7 +122,7 @@ test.describe('vocabulary', () => {
 
     const alert = page.getByRole('alert');
     await expect(alert).toContainText('no review history', { timeout: 30_000 });
-    await expect(alert).toContainText('still active');
+    await expect(alert).toContainText('still current');
     await expect(alert).toContainText('anki/package-review-data-missing');
 
     await expectNoSeriousAccessibilityViolations(page);
@@ -123,7 +138,7 @@ test.describe('vocabulary', () => {
 
     const alert = page.getByRole('alert');
     await expect(alert).toContainText('Anki', { timeout: 30_000 });
-    await expect(alert).toContainText('still active');
+    await expect(alert).toContainText('still current');
     expect(await readSnapshots(page)).toHaveLength(0);
   });
 
@@ -161,7 +176,7 @@ test.describe('vocabulary', () => {
     await expect(page.getByTestId('confirm-refresh')).toBeVisible({ timeout: 30_000 });
     await page.getByTestId('confirm-refresh').click();
 
-    await expect(page.getByTestId('snapshot-history')).toContainText('Active', {
+    await expect(page.getByTestId('current-snapshot')).toContainText('Current', {
       timeout: 30_000,
     });
     const snapshots = await readSnapshots(page);
@@ -169,7 +184,9 @@ test.describe('vocabulary', () => {
     expect(snapshots[0].uniqueEntryCount).toBe(1);
   });
 
-  test('leaves known words unmarked in the reader once a snapshot is active', async ({ page }) => {
+  test('leaves known words unmarked in the reader once current vocabulary is ready', async ({
+    page,
+  }) => {
     // An import and a full refresh in one test, each of which loads a worker.
     test.setTimeout(180_000);
     await importReading(page, 'ねこを見る。');
@@ -182,7 +199,7 @@ test.describe('vocabulary', () => {
     await page.getByTestId('start-refresh').click();
     await expect(page.getByTestId('confirm-refresh')).toBeVisible({ timeout: 30_000 });
     await page.getByTestId('confirm-refresh').click();
-    await expect(page.getByTestId('snapshot-history')).toContainText('Active', {
+    await expect(page.getByTestId('current-snapshot')).toContainText('Current', {
       timeout: 30_000,
     });
 
@@ -191,7 +208,7 @@ test.describe('vocabulary', () => {
     await page.goto(readerUrl);
     await expect(page.getByText('no reviewed Anki vocabulary is set up')).toHaveCount(0);
 
-    // ねこ and 見る both came from the snapshot, and the reader marks warnings
+    // ねこ and 見る both came from the current vocabulary, and the reader marks warnings
     // only: a word the learner has reviewed is simply text, and nothing about
     // its status is worth printing anywhere, on the page or in word details.
     const known = page.getByRole('button', { name: /ねこ/ }).first();
