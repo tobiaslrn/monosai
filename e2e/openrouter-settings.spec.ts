@@ -55,6 +55,23 @@ test.describe('OpenRouter key', () => {
 });
 
 test.describe('text model test', () => {
+  test('saves and restores the story reasoning/output budget', async ({ page }) => {
+    await page.goto('/#/settings');
+
+    const budget = page.getByTestId('story-token-budget-input');
+    await expect(budget).toHaveValue('16384');
+
+    await budget.fill('24576');
+    await page.getByTestId('save-story-token-budget').click();
+
+    await expect(page.getByTestId('story-token-budget-state')).toContainText('Saved: 24,576');
+    await expectSettingPersisted(page, 'text-model', 'storyTokenBudget', 24576);
+
+    await page.reload();
+
+    await expect(page.getByTestId('story-token-budget-input')).toHaveValue('24576');
+  });
+
   test('passes and stays ready across a reload', async ({ page }) => {
     await stubOpenRouter(page);
     await page.goto('/#/settings');

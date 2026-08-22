@@ -579,6 +579,7 @@ export class GenerationStore {
           modelId: settings.modelId,
           structuredOutput,
           reasoningEffort: settings.reasoningEffort,
+          storyTokenBudget: settings.storyTokenBudget,
         },
       },
     };

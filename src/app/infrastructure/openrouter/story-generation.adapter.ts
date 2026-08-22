@@ -15,6 +15,7 @@ import type {
   StoryRepairRequest,
   TextTaskConfig,
 } from '../../domain/ai/text-generation-provider';
+import { DEFAULT_STORY_TOKEN_BUDGET } from '../../domain/settings/settings';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { OpenRouterClient } from './openrouter-client';
 import {
@@ -31,11 +32,11 @@ import { StructuredTaskRunner } from './structured-request';
 /**
  * Reply budgets.
  *
- * Generous enough for the longest supported form and its title, tight enough
- * that a model which starts explaining itself is cut off rather than billed for
- * a page of prose.
+ * Generous enough for the longest supported form and its title, while still
+ * bounded by the learner-controlled setting. The default leaves room for
+ * reasoning models to finish their JSON instead of using the whole budget on
+ * hidden reasoning.
  */
-const MAX_STORY_TOKENS = 4_096;
 const MAX_REVIEW_TOKENS = 2_048;
 
 /**
@@ -66,7 +67,7 @@ export class OpenRouterStoryGenerator {
       config,
       prompt: buildStoryPrompt(request),
       jsonSchema: STORY_CANDIDATE_JSON_SCHEMA,
-      maxTokens: MAX_STORY_TOKENS,
+      maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
       read: storyReader(request.sentenceRange),
       ...(signal === undefined ? {} : { signal }),
     });
@@ -82,7 +83,7 @@ export class OpenRouterStoryGenerator {
       config,
       prompt: buildRepairPrompt(request),
       jsonSchema: STORY_CANDIDATE_JSON_SCHEMA,
-      maxTokens: MAX_STORY_TOKENS,
+      maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
       read: storyReader(request.original.sentenceRange),
       ...(signal === undefined ? {} : { signal }),
     });

@@ -453,6 +453,7 @@ readiness, errors, and retry actions remain visible.
 
 - API key entry, Save/Replace, Remove, and configured/not-configured indicator. Never show the saved value or a reveal toggle after save.
 - Exact text-model ID and Test configuration.
+- Story generation token budget (4,096–32,768, default 16,384), described as covering hidden reasoning and the visible structured reply.
 - Changing key/model marks the test stale but preserves cached content.
 
 ### Voice (optional)
