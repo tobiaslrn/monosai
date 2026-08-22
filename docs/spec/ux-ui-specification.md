@@ -97,10 +97,12 @@ Exact final colors may be tuned only to meet contrast. Do not use semantic token
 
 ### Layout
 
-Desktop: the page centres itself within the shared content width. The header
-(title plus the Settings gear) comes first, then **New reading**, then the
-cards in a responsive grid that fills the available width
-(`repeat(auto-fill, minmax(260px, 1fr))`).
+Desktop: the page centres itself within a wide shelf measure. The Library
+header carries the small Monosai mark and wordmark before the page title, with
+the Settings gear in the trailing slot. **New reading** comes next, followed
+by cards in a responsive three-column shelf that fills the available width
+(`repeat(auto-fill, minmax(300px, 1fr))`). The lockup is Library chrome only;
+it does not enter the Reader.
 
 Mobile: single column, same order.
 

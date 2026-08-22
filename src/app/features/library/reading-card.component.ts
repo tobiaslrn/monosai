@@ -74,10 +74,12 @@ import { relativeDay } from '../../shared-ui/reading-summary/reading-summary-lab
       flex-direction: column;
       gap: var(--space-2);
       height: 100%;
-      padding: var(--space-4);
+      min-height: 272px;
+      padding: var(--space-5);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-card);
       background: var(--surface-panel);
+      box-shadow: var(--shadow-raised);
     }
 
     .head {
@@ -89,7 +91,9 @@ import { relativeDay } from '../../shared-ui/reading-summary/reading-summary-lab
 
     h3 {
       margin: 0;
-      font-size: var(--text-lg);
+      font-family: var(--font-japanese);
+      font-size: 20px;
+      line-height: 1.35;
     }
 
     h3 a {
@@ -113,7 +117,8 @@ import { relativeDay } from '../../shared-ui/reading-summary/reading-summary-lab
       overflow: hidden;
       color: var(--text-secondary);
       font-family: var(--font-japanese);
-      line-height: 1.7;
+      font-size: var(--text-md);
+      line-height: 1.8;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 3;
     }
