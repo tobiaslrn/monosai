@@ -157,7 +157,7 @@ export class GenerationStepperComponent {
       case 'preparing':
         return 'Reading your reviewed vocabulary…';
       case 'writing':
-        return 'The model is writing Japanese. This is the slowest step.';
+        return 'Writing your story. This is the slowest step.';
       case 'parsing':
         return 'Reading the story back…';
       case 'validating':

@@ -32,12 +32,14 @@ import { IconComponent } from '../icon/icon.component';
       display: flex;
       gap: var(--space-3);
       align-items: center;
+      min-height: var(--touch-target);
       min-width: 0;
     }
 
     h1 {
       flex: 1;
       min-width: 0;
+      margin: 0;
       overflow: hidden;
       font-size: 26px;
       white-space: nowrap;
@@ -49,6 +51,16 @@ import { IconComponent } from '../icon/icon.component';
       flex: none;
       gap: var(--space-2);
       align-items: center;
+    }
+
+    @media (max-width: 600px) {
+      .head {
+        gap: var(--space-2);
+      }
+
+      h1 {
+        font-size: 24px;
+      }
     }
   `,
 })

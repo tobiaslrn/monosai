@@ -46,4 +46,16 @@ test.describe('application shell', () => {
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   });
+
+  test('keeps the Library identity and Settings action usable at 320px', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/#/library');
+
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
+    await expect(page.locator('.wordmark')).toBeHidden();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
+  });
 });

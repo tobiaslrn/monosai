@@ -7,7 +7,7 @@ describe('generationWaitCopy', () => {
     expect(generationWaitCopy({ kind: 'writing' })).toEqual({
       key: 'writing',
       title: 'Generating your story',
-      detail: 'The model is writing the Japanese. This is usually the longest step.',
+      detail: 'Writing your story. This is usually the longest step.',
     });
   });
 
