@@ -2,7 +2,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sha256 } from '../assets/lib/fs-json.mjs';
-import { ICON_TARGETS, ICONS_OUTPUT_DIR, MARK_SOURCE_PATH } from './lib/layout.mjs';
+import { FAVICON_PATH, ICON_TARGETS, ICONS_OUTPUT_DIR, MARK_SOURCE_PATH } from './lib/layout.mjs';
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const MIN_BYTES = 200;
@@ -18,6 +18,22 @@ function readPngDimensions(buffer) {
     return null;
   }
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+
+function readIcoPng(buffer) {
+  if (buffer.length < 22 || buffer.readUInt16LE(0) !== 0 || buffer.readUInt16LE(2) !== 1) {
+    return null;
+  }
+  const count = buffer.readUInt16LE(4);
+  if (count < 1) {
+    return null;
+  }
+  const size = buffer.readUInt32LE(14);
+  const offset = buffer.readUInt32LE(18);
+  if (offset + size > buffer.length) {
+    return null;
+  }
+  return buffer.subarray(offset, offset + size);
 }
 
 /**
@@ -62,6 +78,17 @@ async function main() {
       failures.push(
         `${target.file} is ${dims.width}x${dims.height}, expected ${target.size}x${target.size}`,
       );
+    }
+  }
+
+  const favicon = await readFile(FAVICON_PATH).catch(() => null);
+  if (favicon === null) {
+    failures.push('public/favicon.ico is missing; run npm run icons:build');
+  } else {
+    const faviconPng = readIcoPng(favicon);
+    const dims = faviconPng === null ? null : readPngDimensions(faviconPng);
+    if (dims?.width !== 32 || dims.height !== 32) {
+      failures.push('public/favicon.ico does not contain a valid 32x32 PNG payload');
     }
   }
 
