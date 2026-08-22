@@ -33,6 +33,8 @@ import { DexieReadingRepository } from './repositories/dexie-reading.repository'
 import { DexieSettingsRepository } from './repositories/dexie-settings.repository';
 import { DexieSourceMappingRepository } from './repositories/dexie-source-mapping.repository';
 import { DexieVocabularyRepository } from './repositories/dexie-vocabulary.repository';
+import { configureStorageLogger } from './repositories/storage-operation';
+import { LOGGER, type Logger } from '../../application/shared/diagnostics';
 
 const cryptoIdGenerator: IdGenerator = {
   nextId: () => crypto.randomUUID(),
@@ -70,7 +72,14 @@ export function providePersistence(): Provider[] {
     { provide: HASHER, useValue: sha256Hasher },
     { provide: ID_GENERATOR, useValue: cryptoIdGenerator },
     { provide: RANDOM_SOURCE, useValue: cryptoRandomSource },
-    { provide: MonosaiDatabase, useFactory: () => new MonosaiDatabase() },
+    {
+      provide: MonosaiDatabase,
+      useFactory: () => {
+        const logger = inject<Logger>(LOGGER);
+        configureStorageLogger(logger);
+        return new MonosaiDatabase(undefined, logger);
+      },
+    },
     {
       provide: SETTINGS_REPOSITORY,
       useFactory: () => new DexieSettingsRepository(inject(MonosaiDatabase), inject<Clock>(CLOCK)),
@@ -113,6 +122,7 @@ export function providePersistence(): Provider[] {
           inject(MonosaiDatabase),
           dependencies.navigatorRef,
           dependencies.caches,
+          inject<Logger>(LOGGER),
         );
       },
     },

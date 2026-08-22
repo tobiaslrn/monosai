@@ -14,6 +14,23 @@ No failure covered here ever affects a reading, a snapshot, or a saved
 setting unless stated otherwise: every configuration test and every provider
 call writes nothing until it fully succeeds.
 
+## Diagnostics logs
+
+Settings → **Diagnostics** contains a temporary, redacted log buffer for the
+current browser tab. **Copy diagnostics** copies newline-delimited JSON that
+can be attached to a bug report; **Clear diagnostics** removes it. Reloading
+the page also clears the buffer. The logs are emitted to the browser console in
+both development and production, but Monosai does not upload them or store
+them in IndexedDB.
+
+Production records `info`, `warn`, and `error` events. Development additionally
+records `debug` events. Entries contain only operational metadata such as the
+task, model ID, operation, status, retry count, build identity, schema or asset
+version, and stable error code. They never contain API keys, authorization
+headers, prompts, request bodies, provider response bodies, vocabulary,
+premises, or reading text. If a failure screen shows a technical code, include
+that code and the copied diagnostics when reporting the issue.
+
 ## `ai/*` — OpenRouter (text generation, translation, grammar, TTS)
 
 | Code | Cause | Recovery |

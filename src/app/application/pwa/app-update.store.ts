@@ -5,6 +5,7 @@ import {
   type AppUpdateEvent,
 } from '../../domain/platform/app-update.port';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
+import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 
 /** How a failed check or activation should be recovered from. */
 export type AppUpdateRecovery = 'retry' | 'reload';
@@ -36,6 +37,7 @@ export class AppUpdateStore {
   private readonly busy = inject(AppBusyRegistry);
   private readonly reload = inject(APP_RELOAD);
   private readonly view = inject(DOCUMENT).defaultView;
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly statusSignal = signal<AppUpdateStatus>(IDLE);
 
@@ -68,6 +70,11 @@ export class AppUpdateStore {
   async check(): Promise<void> {
     const result = await this.checker.check();
     if (!result.ok) {
+      this.logger.warn('pwa.update.failed', {
+        action: 'check',
+        errorCode: 'check-failed',
+        recovery: 'retry',
+      });
       this.statusSignal.set({ kind: 'failed', message: result.error.message, recovery: 'retry' });
     }
   }
@@ -85,6 +92,11 @@ export class AppUpdateStore {
     this.statusSignal.set({ kind: 'activating' });
     const result = await this.checker.activate();
     if (!result.ok) {
+      this.logger.warn('pwa.update.failed', {
+        action: 'activate',
+        errorCode: 'activation-failed',
+        recovery: 'retry',
+      });
       this.statusSignal.set({ kind: 'failed', message: result.error.message, recovery: 'retry' });
       return;
     }
@@ -113,15 +125,27 @@ export class AppUpdateStore {
   private onEvent(event: AppUpdateEvent): void {
     switch (event.kind) {
       case 'unsupported':
+        this.logger.debug('pwa.update.unsupported');
         this.statusSignal.set({ kind: 'unsupported' });
         return;
       case 'ready':
+        this.logger.info('pwa.update.available');
         this.statusSignal.set({ kind: 'available' });
         return;
       case 'installation-failed':
+        this.logger.error('pwa.update.failed', {
+          action: 'install',
+          errorCode: 'installation-failed',
+          recovery: 'reload',
+        });
         this.statusSignal.set({ kind: 'failed', message: event.reason, recovery: 'reload' });
         return;
       case 'unrecoverable':
+        this.logger.error('pwa.update.failed', {
+          action: 'runtime',
+          errorCode: 'unrecoverable',
+          recovery: 'reload',
+        });
         this.statusSignal.set({ kind: 'failed', message: event.reason, recovery: 'reload' });
         return;
     }

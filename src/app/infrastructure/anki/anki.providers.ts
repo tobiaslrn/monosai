@@ -1,4 +1,5 @@
 import { DOCUMENT, inject, type Provider } from '@angular/core';
+import { LOGGER, type Logger } from '../../application/shared/diagnostics';
 import {
   ANKI_PROVIDER_FACTORY,
   MARKUP_TEXT_EXTRACTOR,
@@ -31,15 +32,20 @@ function sqliteWasmUrl(baseUri: string): string {
 export function createPackageProvider(
   source: PackageSource,
   baseUri: string,
+  logger?: Logger,
 ): AnkiVocabularyProvider {
   const worker = new Worker(new URL('../../../workers/package/package.worker', import.meta.url), {
     type: 'module',
     name: 'monosai-package',
   });
   return new PackageProviderAdapter(
-    new PackageWorkerClient(packageWorkerChannel(worker)),
+    new PackageWorkerClient(
+      packageWorkerChannel(worker, () => logger?.error('worker.failed', { worker: 'package' })),
+      logger,
+    ),
     source,
     sqliteWasmUrl(baseUri),
+    logger,
   );
 }
 
@@ -62,7 +68,8 @@ export function provideAnki(): Provider[] {
       provide: PACKAGE_PROVIDER_FACTORY,
       useFactory: (): PackageProviderFactory => {
         const documentRef = inject(DOCUMENT);
-        return (source) => createPackageProvider(source, documentRef.baseURI);
+        const logger = inject<Logger>(LOGGER);
+        return (source) => createPackageProvider(source, documentRef.baseURI, logger);
       },
     },
     {
@@ -71,6 +78,7 @@ export function provideAnki(): Provider[] {
         const documentRef = inject(DOCUMENT);
         const pageOrigin = documentRef.defaultView?.location.origin ?? documentRef.baseURI;
         const fetchFn: typeof fetch = (input, init) => fetch(input, init);
+        const logger = inject<Logger>(LOGGER);
 
         return (kind) =>
           kind === 'android-connect'
@@ -80,6 +88,7 @@ export function provideAnki(): Provider[] {
                   fetchFn,
                   pageOrigin,
                   unreachableCode: 'bridge-not-running',
+                  logger,
                 }),
               )
             : new DesktopConnectAdapter(
@@ -88,6 +97,7 @@ export function provideAnki(): Provider[] {
                   fetchFn,
                   pageOrigin,
                   unreachableCode: 'not-running',
+                  logger,
                 }),
               );
       },

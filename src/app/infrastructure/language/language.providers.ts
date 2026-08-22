@@ -1,4 +1,5 @@
 import { DOCUMENT, inject, type Provider } from '@angular/core';
+import { LOGGER, type Logger } from '../../application/shared/diagnostics';
 import { LANGUAGE_ASSET_SOURCE, LANGUAGE_RUNTIME } from '../../application/shared/language-tokens';
 import { HttpLanguageAssetSource } from './http-language-asset.source';
 import { LanguageWorkerClient, workerChannel } from './language-worker.client';
@@ -30,14 +31,19 @@ export function provideLanguage(): Provider[] {
     {
       provide: LANGUAGE_RUNTIME,
       useFactory: () =>
-        new LanguageWorkerClient(
-          workerChannel(
-            new Worker(new URL('../../../workers/language/language.worker', import.meta.url), {
-              type: 'module',
-              name: 'monosai-language',
+        (() => {
+          const logger = inject<Logger>(LOGGER);
+          const worker = new Worker(
+            new URL('../../../workers/language/language.worker', import.meta.url),
+            { type: 'module', name: 'monosai-language' },
+          );
+          return new LanguageWorkerClient(
+            workerChannel(worker, () => {
+              logger.error('worker.failed', { worker: 'language' });
             }),
-          ),
-        ),
+            logger,
+          );
+        })(),
     },
   ];
 }

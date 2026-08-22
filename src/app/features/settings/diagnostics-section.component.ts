@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { DATABASE_SCHEMA_VERSION } from '../../application/shared/repository-tokens';
 import {
   AI_ENDPOINT_VERSION,
@@ -7,6 +8,7 @@ import {
 } from '../../domain/ai/configuration-fingerprint';
 import { EXCEPTION_PROMPT_VERSION } from '../../domain/ai/exception-policy-hash';
 import { readBuildInfo } from '../../core/diagnostics/build-info';
+import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnostics';
 
 /** Local build identity. Never contains user content or credentials. */
 @Component({
@@ -16,6 +18,23 @@ import { readBuildInfo } from '../../core/diagnostics/build-info';
     <section class="mn-panel" aria-labelledby="mn-diagnostics-heading">
       <h2 id="mn-diagnostics-heading">Diagnostics</h2>
       <p class="mn-hint">For troubleshooting only.</p>
+      <p class="mn-hint">
+        Logs stay in this browser tab, are cleared when the page reloads, and never include your API
+        key or reading content.
+      </p>
+      <div class="actions">
+        <button type="button" class="mn-button" (click)="copyDiagnostics()">
+          Copy diagnostics
+        </button>
+        <button type="button" class="mn-button" (click)="clearDiagnostics()">
+          Clear diagnostics
+        </button>
+      </div>
+      @if (copyStatus() === 'copied') {
+        <p class="status" role="status">Diagnostics copied.</p>
+      } @else if (copyStatus() === 'failed') {
+        <p class="status" role="status">Diagnostics could not be copied on this browser.</p>
+      }
       <details>
         <summary>Show build details</summary>
         <dl>
@@ -46,6 +65,16 @@ import { readBuildInfo } from '../../core/diagnostics/build-info';
   styles: `
     p {
       margin: 0;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .status {
+      color: var(--text-secondary);
     }
 
     summary {
@@ -82,9 +111,36 @@ import { readBuildInfo } from '../../core/diagnostics/build-info';
   `,
 })
 export class DiagnosticsSectionComponent {
+  private readonly documentRef = inject(DOCUMENT);
+  private readonly logger = inject(LOGGER);
+  protected readonly copyStatus = signal<'idle' | 'copied' | 'failed'>('idle');
   protected readonly build = readBuildInfo();
   protected readonly schemaVersion = inject(DATABASE_SCHEMA_VERSION);
   protected readonly endpointVersion = AI_ENDPOINT_VERSION;
   /** Versions of the internal prompt assets, so a report can name what ran. */
   protected readonly promptVersions = `text-test ${String(TEXT_MODEL_TEST_VERSION)} · tts-test ${String(TTS_TEST_VERSION)} · exception ${String(EXCEPTION_PROMPT_VERSION)}`;
+
+  protected async copyDiagnostics(): Promise<void> {
+    const clipboard = this.documentRef.defaultView?.navigator.clipboard;
+    if (clipboard === undefined) {
+      this.logger.warn('diagnostics.copy.failed');
+      this.copyStatus.set('failed');
+      return;
+    }
+
+    const entries = this.logger.snapshot();
+    try {
+      await clipboard.writeText(serializeDiagnostics(entries));
+      this.logger.info('diagnostics.copy.succeeded', { count: entries.length });
+      this.copyStatus.set('copied');
+    } catch {
+      this.logger.warn('diagnostics.copy.failed');
+      this.copyStatus.set('failed');
+    }
+  }
+
+  protected clearDiagnostics(): void {
+    this.logger.clear();
+    this.copyStatus.set('idle');
+  }
 }

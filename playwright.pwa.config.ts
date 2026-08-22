@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { env } from 'node:process';
 
 const PORT = 4300;
 const BASE_URL = `http://127.0.0.1:${PORT}/monosai/`;
@@ -15,10 +16,10 @@ const BASE_URL = `http://127.0.0.1:${PORT}/monosai/`;
 export default defineConfig({
   testDir: './e2e-pwa',
   fullyParallel: true,
-  forbidOnly: !!process.env['CI'],
-  retries: process.env['CI'] ? 2 : 0,
-  workers: process.env['CI'] ? 1 : undefined,
-  reporter: process.env['CI'] ? [['github'], ['html', { open: 'never' }]] : [['list']],
+  forbidOnly: !!env.CI,
+  retries: env.CI ? 2 : 0,
+  workers: env.CI ? 1 : undefined,
+  reporter: env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
@@ -37,7 +38,7 @@ export default defineConfig({
     command: 'npm run build:pages && npm run serve-dist',
     env: { PORT: String(PORT) },
     url: BASE_URL,
-    reuseExistingServer: !process.env['CI'],
+    reuseExistingServer: !env.CI,
     timeout: 300_000,
   },
 });

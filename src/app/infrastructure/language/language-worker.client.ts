@@ -17,6 +17,7 @@ import type { LanguageAssetManifest } from '../../domain/language/language-asset
 import type { SentenceSegment } from '../../domain/language/segmentation';
 import type { VocabularyItem } from '../../domain/vocabulary/snapshot';
 import { err, ok, type Result } from '../../domain/shared/result';
+import type { Logger } from '../../application/shared/diagnostics';
 import {
   LANGUAGE_PROTOCOL_VERSION,
   type LanguageRequest,
@@ -69,7 +70,10 @@ export class LanguageWorkerClient implements LanguageRuntime {
   private readonly unsubscribe: () => void;
   private disposed = false;
 
-  constructor(private readonly channel: LanguageWorkerChannel) {
+  constructor(
+    private readonly channel: LanguageWorkerChannel,
+    private readonly logger?: Logger,
+  ) {
     this.unsubscribe = channel.subscribe((data) => {
       this.receive(data);
     });
@@ -150,15 +154,21 @@ export class LanguageWorkerClient implements LanguageRuntime {
     type Value = ResultFor<TOperation>;
 
     if (this.disposed) {
+      this.logger?.error('language.operation.failed', {
+        operation,
+        errorCode: 'worker-unavailable',
+      });
       return Promise.resolve(
         err(languageError('worker-unavailable', 'The language worker is not running.')),
       );
     }
     if (signal?.aborted === true) {
+      this.logger?.debug('language.operation.failed', { operation, errorCode: 'cancelled' });
       return Promise.resolve(err(languageError('cancelled', 'The request was cancelled.')));
     }
 
     const requestId = nextRequestId();
+    this.logger?.debug('language.operation.started', { operation });
     return new Promise<Result<Value, LanguageError>>((resolve) => {
       let settled = false;
       const finish = (outcome: Result<Value, LanguageError>): void => {
@@ -186,13 +196,22 @@ export class LanguageWorkerClient implements LanguageRuntime {
         operation,
         settle: (outcome) => {
           if (!outcome.ok) {
+            this.logger?.error('language.operation.failed', {
+              operation,
+              errorCode: outcome.error.code,
+            });
             finish(err(outcome.error));
             return;
           }
           if (outcome.value.operation !== operation) {
+            this.logger?.error('language.operation.failed', {
+              operation,
+              errorCode: 'invalid-response',
+            });
             finish(err(unexpectedResult(outcome.value.operation)));
             return;
           }
+          this.logger?.debug('language.operation.succeeded', { operation });
           finish(ok(outcome.value.value as Value));
         },
       });
@@ -236,7 +255,10 @@ export class LanguageWorkerClient implements LanguageRuntime {
 }
 
 /** Wraps a real `Worker` as a channel. */
-export function workerChannel(worker: Worker): LanguageWorkerChannel {
+export function workerChannel(worker: Worker, onError?: () => void): LanguageWorkerChannel {
+  if (onError !== undefined) {
+    worker.addEventListener('error', onError);
+  }
   return {
     post: (message) => {
       worker.postMessage(message);
@@ -251,6 +273,9 @@ export function workerChannel(worker: Worker): LanguageWorkerChannel {
       };
     },
     terminate: () => {
+      if (onError !== undefined) {
+        worker.removeEventListener('error', onError);
+      }
       worker.terminate();
     },
   };

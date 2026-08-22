@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/router';
+import { filter, map, tap } from 'rxjs';
+import { LOGGER, NOOP_LOGGER, type Logger } from '../../application/shared/diagnostics';
+import { safeErrorTypeOf } from '../../domain/shared/errors';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AppUpdateBannerComponent } from './app-update-banner.component';
 import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.component';
@@ -55,6 +57,7 @@ import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.componen
 })
 export class AppShellComponent {
   private readonly router = inject(Router);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
   // Injected here, not just by the banner, so the update store's subscriptions
   // and timers start with the app shell rather than only if the banner
   // happens to render first.
@@ -67,6 +70,13 @@ export class AppShellComponent {
    */
   private readonly url = toSignal(
     this.router.events.pipe(
+      tap((event) => {
+        if (event instanceof NavigationError) {
+          this.logger.error('app.route.navigation.failed', {
+            errorType: safeErrorTypeOf(event.error),
+          });
+        }
+      }),
       filter((event) => event instanceof NavigationEnd),
       map((event) => event.urlAfterRedirects),
     ),

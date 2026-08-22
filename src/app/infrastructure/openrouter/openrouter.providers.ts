@@ -1,4 +1,5 @@
 import { DOCUMENT, inject, type Provider } from '@angular/core';
+import { LOGGER, type Logger } from '../../application/shared/diagnostics';
 import {
   MODEL_CATALOG,
   TEXT_GENERATION_PROVIDER,
@@ -32,6 +33,7 @@ export function provideOpenRouter(): Provider[] {
     return new OpenRouterClient({
       fetchFn: (input, init) => fetch(input, init),
       credentials: inject(CREDENTIAL_REPOSITORY),
+      logger: inject<Logger>(LOGGER),
       isOnline: () => view?.navigator.onLine ?? true,
       sleep: delay,
     });

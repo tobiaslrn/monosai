@@ -1,4 +1,6 @@
-import Dexie, { type Table } from 'dexie';
+import Dexie, { type PromiseExtended, type Table } from 'dexie';
+import type { Logger } from '../../application/shared/diagnostics';
+import { safeErrorTypeOf } from '../../domain/shared/errors';
 import { applySchema } from './migrations';
 import type {
   CredentialRow,
@@ -48,8 +50,32 @@ export class MonosaiDatabase extends Dexie {
   readonly assetJobs!: Table<AssetJobRow, string>;
   readonly generationProvenance!: Table<GenerationProvenanceRow, string>;
 
-  constructor(name: string = DATABASE_NAME) {
+  constructor(
+    name: string = DATABASE_NAME,
+    private readonly logger?: Logger,
+  ) {
     super(name);
     applySchema(this);
+  }
+
+  override open(): PromiseExtended<Dexie> {
+    this.logger?.debug('storage.operation.started', { operation: 'database.open' });
+    return super.open().then(
+      () => {
+        this.logger?.info('storage.operation.succeeded', {
+          operation: 'database.open',
+          schemaVersion: this.verno,
+        });
+        return this;
+      },
+      (thrown: unknown) => {
+        this.logger?.error('storage.operation.failed', {
+          operation: 'database.open',
+          errorCode: 'open-failed',
+          errorType: safeErrorTypeOf(thrown),
+        });
+        throw thrown;
+      },
+    );
   }
 }
