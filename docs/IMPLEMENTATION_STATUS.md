@@ -73,7 +73,7 @@ states what replaced them.
 
 - Canonical domain model: readings (imported and generated), paragraphs,
   sentences, tokens and part-of-speech enum, token validation categories,
-  reading progress, vocabulary snapshots/items/provenance, source mappings,
+  reading progress, current vocabulary snapshot/items/provenance, source mappings,
   grammar rules and profile captures, enrichment records, batch jobs, settings,
   credential status, storage errors, and persistence status.
 - Domain ports for every repository, plus storage maintenance, with
@@ -83,8 +83,8 @@ states what replaced them.
   raw Dexie errors inside infrastructure.
 - Repository adapters: settings (per-concern rows), credentials, readings
   (atomic save, paragraph-window graph loading, paginated library queries,
-  cascade deletion, progress, Continue reading), vocabulary (atomic snapshot
-  commit and activation, batched item streaming, provenance), source mappings,
+  cascade deletion, progress, Continue reading), vocabulary (atomic current
+  vocabulary replacement, batched item streaming, provenance), source mappings,
   grammar (selection, custom rules, profile captures), enrichment
   (cache-key-idempotent translations, grammar analyses, audio metadata plus
   bytes, completion summaries), and batch jobs (completion, failure,
@@ -104,7 +104,7 @@ states what replaced them.
 | Requirement                                                | Evidence                                                                                                         |
 | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | Atomic create/delete/progress/snapshot/cache/job operations | `dexie-reading.repository.spec.ts`, `dexie-vocabulary.repository.spec.ts`, `dexie-enrichment.repository.spec.ts`, `dexie-job.repository.spec.ts` |
-| Quota and aborted transactions preserve prior state         | `persistence-integrity.spec.ts` — simulated `QuotaExceededError` and `AbortError` leave earlier data and the previous active snapshot intact |
+| Quota and aborted transactions preserve prior state         | `persistence-integrity.spec.ts` — simulated `QuotaExceededError` and `AbortError` leave earlier data and the previous current vocabulary intact |
 | Saved key never reaches a component, DOM, log, or diagnostic | `dexie-credential.repository.spec.ts` (status never contains the key; only `useApiKey` exposes it) and the `never exposes a saved credential in the DOM` end-to-end test |
 | Zero orphan rows after deletion                             | Cascade deletion test asserts every owned table is empty and Continue reading is repaired                        |
 | Fresh database creation and schema integrity                | `persistence-integrity.spec.ts` — monotonic versions, every required table, and no index on text, tokens, bytes, or credentials |
@@ -670,8 +670,8 @@ exist rather than by version number: normalized (schema 18) and JSON in the
 The state machine's ordering carries the guarantee. Every state before
 `committing` can be cancelled or fail without touching stored data;
 `committing` is the one non-cancellable state because it is a single
-transaction that either replaces the active snapshot or leaves it exactly as it
-was. The prepared snapshot waits for confirmation, and extracted values live
+transaction that either replaces the current vocabulary or leaves it exactly as
+it was. The prepared result waits for confirmation, and extracted values live
 only in the store.
 
 Only distinct expressions are tokenized — a deck with heavy duplication would
@@ -706,7 +706,7 @@ otherwise pay for the same analysis many times.
   that was not broken. `VocabularyClassificationService` now waits for the
   runtime, and `vocabularyNotConfigured` no longer reports a failure as an
   absent snapshot.
-- **The Active snapshot badge failed colour contrast** at 2.4:1, because it
+- **The Current snapshot badge failed colour contrast** at 2.4:1, because it
   named a `--surface-base` token that does not exist and inherited a dark
   foreground. It now uses the design system's soft pairing: 5.25:1 light,
   6.65:1 dark.

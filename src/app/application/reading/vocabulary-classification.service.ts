@@ -30,11 +30,11 @@ export type VocabularyStatus =
 export const VOCABULARY_NOT_CONFIGURED: VocabularyStatus = { kind: 'not-configured' };
 
 /**
- * Classifies reader tokens against the active vocabulary snapshot.
+ * Classifies reader tokens against the current vocabulary snapshot.
  *
- * Imported readings follow the newest snapshot, so classification is derived on
- * open rather than frozen. The compiled matcher is kept in the worker and
- * recompiled only when the active snapshot changes.
+ * Imported readings follow the current snapshot, so classification is derived
+ * on open rather than frozen. The compiled matcher is kept in the worker and
+ * recompiled only when the current snapshot changes.
  */
 @Injectable({ providedIn: 'root' })
 export class VocabularyClassificationService {
@@ -86,7 +86,7 @@ export class VocabularyClassificationService {
    * Generated stories use the `generated` mode, where a word outside the
    * snapshot is `unknown` rather than `not-in-snapshot`: an accepted story may
    * never contain a word the learner has not reviewed, so there is no
-   * "follows the newest snapshot" state for it to be in. The snapshot id is
+   * "follows the current vocabulary" state for it to be in. The snapshot id is
    * passed rather than read from settings, because a generation captures its
    * snapshot before the first request and a refresh mid-run must not change
    * what the story is judged against.

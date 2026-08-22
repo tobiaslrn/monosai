@@ -41,10 +41,11 @@ import { FakeLanguageRuntime } from './reading-fakes';
 const FIXED_NOW = 1_700_000_000_000;
 
 /**
- * An in-memory vocabulary repository that records what reached it.
+ * An in-memory vocabulary repository that records what reached it. Like the
+ * production repository, it keeps only the current vocabulary replacement.
  *
  * `commitSnapshot` can be made to fail so the tests can prove the thing that
- * matters most: a failed commit leaves the previously active snapshot exactly
+ * matters most: a failed commit leaves the previous current vocabulary exactly
  * as it was.
  */
 export class StubVocabularyRepository implements VocabularyRepository {
@@ -59,14 +60,20 @@ export class StubVocabularyRepository implements VocabularyRepository {
     this.commitCount += 1;
     if (this.commitFailure !== null) {
       // Exactly like the real transaction aborting: nothing is written and the
-      // active snapshot is untouched.
+      // The current vocabulary is untouched.
       return Promise.resolve({ ok: false, error: this.commitFailure });
     }
-    this.snapshots.push(commit.snapshot);
-    this.items.push(...commit.items);
-    this.provenance.push(...commit.provenance);
-    this.activeSnapshotId = commit.snapshot.id;
-    return Promise.resolve(ok(commit.snapshot));
+    const id = this.activeSnapshotId ?? commit.snapshot.id;
+    const snapshot = id === commit.snapshot.id ? commit.snapshot : { ...commit.snapshot, id };
+    this.snapshots.splice(0, this.snapshots.length, snapshot);
+    this.items.splice(
+      0,
+      this.items.length,
+      ...commit.items.map((item) => ({ ...item, snapshotId: id })),
+    );
+    this.provenance.splice(0, this.provenance.length, ...commit.provenance);
+    this.activeSnapshotId = id;
+    return Promise.resolve(ok(snapshot));
   }
 
   listSnapshots(): Promise<Result<readonly VocabularySnapshot[], StorageError>> {

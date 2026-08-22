@@ -61,7 +61,7 @@ interface SummaryCard {
         (click)="confirm()"
         data-testid="confirm-refresh"
       >
-        Save this snapshot
+        Replace current vocabulary
       </button>
       <button type="button" class="mn-button" (click)="discard()" data-testid="discard-refresh">
         Discard

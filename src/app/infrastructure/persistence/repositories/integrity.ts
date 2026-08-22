@@ -37,8 +37,9 @@ export function assertUniquePositions(positions: readonly number[], label: strin
  * library". The generation state machine refuses the same draft before it gets
  * here; both checks exist because a single one is a promise, and two
  * independent ones are an invariant. `not-in-snapshot` is refused alongside it:
- * that category belongs to imported readings, which follow the newest snapshot,
- * while a generated story is frozen against the snapshot it was written for.
+ * that category belongs to imported readings, which follow the current
+ * vocabulary, while a generated story is frozen against the validation
+ * evidence captured when it was written.
  */
 export function assertNoUnacceptedValidation(
   validations: readonly FrozenSentenceValidation[],

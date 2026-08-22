@@ -155,7 +155,7 @@ Summary includes:
 - unique expressions;
 - provider warnings/limitations.
 
-Confirmation transaction creates snapshot/items/provenance/statistics and sets Active. If the transaction fails, the old active snapshot remains unchanged.
+Confirmation transaction replaces the single current snapshot, items, provenance, and statistics atomically. The existing snapshot identity is reused when one exists, and generated-story links are kept on that identity. If the transaction fails, the previous current vocabulary remains unchanged.
 
 ## 9. Language pipeline
 
@@ -278,7 +278,7 @@ Precedence prevents a shorter known entry from masking a longer literal phrase. 
 
 ### Imported readings
 
-Classify against the latest active snapshot when markers or inspector data are requested. No snapshot yields an explicit `vocabulary-not-configured` state rather than marking every word unknown. Nonmatches use `not-in-snapshot` and never reject the reading.
+Classify against the current snapshot when markers or inspector data are requested. No snapshot yields an explicit `vocabulary-not-configured` state rather than marking every word unknown. Nonmatches use `not-in-snapshot` and never reject the reading.
 
 ### Generated stories
 

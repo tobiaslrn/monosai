@@ -189,7 +189,7 @@ describe('LibraryPageComponent', () => {
     const dialog = document.querySelector('mn-confirm-dialog');
     expect(dialog).not.toBeNull();
     expect(dialog?.textContent).toContain('The text and 4 sentences');
-    expect(dialog?.textContent).toContain('vocabulary snapshots');
+    expect(dialog?.textContent).toContain('reviewed vocabulary');
     expect(repository.deleted).toEqual([]);
   });
 

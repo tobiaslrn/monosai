@@ -48,8 +48,8 @@ export class AppSettingsStore {
   /**
    * Re-reads the settings row.
    *
-   * Committing a vocabulary snapshot sets the active snapshot inside the same
-   * transaction that writes it, so this store's copy is stale afterwards.
+   * Replacing the current vocabulary sets its snapshot identity inside the
+   * same transaction that writes it, so this store's copy is stale afterwards.
    * Re-reading rather than assuming the new id keeps the one source of truth in
    * the database.
    */

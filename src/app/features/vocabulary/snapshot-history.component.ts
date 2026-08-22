@@ -8,76 +8,54 @@ const PROVIDER_LABELS: Record<AnkiProviderKind, string> = {
   package: 'Anki package',
 };
 
-/**
- * Every snapshot ever created, newest first.
- *
- * Snapshots are append-only and there is no way to delete one here: an older
- * snapshot may still be the frozen basis of a generated story, and the story
- * count is what makes that visible rather than leaving it as a surprise.
- */
+/** Shows the one current vocabulary result and its source summary. */
 @Component({
   selector: 'mn-snapshot-history',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ul class="snapshots" data-testid="snapshot-history">
-      @for (entry of history.entries(); track entry.snapshot.id) {
-        <li class="snapshot" [class.is-active]="entry.isActive">
-          <div class="head">
-            <h3>{{ entry.snapshot.uniqueEntryCount }} unique expressions</h3>
-            @if (entry.isActive) {
-              <span class="badge">Active</span>
-            }
-          </div>
+    @if (history.activeEntry(); as entry) {
+      <article class="snapshot" data-testid="current-snapshot">
+        <div class="head">
+          <h3>{{ entry.snapshot.uniqueEntryCount }} unique expressions</h3>
+          <span class="badge">Current</span>
+        </div>
 
-          <dl class="meta">
-            <div>
-              <dt>Created</dt>
-              <dd>{{ formatted(entry.snapshot.createdAt) }}</dd>
-            </div>
-            <div>
-              <dt>Read from</dt>
-              <dd>{{ providerLabels(entry.providerKinds) }}</dd>
-            </div>
-            <div>
-              <dt>Sources</dt>
-              <dd>
-                @if (entry.sources.length === 0) {
-                  <span class="mn-hint">None recorded</span>
-                } @else {
-                  {{ entry.sources.join('; ') }}
-                }
-              </dd>
-            </div>
-            <div>
-              <dt>Stories using it</dt>
-              <dd>{{ entry.storyCount }}</dd>
-            </div>
-          </dl>
-        </li>
-      } @empty {
-        <li class="empty mn-hint">
-          No vocabulary snapshots yet. Connect a source and refresh to create your first one.
-        </li>
-      }
-    </ul>
+        <dl class="meta">
+          <div>
+            <dt>Updated</dt>
+            <dd>{{ formatted(entry.snapshot.createdAt) }}</dd>
+          </div>
+          <div>
+            <dt>Read from</dt>
+            <dd>{{ providerLabels(entry.providerKinds) }}</dd>
+          </div>
+          <div>
+            <dt>Sources</dt>
+            <dd>
+              @if (entry.sources.length === 0) {
+                <span class="mn-hint">None recorded</span>
+              } @else {
+                {{ entry.sources.join('; ') }}
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Stories using it</dt>
+            <dd>{{ entry.storyCount }}</dd>
+          </div>
+        </dl>
+      </article>
+    } @else {
+      <p class="empty mn-hint" data-testid="current-snapshot">
+        No vocabulary snapshot yet. Connect a source and refresh to create one.
+      </p>
+    }
   `,
   styles: `
-    .snapshots {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: var(--space-2);
-    }
-
     .snapshot {
       padding: var(--space-3);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-card);
-    }
-
-    .snapshot.is-active {
-      border-color: var(--action-primary);
     }
 
     .head {
@@ -130,6 +108,7 @@ const PROVIDER_LABELS: Record<AnkiProviderKind, string> = {
     }
 
     .empty {
+      margin: 0;
       padding: var(--space-3);
       border: 1px dashed var(--border-subtle);
       border-radius: var(--radius-card);

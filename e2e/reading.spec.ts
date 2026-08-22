@@ -429,7 +429,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
     const dialog = page.getByRole('alertdialog');
     await expect(dialog).toContainText('The text and 3 sentences');
-    await expect(dialog).toContainText('vocabulary snapshots');
+    await expect(dialog).toContainText('reviewed vocabulary');
 
     await dialog.getByRole('button', { name: 'Delete permanently' }).click();
 

@@ -35,8 +35,8 @@ export interface RefreshSummary {
  * The states follow the workflow the specification names, and the ordering
  * matters: everything before `committing` can be cancelled or fail without
  * touching stored data, and `committing` is the one state that cannot be
- * cancelled because it is a single transaction that either replaces the active
- * snapshot or leaves it exactly as it was.
+ * cancelled because it is a single transaction that either replaces the current
+ * vocabulary or leaves it exactly as it was.
  */
 export type RefreshState =
   | { readonly kind: 'idle' }
@@ -86,7 +86,7 @@ const CANCELLABLE = new Set<RefreshState['kind']>([
  * leaving the screen discards whatever was in flight. Extracted field values
  * live only here and in the provider; nothing is written until the learner
  * confirms, and a failure or cancellation at any point before that leaves the
- * previously active snapshot untouched.
+ * previously active vocabulary untouched.
  */
 @Injectable()
 export class VocabularyRefreshStore {
@@ -264,11 +264,23 @@ export class VocabularyRefreshStore {
       return;
     }
 
+    const currentSnapshot = await this.vocabulary.getActiveSnapshot();
+    if (!currentSnapshot.ok) {
+      this.fail(currentSnapshot.error);
+      return;
+    }
+
     this.warningsSignal.set(warnings);
     this.stateSignal.set({ kind: 'analyzing', completed: 0, total: entries.length });
 
     const built = await this.builder.build(
-      { entries, mappings: resolved, providerKinds: [provider.kind], warnings },
+      {
+        entries,
+        mappings: resolved,
+        providerKinds: [provider.kind],
+        warnings,
+        ...(currentSnapshot.value === null ? {} : { snapshotId: currentSnapshot.value.id }),
+      },
       (progress) => {
         this.stateSignal.set({
           kind: 'analyzing',
@@ -303,10 +315,10 @@ export class VocabularyRefreshStore {
   }
 
   /**
-   * Writes the prepared snapshot and makes it active.
+   * Replaces the prepared vocabulary and makes it current.
    *
    * This is the only non-cancellable state. The repository does the whole thing
-   * in one transaction, so a failure here leaves the previously active snapshot
+   * in one transaction, so a failure here leaves the previous current vocabulary
    * exactly as it was, and the reader keeps classifying against it.
    */
   async confirm(): Promise<void> {
@@ -319,18 +331,18 @@ export class VocabularyRefreshStore {
     const committed = await this.vocabulary.commitSnapshot(current.summary.commit);
     if (!committed.ok) {
       this.stateSignal.set({ kind: 'failed', error: committed.error });
-      this.announce('The vocabulary snapshot could not be saved. Your previous one is unchanged.');
+      this.announce('The current vocabulary could not be updated. Your previous one is unchanged.');
       return;
     }
 
-    // The reader keeps a compiled matcher for whichever snapshot it last saw,
-    // and settings hold the active id, so both have to be told the world moved.
+    // The reader keeps a compiled matcher for whichever vocabulary it last saw,
+    // and settings hold the current id, so both have to be told the world moved.
     await this.settings.reloadAppSettings();
     this.classification.invalidate();
 
     this.stateSignal.set({ kind: 'complete', snapshot: committed.value });
     this.announce(
-      `Saved ${String(committed.value.uniqueEntryCount)} unique expressions. This snapshot is now active.`,
+      `Updated vocabulary with ${String(committed.value.uniqueEntryCount)} unique expressions.`,
     );
   }
 
@@ -340,7 +352,7 @@ export class VocabularyRefreshStore {
       return;
     }
     this.stateSignal.set(IDLE);
-    this.announce('Discarded. Your previous vocabulary snapshot is unchanged.');
+    this.announce('Discarded. Your previous vocabulary is unchanged.');
   }
 
   cancel(): void {
@@ -382,7 +394,9 @@ export class VocabularyRefreshStore {
   private cancelled(): void {
     this.finishRun();
     this.stateSignal.set({ kind: 'cancelled' });
-    this.announce('Refresh cancelled. Nothing was saved and your previous snapshot is unchanged.');
+    this.announce(
+      'Refresh cancelled. Nothing was saved and your previous vocabulary is unchanged.',
+    );
   }
 
   private releaseProvider(): void {

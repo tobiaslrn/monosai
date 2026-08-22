@@ -351,7 +351,7 @@ The grammar preset is always set and is therefore not a check. It is shown as a 
 - Required premise, multiline, with a reasonable UI limit stated in the AI specification.
 - Story form cards: Micro (4–6 sentences) and Short (13–20).
 - Optional special instructions with examples such as tone, viewpoint, dialogue, or desired register.
-- Active snapshot summary and current grammar preset name are read-only links.
+- Current vocabulary summary and current grammar preset name are read-only links.
 - Generate button includes an OpenRouter/network indicator but no price estimate.
 
 No genre selector, topic suggestions, visible target-vocabulary list, temperature control, or raw prompt editor.
@@ -393,11 +393,11 @@ Each mapping has provider source, deck, note type, expression field, enabled tog
 
 ### Refresh review
 
-Show summary cards rather than raw records: cards queried, reviewed matches, non-empty values, duplicates, unique vocabulary, rejected empty values, and warnings/errors. Confirmation creates the snapshot. Provide a downloadable dump nowhere in v1.
+Show summary cards rather than raw records: cards queried, reviewed matches, non-empty values, duplicates, unique vocabulary, rejected empty values, and warnings/errors. Confirmation replaces the current vocabulary. Provide a downloadable dump nowhere in v1.
 
-### Snapshot history
+### Current vocabulary
 
-List created time, unique count, mapping summary, source kind, and number of generated stories referencing it. The newest completed snapshot is Active. No snapshot deletion UI in v1.
+Show the updated time, unique count, mapping summary, source kind, and number of generated stories using the current vocabulary. There is no snapshot history or deletion UI in v1.
 
 ## 9. Grammar
 

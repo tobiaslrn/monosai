@@ -6,10 +6,9 @@ import {
   type AnkiProviderKind,
   type VocabularySnapshot,
 } from '../../domain/vocabulary/snapshot';
-import { AppSettingsStore } from '../settings/app-settings.store';
 import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
 
-/** One row of the snapshot history, with the details the list has to show. */
+/** The current vocabulary row, with the details the page has to show. */
 export interface SnapshotHistoryEntry {
   readonly snapshot: VocabularySnapshot;
   readonly isActive: boolean;
@@ -19,18 +18,10 @@ export interface SnapshotHistoryEntry {
   readonly storyCount: number;
 }
 
-/**
- * The append-only history of vocabulary snapshots.
- *
- * Snapshots are never deleted in v1, and the newest completed one is active, so
- * this is a read-only view. The story count matters because it is what tells a
- * learner an older snapshot is still holding up generated stories rather than
- * being dead weight.
- */
+/** Reads the one current vocabulary snapshot and its small page summary. */
 @Injectable({ providedIn: 'root' })
 export class SnapshotHistoryStore {
   private readonly vocabulary = inject(VOCABULARY_REPOSITORY);
-  private readonly settings = inject(AppSettingsStore);
 
   private readonly entriesSignal = signal<readonly SnapshotHistoryEntry[]>([]);
   private readonly loadedSignal = signal(false);
@@ -40,31 +31,31 @@ export class SnapshotHistoryStore {
   readonly loaded = this.loadedSignal.asReadonly();
   readonly lastFailure = this.failureSignal.asReadonly();
 
-  readonly active = computed(
-    () => this.entriesSignal().find((entry) => entry.isActive)?.snapshot ?? null,
+  readonly activeEntry = computed(
+    () => this.entriesSignal().find((entry) => entry.isActive) ?? null,
   );
+  readonly active = computed(() => this.activeEntry()?.snapshot ?? null);
   readonly meetsGenerationMinimum = computed(() => meetsGenerationMinimum(this.active()));
 
   async load(): Promise<void> {
-    const listed = await this.vocabulary.listSnapshots();
-    if (!listed.ok) {
-      this.failureSignal.set(listed.error);
+    const current = await this.vocabulary.getActiveSnapshot();
+    if (!current.ok) {
+      this.failureSignal.set(current.error);
       return;
     }
 
-    const activeId = this.settings.activeSnapshotId();
-    const entries: SnapshotHistoryEntry[] = [];
-    for (const snapshot of [...listed.value].sort(
-      (left, right) => right.createdAt - left.createdAt,
-    )) {
-      entries.push({
-        snapshot,
-        isActive: snapshot.id === activeId,
-        sources: await this.describeSources(snapshot.id),
-        providerKinds: snapshot.providerKinds,
-        storyCount: await this.countStories(snapshot.id),
-      });
-    }
+    const entries: SnapshotHistoryEntry[] =
+      current.value === null
+        ? []
+        : [
+            {
+              snapshot: current.value,
+              isActive: true,
+              sources: await this.describeSources(current.value.id),
+              providerKinds: current.value.providerKinds,
+              storyCount: await this.countStories(current.value.id),
+            },
+          ];
 
     this.entriesSignal.set(entries);
     this.failureSignal.set(null);

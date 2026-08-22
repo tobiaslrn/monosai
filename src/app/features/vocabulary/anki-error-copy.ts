@@ -17,9 +17,8 @@ export interface AnkiErrorCopy {
   readonly escape: string;
 }
 
-/** True for every variant: nothing is written until a snapshot is confirmed. */
-export const NOTHING_SAVED =
-  'Nothing was changed. Your existing vocabulary snapshot is still active.';
+/** True for every variant: nothing is written until a refresh is confirmed. */
+export const NOTHING_SAVED = 'Nothing was changed. Your existing vocabulary is still current.';
 
 const USE_PACKAGE = 'Export a package from Anki and import it here instead.';
 const TRY_AGAIN = 'Try again.';
@@ -184,8 +183,8 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
 
 /** Storage and language failures reach this screen too, so they need words as well. */
 export const REFRESH_STORAGE_FAILURE: AnkiErrorCopy = {
-  heading: 'The snapshot could not be saved',
-  whatFailed: 'Monosai could not write the new vocabulary snapshot.',
+  heading: 'The current vocabulary could not be updated',
+  whatFailed: 'Monosai could not replace the current vocabulary.',
   whatDidNot: NOTHING_SAVED,
   primaryAction: 'Free up space on this device, then refresh again.',
   escape: 'Everything you have already saved is unchanged.',

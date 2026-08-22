@@ -25,7 +25,7 @@ V1 is a public bring-your-own-OpenRouter-key application. It is single-learner p
 - Combined library for imported readings and generated stories.
 - Local tokenization, whole-word furigana, part-of-speech information, compact dictionary glosses, and vocabulary markers.
 - Read-only vocabulary refresh through desktop AnkiConnect, an Android AnkiConnect-compatible bridge, or Anki package parsing.
-- Immutable vocabulary snapshots and snapshot-linked generated stories.
+- One replaceable current vocabulary snapshot and snapshot-linked generated stories.
 - Device-wide N5–N1 grammar selection and named custom rules.
 - Custom-premise micro and short story generation.
 - Local validation, AI exception review, maximum two targeted repairs, advisory grammar review, translations, and cloud TTS.
@@ -94,12 +94,12 @@ Acceptance:
 3. The user creates one or more explicit source mappings and enables the desired mappings.
 4. A manual refresh reads only cards reviewed at least once and extracts the selected field's visible text literally.
 5. Monosai shows counts for queried cards, eligible notes, empty values, duplicates, provider errors, and unique entries.
-6. The user confirms creation of an immutable snapshot.
+6. The user confirms replacement of the current vocabulary snapshot.
 
 Acceptance:
 
 - No write-capable Anki action exists in the production adapter.
-- An unsuccessful or cancelled refresh never changes the active snapshot.
+- An unsuccessful or cancelled refresh never changes the current vocabulary.
 - Package import refuses to call entries reviewed when usable scheduling/review evidence is absent.
 - Simple duplicates are deduplicated while source provenance is retained.
 
@@ -109,7 +109,7 @@ Prerequisites:
 
 - A remembered OpenRouter key.
 - A successfully tested exact text-model ID.
-- A completed active snapshot containing at least 50 unique entries.
+- A completed current snapshot containing at least 50 unique entries.
 - A non-empty premise.
 
 A grammar preset is always set, so it is never a prerequisite. When the selected preset is far above what the snapshot can supply, the prerequisite panel shows a non-blocking warning that generation is likely to produce unknown vocabulary.
@@ -158,7 +158,7 @@ The user explicitly requests analysis for one sentence. The response identifies 
 - Library is newest first and filters by All, Imported, and Generated. The filter appears only once the shelf holds at least eight readings.
 - A card shows the reading's title, the opening of its text in Japanese, and one line of metadata. Monosai records no reading position, so there is no Continue reading card and no progress indicator (ADR 0025).
 - Deletion requires confirmation, removes the reading and its owned translations, grammar analyses, audio, and token data in one transaction, and returns focus predictably.
-- Deleting a story does not delete a shared vocabulary snapshot.
+- Deleting a story does not delete the shared current vocabulary.
 
 ## 4. Functional rules
 
@@ -168,7 +168,7 @@ The user explicitly requests analysis for one sentence. The response identifies 
 | --- | --- | --- |
 | Source text | Learner | OpenRouter |
 | Post-save editing | No | No |
-| Vocabulary snapshot | Latest completed, dynamically reclassified | Frozen creation snapshot |
+| Vocabulary snapshot | Current vocabulary, dynamically reclassified | Frozen validation evidence captured at creation |
 | Unknown vocabulary | Informational | Blocks acceptance after repairs |
 | Translation | Explicit per sentence/batch | Attempted automatically after validation; retryable |
 | Grammar review | Explicit per sentence | Automatic advisory review |

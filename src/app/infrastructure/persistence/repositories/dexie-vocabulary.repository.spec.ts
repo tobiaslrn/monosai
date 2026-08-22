@@ -88,11 +88,11 @@ describe('DexieVocabularyRepository', () => {
     expect(await db.vocabularyItems.count()).toBe(0);
   });
 
-  it('lists snapshots newest first and keeps history append-only', async () => {
+  it('replaces the current snapshot and keeps one persisted row', async () => {
     const older = snapshotFixture(6);
-    const newer = snapshotFixture(7);
+    const newer = snapshotFixture(7, 2);
     await repository.commitSnapshot(older);
-    await repository.commitSnapshot({
+    const replaced = await repository.commitSnapshot({
       ...newer,
       snapshot: { ...newer.snapshot, createdAt: older.snapshot.createdAt + 5000 },
     });
@@ -100,11 +100,34 @@ describe('DexieVocabularyRepository', () => {
     const snapshots = await repository.listSnapshots();
 
     expect(snapshots.ok).toBe(true);
+    expect(replaced.ok).toBe(true);
     if (!snapshots.ok) {
       return;
     }
-    expect(snapshots.value).toHaveLength(2);
-    expect(snapshots.value[0].id).toBe(newer.snapshot.id);
+    expect(snapshots.value).toHaveLength(1);
+    expect(snapshots.value[0].id).toBe(older.snapshot.id);
+    expect(snapshots.value[0].createdAt).toBe(older.snapshot.createdAt + 5000);
+    expect(await db.vocabularyItems.count()).toBe(newer.items.length);
+    const items = await db.vocabularyItems.toArray();
+    expect(items.every((item) => item.snapshotId === older.snapshot.id)).toBe(true);
+  });
+
+  it('keeps generated stories linked to the stable current identity', async () => {
+    const first = snapshotFixture(13);
+    await repository.commitSnapshot(first);
+    const story = generatedStoryFixture(14, first.snapshot.id);
+    await db.readings.add({ ...story, v: ROW_VERSION });
+
+    await repository.commitSnapshot(snapshotFixture(15, 2));
+
+    const stored = await db.readings.get(story.id);
+    expect(stored?.kind).toBe('generated');
+    if (stored?.kind !== 'generated') {
+      return;
+    }
+    expect(stored.snapshotId).toBe(first.snapshot.id);
+    const count = await repository.countStoriesUsingSnapshot(first.snapshot.id);
+    expect(count.ok && count.value).toBe(1);
   });
 
   it('streams matcher input in bounded batches', async () => {

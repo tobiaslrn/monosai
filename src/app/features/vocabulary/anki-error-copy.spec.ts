@@ -67,7 +67,7 @@ describe('copyForFailure', () => {
 
   it('has its own words for a storage failure', () => {
     const copy = copyForFailure(storageError('quota', 'x'));
-    expect(copy.heading).toContain('could not be saved');
+    expect(copy.heading).toContain('could not be updated');
     expect(copy.whatDidNot).toBe(NOTHING_SAVED);
   });
 

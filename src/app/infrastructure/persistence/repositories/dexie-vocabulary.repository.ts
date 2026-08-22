@@ -5,6 +5,7 @@ import type {
   VocabularyProvenance,
   VocabularySnapshot,
 } from '../../../domain/vocabulary/snapshot';
+import type { AppSettings } from '../../../domain/settings/settings';
 import type {
   SnapshotCommit,
   VocabularyRepository,
@@ -24,9 +25,9 @@ import { assertUniqueIds } from './integrity';
 import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
 
 /**
- * Vocabulary snapshots are append-only. A snapshot becomes active inside the
- * same transaction that writes it, so a failed or cancelled refresh can never
- * change the active snapshot.
+ * The vocabulary table is a current-state cache, not a history log. A refresh
+ * replaces its one snapshot and matcher inputs inside one transaction, so a
+ * failed or cancelled refresh can never change what the reader sees.
  */
 export class DexieVocabularyRepository implements VocabularyRepository {
   constructor(private readonly db: MonosaiDatabase) {}
@@ -40,6 +41,11 @@ export class DexieVocabularyRepository implements VocabularyRepository {
         );
       }
       const itemIds = new Set<string>(commit.items.map((item) => item.id));
+      if (commit.items.some((item) => item.snapshotId !== commit.snapshot.id)) {
+        throw new StorageRuleViolation(
+          storageError('conflict', 'A vocabulary item points at a different snapshot.'),
+        );
+      }
       for (const record of commit.provenance) {
         if (!itemIds.has(record.vocabularyItemId)) {
           throw new StorageRuleViolation(
@@ -48,6 +54,7 @@ export class DexieVocabularyRepository implements VocabularyRepository {
         }
       }
 
+      let replacement = commit.snapshot;
       await this.db.transaction(
         'rw',
         [
@@ -55,20 +62,34 @@ export class DexieVocabularyRepository implements VocabularyRepository {
           this.db.vocabularyItems,
           this.db.vocabularyProvenance,
           this.db.settings,
+          this.db.readings,
+          this.db.frozenValidations,
+          this.db.generationProvenance,
         ],
         async () => {
-          await this.db.vocabularySnapshots.add({ ...commit.snapshot, v: ROW_VERSION });
-          await this.db.vocabularyItems.bulkAdd(
-            commit.items.map((item) => ({ ...item, v: ROW_VERSION })),
-          );
+          const current = await this.readAppSettingsWithinTransaction();
+          const id = current.activeSnapshotId ?? commit.snapshot.id;
+          replacement = id === commit.snapshot.id ? commit.snapshot : { ...commit.snapshot, id };
+          const items = commit.items.map((item) => ({ ...item, snapshotId: id }));
+
+          await this.db.vocabularySnapshots.clear();
+          await this.db.vocabularyItems.clear();
+          await this.db.vocabularyProvenance.clear();
+          await this.db.vocabularySnapshots.add({ ...replacement, v: ROW_VERSION });
+          await this.db.vocabularyItems.bulkAdd(items.map((item) => ({ ...item, v: ROW_VERSION })));
           await this.db.vocabularyProvenance.bulkAdd(
             commit.provenance.map((record) => ({ ...record, v: ROW_VERSION })),
           );
-          await this.setActiveSnapshotWithinTransaction(commit.snapshot.id);
+          await this.pointGeneratedStoriesAtCurrentSnapshotWithinTransaction(id);
+          await this.db.settings.put({
+            key: SETTINGS_KEYS.app,
+            v: ROW_VERSION,
+            value: { ...current, activeSnapshotId: id },
+          });
         },
       );
 
-      return commit.snapshot;
+      return replacement;
     });
   }
 
@@ -176,7 +197,7 @@ export class DexieVocabularyRepository implements VocabularyRepository {
     );
   }
 
-  private async setActiveSnapshotWithinTransaction(id: SnapshotId): Promise<void> {
+  private async readAppSettingsWithinTransaction(): Promise<AppSettings> {
     const existing = await this.db.settings.get(SETTINGS_KEYS.app);
     const current = existing
       ? parseRecord(appSettingsSchema, existing.value, 'settings:app')
@@ -184,14 +205,28 @@ export class DexieVocabularyRepository implements VocabularyRepository {
     if (current && !current.ok) {
       throw new StorageRuleViolation(current.error);
     }
-    const base = current?.ok
+    return current?.ok
       ? current.value
       : { theme: 'system' as const, activeSnapshotId: null, updatedAt: 0 };
+  }
 
-    await this.db.settings.put({
-      key: SETTINGS_KEYS.app,
-      v: ROW_VERSION,
-      value: { ...base, activeSnapshotId: id },
+  /** Existing generated stories keep their evidence but follow the one current id. */
+  private async pointGeneratedStoriesAtCurrentSnapshotWithinTransaction(
+    id: SnapshotId,
+  ): Promise<void> {
+    await this.db.readings
+      .where('kind')
+      .equals('generated')
+      .modify((row) => {
+        if (row.kind === 'generated') {
+          Object.assign(row, { snapshotId: id });
+        }
+      });
+    await this.db.frozenValidations.toCollection().modify((row) => {
+      Object.assign(row, { snapshotId: id });
+    });
+    await this.db.generationProvenance.toCollection().modify((row) => {
+      Object.assign(row, { snapshotId: id });
     });
   }
 }

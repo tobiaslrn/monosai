@@ -241,6 +241,20 @@ describe('VocabularyRefreshStore', () => {
       expect(beds.vocabulary.activeSnapshotId).toBe(state.snapshot.id);
     });
 
+    it('overwrites the current snapshot on the next confirmed refresh', async () => {
+      await refreshWith();
+      await store.confirm();
+      const firstId = beds.vocabulary.activeSnapshotId;
+
+      await connect();
+      await store.refresh();
+      await store.confirm();
+
+      expect(beds.vocabulary.snapshots).toHaveLength(1);
+      expect(beds.vocabulary.activeSnapshotId).toBe(firstId);
+      expect(beds.vocabulary.items).toHaveLength(4);
+    });
+
     it('tells the settings store the active snapshot changed', async () => {
       await refreshWith();
       expect(settings.activeSnapshotId()).toBeNull();

@@ -108,8 +108,8 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
         }
       </section>
 
-      <section class="mn-panel" aria-labelledby="mn-vocab-history-heading">
-        <h2 id="mn-vocab-history-heading">Snapshots</h2>
+      <section class="mn-panel" aria-labelledby="mn-vocab-current-heading">
+        <h2 id="mn-vocab-current-heading">Current vocabulary</h2>
         <mn-snapshot-history />
       </section>
     </div>

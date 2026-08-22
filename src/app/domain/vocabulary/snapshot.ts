@@ -12,7 +12,7 @@ export interface SnapshotStats {
   readonly providerWarnings: readonly string[];
 }
 
-/** Immutable, append-only result of one successful refresh. */
+/** Complete current vocabulary result of one successful refresh. */
 export interface VocabularySnapshot {
   readonly id: SnapshotId;
   readonly createdAt: number;

@@ -207,7 +207,9 @@ export async function buildSnapshot(page: Page): Promise<void> {
   await page.getByTestId('start-refresh').click();
   await expect(page.getByTestId('confirm-refresh')).toBeVisible({ timeout: 60_000 });
   await page.getByTestId('confirm-refresh').click();
-  await expect(page.getByTestId('snapshot-history')).toContainText('Active', { timeout: 60_000 });
+  await expect(page.getByTestId('current-snapshot')).toContainText('Current', {
+    timeout: 60_000,
+  });
 }
 
 /** Everything a story needs, in the order a learner would set it up. */

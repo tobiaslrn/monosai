@@ -41,7 +41,8 @@ Use a browser-compatible IndexedDB test environment and real Dexie transactions:
 
 - Fresh database creation and every version-to-version migration.
 - Atomic imported reading and generated story creation.
-- Active snapshot remains unchanged after cancel/failure.
+- Current vocabulary remains unchanged after cancel/failure.
+- A confirmed refresh overwrites the current snapshot and leaves exactly one persisted snapshot row.
 - Snapshot deduplication/provenance.
 - Paginated library query without loading blobs.
 - Dynamic imported validation versus frozen generated validation.

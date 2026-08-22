@@ -6,7 +6,7 @@ import { extractVisibleText } from '../../domain/anki/field-extraction';
 import { ANALYZER_VERSION, NORMALIZATION_VERSION } from '../../domain/language/analyzer-version';
 import { languageError, type LanguageError } from '../../domain/language/language-error';
 import { err, ok, type Result } from '../../domain/shared/result';
-import { snapshotId, vocabularyItemId } from '../../domain/shared/ids';
+import { snapshotId, vocabularyItemId, type SnapshotId } from '../../domain/shared/ids';
 import type {
   AnkiProviderKind,
   SnapshotStats,
@@ -31,6 +31,8 @@ export interface BuildSnapshotRequest {
   readonly mappings: readonly SourceMapping[];
   readonly providerKinds: readonly AnkiProviderKind[];
   readonly warnings: readonly string[];
+  /** Reuse the current row identity so generated stories keep one snapshot link. */
+  readonly snapshotId?: SnapshotId;
 }
 
 export interface BuiltSnapshot {
@@ -122,7 +124,7 @@ export class SnapshotBuilder {
       });
     }
 
-    const id = snapshotId(this.ids.nextId());
+    const id = request.snapshotId ?? snapshotId(this.ids.nextId());
     const merged = mergeEntries(prepared, id, () => vocabularyItemId(this.ids.nextId()));
 
     const stats: SnapshotStats = {
