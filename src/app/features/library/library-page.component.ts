@@ -12,6 +12,7 @@ import {
 import { Dialog } from '@angular/cdk/dialog';
 import { RouterLink } from '@angular/router';
 import { LibraryStore } from '../../application/reading/library.store';
+import { CLOCK } from '../../application/shared/repository-tokens';
 import { describeDeletion } from '../../domain/reading/deletion-plan';
 import type { LibraryFilter, Reading } from '../../domain/reading/reading';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
@@ -19,6 +20,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PopoverService } from '../../shared-ui/popover/popover.service';
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
 import { NewReadingMenuComponent } from './new-reading-menu.component';
+import { groupLibraryReadings } from './library-date-groups';
 import { ReadingCardComponent } from './reading-card.component';
 
 interface FilterOption {
@@ -56,8 +58,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         <div class="identity">
           <img class="mark" src="icons/icon-192.png" alt="" width="40" height="40" />
           <span class="wordmark">Monosai</span>
-          <span class="identity-divider" aria-hidden="true"></span>
-          <h1>Library</h1>
         </div>
         <a class="mn-icon-button" routerLink="/settings" aria-label="Settings">
           <mn-icon name="settings" [size]="20" />
@@ -72,7 +72,8 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           <button type="button" class="mn-button" (click)="reload()">Try again</button>
         </section>
       } @else {
-        <div class="actions">
+        <div class="library-title-row">
+          <h1>Library</h1>
           <button
             type="button"
             class="mn-button mn-button--primary"
@@ -107,13 +108,23 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         } @else if (store.isEmpty()) {
           <p class="mn-hint">No {{ store.filter() }} readings yet.</p>
         } @else {
-          <ul class="grid">
-            @for (reading of store.items(); track reading.id) {
-              <li>
-                <mn-reading-card [reading]="reading" (deleteRequested)="confirmDelete($event)" />
-              </li>
+          <div class="date-groups">
+            @for (group of readingGroups(); track group.key) {
+              <section class="date-group" [attr.aria-labelledby]="'library-group-' + group.key">
+                <h2 [id]="'library-group-' + group.key">{{ group.label }}</h2>
+                <ul class="reading-list">
+                  @for (reading of group.readings; track reading.id) {
+                    <li>
+                      <mn-reading-card
+                        [reading]="reading"
+                        (deleteRequested)="confirmDelete($event)"
+                      />
+                    </li>
+                  }
+                </ul>
+              </section>
             }
-          </ul>
+          </div>
 
           @if (store.hasMore()) {
             <button
@@ -164,8 +175,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       border-radius: 10px;
     }
 
-    .wordmark,
-    .identity h1 {
+    .wordmark {
       font-family: var(--font-japanese);
       letter-spacing: -0.02em;
     }
@@ -177,26 +187,18 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       white-space: nowrap;
     }
 
-    .identity-divider {
-      width: 1px;
-      height: 32px;
-      background: var(--border-subtle);
+    .library-title-row {
+      display: flex;
+      gap: var(--space-4);
+      align-items: center;
+      justify-content: space-between;
     }
 
-    .identity h1 {
-      min-width: 0;
+    .library-title-row h1 {
       margin: 0;
-      overflow: hidden;
+      font-family: var(--font-japanese);
       font-size: 28px;
       font-weight: 500;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
     }
 
     .filters {
@@ -222,16 +224,23 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       color: var(--text-on-action);
     }
 
-    /*
-     * Fills the width it is given rather than sitting as one narrow column on
-     * the left, now that no sidebar takes the rest of the page.
-     */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: var(--space-5);
+    .date-groups {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
+    }
+
+    .date-group h2 {
+      margin: 0 0 var(--space-2);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      font-weight: 600;
+    }
+
+    .reading-list {
       margin: 0;
       padding: 0;
+      border-top: 1px solid var(--border-subtle);
       list-style: none;
     }
 
@@ -244,14 +253,30 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         font-size: 21px;
       }
 
-      .identity h1 {
+      .library-title-row h1 {
         font-size: 24px;
+      }
+    }
+
+    /*
+     * At phone widths the mark already supplies the identity. Keeping both the
+     * wordmark and destination would squeeze the destination and Settings
+     * control for no navigational benefit.
+     */
+    @media (max-width: 479px) {
+      .wordmark {
+        display: none;
+      }
+
+      .identity {
+        gap: var(--space-2);
       }
     }
   `,
 })
 export class LibraryPageComponent {
   protected readonly store = inject(LibraryStore);
+  private readonly clock = inject(CLOCK);
   private readonly dialog = inject(Dialog);
   private readonly popover = inject(PopoverService);
   private readonly viewContainerRef = inject(ViewContainerRef);
@@ -267,6 +292,9 @@ export class LibraryPageComponent {
   /** Chips are chrome until there are enough readings for filtering to help. */
   protected readonly showsFilters = computed(
     () => this.store.totalReadings() >= FILTER_VISIBILITY_THRESHOLD,
+  );
+  protected readonly readingGroups = computed(() =>
+    groupLibraryReadings(this.store.items(), this.clock.now()),
   );
 
   constructor() {

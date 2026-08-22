@@ -30,7 +30,7 @@ Test pure domain functions and state transitions without Angular TestBed when po
 - Keyboard/touch activation of chips, token buttons, sentence menus, dialogs, bottom sheets, and progress controls.
 - Focus trapping/restoration and live-region messaging.
 - Reader aid switches and global preference propagation.
-- Library filters, cards and their excerpts, the New reading chooser, and confirmation flows.
+- Library filters, date groups, compact reading rows, audio availability, the New reading chooser, and confirmation flows.
 - Required error presentation and recovery actions.
 
 Use real semantic DOM queries. Avoid tests coupled to private component methods or CSS class names.

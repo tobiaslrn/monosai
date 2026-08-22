@@ -34,7 +34,7 @@ interface ReadingBase {
   sentenceCount: number;
   characterCount: number;
   lastOpenedAt: number | null;
-  excerpt: string; // the opening, denormalized for the library card
+  excerpt: string; // legacy denormalized opening retained for schema compatibility
   translationSummary: CompletionSummary;
   grammarSummary: GrammarSummary;
   audioSummary: CompletionSummary;
@@ -62,9 +62,9 @@ interface GeneratedStory extends ReadingBase {
 `updatedAt` changes for aid summaries or metadata migration. It must never imply source editing.
 
 `excerpt` is a bounded, whitespace-collapsed prefix of the source text, written
-once when the reading is saved. It exists so a shelf of library cards can show
-Japanese without loading any reading's sentences. It is a preview, never the
-text: the reader always renders from the sentences themselves.
+once when the reading is saved. It is retained because committed schema shapes
+are immutable, but the compact Library does not render it. The reader always
+renders from the sentences themselves.
 
 There is no reading position. Monosai does not record where a learner stopped,
 and the reader opens every reading at its first paragraph (ADR 0025).
@@ -327,11 +327,11 @@ Implement indexes needed by specified queries only. Do not index large text, tok
 
 ### Library denormalization
 
-The `readings` row includes everything a library card renders: the aid
-summaries, the last opened time, and the excerpt. Repository transactions
-recalculate the summaries when enrichment changes; the excerpt is written once
-and never changes, because the source text never does. The library query does
-not join or load sentence children.
+The `readings` row includes everything a Library row renders: title,
+`createdAt`, character count, and audio summary. Repository transactions
+recalculate the summaries when enrichment changes. The legacy excerpt is
+written once and never changes, because the source text never does. The library
+query does not join or load sentence children or audio bytes.
 
 ## 5. Cache keys
 

@@ -11,7 +11,13 @@ import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/m
 import { FakeReadingRepository } from '../../../testing/reading-repository-fake';
 import { FILTER_VISIBILITY_THRESHOLD, LibraryPageComponent } from './library-page.component';
 
-function reading(id: string, kind: 'imported' | 'generated', createdAt: number): Reading {
+function reading(
+  id: string,
+  kind: 'imported' | 'generated',
+  createdAt: number,
+  characterCount = 40,
+  completedAudio = 0,
+): Reading {
   const base = {
     id: readingId(id),
     title: `Reading ${id}`,
@@ -19,11 +25,11 @@ function reading(id: string, kind: 'imported' | 'generated', createdAt: number):
     updatedAt: createdAt,
     sentenceCount: 4,
     lastOpenedAt: null,
-    characterCount: 40,
+    characterCount,
     excerpt: '猫が好きです。',
     translationSummary: { total: 4, completed: 0, failed: 0 },
     grammarSummary: { state: 'not-requested' as const },
-    audioSummary: { total: 4, completed: 0, failed: 0 },
+    audioSummary: { total: 4, completed: completedAudio, failed: 0 },
     analyzerVersion: '1',
   };
   return kind === 'imported'
@@ -89,7 +95,7 @@ describe('LibraryPageComponent', () => {
   }
 
   function newReadingButton(fixture: Awaited<ReturnType<typeof render>>): HTMLButtonElement | null {
-    return element(fixture).querySelector<HTMLButtonElement>('.actions button');
+    return element(fixture).querySelector<HTMLButtonElement>('.library-title-row button');
   }
 
   /** Enough readings that the filter chips are worth showing. */
@@ -141,6 +147,40 @@ describe('LibraryPageComponent', () => {
       node.textContent.trim(),
     );
     expect(titles).toEqual(['Reading b', 'Reading c', 'Reading a']);
+  });
+
+  it('groups readings by relative date without empty date sections', async () => {
+    const now = 1_700_000_000_000;
+    const daysAgo = (days: number): number => {
+      const date = new Date(now);
+      date.setHours(12, 0, 0, 0);
+      date.setDate(date.getDate() - days);
+      return date.getTime();
+    };
+    repository.readings = [
+      reading('today', 'imported', daysAgo(0)),
+      reading('yesterday', 'imported', daysAgo(1)),
+      reading('recent', 'generated', daysAgo(4)),
+    ];
+    const fixture = await render();
+
+    const groups = [...element(fixture).querySelectorAll('.date-group h2')].map((heading) =>
+      heading.textContent.trim(),
+    );
+    expect(groups).toEqual(['Today', 'Yesterday', 'Earlier this week']);
+  });
+
+  it('shows character count and available audio without a sentence preview or Read button', async () => {
+    repository.readings = [reading('a', 'imported', 1_000, 1, 1)];
+    const fixture = await render();
+    const row = element(fixture).querySelector('mn-reading-card');
+
+    expect(row?.textContent).toContain('1 character');
+    expect(row?.textContent).toContain('Audio available');
+    expect(row?.querySelector('.excerpt')).toBeNull();
+    expect(
+      [...(row?.querySelectorAll('button') ?? [])].some((button) => button.textContent === 'Read'),
+    ).toBe(false);
   });
 
   it('exposes filters as pressed-state chips and filters the list', async () => {
