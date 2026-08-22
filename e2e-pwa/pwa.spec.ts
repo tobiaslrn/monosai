@@ -93,6 +93,37 @@ test.describe('base path', () => {
   });
 });
 
+test.describe('diagnostics', () => {
+  test('copies redacted diagnostics without exposing sensitive values', async ({ page }) => {
+    const sensitiveValues = ['sk-test-secret-api-key', 'private reading text'];
+    const consoleMessages: string[] = [];
+    page.on('console', (message) => consoleMessages.push(message.text()));
+
+    await page.goto('./#/settings');
+
+    const diagnostics = page.getByRole('region', { name: 'Diagnostics' });
+    await expect(diagnostics.getByRole('button', { name: 'Copy diagnostics' })).toBeVisible();
+    await diagnostics.getByRole('button', { name: 'Copy diagnostics' }).click();
+    await expect(diagnostics.getByRole('status')).toHaveText(
+      /Diagnostics (copied|could not be copied on this browser)\./,
+    );
+
+    const pageText = await page.locator('body').innerText();
+    for (const sensitiveValue of sensitiveValues) {
+      expect(pageText).not.toContain(sensitiveValue);
+      expect(consoleMessages.some((message) => message.includes(sensitiveValue))).toBe(false);
+    }
+
+    expect(
+      consoleMessages.some(
+        (message) =>
+          message.includes('[Monosai] diagnostics.copy.succeeded') ||
+          message.includes('[Monosai] diagnostics.copy.failed'),
+      ),
+    ).toBe(true);
+  });
+});
+
 test.describe('offline reload', () => {
   test('a saved reading opens offline after the worker has taken control', async ({
     page,

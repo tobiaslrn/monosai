@@ -1,4 +1,5 @@
 import { ankiError, type AnkiError } from '../../../domain/anki/anki-error';
+import type { Logger } from '../../../application/shared/diagnostics';
 import { err, ok, type Result } from '../../../domain/shared/result';
 import {
   PACKAGE_PROTOCOL_VERSION,
@@ -48,7 +49,10 @@ export class PackageWorkerClient {
   private readonly unsubscribe: () => void;
   private disposed = false;
 
-  constructor(private readonly channel: PackageWorkerChannel) {
+  constructor(
+    private readonly channel: PackageWorkerChannel,
+    private readonly logger?: Logger,
+  ) {
     this.unsubscribe = channel.subscribe((data) => {
       this.receive(data);
     });
@@ -108,15 +112,26 @@ export class PackageWorkerClient {
     type Value = ResultFor<TOperation>;
 
     if (this.disposed) {
+      this.logger?.error('worker.operation.failed', {
+        worker: 'package',
+        operation,
+        errorCode: 'package-unreadable',
+      });
       return Promise.resolve(
         err(ankiError('package-unreadable', 'The package worker is not running.')),
       );
     }
     if (signal?.aborted === true) {
+      this.logger?.debug('worker.operation.failed', {
+        worker: 'package',
+        operation,
+        errorCode: 'cancelled',
+      });
       return Promise.resolve(err(cancelled()));
     }
 
     const requestId = nextRequestId();
+    this.logger?.debug('worker.operation.started', { worker: 'package', operation });
     return new Promise<Result<Value, AnkiError>>((resolve) => {
       let settled = false;
       const finish = (outcome: Result<Value, AnkiError>): void => {
@@ -144,10 +159,20 @@ export class PackageWorkerClient {
         operation,
         settle: (outcome) => {
           if (!outcome.ok) {
+            this.logger?.error('worker.operation.failed', {
+              worker: 'package',
+              operation,
+              errorCode: outcome.error.code,
+            });
             finish(err(outcome.error));
             return;
           }
           if (outcome.value.operation !== operation) {
+            this.logger?.error('worker.operation.failed', {
+              worker: 'package',
+              operation,
+              errorCode: 'malformed-response',
+            });
             finish(
               err(
                 ankiError(
@@ -159,6 +184,7 @@ export class PackageWorkerClient {
             );
             return;
           }
+          this.logger?.debug('worker.operation.succeeded', { worker: 'package', operation });
           finish(ok(outcome.value.value as Value));
         },
       });
@@ -202,7 +228,10 @@ export class PackageWorkerClient {
 }
 
 /** Wraps a real `Worker` as a channel. */
-export function packageWorkerChannel(worker: Worker): PackageWorkerChannel {
+export function packageWorkerChannel(worker: Worker, onError?: () => void): PackageWorkerChannel {
+  if (onError !== undefined) {
+    worker.addEventListener('error', onError);
+  }
   return {
     post: (message, transfer) => {
       worker.postMessage(message, transfer === undefined ? [] : [...transfer]);
@@ -217,6 +246,9 @@ export function packageWorkerChannel(worker: Worker): PackageWorkerChannel {
       };
     },
     terminate: () => {
+      if (onError !== undefined) {
+        worker.removeEventListener('error', onError);
+      }
       worker.terminate();
     },
   };

@@ -1,4 +1,5 @@
 import { ankiError, type AnkiError } from '../../../domain/anki/anki-error';
+import type { Logger } from '../../../application/shared/diagnostics';
 import type {
   AnkiExtractionEvent,
   AnkiVocabularyProvider,
@@ -42,6 +43,7 @@ export class PackageProviderAdapter implements AnkiVocabularyProvider {
     private readonly client: PackageWorkerClient,
     private readonly source: PackageSource,
     private readonly wasmUrl: string,
+    private readonly logger?: Logger,
   ) {}
 
   async probe(signal?: AbortSignal): Promise<Result<AnkiCapabilities, AnkiError>> {
@@ -152,6 +154,10 @@ export class PackageProviderAdapter implements AnkiVocabularyProvider {
     try {
       bytes = await this.source.bytes();
     } catch (thrown) {
+      this.logger?.error('anki.operation.failed', {
+        action: 'package.read-file',
+        errorCode: 'package-unreadable',
+      });
       return err(
         ankiError(
           'package-unreadable',
@@ -165,6 +171,10 @@ export class PackageProviderAdapter implements AnkiVocabularyProvider {
     if (!opened.ok) {
       return opened;
     }
+    this.logger?.info('anki.operation.succeeded', {
+      action: 'package.open',
+      providerKind: 'package',
+    });
     this.opened = opened.value;
     return ok(opened.value);
   }

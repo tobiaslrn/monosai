@@ -250,4 +250,17 @@ Online-only: OpenRouter tests and tasks, local Anki HTTP refresh when unavailabl
 
 ## 12. Observability without telemetry
 
-All diagnostics remain local and ephemeral unless naturally persisted as task status. Provide structured, redacted console logs in development only. Production error screens may show a copyable technical code and build version, never the API key, authorization header, full vocabulary, premise, reading text, or provider response body.
+All diagnostics remain local and ephemeral unless naturally persisted as task
+status. The application emits structured, redacted console logs in development
+and production. Development includes `debug` events; production includes
+`info`, `warn`, and `error` events. A bounded in-memory buffer keeps the newest
+200 entries for the current tab so Settings can copy them for support. The
+buffer is cleared on reload and is never written to IndexedDB or sent to a
+remote service.
+
+Logging accepts only an allowlisted set of scalar fields. It must never receive
+the API key, authorization header, full vocabulary, premise, reading text,
+prompt, request body, or provider response body. Raw exceptions are reduced to
+their type and stable error codes before logging. Production error screens may
+show a copyable technical code and build version, and Settings may copy the
+current redacted diagnostics buffer.

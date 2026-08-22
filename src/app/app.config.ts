@@ -1,9 +1,4 @@
-import {
-  isDevMode,
-  provideBrowserGlobalErrorListeners,
-  provideAppInitializer,
-  inject,
-} from '@angular/core';
+import { isDevMode, provideAppInitializer, inject } from '@angular/core';
 import { provideServiceWorker } from '@angular/service-worker';
 import type { ApplicationConfig } from '@angular/core';
 import {
@@ -19,15 +14,17 @@ import { provideInitializationSteps } from './core/bootstrap/initialization-step
 import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
 import { APP_ROUTES } from './core/routing/app.routes';
 import { provideAnki } from './infrastructure/anki/anki.providers';
+import { provideDiagnosticsLogging } from './infrastructure/diagnostics/diagnostics.providers';
 import { provideLanguage } from './infrastructure/language/language.providers';
 import { provideOpenRouter } from './infrastructure/openrouter/openrouter.providers';
 import { providePersistence } from './infrastructure/persistence/persistence.providers';
 import { providePwa } from './infrastructure/pwa/pwa.providers';
+import { readBuildInfo } from './core/diagnostics/build-info';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     AutomaticAnkiSyncCoordinator,
-    provideBrowserGlobalErrorListeners(),
+    provideDiagnosticsLogging(readBuildInfo()),
     provideRouter(
       APP_ROUTES,
       // Hash routing keeps deep links reloadable on GitHub Pages without

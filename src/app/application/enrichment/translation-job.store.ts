@@ -18,6 +18,7 @@ import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { TextModelStore } from '../settings/text-model.store';
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { TranslationService } from './translation.service';
+import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 
 /** Which layer refused, so the reader's panel can offer the right next action. */
 export type TranslationJobError =
@@ -88,6 +89,7 @@ export class TranslationJobStore {
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
   private readonly busyRegistry = inject(AppBusyRegistry);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly progressSignal = signal<TranslationJobProgress>(IDLE);
   private controller: AbortController | null = null;
@@ -123,6 +125,7 @@ export class TranslationJobStore {
     // configuration is still being read stops the run rather than being ignored.
     const controller = new AbortController();
     this.controller = controller;
+    this.logger.info('job.started', { kind: 'translation' });
     this.progressSignal.set({ kind: 'preparing' });
 
     const prepared = await this.prepare(readingId);
@@ -334,6 +337,7 @@ export class TranslationJobStore {
     if (outstanding.length === 0) {
       this.controller = null;
       this.progressSignal.set({ kind: 'complete', counts });
+      this.logger.info('job.succeeded', { kind: 'translation', count: counts.completed });
       return;
     }
 
@@ -416,6 +420,7 @@ export class TranslationJobStore {
 
     this.controller = null;
     this.progressSignal.set({ kind: 'complete', counts });
+    this.logger.info('job.succeeded', { kind: 'translation', count: counts.completed });
   }
 
   private async recordFailures(
@@ -444,16 +449,27 @@ export class TranslationJobStore {
     this.controller = null;
     await this.jobs.setState(job.id, 'cancelled');
     this.progressSignal.set({ kind: 'cancelled', counts });
+    this.logger.info('job.cancelled', { kind: 'translation', count: counts.completed });
   }
 
   private failProvider(error: AiError, counts: TranslationJobCounts): void {
     this.controller = null;
     this.progressSignal.set({ kind: 'failed', counts, error: { source: 'provider', error } });
+    this.logger.error('job.failed', {
+      kind: 'translation',
+      errorDomain: error.domain,
+      errorCode: error.code,
+    });
   }
 
   private failStorage(error: StorageError, counts: TranslationJobCounts): void {
     this.controller = null;
     this.progressSignal.set({ kind: 'failed', counts, error: { source: 'storage', error } });
+    this.logger.error('job.failed', {
+      kind: 'translation',
+      errorDomain: error.domain,
+      errorCode: error.code,
+    });
   }
 }
 

@@ -36,3 +36,11 @@ export function describeThrown(thrown: unknown): string {
   }
   return `non-error thrown value of type ${typeof thrown}`;
 }
+
+/** Returns only an exception category; never returns an exception message. */
+export function safeErrorTypeOf(error: unknown): string {
+  if (error instanceof Error && error.name.length > 0) {
+    return error.name;
+  }
+  return typeof error;
+}

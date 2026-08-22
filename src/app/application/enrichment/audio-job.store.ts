@@ -14,6 +14,7 @@ import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { AudioConfigurationService, type ResolvedAudioConfig } from './audio-configuration.service';
 import { AudioSynthesisService } from './audio-synthesis.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
+import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 
 /** Which layer refused, so the progress row can offer the right next action. */
 export type AudioJobError =
@@ -83,6 +84,7 @@ export class AudioJobStore {
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
   private readonly busyRegistry = inject(AppBusyRegistry);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly progressSignal = signal<AudioJobProgress>(IDLE);
   private controller: AbortController | null = null;
@@ -114,6 +116,7 @@ export class AudioJobStore {
     // configuration is still being read stops the run rather than being ignored.
     const controller = new AbortController();
     this.controller = controller;
+    this.logger.info('job.started', { kind: 'audio' });
     this.progressSignal.set({ kind: 'preparing' });
 
     const prepared = await this.prepare(readingId);
@@ -385,6 +388,7 @@ export class AudioJobStore {
 
     this.controller = null;
     this.progressSignal.set({ kind: 'complete', counts });
+    this.logger.info('job.succeeded', { kind: 'audio', count: counts.completed });
   }
 
   private async stopAtFailure(
@@ -415,16 +419,27 @@ export class AudioJobStore {
     this.controller = null;
     await this.jobs.setState(job.id, 'cancelled');
     this.progressSignal.set({ kind: 'cancelled', counts });
+    this.logger.info('job.cancelled', { kind: 'audio', count: counts.completed });
   }
 
   private failProvider(error: AiError, counts: AudioJobCounts): void {
     this.controller = null;
     this.progressSignal.set({ kind: 'failed', counts, error: { source: 'provider', error } });
+    this.logger.error('job.failed', {
+      kind: 'audio',
+      errorDomain: error.domain,
+      errorCode: error.code,
+    });
   }
 
   private failStorage(error: StorageError, counts: AudioJobCounts): void {
     this.controller = null;
     this.progressSignal.set({ kind: 'failed', counts, error: { source: 'storage', error } });
+    this.logger.error('job.failed', {
+      kind: 'audio',
+      errorDomain: error.domain,
+      errorCode: error.code,
+    });
   }
 }
 

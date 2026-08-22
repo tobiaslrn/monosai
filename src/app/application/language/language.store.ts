@@ -11,6 +11,8 @@ import type {
 import { compileStructuralBaseline } from '../../domain/language/structural-baseline';
 import { LANGUAGE_ASSET_SOURCE, LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { SETTINGS_REPOSITORY } from '../shared/repository-tokens';
+import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
+import { safeErrorTypeOf } from '../../domain/shared/errors';
 
 export type LanguageStatus = 'idle' | 'initializing' | 'ready' | 'failed';
 
@@ -28,6 +30,7 @@ export class LanguageStore {
   private readonly source = inject(LANGUAGE_ASSET_SOURCE);
   private readonly runtime = inject(LANGUAGE_RUNTIME);
   private readonly settings = inject(SETTINGS_REPOSITORY);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly statusSignal = signal<LanguageStatus>('idle');
   private readonly infoSignal = signal<LanguageRuntimeInfo | null>(null);
@@ -82,6 +85,7 @@ export class LanguageStore {
   }
 
   private async run(): Promise<boolean> {
+    this.logger.info('language.operation.started', { operation: 'initialize' });
     this.statusSignal.set('initializing');
     this.errorSignal.set(null);
 
@@ -105,14 +109,31 @@ export class LanguageStore {
       });
     }
 
-    await this.source.pruneSupersededBundles(initialized.value.bundleVersion);
+    try {
+      await this.source.pruneSupersededBundles(initialized.value.bundleVersion);
+    } catch (thrown) {
+      return this.reportFailure({
+        domain: 'language',
+        code: 'unknown',
+        message: 'The verified language assets could not be activated.',
+        cause: safeErrorTypeOf(thrown),
+      });
+    }
     this.infoSignal.set(initialized.value);
     this.attributionsSignal.set(allAttributions(manifest.value));
     this.statusSignal.set('ready');
+    this.logger.info('language.operation.succeeded', {
+      operation: 'initialize',
+      assetVersion: initialized.value.bundleVersion,
+    });
     return true;
   }
 
   private reportFailure(error: LanguageError): boolean {
+    this.logger.error('language.asset.failed', {
+      operation: 'initialize',
+      errorCode: error.code,
+    });
     this.errorSignal.set(error);
     this.statusSignal.set('failed');
     return false;

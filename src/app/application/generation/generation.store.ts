@@ -47,6 +47,7 @@ import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
 import { StoryAssemblyService, type AcceptedSentence } from './story-assembly.service';
 import { VocabularyPreparationService } from './vocabulary-preparation.service';
+import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 
 export type GenerationFailure = AiError | LanguageError | StorageError;
 
@@ -227,6 +228,7 @@ export class GenerationStore {
   private readonly translationService = inject(TranslationService);
   private readonly grammarAnalysisService = inject(GrammarAnalysisService);
   private readonly busyRegistry = inject(AppBusyRegistry);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly stateSignal = signal<GenerationState>(IDLE);
   private readonly announcementSignal = signal('');
@@ -299,6 +301,8 @@ export class GenerationStore {
     const controller = new AbortController();
     this.controller = controller;
     const signal = controller.signal;
+
+    this.logger.info('job.started', { kind: 'generation', count: sentenceCount });
 
     this.repairSignal.set(0);
     this.reviewSignal.set(0);
@@ -881,6 +885,7 @@ export class GenerationStore {
 
     this.builtDraft = null;
     this.stateSignal.set({ kind: 'saved', reading: saved.value });
+    this.logger.info('job.succeeded', { kind: 'generation' });
     this.announce(`Saved “${saved.value.title}” to your library.`);
   }
 
@@ -911,6 +916,11 @@ export class GenerationStore {
       .map((candidate) => `“${candidate.surface}” is not in your reviewed vocabulary.`);
 
     this.controller = null;
+    this.logger.warn('job.failed', {
+      kind: 'generation',
+      errorCode: 'invalid-draft',
+      phase: 'validating',
+    });
     this.stateSignal.set({
       kind: 'invalid-draft',
       draft: {
@@ -955,6 +965,12 @@ export class GenerationStore {
   private fail(error: GenerationFailure): void {
     const during = this.runningKind();
     this.controller = null;
+    this.logger.error('job.failed', {
+      kind: 'generation',
+      errorDomain: error.domain,
+      errorCode: error.code,
+      phase: during,
+    });
     this.stateSignal.set({ kind: 'failed', error, during });
     this.announce(error.message);
   }
@@ -983,6 +999,7 @@ export class GenerationStore {
   private cancelled(): void {
     const during = this.runningKind();
     this.controller = null;
+    this.logger.info('job.cancelled', { kind: 'generation', phase: during });
     this.stateSignal.set({ kind: 'cancelled', during });
     this.announce('Generation cancelled. Nothing was saved.');
   }

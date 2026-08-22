@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
   FakeCredentialRepository,
@@ -8,6 +8,7 @@ import {
 import { FAKE_OPENROUTER, FakeOpenRouterServer } from '../../../testing/openrouter-server';
 import type { AiError } from '../../domain/ai/ai-error';
 import type { Result } from '../../domain/shared/result';
+import type { Logger } from '../../application/shared/diagnostics';
 import { OpenRouterClient } from './openrouter-client';
 import { CHAT_COMPLETIONS_PATH, OPENROUTER_BASE_URL } from './openrouter-endpoints';
 import { chatCompletionSchema } from './openrouter-response.schema';
@@ -271,6 +272,37 @@ describe('OpenRouterClient redaction', () => {
 
       expect(JSON.stringify(result)).not.toContain(FAKE_OPENROUTER.apiKey);
     }
+  });
+
+  it('logs safe request metadata without logging the request body or key', async () => {
+    const info = vi.fn();
+    const error = vi.fn();
+    const logger: Logger = {
+      debug: vi.fn(),
+      info,
+      warn: vi.fn(),
+      error,
+      snapshot: () => [],
+      clear: vi.fn(),
+    };
+    const harness = openRouterHarness();
+    const client = new OpenRouterClient({
+      fetchFn: harness.server.fetch,
+      credentials: new FakeCredentialRepository(),
+      isOnline: () => true,
+      sleep: () => Promise.resolve(),
+      logger,
+    });
+
+    await client.postJson(
+      { ...probe, body: { ...probe.body, secretPrompt: 'private learner text' } },
+      chatCompletionSchema,
+    );
+
+    const serializedCalls = JSON.stringify([...info.mock.calls, ...error.mock.calls]);
+    expect(serializedCalls).not.toContain(FAKE_OPENROUTER.apiKey);
+    expect(serializedCalls).not.toContain('private learner text');
+    expect(serializedCalls).toContain(FAKE_OPENROUTER.textModel);
   });
 });
 

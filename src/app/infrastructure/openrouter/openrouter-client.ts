@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { Logger } from '../../application/shared/diagnostics';
 import { aiError, isAutomaticallyRetryable, type AiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import type { CredentialRepository } from '../../domain/settings/credential-repository';
@@ -28,6 +29,7 @@ export interface OpenRouterClientOptions {
   readonly random?: () => number;
   readonly baseUrl?: string;
   readonly correlationId?: () => string;
+  readonly logger?: Logger;
   /** Deadline for requests that do not set their own. */
   readonly defaultTimeoutMs?: number;
 }
@@ -84,6 +86,7 @@ export class OpenRouterClient {
   private readonly random: () => number;
   private readonly newCorrelationId: () => string;
   private readonly defaultTimeoutMs: number;
+  private readonly logger?: Logger;
 
   constructor(private readonly options: OpenRouterClientOptions) {
     this.baseUrl = options.baseUrl ?? OPENROUTER_BASE_URL;
@@ -91,6 +94,7 @@ export class OpenRouterClient {
     this.newCorrelationId =
       options.correlationId ?? ((): string => Math.random().toString(36).slice(2, 10));
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+    this.logger = options.logger;
   }
 
   /**
@@ -106,21 +110,27 @@ export class OpenRouterClient {
       return raw;
     }
     if (!raw.value.contentType.includes('application/json')) {
-      return err(this.malformed(request.task, 'content-type'));
+      const error = this.malformed(request.task, 'content-type');
+      this.logFailure(request, error);
+      return err(error);
     }
 
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(new TextDecoder().decode(raw.value.bytes));
     } catch {
-      return err(this.malformed(request.task, 'invalid-json'));
+      const error = this.malformed(request.task, 'invalid-json');
+      this.logFailure(request, error);
+      return err(error);
     }
 
     const parsed = schema.safeParse(parsedJson);
     if (!parsed.success) {
       const [issue] = parsed.error.issues;
       const path = issue.path.join('.');
-      return err(this.malformed(request.task, `${path === '' ? 'root' : path}:${issue.code}`));
+      const error = this.malformed(request.task, `${path === '' ? 'root' : path}:${issue.code}`);
+      this.logFailure(request, error);
+      return err(error);
     }
     return ok(parsed.data);
   }
@@ -155,22 +165,55 @@ export class OpenRouterClient {
     maxBytes: number,
   ): Promise<Result<RawResponse, AiError>> {
     const aborted = (): boolean => request.signal?.aborted ?? false;
+    const startedAt = Date.now();
+    this.logger?.info('ai.request.started', requestFields(request));
     let attempt = 0;
     for (;;) {
       const outcome = await this.attempt(request, accept, maxBytes);
-      if (outcome.ok || !isAutomaticallyRetryable(outcome.error)) {
+      if (outcome.ok) {
+        this.logger?.info('ai.request.succeeded', {
+          ...requestFields(request),
+          attempt,
+          durationMs: elapsedMs(startedAt),
+        });
+        return outcome;
+      }
+      if (!isAutomaticallyRetryable(outcome.error)) {
+        this.logFailure(request, outcome.error, attempt, startedAt);
         return outcome;
       }
       if (aborted()) {
-        return err(cancelled(request.task));
+        const error = cancelled(request.task);
+        this.logger?.info('ai.request.cancelled', {
+          ...requestFields(request),
+          attempt,
+          errorCode: error.code,
+          durationMs: elapsedMs(startedAt),
+        });
+        return err(error);
       }
       const delay = nextDelayMs(attempt, outcome.error.detail?.retryAfterMs, this.random);
       if (delay === null) {
+        this.logFailure(request, outcome.error, attempt, startedAt);
         return outcome;
       }
+      this.logger?.warn('ai.request.retry', {
+        ...requestFields(request),
+        attempt,
+        retryCount: attempt + 1,
+        errorCode: outcome.error.code,
+        durationMs: elapsedMs(startedAt),
+      });
       await this.options.sleep(delay);
       if (aborted()) {
-        return err(cancelled(request.task));
+        const error = cancelled(request.task);
+        this.logger?.info('ai.request.cancelled', {
+          ...requestFields(request),
+          attempt,
+          errorCode: error.code,
+          durationMs: elapsedMs(startedAt),
+        });
+        return err(error);
       }
       attempt += 1;
     }
@@ -213,6 +256,25 @@ export class OpenRouterClient {
       );
     }
     return unlocked.value;
+  }
+
+  private logFailure(
+    request: OpenRouterRequest,
+    error: AiError,
+    attempt = 0,
+    startedAt = Date.now(),
+  ): void {
+    const fields = {
+      ...requestFields(request),
+      ...errorFields(error),
+      attempt,
+      durationMs: elapsedMs(startedAt),
+    };
+    if (error.code === 'cancelled') {
+      this.logger?.info('ai.request.cancelled', fields);
+      return;
+    }
+    this.logger?.error('ai.request.failed', fields);
   }
 
   /**
@@ -345,4 +407,36 @@ export class OpenRouterClient {
       cause: describeThrown(thrown),
     });
   }
+}
+
+function elapsedMs(startedAt: number): number {
+  return Math.max(0, Date.now() - startedAt);
+}
+
+function requestFields(request: OpenRouterRequest): {
+  readonly task: AiTask;
+  readonly modelId?: string;
+  readonly voiceId?: string;
+} {
+  return {
+    task: request.task,
+    ...(request.modelId === undefined ? {} : { modelId: request.modelId }),
+    ...(request.voiceId === undefined ? {} : { voiceId: request.voiceId }),
+  };
+}
+
+function errorFields(error: AiError): {
+  readonly errorCode: string;
+  readonly status?: number;
+  readonly issueCode?: string;
+  readonly correlationId?: string;
+} {
+  return {
+    errorCode: error.code,
+    ...(error.detail?.status === undefined ? {} : { status: error.detail.status }),
+    ...(error.detail?.issueCode === undefined ? {} : { issueCode: error.detail.issueCode }),
+    ...(error.detail?.correlationId === undefined
+      ? {}
+      : { correlationId: error.detail.correlationId }),
+  };
 }

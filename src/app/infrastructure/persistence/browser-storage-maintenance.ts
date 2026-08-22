@@ -1,4 +1,6 @@
 import Dexie from 'dexie';
+import type { Logger } from '../../application/shared/diagnostics';
+import { safeErrorTypeOf } from '../../domain/shared/errors';
 import { ok, type Result } from '../../domain/shared/result';
 import {
   UNKNOWN_PERSISTENCE,
@@ -20,28 +22,47 @@ export class BrowserStorageMaintenance implements StorageMaintenance {
     private readonly db: MonosaiDatabase,
     private readonly navigatorRef: Navigator | undefined,
     private readonly caches: CacheStorage | undefined,
+    private readonly logger?: Logger,
   ) {}
 
   async getPersistenceStatus(): Promise<PersistenceStatus> {
-    const storage = this.navigatorRef?.storage;
-    if (!storage) {
-      return UNKNOWN_PERSISTENCE;
-    }
+    try {
+      const storage = this.navigatorRef?.storage;
+      if (!storage) {
+        return UNKNOWN_PERSISTENCE;
+      }
 
-    const persisted = await storage.persisted();
-    const estimate = await storage.estimate();
-    return {
-      persisted,
-      canRequest: typeof storage.persist === 'function' && !persisted,
-      usageBytes: estimate.usage ?? null,
-      quotaBytes: estimate.quota ?? null,
-    };
+      const persisted = await storage.persisted();
+      const estimate = await storage.estimate();
+      return {
+        persisted,
+        canRequest: typeof storage.persist === 'function' && !persisted,
+        usageBytes: estimate.usage ?? null,
+        quotaBytes: estimate.quota ?? null,
+      };
+    } catch (thrown) {
+      this.logger?.error('storage.operation.failed', {
+        operation: 'storage.status',
+        errorCode: 'status-failed',
+        errorType: safeErrorTypeOf(thrown),
+      });
+      throw thrown;
+    }
   }
 
   async requestPersistence(): Promise<PersistenceStatus> {
-    const storage = this.navigatorRef?.storage;
-    if (typeof storage?.persist === 'function') {
-      await storage.persist();
+    try {
+      const storage = this.navigatorRef?.storage;
+      if (typeof storage?.persist === 'function') {
+        await storage.persist();
+      }
+    } catch (thrown) {
+      this.logger?.error('storage.operation.failed', {
+        operation: 'storage.persist',
+        errorCode: 'persist-failed',
+        errorType: safeErrorTypeOf(thrown),
+      });
+      throw thrown;
     }
     return this.getPersistenceStatus();
   }

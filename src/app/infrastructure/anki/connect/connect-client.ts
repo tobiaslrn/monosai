@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { Logger } from '../../../application/shared/diagnostics';
 import { ankiError, type AnkiError, type AnkiErrorCode } from '../../../domain/anki/anki-error';
 import { err, ok, type Result } from '../../../domain/shared/result';
 import type { AllowedAction } from './allowed-actions';
@@ -48,6 +49,7 @@ export interface ConnectClientOptions {
   /** `not-running` for the desktop add-on, `bridge-not-running` for Android. */
   readonly unreachableCode: Extract<AnkiErrorCode, 'not-running' | 'bridge-not-running'>;
   readonly timeoutMs?: number;
+  readonly logger?: Logger;
 }
 
 function isCancelled(signal: AbortSignal | undefined): boolean {
@@ -154,8 +156,16 @@ export class AnkiConnectClient {
     failureCode: AnkiErrorCode,
     signal?: AbortSignal,
   ): Promise<Result<TValue, AnkiError>> {
+    const logFailure = (error: AnkiError): Result<TValue, AnkiError> => {
+      this.options.logger?.error('anki.operation.failed', {
+        action,
+        errorCode: error.code,
+      });
+      return err(error);
+    };
+    this.options.logger?.info('anki.operation.started', { action });
     if (isCancelled(signal)) {
-      return err(cancelled());
+      return logFailure(cancelled());
     }
 
     const attempted = this.activeEndpoint === null ? this.options.endpoints : [this.activeEndpoint];
@@ -167,7 +177,7 @@ export class AnkiConnectClient {
         // A transport failure may just mean this address is not the one Anki
         // bound to, so the remaining candidates are still worth trying.
         if (raw.error.code === 'cancelled') {
-          return raw;
+          return logFailure(raw.error);
         }
         lastTransportFailure = raw.error;
         continue;
@@ -176,7 +186,7 @@ export class AnkiConnectClient {
       this.activeEndpoint = endpoint;
       const envelope = connectEnvelopeSchema.safeParse(raw.value);
       if (!envelope.success) {
-        return err(
+        return logFailure(
           ankiError(
             'malformed-response',
             'Anki answered with something Monosai could not read.',
@@ -185,12 +195,12 @@ export class AnkiConnectClient {
         );
       }
       if (envelope.data.error !== null) {
-        return err(this.describeRemoteError(action, envelope.data.error, failureCode));
+        return logFailure(this.describeRemoteError(action, envelope.data.error, failureCode));
       }
 
       const parsed = schema.safeParse(envelope.data.result);
       if (!parsed.success) {
-        return err(
+        return logFailure(
           ankiError(
             'malformed-response',
             'Anki answered with something Monosai could not read.',
@@ -198,10 +208,11 @@ export class AnkiConnectClient {
           ),
         );
       }
+      this.options.logger?.info('anki.operation.succeeded', { action });
       return ok(parsed.data);
     }
 
-    return err(lastTransportFailure ?? ankiError('unknown', 'Anki could not be reached.'));
+    return logFailure(lastTransportFailure ?? ankiError('unknown', 'Anki could not be reached.'));
   }
 
   /**
