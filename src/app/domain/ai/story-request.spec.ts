@@ -2,15 +2,32 @@ import { describe, expect, it } from 'vitest';
 import {
   MAX_PREMISE_LENGTH,
   MAX_SPECIAL_INSTRUCTIONS_LENGTH,
-  SENTENCE_RANGES,
+  STORY_SENTENCE_COUNTS,
   countCodePoints,
+  normalizeStorySentenceCount,
+  sentenceRangeForCount,
+  storyFormForSentenceCount,
   validateStoryInput,
 } from './story-request';
 
-describe('SENTENCE_RANGES', () => {
-  it('uses the ranges the specification states', () => {
-    expect(SENTENCE_RANGES.micro).toEqual({ min: 4, max: 6 });
-    expect(SENTENCE_RANGES.short).toEqual({ min: 13, max: 20 });
+describe('story length', () => {
+  it('uses four named slider stops and enforces the selected count exactly', () => {
+    expect(STORY_SENTENCE_COUNTS).toEqual([5, 15, 30, 50]);
+    expect(sentenceRangeForCount(30)).toEqual({ min: 30, max: 30 });
+  });
+
+  it('normalizes untrusted slider values to the nearest supported stop', () => {
+    expect(normalizeStorySentenceCount(Number.NaN)).toBe(15);
+    expect(normalizeStorySentenceCount(-10)).toBe(5);
+    expect(normalizeStorySentenceCount(28)).toBe(30);
+    expect(normalizeStorySentenceCount(100)).toBe(50);
+  });
+
+  it('maps selected counts to stable saved-story formats', () => {
+    expect(storyFormForSentenceCount(5)).toBe('micro');
+    expect(storyFormForSentenceCount(15)).toBe('short');
+    expect(storyFormForSentenceCount(30)).toBe('medium');
+    expect(storyFormForSentenceCount(50)).toBe('long');
   });
 });
 

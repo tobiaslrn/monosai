@@ -27,7 +27,7 @@ test.describe('generate prerequisites', () => {
     await openGenerate(page);
 
     // Only what is missing is listed, one line each.
-    await expect(page.locator('[data-check]')).toHaveCount(3);
+    await expect(page.locator('[data-check]')).toHaveCount(2);
     await expect(page.locator('[data-check="vocabulary"]')).toContainText('No vocabulary snapshot');
     await expect(page.getByTestId('generate')).toBeDisabled();
 
@@ -44,16 +44,14 @@ test.describe('generate prerequisites', () => {
     await openGenerate(page);
 
     await page.getByTestId('premise').fill(PREMISE);
-    await page.getByRole('radio', { name: /Short/ }).check();
-    // A satisfied prerequisite stops being listed rather than turning green.
-    await expect(page.locator('[data-check="premise"]')).toHaveCount(0);
+    await page.getByTestId('story-length').fill('2');
 
     await page.locator('[data-check="text-model"]').getByRole('link').click();
     await expect(page).toHaveURL(/#\/settings/);
     await page.goBack();
 
     await expect(page.getByTestId('premise')).toHaveValue(PREMISE);
-    await expect(page.getByRole('radio', { name: /Short/ })).toBeChecked();
+    await expect(page.getByTestId('story-length')).toHaveValue('2');
   });
 
   test('makes no provider request while the form is only being filled in', async ({ page }) => {
@@ -74,6 +72,7 @@ test.describe('generating a story', () => {
 
     await openGenerate(page);
     await page.getByTestId('premise').fill(PREMISE);
+    await page.getByTestId('story-length').fill('0');
     await expect(page.getByTestId('generate')).toBeEnabled();
     await page.getByTestId('generate').click();
 
@@ -117,6 +116,7 @@ test.describe('generating a story', () => {
 
     await openGenerate(page);
     await page.getByTestId('premise').fill(PREMISE);
+    await page.getByTestId('story-length').fill('0');
     await page.getByTestId('generate').click();
 
     await expect(page.getByTestId('invalid-draft-text')).toBeVisible({ timeout: 60_000 });
@@ -142,6 +142,7 @@ test.describe('generating a story', () => {
 
     await openGenerate(page);
     await page.getByTestId('premise').fill(PREMISE);
+    await page.getByTestId('story-length').fill('0');
     await page.getByTestId('generate').click();
 
     await expect(page.getByTestId('cancel-generation')).toBeVisible({ timeout: 30_000 });
@@ -184,6 +185,7 @@ test.describe('generating a story', () => {
 
     await openGenerate(page);
     await page.getByTestId('premise').fill(PREMISE);
+    await page.getByTestId('story-length').fill('0');
     await page.getByTestId('generate').click();
 
     await expect(page.getByTestId('generation-copy')).toContainText(
@@ -210,7 +212,7 @@ test.describe('generating a story', () => {
     page,
   }) => {
     test.setTimeout(SETUP_TIMEOUT);
-    // Thirteen sentences make two translation batches: the first is answered,
+    // Fifteen sentences make two translation batches: the first is answered,
     // the second comes back incomplete and is rejected whole.
     await prepareGeneration(page, {
       generation: {
@@ -222,7 +224,6 @@ test.describe('generating a story', () => {
 
     await openGenerate(page);
     await page.getByTestId('premise').fill(PREMISE);
-    await page.getByRole('radio', { name: /Short/ }).check();
     await page.getByTestId('generate').click();
 
     // Locally valid Japanese still saves: an auxiliary failure is not a story
@@ -233,7 +234,7 @@ test.describe('generating a story', () => {
 
     const summaries = page.getByTestId('saved-summaries');
     await expect(summaries).toContainText('Grammar: unavailable');
-    await expect(summaries).toContainText('Translations: 10 of 13');
+    await expect(summaries).toContainText('Translations: 10 of 15');
 
     const rows = await countOwnedRows(page);
     expect(rows['readings']).toBe(1);

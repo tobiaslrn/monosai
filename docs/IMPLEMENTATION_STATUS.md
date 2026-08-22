@@ -877,15 +877,15 @@ internal prompt versions.
 #### The request contract and every rule live in the domain
 
 `src/app/domain/ai/` gains the pieces a story is judged by, each small enough to
-test on its own: `story-request.ts` (the request, the two sentence ranges, the
+test on its own: `story-request.ts` (the request, the four exact slider counts, the
 1,000-character input limits measured in code points), `story-structure.ts`
 (unique contiguous indexes from zero, nonempty title and sentences, outer
 whitespace trimmed and nothing else, a wrong sentence count reported as
 _repairable_ rather than malformed), `exception-review.ts` (a decision must name
 an input id exactly once and give a real reason; rejected, unreviewed, and
 invalidly decided candidates all stay unknown), `suggestion-palette.ts` (a
-partial Fisher–Yates shuffle over an injected `RandomSource`, 40 for Micro and
-100 for Short, capped by snapshot size), `context-budget.ts` (a deterministic
+partial Fisher–Yates shuffle over an injected `RandomSource`, scaling from 40
+for Tiny to 180 for Long and capped by snapshot size), `context-budget.ts` (a deterministic
 estimate and the 60,000-token guard that fails before spending), plus
 `prompt-versions.ts` and `generation-provenance.ts`.
 
@@ -944,16 +944,18 @@ fills those branches in on top of this save path.
 
 #### The Generate screen
 
-Three independently actionable checks, each linking to the screen that fixes it
+Two external setup checks, each linking to the screen that fixes it
 with the draft surviving the trip (it lives in a root-provided
 `GenerationDraftStore`, unlike the run itself). TTS is named as optional and
 carries no state. The grammar preset is a read-only line with a non-blocking
 warning when the preset outruns the snapshot — the item Milestones 4 and 5
 deferred here.
 
-The form has a premise with a live counter, Micro and Short cards with their
-ranges, optional special instructions, read-only snapshot and preset links, and a
-Generate button that says a request is coming and estimates no price. There is no
+The form has aligned premise and special-instruction fields beside a compact
+settings panel with a four-stop Tiny-to-Long slider and a preview-only Anki
+word-selection control. Both text fields have live counters. Read-only snapshot
+and preset links sit above a Generate button that says a request is coming and
+estimates no price. There is no
 genre picker, no topic suggestions, no visible target vocabulary, no temperature,
 and no prompt editor.
 

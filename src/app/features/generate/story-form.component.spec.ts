@@ -88,38 +88,65 @@ describe('StoryFormComponent', () => {
     );
   });
 
-  it('offers both story forms with their sentence ranges', () => {
+  it('offers a four-stop length slider with a 50-sentence maximum', () => {
     const { element } = render();
 
-    const text = element.querySelector('.forms')?.textContent ?? '';
-    expect(text).toContain('Micro');
-    expect(text).toContain('4–6 sentences');
+    const text = element.querySelector('.story-settings')?.textContent ?? '';
+    expect(text).toContain('Tiny');
     expect(text).toContain('Short');
-    expect(text).toContain('13–20 sentences');
+    expect(text).toContain('Medium');
+    expect(text).toContain('Long');
+    expect(element.querySelector<HTMLInputElement>('[data-testid="story-length"]')?.max).toBe('3');
+    expect(text).toContain('15');
   });
 
-  it('records the chosen form in the draft', () => {
+  it('snaps to the selected named length and stores its exact sentence count', () => {
+    const { element, fixture } = render();
+
+    const slider = element.querySelector<HTMLInputElement>('[data-testid="story-length"]');
+    if (slider === null) {
+      throw new Error('story length slider was not rendered');
+    }
+    slider.value = '3';
+    slider.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(draft.sentenceCount()).toBe(50);
+    expect(element.querySelector('output')?.textContent).toContain('50');
+    expect(slider.getAttribute('aria-valuetext')).toBe('Long, 50 sentences');
+  });
+
+  it('previews future Anki word-selection modes without enabling them', () => {
     const { element } = render();
 
-    const short = element.querySelectorAll<HTMLInputElement>('input[name="mn-story-form"]')[1];
-    short.checked = true;
-    short.dispatchEvent(new Event('change'));
-
-    expect(draft.form()).toBe('short');
+    const select = element.querySelector<HTMLSelectElement>('#mn-word-selection');
+    expect(select?.disabled).toBe(true);
+    expect(select?.textContent).toContain('Random distribution');
+    expect(select?.textContent).toContain('Focus on recent words');
+    expect(element.querySelector('.word-selection')?.textContent).toContain('Preview');
   });
 
-  it('keeps special instructions optional and says what they cannot change', () => {
+  it('keeps special instructions optional', () => {
     const { element } = render();
 
     expect(element.querySelector('label[for="mn-instructions"]')?.textContent).toContain(
       'optional',
     );
-    expect(element.querySelector('#mn-instructions-help')?.textContent).toContain(
-      'cannot change the length',
-    );
   });
 
-  it('links the snapshot and preset read-only rather than offering to change them here', () => {
+  it('keeps premise and instruction guidance inside the text boxes', () => {
+    const { element } = render();
+
+    expect(
+      element.querySelector<HTMLTextAreaElement>('[data-testid="premise"]')?.placeholder,
+    ).toContain('up to 1,000 characters');
+    expect(
+      element.querySelector<HTMLTextAreaElement>('[data-testid="special-instructions"]')
+        ?.placeholder,
+    ).toContain('optional');
+  });
+
+  it('links the snapshot and preset from the settings sidebar', () => {
     const { element } = render();
 
     const sources = element.querySelector('[data-testid="form-sources"]');
@@ -133,12 +160,14 @@ describe('StoryFormComponent', () => {
    * that acts on it, rather than three times across the screen. No price is
    * estimated: a number that is wrong is worse than no number.
    */
-  it('names its sources once, directly above the button, and estimates no price', () => {
+  it('presents its linked sources once and estimates no price', () => {
     const { element } = render();
 
     const sources = element.querySelector('[data-testid="form-sources"]');
-    expect(sources?.textContent).toContain('Written from your');
-    expect(sources?.nextElementSibling?.querySelector('[data-testid="generate"]')).not.toBeNull();
+    expect(sources?.textContent).toContain('Uses');
+    expect(sources?.textContent).toContain('Vocabulary');
+    expect(sources?.textContent).toContain('Grammar');
+    expect(element.querySelector('[data-testid="generate"]')).not.toBeNull();
     expect(element.querySelectorAll('[data-testid="form-sources"]')).toHaveLength(1);
     expect(element.textContent.toLowerCase()).not.toContain('$');
     expect(element.textContent.toLowerCase()).not.toContain('cost');
@@ -176,6 +205,9 @@ describe('StoryFormComponent', () => {
     fixture.detectChanges();
 
     expect(element.querySelector<HTMLTextAreaElement>('[data-testid="premise"]')?.disabled).toBe(
+      true,
+    );
+    expect(element.querySelector<HTMLInputElement>('[data-testid="story-length"]')?.disabled).toBe(
       true,
     );
     expect(element.querySelector<HTMLButtonElement>('[data-testid="generate"]')?.disabled).toBe(

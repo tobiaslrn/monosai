@@ -59,8 +59,8 @@ Store prompt versions and relevant input hashes in provenance, not the full asse
 
 ```ts
 interface StoryGenerationRequest {
-  form: 'micro' | 'short';
-  sentenceRange: { min: 4; max: 6 } | { min: 13; max: 20 };
+  form: 'micro' | 'short' | 'medium' | 'long';
+  sentenceRange: { min: 5; max: 5 } | { min: 15; max: 15 } | { min: 30; max: 30 } | { min: 50; max: 50 };
   premise: string;
   specialInstructions?: string;
   allowedVocabulary: readonly string[];
@@ -91,7 +91,7 @@ The initial model returns Japanese only. Translations are generated after the fi
 
 ### Uniform variety
 
-Before each generation, use a cryptographically adequate random shuffle of the snapshot IDs and select a hidden suggestion palette. Default palette sizes are 40 for Micro and 100 for Short, capped by snapshot size. The complete vocabulary list remains the allowlist and local validation authority; suggested items are inspiration, not required targets. Store the sampled item IDs in provenance for debugging/reproducibility but never display a target list in the UI.
+Before each generation, use a cryptographically adequate random shuffle of the snapshot IDs and select a hidden suggestion palette. Default palette sizes are 40 for Tiny/Micro, 100 for Short, 140 for Medium, and 180 for Long, capped by snapshot size. The complete vocabulary list remains the allowlist and local validation authority; suggested items are inspiration, not required targets. Store the sampled item IDs in provenance for debugging/reproducibility but never display a target list in the UI.
 
 ## 5. Generation state machine
 

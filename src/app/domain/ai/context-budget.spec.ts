@@ -7,12 +7,12 @@ import {
   estimateRequestTokens,
   estimateTokens,
 } from './context-budget';
-import { SENTENCE_RANGES, type StoryGenerationRequest } from './story-request';
+import { sentenceRangeForCount, type StoryGenerationRequest } from './story-request';
 
 function request(overrides: Partial<StoryGenerationRequest> = {}): StoryGenerationRequest {
   return {
     form: 'micro',
-    sentenceRange: SENTENCE_RANGES.micro,
+    sentenceRange: sentenceRangeForCount(5),
     premise: '猫が旅に出る話。',
     allowedVocabulary: ['猫', '旅', '出る'],
     suggestedVocabulary: ['猫'],

@@ -236,7 +236,6 @@ export class GeneratePageComponent implements OnDestroy {
       textModelReadiness: this.textModel.readiness(),
       structuredOutput: this.textModel.structuredOutput(),
       snapshot: this.snapshots.active(),
-      premiseValid: this.draft.isValid(),
     }),
   );
 
@@ -251,14 +250,16 @@ export class GeneratePageComponent implements OnDestroy {
       : `${String(active.uniqueEntryCount)} reviewed words`;
   });
 
-  protected readonly canGenerate = computed(() => allPrerequisitesMet(this.checks()));
+  protected readonly canGenerate = computed(
+    () => allPrerequisitesMet(this.checks()) && this.draft.isValid(),
+  );
 
   /**
    * Whether anything is worth saying before the form. The advisory preset
    * warning counts: it is the one line here that costs money to ignore.
    */
   protected readonly hasBlockers = computed(
-    () => !this.canGenerate() || this.presetLine().warning !== null,
+    () => !allPrerequisitesMet(this.checks()) || this.presetLine().warning !== null,
   );
 
   protected readonly invalidDraft = computed(() => {
@@ -370,7 +371,7 @@ export class GeneratePageComponent implements OnDestroy {
   }
 
   protected generate(): void {
-    void this.generation.generate(this.draft.form(), this.draft.input());
+    void this.generation.generate(this.draft.sentenceCount(), this.draft.input());
   }
 
   protected cancel(): void {

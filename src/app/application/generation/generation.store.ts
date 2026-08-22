@@ -9,7 +9,8 @@ import {
 import { MAX_REPAIR_ATTEMPTS } from '../../domain/ai/generation-provenance';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import {
-  SENTENCE_RANGES,
+  sentenceRangeForCount,
+  storyFormForSentenceCount,
   validateStoryInput,
   type StoryCandidate,
   type StoryGenerationRequest,
@@ -25,7 +26,7 @@ import type { GrammarProfileSnapshot } from '../../domain/grammar/profile';
 import { VALIDATOR_VERSION } from '../../domain/language/analyzer-version';
 import type { LanguageError } from '../../domain/language/language-error';
 import type { SentenceTokens } from '../../domain/language/language-runtime';
-import type { GeneratedStory, StoryForm } from '../../domain/reading/reading';
+import type { GeneratedStory } from '../../domain/reading/reading';
 import type { GeneratedStoryDraft } from '../../domain/reading/reading-repository';
 import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
@@ -288,7 +289,7 @@ export class GenerationStore {
    * Nothing is written until the last step, and the only thing that is written
    * is a story every word of which has a validation that is not `unknown`.
    */
-  async generate(form: StoryForm, draft: StoryInputDraft): Promise<void> {
+  async generate(sentenceCount: number, draft: StoryInputDraft): Promise<void> {
     this.controller?.abort();
     const controller = new AbortController();
     this.controller = controller;
@@ -324,6 +325,7 @@ export class GenerationStore {
     this.announce('Preparing your reviewed vocabulary…');
 
     const context = captured.value;
+    const form = storyFormForSentenceCount(sentenceCount);
     const prepared = await this.preparation.prepare(context.snapshot.id, form);
     if (!prepared.ok) {
       this.fail(prepared.error);
@@ -336,7 +338,7 @@ export class GenerationStore {
 
     const request: StoryGenerationRequest = {
       form,
-      sentenceRange: SENTENCE_RANGES[form],
+      sentenceRange: sentenceRangeForCount(sentenceCount),
       premise: input.value.premise,
       allowedVocabulary: prepared.value.allowedVocabulary,
       suggestedVocabulary: prepared.value.suggestedVocabulary,

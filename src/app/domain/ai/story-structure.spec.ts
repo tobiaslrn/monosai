@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SENTENCE_RANGES, type StoryCandidate } from './story-request';
+import type { StoryCandidate } from './story-request';
 import {
   checkStoryStructure,
   hasFormatFailure,
@@ -14,7 +14,7 @@ function candidate(texts: readonly string[], titleJa = 'ねこの一日'): Story
   };
 }
 
-const MICRO = SENTENCE_RANGES.micro;
+const MICRO = { min: 4, max: 6 };
 const FOUR = ['一。', '二。', '三。', '四。'];
 
 describe('normalizeCandidate', () => {

@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { SENTENCE_RANGES, type StoryGenerationRequest } from '../../../domain/ai/story-request';
+import {
+  sentenceRangeForCount,
+  type StoryGenerationRequest,
+} from '../../../domain/ai/story-request';
 import type { StoryRepairRequest } from '../../../domain/ai/text-generation-provider';
 import { snapshotId } from '../../../domain/shared/ids';
 import { buildRepairPrompt } from './repair-prompt';
 
 const ORIGINAL: StoryGenerationRequest = {
   form: 'micro',
-  sentenceRange: SENTENCE_RANGES.micro,
+  sentenceRange: sentenceRangeForCount(5),
   premise: 'ねこが一日をすごす話。',
   allowedVocabulary: ['ねこ', 'ねる'],
   suggestedVocabulary: ['ねこ'],

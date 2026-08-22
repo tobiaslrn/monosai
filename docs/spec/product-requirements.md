@@ -27,7 +27,7 @@ V1 is a public bring-your-own-OpenRouter-key application. It is single-learner p
 - Read-only vocabulary refresh through desktop AnkiConnect, an Android AnkiConnect-compatible bridge, or Anki package parsing.
 - One replaceable current vocabulary snapshot and snapshot-linked generated stories.
 - Device-wide N5–N1 grammar selection and named custom rules.
-- Custom-premise micro and short story generation.
+- Custom-premise story generation at four selectable lengths.
 - Local validation, AI exception review, maximum two targeted repairs, advisory grammar review, translations, and cloud TTS.
 - Per-sentence and explicit batch enrichment, caching, progress, cancellation, retry, and offline replay.
 - PWA installability, offline app shell, storage management, light/dark/system themes, and update handling.
@@ -116,7 +116,7 @@ A grammar preset is always set, so it is never a prerequisite. When the selected
 
 Flow:
 
-1. The user enters a premise, chooses Micro (4–6 sentences) or Short (13–20), optionally enters special instructions, and starts.
+1. The user enters a premise, chooses a length on a four-stop slider — Tiny (5 sentences), Short (15), Medium (30), or Long (50) — optionally enters special instructions, and starts.
 2. Monosai displays cancellable progress through preparation, writing, parsing, local validation, exception review, repair if needed, grammar review, translation, and finalization.
 3. Ordinary vocabulary is validated locally. Candidate exceptions are reviewed against the captured exception policy. Unknowns receive at most two targeted repair attempts.
 4. If unknowns remain, the result is shown as an unsaved marked draft.

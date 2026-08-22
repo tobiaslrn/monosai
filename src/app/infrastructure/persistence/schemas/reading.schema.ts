@@ -45,7 +45,7 @@ export const readingRowSchema = z.discriminatedUnion('kind', [
   z.object({
     ...readingBaseShape,
     kind: z.literal('generated'),
-    form: z.enum(['micro', 'short']),
+    form: z.enum(['micro', 'short', 'medium', 'long']),
     premise: z.string(),
     specialInstructions: z.string().optional(),
     snapshotId: snapshotIdSchema,

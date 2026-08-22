@@ -92,7 +92,7 @@ describe('GenerationStepperComponent', () => {
     const { element, store, fixture } = render();
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await store.generate('micro', { premise: 'ねこの話。' });
+    await store.generate(5, { premise: 'ねこの話。' });
     fixture.detectChanges();
 
     const stages = stagesOf(element);
@@ -111,7 +111,7 @@ describe('GenerationStepperComponent', () => {
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.reviewQueue.push(ok([APPROVAL]));
 
-    await store.generate('micro', { premise: 'ねこの話。' });
+    await store.generate(5, { premise: 'ねこの話。' });
     fixture.detectChanges();
 
     expect(stagesOf(element)['Reviewing exceptions']).toBe('complete');
@@ -122,7 +122,7 @@ describe('GenerationStepperComponent', () => {
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.repairQueue.push(ok(strictStory()));
 
-    await store.generate('micro', { premise: 'ねこの話。' });
+    await store.generate(5, { premise: 'ねこの話。' });
     fixture.detectChanges();
 
     expect(stagesOf(element)['Repairing']).toBe('complete');
@@ -144,7 +144,7 @@ describe('GenerationStepperComponent', () => {
       err(aiError('provider-unavailable', 'grammar-review', 'The provider was unavailable.')),
     );
 
-    await store.generate('micro', { premise: 'ねこの話。' });
+    await store.generate(5, { premise: 'ねこの話。' });
     fixture.detectChanges();
 
     const stages = stagesOf(element);
@@ -162,13 +162,13 @@ describe('GenerationStepperComponent', () => {
       err(aiError('provider-unavailable', 'translation', 'The provider was unavailable.')),
     );
 
-    await store.generate('micro', { premise: 'ねこの話。' });
+    await store.generate(5, { premise: 'ねこの話。' });
     fixture.detectChanges();
 
     const stages = stagesOf(element);
     expect(stages['Translating']).toBe('failed');
     expect(stages['Saving']).toBe('complete');
-    expect(element.textContent).toContain('0 of 4 translated');
+    expect(element.textContent).toContain('0 of 5 translated');
   });
 
   it('reports an unsaved draft as everything but the save', async () => {
@@ -176,7 +176,7 @@ describe('GenerationStepperComponent', () => {
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
 
-    await store.generate('micro', { premise: 'ねこの話。' });
+    await store.generate(5, { premise: 'ねこの話。' });
     fixture.detectChanges();
 
     const stages = stagesOf(element);
@@ -191,7 +191,7 @@ describe('GenerationStepperComponent', () => {
     const untested = configureGenerationTestBed({ structuredOutput: null });
     const { element, store, fixture } = render();
 
-    await store.generate('micro', { premise: 'ねこの話。' });
+    await store.generate(5, { premise: 'ねこの話。' });
     fixture.detectChanges();
 
     expect(untested.provider.generationCalls.story).toBe(0);

@@ -56,9 +56,11 @@ describe('samplePalette', () => {
 
 describe('paletteSizeFor', () => {
   it('uses the specified sizes, capped by the snapshot', () => {
-    expect(PALETTE_SIZES).toEqual({ micro: 40, short: 100 });
+    expect(PALETTE_SIZES).toEqual({ micro: 40, short: 100, medium: 140, long: 180 });
     expect(paletteSizeFor('micro', 1_800)).toBe(40);
     expect(paletteSizeFor('short', 1_800)).toBe(100);
+    expect(paletteSizeFor('medium', 1_800)).toBe(140);
+    expect(paletteSizeFor('long', 1_800)).toBe(180);
     expect(paletteSizeFor('short', 60)).toBe(60);
   });
 });

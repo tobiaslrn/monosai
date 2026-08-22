@@ -7,13 +7,13 @@ import {
 import type { GrammarPreset, GrammarPresetId } from '../../domain/grammar/presets';
 
 /**
- * The three checks the Generate screen shows, each independently actionable.
+ * The two external setup checks the Generate screen shows, each independently actionable.
  *
  * The grammar preset is deliberately not among them: a preset is always set, so
  * it can never block generation. It is reported separately as a read-only line
  * that may carry a warning.
  */
-export type PrerequisiteId = 'text-model' | 'vocabulary' | 'premise';
+export type PrerequisiteId = 'text-model' | 'vocabulary';
 
 export interface PrerequisiteCheck {
   readonly id: PrerequisiteId;
@@ -30,7 +30,6 @@ export interface PrerequisiteInput {
   readonly textModelReadiness: ConfigurationReadiness;
   readonly structuredOutput: StructuredOutputMode | null;
   readonly snapshot: VocabularySnapshot | null;
-  readonly premiseValid: boolean;
 }
 
 function textModelDetail(input: PrerequisiteInput): string {
@@ -90,16 +89,6 @@ export function prerequisiteChecks(input: PrerequisiteInput): readonly Prerequis
       detail: vocabularyDetail(input.snapshot),
       route: '/vocabulary',
       actionLabel: 'Open Vocabulary',
-    },
-    {
-      id: 'premise',
-      label: 'Premise',
-      satisfied: input.premiseValid,
-      detail: input.premiseValid
-        ? 'Your premise is ready.'
-        : 'Describe what the story should be about, in 1,000 characters or fewer.',
-      route: '',
-      actionLabel: '',
     },
   ];
 }

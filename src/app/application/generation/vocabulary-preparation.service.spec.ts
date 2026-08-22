@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { SENTENCE_RANGES, type StoryGenerationRequest } from '../../domain/ai/story-request';
+import { sentenceRangeForCount, type StoryGenerationRequest } from '../../domain/ai/story-request';
 import { snapshotId, vocabularyItemId, type SnapshotId } from '../../domain/shared/ids';
 import type { RandomSource } from '../../domain/shared/random';
 import type { VocabularyItem } from '../../domain/vocabulary/snapshot';
@@ -86,6 +86,14 @@ describe('VocabularyPreparationService', () => {
     expect(prepared.ok && prepared.value.suggestedItemIds).toHaveLength(100);
   });
 
+  it('samples the largest palette for a Long story', async () => {
+    seed(300);
+
+    const prepared = await service.prepare(SNAPSHOT, 'long');
+
+    expect(prepared.ok && prepared.value.suggestedItemIds).toHaveLength(180);
+  });
+
   it('caps the palette at what a small snapshot can supply', async () => {
     seed(12);
 
@@ -108,7 +116,7 @@ describe('VocabularyPreparationService', () => {
   function request(allowedVocabulary: readonly string[]): StoryGenerationRequest {
     return {
       form: 'micro',
-      sentenceRange: SENTENCE_RANGES.micro,
+      sentenceRange: sentenceRangeForCount(5),
       premise: 'ねこの話。',
       allowedVocabulary,
       suggestedVocabulary: [],
