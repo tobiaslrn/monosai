@@ -17,6 +17,9 @@ describe('mapStorageFailure', () => {
     );
     expect(mapStorageFailure(named('DatabaseClosedError'), 'op').code).toBe('unavailable');
     expect(mapStorageFailure(named('VersionError'), 'op').code).toBe('migration-failed');
+    expect(mapStorageFailure(named('InvalidTableError'), 'op').code).toBe('migration-failed');
+    expect(mapStorageFailure(named('SchemaError'), 'op').code).toBe('migration-failed');
+    expect(mapStorageFailure(named('NotFoundError'), 'op').code).toBe('migration-failed');
     expect(mapStorageFailure(named('ConstraintError'), 'op').code).toBe('conflict');
     expect(mapStorageFailure(named('DataError'), 'op').code).toBe('corrupt-record');
     expect(mapStorageFailure(named('BlockedError'), 'op').code).toBe('blocked');

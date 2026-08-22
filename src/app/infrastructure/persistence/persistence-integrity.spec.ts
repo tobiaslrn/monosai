@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import Dexie from 'dexie';
 import { fixedClock } from '../../domain/shared/clock';
 import { createTestDatabase, destroyTestDatabase } from '../../../testing/test-database';
 import { importedReadingFixture, snapshotFixture } from '../../../testing/persistence-fixtures';
 import { CURRENT_SCHEMA_VERSION, SCHEMA_VERSIONS } from './migrations';
-import type { MonosaiDatabase } from './monosai-db';
+import { MonosaiDatabase } from './monosai-db';
 import {
   BrowserStorageMaintenance,
   resolveMaintenanceDependencies,
@@ -69,6 +70,39 @@ describe('database schema', () => {
 
     const reloaded = await new DexieReadingRepository(db, clock).getReading(draft.reading.id);
     expect(reloaded.ok && reloaded.value?.title).toBe(draft.reading.title);
+  });
+
+  it('reconciles a stale development v1 schema into v2 without deleting existing records', async () => {
+    const name = `monosai-stale-v1-${Date.now()}`;
+    const stale = new Dexie(name);
+    stale.version(1).stores({
+      settings: '&key',
+      readings: '&id',
+      readingProgress: '&readingId, lastOpenedAt',
+    });
+
+    try {
+      await stale.open();
+      await stale.table('settings').add({ key: 'preserved', value: true });
+      stale.close();
+
+      const upgraded = new MonosaiDatabase(name);
+      await upgraded.open();
+
+      expect(upgraded.verno).toBe(2);
+      expect(await upgraded.table('settings').get('preserved')).toEqual({
+        key: 'preserved',
+        value: true,
+      });
+      expect(upgraded.tables.map((table) => table.name).sort()).toEqual(
+        Object.keys(SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].stores).sort(),
+      );
+      expect(upgraded.tables.some((table) => table.name === 'readingProgress')).toBe(false);
+      upgraded.close();
+    } finally {
+      stale.close();
+      await Dexie.delete(name);
+    }
   });
 });
 

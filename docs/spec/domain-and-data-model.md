@@ -386,6 +386,7 @@ Clear audio deletes all audio blobs and audio jobs, resets reading audio summari
 
 ## 8. Database migrations
 
+- Schema history begins at version 1 and is preserved from version 2 onward, including before the first stable release. Never edit a committed version in place.
 - Schema versions are monotonic integers with one migration function per version transition.
 - Migrations are idempotent when retried after an aborted open.
 - Never mutate immutable text/provenance semantics without retaining the old representation or recomputing from stored source.
