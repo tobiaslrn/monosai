@@ -246,6 +246,28 @@ describe('DexieReadingRepository', () => {
       expect(await db.translations.count()).toBe(draft.translations.length);
     });
 
+    it('stores one translation row when repeated sentences share a cache key', async () => {
+      const base = generatedStoryDraftFixture(storySnapshotId, {
+        seed: 77,
+        sentenceTexts: ['同じ文です。', '同じ文です。'],
+      });
+      const draft = {
+        ...base,
+        translations: base.translations.map((record) => ({
+          ...record,
+          cacheKey: 'shared-translation-key',
+        })),
+      };
+
+      const saved = await repository.saveGeneratedStory(draft);
+
+      expect(saved.ok).toBe(true);
+      expect(await db.translations.count()).toBe(1);
+      expect(await db.translations.get('shared-translation-key')).toMatchObject({
+        sentenceId: draft.sentences[0].id,
+      });
+    });
+
     it('refuses a grammar summary claiming full coverage when fewer analyses are saved, writing nothing', async () => {
       const base = generatedStoryDraftFixture(storySnapshotId);
       const draft = {

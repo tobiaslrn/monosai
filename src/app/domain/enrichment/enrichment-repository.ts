@@ -23,6 +23,10 @@ export interface EnrichmentRepository {
   listTranslationsForSentences(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly TranslationRecord[], StorageError>>;
+  /** Current content-addressed rows, including a row represented by another repeated sentence. */
+  listTranslationsForCacheKeys(
+    cacheKeys: readonly string[],
+  ): Promise<Result<readonly TranslationRecord[], StorageError>>;
   /**
    * `currentCacheKeys` is the caller's current cache key per sentence in the
    * reading; it is the only way the repository learns "current" without
@@ -42,6 +46,10 @@ export interface EnrichmentRepository {
   ): Promise<Result<readonly GrammarAnalysisRecord[], StorageError>>;
   listGrammarAnalysesForSentences(
     sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly GrammarAnalysisRecord[], StorageError>>;
+  /** Current content-addressed analyses, including repeated sentences. */
+  listGrammarAnalysesForCacheKeys(
+    cacheKeys: readonly string[],
   ): Promise<Result<readonly GrammarAnalysisRecord[], StorageError>>;
   storeGrammarAnalysis(
     record: GrammarAnalysisRecord,

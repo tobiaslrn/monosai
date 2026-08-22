@@ -184,21 +184,33 @@ export class SentenceAidsStore {
     }
 
     const sentenceIds = sentences.map((sentence) => sentence.id);
+    const translationKeys = [...new Set(this.translationKeys(sentences).values())];
+    const grammarKeys = [...new Set(this.grammarKeys(sentences).values())];
     // Audio is asked for by key rather than by sentence, because the audio
     // table is keyed by `cacheKey`: two sentences with identical Japanese share
     // one clip, and asking by sentence would report one of them as having none.
     const audioKeys = [...new Set(this.audioKeys(sentences).values())];
-    const [translations, analyses, clips] = await Promise.all([
+    const [translations, translationHistory, analyses, analysisHistory, clips] = await Promise.all([
       this.enrichment.listTranslationsForSentences(sentenceIds),
+      this.enrichment.listTranslationsForCacheKeys(translationKeys),
       this.enrichment.listGrammarAnalysesForSentences(sentenceIds),
+      this.enrichment.listGrammarAnalysesForCacheKeys(grammarKeys),
       this.enrichment.listAudioSummariesForCacheKeys(audioKeys),
     ]);
     if (!translations.ok) {
       this.errorSignal.set(translations.error);
       return;
     }
+    if (!translationHistory.ok) {
+      this.errorSignal.set(translationHistory.error);
+      return;
+    }
     if (!analyses.ok) {
       this.errorSignal.set(analyses.error);
+      return;
+    }
+    if (!analysisHistory.ok) {
+      this.errorSignal.set(analysisHistory.error);
       return;
     }
     if (!clips.ok) {
@@ -208,7 +220,13 @@ export class SentenceAidsStore {
 
     this.errorSignal.set(null);
     this.storedSignal.set(
-      this.assemble(reading, sentences, translations.value, analyses.value, clips.value),
+      this.assemble(
+        reading,
+        sentences,
+        mergeByCacheKey(translations.value, translationHistory.value),
+        mergeByCacheKey(analyses.value, analysisHistory.value),
+        clips.value,
+      ),
     );
   }
 
@@ -393,6 +411,10 @@ export class SentenceAidsStore {
     const audioKeys = this.audioKeys(sentences);
     const liveProfileHash = this.grammarProfile.liveProfileHash();
 
+    const translationsByCacheKey = new Map(
+      translations.map((record) => [record.cacheKey, [record]]),
+    );
+    const analysesByCacheKey = new Map(analyses.map((record) => [record.cacheKey, [record]]));
     const translationsBySentence = groupBySentence(translations);
     const analysesBySentence = groupBySentence(analyses);
     const clipsByCacheKey = new Map(clips.map((clip) => [clip.cacheKey, clip]));
@@ -400,11 +422,17 @@ export class SentenceAidsStore {
     const stored = new Map<SentenceId, StoredAids>();
     for (const sentence of sentences) {
       const translation = chooseAnalysis(
-        translationsBySentence.get(sentence.id) ?? [],
+        mergeByCacheKey(
+          translationsBySentence.get(sentence.id) ?? [],
+          translationsByCacheKey.get(translationKeys.get(sentence.id) ?? '') ?? [],
+        ),
         translationKeys.get(sentence.id) ?? '',
       );
       const grammar = chooseAnalysis(
-        analysesBySentence.get(sentence.id) ?? [],
+        mergeByCacheKey(
+          analysesBySentence.get(sentence.id) ?? [],
+          analysesByCacheKey.get(grammarKeys.get(sentence.id) ?? '') ?? [],
+        ),
         grammarKeys.get(sentence.id) ?? '',
       );
       const currentAudioKey = audioKeys.get(sentence.id);
@@ -444,6 +472,20 @@ function isStaleAgainstProfile(
 
 function emptyStored(stored: StoredAids | undefined): StoredAids {
   return stored ?? { translation: null, grammar: null, audio: null, grammarStale: false };
+}
+
+function mergeByCacheKey<T extends { readonly cacheKey: string }>(
+  ...recordGroups: readonly (readonly T[])[]
+): readonly T[] {
+  const merged = new Map<string, T>();
+  for (const records of recordGroups) {
+    for (const record of records) {
+      if (!merged.has(record.cacheKey)) {
+        merged.set(record.cacheKey, record);
+      }
+    }
+  }
+  return [...merged.values()];
 }
 
 function groupBySentence<T extends { readonly sentenceId: SentenceId }>(

@@ -130,6 +130,21 @@ describe('DexieEnrichmentRepository', () => {
     });
   });
 
+  it('counts every sentence covered by a shared translation key', async () => {
+    const cacheKeys = currentTranslationKeys();
+    cacheKeys.set(draft.sentences[1].id, 'translation-0');
+
+    await repository.storeTranslation(translation(0), cacheKeys);
+
+    const reading = await readings.getReading(draft.reading.id);
+
+    expect(reading.ok && reading.value?.translationSummary).toEqual({
+      total: draft.sentences.length,
+      completed: 2,
+      failed: 0,
+    });
+  });
+
   it('does not let a historic-model translation row inflate completion', async () => {
     // A row cached under an old model/prompt stays in the table, but it must
     // never count toward completion once the caller's current key differs.
@@ -180,6 +195,14 @@ describe('DexieEnrichmentRepository', () => {
     expect(bounded.value.map((record) => record.sentenceId).sort()).toEqual(
       [draft.sentences[0].id, draft.sentences[2].id].sort(),
     );
+  });
+
+  it('lists current translations by cache key', async () => {
+    await repository.storeTranslation(translation(0), currentTranslationKeys());
+
+    const bounded = await repository.listTranslationsForCacheKeys(['translation-0']);
+
+    expect(bounded.ok && bounded.value.map((record) => record.cacheKey)).toEqual(['translation-0']);
   });
 
   it('rolls back a failed store, leaving the prior row and summary intact', async () => {

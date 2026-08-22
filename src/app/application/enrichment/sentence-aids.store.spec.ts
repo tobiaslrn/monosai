@@ -273,6 +273,8 @@ describe('SentenceAidsStore', () => {
 
     expect(enrichment.perSentenceQueries.translations).toEqual([['s0', 's1']]);
     expect(enrichment.perSentenceQueries.grammar).toEqual([['s0', 's1']]);
+    expect(enrichment.cacheKeyQueries.translations[0]).toHaveLength(2);
+    expect(enrichment.cacheKeyQueries.grammar[0]).toHaveLength(2);
     expect(provider.generationCalls).toEqual({
       story: 0,
       repair: 0,
@@ -291,6 +293,21 @@ describe('SentenceAidsStore', () => {
 
     const aids = store.aids().get(window[0].id);
     expect(aids?.translation?.textEn).toBe('Sentence zero.');
+  });
+
+  it('shows one shared translation row for every repeated sentence', async () => {
+    const base = sentences(2);
+    const window = [
+      base[0],
+      { ...base[1], japaneseText: base[0].japaneseText, contentHash: base[0].contentHash },
+    ];
+    const shared = translationFor(window[0], 'The repeated sentence.');
+    enrichment.translations = [shared];
+
+    await store.load(importedReading(), window);
+
+    expect(store.aids().get(window[0].id)?.translation?.textEn).toBe('The repeated sentence.');
+    expect(store.aids().get(window[1].id)?.translation?.textEn).toBe('The repeated sentence.');
   });
 
   it('marks an imported analysis judged against an older profile as stale', async () => {
