@@ -30,8 +30,10 @@ reading column keeps one width at every viewport.
 - Positioning is a flexible connected strategy: below the anchor, flipped above
   it when there is no room, and pushed back inside the viewport when neither
   position fits.
-- Below the desktop breakpoint the same card docks to the bottom edge as a
-  sheet, so a touch target stays reachable without a second implementation.
+- At every viewport the same card stays connected to its anchor: below it when
+  there is room, above it when needed, and pushed inside the viewport otherwise.
+  It remains a compact card rather than becoming a bottom sheet. The library's
+  separate new-reading chooser may still opt into a mobile sheet.
 - The card takes focus, traps it, is dismissed by `Escape` or a click away, and
   returns focus to whatever opened it.
 - Exactly one popover exists at a time; opening a second closes the first.

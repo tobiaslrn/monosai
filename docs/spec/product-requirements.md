@@ -150,7 +150,8 @@ The user explicitly requests analysis for one sentence. The response identifies 
 - Whole-reading playback first prepares every missing clip in sentence order. Playback starts only after the complete compatible set exists.
 - Cancellation stops future requests and preserves completed clips.
 - Failure identifies the sentence and permits retry. Reading and translation remain available.
-- The player supports play, pause, resume, stop, current-sentence indication, progress, and starting from the current reading sentence.
+- The reader header always exposes an Audio toggle with stateful accessible naming. Opening shows a compact fixed player without requesting or playing audio; closing calls playback Stop, clears the active sentence and cursor, and does not cancel generation.
+- The player supports Previous, Play/Pause/Resume, Next, current-sentence indication, progress, and starting from the captured current reading sentence. Previous and Next do not wrap and remain disabled until a sentence is active. Ready-state Stop is the header toggle rather than a player control; generation retains its own Stop action.
 
 ### UC-10: Browse, filter, and delete
 
@@ -239,4 +240,3 @@ Target WCAG 2.2 AA. All actions are keyboard operable, touch targets are at leas
 ## 7. Product acceptance checklist
 
 V1 is product-complete only when every use case above passes on Windows Chrome and Android Chrome, first-use reading requires no setup, generated acceptance cannot bypass local validation, Anki adapters contain no write action, all promised offline behaviors pass after network removal, storage/cancellation semantics match this document, and every deliberate exclusion remains absent from the primary UI.
-

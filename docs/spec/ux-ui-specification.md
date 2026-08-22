@@ -173,15 +173,16 @@ sentence translated is laid out exactly like one with none.
 - The form line is derived only from analyzer evidence already stored locally: token lemmas, the analyzer's bounded inflection form, and the analyzed te-form seam. It uses ordered labels such as `Polite`, `Plain`, `negative`, `past`, `te-form`, `ongoing`, `conditional`, `imperative`, and `volitional`; it retains honest ambiguity as `passive / potential`; and it omits unsupported or uninflected classifications rather than guessing. A word with no useful form classification has no form line.
 - The dictionary shows the first two meanings across the returned entries by default. The existing **More** action reveals the remaining meanings. No intermediate forms, derivation rows, ending descriptions, stem highlighting, or derivation-specific pointer/focus behavior appear in the lookup.
 - Stored grammar findings appear after the dictionary as compact labels. Their existing explanatory text remains available behind one keyboard-accessible **Details** disclosure. A stale-analysis notice remains visible when applicable; grammar analysis remains an explicit sentence action and does not move into the word lookup.
-- Word details and the sentence translation open as floating popovers anchored to what was pressed, never as a panel that takes a column (see ADR 0022). A lightweight preview appears on pointer hover, but never replaces the pinned popover.
-- Exactly one floating surface is open at a time; opening either closes the other, and scrolling closes both.
-- The audio panel opens anchored to the Audio button. There is no docked footer player: audio has one place and it is behind that button (section 6a).
+- Word details and the sentence translation open as floating popovers anchored to what was pressed at every viewport, never as a panel that takes a column (see ADR 0022). A lightweight preview appears on pointer hover, but never replaces the pinned popover.
+- Exactly one sentence/word/preview popover is open at a time; opening one closes the other, and scrolling closes the anchored sentence and word surfaces.
+- The audio player is independent from those popovers. It is a fixed, centered card behind the Audio button, so it can remain visible with sentence or word details open (section 6a).
 
 ### Mobile structure
 
 - Sticky header with Back, truncated title, Aids, Audio, and overflow — the same controls as desktop, at the same touch target.
 - Full-width reading with 16px gutters.
-- Popovers dock to the bottom edge as a sheet below the desktop breakpoint (ADR 0022). Focus returns to the word when dismissed.
+- Sentence and word popovers remain compact, bounded cards anchored under or beside the pressed text below the desktop breakpoint as well as above it. They flip above or push inside the viewport when needed; they do not become bottom sheets. Focus returns to the word when dismissed.
+- The audio player remains a compact fixed card at every width, inset from the viewport edges and lifted above the safe-area inset; it is not a modal sheet.
 
 ### Text and token interaction
 
@@ -201,7 +202,7 @@ sentence translated is laid out exactly like one with none.
 - A press anywhere in a paragraph that is not a word selects the sentence it fell in or nearest to: the gaps between words, the punctuation, the leading between two lines, and the run of space out to the end of a line all count.
 - The decision is geometric, taken from the line boxes of the sentences in the paragraph, because a press in the leading lands on the paragraph and on no sentence element at all. The line the press is on wins over a nearer point on another line.
 - Android long-presses anywhere in the sentence, including on a word. A press that moves, is interrupted by a scroll, or ends in a text selection is not a selection.
-- The selected sentence is tinted, so a sheet docked to the bottom of a phone is not orphaned from the sentence it is about.
+- The selected sentence is tinted, so an anchored card is not orphaned from the sentence it is about.
 - Hovering a sentence tints it, and only its colour changes: nothing on the page may move under the pointer.
 - The keyboard cannot aim at whitespace, so its route to a sentence is the word popover, which offers the sentence translation from the word the reader stopped at.
 
@@ -284,24 +285,43 @@ there is no other surface it could be read on.
 The reader header carries an **Audio** button at all times, whether or not the
 reading has any audio. It is the only thing that tells a learner Monosai can
 read to them at all, and its accessible name states the current state (`Audio`,
-`Audio, ready`, `Audio, playing`, `Audio, being generated`). Its appearance
-follows that state, so a job running behind a closed panel is still visible.
+`Audio, ready`, `Audio, playing`, `Audio, paused`, `Audio, being generated`). Its
+appearance follows that state, so playback or a job remains visible even while
+the player is closed. The button exposes `aria-expanded` and
+`aria-controls="reading-audio-player"`.
 
-Pressing it opens the audio panel: anchored to the button on desktop, docked as
-a sheet on a phone, using the same floating surface as the reader's popovers
-(ADR 0022). Opening it loads nothing, requests nothing, and plays nothing.
+Pressing it opens the fixed audio player. The player is a labelled `region`, not
+a dialog or CDK popover: it has no backdrop, focus trap, outside-click handler,
+or Escape handler. Opening captures the selected sentence for **Start from this
+sentence**, but loads nothing, requests nothing, and plays nothing. It does not
+close sentence or word popovers.
 
-The panel owns every audio state there is (ADR 0025):
+Pressing the same header button while the player is open calls playback Stop,
+clears the active sentence and cursor, hides the player, and clears the captured
+selection. It does not cancel an in-progress generation job; generation progress
+and errors remain available when the player is opened again. Outside clicks and
+Escape do nothing to the player, while the existing sentence and word popover
+dismissal rules remain unchanged.
 
-| State | Panel content |
+The player is a compact, rounded, elevated card fixed above the viewport bottom,
+centered on desktop and inset on narrow screens with `env(safe-area-inset-bottom)`.
+Its height is bounded with internal overflow for long generation or failure copy,
+and an open player adds bottom clearance to the reading. The sticky reader header
+and the player sit above the CDK popover backdrop, so the Audio toggle and player
+remain reachable alongside a sentence or word popover.
+
+The player owns every audio state there is (ADR 0025 and ADR 0028):
+
+| State | Player content |
 | --- | --- |
 | No audio yet | The sentence count, and **Generate audio** |
 | Being generated | Progress bar, "Sentence 4 of 13", **Stop** |
 | Stopped or failed | What happened, the failure, **Try again**, **Dismiss** |
-| Ready | Transport (previous / play / next / stop), position bar, and **Start from this sentence** when one was open |
+| Ready | Transport (previous / play, pause, or resume / next), position bar, and **Start from this sentence** when one was selected |
 
 - The transport appears only when every sentence has a clip under the current voice. A reading whose set is incomplete gets the failure state instead, because a player that stopped in the middle of a reading would be worse than no player (ADR 0024).
 - A job that fails before it resolves what to send reports no position, rather than deriving a nonsensical one from empty counts.
+- Previous and Next stay disabled until playback has an active sentence and do not wrap at either boundary. The ready player has no Stop button: closing through the header Audio toggle is the stop/reset action. Generation keeps its own **Stop** button.
 - Per-sentence audio is generated and played from the sentence popover. No play control is printed on the reading surface itself, so pressing a sentence still costs nothing.
 - Audio never autoplays. Preparing a clip never plays it; playing is always a second, explicit action.
 
@@ -448,5 +468,5 @@ No dedicated privacy/legal page or spending dashboard.
 - At 320px, no page-level horizontal scrolling; tables become definition lists/cards.
 - Ruby never overlaps adjacent lines at 200% Android text scaling.
 - Touch targets remain usable without hover. A sentence is reached without a pointer through the word popover, since selecting one is a press on whitespace that a keyboard cannot aim.
-- Header panels are native popovers, so dismissal, Escape, the top layer, and mutual exclusivity are the platform's behaviour rather than bespoke listeners.
+- Sentence and word details are modal CDK popovers with their existing dismissal and focus behavior. The audio player is a non-modal fixed region and deliberately ignores outside clicks and Escape; it may coexist with those popovers.
 - All audio begins only after explicit activation.

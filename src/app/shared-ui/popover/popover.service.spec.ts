@@ -39,11 +39,12 @@ class HostComponent {
 
   closedCount = 0;
 
-  open(): PopoverRef {
+  open(mobileSheet?: boolean): PopoverRef {
     return this.popover.open({
       origin: this.anchor(),
       template: this.content(),
       viewContainerRef: this.viewContainerRef,
+      mobileSheet,
       returnFocusTo: this.anchor().nativeElement,
       onClosed: () => {
         this.closedCount += 1;
@@ -147,6 +148,15 @@ describe('PopoverService', () => {
   it('anchors rather than docking on a desktop viewport', () => {
     const fixture = render();
     fixture.componentInstance.open();
+    fixture.detectChanges();
+
+    expect(pane()?.classList.contains('is-sheet')).toBe(false);
+  });
+
+  it('can keep a modal reader surface anchored on a mobile viewport', () => {
+    media.setWidth(412);
+    const fixture = render();
+    fixture.componentInstance.open(false);
     fixture.detectChanges();
 
     expect(pane()?.classList.contains('is-sheet')).toBe(false);

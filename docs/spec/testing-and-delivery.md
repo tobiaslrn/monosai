@@ -97,7 +97,7 @@ Core E2E scenarios:
 10. Grammar unavailable and partial translation failure -> saved story with correct statuses/retry.
 11. Imported sentence translation/grammar cache and stale profile behavior.
 12. Whole-reading translation cancel/resume.
-13. Audio preparation fail/cancel/resume/complete/play/stop, all through the reader's audio panel.
+13. Audio preparation fail/cancel/resume/complete/play/stop, all through the reader's floating audio player.
 14. Library filtering, card content, deletion cascade.
 15. Offline reload and allowed/blocked operations.
 16. Service-worker update prompt preserves unsaved input/active jobs.
@@ -252,4 +252,3 @@ V1 is done only when:
 - no deliberate exclusion has leaked into the UI or domain model;
 - README/setup/troubleshooting documentation matches the shipped product;
 - a fresh agent can build, test, deploy, and diagnose the app from repository documentation.
-

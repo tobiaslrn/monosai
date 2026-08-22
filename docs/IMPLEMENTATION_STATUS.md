@@ -1252,8 +1252,9 @@ in-profile findings, which are explanations rather than concerns.
 overlay card for word details, the sentence menu, sentence details, and the hover
 preview. It flips above its anchor when there is no room below, is pushed back
 inside the viewport when neither position fits, traps focus, closes on `Escape`
-or a click away, returns focus to whatever opened it, and docks to the bottom
-edge as a sheet below the desktop breakpoint. Exactly one is open at a time.
+or a click away, returns focus to whatever opened it, and stays anchored at
+every viewport. The library's new-reading chooser may still opt into a bottom
+sheet. Exactly one is open at a time.
 
 `WordInspectorSheetComponent` and the desktop inspector column are deleted, so
 the reading measure no longer changes when a word is opened.
@@ -1539,11 +1540,14 @@ the UX specification actually allows it: an audio section in the sentence
 popover, whole-reading entries in the overflow menu, a hairline
 `mn-audio-progress` row under the header, and `mn-reading-player` as a docked
 footer on desktop and a compact strip in the sticky header below the breakpoint.
-The sentence being read is tinted; the reader scrolls to it only when it is
-outside the viewport, and a scroll the learner makes themselves switches that off
-until the next explicit Play, Next, or Previous. That is its own state —
-`reportPosition` is debounced reading progress, and the two must not be
-conflated.
+The later reader-first rework consolidated those states behind the always-visible
+header Audio button. The current presentation is the fixed, compact
+`#reading-audio-player` region documented in ADR 0028; generation, playback
+ownership, caching, and complete-reading gating remain the same. The sentence
+being read is tinted; the reader scrolls to it only when it is outside the
+viewport, and a scroll the learner makes themselves switches that off until the
+next explicit Play, Next, or Previous. That is its own state — `reportPosition`
+is debounced reading progress, and the two must not be conflated.
 
 ### Fixed along the way
 
@@ -1559,11 +1563,10 @@ conflated.
   nothing was missing, and the Play gate never opened. Coverage is now counted by
   key throughout (ADR 0024). Sentences like `はい。` repeat in real text, so this
   was not a corner case. Found during browser verification, not by the suite.
-- **The docked player did not dock.** `position: sticky; bottom: 0` cannot express
-  a footer: a sticky box is clamped to its containing block, and a footer is the
-  last thing in its own, so it had no room to lift and sat at the end of the
-  document. It is now fixed and anchored to the reading column with the same CSS
-  anchor positioning the overflow menu uses.
+- **The first player placement was superseded.** The earlier docked footer and
+  compact header strip were replaced by a single fixed viewport card so the
+  player can remain visible with sentence and word popovers. The audio button
+  now owns the stop/reset action when the ready player is closed.
 
 ### Verification
 
@@ -1649,12 +1652,11 @@ query. One **New reading** button opens a chooser (Paste text / Write with AI)
 on the existing `PopoverService`, which already anchors on desktop and docks as
 a sheet on mobile. Filter chips appear from eight readings up.
 
-**Audio in one place.** An always-present header button opens a panel that owns
+**Audio in one place.** An always-present header button opens a player that owns
 generation, progress, failure, and playback. `audio-progress.component.ts` is
 deleted, the docked footer and compact strip are gone, and the menu's three
-audio entries left with them. The panel remembers which sentence was open when
-it was opened, because opening it closes the sentence popover that held the
-selection.
+audio entries left with them. The fixed player is independent from sentence and
+word popovers and remembers which sentence was selected when it was opened.
 
 **Text cut back to labels.** The sentence popover is three labelled actions; the
 aids panel is a slider and three labelled switches; the overflow menu is two
@@ -1686,9 +1688,9 @@ a real import chosen for hard ruby cases (畑/はたけ, 湖/みずうみ, 妹/�
 | Ruby legibility | 0.42em was measurably tighter but harder to read; 0.44em chosen by reading it, which is what the plan asked for |
 | Inter-sentence flow | Net advance between neighbouring sentences is 0, against 0.8em before |
 | Wrapped sentence | `box-decoration-break: clone` shape holds across a line break, and no glyph moves on hover |
-| Audio panel | Visible with no audio; generation, its failure, and its recovery all inside the panel |
-| Reader header at 375px | A 32-character title ellipsizes to 87.5px and all three controls stay inside the bar |
-| Keyboard | Header order is Back → Aids → Audio → menu; the panel takes focus, Escape closes it, focus returns to the button |
+| Audio player | Fixed compact region at the viewport bottom; generation, failure, recovery, and ready transport stay inside it |
+| Reader header at 375px | A 32-character title ellipsizes to 87.5px and all three controls stay inside the bar; Audio remains above popover backdrops |
+| Keyboard | Header order is Back → Aids → Audio → menu; opening the player does not move focus, Escape leaves it open, and closing is the Audio toggle's stop/reset action |
 | Console | Clean throughout |
 
 ### Assumptions and decisions
@@ -1714,6 +1716,67 @@ a real import chosen for hard ruby cases (畑/はたけ, 湖/みずうみ, 妹/�
   position for those, not the whole apparatus back.
 - Milestone 9's open items are unchanged: no live TTS round trip has been
   exercised, and `language-worker-performance.spec.ts` remains timing-flaky.
+
+
+## Floating audio player redesign
+
+The reader's audio placement and dismissal behavior now follows
+[ADR 0028](decisions/0028-floating-audio-player.md). The reader header keeps an
+always-visible Audio toggle, while `#reading-audio-player` is a compact fixed
+region centered over the viewport and inset above the safe-area bottom. It is
+not a CDK popover: it has no backdrop, focus trap, outside-click dismissal, or
+Escape dismissal, and it remains visible beside sentence and word popovers.
+
+### Delivered
+
+- `ReaderPageComponent` uses `audioPlayerOpenSignal` and
+  `audioPlayerSentenceIdSignal`, captures the selected sentence on open, and
+  calls `AudioPlaybackStore.stop()` plus cursor/selection cleanup on header
+  close without cancelling `AudioJobStore`.
+- The sticky header and fixed player are above the CDK popover backdrop. An
+  open player adds bottom clearance so the last sentence can scroll above it;
+  the card bounds its height and scrolls internally for long generation/failure
+  copy. Reader sentence and word details remain compact, anchored cards at
+  every viewport; the library's new-reading chooser may still opt into a
+  mobile sheet.
+- `ReadingPlayerComponent` keeps whole-reading gating, sequential generation,
+  retries, cancellation, failure messages, position state, and Start from this
+  sentence. Ready transport is Previous / Play-Pause-Resume / Next; ready Stop
+  is the header toggle.
+- The Audio button exposes `aria-expanded`, `aria-controls`, and Audio / ready /
+  playing / paused / being-generated state labels. Opening never requests or
+  autoplays.
+
+### Tests and browser verification
+
+- `reading-player.component.spec.ts` covers absent, generation, cancellation,
+  failure, retry/dismiss, ready transport, disabled idle navigation, play,
+  pause, resume, previous, next, and Start from this sentence.
+- `e2e/audio.spec.ts` covers the fixed bottom surface on desktop and Android
+  viewports, no-request/no-autoplay opening, reload behavior, generation and
+  recovery, header-toggle stop/reset, outside click, Escape, navigation, no
+  horizontal overflow, popover coexistence, and serious accessibility checks.
+- Final repository-wide command results and the rendered light/dark browser QA
+  matrix are recorded below.
+
+### Final verification — 2026-08-22
+
+| Check | Result |
+| --- | --- |
+| `npm run format:check` | Changed files pass; the repository command still reports the pre-existing formatting warning in `AGENTS.md` only |
+| `npm run lint` | Pass |
+| `npm run typecheck` | Pass |
+| `npm test -- --watch=false` | Pass — 141 files, 1,622 tests |
+| `npm run build` | Pass — 875.54 kB initial raw bundle |
+| `npm run e2e` | Pass — 223 passed, 1 expected skip, desktop and Android projects |
+
+Rendered browser QA covered 1280×800 desktop and 393×851 Android-sized viewports
+in both light and dark themes. The player measured 544px wide on desktop and
+361px wide with 16px insets on Android; it stayed fixed while scrolling, sat
+above the bottom safe area, and introduced no horizontal overflow. The Audio
+toggle remained reachable beside sentence and word popovers, focus stayed on
+the header toggle when the player opened, Escape did not dismiss it, and the
+console contained no errors or warnings.
 
 
 ## Milestone 10 — Release hardening

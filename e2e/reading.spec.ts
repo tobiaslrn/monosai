@@ -111,6 +111,32 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     expect(external).toEqual([]);
   });
 
+  test('anchors word details beside the word at every viewport', async ({ page }) => {
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    const token = page.getByRole('button', { name: new RegExp('猫') }).first();
+    await token.click();
+    await expect(wordDetails(page)).toBeVisible();
+
+    const pane = page.locator('.mn-popover-pane');
+    await expect(pane).not.toHaveClass(/is-sheet/);
+
+    const viewport = page.viewportSize();
+    const tokenBox = await token.boundingBox();
+    const cardBox = await pane.locator('.popover').boundingBox();
+    expect(tokenBox).not.toBeNull();
+    expect(cardBox).not.toBeNull();
+    expect(cardBox?.x ?? 0).toBeGreaterThanOrEqual(0);
+    expect((cardBox?.x ?? 0) + (cardBox?.width ?? 0)).toBeLessThanOrEqual(viewport?.width ?? 0);
+    expect(cardBox?.width ?? 0).toBeLessThan(viewport?.width ?? 0);
+
+    const gapBelow = (cardBox?.y ?? 0) - ((tokenBox?.y ?? 0) + (tokenBox?.height ?? 0));
+    const gapAbove = (tokenBox?.y ?? 0) - ((cardBox?.y ?? 0) + (cardBox?.height ?? 0));
+    expect(Math.min(Math.abs(gapBelow), Math.abs(gapAbove))).toBeLessThan(40);
+  });
+
   test('an inflected word is a compact lookup with no derivation controls', async ({ page }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, '僕には分からなかった。昨日は学校へ行きませんでした。');
@@ -226,6 +252,7 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     // No model is configured, so the offer is all there is — and it is an
     // offer, never a request made on the reader's behalf.
     await expect(page.locator('mn-sentence-popover')).toBeVisible();
+    await expect(page.locator('.mn-popover-pane')).not.toHaveClass(/is-sheet/);
     expect(external).toEqual([]);
   });
 

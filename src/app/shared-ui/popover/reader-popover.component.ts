@@ -1,6 +1,13 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import type { AfterViewInit, ElementRef } from '@angular/core';
-import { ChangeDetectionStrategy, Component, inject, input, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  viewChild,
+} from '@angular/core';
 import { ViewportService } from '../../core/platform/viewport.service';
 
 /**
@@ -11,9 +18,9 @@ import { ViewportService } from '../../core/platform/viewport.service';
  * it is open, which is what makes a floating surface usable with a keyboard or
  * a screen reader; `PopoverService` owns dismissal and returning focus.
  *
- * Below the desktop breakpoint the same card docks to the bottom edge as a
- * sheet, so a touch target stays reachable without a second implementation to
- * keep in step.
+ * The library's chooser still docks below the desktop breakpoint, while the
+ * reader passes `mobileSheet=false` so word and sentence details stay beside
+ * the text at every width.
  */
 @Component({
   selector: 'mn-reader-popover',
@@ -62,11 +69,13 @@ import { ViewportService } from '../../core/platform/viewport.service';
 export class ReaderPopoverComponent implements AfterViewInit {
   /** Names the dialog, because the card itself carries no visible heading. */
   readonly label = input.required<string>();
+  /** The library chooser uses a sheet; reader details stay anchored on mobile. */
+  readonly mobileSheet = input(true);
 
   private readonly card = viewChild.required<ElementRef<HTMLElement>>('card');
   private readonly viewport = inject(ViewportService);
 
-  protected readonly isSheet = this.viewport.isMobile;
+  protected readonly isSheet = computed(() => this.mobileSheet() && this.viewport.isMobile());
 
   /**
    * Focus starts on the card rather than on its first control, so a screen
