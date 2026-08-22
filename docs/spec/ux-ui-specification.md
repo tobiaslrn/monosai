@@ -358,9 +358,9 @@ No genre selector, topic suggestions, visible target-vocabulary list, temperatur
 
 ### Progress
 
-Submitting replaces the form with a focused generation screen. Show one calm
-loading animation and one short title/detail pair describing the work currently
-in progress; do not show the entire internal pipeline. Text changes as the job
+Submitting replaces the form with a focused generation screen. Show the current
+stage title with a simple animated ellipsis and one short detail line describing
+the work currently in progress; do not show the entire internal pipeline. Text changes as the job
 moves through:
 
 1. Preparing vocabulary

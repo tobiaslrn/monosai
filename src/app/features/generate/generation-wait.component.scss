@@ -3,54 +3,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-5);
   min-height: 390px;
   text-align: center;
-}
-
-.loader {
-  width: 108px;
-  height: 108px;
-  filter: drop-shadow(0 10px 20px rgb(52 85 70 / 18%));
-}
-
-.mark {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.mark__background {
-  fill: var(--action-primary);
-}
-
-.mark__shadow {
-  fill: color-mix(in srgb, var(--action-primary-soft) 56%, var(--action-primary));
-}
-
-.mark__light {
-  fill: var(--surface-panel);
-}
-
-.mark__trace {
-  fill: none;
-  stroke: var(--surface-panel);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 26px;
-  stroke-dasharray: 0.2 0.8;
-  animation: trace-edge 2.6s linear infinite;
-}
-
-.mark__trace--outer {
-  stroke: color-mix(in srgb, var(--surface-panel) 70%, var(--action-primary-soft));
-}
-
-.mark__trace--inner {
-  stroke: color-mix(in srgb, var(--action-primary) 82%, var(--surface-panel));
-  animation-delay: -1.3s;
-  animation-direction: reverse;
 }
 
 .copy {
@@ -73,15 +27,24 @@ h2 {
   letter-spacing: -0.025em;
 }
 
+.loading-dots {
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  vertical-align: bottom;
+  white-space: nowrap;
+  animation: dots-reveal 1.2s steps(4, end) infinite;
+}
+
 .copy > p:last-child {
   margin: var(--space-3) 0 0;
   color: var(--text-secondary);
   line-height: 1.55;
 }
 
-@keyframes trace-edge {
+@keyframes dots-reveal {
   to {
-    stroke-dashoffset: -1;
+    width: 0.9em;
   }
 }
 
@@ -93,24 +56,18 @@ h2 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mark__trace,
+  .loading-dots,
   .copy {
     animation: none;
   }
 
-  .mark__trace {
-    stroke-dasharray: none;
-    opacity: 0.4;
+  .loading-dots {
+    width: 0.9em;
   }
 }
 
 @media (max-width: 600px) {
   :host {
     min-height: 340px;
-  }
-
-  .loader {
-    width: 92px;
-    height: 92px;
   }
 }
