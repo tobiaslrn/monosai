@@ -81,6 +81,22 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     return parsed.ok ? ok(parsed.value.map(toTranslation)) : parsed;
   }
 
+  async listTranslationsForCacheKeys(
+    cacheKeys: readonly string[],
+  ): Promise<Result<readonly TranslationRecord[], StorageError>> {
+    const loaded = await runStorage('translations.listForCacheKeys', () =>
+      this.db.translations
+        .where(':id')
+        .anyOf([...cacheKeys])
+        .toArray(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const parsed = parseRecords(translationRowSchema, loaded.value, 'translations');
+    return parsed.ok ? ok(parsed.value.map(toTranslation)) : parsed;
+  }
+
   async storeTranslation(
     record: TranslationRecord,
     currentCacheKeys: ReadonlyMap<SentenceId, string>,
@@ -130,6 +146,22 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
       this.db.grammarAnalyses
         .where('sentenceId')
         .anyOf([...sentenceIds])
+        .toArray(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const parsed = parseRecords(grammarAnalysisRowSchema, loaded.value, 'grammarAnalyses');
+    return parsed.ok ? ok(parsed.value.map(toGrammarAnalysis)) : parsed;
+  }
+
+  async listGrammarAnalysesForCacheKeys(
+    cacheKeys: readonly string[],
+  ): Promise<Result<readonly GrammarAnalysisRecord[], StorageError>> {
+    const loaded = await runStorage('grammarAnalyses.listForCacheKeys', () =>
+      this.db.grammarAnalyses
+        .where(':id')
+        .anyOf([...cacheKeys])
         .toArray(),
     );
     if (!loaded.ok) {
@@ -317,8 +349,10 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<number> {
-    const rows = await this.db.translations.where('readingId').equals(readingId).toArray();
-    return rows.filter((row) => cacheKeys.get(row.sentenceId) === row.cacheKey).length;
+    const stored = new Set(
+      await this.db.translations.where('readingId').equals(readingId).primaryKeys(),
+    );
+    return [...cacheKeys.values()].filter((cacheKey) => stored.has(cacheKey)).length;
   }
 
   private async computeGrammarSummary(
@@ -329,11 +363,19 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
       return NO_GRAMMAR_REVIEW;
     }
     const rows = await this.db.grammarAnalyses.where('readingId').equals(readingId).toArray();
-    const currentRows = rows.filter((row) => cacheKeys.get(row.sentenceId) === row.cacheKey);
-    const concern = currentRows.reduce((sum, row) => sum + concernCount(row.findings), 0);
-    return currentRows.length === cacheKeys.size
+    const currentByKey = new Map(rows.map((row) => [row.cacheKey, row]));
+    let analyzedSentenceCount = 0;
+    let concern = 0;
+    for (const cacheKey of cacheKeys.values()) {
+      const row = currentByKey.get(cacheKey);
+      if (row !== undefined) {
+        analyzedSentenceCount += 1;
+        concern += concernCount(row.findings);
+      }
+    }
+    return analyzedSentenceCount === cacheKeys.size
       ? grammarComplete(concern)
-      : grammarPartial(currentRows.length, concern);
+      : grammarPartial(analyzedSentenceCount, concern);
   }
 
   private async refreshTranslationSummary(

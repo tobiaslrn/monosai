@@ -38,6 +38,13 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
     grammar: [],
     audio: [],
   };
+  readonly cacheKeyQueries: {
+    translations: string[][];
+    grammar: string[][];
+  } = {
+    translations: [],
+    grammar: [],
+  };
 
   translations: TranslationRecord[] = [];
   grammarAnalyses: GrammarAnalysisRecord[] = [];
@@ -79,6 +86,14 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
     return Promise.resolve(ok(this.translations.filter((record) => wanted.has(record.sentenceId))));
   }
 
+  listTranslationsForCacheKeys(
+    cacheKeys: readonly string[],
+  ): Promise<Result<readonly TranslationRecord[], StorageError>> {
+    this.cacheKeyQueries.translations.push([...cacheKeys]);
+    const wanted = new Set(cacheKeys);
+    return Promise.resolve(ok(this.translations.filter((record) => wanted.has(record.cacheKey))));
+  }
+
   storeTranslation(record: TranslationRecord): Promise<Result<TranslationRecord, StorageError>> {
     this.translations.push(record);
     return Promise.resolve(ok(record));
@@ -107,6 +122,16 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
     const wanted = new Set(sentenceIds);
     return Promise.resolve(
       ok(this.grammarAnalyses.filter((record) => wanted.has(record.sentenceId))),
+    );
+  }
+
+  listGrammarAnalysesForCacheKeys(
+    cacheKeys: readonly string[],
+  ): Promise<Result<readonly GrammarAnalysisRecord[], StorageError>> {
+    this.cacheKeyQueries.grammar.push([...cacheKeys]);
+    const wanted = new Set(cacheKeys);
+    return Promise.resolve(
+      ok(this.grammarAnalyses.filter((record) => wanted.has(record.cacheKey))),
     );
   }
 

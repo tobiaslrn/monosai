@@ -136,11 +136,19 @@ export class DexieReadingRepository implements ReadingRepository {
             ),
           );
           await this.db.generationProvenance.add(toGenerationProvenanceRow(draft.provenance));
-          await this.db.translations.bulkAdd(
-            draft.translations.map((record) => ({ ...record, v: ROW_VERSION })),
+          // Translation rows are content-addressed by cacheKey. Repeated
+          // Japanese sentences therefore intentionally share one row.
+          await this.db.translations.bulkPut(
+            uniqueCacheKeyRecords(draft.translations).map((record) => ({
+              ...record,
+              v: ROW_VERSION,
+            })),
           );
-          await this.db.grammarAnalyses.bulkAdd(
-            draft.grammarAnalyses.map((record) => ({ ...record, v: ROW_VERSION })),
+          await this.db.grammarAnalyses.bulkPut(
+            uniqueCacheKeyRecords(draft.grammarAnalyses).map((record) => ({
+              ...record,
+              v: ROW_VERSION,
+            })),
           );
         },
       );
@@ -409,4 +417,17 @@ export class DexieReadingRepository implements ReadingRepository {
       );
     }
   }
+}
+
+/** Content-addressed enrichment rows are shared by sentences with the same key. */
+function uniqueCacheKeyRecords<T extends { readonly cacheKey: string }>(
+  records: readonly T[],
+): T[] {
+  const unique = new Map<string, T>();
+  for (const record of records) {
+    if (!unique.has(record.cacheKey)) {
+      unique.set(record.cacheKey, record);
+    }
+  }
+  return [...unique.values()];
 }
