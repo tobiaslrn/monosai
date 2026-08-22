@@ -294,10 +294,14 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
 
     const header = page.locator('.bar-row');
     await expect(header.getByRole('link', { name: 'Back to library' })).toBeVisible();
-    await expect(header.getByRole('button', { name: 'Aids' })).toBeVisible();
     await expect(header.getByRole('button', { name: /^Audio/ })).toBeVisible();
-    await expect(header.getByRole('button', { name: 'Reading actions' })).toBeVisible();
-    await expect(page.locator('mn-reader-aids .anchor-label')).toBeHidden();
+    await expect(header.getByRole('button', { name: 'Aids' })).toBeVisible();
+    await expect(header.getByRole('button', { name: 'Reading actions' })).toHaveCount(0);
+
+    const actions = header.locator('.bar-actions > button, .bar-actions > mn-reader-aids');
+    await expect(actions).toHaveCount(2);
+    await expect(actions.nth(0)).toHaveClass(/audio-button/);
+    await expect(actions.nth(1)).toHaveJSProperty('tagName', 'MN-READER-AIDS');
 
     const bounds = await header.evaluate((element) => {
       const rect = element.getBoundingClientRect();
