@@ -31,11 +31,68 @@ test.describe('vocabulary', () => {
     await openVocabulary(page);
 
     await expect(page.getByRole('button', { name: 'Test AnkiConnect access' })).toBeVisible();
+    await expect(page.getByTestId('add-text-source')).toBeVisible();
     await expect(page.getByTestId('mapping-locked')).toBeVisible();
     await expect(page.getByTestId('start-refresh')).toBeDisabled();
     await expect(page.getByTestId('refresh-blocked')).toContainText('Connect to a vocabulary');
     await expect(page.getByTestId('current-snapshot')).toContainText('No vocabulary snapshot yet');
 
+    await expectNoSeriousAccessibilityViolations(page);
+  });
+
+  test('combines a pasted list with refreshed Anki vocabulary', async ({ page }) => {
+    test.setTimeout(120_000);
+    await stubAnkiConnect(page, {
+      version: 6,
+      requestPermission: { permission: 'granted', requireApiKey: false, version: 6 },
+      deckNames: ['Core Japanese'],
+      modelNames: ['Basic'],
+      modelFieldNames: ['Expression'],
+      findCards: [1, 2],
+      cardsInfo: [
+        { cardId: 1, note: 10, reps: 2, deckName: 'Core Japanese' },
+        { cardId: 2, note: 11, reps: 4, deckName: 'Core Japanese' },
+      ],
+      notesInfo: [
+        {
+          noteId: 10,
+          modelName: 'Basic',
+          fields: { Expression: { value: 'ねこ', order: 0 } },
+        },
+        {
+          noteId: 11,
+          modelName: 'Basic',
+          fields: { Expression: { value: '食べる', order: 0 } },
+        },
+      ],
+    });
+    await openVocabulary(page);
+
+    await page.getByTestId('add-text-source').click();
+    const editor = page.getByTestId('text-source-editor');
+    await editor.getByRole('textbox', { name: 'List name' }).fill('My textbook');
+    await page.getByTestId('text-source-content').fill('ねこ\n犬\nねこ\n\n青い 空');
+    await expect(editor).toContainText('4 non-empty entries');
+    await expect(editor).toContainText('1 exact duplicates');
+    await page.getByTestId('save-text-source').click();
+
+    await expect(page.getByTestId('current-snapshot')).toContainText('3 unique expressions', {
+      timeout: 60_000,
+    });
+
+    await page.getByRole('button', { name: 'Test AnkiConnect access' }).click();
+    await expect(page.getByTestId('add-mapping')).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('add-mapping').click();
+    await page.getByTestId('start-refresh').click();
+    await expect(page.getByTestId('confirm-refresh')).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId('confirm-refresh').click();
+
+    await expect(page.getByTestId('current-snapshot')).toContainText('4 unique expressions', {
+      timeout: 60_000,
+    });
+    const snapshots = await readSnapshots(page);
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].sourceKinds).toEqual(['text-list', 'anki-connect']);
     await expectNoSeriousAccessibilityViolations(page);
   });
 
@@ -184,6 +241,49 @@ test.describe('vocabulary', () => {
     expect(snapshots[0].uniqueEntryCount).toBe(1);
   });
 
+  test('refreshes an opted-in Anki source automatically after startup', async ({ page }) => {
+    test.setTimeout(120_000);
+    const response = (expressions: readonly string[]) => ({
+      version: 6,
+      requestPermission: { permission: 'granted', requireApiKey: false, version: 6 },
+      deckNames: ['Core Japanese'],
+      modelNames: ['Basic'],
+      modelFieldNames: ['Expression'],
+      findCards: expressions.map((_, index) => index + 1),
+      cardsInfo: expressions.map((_, index) => ({
+        cardId: index + 1,
+        note: index + 10,
+        reps: 2,
+        deckName: 'Core Japanese',
+      })),
+      notesInfo: expressions.map((expression, index) => ({
+        noteId: index + 10,
+        modelName: 'Basic',
+        fields: { Expression: { value: expression, order: 0 } },
+      })),
+    });
+    await stubAnkiConnect(page, response(['ねこ']));
+    await openVocabulary(page);
+    await page.getByRole('button', { name: 'Test AnkiConnect access' }).click();
+    await expect(page.getByTestId('add-mapping')).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('add-mapping').click();
+    await page.getByTestId('start-refresh').click();
+    await expect(page.getByTestId('confirm-refresh')).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId('confirm-refresh').click();
+    await expect(page.getByTestId('current-snapshot')).toContainText('1 unique expressions');
+
+    await page.unrouteAll({ behavior: 'wait' });
+    await stubAnkiConnect(page, response(['ねこ', '犬']));
+    await page.reload();
+
+    await expect(page.getByText('Vocabulary updated · 2 unique expressions')).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect
+      .poll(async () => (await readSnapshots(page))[0]?.uniqueEntryCount, { timeout: 60_000 })
+      .toBe(2);
+  });
+
   test('leaves known words unmarked in the reader once current vocabulary is ready', async ({
     page,
   }) => {
@@ -222,6 +322,8 @@ test.describe('vocabulary', () => {
       .toBe(0);
 
     await known.click();
-    await expect(page.locator('mn-word-inspector')).not.toContainText('Review this word in Anki');
+    await expect(page.locator('mn-word-inspector')).not.toContainText(
+      'Add this expression to one of your vocabulary sources',
+    );
   });
 });

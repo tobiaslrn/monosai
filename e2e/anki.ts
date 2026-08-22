@@ -65,35 +65,43 @@ export async function openVocabulary(page: Page): Promise<void> {
 /** Reads the committed current vocabulary rows straight from IndexedDB. */
 export async function readSnapshots(
   page: Page,
-): Promise<readonly { id: string; uniqueEntryCount: number }[]> {
+): Promise<readonly { id: string; uniqueEntryCount: number; sourceKinds?: readonly string[] }[]> {
   return page.evaluate(
     () =>
-      new Promise<{ id: string; uniqueEntryCount: number }[]>((resolve, reject) => {
-        const request = indexedDB.open('monosai');
-        request.onerror = () => {
-          reject(new Error('could not open the Monosai database'));
-        };
-        request.onsuccess = () => {
-          const db = request.result;
-          if (!db.objectStoreNames.contains('vocabularySnapshots')) {
-            db.close();
-            resolve([]);
-            return;
-          }
-          const read = db
-            .transaction('vocabularySnapshots', 'readonly')
-            .objectStore('vocabularySnapshots')
-            .getAll();
-          read.onsuccess = () => {
-            db.close();
-            resolve(read.result as { id: string; uniqueEntryCount: number }[]);
+      new Promise<{ id: string; uniqueEntryCount: number; sourceKinds?: readonly string[] }[]>(
+        (resolve, reject) => {
+          const request = indexedDB.open('monosai');
+          request.onerror = () => {
+            reject(new Error('could not open the Monosai database'));
           };
-          read.onerror = () => {
-            db.close();
-            reject(new Error('could not read the snapshots'));
+          request.onsuccess = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains('vocabularySnapshots')) {
+              db.close();
+              resolve([]);
+              return;
+            }
+            const read = db
+              .transaction('vocabularySnapshots', 'readonly')
+              .objectStore('vocabularySnapshots')
+              .getAll();
+            read.onsuccess = () => {
+              db.close();
+              resolve(
+                read.result as {
+                  id: string;
+                  uniqueEntryCount: number;
+                  sourceKinds?: readonly string[];
+                }[],
+              );
+            };
+            read.onerror = () => {
+              db.close();
+              reject(new Error('could not read the snapshots'));
+            };
           };
-        };
-      }),
+        },
+      ),
   );
 }
 

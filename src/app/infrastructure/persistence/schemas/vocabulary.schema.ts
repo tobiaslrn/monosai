@@ -3,12 +3,13 @@ import {
   nonEmptyString,
   rowVersionSchema,
   snapshotIdSchema,
-  sourceMappingIdSchema,
+  vocabularySourceIdSchema,
   timestampSchema,
   vocabularyItemIdSchema,
 } from './common.schema';
 
 export const providerKindSchema = z.enum(['desktop-connect', 'android-connect', 'package']);
+export const sourceKindSchema = z.enum(['anki-connect', 'anki-package', 'text-list']);
 
 export const vocabularySnapshotRowSchema = z.object({
   v: rowVersionSchema,
@@ -16,18 +17,18 @@ export const vocabularySnapshotRowSchema = z.object({
   createdAt: timestampSchema,
   status: z.literal('complete'),
   uniqueEntryCount: z.number().int().nonnegative(),
-  mappingIds: z.array(nonEmptyString).readonly(),
-  providerKinds: z.array(providerKindSchema).readonly(),
+  sourceIds: z.array(vocabularySourceIdSchema).readonly(),
+  sourceKinds: z.array(sourceKindSchema).readonly(),
   analyzerVersion: nonEmptyString,
   normalizationVersion: nonEmptyString,
   stats: z.object({
-    mappingsQueried: z.number().int().nonnegative(),
-    reviewedEligibleNotes: z.number().int().nonnegative(),
+    sourcesQueried: z.number().int().nonnegative(),
+    entriesRead: z.number().int().nonnegative(),
     nonEmptyValues: z.number().int().nonnegative(),
     rejectedEmptyValues: z.number().int().nonnegative(),
     duplicateOccurrences: z.number().int().nonnegative(),
     uniqueExpressions: z.number().int().nonnegative(),
-    providerWarnings: z.array(z.string()).readonly(),
+    sourceWarnings: z.array(z.string()).readonly(),
   }),
 });
 
@@ -53,27 +54,74 @@ export const vocabularyProvenanceRowSchema = z.object({
   id: z.number().int().optional(),
   v: rowVersionSchema,
   vocabularyItemId: vocabularyItemIdSchema,
-  sourceMappingId: nonEmptyString,
-  deckName: nonEmptyString,
-  noteTypeName: nonEmptyString,
-  fieldName: nonEmptyString,
-  sourceNoteId: z.string().optional(),
+  sourceId: vocabularySourceIdSchema,
+  sourceKind: sourceKindSchema,
+  sourceLabel: nonEmptyString,
+  deckName: nonEmptyString.optional(),
+  noteTypeName: nonEmptyString.optional(),
+  fieldName: nonEmptyString.optional(),
+  sourceRecordId: z.string().optional(),
 });
 
-export const sourceMappingRowSchema = z.object({
+const sourceBase = {
   v: rowVersionSchema,
-  id: sourceMappingIdSchema,
-  providerKind: providerKindSchema,
-  deckName: nonEmptyString,
-  deckScope: z.enum(['deck-only', 'deck-and-subdecks']),
-  noteTypeName: nonEmptyString,
-  expressionFieldName: nonEmptyString,
+  id: vocabularySourceIdSchema,
+  label: nonEmptyString,
   enabled: z.boolean(),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
+  lastSyncedAt: timestampSchema.nullable(),
+};
+
+export const vocabularySourceRowSchema = z.discriminatedUnion('kind', [
+  z.object({
+    ...sourceBase,
+    kind: z.literal('anki-connect'),
+    providerKind: z.enum(['desktop-connect', 'android-connect']),
+    deckName: nonEmptyString,
+    deckScope: z.enum(['deck-only', 'deck-and-subdecks']),
+    noteTypeName: nonEmptyString,
+    expressionFieldName: nonEmptyString,
+    automaticSync: z.boolean(),
+  }),
+  z.object({
+    ...sourceBase,
+    kind: z.literal('anki-package'),
+    providerKind: z.literal('package'),
+    deckName: nonEmptyString,
+    deckScope: z.enum(['deck-only', 'deck-and-subdecks']),
+    noteTypeName: nonEmptyString,
+    expressionFieldName: nonEmptyString,
+    automaticSync: z.literal(false),
+  }),
+  z.object({
+    ...sourceBase,
+    kind: z.literal('text-list'),
+    content: z.string(),
+  }),
+]);
+
+export const vocabularySourceCacheRowSchema = z.object({
+  v: rowVersionSchema,
+  sourceId: vocabularySourceIdSchema,
+  refreshedAt: timestampSchema,
+  entries: z
+    .array(
+      z.object({
+        rawValue: z.string().optional(),
+        sourceRecordId: z.string().optional(),
+      }),
+    )
+    .readonly(),
+  warnings: z.array(z.string()).readonly(),
 });
+
+/** Compatibility export for adapters/tests still using mapping terminology. */
+export const sourceMappingRowSchema = vocabularySourceRowSchema;
 
 export type VocabularySnapshotRow = z.infer<typeof vocabularySnapshotRowSchema>;
 export type VocabularyItemRow = z.infer<typeof vocabularyItemRowSchema>;
 export type VocabularyProvenanceRow = z.infer<typeof vocabularyProvenanceRowSchema>;
-export type SourceMappingRow = z.infer<typeof sourceMappingRowSchema>;
+export type VocabularySourceRow = z.infer<typeof vocabularySourceRowSchema>;
+export type VocabularySourceCacheRow = z.infer<typeof vocabularySourceCacheRowSchema>;
+export type SourceMappingRow = VocabularySourceRow;

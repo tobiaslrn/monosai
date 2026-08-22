@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
-import type { AnkiProviderKind } from '../../domain/vocabulary/snapshot';
+import type { VocabularySourceKind } from '../../domain/vocabulary/vocabulary-source';
 
-const PROVIDER_LABELS: Record<AnkiProviderKind, string> = {
-  'desktop-connect': 'Desktop Anki',
-  'android-connect': 'Android bridge',
-  package: 'Anki package',
+const SOURCE_LABELS: Record<VocabularySourceKind, string> = {
+  'anki-connect': 'AnkiConnect',
+  'anki-package': 'Anki package',
+  'text-list': 'Pasted list',
 };
 
 /** Shows the one current vocabulary result and its source summary. */
@@ -27,7 +27,7 @@ const PROVIDER_LABELS: Record<AnkiProviderKind, string> = {
           </div>
           <div>
             <dt>Read from</dt>
-            <dd>{{ providerLabels(entry.providerKinds) }}</dd>
+            <dd>{{ sourceLabels(entry.sourceKinds) }}</dd>
           </div>
           <div>
             <dt>Sources</dt>
@@ -47,7 +47,7 @@ const PROVIDER_LABELS: Record<AnkiProviderKind, string> = {
       </article>
     } @else {
       <p class="empty mn-hint" data-testid="current-snapshot">
-        No vocabulary snapshot yet. Connect a source and refresh to create one.
+        No vocabulary snapshot yet. Add a pasted list or connect Anki to create one.
       </p>
     }
   `,
@@ -118,10 +118,10 @@ const PROVIDER_LABELS: Record<AnkiProviderKind, string> = {
 export class SnapshotHistoryComponent {
   protected readonly history = inject(SnapshotHistoryStore);
 
-  protected providerLabels(kinds: readonly AnkiProviderKind[]): string {
+  protected sourceLabels(kinds: readonly VocabularySourceKind[]): string {
     return kinds.length === 0
       ? 'Not recorded'
-      : kinds.map((kind) => PROVIDER_LABELS[kind]).join(', ');
+      : kinds.map((kind) => SOURCE_LABELS[kind]).join(', ');
   }
 
   protected formatted(timestamp: number): string {

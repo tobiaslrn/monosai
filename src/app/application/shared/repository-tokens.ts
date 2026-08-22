@@ -7,7 +7,7 @@ import type { ReadingRepository } from '../../domain/reading/reading-repository'
 import type { SettingsRepository } from '../../domain/settings/settings-repository';
 import type { CredentialRepository } from '../../domain/settings/credential-repository';
 import type { VocabularyRepository } from '../../domain/vocabulary/vocabulary-repository';
-import type { SourceMappingRepository } from '../../domain/vocabulary/source-mapping-repository';
+import type { VocabularySourceRepository } from '../../domain/vocabulary/vocabulary-source-repository';
 import type { GrammarRepository } from '../../domain/grammar/grammar-repository';
 import type { EnrichmentRepository } from '../../domain/enrichment/enrichment-repository';
 import type { JobRepository } from '../../domain/enrichment/job-repository';
@@ -31,9 +31,11 @@ export const CREDENTIAL_REPOSITORY = new InjectionToken<CredentialRepository>(
 export const VOCABULARY_REPOSITORY = new InjectionToken<VocabularyRepository>(
   'monosai.vocabulary-repository',
 );
-export const SOURCE_MAPPING_REPOSITORY = new InjectionToken<SourceMappingRepository>(
-  'monosai.source-mapping-repository',
+export const VOCABULARY_SOURCE_REPOSITORY = new InjectionToken<VocabularySourceRepository>(
+  'monosai.vocabulary-source-repository',
 );
+/** Compatibility alias while Anki mapping components are being generalized. */
+export const SOURCE_MAPPING_REPOSITORY = VOCABULARY_SOURCE_REPOSITORY;
 export const GRAMMAR_REPOSITORY = new InjectionToken<GrammarRepository>(
   'monosai.grammar-repository',
 );

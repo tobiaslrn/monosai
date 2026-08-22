@@ -40,7 +40,12 @@ describe('database schema', () => {
     expect(db.verno).toBe(CURRENT_SCHEMA_VERSION);
 
     const tableNames = db.tables.map((table) => table.name).sort();
-    expect(tableNames).toEqual(Object.keys(SCHEMA_VERSIONS[0].stores).sort());
+    expect(tableNames).toEqual(
+      Object.entries(SCHEMA_VERSIONS.at(-1)!.stores)
+        .filter(([, schema]) => schema !== null)
+        .map(([name]) => name)
+        .sort(),
+    );
   });
 
   it('does not index large text, tokens, blobs, or credentials', () => {
@@ -89,18 +94,65 @@ describe('database schema', () => {
       const upgraded = new MonosaiDatabase(name);
       await upgraded.open();
 
-      expect(upgraded.verno).toBe(2);
+      expect(upgraded.verno).toBe(CURRENT_SCHEMA_VERSION);
       expect(await upgraded.table('settings').get('preserved')).toEqual({
         key: 'preserved',
         value: true,
       });
       expect(upgraded.tables.map((table) => table.name).sort()).toEqual(
-        Object.keys(SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].stores).sort(),
+        Object.entries(SCHEMA_VERSIONS.at(-1)!.stores)
+          .filter(([, schema]) => schema !== null)
+          .map(([name]) => name)
+          .sort(),
       );
       expect(upgraded.tables.some((table) => table.name === 'readingProgress')).toBe(false);
       upgraded.close();
     } finally {
       stale.close();
+      await Dexie.delete(name);
+    }
+  });
+
+  it('migrates existing Anki mappings into automatic vocabulary sources', async () => {
+    const name = `monosai-v2-vocabulary-${Date.now()}`;
+    const legacy = new Dexie(name);
+    legacy.version(2).stores({
+      sourceMappings: '&id, providerKind, [deckName+noteTypeName]',
+      vocabularySnapshots: '&id, createdAt, uniqueEntryCount',
+      vocabularyProvenance: '++id, vocabularyItemId, sourceMappingId',
+    });
+    const id = uuid(9100);
+
+    try {
+      await legacy.open();
+      await legacy.table('sourceMappings').add({
+        v: 1,
+        id,
+        providerKind: 'desktop-connect',
+        deckName: 'Core Japanese',
+        deckScope: 'deck-only',
+        noteTypeName: 'Basic',
+        expressionFieldName: 'Expression',
+        enabled: true,
+        createdAt: 100,
+        updatedAt: 200,
+      });
+      legacy.close();
+
+      const upgraded = new MonosaiDatabase(name);
+      await upgraded.open();
+
+      expect(await upgraded.vocabularySources.get(id)).toMatchObject({
+        id,
+        kind: 'anki-connect',
+        automaticSync: true,
+        label: 'Anki · Core Japanese · Expression',
+        lastSyncedAt: null,
+      });
+      expect(upgraded.tables.some((table) => table.name === 'sourceMappings')).toBe(false);
+      upgraded.close();
+    } finally {
+      legacy.close();
       await Dexie.delete(name);
     }
   });

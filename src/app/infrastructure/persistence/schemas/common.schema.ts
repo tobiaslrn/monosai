@@ -7,6 +7,7 @@ import {
   sentenceId,
   snapshotId,
   sourceMappingId,
+  vocabularySourceId,
   vocabularyItemId,
 } from '../../../domain/shared/ids';
 
@@ -23,6 +24,7 @@ export const sentenceIdSchema = z.uuid().transform(sentenceId);
 export const snapshotIdSchema = z.uuid().transform(snapshotId);
 export const vocabularyItemIdSchema = z.uuid().transform(vocabularyItemId);
 export const sourceMappingIdSchema = z.uuid().transform(sourceMappingId);
+export const vocabularySourceIdSchema = z.uuid().transform(vocabularySourceId);
 export const assetIdSchema = z.uuid().transform(assetId);
 export const jobIdSchema = z.uuid().transform(jobId);
 

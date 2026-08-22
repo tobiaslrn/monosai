@@ -15,18 +15,35 @@ function idSequence(): () => VocabularyItemId {
   };
 }
 
-function entry(overrides: Partial<PreparedEntry> = {}): PreparedEntry {
+type EntryOverrides = Partial<Omit<PreparedEntry, 'provenance'>> & {
+  readonly sourceId?: typeof MAPPING_A;
+  readonly sourceRecordId?: string;
+  readonly deckName?: string;
+};
+
+function entry(overrides: EntryOverrides = {}): PreparedEntry {
   const visible = overrides.visibleExpression ?? 'ねこ';
+  const {
+    sourceId = MAPPING_A,
+    sourceRecordId,
+    deckName = 'Core Japanese',
+    ...entryOverrides
+  } = overrides;
   return {
-    sourceMappingId: MAPPING_A,
-    deckName: 'Core Japanese',
-    noteTypeName: 'Basic',
-    fieldName: 'Expression',
+    provenance: {
+      sourceId,
+      sourceKind: 'anki-connect',
+      sourceLabel: deckName,
+      deckName,
+      noteTypeName: 'Basic',
+      fieldName: 'Expression',
+      ...(sourceRecordId === undefined ? {} : { sourceRecordId }),
+    },
     visibleExpression: visible,
     canonicalExpression: visible,
     expressionHash: `hash(${visible})`,
     analyzedSequence: [{ surface: visible }],
-    ...overrides,
+    ...entryOverrides,
   };
 }
 
@@ -44,7 +61,7 @@ describe('mergeEntries', () => {
 
   it('merges exact canonical duplicates into one item', () => {
     const result = mergeEntries(
-      [entry({ sourceNoteId: 'n1' }), entry({ sourceNoteId: 'n2' })],
+      [entry({ sourceRecordId: 'n1' }), entry({ sourceRecordId: 'n2' })],
       SNAPSHOT,
       idSequence(),
     );
@@ -56,9 +73,9 @@ describe('mergeEntries', () => {
   it('retains one provenance record per mapping and note', () => {
     const result = mergeEntries(
       [
-        entry({ sourceNoteId: 'n1' }),
-        entry({ sourceNoteId: 'n2' }),
-        entry({ sourceMappingId: MAPPING_B, deckName: 'Extra', sourceNoteId: 'n1' }),
+        entry({ sourceRecordId: 'n1' }),
+        entry({ sourceRecordId: 'n2' }),
+        entry({ sourceId: MAPPING_B, deckName: 'Extra', sourceRecordId: 'n1' }),
       ],
       SNAPSHOT,
       idSequence(),
@@ -66,7 +83,7 @@ describe('mergeEntries', () => {
 
     expect(result.items).toHaveLength(1);
     expect(result.provenance).toHaveLength(3);
-    expect(result.provenance.map((record) => record.sourceMappingId)).toEqual([
+    expect(result.provenance.map((record) => record.sourceId)).toEqual([
       MAPPING_A,
       MAPPING_A,
       MAPPING_B,
@@ -78,7 +95,7 @@ describe('mergeEntries', () => {
 
   it('does not repeat provenance for the same mapping and note seen twice', () => {
     const result = mergeEntries(
-      [entry({ sourceNoteId: 'n1' }), entry({ sourceNoteId: 'n1' })],
+      [entry({ sourceRecordId: 'n1' }), entry({ sourceRecordId: 'n1' })],
       SNAPSHOT,
       idSequence(),
     );
@@ -89,7 +106,7 @@ describe('mergeEntries', () => {
 
   it('omits the note id when the provider could not supply one', () => {
     const result = mergeEntries([entry()], SNAPSHOT, idSequence());
-    expect(result.provenance[0]).not.toHaveProperty('sourceNoteId');
+    expect(result.provenance[0]).not.toHaveProperty('sourceRecordId');
   });
 
   it('keeps distinct orthographies of one word as separate items', () => {

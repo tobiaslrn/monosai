@@ -34,9 +34,9 @@ interface SummaryCard {
       }
     </dl>
 
-    @if (stats().providerWarnings.length > 0) {
+    @if (stats().sourceWarnings.length > 0) {
       <ul class="warnings" data-testid="refresh-warnings">
-        @for (warning of stats().providerWarnings; track warning) {
+        @for (warning of stats().sourceWarnings; track warning) {
           <li>{{ warning }}</li>
         }
       </ul>
@@ -128,8 +128,8 @@ export class RefreshSummaryComponent {
   protected readonly cards = computed<readonly SummaryCard[]>(() => {
     const stats = this.stats();
     return [
-      { label: 'Sources read', value: stats.mappingsQueried },
-      { label: 'Reviewed notes', value: stats.reviewedEligibleNotes },
+      { label: 'Sources read', value: stats.sourcesQueried },
+      { label: 'Entries read', value: stats.entriesRead },
       { label: 'Values with text', value: stats.nonEmptyValues },
       {
         label: 'Empty values skipped',

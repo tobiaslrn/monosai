@@ -13,6 +13,7 @@ import {
   withInMemoryScrolling,
 } from '@angular/router';
 import { LanguageStore } from './application/language/language.store';
+import { AutomaticAnkiSyncCoordinator } from './application/vocabulary/automatic-anki-sync.coordinator';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
 import { provideInitializationSteps } from './core/bootstrap/initialization-steps';
 import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
@@ -25,6 +26,7 @@ import { providePwa } from './infrastructure/pwa/pwa.providers';
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    AutomaticAnkiSyncCoordinator,
     provideBrowserGlobalErrorListeners(),
     provideRouter(
       APP_ROUTES,
@@ -47,6 +49,7 @@ export const appConfig: ApplicationConfig = {
       inject(ThemeSynchronizer);
       const initializer = inject(AppInitializerService);
       const language = inject(LanguageStore);
+      const automaticAnkiSync = inject(AutomaticAnkiSyncCoordinator);
       void initializer.run().then(() => {
         // Every reading path needs the tokenizer, so preparation starts on its
         // own once startup succeeds. It is deliberately not awaited and not a
@@ -54,6 +57,7 @@ export const appConfig: ApplicationConfig = {
         // the language bundle is still downloading.
         if (initializer.state().status === 'ready') {
           void language.initialize();
+          automaticAnkiSync.start();
         }
       });
     }),

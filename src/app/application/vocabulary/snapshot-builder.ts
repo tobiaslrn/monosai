@@ -1,5 +1,4 @@
 import { Injectable, inject } from '@angular/core';
-import type { ExtractedEntry } from '../../domain/anki/anki-provider';
 import { canonicalizeExpression, expressionHashOf } from '../../domain/anki/canonical-expression';
 import { mergeEntries, type PreparedEntry } from '../../domain/anki/deduplication';
 import { extractVisibleText } from '../../domain/anki/field-extraction';
@@ -7,12 +6,11 @@ import { ANALYZER_VERSION, NORMALIZATION_VERSION } from '../../domain/language/a
 import { languageError, type LanguageError } from '../../domain/language/language-error';
 import { err, ok, type Result } from '../../domain/shared/result';
 import { snapshotId, vocabularyItemId, type SnapshotId } from '../../domain/shared/ids';
+import type { SnapshotStats, VocabularyToken } from '../../domain/vocabulary/snapshot';
 import type {
-  AnkiProviderKind,
-  SnapshotStats,
-  VocabularyToken,
-} from '../../domain/vocabulary/snapshot';
-import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
+  VocabularySource,
+  VocabularySourceCacheEntry,
+} from '../../domain/vocabulary/vocabulary-source';
 import type { SnapshotCommit } from '../../domain/vocabulary/vocabulary-repository';
 import { MARKUP_TEXT_EXTRACTOR } from '../shared/anki-tokens';
 import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
@@ -27,12 +25,15 @@ export interface AnalysisProgress {
 }
 
 export interface BuildSnapshotRequest {
-  readonly entries: readonly ExtractedEntry[];
-  readonly mappings: readonly SourceMapping[];
-  readonly providerKinds: readonly AnkiProviderKind[];
+  readonly entries: readonly SourceEntry[];
+  readonly sources: readonly VocabularySource[];
   readonly warnings: readonly string[];
   /** Reuse the current row identity so generated stories keep one snapshot link. */
   readonly snapshotId?: SnapshotId;
+}
+
+export interface SourceEntry extends VocabularySourceCacheEntry {
+  readonly sourceId: VocabularySource['id'];
 }
 
 export interface BuiltSnapshot {
@@ -41,7 +42,7 @@ export interface BuiltSnapshot {
 }
 
 interface AcceptedEntry {
-  readonly entry: ExtractedEntry;
+  readonly entry: SourceEntry;
   readonly visibleExpression: string;
   readonly canonicalExpression: string;
   readonly expressionHash: string;
@@ -71,21 +72,34 @@ export class SnapshotBuilder {
     onProgress?: (progress: AnalysisProgress) => void,
     signal?: AbortSignal,
   ): Promise<Result<BuiltSnapshot, LanguageError>> {
-    const mappingsById = new Map(request.mappings.map((mapping) => [mapping.id, mapping]));
+    const sourcesById = new Map(request.sources.map((source) => [source.id, source]));
 
     const accepted: AcceptedEntry[] = [];
     let rejectedEmptyValues = 0;
 
     for (const entry of request.entries) {
-      const extracted = extractVisibleText(entry.rawFieldValue, this.extractor);
-      if (!extracted.ok) {
+      const source = sourcesById.get(entry.sourceId);
+      let visibleExpression: string | undefined;
+      if (source?.kind === 'text-list') {
+        visibleExpression = entry.rawValue?.trim();
+      } else if (source !== undefined) {
+        const extracted = extractVisibleText(entry.rawValue, this.extractor);
+        if (extracted.ok) {
+          visibleExpression = extracted.value;
+        }
+      }
+      if (
+        source === undefined ||
+        visibleExpression === undefined ||
+        visibleExpression.length === 0
+      ) {
         rejectedEmptyValues += 1;
         continue;
       }
-      const canonicalExpression = canonicalizeExpression(extracted.value);
+      const canonicalExpression = canonicalizeExpression(visibleExpression);
       accepted.push({
         entry,
-        visibleExpression: extracted.value,
+        visibleExpression,
         canonicalExpression,
         expressionHash: expressionHashOf(this.hasher, canonicalExpression),
       });
@@ -107,16 +121,26 @@ export class SnapshotBuilder {
 
     const prepared: PreparedEntry[] = [];
     for (const item of accepted) {
-      const mapping = mappingsById.get(item.entry.sourceMappingId);
-      if (mapping === undefined) {
+      const source = sourcesById.get(item.entry.sourceId);
+      if (source === undefined) {
         continue;
       }
       prepared.push({
-        sourceMappingId: mapping.id,
-        deckName: mapping.deckName,
-        noteTypeName: mapping.noteTypeName,
-        fieldName: mapping.expressionFieldName,
-        ...(item.entry.sourceNoteId === undefined ? {} : { sourceNoteId: item.entry.sourceNoteId }),
+        provenance: {
+          sourceId: source.id,
+          sourceKind: source.kind,
+          sourceLabel: source.label,
+          ...(source.kind === 'text-list'
+            ? {}
+            : {
+                deckName: source.deckName,
+                noteTypeName: source.noteTypeName,
+                fieldName: source.expressionFieldName,
+              }),
+          ...(item.entry.sourceRecordId === undefined
+            ? {}
+            : { sourceRecordId: item.entry.sourceRecordId }),
+        },
         visibleExpression: item.visibleExpression,
         canonicalExpression: item.canonicalExpression,
         expressionHash: item.expressionHash,
@@ -128,13 +152,13 @@ export class SnapshotBuilder {
     const merged = mergeEntries(prepared, id, () => vocabularyItemId(this.ids.nextId()));
 
     const stats: SnapshotStats = {
-      mappingsQueried: request.mappings.length,
-      reviewedEligibleNotes: request.entries.length,
+      sourcesQueried: request.sources.length,
+      entriesRead: request.entries.length,
       nonEmptyValues: accepted.length,
       rejectedEmptyValues,
       duplicateOccurrences: merged.duplicateOccurrences,
       uniqueExpressions: merged.items.length,
-      providerWarnings: [...request.warnings],
+      sourceWarnings: [...request.warnings],
     };
 
     return ok({
@@ -144,8 +168,8 @@ export class SnapshotBuilder {
           createdAt: this.clock.now(),
           status: 'complete',
           uniqueEntryCount: merged.items.length,
-          mappingIds: request.mappings.map((mapping) => mapping.id),
-          providerKinds: [...request.providerKinds],
+          sourceIds: request.sources.map((source) => source.id),
+          sourceKinds: [...new Set(request.sources.map((source) => source.kind))],
           analyzerVersion: ANALYZER_VERSION,
           normalizationVersion: NORMALIZATION_VERSION,
           stats,

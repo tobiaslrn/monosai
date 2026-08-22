@@ -16,7 +16,7 @@ interface SchemaVersion {
  * Indexes exist only for queries the specification requires. Large text, token
  * arrays, blobs, credentials, and policy text are never indexed.
  */
-const CURRENT_STORES: Readonly<Record<string, string | null>> = {
+const V2_STORES: Readonly<Record<string, string | null>> = {
   settings: '&key',
   credentials: '&key',
   sourceMappings: '&id, providerKind, [deckName+noteTypeName]',
@@ -39,16 +39,88 @@ const CURRENT_STORES: Readonly<Record<string, string | null>> = {
   generationProvenance: '&id, readingId',
 };
 
+const V3_STORES: Readonly<Record<string, string | null>> = {
+  ...V2_STORES,
+  vocabularySources: '&id, kind, providerKind',
+  vocabularySourceCaches: '&sourceId, refreshedAt',
+};
+
+const V4_STORES: Readonly<Record<string, string | null>> = {
+  ...V3_STORES,
+  sourceMappings: null,
+  vocabularyProvenance: '++id, vocabularyItemId, sourceId',
+};
+
 export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   {
     version: 1,
-    stores: CURRENT_STORES,
+    stores: V2_STORES,
   },
   {
     version: 2,
     // Earlier development builds changed v1 in place. Advancing to v2 makes
     // Dexie reconcile each installed v1's actual schema with this canonical one.
-    stores: CURRENT_STORES,
+    stores: V2_STORES,
+  },
+  {
+    version: 3,
+    stores: V3_STORES,
+    upgrade: async (transaction) => {
+      const mappings = (await transaction.table('sourceMappings').toArray()) as Record<
+        string,
+        unknown
+      >[];
+      const sources = mappings.map((mapping) => migrateMapping(mapping));
+      await transaction.table('vocabularySources').bulkPut(sources);
+      const sourcesById = new Map(sources.map((source) => [source['id'], source]));
+
+      await transaction
+        .table('vocabularySnapshots')
+        .toCollection()
+        .modify((row: unknown) => {
+          const snapshot = requireRecord(row, 'vocabulary snapshot');
+          if (!Array.isArray(snapshot['mappingIds']) || !Array.isArray(snapshot['providerKinds'])) {
+            throw new Error('A stored vocabulary snapshot has an unsupported source shape.');
+          }
+          const stats = requireRecord(snapshot['stats'], 'vocabulary snapshot statistics');
+          snapshot['sourceIds'] = snapshot['mappingIds'];
+          snapshot['sourceKinds'] = snapshot['providerKinds'].map((kind) =>
+            kind === 'package' ? 'anki-package' : 'anki-connect',
+          );
+          stats['sourcesQueried'] = stats['mappingsQueried'];
+          stats['entriesRead'] = stats['reviewedEligibleNotes'];
+          stats['sourceWarnings'] = stats['providerWarnings'];
+          delete snapshot['mappingIds'];
+          delete snapshot['providerKinds'];
+          delete stats['mappingsQueried'];
+          delete stats['reviewedEligibleNotes'];
+          delete stats['providerWarnings'];
+        });
+
+      await transaction
+        .table('vocabularyProvenance')
+        .toCollection()
+        .modify((row: unknown) => {
+          const provenance = requireRecord(row, 'vocabulary provenance');
+          const sourceId = provenance['sourceMappingId'];
+          if (typeof sourceId !== 'string') {
+            throw new Error('Stored vocabulary provenance has no source identifier.');
+          }
+          const source = sourcesById.get(sourceId);
+          provenance['sourceId'] = sourceId;
+          provenance['sourceKind'] = source?.['kind'] ?? 'anki-connect';
+          provenance['sourceLabel'] = source?.['label'] ?? 'Anki source';
+          if (typeof provenance['sourceNoteId'] === 'string') {
+            provenance['sourceRecordId'] = provenance['sourceNoteId'];
+          }
+          delete provenance['sourceMappingId'];
+          delete provenance['sourceNoteId'];
+        });
+    },
+  },
+  {
+    version: 4,
+    stores: V4_STORES,
   },
 ];
 
@@ -62,4 +134,34 @@ export function applySchema(db: Dexie): void {
       version.upgrade(entry.upgrade);
     }
   }
+}
+
+function requireRecord(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`The stored ${label} is not an object.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function migrateMapping(mapping: Record<string, unknown>): Record<string, unknown> {
+  const providerKind = mapping['providerKind'];
+  const id = mapping['id'];
+  const deckName = mapping['deckName'];
+  const fieldName = mapping['expressionFieldName'];
+  if (
+    typeof id !== 'string' ||
+    typeof deckName !== 'string' ||
+    typeof fieldName !== 'string' ||
+    !['desktop-connect', 'android-connect', 'package'].includes(String(providerKind))
+  ) {
+    throw new Error('A stored Anki source cannot be migrated safely.');
+  }
+  const isPackage = providerKind === 'package';
+  return {
+    ...mapping,
+    kind: isPackage ? 'anki-package' : 'anki-connect',
+    label: `Anki · ${deckName} · ${fieldName}`,
+    automaticSync: !isPackage,
+    lastSyncedAt: null,
+  };
 }

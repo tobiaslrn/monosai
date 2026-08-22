@@ -18,7 +18,7 @@ import { VocabularyRefreshStore } from '../app/application/vocabulary/vocabulary
 import type { AnalyzedSentence } from '../app/domain/language/analyzed-text';
 import { fixedClock } from '../app/domain/shared/clock';
 import type { Hasher } from '../app/domain/shared/hashing';
-import type { SnapshotId, SourceMappingId } from '../app/domain/shared/ids';
+import type { SnapshotId, VocabularySourceId } from '../app/domain/shared/ids';
 import { ok, type Result } from '../app/domain/shared/result';
 import { storageError, type StorageError } from '../app/domain/storage/storage-error';
 import type { AppSettings, ReaderPreferences } from '../app/domain/settings/settings';
@@ -29,8 +29,11 @@ import type {
   VocabularyProvenance,
   VocabularySnapshot,
 } from '../app/domain/vocabulary/snapshot';
-import type { SourceMapping } from '../app/domain/vocabulary/source-mapping';
 import type { SourceMappingRepository } from '../app/domain/vocabulary/source-mapping-repository';
+import type {
+  VocabularySource,
+  VocabularySourceCache,
+} from '../app/domain/vocabulary/vocabulary-source';
 import type {
   SnapshotCommit,
   VocabularyRepository,
@@ -107,14 +110,15 @@ export class StubVocabularyRepository implements VocabularyRepository {
 }
 
 export class StubSourceMappingRepository implements SourceMappingRepository {
-  readonly stored = new Map<SourceMappingId, SourceMapping>();
+  readonly stored = new Map<VocabularySourceId, VocabularySource>();
+  readonly caches = new Map<VocabularySourceId, VocabularySourceCache>();
   saveFailure: StorageError | null = null;
 
-  list(): Promise<Result<readonly SourceMapping[], StorageError>> {
+  list(): Promise<Result<readonly VocabularySource[], StorageError>> {
     return Promise.resolve(ok([...this.stored.values()]));
   }
 
-  save(mapping: SourceMapping): Promise<Result<SourceMapping, StorageError>> {
+  save(mapping: VocabularySource): Promise<Result<VocabularySource, StorageError>> {
     if (this.saveFailure !== null) {
       return Promise.resolve({ ok: false, error: this.saveFailure });
     }
@@ -122,12 +126,16 @@ export class StubSourceMappingRepository implements SourceMappingRepository {
     return Promise.resolve(ok(mapping));
   }
 
-  remove(id: SourceMappingId): Promise<Result<void, StorageError>> {
+  remove(id: VocabularySourceId): Promise<Result<void, StorageError>> {
     this.stored.delete(id);
+    this.caches.delete(id);
     return Promise.resolve(ok(undefined));
   }
 
-  setEnabled(id: SourceMappingId, enabled: boolean): Promise<Result<SourceMapping, StorageError>> {
+  setEnabled(
+    id: VocabularySourceId,
+    enabled: boolean,
+  ): Promise<Result<VocabularySource, StorageError>> {
     const existing = this.stored.get(id);
     if (existing === undefined) {
       return Promise.resolve({ ok: false, error: storageError('not-found', 'gone') });
@@ -135,6 +143,21 @@ export class StubSourceMappingRepository implements SourceMappingRepository {
     const updated = { ...existing, enabled };
     this.stored.set(id, updated);
     return Promise.resolve(ok(updated));
+  }
+
+  readCaches(
+    ids: readonly VocabularySourceId[],
+  ): Promise<Result<readonly VocabularySourceCache[], StorageError>> {
+    return Promise.resolve(
+      ok(ids.flatMap((id) => (this.caches.has(id) ? [this.caches.get(id)!] : []))),
+    );
+  }
+
+  replaceCaches(caches: readonly VocabularySourceCache[]): Promise<Result<void, StorageError>> {
+    for (const cache of caches) {
+      this.caches.set(cache.sourceId, cache);
+    }
+    return Promise.resolve(ok(undefined));
   }
 }
 

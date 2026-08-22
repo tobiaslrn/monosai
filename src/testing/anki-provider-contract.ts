@@ -43,6 +43,8 @@ export interface ProviderContractSetup {
 export function mappingFor(overrides: Partial<SourceMapping> = {}): SourceMapping {
   return {
     id: sourceMappingId('11111111-1111-4111-8111-111111111111'),
+    kind: 'anki-package',
+    label: 'Anki · Core Japanese · Expression',
     providerKind: 'package',
     deckName: 'Core Japanese',
     deckScope: 'deck-only',
@@ -51,6 +53,8 @@ export function mappingFor(overrides: Partial<SourceMapping> = {}): SourceMappin
     enabled: true,
     createdAt: 1_700_000_000_000,
     updatedAt: 1_700_000_000_000,
+    lastSyncedAt: null,
+    automaticSync: false,
     ...overrides,
   };
 }

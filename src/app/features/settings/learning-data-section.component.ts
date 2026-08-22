@@ -2,16 +2,17 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
-import type { AnkiProviderKind, VocabularySnapshot } from '../../domain/vocabulary/snapshot';
+import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
+import type { VocabularySourceKind } from '../../domain/vocabulary/vocabulary-source';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
-const PROVIDER_LABELS: Record<AnkiProviderKind, string> = {
-  'desktop-connect': 'AnkiConnect',
-  'android-connect': 'AnkiConnect',
-  package: 'Anki package',
+const SOURCE_LABELS: Record<VocabularySourceKind, string> = {
+  'anki-connect': 'AnkiConnect',
+  'anki-package': 'Anki package',
+  'text-list': 'Pasted list',
 };
 
-type VocabularyStatusSnapshot = Pick<VocabularySnapshot, 'uniqueEntryCount' | 'providerKinds'>;
+type VocabularyStatusSnapshot = Pick<VocabularySnapshot, 'uniqueEntryCount' | 'sourceKinds'>;
 
 /** Keeps the setup summary truthful for both live connections and package imports. */
 export function formatVocabularyState(snapshot: VocabularyStatusSnapshot | null): string {
@@ -19,7 +20,7 @@ export function formatVocabularyState(snapshot: VocabularyStatusSnapshot | null)
     return 'No vocabulary snapshot yet';
   }
 
-  const sources = [...new Set(snapshot.providerKinds.map((kind) => PROVIDER_LABELS[kind]))];
+  const sources = [...new Set(snapshot.sourceKinds.map((kind) => SOURCE_LABELS[kind]))];
   const source = sources.length > 0 ? sources.join(' + ') : 'Source not recorded';
   return `${snapshot.uniqueEntryCount.toLocaleString('en')} unique expressions · ${source}`;
 }

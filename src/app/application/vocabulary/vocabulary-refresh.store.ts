@@ -9,24 +9,23 @@ import {
   resolveMappings,
   type MappingResolution,
 } from '../../domain/anki/mapping-validation';
-import type { LanguageError } from '../../domain/language/language-error';
 import type { SourceMappingId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { SnapshotStats, VocabularySnapshot } from '../../domain/vocabulary/snapshot';
-import type { SnapshotCommit } from '../../domain/vocabulary/vocabulary-repository';
-import { LanguageStore } from '../language/language.store';
 import { SourceMappingStore } from './source-mapping.store';
-import { VocabularyClassificationService } from '../reading/vocabulary-classification.service';
-import { AppSettingsStore } from '../settings/app-settings.store';
-import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
-import { SnapshotBuilder } from './snapshot-builder';
+import type { VocabularySourceCache } from '../../domain/vocabulary/vocabulary-source';
+import {
+  VocabularySyncService,
+  type PreparedVocabularySync,
+  type VocabularySyncFailure,
+} from './vocabulary-sync.service';
 
 /** Anything that can go wrong before or during a commit. */
-export type RefreshFailure = AnkiError | LanguageError | StorageError;
+export type RefreshFailure = AnkiError | VocabularySyncFailure | StorageError;
 
 export interface RefreshSummary {
   readonly stats: SnapshotStats;
-  readonly commit: SnapshotCommit;
+  readonly prepared: PreparedVocabularySync;
 }
 
 /**
@@ -90,16 +89,13 @@ const CANCELLABLE = new Set<RefreshState['kind']>([
  */
 @Injectable()
 export class VocabularyRefreshStore {
-  private readonly vocabulary = inject(VOCABULARY_REPOSITORY);
-  private readonly builder = inject(SnapshotBuilder);
-  private readonly settings = inject(AppSettingsStore);
-  private readonly classification = inject(VocabularyClassificationService);
-  private readonly language = inject(LanguageStore);
+  private readonly sync = inject(VocabularySyncService);
   private readonly sources = inject(SourceMappingStore);
 
   private readonly stateSignal = signal<RefreshState>(IDLE);
   private readonly capabilitiesSignal = signal<AnkiCapabilities | null>(null);
   private readonly catalogSignal = signal<AnkiCatalog | null>(null);
+  private readonly providerKindSignal = signal<AnkiVocabularyProvider['kind'] | null>(null);
   private readonly warningsSignal = signal<readonly string[]>([]);
   private readonly announcementSignal = signal('');
 
@@ -109,6 +105,7 @@ export class VocabularyRefreshStore {
   readonly state = this.stateSignal.asReadonly();
   readonly capabilities = this.capabilitiesSignal.asReadonly();
   readonly catalog = this.catalogSignal.asReadonly();
+  readonly providerKind = this.providerKindSignal.asReadonly();
 
   /**
    * How the configured mappings line up with what the source actually has.
@@ -118,7 +115,13 @@ export class VocabularyRefreshStore {
    */
   readonly resolution = computed<MappingResolution | null>(() => {
     const catalog = this.catalogSignal();
-    return catalog === null ? null : resolveMappings(this.sources.mappings(), catalog);
+    const providerKind = this.provider?.kind;
+    return catalog === null || providerKind === undefined
+      ? null
+      : resolveMappings(
+          this.sources.mappings().filter((source) => source.providerKind === providerKind),
+          catalog,
+        );
   });
   readonly warnings = this.warningsSignal.asReadonly();
   readonly announcement = this.announcementSignal.asReadonly();
@@ -143,6 +146,7 @@ export class VocabularyRefreshStore {
   async connect(provider: AnkiVocabularyProvider): Promise<void> {
     this.releaseProvider();
     this.provider = provider;
+    this.providerKindSignal.set(provider.kind);
     this.capabilitiesSignal.set(null);
     this.catalogSignal.set(null);
     this.warningsSignal.set([]);
@@ -214,16 +218,6 @@ export class VocabularyRefreshStore {
       return;
     }
 
-    // The language runtime tokenizes every expression, so it has to be ready
-    // before anything is read rather than after a long extraction.
-    const ready = await this.language.initialize();
-    if (!ready) {
-      this.fail(
-        ankiError('unknown', 'Japanese language support could not be prepared for this refresh.'),
-      );
-      return;
-    }
-
     const resolved = resolution.resolved;
     this.stateSignal.set({ kind: 'querying', mappingsDone: 0, mappingsTotal: resolved.length });
 
@@ -264,23 +258,28 @@ export class VocabularyRefreshStore {
       return;
     }
 
-    const currentSnapshot = await this.vocabulary.getActiveSnapshot();
-    if (!currentSnapshot.ok) {
-      this.fail(currentSnapshot.error);
-      return;
-    }
-
     this.warningsSignal.set(warnings);
     this.stateSignal.set({ kind: 'analyzing', completed: 0, total: entries.length });
+    const entriesBySource = new Map<SourceMappingId, VocabularySourceCache['entries'][number][]>();
+    for (const source of resolved) {
+      entriesBySource.set(source.id, []);
+    }
+    for (const entry of entries) {
+      entriesBySource.get(entry.sourceMappingId)?.push({
+        rawValue: entry.rawFieldValue,
+        ...(entry.sourceNoteId === undefined ? {} : { sourceRecordId: entry.sourceNoteId }),
+      });
+    }
+    const refreshedAt = Date.now();
+    const caches: VocabularySourceCache[] = resolved.map((source) => ({
+      sourceId: source.id,
+      refreshedAt,
+      entries: entriesBySource.get(source.id) ?? [],
+      warnings,
+    }));
 
-    const built = await this.builder.build(
-      {
-        entries,
-        mappings: resolved,
-        providerKinds: [provider.kind],
-        warnings,
-        ...(currentSnapshot.value === null ? {} : { snapshotId: currentSnapshot.value.id }),
-      },
+    const built = await this.sync.prepare(
+      caches,
       (progress) => {
         this.stateSignal.set({
           kind: 'analyzing',
@@ -307,10 +306,10 @@ export class VocabularyRefreshStore {
     this.finishRun();
     this.stateSignal.set({
       kind: 'awaiting-confirmation',
-      summary: { stats: built.value.stats, commit: built.value.commit },
+      summary: { stats: built.value.commit.snapshot.stats, prepared: built.value },
     });
     this.announce(
-      `Found ${String(built.value.stats.uniqueExpressions)} unique expressions. Confirm to save them.`,
+      `Found ${String(built.value.commit.snapshot.stats.uniqueExpressions)} unique expressions. Confirm to save them.`,
     );
   }
 
@@ -328,17 +327,12 @@ export class VocabularyRefreshStore {
     }
 
     this.stateSignal.set({ kind: 'committing' });
-    const committed = await this.vocabulary.commitSnapshot(current.summary.commit);
+    const committed = await this.sync.commit(current.summary.prepared);
     if (!committed.ok) {
       this.stateSignal.set({ kind: 'failed', error: committed.error });
       this.announce('The current vocabulary could not be updated. Your previous one is unchanged.');
       return;
     }
-
-    // The reader keeps a compiled matcher for whichever vocabulary it last saw,
-    // and settings hold the current id, so both have to be told the world moved.
-    await this.settings.reloadAppSettings();
-    this.classification.invalidate();
 
     this.stateSignal.set({ kind: 'complete', snapshot: committed.value });
     this.announce(
@@ -402,6 +396,7 @@ export class VocabularyRefreshStore {
   private releaseProvider(): void {
     this.provider?.dispose();
     this.provider = null;
+    this.providerKindSignal.set(null);
   }
 
   private announce(message: string): void {

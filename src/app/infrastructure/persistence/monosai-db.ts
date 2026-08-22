@@ -17,6 +17,7 @@ import type { AssetJobRow } from './schemas/job.schema';
 import type { GrammarProfileRow, GrammarProfileSnapshotRow } from './schemas/grammar.schema';
 import type {
   SourceMappingRow,
+  VocabularySourceCacheRow,
   VocabularyItemRow,
   VocabularyProvenanceRow,
   VocabularySnapshotRow,
@@ -29,7 +30,8 @@ export const DATABASE_NAME = 'monosai';
 export class MonosaiDatabase extends Dexie {
   readonly settings!: Table<SettingsRow, string>;
   readonly credentials!: Table<CredentialRow, string>;
-  readonly sourceMappings!: Table<SourceMappingRow, string>;
+  readonly vocabularySources!: Table<SourceMappingRow, string>;
+  readonly vocabularySourceCaches!: Table<VocabularySourceCacheRow, string>;
   readonly vocabularySnapshots!: Table<VocabularySnapshotRow, string>;
   readonly vocabularyItems!: Table<VocabularyItemRow, string>;
   readonly vocabularyProvenance!: Table<VocabularyProvenanceRow, number>;

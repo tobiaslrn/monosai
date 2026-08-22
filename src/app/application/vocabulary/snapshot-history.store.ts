@@ -1,11 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import type { SnapshotId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
-import {
-  meetsGenerationMinimum,
-  type AnkiProviderKind,
-  type VocabularySnapshot,
-} from '../../domain/vocabulary/snapshot';
+import { meetsGenerationMinimum, type VocabularySnapshot } from '../../domain/vocabulary/snapshot';
+import type { VocabularySourceKind } from '../../domain/vocabulary/vocabulary-source';
 import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
 
 /** The current vocabulary row, with the details the page has to show. */
@@ -14,7 +11,7 @@ export interface SnapshotHistoryEntry {
   readonly isActive: boolean;
   /** Distinct deck and note type pairs the snapshot was built from. */
   readonly sources: readonly string[];
-  readonly providerKinds: readonly AnkiProviderKind[];
+  readonly sourceKinds: readonly VocabularySourceKind[];
   readonly storyCount: number;
 }
 
@@ -52,7 +49,7 @@ export class SnapshotHistoryStore {
               snapshot: current.value,
               isActive: true,
               sources: await this.describeSources(current.value.id),
-              providerKinds: current.value.providerKinds,
+              sourceKinds: current.value.sourceKinds,
               storyCount: await this.countStories(current.value.id),
             },
           ];
@@ -75,7 +72,7 @@ export class SnapshotHistoryStore {
     }
     const seen = new Set<string>();
     for (const record of provenance.value) {
-      seen.add(`${record.deckName} · ${record.noteTypeName} · ${record.fieldName}`);
+      seen.add(record.sourceLabel);
     }
     return [...seen].sort();
   }
