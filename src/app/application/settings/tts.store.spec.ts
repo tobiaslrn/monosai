@@ -84,6 +84,17 @@ describe('TtsStore', () => {
     expect(store.speedApplied()).toBe(true);
   });
 
+  it('persists the Gemini default when its optional voice is left blank', async () => {
+    const store = await ready();
+    store.setDraft({ modelId: 'google/gemini-3.1-flash-tts-preview', voiceId: '' });
+
+    await store.test();
+
+    expect(settings.tts.voiceId).toBe('Kore');
+    expect(provider.calls).toBe(1);
+    expect(store.readiness()).toBe('ready');
+  });
+
   it('reports a speed the provider ignored rather than implying it applied', async () => {
     provider.result = ok(ttsTest(false));
     const store = await ready();

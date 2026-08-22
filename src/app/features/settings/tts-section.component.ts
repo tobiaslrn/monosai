@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { CredentialStore } from '../../application/settings/credential.store';
 import { MAX_TTS_SPEED, MIN_TTS_SPEED, TtsStore } from '../../application/settings/tts.store';
+import { isGeminiTtsModel } from '../../domain/ai/tts-configuration';
 import { ConfigurationStatusComponent } from './configuration-status.component';
 
 /**
@@ -42,10 +43,16 @@ import { ConfigurationStatusComponent } from './configuration-status.component';
           [value]="tts.draft().modelId"
           (input)="onModelInput($event)"
         />
+        @if (geminiTts()) {
+          <p class="mn-hint">
+            Gemini voice names are case sensitive. Use a voice listed by OpenRouter, for example
+            <strong>Kore</strong>, <strong>Puck</strong>, or <strong>Aoede</strong>.
+          </p>
+        }
       </div>
 
       <div class="mn-field">
-        <label for="mn-tts-voice">Exact voice ID</label>
+        <label for="mn-tts-voice">Exact voice ID (optional for Gemini)</label>
         <input
           id="mn-tts-voice"
           type="text"
@@ -153,13 +160,14 @@ export class TtsSectionComponent {
   protected readonly playing = signal(false);
 
   protected readonly speedLabel = computed(() => `${this.tts.draft().speed.toFixed(2)}×`);
+  protected readonly geminiTts = computed(() => isGeminiTtsModel(this.tts.draft().modelId));
 
   protected readonly canTest = computed(
     () =>
       this.tts.action() === 'idle' &&
       this.credential.isConfigured() &&
       this.tts.draft().modelId.trim() !== '' &&
-      this.tts.draft().voiceId.trim() !== '',
+      (this.tts.draft().voiceId.trim() !== '' || this.geminiTts()),
   );
 
   constructor() {

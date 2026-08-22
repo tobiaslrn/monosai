@@ -1,5 +1,6 @@
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { TtsConfig, TtsTest } from '../../domain/ai/model-test';
+import { resolveTtsVoice, supportsTtsSpeed } from '../../domain/ai/tts-configuration';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { AudioDecoder } from './audio-decode';
 import { verifyAudio } from './audio-verification';
@@ -43,7 +44,7 @@ export class OpenRouterTtsTester {
     signal?: AbortSignal,
   ): Promise<Result<TtsTest, AiError>> {
     const modelId = config.modelId.trim();
-    const voiceId = config.voiceId.trim();
+    const voiceId = resolveTtsVoice(modelId, config.voiceId);
     if (modelId === '') {
       return err(aiError('model-not-found', TASK, 'No TTS model ID was given.'));
     }
@@ -53,6 +54,13 @@ export class OpenRouterTtsTester {
           detail: { modelId, capability: 'voice' },
         }),
       );
+    }
+
+    if (!supportsTtsSpeed(modelId)) {
+      const withoutSpeed = await this.synthesize(modelId, voiceId, undefined, signal);
+      return withoutSpeed.ok
+        ? this.verify(withoutSpeed.value, modelId, voiceId, false)
+        : err(withoutSpeed.error);
     }
 
     const withSpeed = await this.synthesize(modelId, voiceId, config.speed, signal);

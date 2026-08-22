@@ -104,6 +104,14 @@ local storage on this device.
 4. Voice, under **Voice (optional)**, is configured and tested the
    same way with its own model and voice ID.
 
+Gemini models work through the same OpenRouter configuration. For example, use
+an available `google/gemini-*` model ID for text and a model whose ID ends in
+`-tts` for voice, such as `google/gemini-3.1-flash-tts-preview`. Copy the exact
+current IDs and supported voice name from OpenRouter's model page. Gemini TTS
+defaults to the `Kore` voice when its voice field is left empty. It does not
+apply Monosai's speed setting, so a successful test reports that clips play at
+the model's own pace.
+
 A failed test never affects reading, importing, or anything already saved —
 see [troubleshooting.md](troubleshooting.md) for what each `ai/*` code means.
 
