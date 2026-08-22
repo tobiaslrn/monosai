@@ -44,7 +44,10 @@ import type { RandomSource } from '../app/domain/shared/random';
 import { ok, type Result } from '../app/domain/shared/result';
 import type { StorageError } from '../app/domain/storage/storage-error';
 import type { ExceptionPolicy } from '../app/domain/settings/settings';
-import { DEFAULT_EXCEPTION_POLICY } from '../app/domain/settings/settings';
+import {
+  DEFAULT_EXCEPTION_POLICY,
+  DEFAULT_STORY_TOKEN_BUDGET,
+} from '../app/domain/settings/settings';
 import type { SettingsRepository } from '../app/domain/settings/settings-repository';
 import type { VocabularyItem, VocabularySnapshot } from '../app/domain/vocabulary/snapshot';
 import { StubTextProvider, autoAnswerAuxiliary, modelTest } from './ai-fakes';
@@ -322,6 +325,7 @@ export interface GenerationTestBed {
 export interface GenerationTestBedOptions {
   readonly structuredOutput?: StructuredOutputMode | null;
   readonly modelId?: string;
+  readonly storyTokenBudget?: number;
   readonly uniqueEntryCount?: number;
 }
 
@@ -401,6 +405,7 @@ export function configureGenerationTestBed(
             modelId: options.modelId ?? 'vendor/text-model',
             lastTestFingerprint: 'fingerprint',
             lastTestedAt: FIXED_NOW,
+            storyTokenBudget: options.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
             // `null` is a deliberate value here — it is the untested state —
             // so only an absent option falls back to the tested default.
             structuredOutput:

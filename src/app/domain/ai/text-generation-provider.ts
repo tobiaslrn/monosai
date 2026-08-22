@@ -19,6 +19,8 @@ export interface TextTaskConfig {
   readonly modelId: string;
   readonly structuredOutput: StructuredOutputMode;
   readonly reasoningEffort?: string | null;
+  /** Captured story budget; it includes reasoning and visible output tokens. */
+  readonly storyTokenBudget?: number;
 }
 
 /** One word the model must remove or replace, with the reason it must go. */

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fixedClock } from '../../../domain/shared/clock';
 import {
+  DEFAULT_STORY_TOKEN_BUDGET,
   DEFAULT_READER_PREFERENCES,
   DEFAULT_TEXT_MODEL_SETTINGS,
 } from '../../../domain/settings/settings';
@@ -30,6 +31,9 @@ describe('DexieSettingsRepository', () => {
     expect(app.ok && app.value.theme).toBe('system');
     expect(app.ok && app.value.activeSnapshotId).toBeNull();
     expect(preferences.ok && preferences.value).toEqual(DEFAULT_READER_PREFERENCES);
+
+    const textModel = await repository.getTextModelSettings();
+    expect(textModel.ok && textModel.value.storyTokenBudget).toBe(DEFAULT_STORY_TOKEN_BUDGET);
   });
 
   it('starts every reader aid enabled, at unscaled text', async () => {
@@ -106,6 +110,15 @@ describe('DexieSettingsRepository', () => {
     expect(await db.settings.get(SETTINGS_KEYS.tts)).toBeUndefined();
   });
 
+  it('rejects a story token budget outside its safe range', async () => {
+    const invalid = await repository.updateTextModelSettings({ storyTokenBudget: 1_024 });
+
+    expect(invalid.ok).toBe(false);
+
+    const loaded = await repository.getTextModelSettings();
+    expect(loaded.ok && loaded.value.storyTokenBudget).toBe(DEFAULT_STORY_TOKEN_BUDGET);
+  });
+
   it('stores the exception policy with its hash', async () => {
     const saved = await repository.updateExceptionPolicy({
       text: 'Allow common katakana loanwords.',
@@ -143,5 +156,6 @@ describe('DexieSettingsRepository', () => {
     }
     expect(loaded.value.modelId).toBe('vendor/model');
     expect(loaded.value.structuredOutput).toBeNull();
+    expect(loaded.value.storyTokenBudget).toBe(DEFAULT_STORY_TOKEN_BUDGET);
   });
 });

@@ -42,12 +42,14 @@ function bodyOf(request: { readonly body: Record<string, unknown> }): {
   readonly system: string;
   readonly user: string;
   readonly responseFormat: unknown;
+  readonly maxTokens: unknown;
 } {
   const messages = request.body['messages'] as readonly { role: string; content: string }[];
   return {
     system: messages[0].content,
     user: messages[1].content,
     responseFormat: request.body['response_format'],
+    maxTokens: request.body['max_tokens'],
   };
 }
 
@@ -74,6 +76,25 @@ describe('OpenRouterStoryGenerator story generation', () => {
     expect(bodyOf(context.server.requests[0]).responseFormat).toMatchObject({
       type: 'json_schema',
     });
+  });
+
+  it('uses the configured story token budget for the request', async () => {
+    const context = harness({ content: 'story' });
+
+    await context.text.generateStory(REQUEST, {
+      ...NATIVE,
+      storyTokenBudget: 24_576,
+    });
+
+    expect(bodyOf(context.server.requests[0]).maxTokens).toBe(24_576);
+  });
+
+  it('uses the larger default story budget when older callers omit the setting', async () => {
+    const context = harness({ content: 'story' });
+
+    await context.text.generateStory(REQUEST, NATIVE);
+
+    expect(bodyOf(context.server.requests[0]).maxTokens).toBe(16_384);
   });
 
   it('opens in the strict JSON contract when that is the tested mode, with no probe first', async () => {

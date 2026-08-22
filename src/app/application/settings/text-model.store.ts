@@ -4,6 +4,7 @@ import { textModelFingerprint } from '../../domain/ai/configuration-fingerprint'
 import { readinessOf, type ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import {
   DEFAULT_TEXT_MODEL_SETTINGS,
+  isValidStoryTokenBudget,
   type TextModelPreset,
   type TextModelSettings,
 } from '../../domain/settings/settings';
@@ -32,6 +33,9 @@ export class TextModelStore {
 
   private readonly settingsSignal = signal<TextModelSettings>(DEFAULT_TEXT_MODEL_SETTINGS);
   private readonly draftSignal = signal('');
+  private readonly storyTokenBudgetDraftSignal = signal(
+    String(DEFAULT_TEXT_MODEL_SETTINGS.storyTokenBudget),
+  );
   private readonly actionSignal = signal<TextModelAction>('idle');
   private readonly testFailureSignal = signal<AiError | null>(null);
   private readonly storageFailureSignal = signal<StorageError | null>(null);
@@ -40,6 +44,7 @@ export class TextModelStore {
 
   readonly settings = this.settingsSignal.asReadonly();
   readonly draftModelId = this.draftSignal.asReadonly();
+  readonly storyTokenBudgetDraft = this.storyTokenBudgetDraftSignal.asReadonly();
   readonly action = this.actionSignal.asReadonly();
   readonly testFailure = this.testFailureSignal.asReadonly();
   readonly storageFailure = this.storageFailureSignal.asReadonly();
@@ -57,6 +62,17 @@ export class TextModelStore {
   /** Whether the field differs from what is stored, so Save can be offered. */
   readonly hasUnsavedModelId = computed(
     () => this.draftSignal().trim() !== this.settingsSignal().modelId,
+  );
+
+  readonly parsedStoryTokenBudget = computed(() => {
+    const value = Number(this.storyTokenBudgetDraftSignal());
+    return isValidStoryTokenBudget(value) ? value : null;
+  });
+
+  readonly isStoryTokenBudgetValid = computed(() => this.parsedStoryTokenBudget() !== null);
+
+  readonly hasUnsavedStoryTokenBudget = computed(
+    () => this.parsedStoryTokenBudget() !== this.settingsSignal().storyTokenBudget,
   );
 
   readonly readiness = computed<ConfigurationReadiness>(() => {
@@ -78,11 +94,39 @@ export class TextModelStore {
     }
     this.settingsSignal.set(settings.value);
     this.draftSignal.set(settings.value.modelId);
+    this.storyTokenBudgetDraftSignal.set(String(settings.value.storyTokenBudget));
     this.storageFailureSignal.set(null);
   }
 
   setDraftModelId(modelId: string): void {
     this.draftSignal.set(modelId);
+  }
+
+  setStoryTokenBudgetDraft(value: string): void {
+    this.storyTokenBudgetDraftSignal.set(value);
+  }
+
+  async saveStoryTokenBudget(): Promise<boolean> {
+    const storyTokenBudget = this.parsedStoryTokenBudget();
+    if (storyTokenBudget === null) {
+      return false;
+    }
+    if (!this.hasUnsavedStoryTokenBudget()) {
+      return true;
+    }
+
+    this.actionSignal.set('saving');
+    const saved = await this.repository.updateTextModelSettings({ storyTokenBudget });
+    this.actionSignal.set('idle');
+
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    this.storyTokenBudgetDraftSignal.set(String(saved.value.storyTokenBudget));
+    this.storageFailureSignal.set(null);
+    return true;
   }
 
   async registerPreset(preset: TextModelPreset): Promise<boolean> {
@@ -103,6 +147,7 @@ export class TextModelStore {
     }
     this.settingsSignal.set(saved.value);
     this.draftSignal.set(preset.modelId);
+    this.storyTokenBudgetDraftSignal.set(String(saved.value.storyTokenBudget));
     this.testFailureSignal.set(null);
     return true;
   }
@@ -142,6 +187,7 @@ export class TextModelStore {
     }
     this.settingsSignal.set(saved.value);
     this.draftSignal.set(saved.value.modelId);
+    this.storyTokenBudgetDraftSignal.set(String(saved.value.storyTokenBudget));
     this.testFailureSignal.set(null);
     this.storageFailureSignal.set(null);
     return true;

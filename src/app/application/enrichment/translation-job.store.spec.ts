@@ -68,6 +68,7 @@ async function configure(): Promise<JobTestBed> {
     modelId: 'vendor/text-model',
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
+    storyTokenBudget: 16_384,
     structuredOutput: 'native-schema',
     reasoningEffort: null,
     activePresetId: null,

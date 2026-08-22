@@ -129,7 +129,17 @@ describe('GenerationStore strict pass', () => {
     expect(bed.provider.configs[0]).toEqual({
       modelId: 'vendor/text-model',
       structuredOutput: 'native-schema',
+      storyTokenBudget: 16_384,
     });
+  });
+
+  it('captures the configured story token budget before writing', async () => {
+    bed = configureGenerationTestBed({ storyTokenBudget: 24_576 });
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    await bed.store.generate('micro', PREMISE);
+
+    expect(bed.provider.configs[0].storyTokenBudget).toBe(24_576);
   });
 });
 

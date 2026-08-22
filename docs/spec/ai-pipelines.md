@@ -30,6 +30,14 @@ The test sends a minimal structured task to the exact model ID and verifies auth
 
 If the model supports provider-native structured output, use it. Otherwise use a strict JSON contract plus schema validation and one format-recovery request. A model that cannot pass the compatibility test cannot be used for generation even if ordinary chat works.
 
+The learner can set a bounded story-generation token budget in Settings. It is
+captured with the other generation settings before a run and is sent as the
+completion limit for the initial story and each targeted repair. The budget
+includes provider reasoning tokens and the visible structured reply; its
+default is 16,384 tokens, with a supported range of 4,096–32,768. Translation,
+grammar, and exception-review requests keep their smaller task-specific
+budgets.
+
 ### TTS test
 
 Generate a short fixed Japanese phrase using the exact TTS model, voice, requested MP3 response, and speed/options. Verify nonempty supported audio and decode/play capability. Store a fingerprint. Unsupported speed may be ignored only if the UI clearly reflects provider capability; invalid model/voice fails testing.

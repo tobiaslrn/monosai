@@ -12,6 +12,11 @@ import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import { ok } from '../../domain/shared/result';
 import { storageError } from '../../domain/storage/storage-error';
+import {
+  DEFAULT_STORY_TOKEN_BUDGET,
+  MAX_STORY_TOKEN_BUDGET,
+  MIN_STORY_TOKEN_BUDGET,
+} from '../../domain/settings/settings';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
 import {
   CLOCK,
@@ -205,6 +210,29 @@ describe('TextModelStore', () => {
   });
 
   describe('save', () => {
+    it('loads the default story token budget and persists a valid change', async () => {
+      const store = await ready();
+
+      expect(store.storyTokenBudgetDraft()).toBe(String(DEFAULT_STORY_TOKEN_BUDGET));
+      expect(store.isStoryTokenBudgetValid()).toBe(true);
+
+      store.setStoryTokenBudgetDraft(String(MIN_STORY_TOKEN_BUDGET));
+      await expect(store.saveStoryTokenBudget()).resolves.toBe(true);
+
+      expect(settings.textModel.storyTokenBudget).toBe(MIN_STORY_TOKEN_BUDGET);
+      expect(store.hasUnsavedStoryTokenBudget()).toBe(false);
+    });
+
+    it('does not persist an invalid story token budget', async () => {
+      const store = await ready();
+
+      store.setStoryTokenBudgetDraft(String(MAX_STORY_TOKEN_BUDGET + 1));
+
+      expect(store.isStoryTokenBudgetValid()).toBe(false);
+      await expect(store.saveStoryTokenBudget()).resolves.toBe(false);
+      expect(settings.textModel.storyTokenBudget).toBe(DEFAULT_STORY_TOKEN_BUDGET);
+    });
+
     it('registers and selects presets with their reasoning effort', async () => {
       const store = await ready();
 

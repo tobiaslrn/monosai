@@ -2,6 +2,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CredentialStore } from '../../application/settings/credential.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
+import { MAX_STORY_TOKEN_BUDGET, MIN_STORY_TOKEN_BUDGET } from '../../domain/settings/settings';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { openAddModelDialog } from './add-model-dialog.component';
 import { ConfigurationStatusComponent } from './configuration-status.component';
@@ -199,6 +200,69 @@ import { ConfigurationStatusComponent } from './configuration-status.component';
         @if (textModel.storageFailure(); as failure) {
           <p role="alert" class="warning">{{ failure.message }}</p>
         }
+
+        <div class="budget-controls">
+          <div>
+            <h3>Story generation budget</h3>
+            <p class="mn-hint">
+              This covers hidden reasoning and the visible JSON reply. Larger values give reasoning
+              models more room but may cost more.
+            </p>
+          </div>
+
+          <div class="mn-field budget-field">
+            <label for="mn-story-token-budget">Reasoning and output tokens</label>
+            <input
+              id="mn-story-token-budget"
+              type="number"
+              inputmode="numeric"
+              autocomplete="off"
+              min="{{ minStoryTokenBudget }}"
+              max="{{ maxStoryTokenBudget }}"
+              step="1"
+              data-testid="story-token-budget-input"
+              [value]="textModel.storyTokenBudgetDraft()"
+              [attr.aria-invalid]="textModel.isStoryTokenBudgetValid() ? 'false' : 'true'"
+              [attr.aria-describedby]="
+                textModel.isStoryTokenBudgetValid()
+                  ? 'story-token-budget-hint'
+                  : 'story-token-budget-hint story-token-budget-error'
+              "
+              (input)="onStoryTokenBudgetInput($event)"
+            />
+            <p id="story-token-budget-hint" class="mn-hint">
+              {{ minStoryTokenBudget.toLocaleString() }}–{{ maxStoryTokenBudget.toLocaleString() }}
+              tokens. Default: 16,384.
+            </p>
+          </div>
+
+          @if (!textModel.isStoryTokenBudgetValid()) {
+            <p id="story-token-budget-error" role="alert" class="warning">
+              Enter a whole number from {{ minStoryTokenBudget.toLocaleString() }} to
+              {{ maxStoryTokenBudget.toLocaleString() }}.
+            </p>
+          }
+
+          <div class="actions-row">
+            <button
+              type="button"
+              class="mn-button mn-button--primary"
+              data-testid="save-story-token-budget"
+              [disabled]="
+                textModel.action() !== 'idle' ||
+                !textModel.isStoryTokenBudgetValid() ||
+                !textModel.hasUnsavedStoryTokenBudget()
+              "
+              (click)="saveStoryTokenBudget()"
+            >
+              Save budget
+            </button>
+          </div>
+
+          <p role="status" class="mn-hint" data-testid="story-token-budget-state">
+            {{ storyTokenBudgetState() }}
+          </p>
+        </div>
       </div>
     </section>
   `,
@@ -294,6 +358,23 @@ import { ConfigurationStatusComponent } from './configuration-status.component';
       color: var(--status-danger);
     }
 
+    .budget-controls {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .budget-controls h3,
+    .budget-controls p {
+      margin: 0;
+    }
+
+    .budget-field {
+      max-width: 20rem;
+    }
+
     @media (max-width: 32rem) {
       .section-heading {
         align-items: stretch;
@@ -332,6 +413,19 @@ export class OpenRouterSectionComponent {
       this.textModel.settings().modelId !== '',
   );
 
+  protected readonly minStoryTokenBudget = MIN_STORY_TOKEN_BUDGET;
+  protected readonly maxStoryTokenBudget = MAX_STORY_TOKEN_BUDGET;
+
+  protected readonly storyTokenBudgetState = computed(() => {
+    if (!this.textModel.isStoryTokenBudgetValid()) {
+      return 'Enter a valid token budget before saving.';
+    }
+    if (this.textModel.hasUnsavedStoryTokenBudget()) {
+      return 'Unsaved changes.';
+    }
+    return `Saved: ${this.textModel.settings().storyTokenBudget.toLocaleString()} tokens.`;
+  });
+
   constructor() {
     void this.credential.load().then(() => this.textModel.load());
   }
@@ -367,6 +461,14 @@ export class OpenRouterSectionComponent {
 
   protected selectPreset(event: Event): void {
     void this.textModel.selectPreset((event.target as HTMLSelectElement).value);
+  }
+
+  protected onStoryTokenBudgetInput(event: Event): void {
+    this.textModel.setStoryTokenBudgetDraft((event.target as HTMLInputElement).value);
+  }
+
+  protected saveStoryTokenBudget(): void {
+    void this.textModel.saveStoryTokenBudget();
   }
 
   protected async removeActiveModel(): Promise<void> {

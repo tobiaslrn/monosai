@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { MAX_TEXT_SCALE, MIN_TEXT_SCALE } from '../../../domain/settings/settings';
+import {
+  DEFAULT_STORY_TOKEN_BUDGET,
+  MAX_STORY_TOKEN_BUDGET,
+  MAX_TEXT_SCALE,
+  MIN_STORY_TOKEN_BUDGET,
+  MIN_TEXT_SCALE,
+} from '../../../domain/settings/settings';
 import { nonEmptyString, snapshotIdSchema, timestampSchema } from './common.schema';
 
 export const appSettingsSchema = z.object({
@@ -19,6 +25,12 @@ export const readerPreferencesSchema = z.object({
 export const textModelSettingsSchema = z.object({
   modelId: z.string(),
   reasoningEffort: z.string().nullable().default(null),
+  storyTokenBudget: z
+    .number()
+    .int()
+    .min(MIN_STORY_TOKEN_BUDGET)
+    .max(MAX_STORY_TOKEN_BUDGET)
+    .default(DEFAULT_STORY_TOKEN_BUDGET),
   lastTestFingerprint: z.string().nullable(),
   lastTestedAt: timestampSchema.nullable(),
   // Recorded by a successful test so generation opens in the mode this model

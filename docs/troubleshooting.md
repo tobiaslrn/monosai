@@ -26,7 +26,7 @@ call writes nothing until it fully succeeds.
 | `ai/capability-unsupported` | The model refused part of what Monosai's request requires (usually structured output). | Choose a different model or voice. Working in ordinary chat is not sufficient — Monosai needs exact structured replies. |
 | `ai/rate-limited` | Too many requests reached OpenRouter in a short time. | Wait, then try again. |
 | `ai/provider-unavailable` | OpenRouter did not answer, or answered with its own error. | Try again shortly. |
-| `ai/malformed-response` | The model answered, but not in the exact shape Monosai requires. | Try a different model; a model that fails this cannot be used for generation. |
+| `ai/malformed-response` | The model answered, but not in the exact shape Monosai requires. A reasoning model may also have used its whole completion budget before emitting JSON. | Raise the Story generation budget in Settings and try again; otherwise choose a different model. A model that still fails this cannot be used for generation. |
 | `ai/context-budget-exceeded` | The request needed more input than the model accepts. | Choose a model with a larger context window. |
 | `ai/audio-invalid` | The returned audio clip was empty, in an unsupported format, or undecodable. | Try a different TTS model or voice. Text-to-speech is optional and never blocks reading. |
 | `ai/unknown` | The request failed in a way Monosai could not classify. | Try again; if it persists, reading and vocabulary still work without it. |

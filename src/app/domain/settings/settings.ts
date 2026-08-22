@@ -59,9 +59,25 @@ export function clampTextScale(scale: number): number {
   return Math.min(MAX_TEXT_SCALE, Math.max(MIN_TEXT_SCALE, scale));
 }
 
+/**
+ * The story request's completion budget includes hidden reasoning and the
+ * visible structured reply. It is deliberately bounded so a typo cannot turn
+ * one generation into an unbounded spend.
+ */
+export const MIN_STORY_TOKEN_BUDGET = 4_096;
+export const MAX_STORY_TOKEN_BUDGET = 32_768;
+export const DEFAULT_STORY_TOKEN_BUDGET = 16_384;
+
+export function isValidStoryTokenBudget(value: number): boolean {
+  return (
+    Number.isInteger(value) && value >= MIN_STORY_TOKEN_BUDGET && value <= MAX_STORY_TOKEN_BUDGET
+  );
+}
+
 export interface TextModelSettings {
   readonly modelId: string;
   readonly reasoningEffort: string | null;
+  readonly storyTokenBudget: number;
   readonly lastTestFingerprint: string | null;
   readonly lastTestedAt: number | null;
   /**
@@ -87,6 +103,7 @@ export interface TextModelPreset {
 export const DEFAULT_TEXT_MODEL_SETTINGS: TextModelSettings = {
   modelId: '',
   reasoningEffort: null,
+  storyTokenBudget: DEFAULT_STORY_TOKEN_BUDGET,
   lastTestFingerprint: null,
   lastTestedAt: null,
   structuredOutput: null,
