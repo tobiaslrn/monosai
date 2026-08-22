@@ -17,6 +17,8 @@ export interface VocabularyRepository {
   listSnapshots(): Promise<Result<readonly VocabularySnapshot[], StorageError>>;
   getActiveSnapshot(): Promise<Result<VocabularySnapshot | null, StorageError>>;
   getSnapshot(id: SnapshotId): Promise<Result<VocabularySnapshot | null, StorageError>>;
+  /** Lists canonical expression hashes for comparing two vocabulary contents. */
+  listExpressionHashes(id: SnapshotId): Promise<Result<readonly string[], StorageError>>;
   /** Streams matcher input in bounded batches instead of one large array. */
   streamItems(id: SnapshotId, batchSize: number): AsyncIterable<readonly VocabularyItem[]>;
   listProvenance(id: SnapshotId): Promise<Result<readonly VocabularyProvenance[], StorageError>>;

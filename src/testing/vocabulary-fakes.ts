@@ -92,6 +92,12 @@ export class StubVocabularyRepository implements VocabularyRepository {
     return Promise.resolve(ok(this.snapshots.find((snapshot) => snapshot.id === id) ?? null));
   }
 
+  listExpressionHashes(id: SnapshotId): Promise<Result<readonly string[], StorageError>> {
+    return Promise.resolve(
+      ok(this.items.filter((item) => item.snapshotId === id).map((item) => item.expressionHash)),
+    );
+  }
+
   async *streamItems(id: SnapshotId): AsyncIterable<readonly VocabularyItem[]> {
     await Promise.resolve();
     yield this.items.filter((item) => item.snapshotId === id);

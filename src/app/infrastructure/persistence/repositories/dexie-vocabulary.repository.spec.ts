@@ -112,6 +112,18 @@ describe('DexieVocabularyRepository', () => {
     expect(items.every((item) => item.snapshotId === older.snapshot.id)).toBe(true);
   });
 
+  it('lists expression hashes for the active snapshot', async () => {
+    const commit = snapshotFixture(16, 2);
+    await repository.commitSnapshot(commit);
+
+    const hashes = await repository.listExpressionHashes(commit.snapshot.id);
+
+    expect(hashes).toEqual({
+      ok: true,
+      value: commit.items.map((item) => item.expressionHash),
+    });
+  });
+
   it('keeps generated stories linked to the stable current identity', async () => {
     const first = snapshotFixture(13);
     await repository.commitSnapshot(first);

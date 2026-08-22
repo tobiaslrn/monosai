@@ -435,10 +435,12 @@ current vocabulary. The source-management section is simply **Sources**; avoid
 repeating page context in explanatory headings. There is no snapshot history or
 deletion UI in v1.
 
-Outside the reader, a compact global status may show “Checking Anki…”, “Vocabulary
-updated”, or “Anki unavailable — current vocabulary kept”, with actions to retry
-or manage sources. Do not show routine unavailable notifications repeatedly and
-do not add application chrome to the reading surface.
+Outside the reader, a successful automatic refresh shows a compact bottom-right
+toast only when the combined vocabulary expressions changed. The toast says
+“Vocabulary updated”, flies in, and fades away. Unchanged refreshes and routine
+checking states are silent. Actionable automatic failures remain visible with
+actions to retry or manage sources; do not show routine unavailable notifications
+repeatedly and do not add application chrome to the reading surface.
 
 ## 9. Grammar
 

@@ -141,6 +141,10 @@ export class AutomaticAnkiSyncCoordinator {
       });
       return;
     }
+    if (!prepared.value.vocabularyChanged) {
+      this.statusSignal.set({ kind: 'idle' });
+      return;
+    }
     this.statusSignal.set({ kind: 'updated', snapshot: committed.value });
     this.view?.setTimeout(() => {
       const status = this.statusSignal();

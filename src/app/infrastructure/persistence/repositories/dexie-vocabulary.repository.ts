@@ -16,6 +16,7 @@ import { parseRecord, parseRecords } from '../record-validation';
 import { ROW_VERSION } from '../schemas/common.schema';
 import { SETTINGS_KEYS, appSettingsSchema } from '../schemas/settings.schema';
 import {
+  vocabularyItemRowSchema,
   vocabularyProvenanceRowSchema,
   vocabularySnapshotRowSchema,
   type VocabularyItemRow,
@@ -136,6 +137,17 @@ export class DexieVocabularyRepository implements VocabularyRepository {
     }
     const parsed = parseRecord(vocabularySnapshotRowSchema, loaded.value, 'vocabularySnapshots');
     return parsed.ok ? ok(toSnapshot(parsed.value)) : parsed;
+  }
+
+  async listExpressionHashes(id: SnapshotId): Promise<Result<readonly string[], StorageError>> {
+    const loaded = await runStorage('vocabularyItems.expressionHashes', () =>
+      this.db.vocabularyItems.where('snapshotId').equals(id).toArray(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const parsed = parseRecords(vocabularyItemRowSchema, loaded.value, 'vocabularyItems');
+    return parsed.ok ? ok(parsed.value.map(toItem).map((item) => item.expressionHash)) : parsed;
   }
 
   /** Streams matcher input in bounded batches so no query loads every item. */
