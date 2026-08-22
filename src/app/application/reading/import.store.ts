@@ -10,17 +10,12 @@ import {
   type ImportDraft,
 } from '../../domain/reading/import-draft';
 import {
-  decodeUtf8,
   normalizeImportedText,
   countCharacters,
   validateImportText,
   type ImportRejection,
 } from '../../domain/reading/import-text';
-import {
-  resolveTitle,
-  titleFromFileName,
-  titleFromPastedText,
-} from '../../domain/reading/import-title';
+import { resolveTitle, titleFromPastedText } from '../../domain/reading/import-title';
 import type { ImportSource } from '../../domain/reading/reading';
 import type { ReadingId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
@@ -37,11 +32,6 @@ export type ImportBusy =
   | { readonly kind: 'segmenting' }
   | { readonly kind: 'analyzing'; readonly completed: number; readonly total: number }
   | { readonly kind: 'saving' };
-
-export interface ImportFileInput {
-  readonly name: string;
-  readonly bytes: ArrayBuffer;
-}
 
 const IDLE: ImportBusy = { kind: 'idle' };
 
@@ -63,7 +53,6 @@ export class ImportStore {
   private readonly busySignal = signal<ImportBusy>(IDLE);
   private readonly rawTextSignal = signal('');
   private readonly sourceSignal = signal<ImportSource>('paste');
-  private readonly fileNameSignal = signal<string | null>(null);
   private readonly titleInputSignal = signal('');
   private readonly draftSignal = signal<ImportDraft | null>(null);
   private readonly rejectionSignal = signal<ImportRejection | null>(null);
@@ -77,7 +66,6 @@ export class ImportStore {
   readonly busy = this.busySignal.asReadonly();
   readonly rawText = this.rawTextSignal.asReadonly();
   readonly importSource = this.sourceSignal.asReadonly();
-  readonly fileName = this.fileNameSignal.asReadonly();
   readonly titleInput = this.titleInputSignal.asReadonly();
   readonly draft = this.draftSignal.asReadonly();
   readonly rejection = this.rejectionSignal.asReadonly();
@@ -92,10 +80,7 @@ export class ImportStore {
 
   /** What the title field is prefilled with when the learner has not typed one. */
   readonly derivedTitle = computed(() => {
-    const fileName = this.fileNameSignal();
-    return fileName === null
-      ? titleFromPastedText(this.rawTextSignal())
-      : titleFromFileName(fileName);
+    return titleFromPastedText(this.rawTextSignal());
   });
 
   readonly resolvedTitle = computed(() =>
@@ -144,37 +129,11 @@ export class ImportStore {
   setPastedText(text: string): void {
     this.rawTextSignal.set(normalizeImportedText(text));
     this.sourceSignal.set('paste');
-    this.fileNameSignal.set(null);
     this.rejectionSignal.set(null);
   }
 
   setTitle(title: string): void {
     this.titleInputSignal.set(title);
-  }
-
-  /**
-   * Decodes a chosen file as strict UTF-8.
-   *
-   * A rejected file leaves any pasted draft untouched: the specification
-   * requires a file error not to destroy text the learner already had.
-   */
-  loadFile(file: ImportFileInput): void {
-    const decoded = decodeUtf8(file.bytes);
-    if (!decoded.ok) {
-      this.rejectionSignal.set(decoded.error);
-      return;
-    }
-    const validated = validateImportText(decoded.value, 'no-visible-text');
-    if (!validated.ok) {
-      this.rejectionSignal.set(validated.error);
-      return;
-    }
-
-    this.rawTextSignal.set(validated.value.text);
-    this.sourceSignal.set('text-file');
-    this.fileNameSignal.set(file.name);
-    this.titleInputSignal.set('');
-    this.rejectionSignal.set(null);
   }
 
   /** Validates, waits for the language bundle if needed, then segments. */
@@ -244,14 +203,11 @@ export class ImportStore {
 
     this.storageFailureSignal.set(null);
     this.busySignal.set({ kind: 'saving' });
-    const fileName = this.fileNameSignal();
-
     const saved = await this.imports.save({
       draft,
       title: this.resolvedTitle(),
       sourceText: this.rawTextSignal(),
       importSource: this.sourceSignal(),
-      ...(fileName === null ? {} : { sourceFileName: fileName }),
     });
     this.busySignal.set(IDLE);
 
@@ -271,7 +227,6 @@ export class ImportStore {
     this.busySignal.set(IDLE);
     this.rawTextSignal.set('');
     this.sourceSignal.set('paste');
-    this.fileNameSignal.set(null);
     this.titleInputSignal.set('');
     this.draftSignal.set(null);
     this.rejectionSignal.set(null);

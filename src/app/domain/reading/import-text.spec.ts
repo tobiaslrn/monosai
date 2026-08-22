@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   countCharacters,
-  decodeUtf8,
   MAXIMUM_IMPORT_CHARACTERS,
   normalizeImportedText,
   validateImportText,
@@ -52,17 +51,6 @@ describe('validateImportText', () => {
     expect(!result.ok && result.error.code).toBe('empty');
   });
 
-  it('reports a file with no visible text distinctly from an empty paste', () => {
-    const pasted = validateImportText('', 'empty');
-    const file = validateImportText('', 'no-visible-text');
-    expect(!pasted.ok && pasted.error.code).toBe('empty');
-    expect(!file.ok && file.error.code).toBe('no-visible-text');
-    if (pasted.ok || file.ok) {
-      throw new Error('both inputs must be rejected');
-    }
-    expect(pasted.error.message).not.toBe(file.error.message);
-  });
-
   it('accepts text at exactly the limit', () => {
     const result = validateImportText('あ'.repeat(MAXIMUM_IMPORT_CHARACTERS));
     expect(result.ok).toBe(true);
@@ -80,33 +68,5 @@ describe('validateImportText', () => {
     // characters, which is under the stated limit.
     const result = validateImportText('\u{20BB7}'.repeat(30_000));
     expect(result.ok).toBe(true);
-  });
-});
-
-describe('decodeUtf8', () => {
-  it('decodes UTF-8 Japanese and normalizes its line endings', () => {
-    const bytes = new TextEncoder().encode('猫が寝た。\r\n犬も寝た。');
-    const result = decodeUtf8(bytes);
-    expect(result.ok).toBe(true);
-    expect(result.ok && result.value).toBe('猫が寝た。\n犬も寝た。');
-  });
-
-  it('strips a UTF-8 byte-order mark', () => {
-    const bytes = new Uint8Array([0xef, 0xbb, 0xbf, ...new TextEncoder().encode('猫')]);
-    const result = decodeUtf8(bytes);
-    expect(result.ok && result.value).toBe('猫');
-  });
-
-  it('rejects bytes that are not UTF-8 rather than saving replacement characters', () => {
-    // Shift_JIS bytes for "猫" are not a valid UTF-8 sequence.
-    const result = decodeUtf8(new Uint8Array([0x94, 0x4c]));
-    expect(result.ok).toBe(false);
-    expect(!result.ok && result.error.code).toBe('not-utf8');
-  });
-
-  it('rejects a lone surrogate encoding', () => {
-    const result = decodeUtf8(new Uint8Array([0xed, 0xa0, 0x80]));
-    expect(result.ok).toBe(false);
-    expect(!result.ok && result.error.code).toBe('not-utf8');
   });
 });

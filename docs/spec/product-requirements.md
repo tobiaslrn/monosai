@@ -20,7 +20,7 @@ V1 is a public bring-your-own-OpenRouter-key application. It is single-learner p
 
 ### Included in v1
 
-- Pasted Japanese and UTF-8 `.txt` import.
+- Pasted Japanese text import.
 - Import review with title editing and sentence split/merge correction.
 - Combined library for imported readings and generated stories.
 - Local tokenization, whole-word furigana, part-of-speech information, compact dictionary glosses, and vocabulary markers.
@@ -65,11 +65,7 @@ Acceptance:
 - Empty/whitespace-only input is blocked with an inline message.
 - No missing translation, grammar analysis, or audio request starts automatically.
 
-### UC-02: Import a text file
-
-The flow matches UC-01, except the title defaults to the filename without its extension. Only UTF-8 plain text is supported. Files that cannot be decoded as UTF-8, exceed the configured 50,000-character limit, or contain no visible text receive distinct errors. File contents are never uploaded during import.
-
-### UC-03: Configure a grammar profile
+### UC-02: Configure a grammar profile
 
 1. The user opens Grammar, or reaches it from the Generate prerequisite panel.
 2. The user reads six ordered difficulty presets, each shown with a name, a caption, a one-line description, and a real Japanese example sentence, and selects one.

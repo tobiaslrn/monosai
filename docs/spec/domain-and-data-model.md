@@ -43,8 +43,7 @@ interface ReadingBase {
 
 interface ImportedReading extends ReadingBase {
   kind: 'imported';
-  importSource: 'paste' | 'text-file';
-  sourceFileName?: string;
+  importSource: 'paste';
   sourceTextHash: string;
 }
 

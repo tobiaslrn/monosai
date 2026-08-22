@@ -16,13 +16,13 @@ frequency deck because I could not find suitable reading material. Monosai can
 generate very simple stories from your reviewed Anki vocabulary and chosen
 grammar level, starting from about 50 known expressions.
 
-You can also paste any Japanese text or open a `.txt` file. Monosai adds
+You can also paste any Japanese text. Monosai adds
 hiragana readings, word spacing, unfamiliar-word highlights and a built-in
 dictionary.
 
 ## What you can do
 
-- Paste Japanese text or open a text file.
+- Paste Japanese text.
 - See hiragana readings above kanji, clear word spacing and highlights for
   unfamiliar vocabulary and grammar.
 - Look up words in the built-in dictionary without leaving the reading.

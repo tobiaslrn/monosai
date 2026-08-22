@@ -127,29 +127,6 @@ describe('ImportStore', () => {
     });
   });
 
-  describe('file import', () => {
-    it('takes its title from the file name and keeps the text', () => {
-      store.loadFile({ name: '第一章.txt', bytes: new TextEncoder().encode('猫が寝た。').buffer });
-
-      expect(store.rawText()).toBe('猫が寝た。');
-      expect(store.derivedTitle()).toBe('第一章');
-      expect(store.importSource()).toBe('text-file');
-    });
-
-    it('reports a non-UTF-8 file without discarding a pasted draft', () => {
-      store.setPastedText('もとの文章。');
-      store.loadFile({ name: 'bad.txt', bytes: new Uint8Array([0x94, 0x4c]).buffer });
-
-      expect(store.rejection()?.code).toBe('not-utf8');
-      expect(store.rawText()).toBe('もとの文章。');
-    });
-
-    it('reports a file with no visible text distinctly', () => {
-      store.loadFile({ name: 'blank.txt', bytes: new TextEncoder().encode('   \n ').buffer });
-      expect(store.rejection()?.code).toBe('no-visible-text');
-    });
-  });
-
   describe('review', () => {
     beforeEach(async () => {
       store.setPastedText('猫が寝た。犬も寝た。\n\n鳥は飛んだ。');
