@@ -1,7 +1,6 @@
 <div align="center">
   <img src="data/brand/monosai-mark.svg" alt="Monosai logo" width="128" height="128" />
   <h1>Monosai</h1>
-  <p>Japanese reading practice made from the words you already know.</p>
   <p>
     <a href="https://tobiaslrn.github.io/monosai/"><b>Open Monosai</b></a> ·
     <a href="docs/setup.md">Setup guide</a> ·
