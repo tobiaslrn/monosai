@@ -24,7 +24,7 @@ import { ConfigurationStatusComponent } from './configuration-status.component';
   imports: [ConfigurationStatusComponent],
   template: `
     <section class="mn-panel" aria-labelledby="mn-tts-heading">
-      <h2 id="mn-tts-heading">Text to speech</h2>
+      <h2 id="mn-tts-heading">Voice (optional)</h2>
       <p class="mn-hint">
         Optional. Reading and story generation work fully without it, and a failure here never
         affects the text model.

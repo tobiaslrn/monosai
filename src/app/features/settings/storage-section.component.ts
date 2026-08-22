@@ -24,7 +24,7 @@ function formatBytes(bytes: number | null): string {
 }
 
 /**
- * Storage durability, cache clearing, and the danger zone.
+ * Browser storage protection, cache clearing, and the danger zone.
  *
  * A full reset requires two explicit confirmations and only then deletes local
  * data before reloading into the first-use state.
@@ -38,7 +38,7 @@ function formatBytes(bytes: number | null): string {
 
       <dl>
         <div>
-          <dt>Storage durability</dt>
+          <dt>Browser storage protection</dt>
           <dd>{{ persistenceLabel() }}</dd>
         </div>
         <div>
@@ -80,34 +80,36 @@ function formatBytes(bytes: number | null): string {
         </p>
       </div>
 
-      <div class="danger">
-        <h3>Danger zone</h3>
-        <p class="mn-hint">
-          A full reset permanently deletes every reading, snapshot, saved setting, and cached aid on
-          this device. It cannot be undone.
-        </p>
-
-        @if (resetStage() === 'idle') {
-          <button type="button" class="mn-button mn-button--danger" (click)="beginReset()">
-            Delete all Monosai data
-          </button>
-        } @else {
-          <p role="alert" class="confirm">
-            This deletes everything Monosai has stored in this browser. Continue?
+      <details class="danger" data-testid="danger-zone">
+        <summary>Danger zone</summary>
+        <div class="danger-content">
+          <p class="mn-hint">
+            A full reset permanently deletes every reading, snapshot, saved setting, and cached aid
+            on this device. It cannot be undone.
           </p>
-          <div class="actions-row">
-            <button
-              type="button"
-              class="mn-button mn-button--danger"
-              [disabled]="storage.action() === 'resetting'"
-              (click)="confirmReset()"
-            >
-              Yes, delete everything
+
+          @if (resetStage() === 'idle') {
+            <button type="button" class="mn-button mn-button--danger" (click)="beginReset()">
+              Delete all Monosai data
             </button>
-            <button type="button" class="mn-button" (click)="cancelReset()">Cancel</button>
-          </div>
-        }
-      </div>
+          } @else {
+            <p role="alert" class="confirm">
+              This deletes everything Monosai has stored in this browser. Continue?
+            </p>
+            <div class="actions-row">
+              <button
+                type="button"
+                class="mn-button mn-button--danger"
+                [disabled]="storage.action() === 'resetting'"
+                (click)="confirmReset()"
+              >
+                Yes, delete everything
+              </button>
+              <button type="button" class="mn-button" (click)="cancelReset()">Cancel</button>
+            </div>
+          }
+        </div>
+      </details>
 
       @if (storage.failure(); as failure) {
         <p role="alert" class="failure">{{ failure.message }}</p>
@@ -148,6 +150,23 @@ function formatBytes(bytes: number | null): string {
     .danger {
       padding-top: var(--space-4);
       border-top: 1px solid var(--border-subtle);
+    }
+
+    .danger summary {
+      display: flex;
+      align-items: center;
+      min-height: var(--touch-target);
+      color: var(--status-danger);
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .danger-content {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      align-items: flex-start;
+      padding-top: var(--space-2);
     }
 
     .actions-row {

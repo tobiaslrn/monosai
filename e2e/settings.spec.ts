@@ -3,6 +3,22 @@ import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import { expectSettingPersisted, monosaiDatabaseExists } from './storage';
 
 test.describe('settings persistence', () => {
+  test('puts learner controls before advanced and technical settings', async ({ page }) => {
+    await page.goto('/#/settings');
+
+    await expect(page.locator('main section.mn-panel > h2')).toHaveText([
+      'Your setup',
+      'Appearance and reading',
+      'AI text features',
+      'Voice (optional)',
+      'Generation policy',
+      'Storage',
+      'App',
+      'Language assets',
+      'Diagnostics',
+    ]);
+  });
+
   test('remembers the chosen theme across a reload', async ({ page }) => {
     await page.goto('/#/settings');
 
@@ -34,6 +50,8 @@ test.describe('settings persistence', () => {
     await page.goto('/#/settings');
 
     const diagnostics = page.getByRole('region', { name: 'Diagnostics' });
+    await expect(diagnostics.getByText('Database schema version')).toBeHidden();
+    await diagnostics.getByText('Show build details').click();
     await expect(diagnostics.getByText('Database schema version')).toBeVisible();
     await expect(diagnostics).toContainText('1');
 
@@ -45,6 +63,7 @@ test.describe('settings persistence', () => {
     await page.getByRole('radio', { name: 'Dark' }).check();
     await expectSettingPersisted(page, 'app', 'theme', 'dark');
 
+    await page.getByTestId('danger-zone').locator('summary').click();
     await page.getByRole('button', { name: 'Delete all Monosai data' }).click();
     await expect(page.getByRole('alert')).toContainText('Continue?');
 
@@ -58,6 +77,7 @@ test.describe('settings persistence', () => {
     await page.getByRole('radio', { name: 'Dark' }).check();
     await expectSettingPersisted(page, 'app', 'theme', 'dark');
 
+    await page.getByTestId('danger-zone').locator('summary').click();
     await page.getByRole('button', { name: 'Delete all Monosai data' }).click();
     await page.getByRole('button', { name: 'Yes, delete everything' }).click();
 

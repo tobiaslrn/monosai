@@ -31,8 +31,8 @@ test.describe('generate prerequisites', () => {
     await expect(page.locator('[data-check="vocabulary"]')).toContainText('No vocabulary snapshot');
     await expect(page.getByTestId('generate')).toBeDisabled();
 
-    // Text to speech is optional, so it never appears here at all.
-    await expect(page.getByText(/Text to speech is optional/)).toHaveCount(0);
+    // Voice is optional, so it never appears here at all.
+    await expect(page.getByText(/Voice \(optional\)/)).toHaveCount(0);
     // What a generation sends is said once, above the button that sends it.
     await expect(page.getByTestId('form-sources')).toHaveCount(1);
 

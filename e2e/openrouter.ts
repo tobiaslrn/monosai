@@ -333,11 +333,11 @@ export async function stubOpenRouter(
  * date and a text match cannot tell the two apart.
  */
 export function textModelReadiness(page: Page): Locator {
-  return page.getByRole('region', { name: 'OpenRouter text' }).locator('[data-readiness]');
+  return page.getByRole('region', { name: 'AI text features' }).locator('[data-readiness]');
 }
 
 export function ttsReadiness(page: Page): Locator {
-  return page.getByRole('region', { name: 'Text to speech' }).locator('[data-readiness]');
+  return page.getByRole('region', { name: 'Voice (optional)' }).locator('[data-readiness]');
 }
 
 export async function expectReadiness(locator: Locator, readiness: string): Promise<void> {

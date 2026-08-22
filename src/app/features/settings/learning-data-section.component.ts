@@ -2,7 +2,27 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
+import type { AnkiProviderKind, VocabularySnapshot } from '../../domain/vocabulary/snapshot';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+
+const PROVIDER_LABELS: Record<AnkiProviderKind, string> = {
+  'desktop-connect': 'AnkiConnect',
+  'android-connect': 'AnkiConnect',
+  package: 'Anki package',
+};
+
+type VocabularyStatusSnapshot = Pick<VocabularySnapshot, 'uniqueEntryCount' | 'providerKinds'>;
+
+/** Keeps the setup summary truthful for both live connections and package imports. */
+export function formatVocabularyState(snapshot: VocabularyStatusSnapshot | null): string {
+  if (snapshot === null) {
+    return 'No vocabulary snapshot yet';
+  }
+
+  const sources = [...new Set(snapshot.providerKinds.map((kind) => PROVIDER_LABELS[kind]))];
+  const source = sources.length > 0 ? sources.join(' + ') : 'Source not recorded';
+  return `${snapshot.uniqueEntryCount.toLocaleString('en')} unique expressions · ${source}`;
+}
 
 /**
  * The two screens that describe the learner rather than the application.
@@ -76,12 +96,7 @@ export class LearningDataSectionComponent {
   private readonly grammar = inject(GrammarProfileStore);
 
   protected readonly vocabularyState = computed(() => {
-    const active = this.snapshots.active();
-    if (active === null) {
-      return 'Not connected';
-    }
-    const count = active.uniqueEntryCount;
-    return `Anki connected · ${count.toLocaleString('en')} ${count === 1 ? 'word' : 'words'}`;
+    return formatVocabularyState(this.snapshots.active());
   });
 
   protected readonly grammarState = computed(

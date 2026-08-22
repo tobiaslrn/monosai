@@ -425,13 +425,25 @@ Three options — everyday spoken, polite written, either — as a single compac
 
 ## 10. Settings
 
-### OpenRouter text
+Settings starts with a **Your setup** panel linking to Vocabulary and Grammar,
+followed by Appearance and reading controls. AI configuration comes next, then
+generation policy, storage and app maintenance. Language asset details and
+diagnostics stay at the bottom, with technical details collapsed by default;
+readiness, errors, and retry actions remain visible.
+
+### Appearance and reading
+
+- System/Light/Dark theme.
+- Global furigana, spacing, and warning-marker switches.
+- Reading text scale (0.8–2.5), which line height and paragraph spacing follow within bounds. Also reachable from the reader's Aids panel.
+
+### AI text features (OpenRouter)
 
 - API key entry, Save/Replace, Remove, and configured/not-configured indicator. Never show the saved value or a reveal toggle after save.
 - Exact text-model ID and Test configuration.
 - Changing key/model marks the test stale but preserves cached content.
 
-### TTS
+### Voice (optional)
 
 - Exact TTS-model ID, exact voice ID, speed control where supported, and Test voice.
 - A capability failure is separate from text-model status.
@@ -440,15 +452,9 @@ Three options — everyday spoken, polite written, either — as a single compac
 
 - One global exception-policy text area, save state, and short explanation that AI-approved exceptions stay visibly distinct.
 
-### Appearance and reading
-
-- System/Light/Dark theme.
-- Global furigana, spacing, and warning-marker switches.
-- Reading text scale (0.8–2.5), which line height and paragraph spacing follow within bounds. Also reachable from the reader's Aids panel.
-
 ### Storage and app
 
-- Persistence-granted/denied status.
+- Browser storage protection status.
 - Approximate usage when available.
 - Clear audio cache.
 - Install instructions when browser criteria permit.
