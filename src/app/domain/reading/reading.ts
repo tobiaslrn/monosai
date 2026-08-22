@@ -3,7 +3,7 @@ import type { CompletionSummary, GrammarSummary } from './summaries';
 
 export type ReadingKind = 'imported' | 'generated';
 export type ImportSource = 'paste' | 'text-file';
-export type StoryForm = 'micro' | 'short';
+export type StoryForm = 'micro' | 'short' | 'medium' | 'long';
 
 interface ReadingBase {
   readonly id: ReadingId;

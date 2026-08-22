@@ -50,7 +50,7 @@ interface ImportedReading extends ReadingBase {
 
 interface GeneratedStory extends ReadingBase {
   kind: 'generated';
-  form: 'micro' | 'short';
+  form: 'micro' | 'short' | 'medium' | 'long';
   premise: string;
   specialInstructions?: string;
   snapshotId: SnapshotId;

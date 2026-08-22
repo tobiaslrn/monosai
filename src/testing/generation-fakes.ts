@@ -436,12 +436,18 @@ export function configureGenerationTestBed(
   };
 }
 
-/** A four-sentence story every word of which is reviewed. */
+/** A five-sentence Tiny story every word of which is reviewed. */
 export function strictStory(): {
   readonly titleJa: string;
   readonly sentences: readonly { readonly index: number; readonly textJa: string }[];
 } {
-  return story(['ねこがいます。', 'ねこはねます。', 'ねこはたべます。', 'ねこはあるきます。']);
+  return story([
+    'ねこがいます。',
+    'ねこはねます。',
+    'ねこはたべます。',
+    'ねこはあるきます。',
+    'ねこはのみます。',
+  ]);
 }
 
 /** The same story with one word the learner has never reviewed. */
@@ -451,6 +457,7 @@ export function storyWithUnknown(): ReturnType<typeof strictStory> {
     'ねこは図書館へいきます。',
     'ねこはたべます。',
     'ねこはあるきます。',
+    'ねこはのみます。',
   ]);
 }
 

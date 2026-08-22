@@ -90,12 +90,13 @@ function story(sentences: readonly string[], titleJa = 'ねこの一日'): strin
   });
 }
 
-/** Four sentences: the smallest valid Micro story. */
+/** Five sentences: the Tiny slider stop. */
 const MICRO_SENTENCES = [
   'ねこがいます。',
   'ねこはねます。',
   'ねこはたべます。',
   'ねこはあるきます。',
+  'ねこはのみます。',
 ];
 
 function decisions(decision: 'approved' | 'rejected'): string {

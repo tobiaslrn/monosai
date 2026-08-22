@@ -2,11 +2,12 @@ import { Injectable, computed, signal } from '@angular/core';
 import {
   MAX_PREMISE_LENGTH,
   MAX_SPECIAL_INSTRUCTIONS_LENGTH,
+  DEFAULT_STORY_SENTENCES,
+  normalizeStorySentenceCount,
   countCodePoints,
   validateStoryInput,
   type StoryInputDraft,
 } from '../../domain/ai/story-request';
-import type { StoryForm } from '../../domain/reading/reading';
 
 /**
  * What the learner has typed into the Generate form.
@@ -21,11 +22,11 @@ import type { StoryForm } from '../../domain/reading/reading';
  */
 @Injectable({ providedIn: 'root' })
 export class GenerationDraftStore {
-  private readonly formSignal = signal<StoryForm>('micro');
+  private readonly sentenceCountSignal = signal(DEFAULT_STORY_SENTENCES);
   private readonly premiseSignal = signal('');
   private readonly instructionsSignal = signal('');
 
-  readonly form = this.formSignal.asReadonly();
+  readonly sentenceCount = this.sentenceCountSignal.asReadonly();
   readonly premise = this.premiseSignal.asReadonly();
   readonly specialInstructions = this.instructionsSignal.asReadonly();
 
@@ -49,8 +50,8 @@ export class GenerationDraftStore {
     return validated.ok ? [] : validated.error;
   });
 
-  setForm(form: StoryForm): void {
-    this.formSignal.set(form);
+  setSentenceCount(sentenceCount: number): void {
+    this.sentenceCountSignal.set(normalizeStorySentenceCount(sentenceCount));
   }
 
   setPremise(premise: string): void {
@@ -62,7 +63,7 @@ export class GenerationDraftStore {
   }
 
   clear(): void {
-    this.formSignal.set('micro');
+    this.sentenceCountSignal.set(DEFAULT_STORY_SENTENCES);
     this.premiseSignal.set('');
     this.instructionsSignal.set('');
   }

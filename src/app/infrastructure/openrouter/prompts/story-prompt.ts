@@ -18,20 +18,23 @@ const TASK_LAYER = [
 ] as const;
 
 export function buildStoryPrompt(request: StoryGenerationRequest): AssembledPrompt {
+  const exactCount = request.sentenceRange.min === request.sentenceRange.max;
+  const systemCount = exactCount
+    ? `exactly ${String(request.sentenceRange.min)} sentences`
+    : `between ${String(request.sentenceRange.min)} and ${String(request.sentenceRange.max)} sentences`;
+  const userCount = exactCount
+    ? `exactly ${String(request.sentenceRange.min)} sentences`
+    : `${String(request.sentenceRange.min)}–${String(request.sentenceRange.max)} sentences`;
   const system = assemble([
     PROTOCOL_LAYER,
     POLICY_LAYER,
     JAPANESE_OUTPUT_LAYER,
     TASK_LAYER.join('\n'),
-    `Write exactly between ${String(request.sentenceRange.min)} and ${String(
-      request.sentenceRange.max,
-    )} sentences.`,
+    `Write ${systemCount}.`,
   ]);
 
   const user = assemble([
-    `Write a ${request.form} story of ${String(request.sentenceRange.min)}–${String(
-      request.sentenceRange.max,
-    )} sentences.`,
+    `Write a ${request.form} story of ${userCount}.`,
     asData('premise (data)', request.premise),
     request.specialInstructions === undefined
       ? ''

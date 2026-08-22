@@ -37,7 +37,7 @@ describe('GenerationStore strict pass', () => {
   it('saves a story every word of which is reviewed, in one provider call', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
       story: 1,
@@ -53,20 +53,20 @@ describe('GenerationStore strict pass', () => {
     }
     expect(state.reading.kind).toBe('generated');
     expect(state.reading.title).toBe('ねこの一日');
-    expect(state.reading.sentenceCount).toBe(4);
+    expect(state.reading.sentenceCount).toBe(5);
     expect(state.reading.validationOutcome).toEqual({ kind: 'strict' });
   });
 
   it('writes the text, the frozen validation, and the provenance together', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.readings.readings).toHaveLength(1);
     expect(bed.readings.paragraphs).toHaveLength(1);
-    expect(bed.readings.sentences).toHaveLength(4);
-    expect(bed.readings.tokenAnalyses).toHaveLength(4);
-    expect(bed.readings.frozenValidations).toHaveLength(4);
+    expect(bed.readings.sentences).toHaveLength(5);
+    expect(bed.readings.tokenAnalyses).toHaveLength(5);
+    expect(bed.readings.frozenValidations).toHaveLength(5);
     expect(bed.readings.provenance).toHaveLength(1);
 
     const provenance = bed.readings.provenance[0];
@@ -80,7 +80,7 @@ describe('GenerationStore strict pass', () => {
   it('never stores an unknown category on an accepted story', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     const categories = bed.readings.frozenValidations.flatMap((validation) =>
       validation.tokenStatuses.map((status) => status.validation.category),
@@ -92,18 +92,18 @@ describe('GenerationStore strict pass', () => {
   it('runs grammar review and translation before saving, and records the result', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     const state = bed.store.state();
     if (state.kind !== 'saved') {
       expect.unreachable('expected a saved story');
       return;
     }
-    expect(state.reading.translationSummary).toEqual({ total: 4, completed: 4, failed: 0 });
+    expect(state.reading.translationSummary).toEqual({ total: 5, completed: 5, failed: 0 });
     expect(state.reading.grammarSummary).toEqual({ state: 'complete', concernCount: 0 });
-    expect(state.reading.audioSummary).toEqual({ total: 4, completed: 0, failed: 0 });
+    expect(state.reading.audioSummary).toEqual({ total: 5, completed: 0, failed: 0 });
     expect(bed.readings.readings[0]).toMatchObject({
-      translationSummary: { total: 4, completed: 4, failed: 0 },
+      translationSummary: { total: 5, completed: 5, failed: 0 },
       grammarSummary: { state: 'complete', concernCount: 0 },
     });
   });
@@ -111,20 +111,20 @@ describe('GenerationStore strict pass', () => {
   it('sends the whole reviewed allowlist and a hidden suggestion palette', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     const request = bed.provider.storyRequests[0];
     expect(request.allowedVocabulary).toContain('ねこ');
     expect(request.allowedVocabulary).toHaveLength(8);
     expect(request.suggestedVocabulary.length).toBeGreaterThan(0);
     expect(request.structuralBaseline).toContain('は');
-    expect(request.sentenceRange).toEqual({ min: 4, max: 6 });
+    expect(request.sentenceRange).toEqual({ min: 5, max: 5 });
   });
 
   it('opens in the structured-output mode the stored test proved', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.configs[0]).toEqual({
       modelId: 'vendor/text-model',
@@ -137,7 +137,7 @@ describe('GenerationStore strict pass', () => {
     bed = configureGenerationTestBed({ storyTokenBudget: 24_576 });
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.configs[0].storyTokenBudget).toBe(24_576);
   });
@@ -155,7 +155,7 @@ describe('GenerationStore exception review', () => {
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.reviewQueue.push(ok([APPROVAL]));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
       story: 1,
@@ -182,7 +182,7 @@ describe('GenerationStore exception review', () => {
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.repairQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
       story: 1,
@@ -201,7 +201,7 @@ describe('GenerationStore exception review', () => {
     );
     bed.provider.repairQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
       story: 1,
@@ -223,7 +223,7 @@ describe('GenerationStore exception review', () => {
     bed.provider.reviewQueue.push(ok([{ ...APPROVAL, explanationEn: 'Allowed.' }]));
     bed.provider.repairQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls.repair).toBe(1);
     expect(bed.store.state().kind).toBe('saved');
@@ -243,7 +243,7 @@ describe('GenerationStore repair', () => {
     bed.provider.reviewQueue.push(ok([REJECTION]));
     bed.provider.repairQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
       story: 1,
@@ -260,7 +260,7 @@ describe('GenerationStore repair', () => {
     bed.provider.storyQueue.push(ok(shortStory()));
     bed.provider.repairQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
       story: 1,
@@ -279,7 +279,7 @@ describe('GenerationStore repair', () => {
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.repairQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.repairRequests[0].unknownSpans).toEqual([
       {
@@ -294,7 +294,7 @@ describe('GenerationStore repair', () => {
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
       story: 1,
@@ -322,7 +322,7 @@ describe('GenerationStore repair', () => {
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
     bed.store.reset();
 
     expect(bed.store.state().kind).toBe('idle');
@@ -346,7 +346,7 @@ describe('GenerationStore failures', () => {
       ),
     );
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     const state = bed.store.state();
     expect(state.kind).toBe('failed');
@@ -362,7 +362,7 @@ describe('GenerationStore failures', () => {
       err(aiError('authentication', 'story-generation', 'The key was refused.')),
     );
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
       story: 1,
@@ -383,7 +383,7 @@ describe('GenerationStore failures', () => {
   it('refuses to start without a proven structured-output mode', async () => {
     const untested = configureGenerationTestBed({ structuredOutput: null });
 
-    await untested.store.generate('micro', PREMISE);
+    await untested.store.generate(5, PREMISE);
 
     expect(untested.provider.generationCalls.story).toBe(0);
     const state = untested.store.state();
@@ -395,7 +395,7 @@ describe('GenerationStore failures', () => {
   });
 
   it('refuses an empty premise before spending a request', async () => {
-    await bed.store.generate('micro', { premise: '   ' });
+    await bed.store.generate(5, { premise: '   ' });
 
     expect(bed.provider.generationCalls.story).toBe(0);
     expect(bed.store.state().kind).toBe('failed');
@@ -405,7 +405,7 @@ describe('GenerationStore failures', () => {
     bed.readings.failSaveGeneratedWith = storageError('quota', 'The device is out of space.');
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     const state = bed.store.state();
     expect(state.kind).toBe('failed');
@@ -433,7 +433,7 @@ describe('GenerationStore auxiliary review', () => {
       err(aiError('provider-unavailable', 'grammar-review', 'The provider is down.')),
     );
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     const state = bed.store.state();
     expect(state.kind).toBe('saved');
@@ -444,12 +444,12 @@ describe('GenerationStore auxiliary review', () => {
       state: 'unavailable',
       reasonCode: 'provider-unavailable',
     });
-    expect(state.reading.translationSummary).toEqual({ total: 4, completed: 4, failed: 0 });
+    expect(state.reading.translationSummary).toEqual({ total: 5, completed: 5, failed: 0 });
     expect(bed.readings.grammarAnalyses).toHaveLength(0);
   });
 
   it('saves the story with an honest count when one translation batch fails', async () => {
-    const sentences = Array.from({ length: 13 }, () => 'ねこがいます。');
+    const sentences = Array.from({ length: 15 }, () => 'ねこがいます。');
     bed.provider.storyQueue.push(ok(story(sentences)));
     bed.provider.beforeAnswer = () => {
       if (bed.provider.grammarRequests.length > 0 && bed.provider.grammarQueue.length === 0) {
@@ -475,7 +475,7 @@ describe('GenerationStore auxiliary review', () => {
       }
     };
 
-    await bed.store.generate('short', PREMISE);
+    await bed.store.generate(15, PREMISE);
 
     expect(bed.provider.generationCalls.translate).toBe(2);
     const state = bed.store.state();
@@ -483,7 +483,7 @@ describe('GenerationStore auxiliary review', () => {
     if (state.kind !== 'saved') {
       return;
     }
-    expect(state.reading.translationSummary).toEqual({ total: 13, completed: 10, failed: 3 });
+    expect(state.reading.translationSummary).toEqual({ total: 15, completed: 10, failed: 5 });
   });
 
   it('cancels during auxiliary review and saves nothing, not even a translation that already arrived', async () => {
@@ -494,7 +494,7 @@ describe('GenerationStore auxiliary review', () => {
       }
     };
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     const state = bed.store.state();
     expect(state.kind).toBe('cancelled');
@@ -511,7 +511,7 @@ describe('GenerationStore auxiliary review', () => {
     bed.readings.failSaveGeneratedWith = storageError('quota', 'The device is out of space.');
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.store.state().kind).toBe('failed');
     expect(bed.store.canRetrySave()).toBe(true);
@@ -526,19 +526,19 @@ describe('GenerationStore auxiliary review', () => {
     if (state.kind !== 'saved') {
       return;
     }
-    expect(state.reading.translationSummary).toEqual({ total: 4, completed: 4, failed: 0 });
+    expect(state.reading.translationSummary).toEqual({ total: 5, completed: 5, failed: 0 });
     expect(bed.store.canRetrySave()).toBe(false);
   });
 
   it('makes exactly one grammar call and one translation batch call per bounded group', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls.grammar).toBe(1);
     expect(bed.provider.generationCalls.translate).toBe(1);
-    expect(bed.provider.grammarRequests[0].sentences).toHaveLength(4);
-    expect(bed.provider.translationRequests[0].sentences).toHaveLength(4);
+    expect(bed.provider.grammarRequests[0].sentences).toHaveLength(5);
+    expect(bed.provider.translationRequests[0].sentences).toHaveLength(5);
   });
 });
 
@@ -560,7 +560,7 @@ describe('GenerationStore cancellation', () => {
   it('cancels while prerequisites are still being captured', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    const run = bed.store.generate('micro', PREMISE);
+    const run = bed.store.generate(5, PREMISE);
     expect(bed.store.canCancel()).toBe(true);
     bed.store.cancel();
     await run;
@@ -575,7 +575,7 @@ describe('GenerationStore cancellation', () => {
     };
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls.story).toBe(1);
     await expectCancelledWithNothingSaved();
@@ -587,7 +587,7 @@ describe('GenerationStore cancellation', () => {
       bed.store.cancel();
     };
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     await expectCancelledWithNothingSaved();
   });
@@ -602,7 +602,7 @@ describe('GenerationStore cancellation', () => {
       }
     };
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls.review).toBe(1);
     await expectCancelledWithNothingSaved();
@@ -617,7 +617,7 @@ describe('GenerationStore cancellation', () => {
       }
     };
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls.repair).toBe(1);
     await expectCancelledWithNothingSaved();
@@ -626,7 +626,7 @@ describe('GenerationStore cancellation', () => {
   it('cannot be cancelled once the transaction has started', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate('micro', PREMISE);
+    await bed.store.generate(5, PREMISE);
 
     expect(bed.store.canCancel()).toBe(false);
     expect(bed.store.state().kind).toBe('saved');

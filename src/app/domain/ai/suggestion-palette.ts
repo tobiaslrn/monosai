@@ -13,13 +13,15 @@ import type { VocabularyItemId } from '../shared/ids';
 export const PALETTE_SIZES: Readonly<Record<StoryForm, number>> = {
   micro: 40,
   short: 100,
+  medium: 140,
+  long: 180,
 };
 
 /**
  * Samples a palette with a partial Fisher-Yates shuffle.
  *
  * Only the first `size` positions are resolved, so a 1,800-entry snapshot costs
- * 100 swaps rather than 1,800. The input is never mutated, and the randomness
+ * at most 180 swaps rather than 1,800. The input is never mutated, and the randomness
  * comes from an injected source so a test can drive an exact selection.
  */
 export function samplePalette(

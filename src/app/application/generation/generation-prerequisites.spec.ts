@@ -37,7 +37,6 @@ function input(overrides: Partial<PrerequisiteInput> = {}): PrerequisiteInput {
     textModelReadiness: 'ready',
     structuredOutput: 'native-schema',
     snapshot: snapshot(200),
-    premiseValid: true,
     ...overrides,
   };
 }
@@ -58,11 +57,10 @@ function checkFor(
 }
 
 describe('prerequisiteChecks', () => {
-  it('lists exactly the three independently actionable checks', () => {
+  it('lists exactly the two external setup checks', () => {
     expect(prerequisiteChecks(input()).map((check) => check.id)).toEqual([
       'text-model',
       'vocabulary',
-      'premise',
     ]);
   });
 
@@ -98,13 +96,6 @@ describe('prerequisiteChecks', () => {
 
   it('passes the vocabulary check exactly at the minimum', () => {
     expect(checkFor('vocabulary', { snapshot: snapshot(50) }).satisfied).toBe(true);
-  });
-
-  it('fails the premise check without pointing anywhere, because the field is here', () => {
-    const check = checkFor('premise', { premiseValid: false });
-
-    expect(check.satisfied).toBe(false);
-    expect(check.route).toBe('');
   });
 });
 

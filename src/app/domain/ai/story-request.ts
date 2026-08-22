@@ -3,23 +3,44 @@ import type { StoryForm } from '../reading/reading';
 import type { SnapshotId } from '../shared/ids';
 import { err, ok, type Result } from '../shared/result';
 
-/** Inclusive bounds on how many sentences a form may contain. */
+/** Inclusive bounds on how many sentences a request may contain. */
 export interface SentenceRange {
   readonly min: number;
   readonly max: number;
 }
 
-/**
- * The two story lengths, with the ranges from the AI specification.
- *
- * The range travels inside the request rather than being derived at the prompt,
- * because local validation judges the returned sentence count against exactly
- * the numbers the model was given.
- */
-export const SENTENCE_RANGES: Readonly<Record<StoryForm, SentenceRange>> = {
-  micro: { min: 4, max: 6 },
-  short: { min: 13, max: 20 },
-};
+export const STORY_SENTENCE_COUNTS = [5, 15, 30, 50] as const;
+export const MIN_STORY_SENTENCES = STORY_SENTENCE_COUNTS[0];
+export const MAX_STORY_SENTENCES = STORY_SENTENCE_COUNTS[STORY_SENTENCE_COUNTS.length - 1];
+export const DEFAULT_STORY_SENTENCES = 15;
+
+export function normalizeStorySentenceCount(value: number): number {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_STORY_SENTENCES;
+  }
+  return STORY_SENTENCE_COUNTS.reduce((closest, candidate) =>
+    Math.abs(candidate - value) < Math.abs(closest - value) ? candidate : closest,
+  );
+}
+
+/** The slider selects an exact count, which the prompt and local validator share. */
+export function sentenceRangeForCount(sentenceCount: number): SentenceRange {
+  return { min: sentenceCount, max: sentenceCount };
+}
+
+/** A broad format label retained in saved-story metadata and prompt wording. */
+export function storyFormForSentenceCount(sentenceCount: number): StoryForm {
+  if (sentenceCount <= 5) {
+    return 'micro';
+  }
+  if (sentenceCount <= 20) {
+    return 'short';
+  }
+  if (sentenceCount <= 30) {
+    return 'medium';
+  }
+  return 'long';
+}
 
 export const MAX_PREMISE_LENGTH = 1_000;
 export const MAX_SPECIAL_INSTRUCTIONS_LENGTH = 1_000;

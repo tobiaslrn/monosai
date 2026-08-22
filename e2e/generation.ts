@@ -102,7 +102,7 @@ export const REVIEWED_EXPRESSIONS: readonly string[] = [
   '静か',
 ];
 
-/** A four-sentence story built only from reviewed words and function words. */
+/** A five-sentence Tiny story built only from reviewed words and function words. */
 export const STRICT_STORY = {
   titleJa: '猫の朝',
   sentences: [
@@ -110,11 +110,12 @@ export const STRICT_STORY = {
     '先生は公園を歩きます。',
     '猫は魚を食べます。',
     '夜に猫は寝ます。',
+    '鳥は空を見ます。',
   ],
 } as const;
 
 /**
- * A thirteen-sentence story, still built only from reviewed words.
+ * A fifteen-sentence story, still built only from reviewed words.
  *
  * A `short` story is the only form long enough to need more than one
  * translation batch, which is what makes a genuinely partial translation —
@@ -136,6 +137,8 @@ export const LONG_STRICT_STORY = {
     '学生は店で花を買います。',
     '朝に犬は起きます。',
     '家族は家へ帰ります。',
+    '先生は本を読みます。',
+    '犬は水を飲みます。',
   ],
 } as const;
 
@@ -147,6 +150,7 @@ export const STORY_WITH_UNKNOWN = {
     '猫は図書館へ行きます。',
     '猫は魚を食べます。',
     '夜に猫は寝ます。',
+    '鳥は空を見ます。',
   ],
 } as const;
 
