@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
+import { expectSettingPersisted } from './storage';
 import {
   countOwnedRows,
   importReading,
@@ -284,6 +285,23 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
       Number.parseFloat(window.getComputedStyle(element).fontSize),
     );
     expect(afterReload).toBeGreaterThan(before);
+  });
+
+  test('reader aid switches are changed and remembered in the Aids panel', async ({ page }) => {
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    await page.getByRole('button', { name: 'Aids' }).click();
+    const furigana = page.getByRole('checkbox', { name: 'Furigana' });
+    await expect(furigana).toBeChecked();
+    await furigana.uncheck();
+    await expectSettingPersisted(page, 'reader-preferences', 'furigana', false);
+    await page.keyboard.press('Escape');
+
+    await page.reload();
+    await page.getByRole('button', { name: 'Aids' }).click();
+    await expect(page.getByRole('checkbox', { name: 'Furigana' })).not.toBeChecked();
   });
 
   test('keeps every Reader action usable in the compact 320px header', async ({ page }) => {

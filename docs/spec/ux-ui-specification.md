@@ -467,16 +467,15 @@ Three options — everyday spoken, polite written, either — as a single compac
 ## 10. Settings
 
 Settings starts with a **Your setup** panel linking to Vocabulary and Grammar,
-followed by Appearance and reading controls. AI configuration comes next, then
+followed by Appearance controls. AI configuration comes next, then
 generation policy, storage and app maintenance. Language asset details and
 diagnostics stay at the bottom, with technical details collapsed by default;
 readiness, errors, and retry actions remain visible.
 
-### Appearance and reading
+### Appearance
 
 - System/Light/Dark theme.
-- Global furigana, spacing, and warning-marker switches.
-- Reading text scale (0.8–2.5), which line height and paragraph spacing follow within bounds. Also reachable from the reader's Aids panel.
+- Reading text scale and reader aid switches for furigana, spacing, and warning markers are available in the reader's Aids panel.
 
 ### AI text features (OpenRouter)
 
