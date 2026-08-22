@@ -365,11 +365,11 @@ export async function stubOpenRouter(
  * date and a text match cannot tell the two apart.
  */
 export function textModelReadiness(page: Page): Locator {
-  return page.getByRole('region', { name: 'AI text features' }).locator('[data-readiness]');
+  return page.getByRole('region', { name: 'Models' }).locator('[data-capability="text"]');
 }
 
 export function ttsReadiness(page: Page): Locator {
-  return page.getByRole('region', { name: 'Voice (optional)' }).locator('[data-readiness]');
+  return page.getByRole('region', { name: 'Models' }).locator('[data-capability="audio"]');
 }
 
 export async function expectReadiness(locator: Locator, readiness: string): Promise<void> {
@@ -385,6 +385,9 @@ export async function saveApiKey(page: Page, key = 'e2e-placeholder-key'): Promi
 
 /** Registers a text-model preset through the same discovery dialog learners use. */
 export async function addTextModel(page: Page, modelId: string): Promise<void> {
+  if (!(await page.getByTestId('add-text-model').isVisible())) {
+    await page.getByTestId('add-model').click();
+  }
   await page.getByTestId('add-text-model').click();
   await page.getByTestId('add-model-id').fill(modelId);
   await page.getByTestId('dialog-discover-model').click();
@@ -395,6 +398,9 @@ export async function addTextModel(page: Page, modelId: string): Promise<void> {
 
 /** Registers a voice-model preset through capability-aware model and voice dropdowns. */
 export async function addTtsModel(page: Page, modelId: string, voiceId = 'sakura'): Promise<void> {
+  if (!(await page.getByTestId('add-tts-model').isVisible())) {
+    await page.getByTestId('add-model').click();
+  }
   await page.getByTestId('add-tts-model').click();
   await page.getByTestId('add-model-id').fill(modelId);
   await page.getByTestId('dialog-discover-model').click();

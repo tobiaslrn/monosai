@@ -95,7 +95,7 @@ describe('TtsStore', () => {
     expect(store.readiness()).toBe('ready');
   });
 
-  it('registers a reusable voice preset and makes it active', async () => {
+  it('registers a reusable voice preset without making an untested default', async () => {
     const store = await ready();
 
     await store.registerPreset({
@@ -106,13 +106,12 @@ describe('TtsStore', () => {
       speed: 1,
     });
 
-    expect(store.activePresetId()).toBe('gemini-voice');
+    expect(store.activePresetId()).toBeNull();
     expect(settings.tts).toMatchObject({
-      modelId: 'google/gemini-tts',
-      voiceId: 'Kore',
-      activePresetId: 'gemini-voice',
+      modelId: '',
+      activePresetId: null,
     });
-    expect(store.readiness()).toBe('untested');
+    expect(store.readiness()).toBe('not-configured');
   });
 
   it('clears voice configuration when the last registered preset is removed', async () => {
@@ -130,6 +129,16 @@ describe('TtsStore', () => {
     expect(store.presets()).toEqual([]);
     expect(settings.tts).toMatchObject({ activePresetId: null, modelId: '', voiceId: '' });
     expect(store.readiness()).toBe('not-configured');
+  });
+
+  it('keeps audio compatibility evidence on the tested preset', async () => {
+    const store = await ready();
+    await store.registerPreset({ id: 'voice', name: 'Voice', ...CONFIGURED, speed: 1 });
+
+    await store.testPreset('voice');
+
+    expect(store.compatiblePresets().map((preset) => preset.id)).toEqual(['voice']);
+    expect(store.configForPreset('voice')).toMatchObject(CONFIGURED);
   });
 
   it('reports a speed the provider ignored rather than implying it applied', async () => {

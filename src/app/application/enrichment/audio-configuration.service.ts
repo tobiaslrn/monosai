@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import {
@@ -34,6 +34,12 @@ export interface ResolvedAudioConfig extends AudioSynthesisConfig {
 export class AudioConfigurationService {
   private readonly tts = inject(TtsStore);
   private readonly hasher = inject(HASHER);
+  private readonly selectedPresetIdSignal = signal<string | null>(null);
+  readonly selectedPresetId = this.selectedPresetIdSignal.asReadonly();
+
+  selectForRequest(presetId: string | null): void {
+    this.selectedPresetIdSignal.set(presetId);
+  }
 
   /**
    * Refuses unless the exact saved configuration has passed its own test.
@@ -43,8 +49,13 @@ export class AudioConfigurationService {
    * to discover what the test exists to find out for the price of one sentence.
    */
   resolve(task: AiTask): Result<ResolvedAudioConfig, AiError> {
-    const readiness = this.tts.readiness();
-    if (readiness !== 'ready') {
+    const settings = this.tts.settings();
+    const configurable = this.tts as Partial<Pick<TtsStore, 'configForPreset'>>;
+    const preset =
+      configurable.configForPreset?.(this.selectedPresetIdSignal() ?? settings.activePresetId) ??
+      null;
+    if (preset === null && this.tts.readiness() !== 'ready') {
+      const readiness = this.tts.readiness();
       return err(
         aiError(
           'capability-unsupported',
@@ -57,20 +68,20 @@ export class AudioConfigurationService {
       );
     }
 
-    const settings = this.tts.settings();
+    const selected = preset ?? settings;
     const optionsFingerprint = audioOptionsFingerprint(this.hasher, {
       responseFormat: RESPONSE_FORMAT,
-      speed: settings.speed,
+      speed: selected.speed,
     });
     return ok({
-      modelId: settings.modelId,
-      voiceId: settings.voiceId,
-      speed: settings.speed,
+      modelId: selected.modelId,
+      voiceId: selected.voiceId,
+      speed: selected.speed,
       optionsFingerprint,
       configFingerprint: audioConfigFingerprint(
         this.hasher,
-        settings.modelId,
-        settings.voiceId,
+        selected.modelId,
+        selected.voiceId,
         optionsFingerprint,
       ),
     });

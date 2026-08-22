@@ -93,6 +93,23 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           }
         </div>
 
+        <div class="mn-field model-picker">
+          <label for="mn-story-model">Model</label>
+          <select
+            id="mn-story-model"
+            data-testid="story-model-select"
+            [value]="selectedModelId() ?? ''"
+            [disabled]="disabled()"
+            (change)="modelSelected.emit($any($event.target).value || null)"
+          >
+            @for (model of models(); track model.id) {
+              <option [value]="model.id">
+                {{ model.name }}{{ model.isDefault ? ' (Default)' : '' }}
+              </option>
+            }
+          </select>
+        </div>
+
         <div class="word-selection">
           <div class="setting-label">
             <label for="mn-word-selection">Anki word selection</label>
@@ -426,8 +443,13 @@ export class StoryFormComponent {
   readonly disabled = input.required<boolean>();
   readonly snapshotSummary = input.required<string>();
   readonly presetName = input.required<string>();
+  readonly models = input<
+    readonly { readonly id: string; readonly name: string; readonly isDefault: boolean }[]
+  >([]);
+  readonly selectedModelId = input<string | null>(null);
 
   readonly generate = output<void>();
+  readonly modelSelected = output<string | null>();
 
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
   protected readonly lengthLabels = LENGTH_LABELS;

@@ -477,17 +477,15 @@ readiness, errors, and retry actions remain visible.
 - System/Light/Dark theme.
 - Reading text scale and reader aid switches for furigana, spacing, and warning markers are available in the reader's Aids panel.
 
-### AI text features (OpenRouter)
+### Models
 
-- API key entry, Save/Replace, Remove, and configured/not-configured indicator. Never show the saved value or a reveal toggle after save.
-- Exact text-model ID and Test configuration.
-- Story generation token budget (4,096–32,768, default 16,384), described as covering hidden reasoning and the visible structured reply.
-- Changing key/model marks the test stale but preserves cached content.
-
-### Voice (optional)
-
-- Exact TTS-model ID, exact voice ID, speed control where supported, and Test voice.
-- A capability failure is separate from text-model status.
+- One configured-model list and one top-right **Add model** menu. Rows use capability badges for Story, Translation, Grammar, and Audio only when supported by validated provider metadata and compatibility evidence.
+- Compact defaults for text, audio, and grammar judgement. Grammar judgement falls back to the text default when no dedicated model is chosen.
+- Default assignments appear as badges in the model rows. Removing a default leaves it unconfigured and never silently promotes another model.
+- Test, edit, and remove actions are consistent per row. Exact IDs, reasoning, voice/speed, compatibility results, and technical details are disclosed within the row.
+- API key entry, Save/Replace, Remove, and configured/not-configured indicator stay separate and compact. Never show the saved value or a reveal toggle after save.
+- Story generation offers a compact selector containing tested Story models and marks the default. Reader audio does the same for tested Audio models. These selections affect one request and are captured in provenance/cache identity without changing Settings defaults.
+- Story generation token budget remains bounded to 4,096–32,768 (default 16,384). Changing key/model marks matching test evidence stale but preserves cached content.
 
 ### Generation policy
 

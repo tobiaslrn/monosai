@@ -71,11 +71,14 @@ export class SentenceEnrichmentService {
 
   /** The cache key an analysis of this sentence would be stored under now. */
   grammarKeyFor(sentence: Sentence): string {
+    const configurable = this.textModel as Partial<Pick<TextModelStore, 'configForTask'>>;
+    const modelId =
+      configurable.configForTask?.('grammar')?.modelId ?? this.textModel.settings().modelId;
     return (
       this.keys
         .grammarKeys(
           [sentence],
-          this.textModel.settings().modelId,
+          modelId,
           PROMPT_VERSIONS.grammar,
           this.profile.liveProfileHash() ?? '',
         )
@@ -265,8 +268,18 @@ export class SentenceEnrichmentService {
     ) => ReadonlyMap<SentenceId, string>,
   ): Promise<EnrichmentResult<SentenceContext>> {
     const settings = this.textModel.settings();
-    const structuredOutput = settings.structuredOutput;
-    if (settings.modelId === '' || structuredOutput === null) {
+    const configurable = this.textModel as Partial<Pick<TextModelStore, 'configForTask'>>;
+    const config =
+      configurable.configForTask?.(task === 'grammar-review' ? 'grammar' : 'text') ??
+      (settings.modelId !== '' && settings.structuredOutput !== null
+        ? {
+            modelId: settings.modelId,
+            reasoningEffort: settings.reasoningEffort,
+            structuredOutput: settings.structuredOutput,
+            storyTokenBudget: settings.storyTokenBudget,
+          }
+        : null);
+    if (config === null) {
       return err({
         source: 'provider',
         error: aiError(
@@ -284,13 +297,9 @@ export class SentenceEnrichmentService {
     }
 
     return ok({
-      modelId: settings.modelId,
-      taskConfig: {
-        modelId: settings.modelId,
-        structuredOutput,
-        reasoningEffort: settings.reasoningEffort,
-      },
-      cacheKeys: keysFor(refs.value, settings.modelId),
+      modelId: config.modelId,
+      taskConfig: config,
+      cacheKeys: keysFor(refs.value, config.modelId),
     });
   }
 }

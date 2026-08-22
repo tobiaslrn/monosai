@@ -179,6 +179,7 @@ interface CapturedContext {
   readonly policyText: string;
   readonly policyHash: string;
   readonly taskConfig: TextTaskConfig;
+  readonly grammarTaskConfig: TextTaskConfig;
 }
 
 /** Title and sentences carry the same analysis; only the title has no row. */
@@ -289,7 +290,11 @@ export class GenerationStore {
    * Nothing is written until the last step, and the only thing that is written
    * is a story every word of which has a validation that is not `unknown`.
    */
-  async generate(sentenceCount: number, draft: StoryInputDraft): Promise<void> {
+  async generate(
+    sentenceCount: number,
+    draft: StoryInputDraft,
+    modelPresetId: string | null = null,
+  ): Promise<void> {
     this.controller?.abort();
     const controller = new AbortController();
     this.controller = controller;
@@ -301,7 +306,7 @@ export class GenerationStore {
     this.stateSignal.set({ kind: 'checking-prerequisites' });
     this.announce('Checking what this story needs…');
 
-    const captured = await this.capture();
+    const captured = await this.capture(modelPresetId);
     if (!captured.ok) {
       this.fail(captured.error);
       return;
@@ -533,7 +538,9 @@ export class GenerationStore {
   }
 
   /** Captures the snapshot, profile, policy, and model before anything is spent. */
-  private async capture(): Promise<
+  private async capture(
+    modelPresetId: string | null,
+  ): Promise<
     | { readonly ok: true; readonly value: CapturedContext }
     | { readonly ok: false; readonly error: GenerationFailure }
   > {
@@ -556,8 +563,20 @@ export class GenerationStore {
     }
 
     const settings = this.textModel.settings();
-    const structuredOutput = settings.structuredOutput;
-    if (settings.modelId === '' || structuredOutput === null) {
+    const configurable = this.textModel as Partial<Pick<TextModelStore, 'configForPreset'>>;
+    const selected =
+      modelPresetId === null
+        ? (configurable.configForPreset?.(settings.activePresetId) ??
+          (settings.modelId !== '' && settings.structuredOutput !== null
+            ? {
+                modelId: settings.modelId,
+                reasoningEffort: settings.reasoningEffort,
+                structuredOutput: settings.structuredOutput,
+                storyTokenBudget: settings.storyTokenBudget,
+              }
+            : null))
+        : (configurable.configForPreset?.(modelPresetId) ?? null);
+    if (selected === null) {
       return {
         ok: false,
         error: aiError(
@@ -577,12 +596,9 @@ export class GenerationStore {
         profile: profile.value,
         policyText: policy.text,
         policyHash: policy.policyHash,
-        taskConfig: {
-          modelId: settings.modelId,
-          structuredOutput,
-          reasoningEffort: settings.reasoningEffort,
-          storyTokenBudget: settings.storyTokenBudget,
-        },
+        taskConfig: selected,
+        grammarTaskConfig:
+          configurable.configForPreset?.(settings.grammarPresetId ?? null) ?? selected,
       },
     };
   }
@@ -782,6 +798,7 @@ export class GenerationStore {
     this.announce('Reviewing grammar and translating…');
 
     const modelId = context.taskConfig.modelId;
+    const grammarModelId = context.grammarTaskConfig.modelId;
     const translationKeys = this.enrichmentKeys.translationKeys(
       draft.sentences,
       modelId,
@@ -789,7 +806,7 @@ export class GenerationStore {
     );
     const grammarKeys = this.enrichmentKeys.grammarKeys(
       draft.sentences,
-      modelId,
+      grammarModelId,
       PROMPT_VERSIONS.grammar,
       context.profile.profileHash,
     );
@@ -802,9 +819,9 @@ export class GenerationStore {
         context.profile.profileHash,
         context.profile.resolvedGuidance,
         context.profile.registerPreference,
-        modelId,
+        grammarModelId,
         PROMPT_VERSIONS.grammar,
-        context.taskConfig,
+        context.grammarTaskConfig,
         signal,
       ),
       this.translationService.run(

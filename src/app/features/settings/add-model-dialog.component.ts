@@ -402,11 +402,14 @@ export class AddModelDialogComponent {
     if (model?.modelId !== this.modelId().trim()) {
       return false;
     }
+    if (this.data.kind === 'text') {
+      return model.outputModalities.includes('text');
+    }
     return (
-      this.data.kind === 'text' ||
-      this.geminiTts() ||
-      model.supportedVoices.length > 0 ||
-      this.voiceId().trim() !== ''
+      (model.outputModalities.includes('audio') ||
+        model.supportedVoices.length > 0 ||
+        this.geminiTts()) &&
+      (this.geminiTts() || model.supportedVoices.length > 0 || this.voiceId().trim() !== '')
     );
   });
 

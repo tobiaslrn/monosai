@@ -289,8 +289,8 @@ Separate settings by concern rather than one unvalidated JSON object:
 - `AppSettings`: theme, schema-aware flags, active snapshot ID.
 - `ReaderPreferences`: furigana, token spacing, markers, translations expanded; all true initially.
 - `OpenRouterCredential`: API key and created/updated timestamps. Repository methods expose `isConfigured`, replace, remove, and an internal request credential; UI facades never receive the saved string.
-- `TextModelSettings`: exact model ID, last successful test fingerprint/time.
-- `TtsSettings`: exact model ID, voice ID, speed/options, last test state.
+- Configured OpenRouter models are presented as one list while retaining capability-specific configuration and test evidence per model. Text capability data includes reasoning and structured-output proof; audio capability data includes voice, speed/options, and audio-test proof.
+- Defaults identify the text, optional dedicated grammar-judgement, and audio configurations. A missing grammar default means “use the text default”; other missing defaults remain visibly unconfigured.
 - `ExceptionPolicy`: text, updated time, policy hash.
 - `LanguageAssetSettings`: active tokenizer/dictionary/grammar/baseline versions.
 

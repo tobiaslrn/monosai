@@ -56,6 +56,10 @@ export class TextModelStore {
   readonly structuredOutput = computed(() => this.settingsSignal().structuredOutput);
   readonly presets = computed(() => this.settingsSignal().presets);
   readonly activePresetId = computed(() => this.settingsSignal().activePresetId);
+  readonly grammarPresetId = computed(() => this.settingsSignal().grammarPresetId);
+  readonly compatiblePresets = computed(() =>
+    this.settingsSignal().presets.filter((preset) => this.isPresetReady(preset)),
+  );
 
   readonly lastTestedAt = computed(() => this.settingsSignal().lastTestedAt);
 
@@ -131,22 +135,33 @@ export class TextModelStore {
 
   async registerPreset(preset: TextModelPreset): Promise<boolean> {
     const current = this.settingsSignal();
-    const presets = [...current.presets.filter((item) => item.id !== preset.id), preset];
+    const registered: TextModelPreset = {
+      ...preset,
+      lastTestFingerprint: preset.lastTestFingerprint ?? null,
+      lastTestedAt: preset.lastTestedAt ?? null,
+      structuredOutput: preset.structuredOutput ?? null,
+    };
+    const presets = [...current.presets.filter((item) => item.id !== preset.id), registered];
+    const becomesDefault = current.activePresetId === null && this.isPresetReady(registered);
     const saved = await this.repository.updateTextModelSettings({
       presets,
-      activePresetId: preset.id,
-      modelId: preset.modelId,
-      reasoningEffort: preset.reasoningEffort,
-      structuredOutput: null,
-      lastTestFingerprint: null,
-      lastTestedAt: null,
+      ...(becomesDefault
+        ? {
+            activePresetId: preset.id,
+            modelId: preset.modelId,
+            reasoningEffort: preset.reasoningEffort,
+            structuredOutput: registered.structuredOutput ?? null,
+            lastTestFingerprint: registered.lastTestFingerprint ?? null,
+            lastTestedAt: registered.lastTestedAt ?? null,
+          }
+        : {}),
     });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
       return false;
     }
     this.settingsSignal.set(saved.value);
-    this.draftSignal.set(preset.modelId);
+    this.draftSignal.set(saved.value.modelId);
     this.storyTokenBudgetDraftSignal.set(String(saved.value.storyTokenBudget));
     this.testFailureSignal.set(null);
     return true;
@@ -157,7 +172,76 @@ export class TextModelStore {
       return true;
     }
     const preset = this.settingsSignal().presets.find((item) => item.id === id);
-    return preset === undefined ? false : this.registerPreset(preset);
+    if (preset === undefined || !this.isPresetReady(preset)) {
+      return false;
+    }
+    const saved = await this.repository.updateTextModelSettings({
+      activePresetId: preset.id,
+      modelId: preset.modelId,
+      reasoningEffort: preset.reasoningEffort,
+      structuredOutput: preset.structuredOutput ?? null,
+      lastTestFingerprint: preset.lastTestFingerprint ?? null,
+      lastTestedAt: preset.lastTestedAt ?? null,
+    });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    this.draftSignal.set(saved.value.modelId);
+    this.testFailureSignal.set(null);
+    return true;
+  }
+
+  async setGrammarPreset(id: string | null): Promise<boolean> {
+    if (id !== null) {
+      const preset = this.settingsSignal().presets.find((item) => item.id === id);
+      if (preset === undefined || !this.isPresetReady(preset)) {
+        return false;
+      }
+    }
+    const saved = await this.repository.updateTextModelSettings({ grammarPresetId: id });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    return true;
+  }
+
+  async updatePreset(
+    id: string,
+    patch: Pick<TextModelPreset, 'reasoningEffort'>,
+  ): Promise<boolean> {
+    const current = this.settingsSignal();
+    const preset = current.presets.find((item) => item.id === id);
+    if (preset === undefined) {
+      return false;
+    }
+    const updated = {
+      ...preset,
+      ...patch,
+      lastTestFingerprint: null,
+      lastTestedAt: null,
+      structuredOutput: null,
+    };
+    const saved = await this.repository.updateTextModelSettings({
+      presets: current.presets.map((item) => (item.id === id ? updated : item)),
+      ...(current.activePresetId === id
+        ? {
+            reasoningEffort: updated.reasoningEffort,
+            lastTestFingerprint: null,
+            lastTestedAt: null,
+            structuredOutput: null,
+          }
+        : {}),
+    });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    return true;
   }
 
   async removePreset(id: string): Promise<boolean> {
@@ -167,19 +251,19 @@ export class TextModelStore {
       return true;
     }
     const presets = current.presets.filter((preset) => preset.id !== id);
-    const replacement = current.activePresetId === id ? (presets[0] ?? null) : null;
     const saved = await this.repository.updateTextModelSettings({
       presets,
       ...(current.activePresetId === id
         ? {
-            activePresetId: replacement?.id ?? null,
-            modelId: replacement?.modelId ?? '',
-            reasoningEffort: replacement?.reasoningEffort ?? null,
+            activePresetId: null,
+            modelId: '',
+            reasoningEffort: null,
             structuredOutput: null,
             lastTestFingerprint: null,
             lastTestedAt: null,
           }
         : {}),
+      ...(current.grammarPresetId === id ? { grammarPresetId: null } : {}),
     });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
@@ -235,6 +319,11 @@ export class TextModelStore {
    * ID other than the one that is stored.
    */
   async test(): Promise<void> {
+    const id = this.settingsSignal().activePresetId;
+    if (id !== null) {
+      await this.testPreset(id);
+      return;
+    }
     // The controller exists before the first await so that cancelling while the
     // draft is still being written stops the attempt rather than being ignored.
     this.controller?.abort();
@@ -283,6 +372,107 @@ export class TextModelStore {
     }
   }
 
+  async testPreset(id: string): Promise<void> {
+    const preset = this.settingsSignal().presets.find((item) => item.id === id);
+    if (preset === undefined) {
+      return;
+    }
+    this.controller?.abort();
+    const controller = new AbortController();
+    this.controller = controller;
+    this.actionSignal.set('testing');
+    this.testFailureSignal.set(null);
+    const result = await this.provider.testConfiguration(
+      { modelId: preset.modelId, reasoningEffort: preset.reasoningEffort },
+      controller.signal,
+    );
+    if (this.controller !== controller) {
+      return;
+    }
+    this.controller = null;
+    this.actionSignal.set('idle');
+    if (!result.ok) {
+      this.testFailureSignal.set(result.error);
+      return;
+    }
+    const fingerprint = this.fingerprintForConfig(preset.modelId, preset.reasoningEffort);
+    const testedAt = this.clock.now();
+    const presets = this.settingsSignal().presets.map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            lastTestFingerprint: fingerprint,
+            lastTestedAt: testedAt,
+            structuredOutput: result.value.structuredOutput,
+          }
+        : item,
+    );
+    const isDefault = this.settingsSignal().activePresetId === id;
+    const becomesDefault = this.settingsSignal().activePresetId === null;
+    const saved = await this.repository.updateTextModelSettings({
+      presets,
+      ...(isDefault || becomesDefault
+        ? {
+            activePresetId: id,
+            modelId: preset.modelId,
+            reasoningEffort: preset.reasoningEffort,
+            lastTestFingerprint: fingerprint,
+            lastTestedAt: testedAt,
+            structuredOutput: result.value.structuredOutput,
+          }
+        : {}),
+    });
+    if (saved.ok) {
+      this.settingsSignal.set(saved.value);
+      this.storageFailureSignal.set(null);
+    } else {
+      this.storageFailureSignal.set(saved.error);
+    }
+  }
+
+  configForPreset(id: string | null): {
+    readonly modelId: string;
+    readonly reasoningEffort: string | null;
+    readonly structuredOutput: NonNullable<TextModelSettings['structuredOutput']>;
+    readonly storyTokenBudget: number;
+  } | null {
+    const preset = this.settingsSignal().presets.find((item) => item.id === id);
+    if (preset === undefined || !this.isPresetReady(preset) || preset.structuredOutput == null) {
+      return null;
+    }
+    return {
+      modelId: preset.modelId,
+      reasoningEffort: preset.reasoningEffort,
+      structuredOutput: preset.structuredOutput,
+      storyTokenBudget: this.settingsSignal().storyTokenBudget,
+    };
+  }
+
+  configForTask(task: 'text' | 'grammar'): {
+    readonly modelId: string;
+    readonly reasoningEffort: string | null;
+    readonly structuredOutput: NonNullable<TextModelSettings['structuredOutput']>;
+    readonly storyTokenBudget: number;
+  } | null {
+    const settings = this.settingsSignal();
+    const presetId =
+      task === 'grammar'
+        ? (settings.grammarPresetId ?? settings.activePresetId)
+        : settings.activePresetId;
+    const preset = this.configForPreset(presetId);
+    if (preset !== null) {
+      return preset;
+    }
+    return settings.modelId !== '' && settings.structuredOutput !== null
+      ? {
+          modelId: settings.modelId,
+          reasoningEffort: settings.reasoningEffort,
+          structuredOutput: settings.structuredOutput,
+          storyTokenBudget: settings.storyTokenBudget,
+        }
+      : null;
+  }
+
   cancelTest(): void {
     this.controller?.abort();
     this.controller = null;
@@ -290,9 +480,21 @@ export class TextModelStore {
   }
 
   private fingerprintFor(modelId: string): string {
+    return this.fingerprintForConfig(modelId, this.settingsSignal().reasoningEffort);
+  }
+
+  private fingerprintForConfig(modelId: string, reasoningEffort: string | null): string {
     return textModelFingerprint(this.hasher, this.credential.keyGeneration(), {
       modelId,
-      reasoningEffort: this.settingsSignal().reasoningEffort,
+      reasoningEffort,
     });
+  }
+
+  private isPresetReady(preset: TextModelPreset): boolean {
+    return (
+      preset.structuredOutput != null &&
+      preset.lastTestFingerprint ===
+        this.fingerprintForConfig(preset.modelId, preset.reasoningEffort)
+    );
   }
 }
