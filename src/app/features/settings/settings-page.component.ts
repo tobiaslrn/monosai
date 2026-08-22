@@ -28,16 +28,38 @@ import { TtsSectionComponent } from './tts-section.component';
   template: `
     <div class="mn-page">
       <mn-page-header heading="Settings" backTo="/library" backLabel="Back to library" />
-      <mn-learning-data-section />
+
+      <section class="mn-panel setup-panel" aria-labelledby="mn-setup-heading">
+        <h2 id="mn-setup-heading">Your setup</h2>
+        <p class="mn-hint">Vocabulary and grammar shape the reading experience.</p>
+        <mn-learning-data-section />
+      </section>
+
+      <mn-appearance-section />
+
       <mn-openrouter-section />
       <mn-tts-section />
       <mn-generation-policy-section />
-      <mn-appearance-section />
-      <mn-language-assets-section />
+
       <mn-storage-section />
       <mn-app-section />
+
+      <mn-language-assets-section />
       <mn-diagnostics-section />
     </div>
+  `,
+  styles: `
+    .setup-panel {
+      gap: var(--space-2);
+    }
+
+    .setup-panel h2 {
+      font-size: var(--text-lg);
+    }
+
+    .setup-panel p {
+      margin: 0;
+    }
   `,
 })
 export class SettingsPageComponent {}

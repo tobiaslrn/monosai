@@ -15,36 +15,53 @@ import { readBuildInfo } from '../../core/diagnostics/build-info';
   template: `
     <section class="mn-panel" aria-labelledby="mn-diagnostics-heading">
       <h2 id="mn-diagnostics-heading">Diagnostics</h2>
-      <dl>
-        <div>
-          <dt>App version</dt>
-          <dd>{{ build.appVersion }}</dd>
-        </div>
-        <div>
-          <dt>Build commit</dt>
-          <dd>{{ build.buildCommit }}</dd>
-        </div>
-        <div>
-          <dt>Database schema version</dt>
-          <dd>{{ schemaVersion }}</dd>
-        </div>
-        <div>
-          <dt>Provider protocol</dt>
-          <dd>{{ endpointVersion }}</dd>
-        </div>
-        <div>
-          <dt>Prompt versions</dt>
-          <dd>{{ promptVersions }}</dd>
-        </div>
-      </dl>
+      <p class="mn-hint">For troubleshooting only.</p>
+      <details>
+        <summary>Show build details</summary>
+        <dl>
+          <div>
+            <dt>App version</dt>
+            <dd>{{ build.appVersion }}</dd>
+          </div>
+          <div>
+            <dt>Build commit</dt>
+            <dd>{{ build.buildCommit }}</dd>
+          </div>
+          <div>
+            <dt>Database schema version</dt>
+            <dd>{{ schemaVersion }}</dd>
+          </div>
+          <div>
+            <dt>Provider protocol</dt>
+            <dd>{{ endpointVersion }}</dd>
+          </div>
+          <div>
+            <dt>Prompt versions</dt>
+            <dd>{{ promptVersions }}</dd>
+          </div>
+        </dl>
+      </details>
     </section>
   `,
   styles: `
+    p {
+      margin: 0;
+    }
+
+    summary {
+      display: flex;
+      align-items: center;
+      min-height: var(--touch-target);
+      color: var(--text-primary);
+      font-weight: 500;
+      cursor: pointer;
+    }
+
     dl {
       display: flex;
       flex-direction: column;
       gap: var(--space-2);
-      margin: 0;
+      margin: var(--space-3) 0 0;
     }
 
     div {

@@ -32,24 +32,27 @@ import { technicalCode } from '../../domain/shared/errors';
       }
 
       @if (versions(); as active) {
-        <dl data-testid="language-versions">
-          <div>
-            <dt>Tokenizer</dt>
-            <dd>{{ active.tokenizerVersion }}</dd>
-          </div>
-          <div>
-            <dt>Dictionary</dt>
-            <dd>{{ active.dictionaryVersion }}</dd>
-          </div>
-          <div>
-            <dt>Grammar presets</dt>
-            <dd>{{ active.grammarPresetsVersion }}</dd>
-          </div>
-          <div>
-            <dt>Structural baseline</dt>
-            <dd>{{ active.structuralBaselineVersion }}</dd>
-          </div>
-        </dl>
+        <details class="details">
+          <summary data-testid="language-versions-toggle">Show asset versions</summary>
+          <dl data-testid="language-versions">
+            <div>
+              <dt>Tokenizer</dt>
+              <dd>{{ active.tokenizerVersion }}</dd>
+            </div>
+            <div>
+              <dt>Dictionary</dt>
+              <dd>{{ active.dictionaryVersion }}</dd>
+            </div>
+            <div>
+              <dt>Grammar presets</dt>
+              <dd>{{ active.grammarPresetsVersion }}</dd>
+            </div>
+            <div>
+              <dt>Structural baseline</dt>
+              <dd>{{ active.structuralBaselineVersion }}</dd>
+            </div>
+          </dl>
+        </details>
       }
 
       @if (store.status() === 'failed') {
@@ -59,15 +62,17 @@ import { technicalCode } from '../../domain/shared/errors';
       }
 
       @if (store.attributions().length > 0) {
-        <h3>Data sources</h3>
-        <ul data-testid="language-attributions">
-          @for (attribution of store.attributions(); track attribution.name) {
-            <li>
-              <strong>{{ attribution.name }}</strong>
-              <span>{{ attribution.noticeEn }}</span>
-            </li>
-          }
-        </ul>
+        <details class="details">
+          <summary>Show data sources</summary>
+          <ul data-testid="language-attributions">
+            @for (attribution of store.attributions(); track attribution.name) {
+              <li>
+                <strong>{{ attribution.name }}</strong>
+                <span>{{ attribution.noticeEn }}</span>
+              </li>
+            }
+          </ul>
+        </details>
       }
     </section>
   `,
@@ -76,7 +81,7 @@ import { technicalCode } from '../../domain/shared/errors';
       display: flex;
       flex-direction: column;
       gap: var(--space-2);
-      margin: var(--space-3) 0;
+      margin: var(--space-3) 0 0;
     }
 
     dl div {
@@ -92,6 +97,23 @@ import { technicalCode } from '../../domain/shared/errors';
 
     dd {
       margin: 0;
+    }
+
+    .details {
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    summary {
+      display: flex;
+      align-items: center;
+      min-height: var(--touch-target);
+      color: var(--text-primary);
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .details[open] summary {
+      margin-bottom: var(--space-2);
     }
 
     .failure {

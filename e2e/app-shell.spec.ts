@@ -31,6 +31,7 @@ test.describe('application shell', () => {
     await page.goto('/#/settings');
 
     const diagnostics = page.getByRole('region', { name: 'Diagnostics' });
+    await diagnostics.getByText('Show build details').click();
     await expect(diagnostics.getByText('App version')).toBeVisible();
     await expect(diagnostics.getByText('Build commit')).toBeVisible();
   });

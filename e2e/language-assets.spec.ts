@@ -18,6 +18,8 @@ test.describe('offline language assets', () => {
     await expectPrepared(page);
 
     const versions = page.getByTestId('language-versions');
+    await expect(versions).toBeHidden();
+    await page.getByTestId('language-versions-toggle').click();
     await expect(versions).toContainText('Tokenizer');
     await expect(versions).toContainText('Structural baseline');
 
@@ -27,6 +29,7 @@ test.describe('offline language assets', () => {
     expect(record?.value?.tokenizerVersion).toBeTruthy();
     expect(record?.value?.dictionaryVersion).toBeTruthy();
 
+    await page.getByText('Show data sources').click();
     await expect(page.getByTestId('language-attributions')).toContainText('JMdict');
     await expect(page.getByTestId('language-attributions')).toContainText('IPADIC');
   });

@@ -17,7 +17,7 @@ import { ConfigurationStatusComponent } from './configuration-status.component';
   imports: [ConfigurationStatusComponent],
   template: `
     <section class="mn-panel" aria-labelledby="mn-openrouter-heading">
-      <h2 id="mn-openrouter-heading">OpenRouter text</h2>
+      <h2 id="mn-openrouter-heading">AI text features</h2>
       <p class="mn-hint">
         Story generation, translation, and grammar review use your own OpenRouter key. Reading and
         importing never do.

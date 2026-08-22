@@ -806,9 +806,9 @@ secret, and fingerprints live in ordinary settings rows.
 
 #### Settings screens
 
-Three new sections precede the existing ones: **OpenRouter text** (key entry,
+Three new sections precede the existing ones: **AI text features** (key entry,
 save/replace, two-step removal, configured indicator, exact model ID, and Test
-configuration with cancellation), **Text to speech** (exact model, voice, speed,
+configuration with cancellation), **Voice (optional)** (exact model, voice, speed,
 Test voice, and an explicit Play sample button), and **Generation policy** (one
 textarea, length limit, save state). No reveal toggle exists, the key input is
 cleared the instant its value is handed to the repository, and a shared

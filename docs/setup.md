@@ -96,12 +96,12 @@ directly; Monosai never sees or stores your key anywhere but this browser's
 local storage on this device.
 
 1. Create an OpenRouter account and an API key.
-2. In Settings → **OpenRouter text**, paste the key and save it. It is never
+2. In Settings → **AI text features**, paste the key and save it. It is never
    shown again after saving.
 3. Paste the exact model ID from OpenRouter's models page (case-sensitive,
    `vendor/model-name`) and run **Test configuration**. The test spends a
    small number of tokens and writes nothing to your library.
-4. Text-to-speech, under **Text to speech**, is configured and tested the
+4. Voice, under **Voice (optional)**, is configured and tested the
    same way with its own model and voice ID.
 
 A failed test never affects reading, importing, or anything already saved —
