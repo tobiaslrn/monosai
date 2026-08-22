@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import {
+  addTextModel,
+  addTtsModel,
   expectReadiness,
   saveApiKey,
   stubOpenRouter,
@@ -42,7 +44,7 @@ test.describe('OpenRouter key', () => {
     await page.goto('/#/settings');
     await saveApiKey(page, KEY);
 
-    await page.getByTestId('text-model-input').fill(MODEL);
+    await addTextModel(page, MODEL);
     await page.getByTestId('test-text-model').click();
     await expect(page.getByTestId('credential-state')).toContainText('Key saved');
 
@@ -58,7 +60,7 @@ test.describe('text model test', () => {
     await page.goto('/#/settings');
     await saveApiKey(page);
 
-    await page.getByTestId('text-model-input').fill(MODEL);
+    await addTextModel(page, MODEL);
     await page.getByTestId('test-text-model').click();
 
     await expectReadiness(textModelReadiness(page), 'ready');
@@ -69,20 +71,22 @@ test.describe('text model test', () => {
     await expectReadiness(textModelReadiness(page), 'ready');
   });
 
-  test('goes stale when the model changes and when the key is replaced', async ({ page }) => {
+  test('requires a test when the preset changes and goes stale when the key is replaced', async ({
+    page,
+  }) => {
     await stubOpenRouter(page);
     await page.goto('/#/settings');
     await saveApiKey(page);
-    await page.getByTestId('text-model-input').fill(MODEL);
+    await addTextModel(page, MODEL);
     await page.getByTestId('test-text-model').click();
     await expectReadiness(textModelReadiness(page), 'ready');
 
-    await page.getByTestId('text-model-input').fill('vendor/other-model');
-    await page.getByTestId('save-text-model').click();
-    await expectReadiness(textModelReadiness(page), 'stale');
+    await addTextModel(page, 'vendor/other-model');
+    await expectReadiness(textModelReadiness(page), 'untested');
 
-    await page.getByTestId('text-model-input').fill(MODEL);
-    await page.getByTestId('save-text-model').click();
+    await page.getByTestId('text-preset-select').selectOption({ index: 1 });
+    await expectReadiness(textModelReadiness(page), 'untested');
+    await page.getByTestId('test-text-model').click();
     await expectReadiness(textModelReadiness(page), 'ready');
 
     await saveApiKey(page, 'sk-or-v1-second');
@@ -93,7 +97,7 @@ test.describe('text model test', () => {
     await stubOpenRouter(page);
     await page.goto('/#/settings');
     await saveApiKey(page);
-    await page.getByTestId('text-model-input').fill(MODEL);
+    await addTextModel(page, MODEL);
     await page.getByTestId('test-text-model').click();
     await expectReadiness(textModelReadiness(page), 'ready');
 
@@ -101,7 +105,21 @@ test.describe('text model test', () => {
     await page.getByTestId('confirm-remove-key').click();
 
     await expectReadiness(textModelReadiness(page), 'not-configured');
-    await expect(page.getByTestId('text-model-input')).toHaveValue(MODEL);
+    await expect(page.getByText(MODEL)).toBeVisible();
+  });
+
+  test('removes a registered model only after confirmation', async ({ page }) => {
+    await stubOpenRouter(page);
+    await page.goto('/#/settings');
+    await saveApiKey(page);
+    await addTextModel(page, MODEL);
+
+    await page.getByTestId('remove-text-model').click();
+    await expect(page.getByRole('alertdialog', { name: 'Remove Test text model?' })).toBeVisible();
+    await page.getByRole('button', { name: 'Remove model' }).click();
+
+    await expect(page.getByText('No registered text models')).toBeVisible();
+    await expectReadiness(textModelReadiness(page), 'not-configured');
   });
 
   test.describe('failures', () => {
@@ -118,7 +136,7 @@ test.describe('text model test', () => {
         await page.goto('/#/settings');
         await saveApiKey(page);
 
-        await page.getByTestId('text-model-input').fill(MODEL);
+        await addTextModel(page, MODEL);
         await page.getByTestId('test-text-model').click();
 
         await expect(page.getByText(heading)).toBeVisible();
@@ -134,7 +152,7 @@ test.describe('text model test', () => {
       await page.goto('/#/settings');
       await saveApiKey(page);
 
-      await page.getByTestId('text-model-input').fill(MODEL);
+      await addTextModel(page, MODEL);
       await page.getByTestId('test-text-model').click();
 
       await expect(page.getByText('The reply could not be used')).toBeVisible();
@@ -144,7 +162,7 @@ test.describe('text model test', () => {
       await stubOpenRouter(page);
       await page.goto('/#/settings');
       await saveApiKey(page);
-      await page.getByTestId('text-model-input').fill(MODEL);
+      await addTextModel(page, MODEL);
 
       await context.setOffline(true);
       await page.getByTestId('test-text-model').click();
@@ -158,7 +176,7 @@ test.describe('text model test', () => {
       await page.goto('/#/settings');
       await saveApiKey(page);
 
-      await page.getByTestId('text-model-input').fill(MODEL);
+      await addTextModel(page, MODEL);
       await page.getByTestId('test-text-model').click();
       await expect(page.getByTestId('cancel-text-test')).toBeVisible();
 
@@ -178,12 +196,11 @@ test.describe('TTS', () => {
     await page.goto('/#/settings');
     await saveApiKey(page);
 
-    await page.getByTestId('text-model-input').fill(MODEL);
+    await addTextModel(page, MODEL);
     await page.getByTestId('test-text-model').click();
     await expectReadiness(textModelReadiness(page), 'ready');
 
-    await page.getByTestId('tts-model-input').fill('vendor/tts-model');
-    await page.getByTestId('tts-voice-input').fill('absent');
+    await addTtsModel(page, 'vendor/tts-model');
     await page.getByTestId('test-tts').click();
 
     await expect(page.getByText('This model cannot do what Monosai needs')).toBeVisible();
@@ -196,8 +213,7 @@ test.describe('TTS', () => {
     await page.goto('/#/settings');
     await saveApiKey(page);
 
-    await page.getByTestId('tts-model-input').fill('vendor/tts-model');
-    await page.getByTestId('tts-voice-input').fill('sakura');
+    await addTtsModel(page, 'vendor/tts-model');
     await page.getByTestId('test-tts').click();
 
     await expect(page.getByText('The audio could not be played')).toBeVisible();
@@ -233,18 +249,18 @@ test.describe('no implicit provider requests', () => {
     await page.goto('/#/settings');
 
     await saveApiKey(page);
-    await page.getByTestId('text-model-input').fill(MODEL);
-    await page.getByTestId('tts-model-input').fill('vendor/tts-model');
+    await addTextModel(page, MODEL);
+    await addTtsModel(page, 'vendor/tts-model');
     await page.getByTestId('policy-input').fill('Allow proper nouns.');
     await page.getByTestId('save-policy').click();
     await expect(page.getByTestId('policy-state')).toContainText('Policy saved');
 
-    expect(calls.urls).toHaveLength(0);
+    expect(calls.urls).toHaveLength(2);
 
     await page.getByTestId('test-text-model').click();
     await expectReadiness(textModelReadiness(page), 'ready');
 
-    expect(calls.urls).toHaveLength(1);
+    expect(calls.urls).toHaveLength(3);
   });
 
   test('makes no request when the library or a reader route is opened', async ({ page }) => {
@@ -265,7 +281,7 @@ test.describe('accessibility', () => {
     await page.goto('/#/settings');
     await saveApiKey(page);
 
-    await page.getByTestId('text-model-input').fill(MODEL);
+    await addTextModel(page, MODEL);
     await page.getByTestId('test-text-model').click();
     await expect(page.getByText('OpenRouter refused the key')).toBeVisible();
 

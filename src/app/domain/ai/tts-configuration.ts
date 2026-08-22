@@ -1,7 +1,11 @@
-/** Whether an exact OpenRouter model ID identifies Google's Gemini TTS family. */
-export function isGeminiTtsModel(modelId: string): boolean {
+/** Whether an exact OpenRouter model ID identifies Google's Gemini family. */
+export function isGeminiModel(modelId: string): boolean {
   const normalized = modelId.trim().toLowerCase();
-  return normalized.startsWith('google/gemini-') && normalized.includes('-tts');
+  return normalized.startsWith('google/gemini-');
+}
+
+export function isGeminiTtsModel(modelId: string): boolean {
+  return isGeminiModel(modelId) && modelId.trim().toLowerCase().includes('-tts');
 }
 
 /**

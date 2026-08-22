@@ -98,19 +98,34 @@ local storage on this device.
 1. Create an OpenRouter account and an API key.
 2. In Settings → **AI text features**, paste the key and save it. It is never
    shown again after saving.
-3. Paste the exact model ID from OpenRouter's models page (case-sensitive,
-   `vendor/model-name`) and run **Test configuration**. The test spends a
-   small number of tokens and writes nothing to your library.
-4. Voice, under **Voice (optional)**, is configured and tested the
-   same way with its own model and voice ID.
+3. Choose **Add model**, paste the exact model ID from OpenRouter's models page
+   (case-sensitive, `vendor/model-name`), and select **Discover**. Choose any
+   advertised reasoning setting, then save the registered preset.
+4. Select the preset in Settings and run **Test configuration**. The test spends
+   a small number of tokens and writes nothing to your library.
+5. Voice, under **Voice (optional)**, uses the same **Add model** dialog. Voices
+   and other supported choices are dropdowns when OpenRouter advertises them.
 
 Gemini models work through the same OpenRouter configuration. For example, use
 an available `google/gemini-*` model ID for text and a model whose ID ends in
 `-tts` for voice, such as `google/gemini-3.1-flash-tts-preview`. Copy the exact
-current IDs and supported voice name from OpenRouter's model page. Gemini TTS
-defaults to the `Kore` voice when its voice field is left empty. It does not
+current IDs from OpenRouter's model page. A specific Gemini voice is optional;
+the dialog offers OpenRouter's advertised voices and defaults to `Kore` when no
+voice is selected. Gemini TTS does not
 apply Monosai's speed setting, so a successful test reports that clips play at
-the model's own pace.
+the model's own pace. Monosai converts Gemini's PCM response to browser-playable
+WAV audio locally before saving it.
+
+The **Add model** dialog reads OpenRouter's normalized metadata through its
+official TypeScript SDK. Monosai shows the advertised modalities, context
+length, parameters, reasoning efforts, and voice IDs, and turns supported
+choices into preset fields. Discovery is advisory;
+**Test configuration** or **Test voice** still proves that the exact model works
+with the saved key and Monosai's request contract.
+
+Registered presets can be switched from the Settings dropdown or removed with
+the adjacent **Remove** action. Removing a preset never removes readings,
+generated aids, or saved audio; a replacement preset must be tested before use.
 
 A failed test never affects reading, importing, or anything already saved —
 see [troubleshooting.md](troubleshooting.md) for what each `ai/*` code means.

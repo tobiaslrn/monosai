@@ -36,7 +36,7 @@ export interface GrammarAnalysisRecord {
   readonly createdAt: number;
 }
 
-export type AudioMimeType = 'audio/mpeg' | 'audio/pcm';
+export type AudioMimeType = 'audio/mpeg' | 'audio/pcm' | 'audio/wav';
 
 export interface AudioAsset {
   readonly id: AssetId;

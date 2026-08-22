@@ -69,6 +69,8 @@ async function configure(): Promise<AudioJobBed> {
     speed: 1,
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
+    activePresetId: null,
+    presets: [],
   });
   const readiness = signal<'ready' | 'not-configured' | 'stale-test'>('ready');
 

@@ -109,6 +109,8 @@ async function configure(): Promise<PlaybackBed> {
     speed: 1,
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
+    activePresetId: null,
+    presets: [],
   });
   const readiness = signal<'ready' | 'not-configured' | 'stale-test'>('ready');
   const player = new FakeAudioPlayer();

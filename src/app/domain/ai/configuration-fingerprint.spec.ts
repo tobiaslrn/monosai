@@ -22,6 +22,12 @@ describe('textModelFingerprint', () => {
     );
   });
 
+  it('changes when the selected reasoning effort changes', () => {
+    expect(textModelFingerprint(hasher, 4, { ...TEXT, reasoningEffort: 'low' })).not.toBe(
+      textModelFingerprint(hasher, 4, { ...TEXT, reasoningEffort: 'high' }),
+    );
+  });
+
   it('changes when the key generation changes', () => {
     expect(textModelFingerprint(hasher, 5, TEXT)).not.toBe(textModelFingerprint(hasher, 4, TEXT));
   });

@@ -15,10 +15,12 @@ import type { AudioResponse } from './openrouter-client';
  */
 
 /** MP3 is what is requested and what the audio cache stores. */
-export const ACCEPTED_MIME_TYPES: readonly string[] = ['audio/mpeg', 'audio/mp3'];
+export const ACCEPTED_MIME_TYPES: readonly string[] = ['audio/mpeg', 'audio/mp3', 'audio/wav'];
 
 /** The stored MIME type every accepted response normalizes to. */
-const STORED_MIME_TYPE: AudioMimeType = 'audio/mpeg';
+function storedMimeType(declared: string): AudioMimeType {
+  return declared === 'audio/wav' ? 'audio/wav' : 'audio/mpeg';
+}
 
 export interface VerifiedAudio {
   readonly bytes: ArrayBuffer;
@@ -75,5 +77,9 @@ export async function verifyAudio(
       ),
     );
   }
-  return ok({ bytes: response.bytes, mimeType: STORED_MIME_TYPE, declaredMimeType });
+  return ok({
+    bytes: response.bytes,
+    mimeType: storedMimeType(declaredMimeType),
+    declaredMimeType,
+  });
 }

@@ -2,6 +2,8 @@
 export interface TextModelConfig {
   /** Exact provider model ID. No aliases, no defaults, no fuzzy matching. */
   readonly modelId: string;
+  /** Provider-advertised reasoning effort, when the learner selected one. */
+  readonly reasoningEffort?: string | null;
 }
 
 /**

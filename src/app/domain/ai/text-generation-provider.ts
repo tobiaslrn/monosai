@@ -18,6 +18,7 @@ import type { TranslationBatchRequest, TranslationResult } from './translation-r
 export interface TextTaskConfig {
   readonly modelId: string;
   readonly structuredOutput: StructuredOutputMode;
+  readonly reasoningEffort?: string | null;
 }
 
 /** One word the model must remove or replace, with the reason it must go. */

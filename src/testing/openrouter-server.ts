@@ -378,7 +378,9 @@ export class FakeOpenRouterServer {
       default:
         return new Response(mp3Bytes(2048), {
           status: 200,
-          headers: { 'Content-Type': 'audio/mpeg' },
+          headers: {
+            'Content-Type': body['response_format'] === 'pcm' ? 'audio/pcm' : 'audio/mpeg',
+          },
         });
     }
   }

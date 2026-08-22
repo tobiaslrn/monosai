@@ -76,8 +76,10 @@ describe('OpenRouterTtsSynthesizer', () => {
       return;
     }
     expect(result.value.speedApplied).toBe(false);
+    expect(result.value.mimeType).toBe('audio/wav');
     expect(harness.server.callCount).toBe(1);
     expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
+    expect(harness.server.requests[0]?.body['response_format']).toBe('pcm');
   });
 
   it('rejects audio in a format the cache cannot store', async () => {

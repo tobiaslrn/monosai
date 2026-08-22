@@ -1,11 +1,13 @@
 import { DOCUMENT, inject, type Provider } from '@angular/core';
 import {
+  MODEL_CATALOG,
   TEXT_GENERATION_PROVIDER,
   TEXT_TO_SPEECH_PROVIDER,
 } from '../../application/shared/ai-tokens';
 import { CREDENTIAL_REPOSITORY } from '../../application/shared/repository-tokens';
 import { createAudioDecoder } from './audio-decode';
 import { OpenRouterClient } from './openrouter-client';
+import { OpenRouterModelCatalog } from './model-catalog.adapter';
 import { OpenRouterTextProvider } from './openrouter-text-provider';
 import { OpenRouterTextToSpeechProvider } from './openrouter-tts.provider';
 import { OpenRouterTextModelTester } from './text-model-test.adapter';
@@ -36,6 +38,16 @@ export function provideOpenRouter(): Provider[] {
   };
 
   return [
+    {
+      provide: MODEL_CATALOG,
+      useFactory: () => {
+        const view = inject(DOCUMENT).defaultView;
+        return new OpenRouterModelCatalog(
+          inject(CREDENTIAL_REPOSITORY),
+          () => view?.navigator.onLine ?? true,
+        );
+      },
+    },
     {
       provide: TEXT_GENERATION_PROVIDER,
       useFactory: () => {

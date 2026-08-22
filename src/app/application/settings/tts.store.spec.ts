@@ -95,6 +95,43 @@ describe('TtsStore', () => {
     expect(store.readiness()).toBe('ready');
   });
 
+  it('registers a reusable voice preset and makes it active', async () => {
+    const store = await ready();
+
+    await store.registerPreset({
+      id: 'gemini-voice',
+      name: 'Gemini Kore',
+      modelId: 'google/gemini-tts',
+      voiceId: 'Kore',
+      speed: 1,
+    });
+
+    expect(store.activePresetId()).toBe('gemini-voice');
+    expect(settings.tts).toMatchObject({
+      modelId: 'google/gemini-tts',
+      voiceId: 'Kore',
+      activePresetId: 'gemini-voice',
+    });
+    expect(store.readiness()).toBe('untested');
+  });
+
+  it('clears voice configuration when the last registered preset is removed', async () => {
+    const store = await ready();
+    await store.registerPreset({
+      id: 'voice',
+      name: 'Voice',
+      modelId: 'vendor/tts',
+      voiceId: 'Kore',
+      speed: 1,
+    });
+
+    await store.removePreset('voice');
+
+    expect(store.presets()).toEqual([]);
+    expect(settings.tts).toMatchObject({ activePresetId: null, modelId: '', voiceId: '' });
+    expect(store.readiness()).toBe('not-configured');
+  });
+
   it('reports a speed the provider ignored rather than implying it applied', async () => {
     provider.result = ok(ttsTest(false));
     const store = await ready();

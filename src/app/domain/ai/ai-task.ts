@@ -8,6 +8,7 @@
  * declared ahead of the code that uses it.
  */
 export type AiTask =
+  | 'model-discovery'
   | 'text-model-test'
   | 'tts-test'
   | 'story-generation'
@@ -18,6 +19,7 @@ export type AiTask =
   | 'tts-synthesis';
 
 export const ALL_AI_TASKS: readonly AiTask[] = [
+  'model-discovery',
   'text-model-test',
   'tts-test',
   'story-generation',

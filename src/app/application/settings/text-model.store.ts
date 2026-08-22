@@ -4,6 +4,7 @@ import { textModelFingerprint } from '../../domain/ai/configuration-fingerprint'
 import { readinessOf, type ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import {
   DEFAULT_TEXT_MODEL_SETTINGS,
+  type TextModelPreset,
   type TextModelSettings,
 } from '../../domain/settings/settings';
 import type { StorageError } from '../../domain/storage/storage-error';
@@ -48,6 +49,8 @@ export class TextModelStore {
    * format-recovery request every run to rediscover it. See ADR 0020.
    */
   readonly structuredOutput = computed(() => this.settingsSignal().structuredOutput);
+  readonly presets = computed(() => this.settingsSignal().presets);
+  readonly activePresetId = computed(() => this.settingsSignal().activePresetId);
 
   readonly lastTestedAt = computed(() => this.settingsSignal().lastTestedAt);
 
@@ -82,6 +85,68 @@ export class TextModelStore {
     this.draftSignal.set(modelId);
   }
 
+  async registerPreset(preset: TextModelPreset): Promise<boolean> {
+    const current = this.settingsSignal();
+    const presets = [...current.presets.filter((item) => item.id !== preset.id), preset];
+    const saved = await this.repository.updateTextModelSettings({
+      presets,
+      activePresetId: preset.id,
+      modelId: preset.modelId,
+      reasoningEffort: preset.reasoningEffort,
+      structuredOutput: null,
+      lastTestFingerprint: null,
+      lastTestedAt: null,
+    });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    this.draftSignal.set(preset.modelId);
+    this.testFailureSignal.set(null);
+    return true;
+  }
+
+  async selectPreset(id: string): Promise<boolean> {
+    if (this.settingsSignal().activePresetId === id) {
+      return true;
+    }
+    const preset = this.settingsSignal().presets.find((item) => item.id === id);
+    return preset === undefined ? false : this.registerPreset(preset);
+  }
+
+  async removePreset(id: string): Promise<boolean> {
+    const current = this.settingsSignal();
+    const removed = current.presets.find((preset) => preset.id === id);
+    if (removed === undefined) {
+      return true;
+    }
+    const presets = current.presets.filter((preset) => preset.id !== id);
+    const replacement = current.activePresetId === id ? (presets[0] ?? null) : null;
+    const saved = await this.repository.updateTextModelSettings({
+      presets,
+      ...(current.activePresetId === id
+        ? {
+            activePresetId: replacement?.id ?? null,
+            modelId: replacement?.modelId ?? '',
+            reasoningEffort: replacement?.reasoningEffort ?? null,
+            structuredOutput: null,
+            lastTestFingerprint: null,
+            lastTestedAt: null,
+          }
+        : {}),
+    });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    this.draftSignal.set(saved.value.modelId);
+    this.testFailureSignal.set(null);
+    this.storageFailureSignal.set(null);
+    return true;
+  }
+
   /** Stores the model ID. The stored test result is left alone and reads stale. */
   async save(): Promise<boolean> {
     this.actionSignal.set('saving');
@@ -101,6 +166,8 @@ export class TextModelStore {
     // moment the model changes; readiness reads stale for the same reason.
     const saved = await this.repository.updateTextModelSettings({
       modelId,
+      activePresetId: null,
+      reasoningEffort: null,
       structuredOutput: null,
     });
     if (!saved.ok) {
@@ -140,7 +207,10 @@ export class TextModelStore {
       return;
     }
 
-    const result = await this.provider.testConfiguration({ modelId }, controller.signal);
+    const result = await this.provider.testConfiguration(
+      { modelId, reasoningEffort: this.settingsSignal().reasoningEffort },
+      controller.signal,
+    );
 
     // A late answer from a superseded attempt must not overwrite the current one.
     if (this.controller !== controller) {
@@ -174,6 +244,9 @@ export class TextModelStore {
   }
 
   private fingerprintFor(modelId: string): string {
-    return textModelFingerprint(this.hasher, this.credential.keyGeneration(), { modelId });
+    return textModelFingerprint(this.hasher, this.credential.keyGeneration(), {
+      modelId,
+      reasoningEffort: this.settingsSignal().reasoningEffort,
+    });
   }
 }

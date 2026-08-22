@@ -142,6 +142,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
  * been given words here.
  */
 export const AI_TASK_COPY: Record<AiTask, string> = {
+  'model-discovery': 'looking up model capabilities',
   'text-model-test': 'testing your text model',
   'tts-test': 'testing your voice',
   'story-generation': 'writing your story',

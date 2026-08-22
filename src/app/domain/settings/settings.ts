@@ -61,6 +61,7 @@ export function clampTextScale(scale: number): number {
 
 export interface TextModelSettings {
   readonly modelId: string;
+  readonly reasoningEffort: string | null;
   readonly lastTestFingerprint: string | null;
   readonly lastTestedAt: number | null;
   /**
@@ -72,13 +73,25 @@ export interface TextModelSettings {
    * the configuration. See ADR 0020.
    */
   readonly structuredOutput: StructuredOutputMode | null;
+  readonly activePresetId: string | null;
+  readonly presets: readonly TextModelPreset[];
+}
+
+export interface TextModelPreset {
+  readonly id: string;
+  readonly name: string;
+  readonly modelId: string;
+  readonly reasoningEffort: string | null;
 }
 
 export const DEFAULT_TEXT_MODEL_SETTINGS: TextModelSettings = {
   modelId: '',
+  reasoningEffort: null,
   lastTestFingerprint: null,
   lastTestedAt: null,
   structuredOutput: null,
+  activePresetId: null,
+  presets: [],
 };
 
 export interface TtsSettings {
@@ -87,6 +100,16 @@ export interface TtsSettings {
   readonly speed: number;
   readonly lastTestFingerprint: string | null;
   readonly lastTestedAt: number | null;
+  readonly activePresetId: string | null;
+  readonly presets: readonly TtsPreset[];
+}
+
+export interface TtsPreset {
+  readonly id: string;
+  readonly name: string;
+  readonly modelId: string;
+  readonly voiceId: string;
+  readonly speed: number;
 }
 
 export const DEFAULT_TTS_SETTINGS: TtsSettings = {
@@ -95,6 +118,8 @@ export const DEFAULT_TTS_SETTINGS: TtsSettings = {
   speed: 1,
   lastTestFingerprint: null,
   lastTestedAt: null,
+  activePresetId: null,
+  presets: [],
 };
 
 export interface ExceptionPolicy {

@@ -1,6 +1,8 @@
 import { expect, type Page } from '@playwright/test';
 import { stubAnkiConnect } from './anki';
 import {
+  addTextModel,
+  addTtsModel,
   expectReadiness,
   saveApiKey,
   stubOpenRouter,
@@ -178,7 +180,7 @@ export async function stubReviewedCollection(page: Page): Promise<void> {
 export async function configureTextModel(page: Page): Promise<void> {
   await page.goto('/#/settings');
   await saveApiKey(page);
-  await page.getByTestId('text-model-input').fill(TEXT_MODEL);
+  await addTextModel(page, TEXT_MODEL);
   await page.getByTestId('test-text-model').click();
   await expectReadiness(textModelReadiness(page), 'ready');
 }
@@ -192,8 +194,7 @@ export async function configureTextModel(page: Page): Promise<void> {
  */
 export async function configureTts(page: Page): Promise<void> {
   await page.goto('/#/settings');
-  await page.getByTestId('tts-model-input').fill(TTS_MODEL);
-  await page.getByTestId('tts-voice-input').fill(TTS_VOICE);
+  await addTtsModel(page, TTS_MODEL, TTS_VOICE);
   await page.getByTestId('test-tts').click();
   await expectReadiness(ttsReadiness(page), 'ready');
 }
