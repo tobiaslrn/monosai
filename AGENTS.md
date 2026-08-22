@@ -34,6 +34,22 @@ Build Monosai according to the repository specifications. Read the relevant spec
 - Do not leave placeholders, dead code, skipped tests, or unexplained TODOs.
 - Update documentation when behavior or architecture changes.
 
+## UI design
+
+- Make every screen feel intentional, quiet, and task-focused. Remove explanatory or technical copy when the control, state, or action already communicates it clearly.
+- Keep implementation details out of the normal user journey. Put genuinely useful troubleshooting information behind a compact, clearly labelled advanced disclosure.
+- Use the shared Monosai tokens and control classes for buttons, inputs, selects, textareas, choice controls, cards, menus, and dialogs. Do not leave browser-default controls where they clash with the app.
+- Keep controls comfortably rounded, but reserve pill shapes for chips and status badges. Use consistent spacing, borders, typography, hover, focus, disabled, and error states.
+- Place actions beside the field or content they affect. Keep related actions together, use compact intrinsic-width buttons, and avoid stretching buttons or separating a button group across a wide panel.
+- Prefer clear state in the control itself over redundant status text. For example, a masked credential plus a Remove action communicates that a key exists; do not repeat “Saved” in several nearby places.
+- Treat sensitive fields as password inputs. Never render a stored secret into the DOM, and use a masked placeholder when a credential is configured.
+- Lay out related fields in balanced responsive groups. Prevent awkward stretching on desktop and switch to deliberate, consistent stacking on narrow screens rather than cramped wrapping.
+- Style radio and checkbox groups as coherent accessible choices when they are a prominent decision. Keep the native input semantics, keyboard behavior, and visible focus indicator.
+- Keep labels concise and user-oriented. Avoid provider protocols, prompt versions, asset versions, schema numbers, build metadata, and similar implementation language unless it helps resolve a problem.
+- Scope component styles narrowly. Avoid broad element selectors such as `div { ... }` that can leak into nested components or overlays.
+- Preserve standard overlay behavior: keyboard access, visible focus, Escape dismissal, outside-click dismissal, focus return, correct ARIA state, and closing after an action when appropriate.
+- Check light and dark themes at desktop and Android-sized viewports. Do not accept horizontal overflow, clipped controls, excessive whitespace, or touch targets smaller than the shared minimum.
+
 ## Testing
 
 - Add or update tests with every behavior change.
