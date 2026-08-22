@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONTRACT_COLLECTION } from '../../../testing/anki-collection';
 import { FakeAnkiProvider } from '../../../testing/anki-fakes';
 import { configureVocabularyTestBed } from '../../../testing/vocabulary-fakes';
@@ -10,7 +10,6 @@ import {
   PACKAGE_PROVIDER_FACTORY,
 } from '../../application/shared/anki-tokens';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
-import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import { VocabularyPageComponent } from './vocabulary-page.component';
 
@@ -66,21 +65,16 @@ describe('VocabularyPageComponent', () => {
     return element.querySelector(selector)?.textContent.trim() ?? '';
   }
 
-  it('renders one heading and the four sections', async () => {
+  it('renders one heading and a compact overview with unified sources', async () => {
     const { element } = await render();
 
     expect(text(element, 'h1')).toBe('Vocabulary');
-    expect(element.querySelectorAll('section.mn-panel')).toHaveLength(4);
+    expect(element.querySelectorAll('section.mn-panel')).toHaveLength(2);
     expect(
       [...element.querySelectorAll('section.mn-panel h2')].map((heading) =>
         heading.textContent.trim(),
       ),
-    ).toEqual([
-      'Add a vocabulary source',
-      'Anki decks and fields',
-      'Refresh',
-      'Current vocabulary',
-    ]);
+    ).toEqual(['Current', 'Sources']);
   });
 
   it('labels every section for assistive technology', async () => {
@@ -94,36 +88,29 @@ describe('VocabularyPageComponent', () => {
   });
 
   it('offers both source paths', async () => {
-    const { element } = await render();
+    const { element, fixture } = await render();
+
+    element.querySelector<HTMLButtonElement>('[data-testid="add-source"]')?.click();
+    await settle(fixture);
 
     expect(element.querySelector('[data-testid="connect-ankiconnect"]')).not.toBeNull();
     expect(element.querySelector('[data-testid="connect-android"]')).toBeNull();
     expect(element.querySelector('[data-testid="package-input"]')).not.toBeNull();
   });
 
-  it('keeps the mapping editor closed until a source is connected', async () => {
+  it('shows one empty source list before a source is added', async () => {
     const { element } = await render();
 
     expect(element.querySelector('[data-testid="mapping-locked"]')).not.toBeNull();
-    expect(element.querySelector('[data-testid="add-mapping"]')).toBeNull();
+    expect(element.querySelectorAll('[data-testid="add-source"]')).toHaveLength(1);
   });
 
-  it('blocks refresh with an explanation before connecting', async () => {
+  it('does not expose a manual refresh workflow', async () => {
     const { element } = await render();
 
-    const button = element.querySelector<HTMLButtonElement>('[data-testid="start-refresh"]');
-    expect(button?.disabled).toBe(true);
-    expect(text(element, '[data-testid="refresh-blocked"]')).toContain('Connect to a vocabulary');
-  });
-
-  it('opens the mapping editor once discovery succeeds', async () => {
-    const { element, fixture, refresh } = await render();
-
-    await refresh.connect(provider);
-    await settle(fixture);
-
-    expect(element.querySelector('[data-testid="mapping-locked"]')).toBeNull();
-    expect(element.querySelector('[data-testid="add-mapping"]')).not.toBeNull();
+    expect(element.querySelector('[data-testid="start-refresh"]')).toBeNull();
+    expect(element.querySelector('mn-refresh-stepper')).toBeNull();
+    expect(element.querySelector('mn-refresh-summary')).toBeNull();
   });
 
   it('announces politely rather than interrupting', async () => {
@@ -135,24 +122,18 @@ describe('VocabularyPageComponent', () => {
     expect(status?.classList.contains('mn-visually-hidden')).toBe(true);
   });
 
-  it('shows the summary for confirmation once a refresh has run', async () => {
-    const { element, fixture, refresh } = await render();
-    const mappings = TestBed.inject(SourceMappingStore);
+  it('applies a newly added Anki source without asking for refresh or confirmation', async () => {
+    const { element, fixture } = await render();
 
-    await refresh.connect(provider);
-    await mappings.add({
-      providerKind: 'desktop-connect',
-      deckName: 'Core Japanese',
-      deckScope: 'deck-only',
-      noteTypeName: 'Basic',
-      expressionFieldName: 'Expression',
-    });
-    await refresh.refresh();
+    element.querySelector<HTMLButtonElement>('[data-testid="add-source"]')?.click();
     await settle(fixture);
+    element.querySelector<HTMLButtonElement>('[data-testid="connect-ankiconnect"]')?.click();
+    await vi.waitFor(async () => {
+      await settle(fixture);
+      expect(text(element, '[data-testid="current-snapshot"]')).toContain('unique expressions');
+    });
 
-    expect(element.querySelector('[data-testid="confirm-refresh"]')).not.toBeNull();
-    expect(element.querySelector('[data-testid="discard-refresh"]')).not.toBeNull();
-    // Counts only: no list of the extracted expressions anywhere on the page.
+    expect(element.querySelector('[data-testid="confirm-refresh"]')).toBeNull();
     expect(element.textContent).not.toContain('ねこ');
   });
 
@@ -179,8 +160,6 @@ describe('VocabularyPageComponent', () => {
 
   it('shows an empty current vocabulary state before any refresh', async () => {
     const { element } = await render();
-    expect(text(element, '[data-testid="current-snapshot"]')).toContain(
-      'No vocabulary snapshot yet',
-    );
+    expect(text(element, '[data-testid="current-snapshot"]')).toContain('No words yet');
   });
 });

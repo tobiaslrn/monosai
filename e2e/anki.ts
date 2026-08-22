@@ -14,6 +14,9 @@ export function ankiFixture(name: string): Buffer {
 
 /** Uploads one of the committed package fixtures through the real file input. */
 export async function choosePackage(page: Page, name: string): Promise<void> {
+  if ((await page.getByTestId('package-input').count()) === 0) {
+    await page.getByTestId('add-source').click();
+  }
   await page.getByTestId('package-input').setInputFiles({
     name,
     mimeType: 'application/octet-stream',
@@ -105,8 +108,10 @@ export async function readSnapshots(
   );
 }
 
-/** Connects to a package fixture and waits for discovery to open the editor. */
+/** Adds a package source and waits for its vocabulary to be applied. */
 export async function connectPackage(page: Page, fixture: string): Promise<void> {
   await choosePackage(page, fixture);
-  await expect(page.getByTestId('add-mapping')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('current-snapshot')).toContainText('unique expressions', {
+    timeout: 60_000,
+  });
 }
