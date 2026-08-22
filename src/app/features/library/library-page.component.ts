@@ -176,14 +176,14 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     }
 
     .wordmark {
-      font-family: var(--font-japanese);
+      font-family: var(--font-ui);
       letter-spacing: -0.02em;
     }
 
     .wordmark {
       color: var(--text-primary);
       font-size: 24px;
-      font-weight: 600;
+      font-weight: 700;
       white-space: nowrap;
     }
 
@@ -196,9 +196,10 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
     .library-title-row h1 {
       margin: 0;
-      font-family: var(--font-japanese);
+      font-family: var(--font-ui);
       font-size: 28px;
-      font-weight: 500;
+      font-weight: 700;
+      letter-spacing: -0.02em;
     }
 
     .filters {

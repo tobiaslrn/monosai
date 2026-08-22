@@ -41,12 +41,11 @@ const AIDS: readonly AidOption[] = [
     <div>
       <button
         type="button"
-        class="mn-button anchor-button"
+        class="mn-icon-button anchor-button"
         popovertarget="mn-aids-panel"
         aria-label="Aids"
       >
-        <mn-icon name="aids" [size]="18" />
-        <span class="anchor-label" aria-hidden="true">Aids</span>
+        <mn-icon name="aids" />
       </button>
 
       <div id="mn-aids-panel" popover class="panel" role="group" aria-label="Reading aids">
@@ -81,17 +80,6 @@ const AIDS: readonly AidOption[] = [
   styles: `
     .anchor-button {
       anchor-name: --mn-aids-anchor;
-    }
-
-    @media (max-width: 479px) {
-      .anchor-button {
-        width: var(--touch-target);
-        padding-inline: 0;
-      }
-
-      .anchor-label {
-        display: none;
-      }
     }
 
     /*
