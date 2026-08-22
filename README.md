@@ -1,5 +1,9 @@
 # Monosai
 
+<p align="center">
+  <img src="data/brand/monosai-mark.svg" alt="Monosai leaf mark" width="128" />
+</p>
+
 Monosai is a local-first reading app for people learning Japanese. Paste in
 some Japanese text, or open a `.txt` file, and Monosai shows it back to you
 with furigana, word spacing, part-of-speech hints, and short dictionary

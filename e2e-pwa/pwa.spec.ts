@@ -64,6 +64,13 @@ test.describe('installability', () => {
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
     expect(manifestHref).toBe('manifest.webmanifest');
 
+    for (const selector of ['link[rel="icon"]', 'link[rel="apple-touch-icon"]']) {
+      const href = await page.locator(selector).first().getAttribute('href');
+      expect(href, `${selector} should declare an href`).toBeTruthy();
+      const response = await page.request.get(new URL(href!, page.url()).toString());
+      expect(response.ok(), `${selector} ${href} should fetch`).toBe(true);
+    }
+
     const baseHref = await page.locator('base').getAttribute('href');
     expect(baseHref).toBe('/monosai/');
   });

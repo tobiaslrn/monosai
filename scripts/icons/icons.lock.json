@@ -1,6 +1,11 @@
 {
-  "markSha256": "5427cf68e8f053bf7722c0736d21abb8e82e4fd87e4d3fd708be35249d547bd7",
+  "markSha256": "583dd1b05b233fb61282998760472acc83b2757e11c3d7d49fa49a83a7d887e4",
   "icons": [
+    {
+      "file": "favicon-32.png",
+      "size": 32,
+      "purpose": null
+    },
     {
       "file": "icon-192.png",
       "size": 192,

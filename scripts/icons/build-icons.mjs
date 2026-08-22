@@ -5,9 +5,25 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { composeIconSvg } from './lib/compose-svg.mjs';
 import { sha256 } from '../assets/lib/fs-json.mjs';
-import { ICON_TARGETS, ICONS_OUTPUT_DIR, MARK_SOURCE_PATH } from './lib/layout.mjs';
+import { FAVICON_PATH, ICON_TARGETS, ICONS_OUTPUT_DIR, MARK_SOURCE_PATH } from './lib/layout.mjs';
 
 const LOCK_PATH = join(dirname(fileURLToPath(import.meta.url)), 'icons.lock.json');
+
+function createIco(png, size) {
+  const header = Buffer.alloc(22);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(1, 4);
+  header.writeUInt8(size === 256 ? 0 : size, 6);
+  header.writeUInt8(size === 256 ? 0 : size, 7);
+  header.writeUInt8(0, 8);
+  header.writeUInt8(0, 9);
+  header.writeUInt16LE(1, 10);
+  header.writeUInt16LE(32, 12);
+  header.writeUInt32LE(png.length, 14);
+  header.writeUInt32LE(header.length, 18);
+  return Buffer.concat([header, png]);
+}
 
 /**
  * Rasterises the committed brand mark into every icon the manifest declares,
@@ -44,6 +60,10 @@ async function main() {
   } finally {
     await browser.close();
   }
+
+  const favicon = await readFile(join(ICONS_OUTPUT_DIR, 'favicon-32.png'));
+  await writeFile(FAVICON_PATH, createIco(favicon, 32));
+  process.stdout.write('wrote public/favicon.ico (32x32 PNG payload)\n');
 
   const lock = {
     markSha256: sha256(Buffer.from(sourceSvg, 'utf8')),
