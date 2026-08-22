@@ -139,12 +139,9 @@ Explain both paths equally: “Add Japanese you already have” and “Generate 
 
 ### Step 1: Input
 
-- Tabs: Paste text and Text file.
 - Required Japanese text area with live character count and 50,000-character limit.
-- Optional title. File import fills it from filename; pasted text without a title defaults to the first non-empty line truncated for display, otherwise “Untitled reading.” The user can change it before save.
+- Optional title. Pasted text without a title defaults to the first non-empty line truncated for display, otherwise “Untitled reading.” The user can change it before save.
 - Continue remains disabled for empty/over-limit content.
-
-File errors are inline and do not clear a prior pasted draft. Drop zones have an ordinary button equivalent and do not require drag-and-drop.
 
 ### Step 2: Review structure
 

@@ -67,7 +67,7 @@ The concrete tokenizer and open grammar dataset are implementation-time dependen
 | Term | Meaning |
 | --- | --- |
 | Reading | Any saved content opened in the reader; either imported or generated. |
-| Imported reading | Learner-supplied pasted text or UTF-8 text-file content. |
+| Imported reading | Learner-supplied pasted text. |
 | Generated story | Vocabulary-validated Japanese produced by the story pipeline. |
 | Source mapping | One explicit deck + note type + expression field selection. |
 | Vocabulary snapshot | The one current, deduplicated set of eligible visible field values created by the latest successful refresh. |

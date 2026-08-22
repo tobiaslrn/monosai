@@ -25,7 +25,7 @@ import { TextInputStepComponent } from './text-input-step.component';
       <mn-page-header heading="Add text" backTo="/library" backLabel="Back to library" />
 
       @if (store.step() === 'input') {
-        <p class="mn-hint">Paste Japanese, or open a UTF-8 text file.</p>
+        <p class="mn-hint">Paste Japanese text to create a reading.</p>
       } @else {
         <p class="mn-hint">Check how the text was divided into sentences, then save.</p>
       }

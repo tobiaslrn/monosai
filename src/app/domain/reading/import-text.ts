@@ -17,11 +17,7 @@ export type ImportRejectionCode =
   /** Nothing but whitespace, so there is no reading to build. */
   | 'empty'
   /** Longer than `MAXIMUM_IMPORT_CHARACTERS`. */
-  | 'too-long'
-  /** The chosen file is not decodable as UTF-8. */
-  | 'not-utf8'
-  /** The file decoded, but holds no visible text. */
-  | 'no-visible-text';
+  | 'too-long';
 
 export interface ImportRejection {
   readonly code: ImportRejectionCode;
@@ -73,33 +69,19 @@ export interface ValidatedImportText {
   readonly characterCount: number;
 }
 
-/** Accepted text, or the one reason it was refused. */
+/** Accepted pasted text, or the one reason it was refused. */
 export type ImportTextOutcome =
   | { readonly ok: true; readonly value: ValidatedImportText }
   | { readonly ok: false; readonly error: ImportRejection };
 
-export type DecodeOutcome =
-  | { readonly ok: true; readonly value: string }
-  | { readonly ok: false; readonly error: ImportRejection };
-
 /**
- * Validates already-normalized text.
- *
- * `emptyCode` distinguishes an empty paste box from a file that decoded but
- * turned out to hold no visible text; the specification requires those to read
- * as different problems.
+ * Validates pasted text.
  */
-export function validateImportText(
-  text: string,
-  emptyCode: Extract<ImportRejectionCode, 'empty' | 'no-visible-text'> = 'empty',
-): ImportTextOutcome {
+export function validateImportText(text: string): ImportTextOutcome {
   if (!hasVisibleText(text)) {
     return {
       ok: false,
-      error:
-        emptyCode === 'empty'
-          ? rejection('empty', 'Enter some Japanese text before continuing.')
-          : rejection('no-visible-text', 'That file contains no visible text.'),
+      error: rejection('empty', 'Enter some Japanese text before continuing.'),
     };
   }
 
@@ -116,26 +98,4 @@ export function validateImportText(
   }
 
   return { ok: true, value: { text, characterCount } };
-}
-
-/**
- * Decodes file bytes as strict UTF-8.
- *
- * Strict decoding is the point: a Shift_JIS file would otherwise decode into
- * replacement characters and be saved as permanently corrupted Japanese, so a
- * decoding failure must reach the learner as its own error.
- */
-export function decodeUtf8(bytes: BufferSource): DecodeOutcome {
-  try {
-    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    return { ok: true, value: normalizeImportedText(text) };
-  } catch {
-    return {
-      ok: false,
-      error: rejection(
-        'not-utf8',
-        'That file is not UTF-8 text. Re-save it as UTF-8 and try again.',
-      ),
-    };
-  }
 }

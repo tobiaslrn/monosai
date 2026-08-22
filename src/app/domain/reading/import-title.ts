@@ -19,22 +19,6 @@ function truncate(text: string, limit: number): string {
   return characters.length <= limit ? text : `${characters.slice(0, limit - 1).join('')}…`;
 }
 
-/**
- * Strips the extension from a file name.
- *
- * A leading-dot name such as `.gitignore` has no extension to remove, and a
- * name with several dots keeps everything before the last one.
- */
-export function titleFromFileName(fileName: string): string {
-  const withoutPath = fileName.split(/[\\/]/).pop() ?? fileName;
-  const lastDot = withoutPath.lastIndexOf('.');
-  const stem = lastDot > 0 ? withoutPath.slice(0, lastDot) : withoutPath;
-  const trimmed = stem.trim();
-  return trimmed.length === 0
-    ? FALLBACK_READING_TITLE
-    : truncate(trimmed, MAXIMUM_DERIVED_TITLE_LENGTH);
-}
-
 /** Uses the first non-empty line of pasted text, truncated for display. */
 export function titleFromPastedText(text: string): string {
   for (const line of text.split('\n')) {

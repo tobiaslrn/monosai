@@ -326,64 +326,8 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
   });
 });
 
-/** End-to-end scenario 2: file import, with distinct encoding and size errors. */
-test.describe('scenario 2 — file import and its errors', () => {
-  test('imports a UTF-8 file and takes the title from its name', async ({ page }) => {
-    await page.goto('/#/add');
-    await page.getByRole('tab', { name: 'Text file' }).click();
-
-    await page.getByLabel('Choose a UTF-8 .txt file').setInputFiles({
-      name: '第一章.txt',
-      mimeType: 'text/plain',
-      buffer: Buffer.from(SAMPLE_TEXT, 'utf8'),
-    });
-
-    await expect(page.getByText(/Loaded 第一章\.txt/)).toBeVisible();
-    await expect(page.getByLabel('Title (optional)')).toHaveAttribute('placeholder', '第一章');
-
-    await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByRole('button', { name: 'Save reading' })).toBeEnabled({
-      timeout: 60_000,
-    });
-    await page.getByRole('button', { name: 'Save reading' }).click();
-
-    await expect(page).toHaveURL(/#\/reader\//);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('第一章');
-  });
-
-  test('rejects a file that is not UTF-8 without losing a pasted draft', async ({ page }) => {
-    await page.goto('/#/add');
-    await page.getByLabel('Japanese text').fill('もとの文章。');
-
-    await page.getByRole('tab', { name: 'Text file' }).click();
-    await page.getByLabel('Choose a UTF-8 .txt file').setInputFiles({
-      name: 'shift-jis.txt',
-      mimeType: 'text/plain',
-      // Shift_JIS bytes for 猫, which are not valid UTF-8.
-      buffer: Buffer.from([0x94, 0x4c]),
-    });
-
-    await expect(page.getByRole('alert')).toContainText('not UTF-8');
-
-    // The pasted draft survives the rejected file.
-    await page.getByRole('tab', { name: 'Paste text' }).click();
-    await expect(page.getByLabel('Japanese text')).toHaveValue('もとの文章。');
-  });
-
-  test('rejects a file with no visible text, distinctly from a bad encoding', async ({ page }) => {
-    await page.goto('/#/add');
-    await page.getByRole('tab', { name: 'Text file' }).click();
-
-    await page.getByLabel('Choose a UTF-8 .txt file').setInputFiles({
-      name: 'blank.txt',
-      mimeType: 'text/plain',
-      buffer: Buffer.from('   \n\n  ', 'utf8'),
-    });
-
-    await expect(page.getByRole('alert')).toContainText('no visible text');
-    await expect(page.getByRole('alert')).not.toContainText('not UTF-8');
-  });
-
+/** End-to-end scenario 2: pasted text validation. */
+test.describe('scenario 2 — pasted text validation', () => {
   test('keeps Continue disabled for pasted text over the 50,000-character limit', async ({
     page,
   }) => {
@@ -393,20 +337,6 @@ test.describe('scenario 2 — file import and its errors', () => {
     await expect(page.getByText('50,001 of 50,000 characters')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
     await expect(page).toHaveURL(/#\/add/);
-  });
-
-  test('rejects an over-limit file and says how long it is', async ({ page }) => {
-    await page.goto('/#/add');
-    await page.getByRole('tab', { name: 'Text file' }).click();
-
-    await page.getByLabel('Choose a UTF-8 .txt file').setInputFiles({
-      name: 'huge.txt',
-      mimeType: 'text/plain',
-      buffer: Buffer.from('あ'.repeat(50_001), 'utf8'),
-    });
-
-    await expect(page.getByRole('alert')).toContainText('50,001 characters');
-    await expect(page.getByRole('alert')).toContainText('limit is 50,000');
   });
 
   test('blocks empty input with an inline message', async ({ page }) => {

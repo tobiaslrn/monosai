@@ -87,7 +87,7 @@ Use Playwright's current stable Chrome channel and two projects:
 Core E2E scenarios:
 
 1. Fresh install -> paste -> segmentation review -> save -> inspect word, with no setup.
-2. UTF-8 file import; invalid encoding and over-limit errors.
+2. Pasted text validation, including empty and over-limit errors.
 3. Grammar empty gate -> cumulative selection/custom rule -> return to preserved generation form.
 4. Local Anki discovery/mapping/refresh -> confirm snapshot -> generation gate becomes ready.
 5. Package fallback with valid and missing-review-evidence fixtures.
