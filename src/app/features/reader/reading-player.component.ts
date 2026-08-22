@@ -5,11 +5,11 @@ import type { SentenceId } from '../../domain/shared/ids';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
 
-/** What the panel is showing, resolved from the job first and playback second. */
+/** What the player is showing, resolved from the job first and playback second. */
 export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
 
 /**
- * Everything to do with a reading's audio, in one panel.
+ * Everything to do with a reading's audio, in one player.
  *
  * Generating it, watching that run, recovering from a failure, and playing the
  * result used to be three surfaces in three places — a menu entry, a hairline in
@@ -18,9 +18,9 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
  * header's audio button is always there, and this is what it opens.
  *
  * It reads the root playback store directly rather than being handed its state,
- * because playback is application-wide and outlives the panel being open.
+ * because playback is application-wide and outlives the player being open.
  *
- * **Nothing here starts on mount.** Opening the panel loads no audio and sends
+ * **Nothing here starts on mount.** Opening the player loads no audio and sends
  * no request: the first sound and the first spend are both a press.
  */
 @Component({
@@ -28,7 +28,7 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent],
   template: `
-    <div class="player" role="group" aria-label="Reading audio">
+    <div class="player">
       @switch (mode()) {
         @case ('generating') {
           <div
@@ -68,7 +68,7 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
               type="button"
               class="mn-icon-button"
               aria-label="Previous sentence"
-              [disabled]="!store.isActive()"
+              [disabled]="!canNavigate()"
               (click)="previous()"
             >
               <mn-icon name="skip-back" [size]="18" />
@@ -99,20 +99,10 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
               type="button"
               class="mn-icon-button"
               aria-label="Next sentence"
-              [disabled]="!store.isActive()"
+              [disabled]="!canNavigate()"
               (click)="next()"
             >
               <mn-icon name="skip-forward" [size]="18" />
-            </button>
-
-            <button
-              type="button"
-              class="mn-icon-button"
-              aria-label="Stop"
-              [disabled]="!store.isActive()"
-              (click)="store.stop()"
-            >
-              <mn-icon name="stop" [size]="18" />
             </button>
           </div>
 
@@ -130,7 +120,7 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
 
           <!--
             Start from where the learner is rather than from the top. Offered
-            only when a sentence was open when the panel was opened, because
+            only when a sentence was open when the player was opened, because
             "this sentence" needs somewhere to mean.
           -->
           @if (canStartFromSelection()) {
@@ -158,7 +148,7 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
       display: flex;
       flex-direction: column;
       gap: var(--space-3);
-      min-width: 15rem;
+      min-width: 0;
     }
 
     .controls {
@@ -230,7 +220,7 @@ export class ReadingPlayerComponent {
   protected readonly store = inject(AudioPlaybackStore);
 
   readonly progress = input.required<AudioJobProgress>();
-  /** The sentence that was open when the panel was opened, for Start from here. */
+  /** The sentence that was selected when the player was opened, for Start from here. */
   readonly selectedSentenceId = input<SentenceId | null>(null);
 
   readonly generate = output<void>();
@@ -259,8 +249,11 @@ export class ReadingPlayerComponent {
   protected readonly isLoading = computed(() => this.store.status() === 'loading');
 
   protected readonly playLabel = computed(() =>
-    this.store.status() === 'paused' ? 'Resume' : 'Play this reading',
+    this.store.status() === 'paused' ? 'Resume' : 'Play',
   );
+
+  /** Navigation only makes sense once a clip has become the active sentence. */
+  protected readonly canNavigate = computed(() => this.store.currentSentenceId() !== null);
 
   protected readonly percent = computed(() => {
     const total = this.store.sentenceCount();

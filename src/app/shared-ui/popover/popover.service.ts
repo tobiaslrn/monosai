@@ -33,10 +33,13 @@ export interface PopoverOptions {
   readonly onClosed?: () => void;
   /**
    * A modal popover (the default) takes focus, dismisses on `Escape` or a click
-   * away, and docks as a sheet on a phone. A non-modal one is a hover preview:
-   * it never takes focus, never intercepts a pointer, and stays anchored.
+   * away, and docks as a sheet on a phone unless `mobileSheet` is false. A
+   * non-modal one is a hover preview: it never takes focus, never intercepts a
+   * pointer, and stays anchored.
    */
   readonly modal?: boolean;
+  /** Whether a modal surface should dock to the bottom on a mobile viewport. */
+  readonly mobileSheet?: boolean;
   /**
    * Closes the popover as soon as the page scrolls.
    *
@@ -95,7 +98,7 @@ export class PopoverService {
     this.close();
 
     const modal = options.modal ?? true;
-    const sheet = modal && this.viewport.isMobile();
+    const sheet = modal && options.mobileSheet !== false && this.viewport.isMobile();
     const overlayRef = createOverlayRef(this.injector, {
       positionStrategy: sheet
         ? createGlobalPositionStrategy(this.injector).bottom('0').left('0')
@@ -108,8 +111,13 @@ export class PopoverService {
       // should not scroll; an anchored popover follows its anchor instead.
       scrollStrategy: sheet ? createBlockScrollStrategy(this.injector) : undefined,
       hasBackdrop: modal,
-      backdropClass: 'cdk-overlay-transparent-backdrop',
+      backdropClass: ['cdk-overlay-transparent-backdrop', 'reader-popover-backdrop'],
       panelClass: panelClasses(modal, sheet),
+      // The reader's independent audio player must be able to stack above
+      // these surfaces. Native popovers live in the browser top layer, where
+      // no regular fixed surface can be placed above them; PopoverService
+      // already owns the focus and dismissal behavior we need here.
+      usePopover: false,
     });
 
     overlayRef.attach(new TemplatePortal(options.template, options.viewContainerRef));
@@ -124,6 +132,33 @@ export class PopoverService {
       options.returnFocusTo?.focus();
       options.onClosed?.();
     };
+
+    if (modal) {
+      /**
+       * The transparent CDK backdrop still owns dismissal, but it cannot own
+       * pointer hit-testing: the reader header and independent audio player
+       * deliberately sit above it. Capture the same outside-click rule here,
+       * letting the Audio toggle receive its own click without dismissing the
+       * current reader popover. Other outside clicks keep their old behavior.
+       */
+      const onPointerDown = (event: Event): void => {
+        const target = event.target;
+        if (!(target instanceof Node) || overlayRef.overlayElement.contains(target)) {
+          return;
+        }
+        const element = target instanceof Element ? target : target.parentElement;
+        if (element?.closest('.audio-button') !== null) {
+          return;
+        }
+        close();
+        event.preventDefault();
+        event.stopPropagation();
+      };
+      document.addEventListener('pointerdown', onPointerDown, true);
+      overlayRef.detachments().subscribe(() => {
+        document.removeEventListener('pointerdown', onPointerDown, true);
+      });
+    }
 
     if (options.closeOnScroll === true) {
       // Armed a frame late and only for scrolls outside the card: a docked

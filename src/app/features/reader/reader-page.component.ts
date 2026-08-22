@@ -12,6 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
+import { DomPortal, DomPortalOutlet } from '@angular/cdk/portal';
 import { Router, RouterLink } from '@angular/router';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
@@ -93,7 +94,11 @@ const SCROLL_SETTLE_MS = 1000;
   ],
   providers: [ReaderStore, WordInspectorStore, SentenceAidsStore],
   template: `
-    <div class="reader" [style.--reader-scale]="textScale()">
+    <div
+      class="reader"
+      [class.has-audio-player]="audioPlayerOpen()"
+      [style.--reader-scale]="textScale()"
+    >
       <header class="bar">
         <div class="bar-row">
           <a class="mn-icon-button" routerLink="/library" aria-label="Back to library">
@@ -105,18 +110,17 @@ const SCROLL_SETTLE_MS = 1000;
             <!--
               Always here, whether or not this reading has any audio. It is the
               only place in the reader that says Monosai can read aloud at all,
-              and the panel behind it owns every audio state there is.
+              and the player behind it owns every audio state there is.
             -->
             <button
               type="button"
               class="mn-icon-button audio-button"
-              #audioButton
               [class.is-busy]="audioJob.isRunning()"
               [class.is-playing]="playback.isActive()"
-              [attr.aria-expanded]="audioPanelOpen()"
-              aria-haspopup="dialog"
+              [attr.aria-expanded]="audioPlayerOpen()"
+              aria-controls="reading-audio-player"
               [attr.aria-label]="audioButtonLabel()"
-              (click)="openAudioPanel()"
+              (click)="toggleAudioPlayer()"
             >
               <mn-icon name="audio" />
             </button>
@@ -199,21 +203,27 @@ const SCROLL_SETTLE_MS = 1000;
       </main>
     </div>
 
-    <ng-template #audioPanel>
-      <mn-reader-popover label="Reading audio">
+    @if (audioPlayerOpen()) {
+      <div
+        #audioPlayerShell
+        id="reading-audio-player"
+        class="audio-player-shell"
+        role="region"
+        aria-label="Reading audio"
+      >
         <mn-reading-player
           [progress]="audioJob.progress()"
-          [selectedSentenceId]="audioPanelSentenceId()"
+          [selectedSentenceId]="audioPlayerSentenceId()"
           (generate)="startWholeReadingAudio()"
           (cancelGeneration)="audioJob.cancel()"
           (retryGeneration)="retryWholeReadingAudio()"
           (dismissJob)="audioJob.acknowledge()"
         />
-      </mn-reader-popover>
-    </ng-template>
+      </div>
+    }
 
     <ng-template #sentencePopover>
-      <mn-reader-popover label="Sentence details">
+      <mn-reader-popover label="Sentence details" [mobileSheet]="false">
         <mn-sentence-popover
           [aids]="selectedSentenceAids()"
           [canAnalyze]="canAnalyzeGrammar()"
@@ -231,7 +241,7 @@ const SCROLL_SETTLE_MS = 1000;
     </ng-template>
 
     <ng-template #wordPopover>
-      <mn-reader-popover label="Word details">
+      <mn-reader-popover label="Word details" [mobileSheet]="false">
         <mn-word-inspector
           [grammar]="wordGrammar()"
           (sentenceRequested)="openSentenceFromWord()"
@@ -273,6 +283,10 @@ const SCROLL_SETTLE_MS = 1000;
       margin-inline: auto;
     }
 
+    .reader.has-audio-player {
+      padding-bottom: calc(20rem + var(--space-4) + env(safe-area-inset-bottom));
+    }
+
     /*
      * Sticky, opaque, and above the text: ruby annotations overflow above their
      * line, and without its own stacking context they would sit over the header
@@ -281,7 +295,7 @@ const SCROLL_SETTLE_MS = 1000;
     .bar {
       position: sticky;
       top: 0;
-      z-index: 4;
+      z-index: 1001;
       grid-area: bar;
       /*
        * A grid item is sized by its content unless it is allowed to shrink, and
@@ -323,7 +337,7 @@ const SCROLL_SETTLE_MS = 1000;
       color: var(--text-on-action);
     }
 
-    /* A job is running behind a closed panel; the button is the only sign of it. */
+    /* A job is running behind a closed player; the button is the only sign of it. */
     .audio-button.is-busy {
       color: var(--action-primary);
       animation: audio-pulse 1.6s ease-in-out infinite;
@@ -346,6 +360,25 @@ const SCROLL_SETTLE_MS = 1000;
       z-index: 0;
       grid-area: content;
       min-width: 0;
+    }
+
+    .audio-player-shell {
+      position: fixed;
+      z-index: 1002;
+      right: 0;
+      bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+      left: 50%;
+      box-sizing: border-box;
+      width: min(34rem, calc(100vw - 2 * var(--space-4)));
+      max-height: min(20rem, calc(100dvh - 2 * var(--space-4) - env(safe-area-inset-bottom)));
+      padding: var(--space-4);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      background: var(--surface-panel);
+      box-shadow: var(--shadow-overlay);
+      transform: translateX(-50%);
     }
 
     /* Room for the ruby above the first line of the reading. */
@@ -381,10 +414,11 @@ export class ReaderPageComponent {
   private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
   private readonly viewContainerRef = inject(ViewContainerRef);
+  private readonly audioPlayerOutlet = new DomPortalOutlet(document.body);
+  private audioPlayerPortal: DomPortal<HTMLElement> | null = null;
 
   private readonly content = viewChild<ElementRef<HTMLElement>>('content');
-  private readonly audioButton = viewChild<ElementRef<HTMLElement>>('audioButton');
-  private readonly audioPanel = viewChild.required<TemplateRef<unknown>>('audioPanel');
+  private readonly audioPlayerShell = viewChild<ElementRef<HTMLElement>>('audioPlayerShell');
   private readonly wordPopover = viewChild.required<TemplateRef<unknown>>('wordPopover');
   private readonly wordPreview = viewChild.required<TemplateRef<unknown>>('wordPreview');
   private readonly sentencePopover = viewChild.required<TemplateRef<unknown>>('sentencePopover');
@@ -392,7 +426,7 @@ export class ReaderPageComponent {
   private readonly bottomSentinel = viewChild<ElementRef<HTMLElement>>('bottomSentinel');
 
   private readonly selectedSentenceIdSignal = signal<SentenceId | null>(null);
-  /** The open sentence, tinted so a docked sheet is not orphaned from it. */
+  /** The open sentence, tinted so its anchored details stay related to it. */
   protected readonly selectedSentenceId = this.selectedSentenceIdSignal.asReadonly();
 
   protected readonly preferences = this.settings.readerPreferences;
@@ -480,26 +514,27 @@ export class ReaderPageComponent {
    * is never re-analysed: that would judge frozen text by a profile it was
    * never written for.
    */
-  private readonly audioPanelOpenSignal = signal(false);
-  protected readonly audioPanelOpen = this.audioPanelOpenSignal.asReadonly();
+  private readonly audioPlayerOpenSignal = signal(false);
+  protected readonly audioPlayerOpen = this.audioPlayerOpenSignal.asReadonly();
 
   /**
-   * The sentence that was open when the audio panel was opened.
-   *
-   * Opening the panel closes the sentence popover, which clears the selection —
-   * so Start from this sentence has to remember what "this" meant a moment ago
-   * rather than reading a signal that has already been reset.
+   * The sentence that was selected when the audio player was opened. The
+   * player is independent from sentence and word popovers, so the selection
+   * remains visible while this captured value powers Start from this sentence.
    */
-  private readonly audioPanelSentenceIdSignal = signal<SentenceId | null>(null);
-  protected readonly audioPanelSentenceId = this.audioPanelSentenceIdSignal.asReadonly();
+  private readonly audioPlayerSentenceIdSignal = signal<SentenceId | null>(null);
+  protected readonly audioPlayerSentenceId = this.audioPlayerSentenceIdSignal.asReadonly();
 
   /** The audio button says its state out loud, because its icon never changes. */
   protected readonly audioButtonLabel = computed(() => {
     if (this.audioJob.isRunning()) {
       return 'Audio, being generated';
     }
-    if (this.playback.isActive()) {
+    if (this.playback.status() === 'playing') {
       return 'Audio, playing';
+    }
+    if (this.playback.status() === 'paused') {
+      return 'Audio, paused';
     }
     return this.playback.canPlayWholeReading() ? 'Audio, ready' : 'Audio';
   });
@@ -609,6 +644,20 @@ export class ReaderPageComponent {
       }
     });
 
+    effect(() => {
+      if (!this.audioPlayerOpenSignal()) {
+        return;
+      }
+      // The conditional wrapper is rendered in this view, then moved into the
+      // body after the CDK overlay container. That keeps the regular fixed
+      // surface above a reader popover pane without making the player an
+      // overlay or changing the popover service's ownership.
+      this.audioPlayerShell();
+      queueMicrotask(() => {
+        this.attachAudioPlayerShell();
+      });
+    });
+
     const suppressFollow = (): void => {
       // Only a scroll the learner made themselves counts. The programmatic one
       // in `revealSentence` sets its own guard, so following never switches
@@ -624,6 +673,9 @@ export class ReaderPageComponent {
     inject(DestroyRef).onDestroy(() => {
       this.endPreview();
       this.popover.close();
+      if (this.audioPlayerOutlet.hasAttached()) {
+        this.audioPlayerOutlet.detach();
+      }
       window.removeEventListener('scroll', suppressFollow);
       window.removeEventListener('wheel', suppressFollow);
       window.removeEventListener('touchmove', suppressFollow);
@@ -663,26 +715,36 @@ export class ReaderPageComponent {
   }
 
   /**
-   * Opens the audio panel: anchored to its button on desktop, docked as a sheet
-   * on a phone. Nothing is loaded, requested, or played by opening it.
+   * Toggles the independent floating player. Opening is local and silent;
+   * closing is the header's explicit stop/reset action and never cancels a
+   * generation job.
    */
-  protected openAudioPanel(): void {
-    const origin = this.audioButton()?.nativeElement;
-    if (origin === undefined) {
+  protected toggleAudioPlayer(): void {
+    if (this.audioPlayerOpenSignal()) {
+      if (this.audioPlayerOutlet.hasAttached()) {
+        this.audioPlayerOutlet.detach();
+      }
+      this.audioPlayerPortal = null;
+      this.playback.stop();
+      this.audioPlayerSentenceIdSignal.set(null);
+      this.audioPlayerOpenSignal.set(false);
       return;
     }
-    this.audioPanelSentenceIdSignal.set(this.selectedSentenceIdSignal());
-    this.audioPanelOpenSignal.set(true);
-    this.popover.open({
-      origin,
-      template: this.audioPanel(),
-      viewContainerRef: this.viewContainerRef,
-      returnFocusTo: origin,
-      onClosed: () => {
-        this.audioPanelOpenSignal.set(false);
-        this.audioPanelSentenceIdSignal.set(null);
-      },
-    });
+    this.audioPlayerSentenceIdSignal.set(this.selectedSentenceIdSignal());
+    this.audioPlayerOpenSignal.set(true);
+  }
+
+  private attachAudioPlayerShell(): void {
+    const shell = this.audioPlayerShell()?.nativeElement;
+    if (
+      !this.audioPlayerOpenSignal() ||
+      shell === undefined ||
+      this.audioPlayerOutlet.hasAttached()
+    ) {
+      return;
+    }
+    this.audioPlayerPortal = new DomPortal(shell);
+    this.audioPlayerOutlet.attach(this.audioPlayerPortal);
   }
 
   /**
@@ -730,6 +792,7 @@ export class ReaderPageComponent {
       origin,
       template: this.sentencePopover(),
       viewContainerRef: this.viewContainerRef,
+      mobileSheet: false,
       closeOnScroll: true,
       onClosed: () => {
         this.selectedSentenceIdSignal.set(null);
@@ -800,6 +863,7 @@ export class ReaderPageComponent {
       origin: activation.origin,
       template: this.wordPopover(),
       viewContainerRef: this.viewContainerRef,
+      mobileSheet: false,
       returnFocusTo: activation.origin,
       closeOnScroll: true,
       onClosed: () => {

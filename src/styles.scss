@@ -26,3 +26,11 @@
 .mn-popover-pane.is-preview {
   pointer-events: none;
 }
+
+/*
+ * Reader popovers dismiss through PopoverService's capture listener so the
+ * sticky header and the independent audio player can receive their own input.
+ */
+.cdk-overlay-backdrop.reader-popover-backdrop {
+  pointer-events: none;
+}

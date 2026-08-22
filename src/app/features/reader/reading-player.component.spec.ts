@@ -25,6 +25,7 @@ class StubPlaybackStore {
   readonly missing = signal(0);
   readonly position = signal(0);
   readonly total = signal(0);
+  readonly current = signal<SentenceId | null>(null);
   readonly failureSignal = signal<PlaybackFailure | null>(null);
 
   readonly calls: string[] = [];
@@ -34,6 +35,7 @@ class StubPlaybackStore {
   readonly canPlayWholeReading = computed(() => this.gate());
   readonly missingCount = computed(() => this.missing());
   readonly currentPosition = computed(() => this.position());
+  readonly currentSentenceId = this.current.asReadonly();
   readonly sentenceCount = computed(() => this.total());
   readonly isActive = computed(() => this.statusSignal() !== 'idle');
 
@@ -111,7 +113,7 @@ describe('ReadingPlayerComponent', () => {
       expect(element.textContent).toContain('13 sentences');
       expect(element.textContent).toContain('Generate audio');
       // Nothing about playing, because there is nothing to play.
-      expect(control(element, 'Play this reading')).toBeNull();
+      expect(control(element, 'Play')).toBeNull();
     });
 
     it('generates only when the learner asks, and never on open', () => {
@@ -127,7 +129,7 @@ describe('ReadingPlayerComponent', () => {
   });
 
   describe('while it is being generated', () => {
-    it('reports which sentence it has reached, in the panel', () => {
+    it('reports which sentence it has reached, in the player', () => {
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'running',
@@ -234,8 +236,12 @@ describe('ReadingPlayerComponent', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(element.textContent).toContain('6 sentences ready');
-      expect(control(element, 'Play this reading')).not.toBeNull();
+      expect(control(element, 'Play')).not.toBeNull();
       expect(element.textContent).not.toContain('Generate audio');
+      expect(control(element, 'Previous sentence')).not.toBeNull();
+      expect(control(element, 'Pause')).toBeNull();
+      expect(control(element, 'Next sentence')).not.toBeNull();
+      expect(control(element, 'Stop')).toBeNull();
     });
 
     it('plays on the learner pressing play, and never on its own', () => {
@@ -243,13 +249,14 @@ describe('ReadingPlayerComponent', () => {
 
       expect(store.calls).toEqual([]);
 
-      control(fixture.nativeElement as HTMLElement, 'Play this reading')?.click();
+      control(fixture.nativeElement as HTMLElement, 'Play')?.click();
 
       expect(store.calls).toEqual(['play']);
     });
 
     it('offers pause while playing, and resume once paused', () => {
       store.position.set(2);
+      store.current.set(sentenceId('s2'));
       store.statusSignal.set('playing');
       const fixture = render();
       const element = fixture.nativeElement as HTMLElement;
@@ -265,23 +272,23 @@ describe('ReadingPlayerComponent', () => {
       expect(store.calls).toEqual(['pause', 'resume']);
     });
 
-    it('leaves the transport disabled while nothing is playing', () => {
+    it('leaves previous and next disabled until a sentence is active', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(control(element, 'Next sentence')?.disabled).toBe(true);
       expect(control(element, 'Previous sentence')?.disabled).toBe(true);
-      expect(control(element, 'Stop')?.disabled).toBe(true);
+      expect(control(element, 'Stop')).toBeNull();
     });
 
-    it('steps and stops once something is playing', () => {
+    it('steps once something is playing', () => {
       store.statusSignal.set('playing');
+      store.current.set(sentenceId('s2'));
       const element = render().nativeElement as HTMLElement;
 
       control(element, 'Next sentence')?.click();
       control(element, 'Previous sentence')?.click();
-      control(element, 'Stop')?.click();
 
-      expect(store.calls).toEqual(['next', 'previous', 'stop']);
+      expect(store.calls).toEqual(['next', 'previous']);
     });
 
     it('starts from the open sentence when one is open', () => {

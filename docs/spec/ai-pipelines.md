@@ -241,7 +241,18 @@ Input is the exact saved Japanese sentence. Build the cache key from content, TT
 
 Playback is local once clips exist. Use one audio element/controller, advance by sentence order, update active-sentence styling and Media Session metadata where supported, and scroll only when the active sentence is outside the viewport. User-initiated scrolling disables automatic scrolling until the next explicit player navigation.
 
-Stop on reading deletion, audio-cache clearing, configuration-incompatible missing clip, decode failure, or user Stop. Never autoplay on reader open or after generation.
+The reader's Audio header toggle is the explicit activation boundary for the
+floating player: opening it only reveals the current state and captures the
+selected sentence, while Play, Resume, Previous, Next, and Start from this
+sentence are separate explicit playback actions. No request, load, or sound may
+start because the player was opened or because generation completed.
+
+Closing through that header toggle calls playback Stop, clears the active
+sentence and cursor, and hides the surface. It does not cancel a running
+`prepare-audio` job; its progress and failure remain persisted in the job store.
+Stop on reading deletion, audio-cache clearing, configuration-incompatible
+missing clip, decode failure, or the header-toggle close. Never autoplay on
+reader open or after generation.
 
 ## 12. Retry and backoff policy
 
@@ -286,4 +297,3 @@ Do not include raw response bodies in production errors. UI copy distinguishes O
 - Model returns duplicate/missing sentence IDs; format recovery is bounded and malformed data is never stored.
 - Whole-reading audio fails at sentence N; clips 1..N-1 remain, playback stays disabled, retry resumes at N.
 - API key/model changes do not invalidate previously cached output but current batch completeness uses the new fingerprint.
-

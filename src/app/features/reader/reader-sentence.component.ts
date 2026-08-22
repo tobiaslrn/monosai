@@ -134,9 +134,8 @@ export interface TokenActivation {
     }
 
     /*
-     * The open sentence keeps a tint of its own. Without it a popover docked to
-     * the bottom of a phone screen would be orphaned from the sentence it is
-     * about.
+     * The open sentence keeps a tint of its own. Without it an anchored
+     * popover would be orphaned from the sentence it is about.
      */
     .sentence.is-selected,
     .sentence.is-selected:hover {
