@@ -15,11 +15,10 @@ import { technicalCode } from '../../domain/shared/errors';
   selector: 'mn-language-assets-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mn-panel" aria-labelledby="mn-language-assets-heading">
-      <h2 id="mn-language-assets-heading">Language assets</h2>
+    <section class="language-support" aria-labelledby="mn-language-assets-heading">
+      <h3 id="mn-language-assets-heading">Language support</h3>
       <p class="mn-hint">
-        Japanese analysis, the bundled dictionary, the grammar presets, and the structural baseline
-        are downloaded once and then verified and used offline.
+        Japanese analysis and dictionary data are verified once and then work offline.
       </p>
 
       <p data-testid="language-status" role="status">{{ statusText() }}</p>
@@ -32,8 +31,8 @@ import { technicalCode } from '../../domain/shared/errors';
       }
 
       @if (versions(); as active) {
-        <details class="details">
-          <summary data-testid="language-versions-toggle">Show asset versions</summary>
+        <details class="details mn-disclosure">
+          <summary data-testid="language-versions-toggle">Technical asset details</summary>
           <dl data-testid="language-versions">
             <div>
               <dt>Tokenizer</dt>
@@ -62,8 +61,8 @@ import { technicalCode } from '../../domain/shared/errors';
       }
 
       @if (store.attributions().length > 0) {
-        <details class="details">
-          <summary>Show data sources</summary>
+        <details class="details mn-disclosure">
+          <summary>Data sources and licences</summary>
           <ul data-testid="language-attributions">
             @for (attribution of store.attributions(); track attribution.name) {
               <li>
@@ -77,6 +76,23 @@ import { technicalCode } from '../../domain/shared/errors';
     </section>
   `,
   styles: `
+    :host {
+      display: block;
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .language-support {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    h3,
+    p {
+      margin: 0;
+    }
+
     dl {
       display: flex;
       flex-direction: column;
@@ -101,15 +117,6 @@ import { technicalCode } from '../../domain/shared/errors';
 
     .details {
       border-top: 1px solid var(--border-subtle);
-    }
-
-    summary {
-      display: flex;
-      align-items: center;
-      min-height: var(--touch-target);
-      color: var(--text-primary);
-      font-weight: 500;
-      cursor: pointer;
     }
 
     .details[open] summary {

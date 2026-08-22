@@ -33,6 +33,10 @@ export interface SentenceMergeRequest {
   selector: 'mn-review-sentence',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent],
+  host: {
+    '(document:pointerdown)': 'onDocumentPointerDown($event)',
+    '(keydown.escape)': 'onEscape($event)',
+  },
   template: `
     <div class="row" [class.is-pending]="sentence().tokens === null">
       <span class="ordinal" aria-hidden="true">{{ ordinal() }}</span>
@@ -48,11 +52,13 @@ export interface SentenceMergeRequest {
         (keydown)="onKeydown($event)"
       ></textarea>
 
-      <div class="actions">
+      <div #actions class="actions">
         <button
           #toggle
           type="button"
           class="toggle"
+          aria-haspopup="menu"
+          [attr.aria-controls]="menuId()"
           [attr.aria-expanded]="menuOpen()"
           [attr.aria-label]="'Actions for sentence ' + ordinal()"
           (click)="toggleMenu()"
@@ -61,16 +67,31 @@ export interface SentenceMergeRequest {
         </button>
 
         @if (menuOpen()) {
-          <div class="menu" role="group" [attr.aria-label]="'Sentence ' + ordinal() + ' actions'">
-            <button type="button" (click)="requestSplit()">
+          <div
+            class="menu"
+            role="menu"
+            [id]="menuId()"
+            [attr.aria-label]="'Sentence ' + ordinal() + ' actions'"
+          >
+            <button type="button" role="menuitem" (click)="requestSplit()">
               <mn-icon name="split" [size]="18" />
               <span>Split at cursor</span>
             </button>
-            <button type="button" [disabled]="isFirst()" (click)="requestMerge('previous')">
+            <button
+              type="button"
+              role="menuitem"
+              [disabled]="isFirst()"
+              (click)="requestMerge('previous')"
+            >
               <mn-icon name="merge" [size]="18" />
               <span>Merge with previous</span>
             </button>
-            <button type="button" [disabled]="isLast()" (click)="requestMerge('next')">
+            <button
+              type="button"
+              role="menuitem"
+              [disabled]="isLast()"
+              (click)="requestMerge('next')"
+            >
               <mn-icon name="merge" [size]="18" />
               <span>Merge with next</span>
             </button>
@@ -194,9 +215,11 @@ export class ReviewSentenceComponent {
 
   private readonly textArea = viewChild.required<ElementRef<HTMLTextAreaElement>>('text');
   private readonly toggleButton = viewChild.required<ElementRef<HTMLButtonElement>>('toggle');
+  private readonly actions = viewChild.required<ElementRef<HTMLElement>>('actions');
 
   private readonly menuOpenSignal = signal(false);
   protected readonly menuOpen = this.menuOpenSignal.asReadonly();
+  protected readonly menuId = computed(() => `mn-sentence-actions-${this.sentence().id}`);
 
   protected readonly ordinal = computed(() => this.index() + 1);
   protected readonly isFirst = computed(() => this.index() === 0);
@@ -204,6 +227,24 @@ export class ReviewSentenceComponent {
 
   protected toggleMenu(): void {
     this.menuOpenSignal.update((open) => !open);
+  }
+
+  protected onDocumentPointerDown(event: PointerEvent): void {
+    if (
+      this.menuOpenSignal() &&
+      event.target instanceof Node &&
+      !this.actions().nativeElement.contains(event.target)
+    ) {
+      this.closeMenu(false);
+    }
+  }
+
+  protected onEscape(event: Event): void {
+    if (!this.menuOpenSignal()) {
+      return;
+    }
+    event.preventDefault();
+    this.closeMenu();
   }
 
   /** Ctrl+Enter splits without leaving the text, which keeps the caret in place. */
@@ -231,11 +272,13 @@ export class ReviewSentenceComponent {
     this.merge.emit({ sentenceId: this.sentence().id, direction });
   }
 
-  private closeMenu(): void {
+  private closeMenu(returnFocus = true): void {
     if (!this.menuOpenSignal()) {
       return;
     }
     this.menuOpenSignal.set(false);
-    this.toggleButton().nativeElement.focus();
+    if (returnFocus) {
+      this.toggleButton().nativeElement.focus();
+    }
   }
 }

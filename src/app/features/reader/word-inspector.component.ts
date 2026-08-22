@@ -164,7 +164,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
                 }
               </div>
 
-              <details class="grammar-details">
+              <details class="grammar-details mn-disclosure">
                 <summary>Details</summary>
                 <div class="grammar-explanations">
                   @for (finding of grammar().findings; track $index) {
@@ -352,12 +352,6 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 
     .grammar-details {
       margin-top: var(--space-2);
-    }
-
-    .grammar-details summary {
-      min-height: var(--touch-target);
-      padding-block: var(--space-2);
-      cursor: pointer;
     }
 
     .grammar-explanations {

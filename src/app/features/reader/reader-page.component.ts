@@ -40,6 +40,7 @@ import { PopoverService, type PopoverRef } from '../../shared-ui/popover/popover
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
 import { ReaderAidsComponent } from './reader-aids.component';
 import { ReaderParagraphComponent } from './reader-paragraph.component';
+import { ReaderMenuComponent } from './reader-menu.component';
 import type { SentenceSelection } from './paragraph-gestures.directive';
 import type { SelectedWord, TokenActivation } from './reader-sentence.component';
 import type { UnknownWord } from './sentence-popover.component';
@@ -84,6 +85,7 @@ const SCROLL_SETTLE_MS = 1000;
     IconComponent,
     ReaderAidsComponent,
     ReaderParagraphComponent,
+    ReaderMenuComponent,
     ReaderPopoverComponent,
     ReadingPlayerComponent,
     SentencePopoverComponent,
@@ -105,6 +107,7 @@ const SCROLL_SETTLE_MS = 1000;
           </a>
           <h1>{{ store.reading()?.title }}</h1>
           <div class="bar-actions">
+            <mn-reader-aids />
             <!--
               Always here, whether or not this reading has any audio. It is the
               only place in the reader that says Monosai can read aloud at all,
@@ -122,7 +125,15 @@ const SCROLL_SETTLE_MS = 1000;
             >
               <mn-icon name="audio" />
             </button>
-            <mn-reader-aids />
+            @if (store.reading(); as reading) {
+              <mn-reader-menu
+                [reading]="reading"
+                [isRunning]="translationJob.progress().kind === 'running'"
+                (translateAll)="startWholeReadingTranslation()"
+                (cancelled)="translationJob.cancel()"
+                (deleteRequested)="confirmDelete()"
+              />
+            }
           </div>
         </div>
 

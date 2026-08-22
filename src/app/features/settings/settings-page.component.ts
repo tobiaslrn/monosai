@@ -4,7 +4,6 @@ import { AppSectionComponent } from './app-section.component';
 import { AppearanceSectionComponent } from './appearance-section.component';
 import { DiagnosticsSectionComponent } from './diagnostics-section.component';
 import { GenerationPolicySectionComponent } from './generation-policy-section.component';
-import { LanguageAssetsSectionComponent } from './language-assets-section.component';
 import { LearningDataSectionComponent } from './learning-data-section.component';
 import { ModelsSectionComponent } from './models-section.component';
 import { StorageSectionComponent } from './storage-section.component';
@@ -18,7 +17,6 @@ import { StorageSectionComponent } from './storage-section.component';
     ModelsSectionComponent,
     GenerationPolicySectionComponent,
     AppearanceSectionComponent,
-    LanguageAssetsSectionComponent,
     StorageSectionComponent,
     AppSectionComponent,
     DiagnosticsSectionComponent,
@@ -41,7 +39,6 @@ import { StorageSectionComponent } from './storage-section.component';
       <mn-storage-section />
       <mn-app-section />
 
-      <mn-language-assets-section />
       <mn-diagnostics-section />
     </div>
   `,

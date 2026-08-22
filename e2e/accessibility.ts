@@ -12,7 +12,11 @@ export async function expectNoSeriousAccessibilityViolations(page: Page): Promis
   );
 
   expect(
-    blocking.map((violation) => `${violation.id}: ${violation.help}`),
+    blocking.flatMap((violation) =>
+      violation.nodes.map(
+        (node) => `${violation.id}: ${violation.help} at ${node.target.join(' > ')}`,
+      ),
+    ),
     'serious or critical accessibility violations',
   ).toEqual([]);
 }

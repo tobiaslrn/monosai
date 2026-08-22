@@ -239,12 +239,12 @@ export type AddModelDialogResult =
     .close {
       display: grid;
       flex: 0 0 auto;
-      width: 2.25rem;
-      height: 2.25rem;
+      width: var(--touch-target);
+      height: var(--touch-target);
       place-items: center;
       padding: 0;
       border: 1px solid var(--border-subtle);
-      border-radius: 50%;
+      border-radius: var(--radius-control);
       background: var(--surface-sunken);
       color: var(--text-secondary);
       font: inherit;

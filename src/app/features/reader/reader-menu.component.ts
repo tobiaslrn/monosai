@@ -5,6 +5,7 @@ import {
   computed,
   input,
   output,
+  signal,
   viewChild,
 } from '@angular/core';
 import type { Reading } from '../../domain/reading/reading';
@@ -17,20 +18,28 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
  * to its own header button, and the per-button explanations went with the rest
  * of the reader's prose — the labels are the whole message.
  *
- * A native popover anchored to its own button: `Escape`, a press outside, the
- * top layer, and closing when the Aids panel opens are all the platform's
- * behaviour rather than listeners of our own.
+ * A native popover anchored to its own button keeps top-layer and mutual-
+ * exclusion behaviour on the platform. Explicit dismissal handlers make
+ * outside press, Escape, and focus return predictable across supported shells.
  */
 @Component({
   selector: 'mn-reader-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent],
+  host: {
+    '(document:pointerdown)': 'onDocumentPointerDown($event)',
+    '(document:keydown.escape)': 'dismiss($event)',
+  },
   template: `
     <div>
       <button
+        #anchor
         type="button"
         class="mn-icon-button anchor-button"
         aria-label="Reading actions"
+        aria-haspopup="menu"
+        aria-controls="mn-reader-menu-panel"
+        [attr.aria-expanded]="menuOpen()"
         popovertarget="mn-reader-menu-panel"
       >
         <mn-icon name="overflow" />
@@ -41,16 +50,21 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
         id="mn-reader-menu-panel"
         popover
         class="panel"
-        role="group"
+        role="menu"
         aria-label="Reading actions"
+        (toggle)="onMenuToggle($event)"
       >
         @if (isRunning()) {
-          <button type="button" (click)="choose(cancelled)">Stop translating</button>
+          <button type="button" role="menuitem" (click)="choose(cancelled)">
+            Stop translating
+          </button>
         } @else if (missingCount() > 0) {
-          <button type="button" (click)="choose(translateAll)">Translate reading</button>
+          <button type="button" role="menuitem" (click)="choose(translateAll)">
+            Translate reading
+          </button>
         }
 
-        <button type="button" class="danger" (click)="choose(deleteRequested)">
+        <button type="button" role="menuitem" class="danger" (click)="choose(deleteRequested)">
           Delete reading
         </button>
       </div>
@@ -125,6 +139,8 @@ export class ReaderMenuComponent {
   readonly deleteRequested = output<void>();
 
   private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
+  private readonly anchor = viewChild.required<ElementRef<HTMLButtonElement>>('anchor');
+  protected readonly menuOpen = signal(false);
 
   /** Sentences with no current translation, from the reading's stored summary. */
   protected readonly missingCount = computed(() => {
@@ -132,9 +148,33 @@ export class ReaderMenuComponent {
     return Math.max(summary.total - summary.completed, 0);
   });
 
+  protected onMenuToggle(event: Event): void {
+    this.menuOpen.set((event.currentTarget as HTMLElement).matches(':popover-open'));
+  }
+
   /** Chosen entries close the menu; dismissal without choosing is the platform's. */
   protected choose(action: { emit: () => void }): void {
     this.panel().nativeElement.hidePopover();
     action.emit();
+  }
+
+  protected dismiss(event: Event): void {
+    const panel = this.panel().nativeElement;
+    if (!panel.matches(':popover-open')) {
+      return;
+    }
+    event.preventDefault();
+    panel.hidePopover();
+  }
+
+  protected onDocumentPointerDown(event: PointerEvent): void {
+    const panel = this.panel().nativeElement;
+    if (!panel.matches(':popover-open') || !(event.target instanceof Node)) {
+      return;
+    }
+    if (panel.contains(event.target) || this.anchor().nativeElement.contains(event.target)) {
+      return;
+    }
+    panel.hidePopover();
   }
 }

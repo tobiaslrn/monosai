@@ -6,16 +6,16 @@ test.describe('settings persistence', () => {
   test('puts learner controls before advanced and technical settings', async ({ page }) => {
     await page.goto('/#/settings');
 
-    await expect(page.locator('main section.mn-panel > h2')).toHaveText([
+    await expect(
+      page.locator('main section.mn-panel > h2, main section.mn-panel > .heading-row > h2'),
+    ).toHaveText([
       'Your setup',
       'Appearance',
-      'AI text features',
-      'Voice (optional)',
+      'Models',
       'Generation policy',
       'Storage',
       'App',
-      'Language assets',
-      'Diagnostics',
+      'Troubleshooting',
     ]);
   });
 
@@ -45,9 +45,9 @@ test.describe('settings persistence', () => {
   test('creates the local database and reports its schema version', async ({ page }) => {
     await page.goto('/#/settings');
 
-    const diagnostics = page.getByRole('region', { name: 'Diagnostics' });
+    const diagnostics = page.getByRole('region', { name: 'Troubleshooting' });
     await expect(diagnostics.getByText('Database schema version')).toBeHidden();
-    await diagnostics.getByText('Show build details').click();
+    await diagnostics.getByText('Advanced technical details').click();
     await expect(diagnostics.getByText('Database schema version')).toBeVisible();
     await expect(diagnostics).toContainText('1');
 

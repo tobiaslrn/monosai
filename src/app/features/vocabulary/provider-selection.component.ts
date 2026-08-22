@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import type { ElementRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import {
   ANKI_PROVIDER_FACTORY,
   PACKAGE_PROVIDER_FACTORY,
@@ -18,66 +19,76 @@ type AddMode = 'closed' | 'choices' | 'text';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.is-editor]': "mode() === 'text'",
+    '(document:pointerdown)': 'onDocumentPointerDown($event)',
+    '(document:keydown.escape)': 'closeMenuOnEscape($event)',
   },
   imports: [IconComponent, TextListSourceComponent],
   template: `
     <div class="add-source">
       @if (mode() !== 'text') {
         <button
+          #toggle
           type="button"
           class="mn-button mn-button--primary"
           aria-haspopup="menu"
+          aria-controls="mn-add-source-menu"
           [attr.aria-expanded]="mode() === 'choices'"
-          (click)="toggleMenu()"
+          popovertarget="mn-add-source-menu"
           data-testid="add-source"
         >
           <mn-icon name="add" /> Add source
         </button>
 
-        @if (mode() === 'choices') {
-          <div class="menu" role="menu" aria-label="Source kind">
-            <button
-              type="button"
-              class="menu-item"
-              role="menuitem"
-              [disabled]="refresh.isBusy()"
-              (click)="connectAnkiConnect()"
-              data-testid="connect-ankiconnect"
-            >
-              <strong>Anki</strong>
-            </button>
-            <button
-              type="button"
-              class="menu-item"
-              role="menuitem"
-              [disabled]="refresh.isBusy()"
-              (click)="packageInput.click()"
-            >
-              <strong>Anki package</strong>
-            </button>
-            <button
-              type="button"
-              class="menu-item"
-              role="menuitem"
-              (click)="mode.set('text')"
-              data-testid="add-text-source"
-            >
-              <strong>Pasted list</strong>
-            </button>
-          </div>
-          <input
-            #packageInput
-            class="file-input"
-            type="file"
-            aria-label="Choose Anki package"
-            aria-hidden="true"
-            tabindex="-1"
-            accept=".apkg,.colpkg"
+        <div
+          #menu
+          id="mn-add-source-menu"
+          class="menu"
+          popover
+          role="menu"
+          aria-label="Source kind"
+          (toggle)="onMenuToggle($event)"
+        >
+          <button
+            type="button"
+            class="menu-item"
+            role="menuitem"
             [disabled]="refresh.isBusy()"
-            (change)="choosePackage($event)"
-            data-testid="package-input"
-          />
-        }
+            (click)="connectAnkiConnect()"
+            data-testid="connect-ankiconnect"
+          >
+            <strong>Anki</strong>
+          </button>
+          <button
+            type="button"
+            class="menu-item"
+            role="menuitem"
+            [disabled]="refresh.isBusy()"
+            (click)="packageInput.click()"
+          >
+            <strong>Anki package</strong>
+          </button>
+          <button
+            type="button"
+            class="menu-item"
+            role="menuitem"
+            (click)="chooseTextList()"
+            data-testid="add-text-source"
+          >
+            <strong>Pasted list</strong>
+          </button>
+        </div>
+        <input
+          #packageInput
+          class="file-input"
+          type="file"
+          aria-label="Choose Anki package"
+          aria-hidden="true"
+          tabindex="-1"
+          accept=".apkg,.colpkg"
+          [disabled]="refresh.isBusy()"
+          (change)="choosePackage($event)"
+          data-testid="package-input"
+        />
       } @else {
         <div class="editor-head">
           <h3>Add pasted list</h3>
@@ -104,6 +115,10 @@ type AddMode = 'closed' | 'choices' | 'text';
       gap: var(--space-2);
     }
 
+    [data-testid='add-source'] {
+      anchor-name: --mn-add-source-anchor;
+    }
+
     .editor-head {
       display: flex;
       align-items: center;
@@ -118,16 +133,22 @@ type AddMode = 'closed' | 'choices' | 'text';
 
     .menu {
       position: absolute;
+      position-anchor: --mn-add-source-anchor;
+      position-area: bottom span-left;
       z-index: 10;
-      top: calc(100% + var(--space-1));
-      right: 0;
+      inset: auto;
       display: grid;
       width: min(20rem, calc(100vw - var(--space-4)));
+      margin: var(--space-1) 0 0;
       padding: var(--space-1);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-card);
       background: var(--surface-panel);
       box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 12%);
+    }
+
+    .menu:not(:popover-open) {
+      display: none;
     }
 
     .menu-item {
@@ -174,16 +195,56 @@ export class ProviderSelectionComponent {
   private readonly createPackage = inject(PACKAGE_PROVIDER_FACTORY);
 
   protected readonly mode = signal<AddMode>('closed');
+  private readonly menu = viewChild<ElementRef<HTMLElement>>('menu');
+  private readonly toggleButton = viewChild<ElementRef<HTMLButtonElement>>('toggle');
 
   protected close(): void {
     this.mode.set('closed');
   }
 
-  protected toggleMenu(): void {
-    this.mode.update((mode) => (mode === 'choices' ? 'closed' : 'choices'));
+  protected onMenuToggle(event: Event): void {
+    if (this.mode() === 'text') {
+      return;
+    }
+    this.mode.set(
+      (event.currentTarget as HTMLElement).matches(':popover-open') ? 'choices' : 'closed',
+    );
+  }
+
+  protected chooseTextList(): void {
+    this.hideMenu();
+    this.mode.set('text');
+  }
+
+  protected closeMenuOnEscape(event: Event): void {
+    const menu = this.menu()?.nativeElement;
+    if (menu === undefined) {
+      return;
+    }
+    if (!menu.matches(':popover-open')) {
+      return;
+    }
+    event.preventDefault();
+    this.hideMenu();
+  }
+
+  protected onDocumentPointerDown(event: PointerEvent): void {
+    const menu = this.menu()?.nativeElement;
+    const toggle = this.toggleButton()?.nativeElement;
+    if (menu === undefined || toggle === undefined) {
+      return;
+    }
+    if (!menu.matches(':popover-open') || !(event.target instanceof Node)) {
+      return;
+    }
+    if (menu.contains(event.target) || toggle.contains(event.target)) {
+      return;
+    }
+    this.hideMenu();
   }
 
   protected async connectAnkiConnect(): Promise<void> {
+    this.hideMenu();
     await this.connectAndAdd('desktop-connect', this.createConnection('desktop-connect'));
   }
 
@@ -193,10 +254,21 @@ export class ProviderSelectionComponent {
     if (file === null || file === undefined) {
       return;
     }
+    this.hideMenu();
     await this.connectAndAdd(
       'package',
       this.createPackage({ fileName: file.name, bytes: () => file.arrayBuffer() }),
     );
+  }
+
+  private hideMenu(): void {
+    const menu = this.menu()?.nativeElement;
+    if (menu === undefined) {
+      return;
+    }
+    if (typeof menu.hidePopover === 'function' && menu.matches(':popover-open')) {
+      menu.hidePopover();
+    }
   }
 
   private async connectAndAdd(

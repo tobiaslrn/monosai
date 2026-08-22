@@ -206,15 +206,15 @@ export async function configureTts(page: Page): Promise<void> {
 /** Builds a real snapshot from the scripted collection. */
 export async function buildSnapshot(page: Page): Promise<void> {
   await page.goto('/#/vocabulary');
-  await page.getByRole('button', { name: 'Test AnkiConnect access' }).click();
-  await expect(page.getByTestId('add-mapping')).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('add-mapping').click();
-  await page.getByTestId('start-refresh').click();
-  await expect(page.getByTestId('confirm-refresh')).toBeVisible({ timeout: 60_000 });
-  await page.getByTestId('confirm-refresh').click();
-  await expect(page.getByTestId('current-snapshot')).toContainText('Current', {
-    timeout: 60_000,
-  });
+  await page.getByTestId('add-source').click();
+  await expect(page.getByRole('menu', { name: 'Source kind' })).toBeVisible();
+  await page.getByTestId('connect-ankiconnect').click();
+  await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText(
+    String(REVIEWED_EXPRESSIONS.length),
+    {
+      timeout: 60_000,
+    },
+  );
 }
 
 /** Everything a story needs, in the order a learner would set it up. */

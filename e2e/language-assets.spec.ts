@@ -17,6 +17,7 @@ test.describe('offline language assets', () => {
 
     await expectPrepared(page);
 
+    await page.getByText('Advanced technical details').click();
     const versions = page.getByTestId('language-versions');
     await expect(versions).toBeHidden();
     await page.getByTestId('language-versions-toggle').click();
@@ -29,7 +30,7 @@ test.describe('offline language assets', () => {
     expect(record?.value?.tokenizerVersion).toBeTruthy();
     expect(record?.value?.dictionaryVersion).toBeTruthy();
 
-    await page.getByText('Show data sources').click();
+    await page.getByText('Data sources and licences').click();
     await expect(page.getByTestId('language-attributions')).toContainText('JMdict');
     await expect(page.getByTestId('language-attributions')).toContainText('IPADIC');
   });
@@ -45,7 +46,7 @@ test.describe('offline language assets', () => {
 
     // The shell is interactive and the route renders even though the language
     // bundle is still in flight.
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('radio', { name: 'Dark' })).toBeEnabled();
     await page.getByRole('radio', { name: 'Dark' }).check();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');

@@ -56,7 +56,7 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
     }
 
     .form-line {
-      color: var(--accent-secondary);
+      color: var(--text-primary);
       font-size: var(--text-sm);
       font-weight: 600;
       line-height: 1.4;
