@@ -7,6 +7,8 @@ import {
 import { mapInflectionForm } from '../../../workers/language/ipadic-inflection';
 import { ANALYZER_VERSION, VALIDATOR_VERSION } from './analyzer-version';
 import { tokensCoverSentence } from './analyzed-text';
+import { wordAt } from '../reading/token-grouping';
+import { summarizeWordForm } from '../reading/word-form-summary';
 import {
   GOLDEN_ANALYSIS_CASES,
   GOLDEN_CORPUS_VERSIONS,
@@ -43,12 +45,28 @@ describe('golden language corpus', () => {
         if (expected.inflectionForm !== undefined) {
           expect(token.inflectionForm).toBe(expected.inflectionForm);
         }
+        if (expected.verbConjugationFamily !== undefined) {
+          expect(token.verbConjugationFamily).toBe(expected.verbConjugationFamily);
+        }
         if (expected.isPunctuation !== undefined) {
           expect(token.isPunctuation).toBe(expected.isPunctuation);
         }
       }
     });
   }
+
+  it('groups and summarizes the ambiguous kana negative past as one word', async () => {
+    const tokens = await analyzeSentence('いなかった');
+    const word = wordAt(tokens, 0);
+
+    expect(word.surface).toBe('いなかった');
+    expect(word.readingHiragana).toBe('いなかった');
+    expect(summarizeWordForm(word)).toEqual({
+      dictionaryForm: 'いる',
+      partOfSpeech: 'verb',
+      formLabels: ['Plain', 'negative', 'past'],
+    });
+  });
 
   for (const text of GOLDEN_ROUNDTRIP_TEXTS) {
     it(`preserves every character and offset of ${JSON.stringify(text)}`, async () => {

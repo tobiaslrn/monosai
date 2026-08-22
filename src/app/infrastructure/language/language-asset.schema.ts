@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { PART_OF_SPEECH_LABELS, type PartOfSpeech } from '../../domain/reading/token';
+import {
+  PART_OF_SPEECH_LABELS,
+  VERB_CONJUGATION_FAMILIES,
+  type PartOfSpeech,
+  type VerbConjugationFamily,
+} from '../../domain/reading/token';
 import { STRUCTURAL_BASELINE_CATEGORIES } from '../../domain/language/structural-baseline';
 import {
   GRAMMAR_PRESET_IDS_EASIEST_FIRST,
@@ -8,6 +13,7 @@ import {
 
 const partOfSpeechValues = Object.keys(PART_OF_SPEECH_LABELS) as [PartOfSpeech, ...PartOfSpeech[]];
 export const partOfSpeechSchema = z.enum(partOfSpeechValues);
+export const verbConjugationFamilySchema = z.enum(VERB_CONJUGATION_FAMILIES);
 
 const nonEmpty = z.string().min(1);
 
@@ -137,6 +143,8 @@ export const dictionaryAssetHeaderSchema = z.object({
 export interface RawDictionarySense {
   readonly p: readonly PartOfSpeech[];
   readonly g: readonly string[];
+  readonly c?: readonly VerbConjugationFamily[];
+  readonly u?: true;
 }
 
 export interface RawDictionaryEntry {
@@ -179,7 +187,7 @@ export function findInvalidDictionaryEntry(entries: unknown): number | null {
       if (typeof sense !== 'object' || sense === null) {
         return index;
       }
-      const senseCandidate = sense as Partial<Record<'p' | 'g', unknown>>;
+      const senseCandidate = sense as Partial<Record<'p' | 'g' | 'c' | 'u', unknown>>;
       if (!Array.isArray(senseCandidate.p) || !isStringArray(senseCandidate.g)) {
         return index;
       }
@@ -187,6 +195,18 @@ export function findInvalidDictionaryEntry(entries: unknown): number | null {
         senseCandidate.g.length === 0 ||
         !senseCandidate.p.every((part) => typeof part === 'string' && PART_OF_SPEECH_SET.has(part))
       ) {
+        return index;
+      }
+      if (
+        senseCandidate.c !== undefined &&
+        (!Array.isArray(senseCandidate.c) ||
+          !senseCandidate.c.every((family) =>
+            VERB_CONJUGATION_FAMILIES.includes(family as VerbConjugationFamily),
+          ))
+      ) {
+        return index;
+      }
+      if (senseCandidate.u !== undefined && senseCandidate.u !== true) {
         return index;
       }
     }

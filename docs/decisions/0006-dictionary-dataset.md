@@ -31,6 +31,7 @@ gitignored `.asset-cache/`, verifies the digest, and compacts it into
 | Written forms and readings      | Kanji forms and kana forms, most common first                                                    |
 | English glosses                 | Up to four senses per entry, four glosses per sense                                              |
 | Part-of-speech data             | JMdict codes mapped at build time to the bounded `PartOfSpeech` enum                              |
+| Ambiguous kana ranking          | Bounded verb families and JMdict's usually-kana marker retained as compact sense metadata         |
 | Reproducible build inputs       | Pinned release URL plus digest; the build fails if either changes                                 |
 | Offline budget                  | 3.46 MB raw, 0.90 MB gzipped, 22,629 entries, parsed in ~36 ms                                    |
 | No runtime network dependency   | The artifact is served from the application's own origin and cached immutably                    |
@@ -55,7 +56,8 @@ gitignored `.asset-cache/`, verifies the digest, and compacts it into
 - The compaction is lossy by design: JMdict cross-references, dialects, fields of
   use, and language-of-origin data are dropped, search-only kanji forms (`sK`) and
   outdated or irregular kana (`ok`, `ik`) are dropped, and senses and glosses are
-  bounded. `dictionaryAssetHeaderSchema` records the applied limits in the
+  bounded. Verb conjugation families and the usually-kana marker (`uk`) survive
+  only as library-neutral ranking metadata. `dictionaryAssetHeaderSchema` records the applied limits in the
   artifact, so what was dropped stays visible.
 - Because the derived asset is a JMdict derivative, it is redistributed under
   CC BY-SA 4.0; the notice is part of the shipped manifest and is displayed in

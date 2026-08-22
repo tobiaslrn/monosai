@@ -158,7 +158,8 @@ states what replaced them.
   builder copies it to `assets/language/1/tokenizer/`.
 - Dictionary: JMdict English common-only, pinned release
   `3.6.2+20260817122448`, compacted to 22,629 entries (3.46 MB, 0.90 MB gzipped)
-  with bounded senses and glosses and JMdict codes mapped to the domain enum.
+  with bounded senses and glosses, JMdict codes mapped to domain enums, and
+  conjugation-family/usually-kana ranking before result truncation.
 - Grammar catalog: 256 Monosai-authored rules. **Deleted in Milestone 4**; see
   [ADR 0014](decisions/0014-remove-grammar-rule-catalog.md). The bundle now ships
   six grammar difficulty presets in its place.
@@ -319,6 +320,10 @@ than asserted, because they are developer-hardware figures.
   sentences per worker call for progress and cancellation; the worker still
   yields internally between token chunks through the same path `analyze`
   uses. See [0009](decisions/0009-language-protocol-v2-analyze-sentences.md).
+- **Language protocol version 3 / analyzer version 3**: analyzed verb tokens and
+  dictionary queries carry a bounded conjugation family, allowing the local
+  dictionary to rank ambiguous kana lemmas before truncation. See
+  [0029](decisions/0029-ambiguous-kana-dictionary-ranking.md).
 - **Repository port additions**: `countParagraphs` and `locateSentence` on
   `ReadingRepository`, both bounded indexed lookups, so the reader can size its
   window and resolve a resume position without loading the reading's text.
@@ -424,6 +429,7 @@ and why the window moves rather than growing.
 ### Assumptions and decisions
 
 - [0009 — Language protocol version 2 and `analyze-sentences`](decisions/0009-language-protocol-v2-analyze-sentences.md)
+- [0029 — Ambiguous kana dictionary lookup uses morphological ranking](decisions/0029-ambiguous-kana-dictionary-ranking.md)
 - [0010 — Sentence text drops the line breaks and padding that end a segment](decisions/0010-sentence-text-boundary-trimming.md)
 - [0011 — Paragraph window bound, radius, step, and moving rather than growing](decisions/0011-paragraph-window-bounds.md)
 - [0012 — Resume basis: exact, nearest, or beginning, stated rather than hidden](decisions/0012-resume-basis.md) — superseded by 0025

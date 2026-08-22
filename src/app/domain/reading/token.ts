@@ -79,6 +79,20 @@ export const INFLECTION_FORM_LABELS: Record<InflectionForm, string> = {
 };
 
 /**
+ * The bounded verb paradigm used to disambiguate homophonous dictionary forms.
+ *
+ * This deliberately stops at the family boundary shared by IPADIC and JMdict;
+ * library-specific row classes and JMdict codes remain in infrastructure.
+ */
+export type VerbConjugationFamily = 'ichidan' | 'godan' | 'irregular';
+
+export const VERB_CONJUGATION_FAMILIES: readonly VerbConjugationFamily[] = [
+  'ichidan',
+  'godan',
+  'irregular',
+];
+
+/**
  * One analyzed span of a sentence.
  *
  * Offsets are UTF-16 code-unit indexes into the immutable sentence text, so the
@@ -94,6 +108,8 @@ export interface Token {
   readonly partOfSpeech?: PartOfSpeech;
   /** Absent for a word class that does not inflect, and for an untagged token. */
   readonly inflectionForm?: InflectionForm;
+  /** Present only when the analyzer identifies a bounded verb paradigm. */
+  readonly verbConjugationFamily?: VerbConjugationFamily;
   readonly dictionaryKeys: readonly string[];
   readonly isPunctuation: boolean;
 }

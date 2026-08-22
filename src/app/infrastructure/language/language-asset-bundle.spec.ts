@@ -63,6 +63,19 @@ describe('committed language bundle', () => {
     );
   });
 
+  it('retains compact ranking metadata for ambiguous kana verbs', () => {
+    const dictionary = readJson('dictionary.json') as {
+      entries: {
+        i: string;
+        s: { c?: string[]; u?: true }[];
+      }[];
+    };
+    const iru = dictionary.entries.find((entry) => entry.i === '1577980');
+
+    expect(iru).toBeDefined();
+    expect(iru?.s[0]).toMatchObject({ c: ['ichidan'], u: true });
+  });
+
   it('ships every difficulty preset in ladder order, contiguous from zero', () => {
     const parsed = grammarPresetsAssetSchema.safeParse(readJson('grammar-presets.json'));
     expect(parsed.success).toBe(true);

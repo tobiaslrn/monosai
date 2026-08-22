@@ -1,4 +1,4 @@
-import type { PartOfSpeech } from '../reading/token';
+import type { PartOfSpeech, VerbConjugationFamily } from '../reading/token';
 import type { Result } from '../shared/result';
 import type { LanguageError } from './language-error';
 
@@ -21,6 +21,7 @@ export interface DictionaryQuery {
   readonly lemma?: string;
   readonly readingHiragana?: string;
   readonly partOfSpeech?: PartOfSpeech;
+  readonly verbConjugationFamily?: VerbConjugationFamily;
   /** Upper bound on returned entries. The index applies its own bound too. */
   readonly limit?: number;
 }

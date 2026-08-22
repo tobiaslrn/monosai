@@ -68,6 +68,9 @@ function queryFor(word: WordGroup, limit: number): DictionaryQuery {
     lemma: head.lemma ?? head.surface,
     ...(word.readingHiragana === undefined ? {} : { readingHiragana: word.readingHiragana }),
     ...(head.partOfSpeech === undefined ? {} : { partOfSpeech: head.partOfSpeech }),
+    ...(head.verbConjugationFamily === undefined
+      ? {}
+      : { verbConjugationFamily: head.verbConjugationFamily }),
   };
 }
 

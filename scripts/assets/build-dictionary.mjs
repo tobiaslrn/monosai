@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { downloadPinned } from './lib/download.mjs';
 import { readGzippedTarEntries, singleEntry } from './lib/read-tgz.mjs';
-import { mapJmdictPos } from './lib/jmdict-pos.mjs';
+import { mapJmdictPos, mapJmdictVerbConjugationFamily } from './lib/jmdict-pos.mjs';
 import { writeArtifact } from './lib/fs-json.mjs';
 
 /** Bounds keep the offline artifact small and lookups predictable. */
@@ -50,6 +50,7 @@ function compactSenses(senses, unmappedCodes) {
       continue;
     }
     const partsOfSpeech = [];
+    const conjugationFamilies = [];
     for (const code of sense.partOfSpeech) {
       const mapped = mapJmdictPos(code);
       if (!mapped.known) {
@@ -58,8 +59,17 @@ function compactSenses(senses, unmappedCodes) {
       if (!partsOfSpeech.includes(mapped.partOfSpeech)) {
         partsOfSpeech.push(mapped.partOfSpeech);
       }
+      const family = mapJmdictVerbConjugationFamily(code);
+      if (family !== undefined && !conjugationFamilies.includes(family)) {
+        conjugationFamilies.push(family);
+      }
     }
-    compacted.push({ p: partsOfSpeech, g: glosses });
+    compacted.push({
+      p: partsOfSpeech,
+      g: glosses,
+      ...(conjugationFamilies.length === 0 ? {} : { c: conjugationFamilies }),
+      ...(sense.misc.includes('uk') ? { u: true } : {}),
+    });
     if (compacted.length === LIMITS.senses) {
       break;
     }

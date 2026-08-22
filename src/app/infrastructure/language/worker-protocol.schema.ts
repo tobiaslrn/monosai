@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { snapshotId, vocabularyItemId } from '../../domain/shared/ids';
 import { INFLECTION_FORM_LABELS, type InflectionForm } from '../../domain/reading/token';
-import { languageAssetManifestSchema, partOfSpeechSchema } from './language-asset.schema';
+import {
+  languageAssetManifestSchema,
+  partOfSpeechSchema,
+  verbConjugationFamilySchema,
+} from './language-asset.schema';
 
 const nonEmpty = z.string().min(1);
 
@@ -18,6 +22,7 @@ const tokenSchema = z.object({
   readingHiragana: z.string().optional(),
   partOfSpeech: partOfSpeechSchema.optional(),
   inflectionForm: inflectionFormSchema.optional(),
+  verbConjugationFamily: verbConjugationFamilySchema.optional(),
   dictionaryKeys: z.array(z.string()),
   isPunctuation: z.boolean(),
 });
@@ -42,6 +47,7 @@ const dictionaryQuerySchema = z.object({
   lemma: z.string().optional(),
   readingHiragana: z.string().optional(),
   partOfSpeech: partOfSpeechSchema.optional(),
+  verbConjugationFamily: verbConjugationFamilySchema.optional(),
   limit: z.number().int().positive().optional(),
 });
 
