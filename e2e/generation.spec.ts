@@ -148,22 +148,12 @@ test.describe('generating a story', () => {
     await expect(page.getByTestId('cancel-generation')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('premise')).toHaveCount(0);
     await expect(page.getByTestId('generation-copy')).toContainText('Generating your story');
-    await expect(page.locator('.mark')).toBeVisible();
-    await expect(page.locator('.mark__trace')).toHaveCount(2);
-    const trace = page.locator('.mark__trace').first();
-    const firstOffset = await trace.evaluate(
-      (element) => getComputedStyle(element).strokeDashoffset,
+    await expect(page.locator('mn-generation-wait svg')).toHaveCount(0);
+    const dots = page.locator('.loading-dots');
+    await expect(dots).toHaveText('...');
+    expect(await dots.evaluate((element) => getComputedStyle(element).animationName)).toMatch(
+      /dots-reveal$/,
     );
-    await page.waitForTimeout(150);
-    const secondOffset = await trace.evaluate(
-      (element) => getComputedStyle(element).strokeDashoffset,
-    );
-    expect(secondOffset).not.toBe(firstOffset);
-    await expect
-      .poll(() =>
-        trace.evaluate((element) => getComputedStyle(element).animationName.endsWith('trace-edge')),
-      )
-      .toBe(true);
     await page.getByTestId('cancel-generation').click();
 
     await expect(page.getByRole('heading', { name: 'Generation stopped', level: 2 })).toBeVisible();
