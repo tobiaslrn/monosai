@@ -151,9 +151,16 @@ test.describe('generating a story', () => {
     await expect(page.locator('mn-generation-wait svg')).toHaveCount(0);
     const dots = page.locator('.loading-dots');
     await expect(dots).toHaveText('...');
-    expect(await dots.evaluate((element) => getComputedStyle(element).animationName)).toMatch(
-      /dots-reveal$/,
-    );
+    const title = page.locator('.status-title');
+    const firstTitleX = await title.evaluate((element) => element.getBoundingClientRect().x);
+    await page.waitForTimeout(350);
+    const secondTitleX = await title.evaluate((element) => element.getBoundingClientRect().x);
+    expect(secondTitleX).toBe(firstTitleX);
+    expect(
+      await page
+        .locator('.loading-dots__reveal')
+        .evaluate((element) => getComputedStyle(element).animationName),
+    ).toMatch(/dots-reveal$/);
     await page.getByTestId('cancel-generation').click();
 
     await expect(page.getByRole('heading', { name: 'Generation stopped', level: 2 })).toBeVisible();

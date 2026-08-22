@@ -29,6 +29,13 @@ h2 {
 
 .loading-dots {
   display: inline-block;
+  width: 0.9em;
+  text-align: left;
+  vertical-align: bottom;
+}
+
+.loading-dots__reveal {
+  display: inline-block;
   width: 0;
   overflow: hidden;
   vertical-align: bottom;
@@ -56,12 +63,12 @@ h2 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loading-dots,
+  .loading-dots__reveal,
   .copy {
     animation: none;
   }
 
-  .loading-dots {
+  .loading-dots__reveal {
     width: 0.9em;
   }
 }
