@@ -159,13 +159,22 @@ test.describe('vocabulary', () => {
       timeout: 60_000,
     });
 
+    await page.reload();
+    await expect(page.getByTestId('vocabulary-sync-toast')).toHaveCount(0, { timeout: 15_000 });
+
     await page.unrouteAll({ behavior: 'wait' });
     await stubAnkiConnect(page, ankiAnswers(['ねこ', '犬']));
     await page.reload();
 
-    await expect(page.getByText('Vocabulary updated · 2 unique expressions')).toBeVisible({
+    const toast = page.getByTestId('vocabulary-sync-toast');
+    await expect(toast).toBeVisible({
       timeout: 60_000,
     });
+    expect(await toast.evaluate((element) => getComputedStyle(element).position)).toBe('fixed');
+    expect(await toast.evaluate((element) => getComputedStyle(element).right)).toBe('16px');
+    expect(await toast.evaluate((element) => getComputedStyle(element).bottom)).toBe('16px');
+    await expect(toast).toContainText('Vocabulary updated · 2 unique expressions');
+    await expect(toast).toBeHidden({ timeout: 15_000 });
     await expect
       .poll(async () => (await readSnapshots(page))[0]?.uniqueEntryCount, { timeout: 60_000 })
       .toBe(2);

@@ -57,6 +57,29 @@ describe('AutomaticAnkiSyncCoordinator', () => {
     expect(beds.mappings.caches.get(source.id)?.entries.length).toBeGreaterThan(0);
   });
 
+  it('keeps an unchanged merged vocabulary silent when source records change', async () => {
+    configureAutomaticSource();
+
+    await coordinator.trigger(true);
+
+    providerFactory = () =>
+      new FakeAnkiProvider(
+        {
+          ...CONTRACT_COLLECTION,
+          notes: CONTRACT_COLLECTION.notes.map((note, index) => ({
+            ...note,
+            id: `${note.id}-refreshed-${String(index)}`,
+          })),
+        },
+        { kind: 'desktop-connect' },
+      );
+
+    await coordinator.trigger(true);
+
+    expect(coordinator.status()).toEqual({ kind: 'idle' });
+    expect(beds.vocabulary.commitCount).toBe(2);
+  });
+
   it('coalesces concurrent triggers and observes the cooldown', async () => {
     configureAutomaticSource();
 

@@ -132,6 +132,9 @@ interface SourceMapping {
   entries before replacing any source cache.
 - If a valid result is unexpectedly empty while that source previously contained
   entries, hold it for explicit user confirmation instead of silently emptying it.
+- A successful automatic refresh that leaves the combined canonical expression
+  set unchanged is silent, even when source records, provenance, or timestamps
+  differ.
 - Do not use service-worker Background Sync and do not cache Anki HTTP responses.
 
 ## 5. Reviewed eligibility

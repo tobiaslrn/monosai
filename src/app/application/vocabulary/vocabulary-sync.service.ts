@@ -21,6 +21,8 @@ export type VocabularySyncFailure = LanguageError | StorageError;
 export interface PreparedVocabularySync {
   readonly commit: SnapshotCommit;
   readonly replacementCaches: readonly VocabularySourceCache[];
+  /** True when the merged canonical expression set differs from the active snapshot. */
+  readonly vocabularyChanged: boolean;
 }
 
 /** Builds the one active vocabulary from independent, persisted source caches. */
@@ -64,6 +66,14 @@ export class VocabularySyncService {
     if (!current.ok) {
       return current;
     }
+    let currentExpressionHashes: readonly string[] = [];
+    if (current.value !== null) {
+      const hashes = await this.vocabulary.listExpressionHashes(current.value.id);
+      if (!hashes.ok) {
+        return hashes;
+      }
+      currentExpressionHashes = hashes.value;
+    }
     const warnings = new Set<string>();
     const entries = enabled.flatMap((source) => {
       const cache = cachesById.get(source.id);
@@ -87,7 +97,17 @@ export class VocabularySyncService {
       onProgress,
       signal,
     );
-    return built.ok ? ok({ commit: built.value.commit, replacementCaches }) : err(built.error);
+    if (!built.ok) {
+      return err(built.error);
+    }
+    return ok({
+      commit: built.value.commit,
+      replacementCaches,
+      vocabularyChanged: !sameExpressionHashes(
+        currentExpressionHashes,
+        built.value.commit.items.map((item) => item.expressionHash),
+      ),
+    });
   }
 
   async commit(
@@ -130,4 +150,18 @@ export class VocabularySyncService {
     const prepared = await this.prepare();
     return prepared.ok ? this.commit(prepared.value) : prepared;
   }
+}
+
+function sameExpressionHashes(left: readonly string[], right: readonly string[]): boolean {
+  const leftSet = new Set(left);
+  const rightSet = new Set(right);
+  if (leftSet.size !== rightSet.size) {
+    return false;
+  }
+  for (const hash of leftSet) {
+    if (!rightSet.has(hash)) {
+      return false;
+    }
+  }
+  return true;
 }
