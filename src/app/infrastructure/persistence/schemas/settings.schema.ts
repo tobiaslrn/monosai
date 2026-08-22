@@ -39,6 +39,7 @@ export const textModelSettingsSchema = z.object({
   // is the untested state, so it is defaulted rather than treated as corrupt.
   structuredOutput: z.enum(['native-schema', 'json-contract']).nullable().default(null),
   activePresetId: z.string().nullable().default(null),
+  grammarPresetId: z.string().nullable().default(null),
   presets: z
     .array(
       z.object({
@@ -46,6 +47,9 @@ export const textModelSettingsSchema = z.object({
         name: nonEmptyString,
         modelId: nonEmptyString,
         reasoningEffort: z.string().nullable(),
+        lastTestFingerprint: z.string().nullable().default(null),
+        lastTestedAt: timestampSchema.nullable().default(null),
+        structuredOutput: z.enum(['native-schema', 'json-contract']).nullable().default(null),
       }),
     )
     .readonly()
@@ -67,6 +71,8 @@ export const ttsSettingsSchema = z.object({
         modelId: nonEmptyString,
         voiceId: nonEmptyString,
         speed: z.number().positive().max(4),
+        lastTestFingerprint: z.string().nullable().default(null),
+        lastTestedAt: timestampSchema.nullable().default(null),
       }),
     )
     .readonly()

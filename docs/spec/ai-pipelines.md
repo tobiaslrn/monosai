@@ -2,7 +2,7 @@
 
 ## 1. Provider boundary
 
-V1 uses OpenRouter only. The learner supplies one API key and registers reusable text and TTS presets from exact OpenRouter model IDs. The add-model dialog discovers advisory model metadata through OpenRouter's official TypeScript SDK and presents supported reasoning efforts and voices as choices. A Gemini-specific voice ID is optional and resolves to `Kore` when omitted. Text and TTS configurations are selected and tested separately. TTS is optional and never blocks reading or story generation.
+V1 uses OpenRouter only. The learner supplies one API key and registers reusable models from exact OpenRouter model IDs in one list. The add-model flow discovers validated provider metadata through OpenRouter's official TypeScript SDK and presents only applicable reasoning, voice, and speed choices. A Gemini-specific voice ID is optional and resolves to `Kore` when omitted. Text and audio capabilities are tested independently. Audio is optional and never blocks reading or story generation.
 
 All task prompts are internal, versioned assets. V1 exposes only one per-generation **Special instructions** field and one global natural-language **Exception policy**. Raw prompts and reusable profiles are future work.
 
@@ -41,6 +41,10 @@ budgets.
 ### TTS test
 
 Generate a short fixed Japanese phrase using the exact TTS model, voice, requested MP3 response, and speed/options. Verify nonempty supported audio and decode/play capability. Store a fingerprint. Unsupported speed may be ignored only if the UI clearly reflects provider capability; invalid model/voice fails testing.
+
+### Defaults and request overrides
+
+Each tested configured model retains its own compatibility evidence. The default text model serves story generation and translation. Grammar judgement may use a dedicated tested text model and otherwise falls back explicitly to the text default. The default audio model supplies speech configuration. Story and audio surfaces may select another compatible configured model for one request without changing a default. Removing a default leaves that default unconfigured; no arbitrary replacement is selected.
 
 ## 3. Prompt layering
 
@@ -117,7 +121,7 @@ Any cancellable state may transition to `cancelled`; cancelled generations persi
 
 ### Prerequisite check
 
-Require tested text configuration, current snapshot >= 50 unique entries, nonempty grammar profile, and valid premise. Capture the current snapshot identity, grammar profile, structural baseline, exception policy, model ID, and prompt versions before the first request. Later setting changes do not affect the active job.
+Require a tested story-capable configuration, current snapshot >= 50 unique entries, nonempty grammar profile, and valid premise. Capture the current snapshot identity, grammar profile, structural baseline, exception policy, selected story model, resolved grammar-judgement model, and prompt versions before the first request. Later setting changes do not affect the active job.
 
 ### Writing and structural checks
 

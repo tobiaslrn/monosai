@@ -243,16 +243,15 @@ describe('TextModelStore', () => {
         reasoningEffort: 'low',
       });
 
-      expect(store.activePresetId()).toBe('gemini-flash');
+      expect(store.activePresetId()).toBeNull();
       expect(settings.textModel).toMatchObject({
-        modelId: 'google/gemini-flash',
-        reasoningEffort: 'low',
-        activePresetId: 'gemini-flash',
+        modelId: '',
+        activePresetId: null,
       });
-      expect(store.readiness()).toBe('untested');
+      expect(store.readiness()).toBe('not-configured');
     });
 
-    it('removes the active preset and activates the next registered model', async () => {
+    it('removes a default without silently choosing a replacement', async () => {
       const store = await ready();
       await store.registerPreset({
         id: 'first',
@@ -266,15 +265,34 @@ describe('TextModelStore', () => {
         modelId: 'vendor/second',
         reasoningEffort: 'low',
       });
+      await store.testPreset('second');
 
       await store.removePreset('second');
 
       expect(store.presets().map((preset) => preset.id)).toEqual(['first']);
       expect(settings.textModel).toMatchObject({
-        activePresetId: 'first',
-        modelId: 'vendor/first',
+        activePresetId: null,
+        modelId: '',
       });
-      expect(store.readiness()).toBe('untested');
+      expect(store.readiness()).toBe('not-configured');
+    });
+
+    it('keeps compatibility evidence on the tested preset', async () => {
+      const store = await ready();
+      await store.registerPreset({
+        id: 'story',
+        name: 'Story',
+        modelId: MODEL,
+        reasoningEffort: null,
+      });
+
+      await store.testPreset('story');
+
+      expect(store.compatiblePresets().map((preset) => preset.id)).toEqual(['story']);
+      expect(store.configForPreset('story')).toMatchObject({
+        modelId: MODEL,
+        structuredOutput: 'native-schema',
+      });
     });
 
     it('reverts nothing and reports a storage failure', async () => {

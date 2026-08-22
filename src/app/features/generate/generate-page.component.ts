@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   inject,
+  signal,
   type OnDestroy,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
@@ -160,6 +161,9 @@ import { StoryFormComponent } from './story-form.component';
             [disabled]="generation.isBusy()"
             [snapshotSummary]="snapshotSummary()"
             [presetName]="presetLine().presetName"
+            [models]="storyModels()"
+            [selectedModelId]="selectedModelId() ?? textModel.activePresetId()"
+            (modelSelected)="selectedModelId.set($event)"
             (generate)="generate()"
           />
         </section>
@@ -204,7 +208,7 @@ import { StoryFormComponent } from './story-form.component';
 export class GeneratePageComponent implements OnDestroy {
   protected readonly generation = inject(GenerationStore);
   protected readonly draft = inject(GenerationDraftStore);
-  private readonly textModel = inject(TextModelStore);
+  protected readonly textModel = inject(TextModelStore);
   private readonly credential = inject(CredentialStore);
   private readonly policy = inject(ExceptionPolicyStore);
   private readonly grammar = inject(GrammarProfileStore);
@@ -213,6 +217,14 @@ export class GeneratePageComponent implements OnDestroy {
   private readonly router = inject(Router);
 
   protected readonly state = this.generation.state;
+  protected readonly selectedModelId = signal<string | null>(null);
+  protected readonly storyModels = computed(() =>
+    this.textModel.compatiblePresets().map((preset) => ({
+      id: preset.id,
+      name: preset.name,
+      isDefault: preset.id === this.textModel.activePresetId(),
+    })),
+  );
 
   protected readonly pageHeading = computed(() => {
     switch (this.state().kind) {
@@ -371,7 +383,11 @@ export class GeneratePageComponent implements OnDestroy {
   }
 
   protected generate(): void {
-    void this.generation.generate(this.draft.sentenceCount(), this.draft.input());
+    void this.generation.generate(
+      this.draft.sentenceCount(),
+      this.draft.input(),
+      this.selectedModelId() ?? this.textModel.activePresetId(),
+    );
   }
 
   protected cancel(): void {

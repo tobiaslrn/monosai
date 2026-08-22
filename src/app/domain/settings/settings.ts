@@ -90,6 +90,8 @@ export interface TextModelSettings {
    */
   readonly structuredOutput: StructuredOutputMode | null;
   readonly activePresetId: string | null;
+  /** Optional dedicated model for grammar judgement; null falls back to the text default. */
+  readonly grammarPresetId?: string | null;
   readonly presets: readonly TextModelPreset[];
 }
 
@@ -98,6 +100,9 @@ export interface TextModelPreset {
   readonly name: string;
   readonly modelId: string;
   readonly reasoningEffort: string | null;
+  readonly lastTestFingerprint?: string | null;
+  readonly lastTestedAt?: number | null;
+  readonly structuredOutput?: StructuredOutputMode | null;
 }
 
 export const DEFAULT_TEXT_MODEL_SETTINGS: TextModelSettings = {
@@ -108,6 +113,7 @@ export const DEFAULT_TEXT_MODEL_SETTINGS: TextModelSettings = {
   lastTestedAt: null,
   structuredOutput: null,
   activePresetId: null,
+  grammarPresetId: null,
   presets: [],
 };
 
@@ -127,6 +133,8 @@ export interface TtsPreset {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speed: number;
+  readonly lastTestFingerprint?: string | null;
+  readonly lastTestedAt?: number | null;
 }
 
 export const DEFAULT_TTS_SETTINGS: TtsSettings = {

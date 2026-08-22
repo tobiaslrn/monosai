@@ -51,6 +51,8 @@ const V4_STORES: Readonly<Record<string, string | null>> = {
   vocabularyProvenance: '++id, vocabularyItemId, sourceId',
 };
 
+const V5_STORES = V4_STORES;
+
 export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   {
     version: 1,
@@ -121,6 +123,51 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   {
     version: 4,
     stores: V4_STORES,
+  },
+  {
+    version: 5,
+    stores: V5_STORES,
+    upgrade: async (transaction) => {
+      const settings = transaction.table('settings');
+      const textRow = (await settings.get('text-model')) as Record<string, unknown> | undefined;
+      if (textRow !== undefined) {
+        const value = requireRecord(textRow['value'], 'text model settings');
+        const presets = Array.isArray(value['presets']) ? value['presets'] : [];
+        const activeId =
+          typeof value['activePresetId'] === 'string' ? value['activePresetId'] : null;
+        value['grammarPresetId'] = null;
+        value['presets'] = presets.map((entry) => {
+          const preset = requireRecord(entry, 'text model preset');
+          return {
+            ...preset,
+            lastTestFingerprint:
+              preset['id'] === activeId ? (value['lastTestFingerprint'] ?? null) : null,
+            lastTestedAt: preset['id'] === activeId ? (value['lastTestedAt'] ?? null) : null,
+            structuredOutput:
+              preset['id'] === activeId ? (value['structuredOutput'] ?? null) : null,
+          };
+        });
+        await settings.put(textRow);
+      }
+
+      const ttsRow = (await settings.get('tts')) as Record<string, unknown> | undefined;
+      if (ttsRow !== undefined) {
+        const value = requireRecord(ttsRow['value'], 'voice model settings');
+        const presets = Array.isArray(value['presets']) ? value['presets'] : [];
+        const activeId =
+          typeof value['activePresetId'] === 'string' ? value['activePresetId'] : null;
+        value['presets'] = presets.map((entry) => {
+          const preset = requireRecord(entry, 'voice model preset');
+          return {
+            ...preset,
+            lastTestFingerprint:
+              preset['id'] === activeId ? (value['lastTestFingerprint'] ?? null) : null,
+            lastTestedAt: preset['id'] === activeId ? (value['lastTestedAt'] ?? null) : null,
+          };
+        });
+        await settings.put(ttsRow);
+      }
+    },
   },
 ];
 

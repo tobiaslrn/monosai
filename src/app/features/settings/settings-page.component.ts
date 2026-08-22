@@ -6,9 +6,8 @@ import { DiagnosticsSectionComponent } from './diagnostics-section.component';
 import { GenerationPolicySectionComponent } from './generation-policy-section.component';
 import { LanguageAssetsSectionComponent } from './language-assets-section.component';
 import { LearningDataSectionComponent } from './learning-data-section.component';
-import { OpenRouterSectionComponent } from './openrouter-section.component';
+import { ModelsSectionComponent } from './models-section.component';
 import { StorageSectionComponent } from './storage-section.component';
-import { TtsSectionComponent } from './tts-section.component';
 
 @Component({
   selector: 'mn-settings-page',
@@ -16,8 +15,7 @@ import { TtsSectionComponent } from './tts-section.component';
   imports: [
     PageHeaderComponent,
     LearningDataSectionComponent,
-    OpenRouterSectionComponent,
-    TtsSectionComponent,
+    ModelsSectionComponent,
     GenerationPolicySectionComponent,
     AppearanceSectionComponent,
     LanguageAssetsSectionComponent,
@@ -37,8 +35,7 @@ import { TtsSectionComponent } from './tts-section.component';
 
       <mn-appearance-section />
 
-      <mn-openrouter-section />
-      <mn-tts-section />
+      <mn-models-section />
       <mn-generation-policy-section />
 
       <mn-storage-section />

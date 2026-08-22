@@ -131,10 +131,29 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
         }
 
         @case ('absent') {
+          @if (models().length > 0) {
+            <label class="model-picker"
+              >Model
+              <select
+                data-testid="audio-model-select"
+                [value]="selectedModelId() ?? ''"
+                (change)="modelSelected.emit($any($event.target).value)"
+              >
+                @for (model of models(); track model.id) {
+                  <option [value]="model.id">
+                    {{ model.name }}{{ model.isDefault ? ' (Default)' : '' }}
+                  </option>
+                }
+              </select>
+            </label>
+          }
           <p class="line">{{ sentenceCountLabel() }}</p>
           <button type="button" class="mn-button mn-button--primary" (click)="generate.emit()">
             Generate audio
           </button>
+          @if (models().length === 0) {
+            <a class="mn-button" href="/settings">Set up audio model</a>
+          }
         }
       }
 
@@ -208,6 +227,12 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
       color: var(--status-danger);
       font-size: var(--text-sm);
     }
+    .model-picker {
+      display: grid;
+      gap: var(--space-1);
+      font-size: var(--text-sm);
+      font-weight: 600;
+    }
 
     @media (prefers-reduced-motion: reduce) {
       .fill {
@@ -222,11 +247,16 @@ export class ReadingPlayerComponent {
   readonly progress = input.required<AudioJobProgress>();
   /** The sentence that was selected when the player was opened, for Start from here. */
   readonly selectedSentenceId = input<SentenceId | null>(null);
+  readonly models = input<
+    readonly { readonly id: string; readonly name: string; readonly isDefault: boolean }[]
+  >([]);
+  readonly selectedModelId = input<string | null>(null);
 
   readonly generate = output<void>();
   readonly cancelGeneration = output<void>();
   readonly retryGeneration = output<void>();
   readonly dismissJob = output<void>();
+  readonly modelSelected = output<string>();
 
   /**
    * The job wins over playback, because a job that has just stopped is what the

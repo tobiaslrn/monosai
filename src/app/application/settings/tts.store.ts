@@ -67,6 +67,9 @@ export class TtsStore {
   readonly lastTestedAt = computed(() => this.settingsSignal().lastTestedAt);
   readonly presets = computed(() => this.settingsSignal().presets);
   readonly activePresetId = computed(() => this.settingsSignal().activePresetId);
+  readonly compatiblePresets = computed(() =>
+    this.settingsSignal().presets.filter((preset) => this.isPresetReady(preset)),
+  );
 
   readonly hasUnsavedChanges = computed(() => {
     const draft = this.draftSignal();
@@ -110,15 +113,25 @@ export class TtsStore {
 
   async registerPreset(preset: TtsPreset): Promise<boolean> {
     const current = this.settingsSignal();
-    const presets = [...current.presets.filter((item) => item.id !== preset.id), preset];
+    const registered: TtsPreset = {
+      ...preset,
+      lastTestFingerprint: preset.lastTestFingerprint ?? null,
+      lastTestedAt: preset.lastTestedAt ?? null,
+    };
+    const presets = [...current.presets.filter((item) => item.id !== preset.id), registered];
+    const becomesDefault = current.activePresetId === null && this.isPresetReady(registered);
     const saved = await this.repository.updateTtsSettings({
       presets,
-      activePresetId: preset.id,
-      modelId: preset.modelId,
-      voiceId: preset.voiceId,
-      speed: preset.speed,
-      lastTestFingerprint: null,
-      lastTestedAt: null,
+      ...(becomesDefault
+        ? {
+            activePresetId: preset.id,
+            modelId: preset.modelId,
+            voiceId: preset.voiceId,
+            speed: preset.speed,
+            lastTestFingerprint: registered.lastTestFingerprint ?? null,
+            lastTestedAt: registered.lastTestedAt ?? null,
+          }
+        : {}),
     });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
@@ -126,9 +139,9 @@ export class TtsStore {
     }
     this.settingsSignal.set(saved.value);
     this.draftSignal.set({
-      modelId: preset.modelId,
-      voiceId: preset.voiceId,
-      speed: preset.speed,
+      modelId: saved.value.modelId,
+      voiceId: saved.value.voiceId,
+      speed: saved.value.speed,
     });
     this.testFailureSignal.set(null);
     this.sampleSignal.set(null);
@@ -140,7 +153,25 @@ export class TtsStore {
       return true;
     }
     const preset = this.settingsSignal().presets.find((item) => item.id === id);
-    return preset === undefined ? false : this.registerPreset(preset);
+    if (preset === undefined || !this.isPresetReady(preset)) {
+      return false;
+    }
+    const saved = await this.repository.updateTtsSettings({
+      activePresetId: preset.id,
+      modelId: preset.modelId,
+      voiceId: preset.voiceId,
+      speed: preset.speed,
+      lastTestFingerprint: preset.lastTestFingerprint ?? null,
+      lastTestedAt: preset.lastTestedAt ?? null,
+    });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    this.draftSignal.set({ modelId: preset.modelId, voiceId: preset.voiceId, speed: preset.speed });
+    this.testFailureSignal.set(null);
+    return true;
   }
 
   async removePreset(id: string): Promise<boolean> {
@@ -150,15 +181,14 @@ export class TtsStore {
       return true;
     }
     const presets = current.presets.filter((preset) => preset.id !== id);
-    const replacement = current.activePresetId === id ? (presets[0] ?? null) : null;
     const saved = await this.repository.updateTtsSettings({
       presets,
       ...(current.activePresetId === id
         ? {
-            activePresetId: replacement?.id ?? null,
-            modelId: replacement?.modelId ?? '',
-            voiceId: replacement?.voiceId ?? '',
-            speed: replacement?.speed ?? DEFAULT_TTS_SETTINGS.speed,
+            activePresetId: null,
+            modelId: '',
+            voiceId: '',
+            speed: DEFAULT_TTS_SETTINGS.speed,
             lastTestFingerprint: null,
             lastTestedAt: null,
           }
@@ -178,6 +208,49 @@ export class TtsStore {
     this.storageFailureSignal.set(null);
     this.speedAppliedSignal.set(null);
     this.sampleSignal.set(null);
+    return true;
+  }
+
+  async updatePreset(
+    id: string,
+    patch: Partial<Pick<TtsPreset, 'voiceId' | 'speed'>>,
+  ): Promise<boolean> {
+    const current = this.settingsSignal();
+    const preset = current.presets.find((item) => item.id === id);
+    if (preset === undefined) {
+      return false;
+    }
+    const updated = {
+      ...preset,
+      voiceId:
+        patch.voiceId === undefined
+          ? preset.voiceId
+          : resolveTtsVoice(preset.modelId, patch.voiceId),
+      speed: patch.speed === undefined ? preset.speed : clampSpeed(patch.speed),
+      lastTestFingerprint: null,
+      lastTestedAt: null,
+    };
+    const saved = await this.repository.updateTtsSettings({
+      presets: current.presets.map((item) => (item.id === id ? updated : item)),
+      ...(current.activePresetId === id
+        ? {
+            voiceId: updated.voiceId,
+            speed: updated.speed,
+            lastTestFingerprint: null,
+            lastTestedAt: null,
+          }
+        : {}),
+    });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    this.draftSignal.set({
+      modelId: saved.value.modelId,
+      voiceId: saved.value.voiceId,
+      speed: saved.value.speed,
+    });
     return true;
   }
 
@@ -220,6 +293,11 @@ export class TtsStore {
   }
 
   async test(): Promise<void> {
+    const presetId = this.settingsSignal().activePresetId;
+    if (presetId !== null) {
+      await this.testPreset(presetId);
+      return;
+    }
     // The controller exists before the first await so that cancelling while the
     // draft is still being written stops the attempt rather than being ignored.
     this.controller?.abort();
@@ -274,18 +352,81 @@ export class TtsStore {
     }
   }
 
+  async testPreset(id: string): Promise<void> {
+    const preset = this.settingsSignal().presets.find((item) => item.id === id);
+    if (preset === undefined) {
+      return;
+    }
+    this.controller?.abort();
+    const controller = new AbortController();
+    this.controller = controller;
+    this.actionSignal.set('testing');
+    this.testFailureSignal.set(null);
+    this.sampleSignal.set(null);
+    const result = await this.provider.testConfiguration(
+      { modelId: preset.modelId, voiceId: preset.voiceId, speed: preset.speed },
+      controller.signal,
+    );
+    if (this.controller !== controller) {
+      return;
+    }
+    this.controller = null;
+    this.actionSignal.set('idle');
+    if (!result.ok) {
+      this.testFailureSignal.set(result.error);
+      return;
+    }
+    const fingerprint = this.fingerprintFor(preset);
+    const testedAt = this.clock.now();
+    const presets = this.settingsSignal().presets.map((item) =>
+      item.id === id ? { ...item, lastTestFingerprint: fingerprint, lastTestedAt: testedAt } : item,
+    );
+    const isDefault = this.settingsSignal().activePresetId === id;
+    const becomesDefault = this.settingsSignal().activePresetId === null;
+    const saved = await this.repository.updateTtsSettings({
+      presets,
+      ...(isDefault || becomesDefault
+        ? {
+            activePresetId: id,
+            modelId: preset.modelId,
+            voiceId: preset.voiceId,
+            speed: preset.speed,
+            lastTestFingerprint: fingerprint,
+            lastTestedAt: testedAt,
+          }
+        : {}),
+    });
+    if (saved.ok) {
+      this.settingsSignal.set(saved.value);
+      this.speedAppliedSignal.set(result.value.speedApplied);
+      this.sampleSignal.set(result.value.sample);
+      this.storageFailureSignal.set(null);
+    } else {
+      this.storageFailureSignal.set(saved.error);
+    }
+  }
+
+  configForPreset(id: string | null): TtsPreset | null {
+    const preset = this.settingsSignal().presets.find((item) => item.id === id);
+    return preset !== undefined && this.isPresetReady(preset) ? preset : null;
+  }
+
   cancelTest(): void {
     this.controller?.abort();
     this.controller = null;
     this.actionSignal.set('idle');
   }
 
-  private fingerprintFor(settings: TtsSettings): string {
+  private fingerprintFor(settings: Pick<TtsSettings, 'modelId' | 'voiceId' | 'speed'>): string {
     return ttsFingerprint(this.hasher, this.credential.keyGeneration(), {
       modelId: settings.modelId,
       voiceId: settings.voiceId,
       speed: settings.speed,
     });
+  }
+
+  private isPresetReady(preset: TtsPreset): boolean {
+    return preset.lastTestFingerprint === this.fingerprintFor(preset);
   }
 }
 
