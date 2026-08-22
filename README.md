@@ -1,80 +1,98 @@
 <div align="center">
-  <img src="data/brand/monosai-mark.svg" alt="Monosai Logo" width="128" height="128""/>
+  <img src="data/brand/monosai-mark.svg" alt="Monosai logo" width="128" height="128" />
   <h1>Monosai</h1>
-  <p><b>Local-first Japanese reading app with furigana, glosses, and Anki integration</b></p>
+  <p>A Japanese reader that gives you help when you need it.</p>
   <p>
-    <a href="https://<owner>.github.io/monosai/"><b>Launch App</b></a> •
-    <a href="docs/setup.md">Setup Guide</a> •
-    <a href="docs/troubleshooting.md">Troubleshooting</a>
+    <a href="https://tobiaslrn.github.io/monosai/"><b>Open Monosai</b></a> ·
+    <a href="docs/setup.md">Setup guide</a> ·
+    <a href="docs/troubleshooting.md">Help</a>
   </p>
 </div>
 
-<hr />
+## Spend more time reading Japanese
 
-Monosai is a local-first reading app for people learning Japanese. Paste in
-some Japanese text, or open a `.txt` file, and Monosai shows it back to you
-with furigana, word spacing, part-of-speech hints, and short dictionary
-definitions — plus markers for words you already know from Anki.
+Reading real Japanese is one of the best ways to learn, but looking up every
+word can quickly become tiring. Monosai puts the most useful reading aids in
+one place, so you can stay with the text instead of moving between different
+apps and websites.
 
-## What it does
+Paste Japanese text or open a `.txt` file. Monosai adds hiragana readings above
+kanji, word spacing and highlighting for unfamiliar words and grammar. Press a
+word to open the built-in dictionary, or press a sentence when you want more
+help. You decide which aids to use, while the Japanese text stays at the centre
+of the screen.
 
-- **Reading helper** — furigana, tokenization, and quick glosses for any
-  Japanese text you paste or open.
-- **Vocabulary awareness** — connect Anki (read-only) so Monosai can mark
-  words you've already learned.
-- **Works offline** — install it as an app and keep reading without a
-  connection, once the language data is downloaded.
-- **Optional extras** — story generation, translation, grammar explanations,
-  and audio, powered by OpenRouter if you choose to set it up. None of this
-  is required to just read.
+Your readings, settings and vocabulary data stay on your device. After the
+first download, the reader also works offline.
 
-## Quick start (using the app)
+## What you can do
 
-Monosai is a Progressive Web App, so most people don't need to build
-anything — just open it in Chrome:
+- Paste Japanese text or open a text file.
+- See hiragana readings above kanji, clear word spacing and highlights for
+  unfamiliar vocabulary and grammar.
+- Look up words in the built-in dictionary without leaving the reading.
+- Save readings and continue later.
+- Use Anki as a vocabulary source and see which words are still unknown.
+- Translate individual sentences with optional AI.
+- Generate Japanese audio and listen with the built-in audio player.
+- Create short stories based on your known vocabulary and grammar level.
+- Install Monosai like a normal app on your computer or Android device.
 
-1. Go to the deployed site (`https://<owner>.github.io/monosai/`).
-2. Paste some Japanese text or open a `.txt` file.
-3. Optional: install it for offline use. Chrome will offer an "Install"
-   button in the address bar, or use **Settings → Install Monosai** inside
-   the app.
+## Use your Anki vocabulary
 
-Want to connect your Anki vocabulary or set up translation/story features?
-See the full [setup guide](docs/setup.md) — it walks through Anki, the
-Android bridge, and OpenRouter step by step. Running into an error code?
-Check [troubleshooting.md](docs/troubleshooting.md).
+Monosai can use the words you have reviewed in Anki as your vocabulary source.
+It compares them with each reading and marks the words you may not know yet.
+This gives you a quick idea of how difficult a text will be and where you may
+need help.
 
-## Running it yourself / building from source
+Your Anki vocabulary is also used for AI story generation. Monosai asks the AI
+to stay close to the words you know, which makes the story easier to read.
 
-If you want to run a local copy or contribute to development:
+Monosai only reads from Anki. It never changes your cards or study history.
 
-**You'll need:**
+There are two ways to add your vocabulary:
 
-- Node.js 24.x
-- npm 11+
-- Google Chrome (the only browser family we officially support)
+- Connect to Anki on your computer with the AnkiConnect add-on. On Android,
+  you can use a compatible bridge for AnkiDroid.
+- Export an `.apkg` or `.colpkg` file from Anki and open it in Monosai. The
+  file is read on your device and is not uploaded.
 
-**Get it running:**
+The [setup guide](docs/setup.md) explains both options step by step.
 
-```bash
-npm ci
-npm start
-```
+## Optional AI features
 
-This starts a dev server at <http://localhost:4200/>.
+The reader, dictionary and Anki features do not need AI. AI is an optional
+extra for learners who want more help or new reading material.
 
-**Useful commands while developing:**
+AI can:
 
-| Command | What it does |
-| --- | --- |
-| `npm start` | Run the dev server |
-| `npm run build` | Production build |
-| `npm run build:pages` | Production build for GitHub Pages |
-| `npm test` | Run the test suite |
-| `npm run lint` | Lint the code |
-| `npm run typecheck` | Check TypeScript types |
-| `npm run e2e` | Run end-to-end tests (desktop and Android) |
-| `npm run verify` | Run everything: format check, lint, typecheck, tests, build |
+- translate individual sentences;
+- review and explain grammar;
+- create text-to-speech audio and play it in the built-in audio player;
+- write short Japanese stories based on your reviewed Anki vocabulary and the
+  grammar level you choose.
 
-There are a few more specialized scripts (rebuilding language data, icons,
-license reports, bundle-size checks) — see `package.json` for the full list.
+Monosai is strictly **bring your own key**. For now, OpenRouter is the only
+supported AI service. Add your own OpenRouter API key and model choices in
+**Settings**. You pay OpenRouter directly for what you use; Monosai does not
+provide a shared key or include AI credits.
+
+Your API key is saved only in this browser on this device. AI features need an
+internet connection.
+
+## Install Monosai
+
+Monosai is a Progressive Web App (PWA). This means you can install it straight
+from Chrome. There is no app store download.
+
+1. Open [Monosai](https://tobiaslrn.github.io/monosai/) in Chrome.
+2. Open **Settings** in Monosai and choose **Install Monosai**. You can also
+   use Chrome's install button in the address bar or browser menu.
+3. Accept the install prompt. Monosai will then open in its own window and can
+   be added to your home screen or app list.
+
+Open Monosai online once before using it offline. Saved readings, dictionary
+help and new text imports work without a connection. New AI requests and a
+live Anki connection still need a connection.
+
+If something does not work, see the [troubleshooting guide](docs/troubleshooting.md).
