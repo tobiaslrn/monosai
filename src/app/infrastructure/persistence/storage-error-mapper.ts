@@ -26,6 +26,9 @@ export function mapStorageFailure(thrown: unknown, operation: string): StorageEr
       return storageError('unavailable', 'Browser storage is unavailable.', cause);
     case 'VersionError':
     case 'UpgradeError':
+    case 'InvalidTableError':
+    case 'SchemaError':
+    case 'NotFoundError':
       return storageError('migration-failed', 'The stored database could not be upgraded.', cause);
     case 'ConstraintError':
       return storageError('conflict', 'A record with the same identity already exists.', cause);

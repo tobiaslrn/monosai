@@ -30,7 +30,7 @@ import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy'
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
-import { GenerationStepperComponent } from './generation-stepper.component';
+import { GenerationWaitComponent } from './generation-wait.component';
 import { InvalidDraftComponent } from './invalid-draft.component';
 import { PrerequisitePanelComponent } from './prerequisite-panel.component';
 import { StoryFormComponent } from './story-form.component';
@@ -51,7 +51,7 @@ import { StoryFormComponent } from './story-form.component';
   imports: [
     RouterLink,
     ErrorScreenComponent,
-    GenerationStepperComponent,
+    GenerationWaitComponent,
     InvalidDraftComponent,
     PageHeaderComponent,
     PrerequisitePanelComponent,
@@ -59,7 +59,7 @@ import { StoryFormComponent } from './story-form.component';
   ],
   template: `
     <div class="mn-page">
-      <mn-page-header heading="Write with AI" backTo="/library" backLabel="Back to library" />
+      <mn-page-header [heading]="pageHeading()" backTo="/library" backLabel="Back to library" />
 
       <p class="mn-visually-hidden" role="status" aria-live="polite" data-testid="generate-status">
         {{ generation.announcement() }}
@@ -70,7 +70,7 @@ import { StoryFormComponent } from './story-form.component';
         learner finished long ago is a permanent header on a screen they came to
         write on.
       -->
-      @if (hasBlockers()) {
+      @if (state().kind === 'idle' && hasBlockers()) {
         <section class="mn-panel" aria-labelledby="mn-generate-checks-heading">
           <h2 id="mn-generate-checks-heading" class="mn-visually-hidden">Before you generate</h2>
           <mn-prerequisite-panel [checks]="checks()" [preset]="presetLine()" />
@@ -88,9 +88,11 @@ import { StoryFormComponent } from './story-form.component';
           />
         </section>
       } @else if (savedReading(); as reading) {
-        <section class="mn-panel" aria-labelledby="mn-generate-saved-heading">
-          <h2 id="mn-generate-saved-heading">Saved to your library</h2>
-          <p class="mn-hint" data-testid="saved-title">{{ reading.title }}</p>
+        <section class="result-screen" aria-labelledby="mn-generate-saved-heading">
+          <div class="ready-mark" aria-hidden="true">✓</div>
+          <p class="eyebrow">Saved to your library</p>
+          <h2 id="mn-generate-saved-heading">Your story is ready</h2>
+          <p class="story-title" lang="ja" data-testid="saved-title">{{ reading.title }}</p>
           <ul class="summaries" data-testid="saved-summaries">
             <li>{{ translationSummaryLabel() }}</li>
             <li>{{ grammarSummaryLabel() }}</li>
@@ -102,8 +104,11 @@ import { StoryFormComponent } from './story-form.component';
             </p>
           }
           <div class="actions">
-            <a class="mn-button mn-button--primary" [routerLink]="['/reader', reading.id]"
-              >Read it now</a
+            <a
+              class="mn-button mn-button--primary"
+              [routerLink]="['/reader', reading.id]"
+              data-testid="open-story"
+              >Open story</a
             >
             <button
               type="button"
@@ -116,7 +121,37 @@ import { StoryFormComponent } from './story-form.component';
             <a class="mn-button" routerLink="/library">Back to library</a>
           </div>
         </section>
-      } @else {
+      } @else if (generation.isBusy()) {
+        <section
+          class="wait-screen"
+          aria-label="Story generation progress"
+          data-testid="generation-screen"
+        >
+          <mn-generation-wait />
+          @if (generation.canCancel()) {
+            <button
+              type="button"
+              class="mn-button cancel"
+              data-testid="cancel-generation"
+              (click)="cancel()"
+            >
+              Cancel
+            </button>
+          }
+        </section>
+      } @else if (state().kind === 'cancelled') {
+        <section class="result-screen" aria-labelledby="mn-generate-cancelled-heading">
+          <p class="eyebrow">Nothing was saved</p>
+          <h2 id="mn-generate-cancelled-heading">Generation stopped</h2>
+          <p class="mn-hint">Your premise and instructions are still here.</p>
+          <div class="actions">
+            <button type="button" class="mn-button mn-button--primary" (click)="retry()">
+              Back to the form
+            </button>
+            <a class="mn-button" routerLink="/library">Back to library</a>
+          </div>
+        </section>
+      } @else if (state().kind !== 'failed') {
         <!-- Plain: the form is the page, so a border around it encloses nothing. -->
         <section class="mn-panel mn-panel--plain" aria-labelledby="mn-generate-form-heading">
           <h2 id="mn-generate-form-heading" class="mn-visually-hidden">Your story</h2>
@@ -127,25 +162,6 @@ import { StoryFormComponent } from './story-form.component';
             [presetName]="presetLine().presetName"
             (generate)="generate()"
           />
-        </section>
-      }
-
-      @if (generation.isBusy() || isFinished()) {
-        <section class="mn-panel" aria-labelledby="mn-generate-progress-heading">
-          <h2 id="mn-generate-progress-heading">Progress</h2>
-          <mn-generation-stepper />
-          @if (generation.canCancel()) {
-            <div class="actions">
-              <button
-                type="button"
-                class="mn-button"
-                data-testid="cancel-generation"
-                (click)="cancel()"
-              >
-                Cancel
-              </button>
-            </div>
-          }
         </section>
       }
 
@@ -170,6 +186,11 @@ import { StoryFormComponent } from './story-form.component';
                 Try saving again
               </button>
             }
+            @if (needsStorageRecovery()) {
+              <a class="mn-button mn-button--primary" routerLink="/settings">
+                Open storage settings
+              </a>
+            }
             <button type="button" class="mn-button" data-testid="dismiss-failure" (click)="retry()">
               Back to the form
             </button>
@@ -178,28 +199,7 @@ import { StoryFormComponent } from './story-form.component';
       }
     </div>
   `,
-  styles: `
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-    }
-
-    .recovery p {
-      margin: 0 0 var(--space-2);
-    }
-
-    .summaries {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3);
-      margin: 0 0 var(--space-3);
-      padding: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      list-style: none;
-    }
-  `,
+  styleUrl: './generate-page.component.scss',
 })
 export class GeneratePageComponent implements OnDestroy {
   protected readonly generation = inject(GenerationStore);
@@ -213,6 +213,23 @@ export class GeneratePageComponent implements OnDestroy {
   private readonly router = inject(Router);
 
   protected readonly state = this.generation.state;
+
+  protected readonly pageHeading = computed(() => {
+    switch (this.state().kind) {
+      case 'idle':
+        return 'Write with AI';
+      case 'saved':
+        return 'Your story is ready';
+      case 'cancelled':
+        return 'Generation stopped';
+      case 'invalid-draft':
+        return 'Unsaved story';
+      case 'failed':
+        return 'Story generation failed';
+      default:
+        return 'Creating your story';
+    }
+  });
 
   protected readonly checks = computed(() =>
     prerequisiteChecks({
@@ -242,10 +259,6 @@ export class GeneratePageComponent implements OnDestroy {
    */
   protected readonly hasBlockers = computed(
     () => !this.canGenerate() || this.presetLine().warning !== null,
-  );
-
-  protected readonly isFinished = computed(() =>
-    ['saved', 'cancelled', 'invalid-draft'].includes(this.state().kind),
   );
 
   protected readonly invalidDraft = computed(() => {
@@ -288,6 +301,16 @@ export class GeneratePageComponent implements OnDestroy {
     if (state.kind !== 'failed') {
       return null;
     }
+    if (state.error.domain === 'storage' && state.error.code === 'migration-failed') {
+      return {
+        heading: 'Your local data needs attention',
+        whatFailed: 'Monosai could not update the local database safely.',
+        whatDidNot: 'Nothing new was saved. Existing data was not partially changed.',
+        primaryAction:
+          'Close other Monosai tabs and reload. If it still fails, use Full reset in Storage settings.',
+        escape: 'Full reset permanently deletes local readings, vocabulary, and settings.',
+      };
+    }
     return state.error.domain === 'ai'
       ? aiErrorCopy(state.error)
       : {
@@ -301,10 +324,15 @@ export class GeneratePageComponent implements OnDestroy {
 
   protected readonly failureContext = computed(() => {
     const state = this.state();
-    if (state.kind !== 'failed' || state.error.domain !== 'ai') {
-      return 'This happened while preparing your story.';
+    if (state.kind !== 'failed') {
+      return '';
     }
-    return `This happened while ${aiTaskCopy(state.error.task)}.`;
+    if (state.error.domain === 'ai') {
+      return `This happened while ${aiTaskCopy(state.error.task)}.`;
+    }
+    return state.during === 'finalizing'
+      ? 'This happened while saving your story.'
+      : 'This happened while preparing your story.';
   });
 
   protected readonly failureCode = computed(() => {
@@ -316,6 +344,15 @@ export class GeneratePageComponent implements OnDestroy {
     const state = this.state();
     return (
       state.kind === 'failed' && state.during === 'finalizing' && this.generation.canRetrySave()
+    );
+  });
+
+  protected readonly needsStorageRecovery = computed(() => {
+    const state = this.state();
+    return (
+      state.kind === 'failed' &&
+      state.error.domain === 'storage' &&
+      state.error.code === 'migration-failed'
     );
   });
 

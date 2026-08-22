@@ -82,7 +82,12 @@ export type GenerationState =
   | { readonly kind: 'parsing' }
   | { readonly kind: 'validating' }
   | { readonly kind: 'exception-review'; readonly candidateCount: number }
-  | { readonly kind: 'repairing'; readonly attempt: number }
+  | {
+      readonly kind: 'repairing';
+      readonly attempt: number;
+      readonly unknownCount: number;
+      readonly structureIssueCount: number;
+    }
   | {
       readonly kind: 'auxiliary-review';
       readonly grammar: BranchState;
@@ -495,9 +500,15 @@ export class GenerationStore {
       }
 
       const attempt = this.repairSignal() + 1;
+      const unknownCount = remaining.size;
+      const structureIssueCount = structureIssues.length;
       this.repairSignal.set(attempt);
-      this.stateSignal.set({ kind: 'repairing', attempt });
-      this.announce(`Repairing the story (attempt ${String(attempt)} of 2)…`);
+      this.stateSignal.set({ kind: 'repairing', attempt, unknownCount, structureIssueCount });
+      const repairWork =
+        unknownCount > 0
+          ? `Replacing ${String(unknownCount)} unfamiliar ${unknownCount === 1 ? 'word' : 'words'}${structureIssueCount > 0 ? ' and fixing the story structure' : ''}`
+          : 'Fixing the story structure';
+      this.announce(`${repairWork} (attempt ${String(attempt)} of 2)…`);
 
       const repaired = await this.provider.repairStory(
         {

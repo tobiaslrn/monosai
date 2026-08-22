@@ -19,12 +19,12 @@ Build Monosai according to the repository specifications. Read the relevant spec
 - Validate all external, stored, imported, and AI-generated data at runtime.
 - Use explicit typed errors and exhaustive state handling. Avoid `any`.
 
-## Schema changes before the first stable release
+## Database schema changes
 
-- There is no released version yet, so backward compatibility is not a concern.
-- Edit the existing schema version in place. Do not add a new schema version and do not write a migration.
-- Breaking local development databases is acceptable; recreating them is the expected cost.
-- Revisit this once the first stable release ships, after which migrations become mandatory.
+- Treat every committed schema version as immutable.
+- Add a monotonically increasing Dexie version for every table, primary-key, or index change.
+- Add a transactional upgrade function when stored records need to change shape or meaning.
+- Preserve existing local data whenever possible; migration failures must offer an explicit recovery path and must never silently reset the database.
 
 ## Quality
 

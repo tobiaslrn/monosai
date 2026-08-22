@@ -80,12 +80,10 @@ test.describe('generating a story', () => {
     await expect(page.getByTestId('saved-title')).toHaveText(STRICT_STORY.titleJa, {
       timeout: 60_000,
     });
+    await expect(page.getByTestId('open-story')).toBeVisible();
 
-    // Grammar review and translation really ran, so both report done rather
-    // than being skipped or quietly omitted.
-    const stepper = page.locator('mn-generation-stepper');
-    await expect(stepper.locator('li[data-status="complete"]').first()).toBeVisible();
-    await expect(stepper.getByText('Reviewing grammar')).toBeVisible();
+    // Grammar review and translation really ran; their saved summaries are the
+    // durable result after the temporary waiting message disappears.
     await expect(page.getByTestId('saved-summaries')).toContainText('Translations: complete');
     await expect(page.getByTestId('saved-summaries')).toContainText('Grammar: reviewed');
 
@@ -148,11 +146,27 @@ test.describe('generating a story', () => {
     await page.getByTestId('generate').click();
 
     await expect(page.getByTestId('cancel-generation')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('premise')).toHaveCount(0);
+    await expect(page.getByTestId('generation-copy')).toContainText('Generating your story');
+    await expect(page.locator('.mark')).toBeVisible();
+    await expect(page.locator('.mark__trace')).toHaveCount(2);
+    const trace = page.locator('.mark__trace').first();
+    const firstOffset = await trace.evaluate(
+      (element) => getComputedStyle(element).strokeDashoffset,
+    );
+    await page.waitForTimeout(150);
+    const secondOffset = await trace.evaluate(
+      (element) => getComputedStyle(element).strokeDashoffset,
+    );
+    expect(secondOffset).not.toBe(firstOffset);
+    await expect
+      .poll(() =>
+        trace.evaluate((element) => getComputedStyle(element).animationName.endsWith('trace-edge')),
+      )
+      .toBe(true);
     await page.getByTestId('cancel-generation').click();
 
-    await expect(page.getByTestId('generation-detail')).toContainText('Cancelled', {
-      timeout: 30_000,
-    });
+    await expect(page.getByRole('heading', { name: 'Generation stopped', level: 2 })).toBeVisible();
 
     const rows = await countOwnedRows(page);
     expect(rows['readings']).toBe(0);
@@ -176,14 +190,15 @@ test.describe('generating a story', () => {
     await page.getByTestId('premise').fill(PREMISE);
     await page.getByTestId('generate').click();
 
-    await expect(page.getByTestId('generation-detail')).toContainText('Reviewing grammar', {
-      timeout: 60_000,
-    });
+    await expect(page.getByTestId('generation-copy')).toContainText(
+      'Reviewing grammar and translating',
+      {
+        timeout: 60_000,
+      },
+    );
     await page.getByTestId('cancel-generation').click();
 
-    await expect(page.getByTestId('generation-detail')).toContainText('Cancelled', {
-      timeout: 30_000,
-    });
+    await expect(page.getByRole('heading', { name: 'Generation stopped', level: 2 })).toBeVisible();
 
     // The story is discarded, and so is every translation that a branch might
     // already have produced: nothing is written before the single save.
@@ -223,9 +238,6 @@ test.describe('generating a story', () => {
     const summaries = page.getByTestId('saved-summaries');
     await expect(summaries).toContainText('Grammar: unavailable');
     await expect(summaries).toContainText('Translations: 10 of 13');
-
-    const stepper = page.locator('mn-generation-stepper');
-    await expect(stepper.locator('li[data-status="failed"]')).toHaveCount(2);
 
     const rows = await countOwnedRows(page);
     expect(rows['readings']).toBe(1);

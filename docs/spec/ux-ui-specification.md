@@ -358,7 +358,10 @@ No genre selector, topic suggestions, visible target-vocabulary list, temperatur
 
 ### Progress
 
-Use a vertical stepper on mobile and horizontal/vertical adaptive stepper on desktop. States: Pending, Active, Complete, Retrying, Skipped, Failed. Stages:
+Submitting replaces the form with a focused generation screen. Show one calm
+loading animation and one short title/detail pair describing the work currently
+in progress; do not show the entire internal pipeline. Text changes as the job
+moves through:
 
 1. Preparing vocabulary
 2. Writing Japanese
@@ -369,6 +372,12 @@ Use a vertical stepper on mobile and horizontal/vertical adaptive stepper on des
 7. Reviewing grammar
 8. Translating
 9. Saving
+
+Use real counts when available: exception review names its unfamiliar-word
+count, and repair names how many unfamiliar words it is replacing plus its
+attempt number. When grammar review and translation run concurrently, name
+both in the same message. On completion, replace the loading state with the
+saved title and **Open story** as the primary action.
 
 Cancel remains available until saving begins. During saving it is disabled for the brief transaction. A user cancellation discards the entire story even if auxiliary results had completed.
 
@@ -471,7 +480,7 @@ No dedicated privacy/legal page or spending dashboard.
 - Focus remains visible against all pastel surfaces.
 - Sheets/dialogs are labelled, trap focus, close with Escape where safe, and restore focus.
 - Status changes use polite live regions; token hover previews do not announce repeatedly.
-- Progress steppers expose current stage and textual counts.
+- Long-running progress exposes its current stage and textual counts in a polite live region.
 - Chips expose `aria-pressed`; whole-level controls announce affected ranges.
 - At 320px, no page-level horizontal scrolling; tables become definition lists/cards.
 - Ruby never overlaps adjacent lines at 200% Android text scaling.
