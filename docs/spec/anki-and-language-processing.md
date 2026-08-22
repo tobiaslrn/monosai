@@ -221,10 +221,16 @@ Build a compact lookup artifact at development time. Do not import the raw sourc
 5. Canonical orthographic variants supplied by the dataset.
 
 A query is about a whole word, not a morpheme: the surface is the word as
-written and the lemma and POS come from its head. POS gates the exact steps
+written and the lemma, POS, and bounded verb conjugation family come from its head. POS gates the exact steps
 because a spelling can be shared by unrelated words — the あり of あります is
 spelled like 蟻, "ant" — and a disagreeing tag is still better evidence than no
 entry, which is why step 4 exists.
+
+Before applying the result bound, prefer a compatible verb conjugation family
+when both analyzer and dictionary provide one. For a kana lookup, prefer senses
+JMdict marks as usually written in kana. Preserve artifact order for remaining
+ties and fall back to POS-only matching if the finer metadata has no compatible
+candidate.
 
 Return a bounded number of prioritized common senses. The UI shows “No bundled definition” when none is found and never silently makes an online lookup.
 

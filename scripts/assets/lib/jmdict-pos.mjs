@@ -70,3 +70,17 @@ export function mapJmdictPos(code) {
   }
   return { partOfSpeech: 'other', known: false };
 }
+
+/** Maps only verb paradigms that have an exact family equivalent in IPADIC. */
+export function mapJmdictVerbConjugationFamily(code) {
+  if (code === 'v1' || code === 'v1-s') {
+    return 'ichidan';
+  }
+  if (code.startsWith('v5')) {
+    return 'godan';
+  }
+  if (['vk', 'vs', 'vs-c', 'vs-i', 'vs-s', 'vz'].includes(code)) {
+    return 'irregular';
+  }
+  return undefined;
+}

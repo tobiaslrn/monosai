@@ -153,7 +153,14 @@ describe('WordInspectorStore', () => {
       },
     });
     const inflected: readonly Token[] = [
-      { ...token(), id: 'v1', surface: 'あり', lemma: 'ある', partOfSpeech: 'verb' },
+      {
+        ...token(),
+        id: 'v1',
+        surface: 'あり',
+        lemma: 'ある',
+        partOfSpeech: 'verb',
+        verbConjugationFamily: 'godan',
+      },
       { ...token(), id: 'v2', surface: 'ます', lemma: 'ます', partOfSpeech: 'auxiliary' },
     ];
 
@@ -165,7 +172,71 @@ describe('WordInspectorStore', () => {
     });
 
     expect(queries).toHaveLength(1);
-    expect(queries[0]).toMatchObject({ surface: 'あります', lemma: 'ある', partOfSpeech: 'verb' });
+    expect(queries[0]).toEqual({
+      surface: 'あります',
+      lemma: 'ある',
+      partOfSpeech: 'verb',
+      verbConjugationFamily: 'godan',
+      limit: 4,
+    });
+  });
+
+  it('queries an ambiguous kana inflection with every analyzer discriminator', async () => {
+    const queries: DictionaryQuery[] = [];
+    TestBed.overrideProvider(LANGUAGE_RUNTIME, {
+      useValue: {
+        lookup: (query: DictionaryQuery) => {
+          queries.push(query);
+          return Promise.resolve(ok({ matchedBy: 'lemma', entries: [] }));
+        },
+      },
+    });
+    const inflected: readonly Token[] = [
+      {
+        ...token(),
+        id: 'v1',
+        surface: 'い',
+        lemma: 'いる',
+        readingHiragana: 'い',
+        partOfSpeech: 'verb',
+        inflectionForm: 'irrealis',
+        verbConjugationFamily: 'ichidan',
+      },
+      {
+        ...token(),
+        id: 'v2',
+        surface: 'なかっ',
+        lemma: 'ない',
+        readingHiragana: 'なかっ',
+        partOfSpeech: 'auxiliary',
+      },
+      {
+        ...token(),
+        id: 'v3',
+        surface: 'た',
+        lemma: 'た',
+        readingHiragana: 'た',
+        partOfSpeech: 'auxiliary',
+      },
+    ];
+
+    await store().inspect({
+      token: inflected[0],
+      word: wordAt(inflected, 0),
+      sentence: sentence(),
+      status: null,
+    });
+
+    expect(queries).toEqual([
+      {
+        surface: 'いなかった',
+        lemma: 'いる',
+        readingHiragana: 'いなかった',
+        partOfSpeech: 'verb',
+        verbConjugationFamily: 'ichidan',
+        limit: 4,
+      },
+    ]);
   });
 
   it('previews the same word a press would pin', async () => {

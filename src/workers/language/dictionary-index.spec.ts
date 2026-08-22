@@ -13,6 +13,23 @@ beforeAll(() => {
 });
 
 describe('bundled dictionary lookup', () => {
+  it('ranks the relevant entry for the analyzed form いなかった first', () => {
+    const result = index.lookup({
+      surface: 'いなかった',
+      lemma: 'いる',
+      readingHiragana: 'いなかった',
+      partOfSpeech: 'verb',
+      verbConjugationFamily: 'ichidan',
+    });
+
+    expect(result.matchedBy).toBe('lemma');
+    expect(result.entries[0].id).toBe('1577980');
+    expect(result.entries[0].writtenForms).toContain('居る');
+    expect(result.entries[0].senses[0].glossesEn).toContain('to exist');
+    expect(result.entries.map((entry) => entry.writtenForms[0])).not.toContain('炒る');
+    expect(result.entries.map((entry) => entry.writtenForms[0])).not.toContain('入る');
+  });
+
   it('finds a common beginner word by exact surface', () => {
     const result = index.lookup({ surface: '猫' });
     expect(result.matchedBy).toBe('surface');
@@ -89,6 +106,50 @@ describe('bundled dictionary lookup', () => {
   it('bounds the number of returned entries', () => {
     const result = index.lookup({ surface: 'こう', limit: 2 });
     expect(result.entries.length).toBeLessThanOrEqual(2);
+  });
+
+  it('uses conjugation family, kana preference, and the limit in ranking order', () => {
+    const ranked = DictionaryIndex.build([
+      { i: 'godan', w: ['炒る'], k: ['いる'], s: [{ p: ['verb'], g: ['roast'], c: ['godan'] }] },
+      {
+        i: 'ichidan',
+        w: ['射る'],
+        k: ['いる'],
+        s: [{ p: ['verb'], g: ['shoot'], c: ['ichidan'] }],
+      },
+      {
+        i: 'preferred',
+        w: ['居る'],
+        k: ['いる'],
+        s: [{ p: ['verb'], g: ['exist'], c: ['ichidan'], u: true }],
+      },
+    ]);
+
+    const result = ranked.lookup({
+      surface: 'x',
+      lemma: 'いる',
+      partOfSpeech: 'verb',
+      verbConjugationFamily: 'ichidan',
+      limit: 1,
+    });
+
+    expect(result.entries.map((entry) => entry.id)).toEqual(['preferred']);
+  });
+
+  it('falls back deterministically to POS-compatible entries without family metadata', () => {
+    const legacy = DictionaryIndex.build([
+      { i: 'first', w: [], k: ['いる'], s: [{ p: ['verb'], g: ['first'] }] },
+      { i: 'second', w: [], k: ['いる'], s: [{ p: ['verb'], g: ['second'] }] },
+    ]);
+
+    const result = legacy.lookup({
+      surface: 'x',
+      lemma: 'いる',
+      partOfSpeech: 'verb',
+      verbConjugationFamily: 'ichidan',
+    });
+
+    expect(result.entries.map((entry) => entry.id)).toEqual(['first', 'second']);
   });
 
   it('bounds senses and glosses so an inspector cannot be flooded', () => {

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   INFLECTION_FORM_LABELS,
   PART_OF_SPEECH_LABELS,
+  VERB_CONJUGATION_FAMILIES,
   type InflectionForm,
   type PartOfSpeech,
 } from '../../../domain/reading/token';
@@ -95,6 +96,7 @@ export const tokenSchema = z.object({
   readingHiragana: z.string().optional(),
   partOfSpeech: z.enum(partOfSpeechValues).optional(),
   inflectionForm: z.enum(inflectionFormValues).optional(),
+  verbConjugationFamily: z.enum(VERB_CONJUGATION_FAMILIES).optional(),
   dictionaryKeys: z.array(z.string()).readonly(),
   isPunctuation: z.boolean(),
 });

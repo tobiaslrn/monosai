@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { InflectionForm } from '../../app/domain/reading/token';
 import { mapInflectionForm } from './ipadic-inflection';
+import { mapVerbConjugationFamily } from './ipadic-conjugation';
 import type { RawToken } from './tokenizer-runtime';
 
 function raw(inflectionForm: string): RawToken {
@@ -69,5 +70,26 @@ describe('mapInflectionForm', () => {
 
   it('reports an unrecognized tag as absent', () => {
     expect(mapInflectionForm(raw('未知の活用形'))).toBeUndefined();
+  });
+});
+
+describe('mapVerbConjugationFamily', () => {
+  it.each([
+    ['一段', 'ichidan'],
+    ['五段・ラ行', 'godan'],
+    ['サ変・スル', 'irregular'],
+    ['カ変・クル', 'irregular'],
+  ] as const)('maps %s to %s', (conjugationClass, expected) => {
+    expect(mapVerbConjugationFamily({ ...raw('基本形'), conjugationClass })).toBe(expected);
+  });
+
+  it('does not assign a verb family to another part of speech', () => {
+    expect(
+      mapVerbConjugationFamily({
+        ...raw('基本形'),
+        partOfSpeech: '助動詞',
+        conjugationClass: '一段',
+      }),
+    ).toBeUndefined();
   });
 });

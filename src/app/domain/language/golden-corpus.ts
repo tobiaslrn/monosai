@@ -19,6 +19,7 @@ export interface GoldenTokenExpectation {
   readonly readingHiragana?: string;
   readonly partOfSpeech?: string;
   readonly inflectionForm?: string;
+  readonly verbConjugationFamily?: string;
   readonly isPunctuation?: boolean;
 }
 
@@ -32,6 +33,28 @@ export interface GoldenAnalysisCase {
 }
 
 export const GOLDEN_ANALYSIS_CASES: readonly GoldenAnalysisCase[] = [
+  {
+    name: 'ambiguous kana ichidan negative past',
+    text: 'いなかった',
+    surfaces: ['い', 'なかっ', 'た'],
+    tokens: {
+      0: {
+        surface: 'い',
+        lemma: 'いる',
+        readingHiragana: 'い',
+        partOfSpeech: 'verb',
+        inflectionForm: 'irrealis',
+        verbConjugationFamily: 'ichidan',
+      },
+      1: {
+        surface: 'なかっ',
+        lemma: 'ない',
+        partOfSpeech: 'auxiliary',
+        inflectionForm: 'continuative-ta',
+      },
+      2: { surface: 'た', lemma: 'た', partOfSpeech: 'auxiliary', inflectionForm: 'dictionary' },
+    },
+  },
   {
     name: 'kana-only sentence',
     text: 'ねこがすきです',

@@ -1,6 +1,7 @@
 import { katakanaToHiragana, normalizeLookupKey } from '../../app/domain/language/kana';
 import type { Token } from '../../app/domain/reading/token';
 import { mapInflectionForm } from './ipadic-inflection';
+import { mapVerbConjugationFamily } from './ipadic-conjugation';
 import { isPunctuationToken, mapPartOfSpeech } from './ipadic-mapping';
 import type { RawToken } from './tokenizer-runtime';
 
@@ -81,6 +82,7 @@ export function mapRawTokens(text: string, rawTokens: readonly RawToken[]): read
     const lemma = raw.baseForm.length > 0 ? raw.baseForm : undefined;
     const partOfSpeech = mapPartOfSpeech(raw);
     const inflectionForm = mapInflectionForm(raw);
+    const verbConjugationFamily = mapVerbConjugationFamily(raw);
     tokens.push({
       id: `t${String(tokens.length)}`,
       startUtf16: start,
@@ -90,6 +92,7 @@ export function mapRawTokens(text: string, rawTokens: readonly RawToken[]): read
       ...(reading.length === 0 ? {} : { readingHiragana: reading }),
       ...(partOfSpeech === undefined ? {} : { partOfSpeech }),
       ...(inflectionForm === undefined ? {} : { inflectionForm }),
+      ...(verbConjugationFamily === undefined ? {} : { verbConjugationFamily }),
       dictionaryKeys: dictionaryKeysFor(surface, raw.baseForm, reading),
       isPunctuation: isPunctuationToken(raw),
     });

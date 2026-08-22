@@ -17,7 +17,7 @@ import type { VocabularyItem } from '../../domain/vocabulary/snapshot';
  * that disagree refuse to talk rather than guessing, which matters because a
  * service-worker update can leave an old worker script cached.
  */
-export const LANGUAGE_PROTOCOL_VERSION = 2;
+export const LANGUAGE_PROTOCOL_VERSION = 3;
 
 export interface InitializeRequest {
   readonly operation: 'initialize';

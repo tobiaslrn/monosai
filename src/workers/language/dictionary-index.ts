@@ -5,8 +5,8 @@ import {
   type DictionaryMatchBasis,
   type DictionaryQuery,
 } from '../../app/domain/language/dictionary';
-import { normalizeLookupKey } from '../../app/domain/language/kana';
-import type { PartOfSpeech } from '../../app/domain/reading/token';
+import { isKanaOnly, normalizeLookupKey } from '../../app/domain/language/kana';
+import type { PartOfSpeech, VerbConjugationFamily } from '../../app/domain/reading/token';
 import type { RawDictionaryEntry } from '../../app/infrastructure/language/language-asset.schema';
 
 function toEntry(raw: RawDictionaryEntry): DictionaryEntry {
@@ -70,22 +70,58 @@ export class DictionaryIndex {
     );
   }
 
+  private compatibleWithVerbFamily(
+    indexes: readonly number[],
+    family: VerbConjugationFamily,
+    partOfSpeech?: PartOfSpeech,
+  ): readonly number[] {
+    return indexes.filter((entryIndex) =>
+      this.entries[entryIndex].s.some(
+        (sense) =>
+          sense.c?.includes(family) === true &&
+          (partOfSpeech === undefined || sense.p.includes(partOfSpeech)),
+      ),
+    );
+  }
+
+  /** Stable tie-breaker for a kana spelling JMdict explicitly says is usual. */
+  private rankKanaPreferred(
+    indexes: readonly number[],
+    lookupKey: string,
+    partOfSpeech?: PartOfSpeech,
+    family?: VerbConjugationFamily,
+  ): readonly number[] {
+    if (!isKanaOnly(lookupKey)) {
+      return indexes;
+    }
+    const preferred = (entryIndex: number): boolean =>
+      this.entries[entryIndex].s.some(
+        (sense) =>
+          sense.u === true &&
+          (partOfSpeech === undefined || sense.p.includes(partOfSpeech)) &&
+          (family === undefined || sense.c?.includes(family) === true),
+      );
+    return [...indexes].sort((left, right) => Number(preferred(right)) - Number(preferred(left)));
+  }
+
   /**
    * The exact hits for a query, in the order they are preferred.
    *
    * A word looked up under an inflected spelling carries its dictionary form as
    * the lemma, and both are exact keys.
    */
-  private exactCandidates(query: DictionaryQuery): readonly [DictionaryMatchBasis, number[]][] {
-    const candidates: [DictionaryMatchBasis, number[]][] = [];
+  private exactCandidates(
+    query: DictionaryQuery,
+  ): readonly [DictionaryMatchBasis, string, number[]][] {
+    const candidates: [DictionaryMatchBasis, string, number[]][] = [];
     const bySurface = this.exact.get(query.surface);
     if (bySurface !== undefined) {
-      candidates.push(['surface', [...bySurface]]);
+      candidates.push(['surface', query.surface, [...bySurface]]);
     }
     if (query.lemma !== undefined && query.lemma.length > 0 && query.lemma !== query.surface) {
       const byLemma = this.exact.get(query.lemma);
       if (byLemma !== undefined) {
-        candidates.push(['lemma', [...byLemma]]);
+        candidates.push(['lemma', query.lemma, [...byLemma]]);
       }
     }
     return candidates;
@@ -107,11 +143,28 @@ export class DictionaryIndex {
     const limit = query.limit ?? DICTIONARY_RESULT_LIMIT;
     const candidates = this.exactCandidates(query);
 
-    for (const [basis, indexes] of candidates) {
+    for (const [basis, lookupKey, indexes] of candidates) {
       const narrowed =
         query.partOfSpeech === undefined ? indexes : this.compatible(indexes, query.partOfSpeech);
+      if (query.verbConjugationFamily !== undefined) {
+        const byFamily = this.compatibleWithVerbFamily(
+          narrowed,
+          query.verbConjugationFamily,
+          query.partOfSpeech,
+        );
+        if (byFamily.length > 0) {
+          const ranked = this.rankKanaPreferred(
+            byFamily,
+            lookupKey,
+            query.partOfSpeech,
+            query.verbConjugationFamily,
+          );
+          return { matchedBy: basis, entries: this.resolve(ranked, limit) };
+        }
+      }
       if (narrowed.length > 0) {
-        return { matchedBy: basis, entries: this.resolve(narrowed, limit) };
+        const ranked = this.rankKanaPreferred(narrowed, lookupKey, query.partOfSpeech);
+        return { matchedBy: basis, entries: this.resolve(ranked, limit) };
       }
     }
 
@@ -123,14 +176,35 @@ export class DictionaryIndex {
             ? byReading
             : this.compatible(byReading, query.partOfSpeech);
         if (filtered.length > 0) {
-          return { matchedBy: 'reading', entries: this.resolve(filtered, limit) };
+          if (query.verbConjugationFamily !== undefined) {
+            const byFamily = this.compatibleWithVerbFamily(
+              filtered,
+              query.verbConjugationFamily,
+              query.partOfSpeech,
+            );
+            if (byFamily.length > 0) {
+              const ranked = this.rankKanaPreferred(
+                byFamily,
+                query.readingHiragana,
+                query.partOfSpeech,
+                query.verbConjugationFamily,
+              );
+              return { matchedBy: 'reading', entries: this.resolve(ranked, limit) };
+            }
+          }
+          const ranked = this.rankKanaPreferred(
+            filtered,
+            query.readingHiragana,
+            query.partOfSpeech,
+          );
+          return { matchedBy: 'reading', entries: this.resolve(ranked, limit) };
         }
       }
     }
 
     const fallback = candidates.at(0);
     if (fallback !== undefined) {
-      return { matchedBy: fallback[0], entries: this.resolve(fallback[1], limit) };
+      return { matchedBy: fallback[0], entries: this.resolve(fallback[2], limit) };
     }
 
     for (const candidate of [query.surface, query.lemma]) {
@@ -139,7 +213,8 @@ export class DictionaryIndex {
       }
       const byVariant = this.normalized.get(normalizeLookupKey(candidate));
       if (byVariant !== undefined) {
-        return { matchedBy: 'variant', entries: this.resolve(byVariant, limit) };
+        const ranked = this.rankKanaPreferred(byVariant, candidate, query.partOfSpeech);
+        return { matchedBy: 'variant', entries: this.resolve(ranked, limit) };
       }
     }
 
