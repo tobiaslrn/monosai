@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="data/brand/monosai-mark.svg" alt="Monosai Logo" width="96" height="96" style="border-radius: 12px;"/>
+  <img src="data/brand/monosai-mark.svg" alt="Monosai Logo" width="128" height="128""/>
   <h1>Monosai</h1>
   <p><b>Local-first Japanese reading app with furigana, glosses, and Anki integration</b></p>
   <p>
