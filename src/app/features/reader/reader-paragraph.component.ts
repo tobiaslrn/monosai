@@ -39,6 +39,7 @@ import {
           [selected]="selectedSentenceId() === sentence.sentence.id"
           [playing]="playingSentenceId() === sentence.sentence.id"
           [selectedWord]="selectedWord()"
+          [previewedWord]="previewedWord()"
           (activated)="activated.emit($event)"
           (previewed)="previewed.emit($event)"
           (previewEnded)="previewEnded.emit()"
@@ -69,6 +70,7 @@ export class ReaderParagraphComponent {
   /** The sentence being read aloud, tinted so playback can be followed. */
   readonly playingSentenceId = input<string | null>(null);
   readonly selectedWord = input<SelectedWord | null>(null);
+  readonly previewedWord = input<SelectedWord | null>(null);
 
   readonly activated = output<TokenActivation>();
   readonly previewed = output<TokenActivation>();

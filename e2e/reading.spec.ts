@@ -53,7 +53,7 @@ async function setReaderAids(
  */
 async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
   const paragraph = page.locator('mn-reader-paragraph .paragraph').first();
-  const target = await paragraph.evaluate((element) => {
+  await paragraph.evaluate((element) => {
     element.style.removeProperty('width');
     element.style.maxWidth = 'none';
     const groups = [...element.querySelectorAll<HTMLElement>('.bunsetsu-group')];
@@ -225,6 +225,20 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     // The sentence is not repeated here: the learner is looking at it.
     await expect(wordDetails(page)).not.toContainText('In this sentence');
     expect(external).toEqual([]);
+  });
+
+  test('hovering a morpheme tints the whole word', async ({ page }) => {
+    await page.goto('/#/add');
+    await pasteAndContinue(page, 'あります。');
+    await saveAndOpenReader(page);
+
+    const morpheme = page.getByRole('button', { name: 'ます', exact: true });
+    await expect(morpheme).toBeVisible();
+    await morpheme.hover();
+
+    const previewed = page.locator('button.is-previewed');
+    await expect(previewed).toHaveCount(2);
+    await expect(previewed).toHaveText(['あり', 'ます']);
   });
 
   test('anchors word details beside the word at every viewport', async ({ page }) => {
