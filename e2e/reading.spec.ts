@@ -22,6 +22,86 @@ async function openWordDetails(page: Page, surface: string): Promise<void> {
   await expect(wordDetails(page)).toBeVisible();
 }
 
+async function setReaderAids(
+  page: Page,
+  options: { readonly furigana: boolean; readonly spacing: boolean },
+): Promise<void> {
+  await page.getByRole('button', { name: 'Aids' }).click();
+  const panel = page.getByRole('group', { name: 'Reading aids' });
+  await panel.getByLabel('Text size').fill('2.5');
+
+  for (const [label, checked] of [
+    ['Furigana', options.furigana],
+    ['Word spacing', options.spacing],
+  ] as const) {
+    const control = panel.getByRole('checkbox', { name: label });
+    if ((await control.isChecked()) !== checked) {
+      if (checked) {
+        await control.check();
+      } else {
+        await control.uncheck();
+      }
+    }
+  }
+
+  await page.keyboard.press('Escape');
+}
+
+/**
+ * Gives the paragraph just enough room for the second group, but not enough
+ * for both groups. The second group must therefore move intact to line two.
+ */
+async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
+  const paragraph = page.locator('mn-reader-paragraph .paragraph').first();
+  const target = await paragraph.evaluate((element) => {
+    element.style.removeProperty('width');
+    element.style.maxWidth = 'none';
+    const groups = [...element.querySelectorAll<HTMLElement>('.bunsetsu-group')];
+    if (groups.length < 2) {
+      throw new Error(`expected at least two bunsetsu groups, found ${groups.length}`);
+    }
+    const secondWidth = groups[1].getBoundingClientRect().width;
+    const spacing = Number.parseFloat(getComputedStyle(groups[1]).marginInlineStart) || 0;
+    const width = Math.ceil(secondWidth + spacing + 4);
+    element.style.width = `${String(width)}px`;
+    element.style.maxWidth = 'none';
+    return width;
+  });
+
+  const layout = await paragraph.evaluate((element) => {
+    const groups = [...element.querySelectorAll<HTMLElement>('.bunsetsu-group')];
+    const paragraphRect = element.getBoundingClientRect();
+    const groupRects = groups.map((group) => group.getBoundingClientRect());
+    const surfaceOf = (group: HTMLElement): string => {
+      const copy = group.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll('rt, .mn-visually-hidden').forEach((node) => {
+        node.remove();
+      });
+      return copy.textContent.replace(/\s+/g, '');
+    };
+    const secondTokenTops = [...groups[1].querySelectorAll<HTMLElement>('mn-reader-token')].map(
+      (token) => Math.round(token.getBoundingClientRect().top),
+    );
+    return {
+      text: groups.map(surfaceOf),
+      tops: groupRects.map((rect) => Math.round(rect.top)),
+      secondTokenTops,
+      paragraphRight: paragraphRect.right,
+      groupRights: groupRects.map((rect) => rect.right),
+      documentOverflow: document.documentElement.scrollWidth - window.innerWidth,
+    };
+  });
+
+  expect(layout.text, label).toEqual(['名前が', 'あります。']);
+  expect(layout.tops[1], label).toBeGreaterThan(layout.tops[0]);
+  expect(new Set(layout.secondTokenTops), label).toEqual(new Set([layout.secondTokenTops[0]]));
+  expect(
+    layout.groupRights.every((right) => right <= layout.paragraphRight + 1),
+    label,
+  ).toBe(true);
+  expect(layout.documentOverflow, label).toBeLessThanOrEqual(1);
+}
+
 /**
  * End-to-end scenario 1: a fresh install pastes Japanese, reviews the
  * segmentation, saves, and inspects a word — with no Anki, no API key, and no
@@ -97,6 +177,23 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     await expect(page.locator('.sentence[lang="ja"]').first()).toBeVisible();
     // Ruby is whole-token and only where a reading adds information.
     await expect(page.locator('ruby', { hasText: '猫' }).first().locator('rt')).toHaveText('ねこ');
+  });
+
+  test('wraps fitting bunsetsu atomically without horizontal overflow', async ({ page }) => {
+    await importReading(page, '名前があります。', 'Bunsetsu wrapping');
+
+    await setReaderAids(page, { furigana: true, spacing: true });
+    await assertBunsetsuWrap(page, 'furigana and spacing on');
+
+    await setReaderAids(page, { furigana: false, spacing: false });
+    await assertBunsetsuWrap(page, 'furigana and spacing off');
+
+    await page.setViewportSize({ width: 320, height: 640 });
+    await setReaderAids(page, { furigana: true, spacing: true });
+    await assertBunsetsuWrap(page, '320px with furigana and spacing on');
+
+    await setReaderAids(page, { furigana: false, spacing: false });
+    await assertBunsetsuWrap(page, '320px with furigana and spacing off');
   });
 
   test('inspecting a word shows local details with no request leaving the origin', async ({

@@ -76,6 +76,63 @@ const INFLECTED: ReaderSentence = {
   statuses: null,
 };
 
+const MULTI_GROUPED: ReaderSentence = {
+  sentence: { ...ENTRY.sentence, japaneseText: '名前があります。' },
+  tokens: [
+    {
+      id: 'm1',
+      startUtf16: 0,
+      endUtf16: 2,
+      surface: '名前',
+      readingHiragana: 'なまえ',
+      partOfSpeech: 'noun',
+      dictionaryKeys: ['名前'],
+      isPunctuation: false,
+    },
+    {
+      id: 'm2',
+      startUtf16: 2,
+      endUtf16: 3,
+      surface: 'が',
+      readingHiragana: 'が',
+      partOfSpeech: 'particle',
+      dictionaryKeys: ['が'],
+      isPunctuation: false,
+    },
+    {
+      id: 'm3',
+      startUtf16: 3,
+      endUtf16: 5,
+      surface: 'あり',
+      lemma: 'ある',
+      readingHiragana: 'あり',
+      partOfSpeech: 'verb',
+      dictionaryKeys: ['あり'],
+      isPunctuation: false,
+    },
+    {
+      id: 'm4',
+      startUtf16: 5,
+      endUtf16: 7,
+      surface: 'ます',
+      lemma: 'ます',
+      readingHiragana: 'ます',
+      partOfSpeech: 'auxiliary',
+      dictionaryKeys: ['ます'],
+      isPunctuation: false,
+    },
+    {
+      id: 'm5',
+      startUtf16: 7,
+      endUtf16: 8,
+      surface: '。',
+      dictionaryKeys: [],
+      isPunctuation: true,
+    },
+  ],
+  statuses: null,
+};
+
 function translation(textEn: string): TranslationRecord {
   return {
     id: 't-1',
@@ -117,6 +174,14 @@ function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
   return { ...NO_AIDS, ...overrides };
 }
 
+function renderedSurface(element: Element): string {
+  const copy = element.cloneNode(true) as Element;
+  copy.querySelectorAll('rt, .mn-visually-hidden').forEach((node) => {
+    node.remove();
+  });
+  return copy.textContent.replace(/\s+/g, '');
+}
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReaderSentenceComponent],
@@ -124,6 +189,9 @@ function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
     <mn-reader-sentence
       [entry]="entry()"
       [aids]="aids()"
+      [furigana]="furigana()"
+      [tokenSpacing]="tokenSpacing()"
+      [markers]="markers()"
       [selected]="selected()"
       [selectedWord]="selectedWord()"
       (activated)="activations.push($event)"
@@ -133,6 +201,9 @@ function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
 class HostComponent {
   readonly entry = signal<ReaderSentence>(ENTRY);
   readonly aids = signal<SentenceAids>(NO_AIDS);
+  readonly furigana = signal(true);
+  readonly tokenSpacing = signal(true);
+  readonly markers = signal(true);
   readonly selected = signal(false);
   readonly selectedWord = signal<SelectedWord | null>(null);
   readonly activations: TokenActivation[] = [];
@@ -151,6 +222,21 @@ describe('ReaderSentenceComponent', () => {
 
     expect(element.querySelector('.sentence')?.getAttribute('lang')).toBe('ja');
     expect(element.textContent).toContain('猫');
+  });
+
+  it('renders each bunsetsu in an atomic wrapper without inserting whitespace', () => {
+    const fixture = render();
+    fixture.componentInstance.entry.set(MULTI_GROUPED);
+    fixture.detectChanges();
+    const sentence = (fixture.nativeElement as HTMLElement).querySelector('.sentence');
+    const groups = [...(sentence?.querySelectorAll('.bunsetsu-group') ?? [])];
+
+    expect(renderedSurface(sentence!)).toBe('名前があります。');
+    expect(groups.map((group) => renderedSurface(group))).toEqual(['名前が', 'あります。']);
+    expect([...sentence!.childNodes].filter((node) => node.nodeType === 3)).toHaveLength(0);
+    expect(
+      groups.flatMap((group) => [...group.childNodes]).filter((node) => node.nodeType === 3),
+    ).toHaveLength(0);
   });
 
   it('never lays out English, however much is stored for the sentence', () => {
@@ -215,10 +301,32 @@ describe('ReaderSentenceComponent', () => {
     // The spacing aid must not print analyzer internals: が belongs to the noun
     // it marks, so no gap is drawn before it.
     const element = render().nativeElement as HTMLElement;
-    const opening = [...element.querySelectorAll('mn-reader-token.starts-bunsetsu')];
+    const opening = [...element.querySelectorAll('.bunsetsu-group')];
 
     expect(opening).toHaveLength(1);
     expect(opening[0].textContent).toContain('猫');
+  });
+
+  it('moves the spacing aid to group boundaries while leaving furigana optional', () => {
+    const fixture = render();
+    fixture.componentInstance.entry.set(MULTI_GROUPED);
+    fixture.componentInstance.furigana.set(false);
+    fixture.componentInstance.tokenSpacing.set(false);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('.sentence')?.classList.contains('is-spaced')).toBe(false);
+    expect(element.querySelectorAll('.bunsetsu-group')).toHaveLength(2);
+    expect(element.querySelectorAll('mn-reader-token.starts-bunsetsu')).toHaveLength(0);
+    expect(element.querySelectorAll('rt')).toHaveLength(0);
+
+    fixture.componentInstance.tokenSpacing.set(true);
+    fixture.componentInstance.furigana.set(true);
+    fixture.detectChanges();
+
+    expect(element.querySelector('.sentence')?.classList.contains('is-spaced')).toBe(true);
+    expect(element.querySelectorAll('.bunsetsu-group')).toHaveLength(2);
+    expect(element.querySelectorAll('rt')).toHaveLength(1);
   });
 
   it('activates the whole word, not the morpheme that was pressed', () => {
