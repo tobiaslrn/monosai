@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { segmentParagraph } from '../language/segmentation';
 import { buildImportDraft } from './import-structure';
-import { totalSentenceCount } from './import-draft';
 
 function ids(): () => string {
   let counter = 0;
@@ -41,7 +40,7 @@ describe('buildImportDraft', () => {
   it('drops paragraphs that hold nothing but whitespace', () => {
     const draft = build('猫が寝た。\n\n   \n\n鳥は飛んだ。');
     expect(draft.paragraphs).toHaveLength(2);
-    expect(totalSentenceCount(draft)).toBe(2);
+    expect(draft.paragraphs.flatMap((paragraph) => paragraph.sentences)).toHaveLength(2);
   });
 
   it('produces no paragraphs for whitespace-only text', () => {

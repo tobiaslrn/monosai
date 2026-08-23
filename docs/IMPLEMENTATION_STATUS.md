@@ -315,8 +315,8 @@ than asserted, because they are developer-hardware figures.
 
 - **Language protocol version 2**: a new `analyze-sentences` batch operation
   tokenizes already-decided sentence texts without re-segmenting them, so a
-  learner's split/merge corrections in import review survive into the saved
-  reading. The caller (`TextImportService`) chunks review batches at 120
+  imported sentence boundaries survive into the saved
+  reading. The caller (`TextImportService`) chunks analysis batches at 120
   sentences per worker call for progress and cancellation; the worker still
   yields internally between token chunks through the same path `analyze`
   uses. See [0009](decisions/0009-language-protocol-v2-analyze-sentences.md).
@@ -329,7 +329,7 @@ than asserted, because they are developer-hardware figures.
   window and resolve a resume position without loading the reading's text.
 - **Domain** (`src/app/domain/reading/`, each with a focused spec):
   `import-text.ts` (UTF-8 decode, 50,000-code-point limit, typed rejections),
-  `import-title.ts`, `import-draft.ts` (split/merge), `import-structure.ts`
+  `import-title.ts`, `import-draft.ts` (transient analysis state), `import-structure.ts`
   (paragraph/sentence assembly, sentence-text trimming — see
   [0010](decisions/0010-sentence-text-boundary-trimming.md)),
   `reading-position.ts` (resume basis, progress fraction — see

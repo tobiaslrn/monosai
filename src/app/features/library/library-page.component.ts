@@ -114,7 +114,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
                 <mn-icon name="add" [size]="20" />
                 <span>
                   <strong>Add Japanese you already have</strong>
-                  <small>Paste text and review its sentences.</small>
+                  <small>Paste text and start reading.</small>
                 </span>
               </a>
               <a class="empty-choice" routerLink="/generate">

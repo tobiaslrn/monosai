@@ -32,17 +32,16 @@ export function buildLongImportFixture(paragraphCount = 200): {
   return { text, paragraphCount, characterCount: text.length, markerFor };
 }
 
-/** Waits for the language bundle, which import needs but navigation never does. */
+/** Fills the import form and waits for the direct-save action to be ready. */
 export async function pasteAndContinue(page: Page, text: string): Promise<void> {
   await page.getByLabel('Japanese text').fill(text);
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByRole('button', { name: 'Save reading' })).toBeEnabled({
+  await expect(page.getByRole('button', { name: 'Add reading' })).toBeEnabled({
     timeout: 60_000,
   });
 }
 
 export async function saveAndOpenReader(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Save reading' }).click();
+  await page.getByRole('button', { name: 'Add reading' }).click();
   await expect(page).toHaveURL(/#\/reader\//);
   await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
 }
@@ -54,12 +53,8 @@ export async function importReading(page: Page, text: string, title?: string): P
   if (title !== undefined) {
     await page.getByLabel('Title (optional)').fill(title);
   }
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByRole('button', { name: 'Save reading' })).toBeEnabled({
-    timeout: 60_000,
-  });
-  await page.getByRole('button', { name: 'Save reading' }).click();
-  await expect(page).toHaveURL(/#\/reader\//);
+  await page.getByRole('button', { name: 'Add reading' }).click();
+  await expect(page).toHaveURL(/#\/reader\//, { timeout: 60_000 });
 }
 
 /** Counts rows in every store a reading owns, to prove a cascade left nothing. */

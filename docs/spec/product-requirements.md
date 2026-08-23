@@ -21,7 +21,7 @@ V1 is a public bring-your-own-OpenRouter-key application. It is single-learner p
 ### Included in v1
 
 - Pasted Japanese text import.
-- Import review with title editing and sentence split/merge correction.
+- Automatic sentence segmentation with title editing and preserved paragraph breaks.
 - Combined library for imported readings and generated stories.
 - Local tokenization, whole-word furigana, part-of-speech information, compact dictionary glosses, and vocabulary markers.
 - Read-only vocabulary refresh through desktop AnkiConnect, an Android AnkiConnect-compatible bridge, or Anki package parsing.
@@ -53,9 +53,8 @@ V1 is a public bring-your-own-OpenRouter-key application. It is single-learner p
 
 1. A first-time user opens Monosai and selects **Paste Japanese**.
 2. The user enters Japanese, optionally supplies a title, and continues.
-3. Monosai normalizes line endings, preserves paragraph breaks, segments sentences off the main thread, and presents a review screen.
-4. The user can split a sentence at a cursor position, merge it with the previous/next sentence, edit the title, or return to raw input.
-5. The user saves the immutable reading and enters the reader.
+3. Monosai normalizes line endings, preserves paragraph breaks, segments sentences off the main thread, tokenizes them, and saves the immutable reading.
+4. The user enters the reader.
 6. Furigana, spacing, markers available without Anki, and already-cached translations are enabled. Word inspection works locally.
 
 Acceptance:
@@ -217,7 +216,7 @@ Every error state provides: what failed, what did not fail, whether data was sav
 - All multi-record saves use transactions.
 - External responses are validated before entering the domain.
 - Jobs are idempotent by cache key.
-- Service-worker updates never reload during unsaved import review or an active job.
+- Service-worker updates never reload during an unsaved import or an active job.
 - Existing data remains readable across schema migrations or the migration fails without destroying the previous database.
 
 ### Accessibility

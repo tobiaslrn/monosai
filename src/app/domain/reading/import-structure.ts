@@ -3,7 +3,7 @@ import { splitIntoParagraphs } from '../language/segmentation';
 import type { DraftParagraph, DraftSentence, ImportDraft } from './import-draft';
 
 /**
- * Turns segmented source text into the structure import review works on.
+ * Turns segmented source text into the transient structure used while saving.
  *
  * Paragraphs come from the learner's own blank lines and keep their source slice
  * exactly. Sentence text drops the line breaks and padding that end a segment:

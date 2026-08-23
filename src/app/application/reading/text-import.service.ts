@@ -78,7 +78,7 @@ export class TextImportService {
     );
   }
 
-  /** Segments off the main thread and groups the result into review structure. */
+  /** Segments off the main thread and groups the result into a reading draft. */
   async segment(text: string, signal?: AbortSignal): Promise<Result<ImportDraft, LanguageError>> {
     const segments = await this.runtime.segment(text, signal);
     if (!segments.ok) {
@@ -88,7 +88,7 @@ export class TextImportService {
   }
 
   /**
-   * Tokenizes reviewed sentence texts in bounded batches, reporting progress
+   * Tokenizes segmented sentence texts in bounded batches, reporting progress
    * between them. Results are positional, so they are zipped back onto the ids
    * the caller asked about.
    */
@@ -128,9 +128,9 @@ export class TextImportService {
   }
 
   /**
-   * Saves the reviewed import as one immutable reading.
+   * Saves the analyzed import as one immutable reading.
    *
-   * Positions are assigned here, from the reviewed order, and the whole graph
+   * Positions are assigned here, from the segmented order, and the whole graph
    * goes to the repository in a single atomic call: a reading is never visible
    * without its text and token analyses.
    */
@@ -166,7 +166,7 @@ export class TextImportService {
         tokenAnalyses.push({
           sentenceId: currentSentenceId,
           analyzerVersion: ANALYZER_VERSION,
-          // Review refuses to save while any sentence is awaiting analysis, so
+          // The import flow refuses to save while any sentence is awaiting analysis, so
           // an empty token list here means a sentence genuinely has no tokens.
           tokens: draftSentence.tokens ?? [],
         });

@@ -109,11 +109,10 @@ async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
 }
 
 /**
- * End-to-end scenario 1: a fresh install pastes Japanese, reviews the
- * segmentation, saves, and inspects a word — with no Anki, no API key, and no
- * AI request at any point.
+ * End-to-end scenario 1: a fresh install pastes Japanese, saves, and inspects
+ * a word — with no Anki, no API key, and no AI request at any point.
  */
-test.describe('scenario 1 — paste, review, save, inspect', () => {
+test.describe('scenario 1 — paste, save, inspect', () => {
   /**
    * An empty library is the first screen, not a form nobody asked for. It says
    * both starting paths and keeps the New reading action available.
@@ -146,15 +145,9 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     await expect(page.locator('mn-reader-paragraph')).toHaveCount(2);
   });
 
-  test('paste, review the sentences, save, and read', async ({ page }) => {
+  test('paste, save, and read without a review step', async ({ page }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
-
-    // Review shows the reviewable sentence rows before anything is saved.
-    await expect(page.getByRole('textbox', { name: 'Sentence 1' }).first()).toHaveValue(
-      '吾輩は猫である。',
-    );
-    await expect(page.getByText('3 sentences in 2 paragraphs')).toBeVisible();
 
     await saveAndOpenReader(page);
     await expect(page.locator('mn-reader-paragraph')).toHaveCount(2);
@@ -163,8 +156,8 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
   test('uses singular wording for a one-sentence paragraph', async ({ page }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, '猫が寝た。');
-
-    await expect(page.getByText('1 sentence in 1 paragraph.')).toBeVisible();
+    await saveAndOpenReader(page);
+    await expect(page.locator('mn-reader-paragraph')).toHaveCount(1);
   });
 
   test('opens the Settings route from the reader audio setup', async ({ page }) => {
@@ -549,7 +542,7 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
 
 /** End-to-end scenario 2: pasted text validation. */
 test.describe('scenario 2 — pasted text validation', () => {
-  test('keeps Continue disabled for pasted text over the 50,000-character limit', async ({
+  test('keeps Add reading disabled for pasted text over the 50,000-character limit', async ({
     page,
   }) => {
     await page.goto('/#/add');
@@ -557,7 +550,7 @@ test.describe('scenario 2 — pasted text validation', () => {
 
     await expect(page.getByText('50,001 of 50,000 characters')).toBeVisible();
     await expect(page.getByRole('alert')).toContainText('Remove 1 character to continue');
-    await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Add reading' })).toBeDisabled();
     await expect(page).toHaveURL(/#\/add/);
   });
 
@@ -565,7 +558,7 @@ test.describe('scenario 2 — pasted text validation', () => {
     await page.goto('/#/add');
     await page.getByLabel('Japanese text').fill('   \n  ');
 
-    await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Add reading' })).toBeDisabled();
   });
 });
 
