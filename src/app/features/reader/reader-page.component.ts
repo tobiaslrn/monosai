@@ -252,11 +252,7 @@ const SCROLL_SETTLE_MS = 1000;
 
     <ng-template #wordPopover>
       <mn-reader-popover label="Word details" [mobileSheet]="false">
-        <mn-word-inspector
-          [grammar]="wordGrammar()"
-          (sentenceRequested)="openSentenceFromWord()"
-          (closed)="closeInspector()"
-        />
+        <mn-word-inspector [grammar]="wordGrammar()" (closed)="closeInspector()" />
       </mn-reader-popover>
     </ng-template>
   `,
@@ -838,27 +834,6 @@ export class ReaderPageComponent {
     }
     this.endPreview();
     this.openSentence(sentence.sentence.id, { x: selection.x, y: selection.y });
-  }
-
-  /**
-   * The route to a sentence that does not need a pointer.
-   *
-   * Selecting a sentence is a press on its whitespace, which a keyboard cannot
-   * aim; the words are already focus stops, so a reader arrives at the sentence
-   * through the word they stopped at.
-   */
-  protected openSentenceFromWord(): void {
-    const selected = this.inspector.selected();
-    if (selected === null) {
-      return;
-    }
-    const origin = document.querySelector<HTMLElement>(
-      `[data-sentence-id="${CSS.escape(selected.sentence.id)}"]`,
-    );
-    this.openSentence(
-      selected.sentence.id,
-      origin ?? this.content()?.nativeElement ?? document.body,
-    );
   }
 
   private openSentence(

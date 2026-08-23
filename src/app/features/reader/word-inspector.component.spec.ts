@@ -103,14 +103,10 @@ function entryWith(count: number) {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [WordInspectorComponent],
-  template: `<mn-word-inspector
-    [grammar]="grammar()"
-    (sentenceRequested)="sentenceRequests = sentenceRequests + 1"
-  />`,
+  template: `<mn-word-inspector [grammar]="grammar()" />`,
 })
 class HostComponent {
   readonly grammar = signal<WordGrammarState>(NO_WORD_GRAMMAR);
-  sentenceRequests = 0;
 }
 
 describe('WordInspectorComponent', () => {
@@ -243,24 +239,10 @@ describe('WordInspectorComponent', () => {
     expect(element.textContent).not.toContain('Nothing here is outside your grammar profile.');
   });
 
-  it('keeps its route to the sentence visible in the word header', async () => {
+  it('does not show a route to the sentence in the word header', async () => {
     const element = (await render()).nativeElement as HTMLElement;
-    const route = element.querySelector<HTMLButtonElement>('.sentence-route');
-
-    expect(route?.textContent.trim()).toBe('Open this sentence');
-    expect(getComputedStyle(route!).position).not.toBe('absolute');
-  });
-
-  it('carries the keyboard route to the sentence, where the actions are', async () => {
-    // Selecting a sentence is a press on its whitespace, which a keyboard
-    // cannot aim; this is how it is reached instead.
-    const fixture = await render();
-
-    (fixture.nativeElement as HTMLElement)
-      .querySelector<HTMLButtonElement>('.sentence-route')
-      ?.click();
-
-    expect(fixture.componentInstance.sentenceRequests).toBe(1);
+    expect(element.querySelector('.sentence-route')).toBeNull();
+    expect(element.textContent).not.toContain('Open this sentence');
   });
 
   /**

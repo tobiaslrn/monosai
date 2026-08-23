@@ -1465,9 +1465,9 @@ dismissal, `Escape`, the top layer, and mutual exclusivity are the platform's.
 
 ### Assumptions and decisions
 
-- **No control is printed for a sentence**, so the keyboard's only route to one
-  is the word popover's focus-revealed "Open this sentence". Selecting a sentence
-  is a press on whitespace, which a keyboard cannot aim.
+- **No control is printed for a sentence**, and the word popover does not add a
+  separate route to one. Selecting a sentence is a press on whitespace, which a
+  keyboard cannot aim.
 - **In-profile findings never appear on the sentence.** They are explanations
   rather than concerns, and they remain at the word.
 - **Reading progress is still tracked but no longer shown in the reader.** The
