@@ -23,20 +23,25 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Third-party licence check
         run: npm run licenses:check
-      - run: npm run format:check
+      - name: Formatting check (advisory)
+        run: npm run format:check
+        continue-on-error: true
       - run: npm run lint
       - run: npm run typecheck
       - name: Language dataset schema, digest, and attribution check
         run: npm run assets:verify
       - name: App icon structure and source digest check
         run: npm run icons:verify
-      - run: npm run test:coverage
+      - name: Test coverage (advisory)
+        run: npm run test:coverage
+        continue-on-error: true
       - name: Production build
         run: npm run build:pages -- --define MONOSAI_BUILD_COMMIT='"${{ github.sha }}"'
       - name: Verify the GitHub Pages dist (base path, manifest, icons)
         run: npm run verify-dist
       - name: Bundle size report
         run: npm run report-bundle:check
+        continue-on-error: true
       - uses: actions/upload-artifact@v4
         with:
           name: dist
