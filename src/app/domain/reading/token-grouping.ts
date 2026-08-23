@@ -31,6 +31,14 @@ export interface WordGroup {
   readonly readingHiragana?: string;
 }
 
+/** A bunsetsu and the morphemes that make up its presentation-only span. */
+export interface BunsetsuGroup {
+  readonly span: TokenSpan;
+  readonly tokens: readonly Token[];
+  /** The unchanged Japanese surface represented by the group. */
+  readonly surface: string;
+}
+
 /**
  * Morphemes that never open a word.
  *
@@ -124,6 +132,46 @@ export function bunsetsuStarts(
     }
     return !token.isPunctuation && token.partOfSpeech !== 'particle';
   });
+}
+
+/**
+ * Materializes the bunsetsu boundaries for presentation.
+ *
+ * This is deliberately derived from `bunsetsuStarts` rather than repeating its
+ * rules. The reader can therefore make a group atomic without creating a second
+ * definition of what belongs to a bunsetsu.
+ */
+export function bunsetsuGroups(
+  tokens: readonly Token[],
+  keepTogether: readonly TokenSpan[] = [],
+): readonly BunsetsuGroup[] {
+  if (tokens.length === 0) {
+    return [];
+  }
+
+  const starts = bunsetsuStarts(tokens, keepTogether);
+  const groups: BunsetsuGroup[] = [];
+  let startTokenIndex = 0;
+
+  const addGroup = (endTokenIndex: number): void => {
+    const groupedTokens = tokens.slice(startTokenIndex, endTokenIndex + 1);
+    groups.push({
+      span: { startTokenIndex, endTokenIndex },
+      tokens: groupedTokens,
+      surface: groupedTokens.map((token) => token.surface).join(''),
+    });
+  };
+
+  for (let index = 1; index < tokens.length; index += 1) {
+    if (!starts[index]) {
+      continue;
+    }
+    addGroup(index - 1);
+    startTokenIndex = index;
+  }
+
+  addGroup(tokens.length - 1);
+  return groups;
 }
 
 /**

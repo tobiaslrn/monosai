@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { vocabularyItemId } from '../shared/ids';
-import { bunsetsuStarts, reviewedPhraseSpans, wordAt, wordStarts } from './token-grouping';
+import {
+  bunsetsuGroups,
+  bunsetsuStarts,
+  reviewedPhraseSpans,
+  wordAt,
+  wordStarts,
+} from './token-grouping';
 import type { PartOfSpeech, Token } from './token';
 import type { TokenStatusAssignment } from './validation';
 
@@ -39,6 +45,10 @@ function chunks(tokens: readonly Token[], starts: readonly boolean[]): readonly 
 function group(...specs: readonly string[]): readonly string[] {
   const tokens = sentence(...specs);
   return chunks(tokens, bunsetsuStarts(tokens));
+}
+
+function groups(...specs: readonly string[]): readonly string[] {
+  return bunsetsuGroups(sentence(...specs)).map((bunsetsu) => bunsetsu.surface);
 }
 
 function words(...specs: readonly string[]): readonly string[] {
@@ -111,6 +121,64 @@ describe('bunsetsuStarts', () => {
     const starts = bunsetsuStarts(tokens, [{ startTokenIndex: 2, endTokenIndex: 4 }]);
 
     expect(chunks(tokens, starts)).toEqual(['私は', '女の子']);
+  });
+});
+
+describe('bunsetsuGroups', () => {
+  it('materializes the existing bunsetsu rules without changing token surfaces', () => {
+    const tokens = sentence(
+      'ご:prefix',
+      '名前:noun',
+      'が:particle',
+      'あり:verb',
+      'ます:auxiliary',
+      '三:number',
+      '匹:counter',
+      '田中:proper-noun',
+      'さん:suffix',
+      '。:punctuation',
+      '未知',
+    );
+
+    const result = bunsetsuGroups(tokens);
+
+    expect(result.map((bunsetsu) => bunsetsu.surface)).toEqual([
+      'ご名前が',
+      'あります',
+      '三匹',
+      '田中さん。',
+      '未知',
+    ]);
+    expect(result.map((bunsetsu) => bunsetsu.span)).toEqual([
+      { startTokenIndex: 0, endTokenIndex: 2 },
+      { startTokenIndex: 3, endTokenIndex: 4 },
+      { startTokenIndex: 5, endTokenIndex: 6 },
+      { startTokenIndex: 7, endTokenIndex: 9 },
+      { startTokenIndex: 10, endTokenIndex: 10 },
+    ]);
+    expect(result.flatMap((bunsetsu) => bunsetsu.tokens).map((token) => token.surface)).toEqual(
+      tokens.map((token) => token.surface),
+    );
+  });
+
+  it('keeps a reviewed phrase atomic even when its tokens would open groups', () => {
+    const tokens = sentence('私:pronoun', 'は:particle', '女:noun', 'の:particle', '子:noun');
+
+    expect(
+      bunsetsuGroups(tokens, [{ startTokenIndex: 2, endTokenIndex: 4 }]).map(
+        (bunsetsu) => bunsetsu.surface,
+      ),
+    ).toEqual(['私は', '女の子']);
+  });
+
+  it('returns no groups for an empty sentence', () => {
+    expect(bunsetsuGroups([])).toEqual([]);
+  });
+
+  it('matches the grouping surface for an inflected phrase with punctuation', () => {
+    expect(
+      groups('名前:noun', 'が:particle', 'あり:verb', 'ます:auxiliary', '。:punctuation'),
+    ).toEqual(['名前が', 'あります。']);
   });
 });
 

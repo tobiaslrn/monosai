@@ -3,7 +3,7 @@ import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentenc
 import type { ReaderSentence } from '../../application/reading/reader.store';
 import { tokensCoveredByConcerns } from '../../domain/enrichment/finding-spans';
 import {
-  bunsetsuStarts,
+  bunsetsuGroups,
   reviewedPhraseSpans,
   wordAt,
   type WordGroup,
@@ -51,6 +51,7 @@ export interface TokenActivation {
   selector: 'mn-reader-sentence',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReaderTokenComponent],
+  preserveWhitespaces: false,
   template: `
     <span
       class="sentence"
@@ -60,19 +61,22 @@ export interface TokenActivation {
       [class.is-playing]="playing()"
       [attr.data-sentence-id]="entry().sentence.id"
     >
-      @for (token of entry().tokens; track token.id) {
-        <mn-reader-token
-          [class.starts-bunsetsu]="chunkStarts()[$index]"
-          [token]="token"
-          [status]="entry().statuses?.get(token.id) ?? null"
-          [showFurigana]="furigana()"
-          [showMarkers]="markers()"
-          [selected]="selectedTokenIds().has(token.id)"
-          [grammarConcern]="markers() && concernTokenIds().has(token.id)"
-          (activated)="onActivated($event)"
-          (previewed)="onPreviewed($event)"
-          (previewEnded)="previewEnded.emit()"
-        />
+      @for (group of groups(); track group.span.startTokenIndex) {
+        <span class="bunsetsu-group">
+          @for (token of group.tokens; track token.id) {
+            <mn-reader-token
+              [token]="token"
+              [status]="entry().statuses?.get(token.id) ?? null"
+              [showFurigana]="furigana()"
+              [showMarkers]="markers()"
+              [selected]="selectedTokenIds().has(token.id)"
+              [grammarConcern]="markers() && concernTokenIds().has(token.id)"
+              (activated)="onActivated($event)"
+              (previewed)="onPreviewed($event)"
+              (previewEnded)="previewEnded.emit()"
+            />
+          }
+        </span>
       }
     </span>
   `,
@@ -84,10 +88,32 @@ export interface TokenActivation {
     /*
      * The gap falls between bunsetsu, not between morphemes, and there is none
      * inside one — so it is wider than a per-token gap could be without the
-     * line falling apart.
+     * line falling apart. The margin is on the atomic wrapper so a normal line
+     * break cannot strand half a bunsetsu on the previous line.
      */
-    .sentence.is-spaced mn-reader-token.starts-bunsetsu:not(:first-child) {
+    .sentence.is-spaced .bunsetsu-group:not(:first-child) {
       margin-inline-start: 0.5em;
+      max-inline-size: calc(100% - 0.5em);
+    }
+
+    /*
+     * A fitting bunsetsu is one inline-block, so the browser can move the
+     * complete group to the next line. If even one group is wider than the
+     * measure, the max size turns it into a wrapping inline-block as a last
+     * resort. Normal Japanese line breaking remains authoritative, with strict
+     * punctuation rules; anywhere only supplies an emergency break for an
+     * otherwise unbreakable token.
+     */
+    .bunsetsu-group {
+      display: inline-block;
+      box-sizing: border-box;
+      max-inline-size: 100%;
+      max-width: 100%;
+      white-space: normal;
+      word-break: normal;
+      line-break: strict;
+      overflow-wrap: anywhere;
+      vertical-align: baseline;
     }
 
     /*
@@ -165,15 +191,13 @@ export class ReaderSentenceComponent {
   readonly selectedWord = input<SelectedWord | null>(null);
 
   /**
-   * Where the spacing aid may break the line.
-   *
-   * Computed from the whole sentence rather than per token, because whether a
-   * token opens a chunk depends on the one before it and on the reviewed
-   * phrases that cover it.
+   * Presentation-only bunsetsu, computed from the whole sentence because a
+   * group boundary depends on the token before it and on reviewed phrases that
+   * cover it.
    */
-  protected readonly chunkStarts = computed(() => {
+  protected readonly groups = computed(() => {
     const entry = this.entry();
-    return bunsetsuStarts(entry.tokens, reviewedPhraseSpans(entry.tokens, entry.statuses));
+    return bunsetsuGroups(entry.tokens, reviewedPhraseSpans(entry.tokens, entry.statuses));
   });
 
   /**
