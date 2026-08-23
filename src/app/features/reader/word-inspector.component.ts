@@ -87,9 +87,6 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
             }
           </div>
           <div class="header-actions">
-            <button type="button" class="sentence-route" (click)="sentenceRequested.emit()">
-              Open this sentence
-            </button>
             <button type="button" class="close" aria-label="Close word details" (click)="onClose()">
               <mn-icon name="close" />
             </button>
@@ -390,23 +387,6 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       margin-top: var(--space-2);
     }
 
-    .sentence-route {
-      min-height: var(--touch-target);
-      padding: var(--space-2) var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-control);
-      background: var(--surface-sunken);
-      color: var(--text-primary);
-      font: inherit;
-      font-size: var(--text-sm);
-      text-align: start;
-      cursor: pointer;
-    }
-
-    .sentence-route:hover {
-      border-color: var(--border-strong);
-    }
-
     .next-action {
       margin: 0;
       padding: var(--space-3);
@@ -438,7 +418,6 @@ export class WordInspectorComponent {
   readonly grammar = input<WordGrammarState>(NO_WORD_GRAMMAR);
 
   readonly closed = output<void>();
-  readonly sentenceRequested = output<void>();
 
   /** Whether this word has stored grammar findings to show. */
   protected readonly hasNotes = computed(() => {

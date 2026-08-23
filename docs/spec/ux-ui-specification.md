@@ -199,7 +199,7 @@ sentence translated is laid out exactly like one with none.
 - Android long-presses anywhere in the sentence, including on a word. A press that moves, is interrupted by a scroll, or ends in a text selection is not a selection.
 - The selected sentence is tinted, so an anchored card is not orphaned from the sentence it is about.
 - Hovering a sentence tints it, and only its colour changes: nothing on the page may move under the pointer.
-- The keyboard cannot aim at whitespace, so its route to a sentence is the word popover, which offers the sentence translation from the word the reader stopped at.
+- The word popover does not offer a route to the sentence; sentence selection remains a pointer or touch interaction on the reading surface.
 
 ### Initial aid state
 
@@ -262,10 +262,6 @@ often as a learner likes without wondering what it cost.
 4. The first two dictionary meanings, with the existing **More** action for the rest. Written forms are secondary, and the meanings remain a compact numbered list.
 5. Relevant stored grammar findings as compact labels. Their existing explanatory text is behind one collapsed, keyboard-accessible **Details** disclosure; a stale-analysis notice remains visible when applicable.
 6. Validation/status and the recommended next action, only when applicable.
-7. A visible **Open this sentence** action in the word header — the keyboard's
-   route to a sentence, since selecting one is a press on whitespace it cannot
-   aim.
-
 The sentence is not repeated here: the learner is looking at it. A finding with
 no span marks nothing on the page, so every word of its sentence carries it —
 there is no other surface it could be read on.
