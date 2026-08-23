@@ -6,6 +6,7 @@ test-results
 package-lock.json
 docs
 .claude
+.agents
 README.md
 
 # Generated language assets and their reviewed sources: byte-for-byte output of
