@@ -30,10 +30,21 @@ describe('DexieSettingsRepository', () => {
 
     expect(app.ok && app.value.theme).toBe('system');
     expect(app.ok && app.value.activeSnapshotId).toBeNull();
+    expect(app.ok && app.value.ankiConnectPort).toBe(8_765);
     expect(preferences.ok && preferences.value).toEqual(DEFAULT_READER_PREFERENCES);
 
     const textModel = await repository.getTextModelSettings();
     expect(textModel.ok && textModel.value.storyTokenBudget).toBe(DEFAULT_STORY_TOKEN_BUDGET);
+  });
+
+  it('persists a valid AnkiConnect port and rejects an invalid one', async () => {
+    const saved = await repository.updateAppSettings({ ankiConnectPort: 9_999 });
+    expect(saved.ok && saved.value.ankiConnectPort).toBe(9_999);
+
+    const invalid = await repository.updateAppSettings({ ankiConnectPort: 70_000 });
+    expect(invalid.ok).toBe(false);
+    const reloaded = await repository.getAppSettings();
+    expect(reloaded.ok && reloaded.value.ankiConnectPort).toBe(9_999);
   });
 
   it('starts every reader aid enabled, at unscaled text', async () => {

@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   DEFAULT_APP_SETTINGS,
   DEFAULT_READER_PREFERENCES,
+  isValidAnkiConnectPort,
   type AppSettings,
   type ReaderPreferences,
   type ThemeSetting,
@@ -25,6 +26,7 @@ export class AppSettingsStore {
 
   readonly theme = computed(() => this.appSettings().theme);
   readonly activeSnapshotId = computed(() => this.appSettings().activeSnapshotId);
+  readonly ankiConnectPort = computed(() => this.appSettings().ankiConnectPort);
   readonly readerPreferences = this.preferences.asReadonly();
   readonly lastFailure = this.failure.asReadonly();
 
@@ -68,6 +70,23 @@ export class AppSettingsStore {
     this.appSettings.set({ ...previous, theme });
 
     const saved = await this.repository.updateAppSettings({ theme });
+    if (saved.ok) {
+      this.appSettings.set(saved.value);
+      this.failure.set(null);
+    } else {
+      this.appSettings.set(previous);
+      this.failure.set(saved.error);
+    }
+  }
+
+  async setAnkiConnectPort(port: number): Promise<void> {
+    if (!isValidAnkiConnectPort(port)) {
+      return;
+    }
+    const previous = this.appSettings();
+    this.appSettings.set({ ...previous, ankiConnectPort: port });
+
+    const saved = await this.repository.updateAppSettings({ ankiConnectPort: port });
     if (saved.ok) {
       this.appSettings.set(saved.value);
       this.failure.set(null);

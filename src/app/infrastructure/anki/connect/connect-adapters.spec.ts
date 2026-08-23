@@ -25,12 +25,14 @@ function serverAnd(options: FakeServerOptions = {}, collection = CONTRACT_COLLEC
 
 describe('DesktopConnectAdapter', () => {
   it('reports the AnkiConnect version it probed', async () => {
-    const { client } = serverAnd({ version: 6 });
+    const { server, client } = serverAnd({ version: 6 });
     const probed = await new DesktopConnectAdapter(client).probe();
 
     expect(probed.ok).toBe(true);
     if (!probed.ok) return;
     expect(probed.value.apiVersion).toBe('6');
+    expect(server.requests[0]?.action).toBe('requestPermission');
+    expect(server.requests.some((request) => request.action === 'version')).toBe(false);
   });
 
   it('refuses when Anki has not granted permission', async () => {

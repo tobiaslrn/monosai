@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  DEFAULT_ANKI_CONNECT_PORT,
   DEFAULT_STORY_TOKEN_BUDGET,
   MAX_STORY_TOKEN_BUDGET,
   MAX_TEXT_SCALE,
@@ -11,6 +12,7 @@ import { nonEmptyString, snapshotIdSchema, timestampSchema } from './common.sche
 export const appSettingsSchema = z.object({
   theme: z.enum(['system', 'light', 'dark']),
   activeSnapshotId: snapshotIdSchema.nullable(),
+  ankiConnectPort: z.number().int().min(1).max(65_535).default(DEFAULT_ANKI_CONNECT_PORT),
   updatedAt: timestampSchema,
 });
 

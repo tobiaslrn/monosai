@@ -207,7 +207,8 @@ export async function configureTts(page: Page): Promise<void> {
 export async function buildSnapshot(page: Page): Promise<void> {
   await page.goto('/#/vocabulary');
   await page.getByTestId('add-source').click();
-  await expect(page.getByRole('menu', { name: 'Source kind' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Add vocabulary source' })).toBeVisible();
+  await page.getByTestId('choose-ankiconnect').click();
   await page.getByTestId('connect-ankiconnect').click();
   await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText(
     String(REVIEWED_EXPRESSIONS.length),

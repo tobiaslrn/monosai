@@ -1,5 +1,13 @@
 import type { ElementRef } from '@angular/core';
-import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import {
   ANKI_PROVIDER_FACTORY,
   PACKAGE_PROVIDER_FACTORY,
@@ -8,10 +16,11 @@ import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-hist
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import type { AnkiProviderKind } from '../../domain/vocabulary/snapshot';
+import { isValidAnkiConnectPort } from '../../domain/settings/settings';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { TextListSourceComponent } from './text-list-source.component';
 
-type AddMode = 'closed' | 'choices' | 'text';
+type AddMode = 'closed' | 'choices' | 'anki' | 'text';
 
 /** One entry point for every kind of vocabulary source. */
 @Component({
@@ -30,9 +39,9 @@ type AddMode = 'closed' | 'choices' | 'text';
           #toggle
           type="button"
           class="mn-button mn-button--primary"
-          aria-haspopup="menu"
+          aria-haspopup="dialog"
           aria-controls="mn-add-source-menu"
-          [attr.aria-expanded]="mode() === 'choices'"
+          [attr.aria-expanded]="mode() === 'choices' || mode() === 'anki'"
           popovertarget="mn-add-source-menu"
           data-testid="add-source"
         >
@@ -44,38 +53,81 @@ type AddMode = 'closed' | 'choices' | 'text';
           id="mn-add-source-menu"
           class="menu"
           popover
-          role="menu"
-          aria-label="Source kind"
+          role="dialog"
+          aria-label="Add vocabulary source"
           (toggle)="onMenuToggle($event)"
         >
-          <button
-            type="button"
-            class="menu-item"
-            role="menuitem"
-            [disabled]="refresh.isBusy()"
-            (click)="connectAnkiConnect()"
-            data-testid="connect-ankiconnect"
-          >
-            <strong>Anki</strong>
-          </button>
-          <button
-            type="button"
-            class="menu-item"
-            role="menuitem"
-            [disabled]="refresh.isBusy()"
-            (click)="packageInput.click()"
-          >
-            <strong>Anki package</strong>
-          </button>
-          <button
-            type="button"
-            class="menu-item"
-            role="menuitem"
-            (click)="chooseTextList()"
-            data-testid="add-text-source"
-          >
-            <strong>Pasted list</strong>
-          </button>
+          @if (mode() === 'anki') {
+            <div class="connection-panel">
+              <div class="connection-head">
+                <div>
+                  <h3>Connect to Anki</h3>
+                  <p class="mn-hint">Keep Anki open while Monosai connects.</p>
+                </div>
+              </div>
+
+              <div class="mn-field">
+                <label for="mn-source-anki-port">Port</label>
+                <input
+                  id="mn-source-anki-port"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  max="65535"
+                  step="1"
+                  required
+                  [value]="ankiPortDraft()"
+                  [attr.aria-invalid]="ankiPortValid() ? null : 'true'"
+                  aria-describedby="mn-source-anki-port-hint"
+                  (input)="setAnkiPortDraft($event)"
+                  data-testid="anki-connect-port"
+                />
+                <span id="mn-source-anki-port-hint" class="mn-hint">
+                  Usually 8765. Use the port from your AnkiConnect configuration.
+                </span>
+              </div>
+
+              <div class="connection-actions">
+                <button type="button" class="mn-button" (click)="mode.set('choices')">Back</button>
+                <button
+                  type="button"
+                  class="mn-button mn-button--primary"
+                  [disabled]="refresh.isBusy() || !ankiPortValid()"
+                  (click)="connectAnkiConnect()"
+                  data-testid="connect-ankiconnect"
+                >
+                  Connect
+                </button>
+              </div>
+            </div>
+          } @else {
+            <button
+              type="button"
+              class="menu-item"
+              [disabled]="refresh.isBusy()"
+              (click)="chooseAnkiConnect()"
+              data-testid="choose-ankiconnect"
+            >
+              <strong>Anki</strong>
+              <span class="mn-hint">Connect to the desktop app</span>
+            </button>
+            <button
+              type="button"
+              class="menu-item"
+              [disabled]="refresh.isBusy()"
+              (click)="packageInput.click()"
+            >
+              <strong>Anki package</strong>
+            </button>
+            <button
+              type="button"
+              class="menu-item"
+              (click)="chooseTextList()"
+              data-testid="add-text-source"
+            >
+              <strong>Pasted list</strong>
+            </button>
+          }
         </div>
         <input
           #packageInput
@@ -165,6 +217,29 @@ type AddMode = 'closed' | 'choices' | 'text';
       cursor: pointer;
     }
 
+    .connection-panel {
+      display: grid;
+      gap: var(--space-4);
+      padding: var(--space-3);
+    }
+
+    .connection-head h3,
+    .connection-head p {
+      margin: 0;
+    }
+
+    .connection-head {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .connection-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-2);
+    }
+
     .menu-item:hover {
       background: var(--surface-raised);
     }
@@ -191,10 +266,16 @@ export class ProviderSelectionComponent {
   protected readonly refresh = inject(VocabularyRefreshStore);
   private readonly mappings = inject(SourceMappingStore);
   private readonly history = inject(SnapshotHistoryStore);
+  private readonly settings = inject(AppSettingsStore);
   private readonly createConnection = inject(ANKI_PROVIDER_FACTORY);
   private readonly createPackage = inject(PACKAGE_PROVIDER_FACTORY);
 
   protected readonly mode = signal<AddMode>('closed');
+  protected readonly ankiPortDraft = signal(String(this.settings.ankiConnectPort()));
+  protected readonly ankiPortValid = computed(() => {
+    const draft = this.ankiPortDraft().trim();
+    return draft !== '' && isValidAnkiConnectPort(Number(draft));
+  });
   private readonly menu = viewChild<ElementRef<HTMLElement>>('menu');
   private readonly toggleButton = viewChild<ElementRef<HTMLButtonElement>>('toggle');
 
@@ -244,8 +325,21 @@ export class ProviderSelectionComponent {
   }
 
   protected async connectAnkiConnect(): Promise<void> {
+    const port = Number(this.ankiPortDraft());
+    if (!isValidAnkiConnectPort(port)) {
+      return;
+    }
+    await this.settings.setAnkiConnectPort(port);
     this.hideMenu();
     await this.connectAndAdd('desktop-connect', this.createConnection('desktop-connect'));
+  }
+
+  protected chooseAnkiConnect(): void {
+    this.mode.set('anki');
+  }
+
+  protected setAnkiPortDraft(event: Event): void {
+    this.ankiPortDraft.set((event.target as HTMLInputElement).value);
   }
 
   protected async choosePackage(event: Event): Promise<void> {

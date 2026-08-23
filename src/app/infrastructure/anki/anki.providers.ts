@@ -1,5 +1,6 @@
 import { DOCUMENT, inject, type Provider } from '@angular/core';
 import { LOGGER, type Logger } from '../../application/shared/diagnostics';
+import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import {
   ANKI_PROVIDER_FACTORY,
   MARKUP_TEXT_EXTRACTOR,
@@ -9,7 +10,7 @@ import {
 } from '../../application/shared/anki-tokens';
 import type { AnkiVocabularyProvider, PackageSource } from '../../domain/anki/anki-provider';
 import { AndroidConnectAdapter } from './connect/android-connect.adapter';
-import { ANDROID_ENDPOINTS, AnkiConnectClient, DESKTOP_ENDPOINTS } from './connect/connect-client';
+import { ANDROID_ENDPOINTS, AnkiConnectClient, desktopEndpoints } from './connect/connect-client';
 import { DesktopConnectAdapter } from './connect/desktop-connect.adapter';
 import { DomMarkupTextExtractor } from './dom-markup-text';
 import { PackageProviderAdapter } from './package/package-provider.adapter';
@@ -79,6 +80,7 @@ export function provideAnki(): Provider[] {
         const pageOrigin = documentRef.defaultView?.location.origin ?? documentRef.baseURI;
         const fetchFn: typeof fetch = (input, init) => fetch(input, init);
         const logger = inject<Logger>(LOGGER);
+        const settings = inject(AppSettingsStore);
 
         return (kind) =>
           kind === 'android-connect'
@@ -93,7 +95,7 @@ export function provideAnki(): Provider[] {
               )
             : new DesktopConnectAdapter(
                 new AnkiConnectClient({
-                  endpoints: DESKTOP_ENDPOINTS,
+                  endpoints: desktopEndpoints(settings.ankiConnectPort()),
                   fetchFn,
                   pageOrigin,
                   unreachableCode: 'not-running',

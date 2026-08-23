@@ -3,15 +3,23 @@ import type { SnapshotId } from '../shared/ids';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
 
+export const DEFAULT_ANKI_CONNECT_PORT = 8_765;
+
+export function isValidAnkiConnectPort(port: number): boolean {
+  return Number.isInteger(port) && port >= 1 && port <= 65_535;
+}
+
 export interface AppSettings {
   readonly theme: ThemeSetting;
   readonly activeSnapshotId: SnapshotId | null;
+  readonly ankiConnectPort: number;
   readonly updatedAt: number;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   theme: 'system',
   activeSnapshotId: null,
+  ankiConnectPort: DEFAULT_ANKI_CONNECT_PORT,
   updatedAt: 0,
 };
 

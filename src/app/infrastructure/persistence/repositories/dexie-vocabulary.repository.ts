@@ -5,7 +5,7 @@ import type {
   VocabularyProvenance,
   VocabularySnapshot,
 } from '../../../domain/vocabulary/snapshot';
-import type { AppSettings } from '../../../domain/settings/settings';
+import { DEFAULT_APP_SETTINGS, type AppSettings } from '../../../domain/settings/settings';
 import type {
   SnapshotCommit,
   VocabularyRepository,
@@ -217,9 +217,7 @@ export class DexieVocabularyRepository implements VocabularyRepository {
     if (current && !current.ok) {
       throw new StorageRuleViolation(current.error);
     }
-    return current?.ok
-      ? current.value
-      : { theme: 'system' as const, activeSnapshotId: null, updatedAt: 0 };
+    return current?.ok ? current.value : DEFAULT_APP_SETTINGS;
   }
 
   /** Existing generated stories keep their evidence but follow the one current id. */

@@ -10,6 +10,7 @@ import {
   PACKAGE_PROVIDER_FACTORY,
 } from '../../application/shared/anki-tokens';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
+import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import { VocabularyPageComponent } from './vocabulary-page.component';
 
@@ -93,9 +94,28 @@ describe('VocabularyPageComponent', () => {
     element.querySelector<HTMLButtonElement>('[data-testid="add-source"]')?.click();
     await settle(fixture);
 
-    expect(element.querySelector('[data-testid="connect-ankiconnect"]')).not.toBeNull();
+    expect(element.querySelector('[data-testid="choose-ankiconnect"]')).not.toBeNull();
     expect(element.querySelector('[data-testid="connect-android"]')).toBeNull();
     expect(element.querySelector('[data-testid="package-input"]')).not.toBeNull();
+  });
+
+  it('saves the chosen AnkiConnect port before connecting', async () => {
+    const { element, fixture } = await render();
+    const settings = TestBed.inject(AppSettingsStore);
+
+    element.querySelector<HTMLButtonElement>('[data-testid="add-source"]')?.click();
+    await settle(fixture);
+    element.querySelector<HTMLButtonElement>('[data-testid="choose-ankiconnect"]')?.click();
+    await settle(fixture);
+    const port = element.querySelector<HTMLInputElement>('[data-testid="anki-connect-port"]');
+    if (port === null) throw new Error('missing AnkiConnect port input');
+    port.value = '9999';
+    port.dispatchEvent(new Event('input'));
+    element.querySelector<HTMLButtonElement>('[data-testid="connect-ankiconnect"]')?.click();
+
+    await vi.waitFor(() => {
+      expect(settings.ankiConnectPort()).toBe(9_999);
+    });
   });
 
   it('shows one empty source list before a source is added', async () => {
@@ -126,6 +146,8 @@ describe('VocabularyPageComponent', () => {
     const { element, fixture } = await render();
 
     element.querySelector<HTMLButtonElement>('[data-testid="add-source"]')?.click();
+    await settle(fixture);
+    element.querySelector<HTMLButtonElement>('[data-testid="choose-ankiconnect"]')?.click();
     await settle(fixture);
     element.querySelector<HTMLButtonElement>('[data-testid="connect-ankiconnect"]')?.click();
     await vi.waitFor(async () => {
