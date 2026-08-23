@@ -24,10 +24,10 @@ export interface SentenceMergeRequest {
 /**
  * One reviewable sentence.
  *
- * The text is a read-only text box rather than static text, because splitting
- * needs a caret the learner can place with the keyboard as well as the mouse.
- * It cannot be edited: review corrects boundaries, and changing the text itself
- * means going back to raw input, which keeps saved text and tokens coherent.
+ * The text stays in a read-only text box because splitting needs a caret the
+ * learner can place with the keyboard as well as the mouse. It cannot be
+ * edited: review corrects boundaries, and changing the text itself means going
+ * back to raw input, which keeps saved text and tokens coherent.
  */
 @Component({
   selector: 'mn-review-sentence',
@@ -48,9 +48,14 @@ export interface SentenceMergeRequest {
         readonly
         rows="1"
         [attr.aria-label]="'Sentence ' + ordinal()"
+        [attr.aria-readonly]="'true'"
+        [attr.aria-describedby]="descriptionId()"
         [value]="sentence().text"
         (keydown)="onKeydown($event)"
       ></textarea>
+      <span [id]="descriptionId()" class="mn-visually-hidden">
+        Read-only sentence text. Use the Actions menu to split or merge sentence boundaries.
+      </span>
 
       <div #actions class="actions">
         <button
@@ -220,6 +225,9 @@ export class ReviewSentenceComponent {
   private readonly menuOpenSignal = signal(false);
   protected readonly menuOpen = this.menuOpenSignal.asReadonly();
   protected readonly menuId = computed(() => `mn-sentence-actions-${this.sentence().id}`);
+  protected readonly descriptionId = computed(
+    () => `mn-sentence-description-${this.sentence().id}`,
+  );
 
   protected readonly ordinal = computed(() => this.index() + 1);
   protected readonly isFirst = computed(() => this.index() === 0);

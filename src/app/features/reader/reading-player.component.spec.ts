@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   AudioPlaybackStore,
@@ -84,7 +85,7 @@ describe('ReadingPlayerComponent', () => {
     TestBed.resetTestingModule();
     store = new StubPlaybackStore();
     TestBed.configureTestingModule({
-      providers: [{ provide: AudioPlaybackStore, useValue: store }],
+      providers: [provideRouter([]), { provide: AudioPlaybackStore, useValue: store }],
     });
   });
 
@@ -125,6 +126,23 @@ describe('ReadingPlayerComponent', () => {
       press(fixture.nativeElement as HTMLElement, 'Generate audio');
 
       expect(fixture.componentInstance.emitted).toEqual(['generate']);
+    });
+
+    it('uses the internal router for audio setup', () => {
+      store.total.set(2);
+      const element = render().nativeElement as HTMLElement;
+      const link = [...element.querySelectorAll<HTMLAnchorElement>('a')].find((anchor) =>
+        anchor.textContent.includes('Set up audio model'),
+      );
+
+      expect(link?.getAttribute('href')).toBe('/settings');
+    });
+
+    it('renders no action when the reading has no sentences', () => {
+      const element = render().nativeElement as HTMLElement;
+
+      expect(element.textContent).not.toContain('Generate audio');
+      expect(element.querySelector('a')).toBeNull();
     });
   });
 

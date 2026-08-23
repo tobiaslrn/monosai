@@ -50,11 +50,16 @@ describe('ReviewSentenceComponent', () => {
   }
 
   it('shows the sentence in a read-only field with an accessible name', () => {
-    const text = element(render()).querySelector('textarea');
+    const fixture = render();
+    const rendered = element(fixture);
+    const text = rendered.querySelector('textarea');
 
     expect(text?.value).toBe('猫が寝た。');
     expect(text?.readOnly).toBe(true);
     expect(text?.getAttribute('aria-label')).toBe('Sentence 2');
+    expect(text?.getAttribute('aria-readonly')).toBe('true');
+    expect(text?.getAttribute('aria-describedby')).toContain('mn-sentence-description-s1');
+    expect(rendered.textContent).toContain('Read-only sentence text');
   });
 
   it('exposes the actions menu as a collapsed disclosure', () => {

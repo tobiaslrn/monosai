@@ -243,13 +243,12 @@ describe('WordInspectorComponent', () => {
     expect(element.textContent).not.toContain('Nothing here is outside your grammar profile.');
   });
 
-  it('keeps its route to the sentence out of sight until it holds focus', async () => {
+  it('keeps its route to the sentence visible in the word header', async () => {
     const element = (await render()).nativeElement as HTMLElement;
     const route = element.querySelector<HTMLButtonElement>('.sentence-route');
 
-    // Laid out only while focused, so the card reads as a plain lookup.
     expect(route?.textContent.trim()).toBe('Open this sentence');
-    expect(getComputedStyle(route!).position).toBe('absolute');
+    expect(getComputedStyle(route!).position).not.toBe('absolute');
   });
 
   it('carries the keyboard route to the sentence, where the actions are', async () => {

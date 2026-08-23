@@ -105,48 +105,51 @@ const SCROLL_SETTLE_MS = 1000;
           <a class="mn-icon-button" routerLink="/library" aria-label="Back to library">
             <mn-icon name="back" />
           </a>
-          <h1>{{ store.reading()?.title }}</h1>
-          <div class="bar-actions">
-            <mn-reader-aids />
-            <!--
-              Always here, whether or not this reading has any audio. It is the
-              only place in the reader that says Monosai can read aloud at all,
-              and the player behind it owns every audio state there is.
-            -->
-            <button
-              type="button"
-              class="mn-icon-button audio-button"
-              [class.is-busy]="audioJob.isRunning()"
-              [class.is-playing]="playback.isActive()"
-              [attr.aria-expanded]="audioPlayerOpen()"
-              aria-controls="reading-audio-player"
-              [attr.aria-label]="audioButtonLabel()"
-              (click)="toggleAudioPlayer()"
-            >
-              <mn-icon name="audio" />
-            </button>
-            @if (store.reading(); as reading) {
-              <mn-reader-menu
-                [reading]="reading"
-                [isRunning]="translationJob.progress().kind === 'running'"
-                (translateAll)="startWholeReadingTranslation()"
-                (cancelled)="translationJob.cancel()"
-                (deleteRequested)="confirmDelete()"
-              />
-            }
-          </div>
+          <h1>{{ readerHeading() }}</h1>
+          @if (store.status() === 'ready') {
+            <div class="bar-actions">
+              <mn-reader-aids />
+              <!--
+                Always here for a loaded reading, whether or not it has any
+                audio. The player behind it owns every audio state there is.
+              -->
+              <button
+                type="button"
+                class="mn-icon-button audio-button"
+                [class.is-busy]="audioJob.isRunning()"
+                [class.is-playing]="playback.isActive()"
+                [attr.aria-expanded]="audioPlayerOpen()"
+                aria-controls="reading-audio-player"
+                [attr.aria-label]="audioButtonLabel()"
+                (click)="toggleAudioPlayer()"
+              >
+                <mn-icon name="audio" />
+              </button>
+              @if (store.reading(); as reading) {
+                <mn-reader-menu
+                  [reading]="reading"
+                  [isRunning]="translationJob.progress().kind === 'running'"
+                  (translateAll)="startWholeReadingTranslation()"
+                  (cancelled)="translationJob.cancel()"
+                  (deleteRequested)="confirmDelete()"
+                />
+              }
+            </div>
+          }
         </div>
 
         <!--
           A running job belongs with the header rather than over the text, and
           it takes none of the page while nothing is running.
         -->
-        <mn-translation-progress
-          [progress]="translationJob.progress()"
-          (cancelled)="translationJob.cancel()"
-          (retried)="retryWholeReadingTranslation()"
-          (dismissed)="translationJob.acknowledge()"
-        />
+        @if (store.status() === 'ready') {
+          <mn-translation-progress
+            [progress]="translationJob.progress()"
+            (cancelled)="translationJob.cancel()"
+            (retried)="retryWholeReadingTranslation()"
+            (dismissed)="translationJob.acknowledge()"
+          />
+        }
       </header>
 
       <main class="content" #content>
@@ -205,7 +208,7 @@ const SCROLL_SETTLE_MS = 1000;
       </main>
     </div>
 
-    @if (audioPlayerOpen()) {
+    @if (audioPlayerOpen() && store.status() === 'ready') {
       <div
         #audioPlayerShell
         id="reading-audio-player"
@@ -232,6 +235,8 @@ const SCROLL_SETTLE_MS = 1000;
         <mn-sentence-popover
           [aids]="selectedSentenceAids()"
           [canAnalyze]="canAnalyzeGrammar()"
+          [translationModelConfigured]="hasTranslationModel()"
+          [grammarModelConfigured]="hasGrammarModel()"
           [unknownWords]="selectedUnknownWords()"
           (translate)="translateSelectedSentence()"
           (analyzeGrammar)="analyzeSelectedSentence()"
@@ -440,6 +445,20 @@ export class ReaderPageComponent {
   /** Clamped here too: a stored row is external data like any other. */
   protected readonly textScale = computed(() => clampTextScale(this.preferences().textScale));
 
+  protected readonly readerHeading = computed(() => {
+    switch (this.store.status()) {
+      case 'loading':
+        return 'Opening reading…';
+      case 'not-found':
+      case 'failed':
+        return 'Reading unavailable';
+      case 'ready':
+        return this.store.reading()?.title ?? 'Reading';
+      case 'idle':
+        return 'Reading';
+    }
+  });
+
   protected readonly selectedWord = computed<SelectedWord | null>(() => {
     const selected = this.inspector.selected();
     return selected === null
@@ -563,6 +582,14 @@ export class ReaderPageComponent {
     () => (this.store.reading()?.kind ?? 'imported') === 'imported',
   );
 
+  protected readonly hasTranslationModel = computed(
+    () => this.textModel.configForTask('text') !== null,
+  );
+
+  protected readonly hasGrammarModel = computed(
+    () => this.textModel.configForTask('grammar') !== null,
+  );
+
   private edgeObserver: IntersectionObserver | null = null;
   /**
    * Whether playback may scroll the page to the sentence it has reached.
@@ -595,7 +622,9 @@ export class ReaderPageComponent {
     void this.language.initialize();
 
     effect(() => {
-      void this.store.open(readingId(this.id()));
+      const nextReadingId = readingId(this.id());
+      this.closeReaderSurfaces();
+      void this.store.open(nextReadingId);
     });
 
     effect(() => {
@@ -749,6 +778,12 @@ export class ReaderPageComponent {
    * generation job.
    */
   protected toggleAudioPlayer(): void {
+    if (
+      this.store.status() !== 'ready' ||
+      !this.store.paragraphs().some((paragraph) => paragraph.sentences.length > 0)
+    ) {
+      return;
+    }
     if (this.audioPlayerOpenSignal()) {
       if (this.audioPlayerOutlet.hasAttached()) {
         this.audioPlayerOutlet.detach();
@@ -761,6 +796,20 @@ export class ReaderPageComponent {
     }
     this.audioPlayerSentenceIdSignal.set(this.selectedSentenceIdSignal());
     this.audioPlayerOpenSignal.set(true);
+  }
+
+  /** Clears every surface whose content belongs to the current reading. */
+  private closeReaderSurfaces(): void {
+    this.endPreview();
+    this.popover.close();
+    if (this.audioPlayerOutlet.hasAttached()) {
+      this.audioPlayerOutlet.detach();
+    }
+    this.audioPlayerPortal = null;
+    this.playback.stop();
+    this.audioPlayerSentenceIdSignal.set(null);
+    this.audioPlayerOpenSignal.set(false);
+    this.selectedSentenceIdSignal.set(null);
   }
 
   private attachAudioPlayerShell(): void {

@@ -126,7 +126,10 @@ describe('grammarPresetLine', () => {
 
     expect(line.warning).not.toBeNull();
     expect(line.warning).toContain('60');
-    expect(line.warning).toContain('generate anyway');
+    expect(line.warning).toContain('You can still generate');
+    expect(line.warning).not.toContain('snapshot');
+    expect(line.warning).not.toContain('repair');
+    expect(line.warning).not.toContain('validate');
   });
 
   it('stays quiet for an easy preset on a small snapshot', () => {

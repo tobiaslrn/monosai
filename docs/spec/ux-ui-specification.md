@@ -20,7 +20,7 @@ listing six equal destinations (ADR 0025).
 
 - **Library**: the shelf, and the one way to add to it.
 - **Reader**: the reading itself.
-- **Add text**: paste/file input, segmentation review, save.
+- **Add text**: paste input, segmentation review, save.
 - **Generate**: prerequisites, premise form, progress, invalid draft.
 - **Settings**: OpenRouter, TTS, exception policy, appearance, storage, install/update, reset, and links to Vocabulary and Grammar.
 - **Vocabulary**: providers, source mappings, refresh results, snapshots. Reached from Settings.
@@ -44,9 +44,10 @@ branch of adding, not a destination of its own.
 
 ### Initial routing
 
-The root route always resolves to the Library. An empty library states that in
-one line and offers the same **New reading** button, which is a truer first
-screen than a form the learner never asked for.
+The root route always resolves to the Library. An empty library explains the two
+starting paths — adding Japanese the learner already has, or generating from
+reviewed Anki vocabulary — and offers the same **New reading** button, which is
+a truer first screen than a form the learner never asked for.
 - Deep links restore the requested route after initialization. If prerequisites are missing, preserve the intended destination and route to the relevant setup step.
 
 ## 3. Visual system
@@ -270,7 +271,9 @@ often as a learner likes without wondering what it cost.
 4. The first two dictionary meanings, with the existing **More** action for the rest. Written forms are secondary, and the meanings remain a compact numbered list.
 5. Relevant stored grammar findings as compact labels. Their existing explanatory text is behind one collapsed, keyboard-accessible **Details** disclosure; a stale-analysis notice remains visible when applicable.
 6. Validation/status and the recommended next action, only when applicable.
-7. A route to this word's sentence, laid out only while it holds focus — the keyboard's only way to a sentence, since selecting one is a press on whitespace it cannot aim.
+7. A visible **Open this sentence** action in the word header — the keyboard's
+   route to a sentence, since selecting one is a press on whitespace it cannot
+   aim.
 
 The sentence is not repeated here: the learner is looking at it. A finding with
 no span marks nothing on the page, so every word of its sentence carries it —

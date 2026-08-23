@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
 import type { SentenceId } from '../../domain/shared/ids';
@@ -26,7 +27,7 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
 @Component({
   selector: 'mn-reading-player',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent],
+  imports: [IconComponent, RouterLink],
   template: `
     <div class="player">
       @switch (mode()) {
@@ -131,28 +132,30 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
         }
 
         @case ('absent') {
-          @if (models().length > 0) {
-            <label class="model-picker"
-              >Model
-              <select
-                data-testid="audio-model-select"
-                [value]="selectedModelId() ?? ''"
-                (change)="modelSelected.emit($any($event.target).value)"
-              >
-                @for (model of models(); track model.id) {
-                  <option [value]="model.id">
-                    {{ model.name }}{{ model.isDefault ? ' (Default)' : '' }}
-                  </option>
-                }
-              </select>
-            </label>
-          }
-          <p class="line">{{ sentenceCountLabel() }}</p>
-          <button type="button" class="mn-button mn-button--primary" (click)="generate.emit()">
-            Generate audio
-          </button>
-          @if (models().length === 0) {
-            <a class="mn-button" href="/settings">Set up audio model</a>
+          @if (store.sentenceCount() > 0) {
+            @if (models().length > 0) {
+              <label class="model-picker"
+                >Model
+                <select
+                  data-testid="audio-model-select"
+                  [value]="selectedModelId() ?? ''"
+                  (change)="modelSelected.emit($any($event.target).value)"
+                >
+                  @for (model of models(); track model.id) {
+                    <option [value]="model.id">
+                      {{ model.name }}{{ model.isDefault ? ' (Default)' : '' }}
+                    </option>
+                  }
+                </select>
+              </label>
+            }
+            <p class="line">{{ sentenceCountLabel() }}</p>
+            <button type="button" class="mn-button mn-button--primary" (click)="generate.emit()">
+              Generate audio
+            </button>
+            @if (models().length === 0) {
+              <a class="mn-button" routerLink="/settings">Set up audio model</a>
+            }
           }
         }
       }
