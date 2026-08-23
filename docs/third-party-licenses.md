@@ -15,6 +15,7 @@ the script after any dependency change and commit the result.
 | @angular/router | 22.1.3 | MIT |
 | @angular/service-worker | 22.1.3 | MIT |
 | @lucide/angular | 1.33.0 | ISC |
+| @openrouter/sdk | 1.2.54 | Apache-2.0 |
 | @standard-schema/spec | 1.1.0 | MIT |
 | dexie | 4.4.5 | Apache-2.0 |
 | entities | 8.0.0 | BSD-2-Clause |
