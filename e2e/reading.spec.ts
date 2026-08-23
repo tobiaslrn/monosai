@@ -45,6 +45,12 @@ async function setReaderAids(
   }
 
   await page.keyboard.press('Escape');
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
+  });
 }
 
 /**
@@ -110,14 +116,17 @@ async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
 test.describe('scenario 1 — paste, review, save, inspect', () => {
   /**
    * An empty library is the first screen, not a form nobody asked for. It says
-   * one line and offers the one button that fills it.
+   * both starting paths and keeps the New reading action available.
    */
   test('a first visit lands on an empty library and needs no setup', async ({ page }) => {
     await page.goto('/');
 
     await expect(page).toHaveURL(/#\/library/);
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
-    await expect(page.getByText('Nothing saved yet')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Add Japanese you already have' })).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'Generate from reviewed Anki vocabulary' }),
+    ).toBeVisible();
     await expect(page.getByRole('button', { name: 'New reading' })).toBeVisible();
   });
 
@@ -149,6 +158,54 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
 
     await saveAndOpenReader(page);
     await expect(page.locator('mn-reader-paragraph')).toHaveCount(2);
+  });
+
+  test('uses singular wording for a one-sentence paragraph', async ({ page }) => {
+    await page.goto('/#/add');
+    await pasteAndContinue(page, '猫が寝た。');
+
+    await expect(page.getByText('1 sentence in 1 paragraph.')).toBeVisible();
+  });
+
+  test('opens the Settings route from the reader audio setup', async ({ page }) => {
+    await importReading(page, '猫が寝た。', 'Audio setup');
+
+    await page.getByRole('button', { name: /^Audio$/ }).click();
+    await page.getByRole('link', { name: 'Set up audio model' }).click();
+
+    await expect(page).toHaveURL(/#\/settings$/);
+    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+  });
+
+  test('does not leave reader controls on a missing reading', async ({ page }) => {
+    await page.goto('/#/reader/does-not-exist');
+
+    await expect(
+      page.getByRole('heading', { name: 'Reading unavailable', level: 1 }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Aids' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Audio/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Reading actions' })).toHaveCount(0);
+    await expect(page.getByRole('alert')).toContainText('This reading is no longer here');
+    await expect(
+      page.getByRole('alert').getByRole('link', { name: 'Back to library' }),
+    ).toBeVisible();
+  });
+
+  test('closes word details when switching to another reading', async ({ page }) => {
+    await importReading(page, '学校へ行きます。', 'First reading');
+    const firstUrl = page.url();
+
+    await importReading(page, 'これです。', 'Second reading');
+    const secondUrl = page.url();
+
+    await page.goto(firstUrl);
+    await openWordDetails(page, '学校');
+    await expect(wordDetails(page)).toContainText('school');
+
+    await page.goto(secondUrl);
+    await expect(page.getByRole('heading', { name: 'Second reading', level: 1 })).toBeVisible();
+    await expect(wordDetails(page)).not.toBeAttached();
   });
 
   test('keeps reader actions reachable and dismisses their menu predictably', async ({ page }) => {
@@ -386,6 +443,20 @@ test.describe('scenario 1 — paste, review, save, inspect', () => {
     expect(external).toEqual([]);
   });
 
+  test('offers Settings when sentence translation has no model', async ({ page }) => {
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    await page.locator('.sentence').first().locator('.token.is-plain').first().click();
+    await page.getByRole('button', { name: 'Translate', exact: true }).click();
+
+    const popover = page.locator('mn-sentence-popover');
+    await expect(popover.getByRole('alert')).toContainText('No translation model is configured');
+    await expect(popover.getByRole('link', { name: 'Open Settings' })).toBeVisible();
+    await expect(popover).not.toContainText('Choose a different model');
+  });
+
   test('the text scale changes the reading, and is remembered', async ({ page }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
@@ -485,6 +556,7 @@ test.describe('scenario 2 — pasted text validation', () => {
     await page.getByLabel('Japanese text').fill('あ'.repeat(50_001));
 
     await expect(page.getByText('50,001 of 50,000 characters')).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('Remove 1 character to continue');
     await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
     await expect(page).toHaveURL(/#\/add/);
   });
@@ -558,7 +630,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
     await dialog.getByRole('button', { name: 'Delete permanently' }).click();
 
-    await expect(page.getByText('Nothing saved yet')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Add Japanese you already have' })).toBeVisible();
     const counts = await countOwnedRows(page);
     for (const [store, count] of Object.entries(counts)) {
       expect(count, `rows left in ${store}`).toBe(0);

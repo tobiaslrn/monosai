@@ -3,6 +3,7 @@ import { env } from 'node:process';
 
 const PORT = 4300;
 const BASE_URL = `http://127.0.0.1:${PORT}/monosai/`;
+const IS_CI = env['CI'] === 'true';
 
 /**
  * Exercises the production build through the service worker.
@@ -16,10 +17,10 @@ const BASE_URL = `http://127.0.0.1:${PORT}/monosai/`;
 export default defineConfig({
   testDir: './e2e-pwa',
   fullyParallel: true,
-  forbidOnly: !!env.CI,
-  retries: env.CI ? 2 : 0,
-  workers: env.CI ? 1 : undefined,
-  reporter: env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
+  forbidOnly: IS_CI,
+  retries: IS_CI ? 2 : 0,
+  workers: IS_CI ? 1 : undefined,
+  reporter: IS_CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
@@ -38,7 +39,7 @@ export default defineConfig({
     command: 'npm run build:pages && npm run serve-dist',
     env: { PORT: String(PORT) },
     url: BASE_URL,
-    reuseExistingServer: !env.CI,
+    reuseExistingServer: !IS_CI,
     timeout: 300_000,
   },
 });

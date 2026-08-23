@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import type { SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import { describeEnrichmentFailure } from './enrichment-failure-copy';
 
@@ -34,6 +35,7 @@ export interface UnknownWord {
 @Component({
   selector: 'mn-sentence-popover',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterLink],
   template: `
     <div class="sentence-popover">
       @if (aids().translation; as translation) {
@@ -42,7 +44,12 @@ export interface UnknownWord {
         <p class="mn-hint" role="status">Translating…</p>
       }
 
-      @if (failure(); as failure) {
+      @if (translationSetupNeeded()) {
+        <div class="setup-message" role="alert">
+          <p class="mn-error">No translation model is configured.</p>
+          <a class="mn-button" routerLink="/settings">Open Settings</a>
+        </div>
+      } @else if (failure(); as failure) {
         <p class="mn-error" role="alert">{{ failure }}</p>
       }
 
@@ -78,7 +85,12 @@ export interface UnknownWord {
       @if (grammarRunning()) {
         <p class="mn-hint" role="status">Analyzing…</p>
       }
-      @if (grammarFailure(); as failure) {
+      @if (grammarSetupNeeded()) {
+        <div class="setup-message" role="alert">
+          <p class="mn-error">No grammar model is configured.</p>
+          <a class="mn-button" routerLink="/settings">Open Settings</a>
+        </div>
+      } @else if (grammarFailure(); as failure) {
         <p class="mn-error" role="alert">{{ failure }}</p>
       }
 
@@ -191,6 +203,13 @@ export interface UnknownWord {
       font-size: var(--text-sm);
     }
 
+    .setup-message {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      align-items: center;
+    }
+
     .mn-error {
       color: var(--status-danger);
     }
@@ -204,6 +223,10 @@ export class SentencePopoverComponent {
    * it was never written for.
    */
   readonly canAnalyze = input(false);
+  /** Whether a tested model is available for the translation action. */
+  readonly translationModelConfigured = input(true);
+  /** Whether a tested model is available for the grammar action. */
+  readonly grammarModelConfigured = input(true);
   /** Words in this sentence carrying the vocabulary warning, in reading order. */
   readonly unknownWords = input<readonly UnknownWord[]>([]);
 
@@ -266,16 +289,36 @@ export class SentencePopoverComponent {
   });
 
   protected readonly failure = computed(() =>
-    describeEnrichmentFailure(this.aids().translationAction.error),
+    this.translationSetupNeeded()
+      ? null
+      : describeEnrichmentFailure(this.aids().translationAction.error),
   );
+
+  protected readonly translationSetupNeeded = computed(() => {
+    const failure = this.aids().translationAction.error;
+    return (
+      !this.translationModelConfigured() &&
+      failure?.source === 'provider' &&
+      failure.error.code === 'capability-unsupported'
+    );
+  });
 
   protected readonly audioFailure = computed(() =>
     describeEnrichmentFailure(this.aids().audioAction.error),
   );
 
   protected readonly grammarFailure = computed(() =>
-    describeEnrichmentFailure(this.aids().grammarAction.error),
+    this.grammarSetupNeeded() ? null : describeEnrichmentFailure(this.aids().grammarAction.error),
   );
+
+  protected readonly grammarSetupNeeded = computed(() => {
+    const failure = this.aids().grammarAction.error;
+    return (
+      !this.grammarModelConfigured() &&
+      failure?.source === 'provider' &&
+      failure.error.code === 'capability-unsupported'
+    );
+  });
 
   protected audioAction(): void {
     if (this.aids().audio === null) {

@@ -105,13 +105,19 @@ describe('LibraryPageComponent', () => {
     );
   }
 
-  it('says one line and offers the one button when nothing is saved yet', async () => {
+  it('explains both ways to start when nothing is saved yet', async () => {
     const fixture = await render();
 
     expect(element(fixture).querySelector('.mark')?.getAttribute('src')).toBe('icons/icon-192.png');
     expect(element(fixture).querySelector('.wordmark')?.textContent).toBe('Monosai');
     expect(element(fixture).querySelector('h1')?.textContent).toBe('Library');
-    expect(element(fixture).textContent).toContain('Nothing saved yet');
+    expect(element(fixture).textContent).toContain('Add Japanese you already have');
+    expect(element(fixture).textContent).toContain('Generate from reviewed Anki vocabulary');
+    expect(
+      [...element(fixture).querySelectorAll<HTMLAnchorElement>('.empty-choice')].map((link) =>
+        link.getAttribute('href'),
+      ),
+    ).toEqual(['/add', '/generate']);
     expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(0);
     expect(newReadingButton(fixture)).not.toBeNull();
   });

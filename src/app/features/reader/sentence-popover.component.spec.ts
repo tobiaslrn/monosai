@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import { aiError } from '../../domain/ai/ai-error';
 import type {
@@ -75,6 +76,8 @@ function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
   template: `<mn-sentence-popover
     [aids]="aids()"
     [canAnalyze]="canAnalyze()"
+    [translationModelConfigured]="translationModelConfigured()"
+    [grammarModelConfigured]="grammarModelConfigured()"
     [unknownWords]="unknownWords()"
     (translate)="requests = requests + 1"
     (analyzeGrammar)="analyses = analyses + 1"
@@ -85,6 +88,8 @@ function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
 class HostComponent {
   readonly aids = signal<SentenceAids>(NO_AIDS);
   readonly canAnalyze = signal(true);
+  readonly translationModelConfigured = signal(true);
+  readonly grammarModelConfigured = signal(true);
   readonly unknownWords = signal<readonly UnknownWord[]>([]);
   requests = 0;
   analyses = 0;
@@ -93,6 +98,10 @@ class HostComponent {
 }
 
 describe('SentencePopoverComponent', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+  });
+
   function render(aids: SentenceAids = NO_AIDS, canAnalyze = true) {
     const fixture = TestBed.createComponent(HostComponent);
     fixture.componentInstance.aids.set(aids);
@@ -184,6 +193,31 @@ describe('SentencePopoverComponent', () => {
     );
   });
 
+  it('offers Settings when translation has no configured model', () => {
+    const fixture = render(
+      aidsWith({
+        translationAction: {
+          state: 'failed',
+          error: {
+            source: 'provider',
+            error: aiError('capability-unsupported', 'translation', 'No model is configured.'),
+          },
+        },
+      }),
+    );
+    fixture.componentInstance.translationModelConfigured.set(false);
+    fixture.detectChanges();
+
+    const rendered = host(fixture);
+    expect(rendered.querySelector('[role="alert"]')?.textContent).toContain(
+      'No translation model is configured',
+    );
+    expect(rendered.querySelector('a[routerlink="/settings"]')?.textContent).toContain(
+      'Open Settings',
+    );
+    expect(rendered.textContent).not.toContain('Choose a different model');
+  });
+
   it('names the grammar a marked sentence was marked for', () => {
     // The gesture learners actually make is pressing the sentence, so the notes
     // its underline refers to have to be readable from here too.
@@ -248,6 +282,28 @@ describe('SentencePopoverComponent', () => {
 
     expect(rendered.textContent).toContain('Grammar again');
     expect(rendered.querySelector('[role="alert"]')?.textContent).not.toContain('raw text');
+  });
+
+  it('offers Settings when grammar has no configured model', () => {
+    const fixture = render(
+      aidsWith({
+        grammarAction: {
+          state: 'failed',
+          error: {
+            source: 'provider',
+            error: aiError('capability-unsupported', 'grammar-review', 'No model is configured.'),
+          },
+        },
+      }),
+    );
+    fixture.componentInstance.grammarModelConfigured.set(false);
+    fixture.detectChanges();
+
+    const rendered = host(fixture);
+    expect(rendered.querySelector('[role="alert"]')?.textContent).toContain(
+      'No grammar model is configured',
+    );
+    expect(rendered.querySelectorAll('a[routerlink="/settings"]')).toHaveLength(1);
   });
 
   it('names the words the sentence was underlined for', () => {

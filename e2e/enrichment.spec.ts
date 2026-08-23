@@ -277,13 +277,11 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
   });
 
   test('reaches the sentence from the word, without a pointer', async ({ page }) => {
-    // The keyboard has no whitespace to aim at, so the route in is the word.
-    // The control is laid out only while it holds focus.
+    // The keyboard has no whitespace to aim at, so the visible route in is the word popover.
     await prepareReading(page, SAMPLE_TEXT);
 
     await openWord(page, '猫');
     const route = wordDetails(page).getByRole('button', { name: 'Open this sentence' });
-    await route.focus();
     await expect(route).toBeVisible();
     await route.press('Enter');
 

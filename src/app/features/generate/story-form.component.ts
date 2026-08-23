@@ -99,27 +99,31 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             id="mn-story-model"
             data-testid="story-model-select"
             [value]="selectedModelId() ?? ''"
-            [disabled]="disabled()"
+            [disabled]="disabled() || models().length === 0"
             (change)="modelSelected.emit($any($event.target).value || null)"
           >
+            @if (models().length === 0) {
+              <option value="">No text model configured</option>
+            }
             @for (model of models(); track model.id) {
               <option [value]="model.id">
                 {{ model.name }}{{ model.isDefault ? ' (Default)' : '' }}
               </option>
             }
           </select>
+          @if (models().length === 0) {
+            <a class="model-settings" routerLink="/settings">Open Settings</a>
+          }
         </div>
 
         <div class="word-selection">
           <div class="setting-label">
             <label for="mn-word-selection">Anki word selection</label>
-            <span>Preview</span>
+            <span>Unavailable</span>
           </div>
-          <select id="mn-word-selection" disabled aria-describedby="mn-word-selection-help">
-            <option>Random distribution</option>
-            <option>Focus on recent words</option>
+          <select id="mn-word-selection" disabled>
+            <option>Word selection unavailable</option>
           </select>
-          <p id="mn-word-selection-help">More selection modes are coming later.</p>
         </div>
 
         <div class="generation-sources" data-testid="form-sources">
@@ -168,6 +172,14 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     .counter.is-over {
       color: var(--status-danger);
       font-weight: 600;
+    }
+
+    .model-settings {
+      justify-self: start;
+      color: var(--text-primary);
+      font-size: var(--text-sm);
+      text-decoration: underline;
+      text-underline-offset: 3px;
     }
 
     .composer-grid {

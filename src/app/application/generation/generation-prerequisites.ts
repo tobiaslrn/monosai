@@ -139,9 +139,9 @@ export function grammarPresetLine(
   const count = snapshot?.uniqueEntryCount ?? 0;
   const warning =
     snapshot !== null && count < expectation
-      ? `${preset.nameEn} usually needs more vocabulary than the ${String(
+      ? `${preset.nameEn} may need more words than the ${String(
           count,
-        )} entries in your snapshot. Stories may need repairing, or may not validate at all. You can generate anyway, or choose an easier preset.`
+        )} in your current list. Add more words or choose an easier story setting. You can still generate, but the result may be limited with this list.`
       : null;
 
   return { presetName: preset.nameEn, route: '/grammar', warning };

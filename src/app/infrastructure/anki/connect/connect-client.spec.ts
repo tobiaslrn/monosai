@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Logger } from '../../../application/shared/diagnostics';
 import { CONTRACT_COLLECTION } from '../../../../testing/anki-collection';
 import { FakeAnkiConnectServer } from '../../../../testing/anki-connect-server';
 import { AnkiConnectClient, DESKTOP_ENDPOINTS } from './connect-client';
@@ -17,6 +18,31 @@ function clientWith(
 }
 
 describe('AnkiConnectClient', () => {
+  it('logs an unavailable local Anki service as a warning', async () => {
+    const warn = vi.fn();
+    const error = vi.fn();
+    const logger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn,
+      error,
+      snapshot: vi.fn(() => []),
+      clear: vi.fn(),
+    } as unknown as Logger;
+    const client = clientWith(
+      new FakeAnkiConnectServer(CONTRACT_COLLECTION, { transportFailure: true }).fetch,
+      { logger },
+    );
+
+    await client.version();
+
+    expect(warn).toHaveBeenCalledWith('anki.operation.failed', {
+      action: 'version',
+      errorCode: 'not-running',
+    });
+    expect(error).not.toHaveBeenCalled();
+  });
+
   describe('requests', () => {
     it('posts the action with the protocol version to an allowlisted endpoint', async () => {
       const server = new FakeAnkiConnectServer(CONTRACT_COLLECTION);

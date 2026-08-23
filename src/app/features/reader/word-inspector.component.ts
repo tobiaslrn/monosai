@@ -86,9 +86,14 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
               <p class="reading" lang="ja">{{ reading }}</p>
             }
           </div>
-          <button type="button" class="close" aria-label="Close word details" (click)="onClose()">
-            <mn-icon name="close" />
-          </button>
+          <div class="header-actions">
+            <button type="button" class="sentence-route" (click)="sentenceRequested.emit()">
+              Open this sentence
+            </button>
+            <button type="button" class="close" aria-label="Close word details" (click)="onClose()">
+              <mn-icon name="close" />
+            </button>
+          </div>
         </header>
 
         @if (store.formSummary(); as formSummary) {
@@ -204,16 +209,6 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         @if (nextAction(); as action) {
           <p class="next-action">{{ action }}</p>
         }
-
-        <!--
-          The keyboard's only route to a sentence, and invisible to everyone
-          else: selecting one is a press on whitespace that a keyboard cannot
-          aim, while the words are already focus stops. Word details themselves
-          are read-only — everything that spends a request is on the sentence.
-        -->
-        <button type="button" class="sentence-route" (click)="sentenceRequested.emit()">
-          Open this sentence
-        </button>
       </div>
     }
   `,
@@ -229,6 +224,13 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       gap: var(--space-2);
       align-items: flex-start;
       justify-content: space-between;
+    }
+
+    .header-actions {
+      display: flex;
+      flex: none;
+      gap: var(--space-2);
+      align-items: flex-start;
     }
 
     .headword {
@@ -388,41 +390,21 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       margin-top: var(--space-2);
     }
 
-    /*
-     * The skip-link pattern: laid out only while it holds focus, so a keyboard
-     * keeps its route to the sentence and everyone else sees a plain lookup.
-     */
     .sentence-route {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      margin: -1px;
-      padding: 0;
-      overflow: hidden;
-      border: 0;
-      clip-path: inset(50%);
-    }
-
-    /*
-     * Plain :focus rather than :focus-visible: the control is invisible at rest,
-     * so it must lay itself out whenever it holds focus.
-     */
-    .sentence-route:focus {
-      position: static;
-      width: 100%;
-      height: auto;
       min-height: var(--touch-target);
-      margin: 0;
       padding: var(--space-2) var(--space-3);
-      overflow: visible;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-control);
       background: var(--surface-sunken);
       color: var(--text-primary);
       font: inherit;
+      font-size: var(--text-sm);
       text-align: start;
-      clip-path: none;
       cursor: pointer;
+    }
+
+    .sentence-route:hover {
+      border-color: var(--border-strong);
     }
 
     .next-action {

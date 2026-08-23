@@ -104,7 +104,28 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         }
 
         @if (store.hasNoReadings()) {
-          <p class="mn-hint">Nothing saved yet.</p>
+          <section class="empty-state" aria-labelledby="mn-library-empty-heading">
+            <h2 id="mn-library-empty-heading">Start with a reading</h2>
+            <p class="mn-hint">
+              Add Japanese you already have, or generate a story from reviewed Anki vocabulary.
+            </p>
+            <div class="empty-choices">
+              <a class="empty-choice" routerLink="/add">
+                <mn-icon name="add" [size]="20" />
+                <span>
+                  <strong>Add Japanese you already have</strong>
+                  <small>Paste text and review its sentences.</small>
+                </span>
+              </a>
+              <a class="empty-choice" routerLink="/generate">
+                <mn-icon name="generate" [size]="20" />
+                <span>
+                  <strong>Generate from reviewed Anki vocabulary</strong>
+                  <small>Choose a story setting and write with AI.</small>
+                </span>
+              </a>
+            </div>
+          </section>
         } @else if (store.isEmpty()) {
           <p class="mn-hint">No {{ store.filter() }} readings yet.</p>
         } @else {
@@ -208,6 +229,68 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       gap: var(--space-2);
     }
 
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      max-width: 42rem;
+    }
+
+    .empty-state h2 {
+      margin: 0;
+      font-size: var(--text-lg);
+    }
+
+    .empty-state .mn-hint {
+      margin: 0;
+    }
+
+    .empty-choices {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-3);
+    }
+
+    .empty-choice {
+      display: flex;
+      gap: var(--space-3);
+      align-items: flex-start;
+      min-width: 0;
+      padding: var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      background: var(--surface-raised);
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .empty-choice:hover {
+      border-color: var(--border-strong);
+      background: var(--surface-sunken);
+    }
+
+    .empty-choice mn-icon {
+      flex: none;
+      color: var(--action-primary);
+    }
+
+    .empty-choice span {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+      min-width: 0;
+    }
+
+    .empty-choice strong {
+      font-weight: 600;
+    }
+
+    .empty-choice small {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      line-height: 1.45;
+    }
+
     .chip {
       min-height: var(--touch-target);
       padding: var(--space-2) var(--space-4);
@@ -271,6 +354,10 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
       .identity {
         gap: var(--space-2);
+      }
+
+      .empty-choices {
+        grid-template-columns: 1fr;
       }
     }
   `,

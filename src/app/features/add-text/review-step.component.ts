@@ -29,10 +29,7 @@ import {
       />
     </div>
 
-    <p class="mn-hint">
-      {{ store.sentenceCount().toLocaleString('en') }} sentences in
-      {{ paragraphCount().toLocaleString('en') }} paragraphs.
-    </p>
+    <p class="mn-hint" role="status">{{ summary() }}</p>
 
     @if (store.editFailure(); as failure) {
       <p class="mn-error" role="alert">{{ failure.message }}</p>
@@ -79,6 +76,11 @@ export class ReviewStepComponent {
 
   protected readonly paragraphs = computed(() => this.store.draft()?.paragraphs ?? []);
   protected readonly paragraphCount = computed(() => this.paragraphs().length);
+  protected readonly summary = computed(() => {
+    const sentences = this.store.sentenceCount();
+    const paragraphs = this.paragraphCount();
+    return `${String(sentences)} ${sentences === 1 ? 'sentence' : 'sentences'} in ${String(paragraphs)} ${paragraphs === 1 ? 'paragraph' : 'paragraphs'}.`;
+  });
 
   protected onTitle(event: Event): void {
     this.store.setTitle((event.target as HTMLInputElement).value);

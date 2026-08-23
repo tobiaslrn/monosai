@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ImportStore } from '../../application/reading/import.store';
 import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
 
@@ -16,8 +16,10 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
         rows="12"
         lang="ja"
         required
-        [attr.aria-invalid]="store.rejection() !== null ? 'true' : null"
-        aria-describedby="mn-import-count"
+        [attr.aria-invalid]="store.rejection() !== null || isOverLimit() ? 'true' : null"
+        [attr.aria-describedby]="
+          isOverLimit() ? 'mn-import-count mn-import-limit-hint' : 'mn-import-count'
+        "
         [value]="store.rawText()"
         (input)="onPaste($event)"
       ></textarea>
@@ -25,6 +27,9 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
         {{ store.characterCount().toLocaleString('en') }} of
         {{ limit.toLocaleString('en') }} characters
       </p>
+      @if (isOverLimit()) {
+        <p id="mn-import-limit-hint" class="limit-hint" role="alert">{{ overLimitMessage() }}</p>
+      }
     </div>
 
     @if (store.rejection(); as rejection) {
@@ -69,6 +74,12 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
       font-weight: 600;
     }
 
+    .limit-hint {
+      margin: calc(var(--space-1) * -1) 0 0;
+      color: var(--status-danger);
+      font-size: var(--text-sm);
+    }
+
     .mn-error {
       margin: 0;
       color: var(--status-danger);
@@ -78,6 +89,10 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
 export class TextInputStepComponent {
   protected readonly store = inject(ImportStore);
   protected readonly limit = MAXIMUM_IMPORT_CHARACTERS;
+  protected readonly overLimitMessage = computed(() => {
+    const excess = this.store.characterCount() - this.limit;
+    return `Remove ${String(excess)} ${excess === 1 ? 'character' : 'characters'} to continue.`;
+  });
 
   protected isOverLimit(): boolean {
     return this.store.characterCount() > MAXIMUM_IMPORT_CHARACTERS;

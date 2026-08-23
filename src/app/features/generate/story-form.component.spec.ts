@@ -116,14 +116,25 @@ describe('StoryFormComponent', () => {
     expect(slider.getAttribute('aria-valuetext')).toBe('Long, 50 sentences');
   });
 
-  it('previews future Anki word-selection modes without enabling them', () => {
+  it('names unavailable Anki word selection without roadmap copy', () => {
     const { element } = render();
 
     const select = element.querySelector<HTMLSelectElement>('#mn-word-selection');
     expect(select?.disabled).toBe(true);
-    expect(select?.textContent).toContain('Random distribution');
-    expect(select?.textContent).toContain('Focus on recent words');
-    expect(element.querySelector('.word-selection')?.textContent).toContain('Preview');
+    expect(select?.textContent).toContain('Word selection unavailable');
+    expect(element.querySelector('.word-selection')?.textContent).toContain('Unavailable');
+    expect(element.textContent).not.toContain('coming later');
+  });
+
+  it('names the missing text model and sends the learner to Settings', () => {
+    const { element } = render();
+    const select = element.querySelector<HTMLSelectElement>('[data-testid="story-model-select"]');
+
+    expect(select?.disabled).toBe(true);
+    expect(select?.textContent).toContain('No text model configured');
+    expect(element.querySelector('a[routerlink="/settings"]')?.textContent).toContain(
+      'Open Settings',
+    );
   });
 
   it('keeps special instructions optional', () => {

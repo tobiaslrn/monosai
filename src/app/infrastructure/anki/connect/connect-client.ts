@@ -157,10 +157,12 @@ export class AnkiConnectClient {
     signal?: AbortSignal,
   ): Promise<Result<TValue, AnkiError>> {
     const logFailure = (error: AnkiError): Result<TValue, AnkiError> => {
-      this.options.logger?.error('anki.operation.failed', {
-        action,
-        errorCode: error.code,
-      });
+      const fields = { action, errorCode: error.code };
+      if (error.code === 'not-running' || error.code === 'bridge-not-running') {
+        this.options.logger?.warn('anki.operation.failed', fields);
+      } else {
+        this.options.logger?.error('anki.operation.failed', fields);
+      }
       return err(error);
     };
     this.options.logger?.info('anki.operation.started', { action });
