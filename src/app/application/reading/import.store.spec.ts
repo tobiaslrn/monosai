@@ -6,15 +6,15 @@ import type { ImportedReading } from '../../domain/reading/reading';
 import type { ImportedReadingDraft } from '../../domain/reading/reading-repository';
 import { ok, type Result } from '../../domain/shared/result';
 import { storageError, type StorageError } from '../../domain/storage/storage-error';
-import { FakeLanguageRuntime, sequentialIdGenerator } from '../../../testing/reading-fakes';
+import { FakeLanguageRuntime } from '../../../testing/reading-fakes';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
-import { ID_GENERATOR } from '../shared/repository-tokens';
 import { ImportStore } from './import.store';
 import { TextImportService, type SaveImportRequest } from './text-import.service';
 
 class FakeTextImportService {
   readonly runtime = new FakeLanguageRuntime();
   languageReady = true;
+  analysisFailure: ReturnType<typeof languageError> | null = null;
   saved: SaveImportRequest | null = null;
   saveFailure: StorageError | null = null;
 
@@ -46,6 +46,9 @@ class FakeTextImportService {
     onProgress?: (progress: { completed: number; total: number }) => void,
   ) {
     onProgress?.({ completed: 0, total: sentences.length });
+    if (this.analysisFailure !== null) {
+      return { ok: false as const, error: this.analysisFailure };
+    }
     const analyzed = await this.runtime.analyzeSentences(sentences.map((s) => s.text));
     if (!analyzed.ok) {
       return analyzed;
@@ -72,11 +75,7 @@ describe('ImportStore', () => {
   beforeEach(() => {
     imports = new FakeTextImportService();
     TestBed.configureTestingModule({
-      providers: [
-        ImportStore,
-        { provide: TextImportService, useValue: imports },
-        { provide: ID_GENERATOR, useValue: sequentialIdGenerator('new') },
-      ],
+      providers: [ImportStore, { provide: TextImportService, useValue: imports }],
     });
     store = TestBed.inject(ImportStore);
   });
@@ -98,21 +97,22 @@ describe('ImportStore', () => {
   });
 
   describe('input validation', () => {
-    it('blocks continuing with empty input and says why', async () => {
+    it('blocks saving with empty input and says why', async () => {
       store.setPastedText('   ');
-      expect(store.canContinue()).toBe(false);
+      expect(store.canSave()).toBe(false);
 
-      await store.continueToReview();
+      await store.save();
+
       expect(store.rejection()?.code).toBe('empty');
-      expect(store.step()).toBe('input');
+      expect(imports.saved).toBeNull();
     });
 
-    it('blocks continuing with text over the limit', async () => {
+    it('blocks saving with text over the limit', async () => {
       store.setPastedText('あ'.repeat(MAXIMUM_IMPORT_CHARACTERS + 1));
-      await store.continueToReview();
+      await store.save();
 
       expect(store.rejection()?.code).toBe('too-long');
-      expect(store.step()).toBe('input');
+      expect(imports.saved).toBeNull();
     });
 
     it('normalizes line endings as the text is entered', () => {
@@ -127,142 +127,36 @@ describe('ImportStore', () => {
     });
   });
 
-  describe('review', () => {
-    beforeEach(async () => {
+  describe('direct import', () => {
+    it('segments, analyzes, saves, and preserves blank-line paragraphs in one action', async () => {
       store.setPastedText('猫が寝た。犬も寝た。\n\n鳥は飛んだ。');
-      await store.continueToReview();
-    });
-
-    it('segments into reviewable paragraphs and analyses every sentence', () => {
-      expect(store.step()).toBe('review');
-      expect(store.draft()?.paragraphs).toHaveLength(2);
-      expect(store.sentenceCount()).toBe(3);
-      expect(store.hasPendingAnalysis()).toBe(false);
-      expect(store.canSave()).toBe(true);
-    });
-
-    it('splits a sentence and re-analyses only the halves', async () => {
-      const first = store.draft()!.paragraphs[0].sentences[0];
-      await store.split(first.id, 3);
-
-      expect(store.draft()!.paragraphs[0].sentences.map((s) => s.text)).toEqual([
-        '猫が寝',
-        'た。',
-        '犬も寝た。',
-      ]);
-      expect(store.hasPendingAnalysis()).toBe(false);
-      expect(store.announcement()).toBe('Sentence split into two.');
-    });
-
-    it('reports an impossible split without changing the draft', async () => {
-      const before = store.draft();
-      const first = before!.paragraphs[0].sentences[0];
-      await store.split(first.id, 0);
-
-      expect(store.editFailure()?.code).toBe('split-offset-out-of-range');
-      expect(store.draft()).toBe(before);
-    });
-
-    it('merges two sentences back together', async () => {
-      const second = store.draft()!.paragraphs[0].sentences[1];
-      await store.merge(second.id, 'previous');
-
-      expect(store.draft()!.paragraphs[0].sentences.map((s) => s.text)).toEqual([
-        '猫が寝た。犬も寝た。',
-      ]);
-      expect(store.announcement()).toBe('Sentences merged.');
-    });
-
-    it('refuses to merge across a paragraph boundary', async () => {
-      const onlySentence = store.draft()!.paragraphs[1].sentences[0];
-      await store.merge(onlySentence.id, 'previous');
-
-      expect(store.editFailure()?.code).toBe('no-previous-sentence');
-      expect(store.draft()!.paragraphs).toHaveLength(2);
-    });
-
-    it('returns to raw input without losing anything', () => {
-      store.backToInput();
-      expect(store.step()).toBe('input');
-      expect(store.rawText()).toBe('猫が寝た。犬も寝た。\n\n鳥は飛んだ。');
-      expect(store.draft()).not.toBeNull();
-    });
-  });
-
-  describe('language readiness', () => {
-    it('reports an explicit failure instead of hanging when assets are missing', async () => {
-      imports.languageReady = false;
-      store.setPastedText('猫が寝た。');
-      await store.continueToReview();
-
-      expect(store.step()).toBe('input');
-      expect(store.languageFailure()?.code).toBe('assets-unavailable');
-      expect(store.busy()).toEqual({ kind: 'idle' });
-    });
-
-    it('can retry once assets become available', async () => {
-      imports.languageReady = false;
-      store.setPastedText('猫が寝た。');
-      await store.continueToReview();
-
-      imports.languageReady = true;
-      await store.continueToReview();
-
-      expect(store.step()).toBe('review');
-      expect(store.languageFailure()).toBeNull();
-    });
-
-    it('refuses to segment when the analyser fails, and stays on the input step', async () => {
-      store.setPastedText('猫が寝た。');
-      imports.runtime.failWith = languageError('analysis-failed', 'nope');
-      await store.continueToReview();
-
-      expect(store.step()).toBe('input');
-      expect(store.languageFailure()?.code).toBe('analysis-failed');
-    });
-
-    it('blocks saving while an edit is left unanalysed by a failure', async () => {
-      store.setPastedText('猫が寝た。犬も寝た。');
-      await store.continueToReview();
-      expect(store.canSave()).toBe(true);
-
-      // The re-analysis after a split is what fails here, so the reviewed
-      // boundaries survive but the reading cannot be saved without tokens.
-      imports.runtime.failWith = languageError('analysis-failed', 'nope');
-      const first = store.draft()!.paragraphs[0].sentences[0];
-      await store.split(first.id, 3);
-
-      expect(store.languageFailure()?.code).toBe('analysis-failed');
-      expect(store.hasPendingAnalysis()).toBe(true);
-      expect(store.canSave()).toBe(false);
-      expect(await store.save()).toBeNull();
-    });
-  });
-
-  describe('saving', () => {
-    beforeEach(async () => {
-      store.setPastedText('猫が寝た。');
       store.setTitle('わたしの章');
-      await store.continueToReview();
-    });
 
-    it('saves the reviewed draft with the resolved title', async () => {
       const id = await store.save();
 
       expect(id).toBe('reading-1');
+      expect(store.hasPendingAnalysis()).toBe(false);
       expect(imports.saved?.title).toBe('わたしの章');
-      expect(imports.saved?.sourceText).toBe('猫が寝た。');
-      expect(imports.saved?.importSource).toBe('paste');
+      expect(imports.saved?.sourceText).toBe('猫が寝た。犬も寝た。\n\n鳥は飛んだ。');
+      expect(imports.saved?.draft.paragraphs.map((paragraph) => paragraph.sourceText)).toEqual([
+        '猫が寝た。犬も寝た。\n\n',
+        '鳥は飛んだ。',
+      ]);
     });
 
     it('clears the unsaved-work guard after a successful save', async () => {
+      store.setPastedText('猫が寝た。');
       expect(store.isDirty()).toBe(true);
+
       await store.save();
+
       expect(store.isDirty()).toBe(false);
     });
 
     it('keeps the draft and the guard when saving fails', async () => {
       imports.saveFailure = storageError('quota', 'no room');
+      store.setPastedText('猫が寝た。');
+
       const id = await store.save();
 
       expect(id).toBeNull();
@@ -271,9 +165,56 @@ describe('ImportStore', () => {
       expect(store.isDirty()).toBe(true);
     });
 
-    it('is dirty only while there is text that has not been saved', () => {
-      store.reset();
-      expect(store.isDirty()).toBe(false);
+    it('does not save when sentence analysis fails', async () => {
+      imports.analysisFailure = languageError('analysis-failed', 'nope');
+      store.setPastedText('猫が寝た。');
+
+      const id = await store.save();
+
+      expect(id).toBeNull();
+      expect(store.languageFailure()?.code).toBe('analysis-failed');
+      expect(store.hasPendingAnalysis()).toBe(true);
+      expect(imports.saved).toBeNull();
     });
+  });
+
+  describe('language readiness', () => {
+    it('reports an explicit failure instead of hanging when assets are missing', async () => {
+      imports.languageReady = false;
+      store.setPastedText('猫が寝た。');
+
+      await store.save();
+
+      expect(store.languageFailure()?.code).toBe('assets-unavailable');
+      expect(store.busy()).toEqual({ kind: 'idle' });
+      expect(imports.saved).toBeNull();
+    });
+
+    it('can retry the same action once assets become available', async () => {
+      imports.languageReady = false;
+      store.setPastedText('猫が寝た。');
+      await store.save();
+
+      imports.languageReady = true;
+      const id = await store.save();
+
+      expect(id).toBe('reading-1');
+      expect(store.languageFailure()).toBeNull();
+    });
+
+    it('stays unsaved when segmentation fails', async () => {
+      store.setPastedText('猫が寝た。');
+      imports.runtime.failWith = languageError('analysis-failed', 'nope');
+
+      await store.save();
+
+      expect(store.languageFailure()?.code).toBe('analysis-failed');
+      expect(imports.saved).toBeNull();
+    });
+  });
+
+  it('is dirty only while there is text that has not been saved', () => {
+    store.reset();
+    expect(store.isDirty()).toBe(false);
   });
 });

@@ -405,9 +405,9 @@ export class LanguageWorkerHost {
   }
 
   /**
-   * Tokenizes sentences whose boundaries the caller already decided. Import
-   * review corrects boundaries, so re-segmenting here would discard the
-   * correction the learner just made.
+   * Tokenizes sentences whose boundaries the caller already decided. Imported
+   * readings persist the deterministic segmenter's boundaries, so re-segmenting
+   * here would produce a different reading from the one being saved.
    */
   private async analyzeSentences(requestId: string, texts: readonly string[]): Promise<Dispatched> {
     const segments = texts.map((text) => ({

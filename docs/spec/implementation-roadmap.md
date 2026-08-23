@@ -65,7 +65,7 @@ Each milestone should leave the main branch production-buildable. Commit generat
 
 ### Build
 
-- Implement Add text paste/file flow, UTF-8 and length validation, off-thread segmentation, review split/merge, title behavior, and unsaved-exit guard.
+- Implement Add text paste/file flow, UTF-8 and length validation, off-thread segmentation, paragraph preservation, title behavior, and unsaved-exit guard.
 - Save immutable imported readings with tokens.
 - Implement Library, Continue reading, source filters, deletion, and progress.
 - Implement responsive Reader, global aid controls, ruby/spacing, word preview/inspector, compact dictionary, and no-snapshot state.

@@ -41,10 +41,10 @@ export interface AnalyzeRequest {
 /**
  * Tokenizes a batch of already-decided sentences.
  *
- * `analyze` decides sentence boundaries itself, which is wrong once the learner
- * has corrected them in import review: the reviewed boundaries are the ones that
- * must be tokenized. Sending the batch as one request keeps the round trips
- * bounded while the caller still chunks for progress and cancellation.
+ * `analyze` decides sentence boundaries itself, which is not appropriate for
+ * imported readings because the deterministic import segmenter already chose
+ * the boundaries to persist. Sending the batch as one request keeps the round
+ * trips bounded while the caller still chunks for progress and cancellation.
  */
 export interface AnalyzeSentencesRequest {
   readonly operation: 'analyze-sentences';

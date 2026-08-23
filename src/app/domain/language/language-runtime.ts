@@ -64,7 +64,7 @@ export interface LanguageRuntime extends Tokenizer, Dictionary {
   ): Promise<Result<readonly SentenceSegment[], LanguageError>>;
   /**
    * Tokenizes sentences whose boundaries the caller has already decided, which
-   * is what import review produces once the learner has split or merged them.
+   * is what the deterministic import segmenter produces for an imported text.
    * Results are positional: one analysis per input text, in the same order.
    */
   analyzeSentences(

@@ -13,7 +13,7 @@ No external live service is required for the ordinary CI suite. OpenRouter and l
 Test pure domain functions and state transitions without Angular TestBed when possible:
 
 - IDs, canonical serialization, hashes, cache keys, and profile/policy fingerprints.
-- Japanese-aware segmentation and split/merge operations.
+- Japanese-aware segmentation and paragraph preservation.
 - UTF-16 token offsets, reading conversion, POS mapping, and character preservation.
 - Literal visible Anki-field extraction and exact deduplication.
 - Phrase trie/longest matching, exact/normalized known forms, entities, structural baseline, and precedence.
@@ -86,7 +86,7 @@ Use Playwright's current stable Chrome channel and two projects:
 
 Core E2E scenarios:
 
-1. Fresh install -> paste -> segmentation review -> save -> inspect word, with no setup.
+1. Fresh install -> paste -> save -> inspect word, with no setup.
 2. Pasted text validation, including empty and over-limit errors.
 3. Grammar empty gate -> cumulative selection/custom rule -> return to preserved generation form.
 4. Local Anki discovery/mapping/refresh -> confirm snapshot -> generation gate becomes ready.

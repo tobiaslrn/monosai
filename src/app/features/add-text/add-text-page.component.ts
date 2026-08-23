@@ -3,9 +3,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { Router } from '@angular/router';
 import { ImportStore } from '../../application/reading/import.store';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
-import { ReviewStepComponent } from './review-step.component';
 import { TextInputStepComponent } from './text-input-step.component';
 
 /**
@@ -18,25 +16,17 @@ import { TextInputStepComponent } from './text-input-step.component';
 @Component({
   selector: 'mn-add-text-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TextInputStepComponent, ReviewStepComponent, IconComponent, PageHeaderComponent],
+  imports: [TextInputStepComponent, PageHeaderComponent],
   providers: [ImportStore],
   template: `
     <div class="mn-page">
       <mn-page-header heading="Add text" backTo="/library" backLabel="Back to library" />
 
-      @if (store.step() === 'input') {
-        <p class="mn-hint">Paste Japanese text to create a reading.</p>
-      } @else {
-        <p class="mn-hint">Check how the text was divided into sentences, then save.</p>
-      }
+      <p class="mn-hint">Paste Japanese text to create a reading.</p>
 
       <!-- Plain: a panel wrapping the whole of a page separates it from nothing. -->
       <section class="mn-panel mn-panel--plain">
-        @if (store.step() === 'input') {
-          <mn-text-input-step />
-        } @else {
-          <mn-review-step />
-        }
+        <mn-text-input-step />
 
         @if (busyMessage(); as message) {
           <p class="busy" role="status">
@@ -56,34 +46,19 @@ import { TextInputStepComponent } from './text-input-step.component';
         @if (store.storageFailure(); as failure) {
           <div class="mn-error" role="alert">
             <p><strong>The reading could not be saved.</strong> {{ failure.message }}</p>
-            <p>Your reviewed text is still here, so you can try saving again.</p>
+            <p>Your text is still here, so you can try saving again.</p>
           </div>
         }
 
         <div class="actions">
-          @if (store.step() === 'input') {
-            <button
-              type="button"
-              class="mn-button mn-button--primary"
-              [disabled]="!store.canContinue()"
-              (click)="continueToReview()"
-            >
-              Continue
-            </button>
-          } @else {
-            <button type="button" class="mn-button" (click)="store.backToInput()">
-              <mn-icon name="back" [size]="18" />
-              <span>Back to text</span>
-            </button>
-            <button
-              type="button"
-              class="mn-button mn-button--primary"
-              [disabled]="!store.canSave()"
-              (click)="save()"
-            >
-              Save reading
-            </button>
-          }
+          <button
+            type="button"
+            class="mn-button mn-button--primary"
+            [disabled]="!store.canSave()"
+            (click)="save()"
+          >
+            Add reading
+          </button>
         </div>
       </section>
 
@@ -178,14 +153,8 @@ export class AddTextPageComponent {
     });
   }
 
-  protected continueToReview(): void {
-    void this.store.continueToReview();
-  }
-
   protected retry(): void {
-    void (this.store.step() === 'input'
-      ? this.store.continueToReview()
-      : this.store.retryAnalysis());
+    void this.save();
   }
 
   protected async save(): Promise<void> {
@@ -205,7 +174,7 @@ export class AddTextPageComponent {
     }
     return openConfirmDialog(this.dialog, {
       title: 'Leave without saving?',
-      message: 'Your text and any sentence corrections will be lost.',
+      message: 'Your text and title will be lost.',
       confirmLabel: 'Leave and lose it',
       cancelLabel: 'Stay here',
       tone: 'danger',

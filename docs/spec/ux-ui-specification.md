@@ -20,7 +20,7 @@ listing six equal destinations (ADR 0025).
 
 - **Library**: the shelf, and the one way to add to it.
 - **Reader**: the reading itself.
-- **Add text**: paste input, segmentation review, save.
+- **Add text**: paste input and save.
 - **Generate**: prerequisites, premise form, progress, invalid draft.
 - **Settings**: OpenRouter, TTS, exception policy, appearance, storage, install/update, reset, and links to Vocabulary and Grammar.
 - **Vocabulary**: providers, source mappings, refresh results, snapshots. Reached from Settings.
@@ -138,25 +138,16 @@ Explain both paths equally: “Add Japanese you already have” and “Generate 
 
 ## 5. Add-text workflow
 
-### Step 1: Input
+### Input and save
 
 - Required Japanese text area with live character count and 50,000-character limit.
 - Optional title. Pasted text without a title defaults to the first non-empty line truncated for display, otherwise “Untitled reading.” The user can change it before save.
-- Continue remains disabled for empty/over-limit content.
-
-### Step 2: Review structure
-
-- Show title field and paragraph cards.
-- Within each paragraph, sentences are focusable rows with stable temporary IDs.
-- Sentence menu: Split at caret, Merge with previous, Merge with next.
-- Raw-text Back action returns without losing work.
-- Save reading performs tokenization/persistence and shows progress for long texts.
-
-Do not provide arbitrary sentence text editing in the review step. If the underlying text is wrong, the user returns to raw input. This keeps saved content and token analysis coherent.
+- Add reading remains disabled for empty/over-limit content.
+- Add reading automatically segments and tokenizes the text, preserves blank-line paragraph structure, saves the reading, and shows progress for long texts.
 
 ### Unsaved-exit guard
 
-If input or reviewed boundaries changed, navigation/back/reload produces an accessible confirmation. Do not use a guard after a successful save.
+If input changed, navigation/back/reload produces an accessible confirmation. Do not use a guard after a successful save.
 
 ## 6. Reader
 

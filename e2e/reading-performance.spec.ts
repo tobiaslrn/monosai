@@ -25,8 +25,6 @@ test.describe('reader performance at the 50,000-character budget', () => {
     await page.goto('/#/add');
     await pasteAndContinue(page, FIXTURE.text);
 
-    await expect(page.getByText(`${String(FIXTURE.paragraphCount)} paragraphs`)).toBeVisible();
-
     await saveAndOpenReader(page);
 
     const mounted = await paragraphLocator(page).count();

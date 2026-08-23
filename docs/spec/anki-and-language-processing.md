@@ -204,7 +204,7 @@ Confirmation transaction replaces the single current snapshot, items, provenance
 
 ### Sentence segmentation
 
-Segmentation operates paragraph by paragraph and preserves all source characters. Use a deterministic Japanese-aware segmenter with versioned rules and a user review step. It must handle `。！？`, paired quotes/brackets, ellipses, repeated punctuation, dialogue lines, and paragraph endings. Avoid splitting on punctuation inside paired Japanese quotation marks where the sentence continues.
+Segmentation operates paragraph by paragraph and preserves all source characters. Use a deterministic Japanese-aware segmenter with versioned rules. It must handle `。！？`, paired quotes/brackets, ellipses, repeated punctuation, dialogue lines, and paragraph endings. Avoid splitting on punctuation inside paired Japanese quotation marks where the sentence continues.
 
 The implementation may combine `Intl.Segmenter` and explicit rules only if output is deterministic across supported Chrome versions; otherwise ship a versioned implementation. Fixture tests are authoritative.
 

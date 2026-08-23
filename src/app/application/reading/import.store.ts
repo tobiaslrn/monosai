@@ -2,11 +2,7 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import type { LanguageError } from '../../domain/language/language-error';
 import {
   applyAnalysis,
-  mergeSentence,
-  splitSentence,
-  totalSentenceCount,
   unanalyzedSentences,
-  type DraftEditFailure,
   type ImportDraft,
 } from '../../domain/reading/import-draft';
 import {
@@ -20,10 +16,7 @@ import type { ImportSource } from '../../domain/reading/reading';
 import type { ReadingId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
-import { ID_GENERATOR } from '../shared/repository-tokens';
 import { TextImportService, type AnalysisProgress } from './text-import.service';
-
-export type ImportStep = 'input' | 'review';
 
 /** What the workflow is waiting on, if anything. */
 export type ImportBusy =
@@ -38,7 +31,7 @@ const IDLE: ImportBusy = { kind: 'idle' };
 /**
  * State of the Add text workflow.
  *
- * The store owns one import at a time: raw text, the reviewed structure, and
+ * The store owns one import at a time: raw text, the transient structure, and
  * whichever failure is currently relevant. Language and persistence work is
  * delegated to `TextImportService`, so nothing here knows about workers or
  * storage.
@@ -46,10 +39,8 @@ const IDLE: ImportBusy = { kind: 'idle' };
 @Injectable()
 export class ImportStore {
   private readonly imports = inject(TextImportService);
-  private readonly ids = inject(ID_GENERATOR);
   private readonly busyRegistry = inject(AppBusyRegistry);
 
-  private readonly stepSignal = signal<ImportStep>('input');
   private readonly busySignal = signal<ImportBusy>(IDLE);
   private readonly rawTextSignal = signal('');
   private readonly sourceSignal = signal<ImportSource>('paste');
@@ -58,11 +49,9 @@ export class ImportStore {
   private readonly rejectionSignal = signal<ImportRejection | null>(null);
   private readonly languageFailureSignal = signal<LanguageError | null>(null);
   private readonly storageFailureSignal = signal<StorageError | null>(null);
-  private readonly editFailureSignal = signal<DraftEditFailure | null>(null);
   private readonly announcementSignal = signal('');
   private readonly savedIdSignal = signal<ReadingId | null>(null);
 
-  readonly step = this.stepSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly rawText = this.rawTextSignal.asReadonly();
   readonly importSource = this.sourceSignal.asReadonly();
@@ -71,7 +60,6 @@ export class ImportStore {
   readonly rejection = this.rejectionSignal.asReadonly();
   readonly languageFailure = this.languageFailureSignal.asReadonly();
   readonly storageFailure = this.storageFailureSignal.asReadonly();
-  readonly editFailure = this.editFailureSignal.asReadonly();
   readonly announcement = this.announcementSignal.asReadonly();
   readonly savedReadingId = this.savedIdSignal.asReadonly();
 
@@ -87,24 +75,13 @@ export class ImportStore {
     resolveTitle(this.titleInputSignal(), this.derivedTitle()),
   );
 
-  readonly sentenceCount = computed(() => {
-    const draft = this.draftSignal();
-    return draft === null ? 0 : totalSentenceCount(draft);
-  });
-
-  /** Save is blocked while any reviewed boundary is still awaiting tokens. */
+  /** Save is blocked while any segmented sentence is still awaiting tokens. */
   readonly hasPendingAnalysis = computed(() => {
     const draft = this.draftSignal();
     return draft !== null && unanalyzedSentences(draft).length > 0;
   });
 
-  readonly canContinue = computed(
-    () => validateImportText(this.rawTextSignal()).ok && !this.isBusy(),
-  );
-
-  readonly canSave = computed(
-    () => this.draftSignal() !== null && !this.isBusy() && !this.hasPendingAnalysis(),
-  );
+  readonly canSave = computed(() => validateImportText(this.rawTextSignal()).ok && !this.isBusy());
 
   /**
    * Whether leaving would lose work. A successful save clears it, so the guard
@@ -136,22 +113,27 @@ export class ImportStore {
     this.titleInputSignal.set(title);
   }
 
-  /** Validates, waits for the language bundle if needed, then segments. */
-  async continueToReview(): Promise<void> {
+  /** Validates, analyzes, and saves the pasted text as one reading. */
+  async save(): Promise<ReadingId | null> {
+    if (this.isBusy()) {
+      return null;
+    }
+
     const validated = validateImportText(this.rawTextSignal());
     if (!validated.ok) {
       this.rejectionSignal.set(validated.error);
-      return;
+      return null;
     }
     this.rejectionSignal.set(null);
     this.languageFailureSignal.set(null);
+    this.storageFailureSignal.set(null);
 
     this.busySignal.set({ kind: 'preparing-language' });
     const ready = await this.imports.ensureLanguageReady();
     if (!ready.ok) {
       this.languageFailureSignal.set(ready.error);
       this.busySignal.set(IDLE);
-      return;
+      return null;
     }
 
     this.busySignal.set({ kind: 'segmenting' });
@@ -159,43 +141,20 @@ export class ImportStore {
     if (!segmented.ok) {
       this.languageFailureSignal.set(segmented.error);
       this.busySignal.set(IDLE);
-      return;
+      return null;
     }
 
     this.draftSignal.set(segmented.value);
-    this.stepSignal.set('review');
-    this.announce(`Review ${String(totalSentenceCount(segmented.value))} sentences before saving.`);
     await this.analyzePending();
-  }
 
-  /** Re-runs analysis for sentences left unanalyzed by an earlier failure. */
-  async retryAnalysis(): Promise<void> {
-    this.languageFailureSignal.set(null);
-    const ready = await this.imports.ensureLanguageReady();
-    if (!ready.ok) {
-      this.languageFailureSignal.set(ready.error);
-      return;
+    if (this.hasPendingAnalysis()) {
+      return null;
     }
-    await this.analyzePending();
+
+    return this.persistDraft();
   }
 
-  /** Returns to raw input without losing the text or the reviewed structure. */
-  backToInput(): void {
-    this.stepSignal.set('input');
-    this.editFailureSignal.set(null);
-  }
-
-  async split(sentenceId: string, offsetUtf16: number): Promise<void> {
-    await this.edit((draft) =>
-      splitSentence(draft, sentenceId, offsetUtf16, () => this.ids.nextId()),
-    );
-  }
-
-  async merge(sentenceId: string, direction: 'previous' | 'next'): Promise<void> {
-    await this.edit((draft) => mergeSentence(draft, sentenceId, direction));
-  }
-
-  async save(): Promise<ReadingId | null> {
+  private async persistDraft(): Promise<ReadingId | null> {
     const draft = this.draftSignal();
     if (draft === null || this.hasPendingAnalysis()) {
       return null;
@@ -223,7 +182,6 @@ export class ImportStore {
   }
 
   reset(): void {
-    this.stepSignal.set('input');
     this.busySignal.set(IDLE);
     this.rawTextSignal.set('');
     this.sourceSignal.set('paste');
@@ -232,29 +190,8 @@ export class ImportStore {
     this.rejectionSignal.set(null);
     this.languageFailureSignal.set(null);
     this.storageFailureSignal.set(null);
-    this.editFailureSignal.set(null);
     this.savedIdSignal.set(null);
     this.announcementSignal.set('');
-  }
-
-  private async edit(
-    apply: (draft: ImportDraft) => ReturnType<typeof splitSentence>,
-  ): Promise<void> {
-    const draft = this.draftSignal();
-    if (draft === null) {
-      return;
-    }
-    const result = apply(draft);
-    if (!result.ok) {
-      this.editFailureSignal.set(result.failure);
-      this.announce(result.failure.message);
-      return;
-    }
-
-    this.editFailureSignal.set(null);
-    this.draftSignal.set(result.draft);
-    this.announce(result.announcement);
-    await this.analyzePending();
   }
 
   /** Tokenizes whichever sentences currently have no analysis. */
@@ -283,7 +220,8 @@ export class ImportStore {
       return;
     }
     this.languageFailureSignal.set(null);
-    // Re-read the draft: an edit may have landed while analysis was running.
+    // Re-read the draft in case a newer import attempt landed while analysis
+    // was running.
     const current = this.draftSignal();
     if (current !== null) {
       this.draftSignal.set(applyAnalysis(current, analyzed.value));
