@@ -70,6 +70,7 @@ export interface TokenActivation {
               [showFurigana]="furigana()"
               [showMarkers]="markers()"
               [selected]="selectedTokenIds().has(token.id)"
+              [previewedState]="previewedTokenIds().has(token.id)"
               [grammarConcern]="markers() && concernTokenIds().has(token.id)"
               (activated)="onActivated($event)"
               (previewed)="onPreviewed($event)"
@@ -189,6 +190,7 @@ export class ReaderSentenceComponent {
   /** True for the sentence currently being read aloud. */
   readonly playing = input(false);
   readonly selectedWord = input<SelectedWord | null>(null);
+  readonly previewedWord = input<SelectedWord | null>(null);
 
   /**
    * Presentation-only bunsetsu, computed from the whole sentence because a
@@ -208,17 +210,11 @@ export class ReaderSentenceComponent {
    * half of it that was pressed.
    */
   protected readonly selectedTokenIds = computed(() => {
-    const selected = this.selectedWord();
-    const entry = this.entry();
-    if (selected?.sentenceId !== entry.sentence.id) {
-      return new Set<string>();
-    }
-    const index = entry.tokens.findIndex((token) => token.id === selected.tokenId);
-    if (index < 0) {
-      return new Set<string>();
-    }
-    return new Set(wordAt(entry.tokens, index).tokens.map((token) => token.id));
+    return this.tokenIdsForWord(this.selectedWord());
   });
+
+  /** Hover and focus use the same whole-word boundary as the pinned lookup. */
+  protected readonly previewedTokenIds = computed(() => this.tokenIdsForWord(this.previewedWord()));
 
   readonly activated = output<TokenActivation>();
   readonly previewed = output<TokenActivation>();
@@ -251,5 +247,17 @@ export class ReaderSentenceComponent {
     // The token was rendered from this sentence, so it is always one of these.
     const index = entry.tokens.findIndex((token) => token.id === activation.token.id);
     return { sentence: entry, ...activation, word: wordAt(entry.tokens, Math.max(index, 0)) };
+  }
+
+  private tokenIdsForWord(word: SelectedWord | null): ReadonlySet<string> {
+    const entry = this.entry();
+    if (word?.sentenceId !== entry.sentence.id) {
+      return new Set<string>();
+    }
+    const index = entry.tokens.findIndex((token) => token.id === word.tokenId);
+    if (index < 0) {
+      return new Set<string>();
+    }
+    return new Set(wordAt(entry.tokens, index).tokens.map((token) => token.id));
   }
 }

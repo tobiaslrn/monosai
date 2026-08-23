@@ -194,6 +194,7 @@ function renderedSurface(element: Element): string {
       [markers]="markers()"
       [selected]="selected()"
       [selectedWord]="selectedWord()"
+      [previewedWord]="previewedWord()"
       (activated)="activations.push($event)"
     />
   </p>`,
@@ -206,6 +207,7 @@ class HostComponent {
   readonly markers = signal(true);
   readonly selected = signal(false);
   readonly selectedWord = signal<SelectedWord | null>(null);
+  readonly previewedWord = signal<SelectedWord | null>(null);
   readonly activations: TokenActivation[] = [];
 }
 
@@ -352,6 +354,18 @@ describe('ReaderSentenceComponent', () => {
 
     const selected = (fixture.nativeElement as HTMLElement).querySelectorAll('button.is-selected');
     expect([...selected].map((element) => element.textContent.trim())).toEqual(['あり', 'ます']);
+  });
+
+  it('tints every part of the hovered word', () => {
+    const fixture = render();
+    fixture.componentInstance.entry.set(INFLECTED);
+    fixture.componentInstance.previewedWord.set({ sentenceId: SENTENCE_ID, tokenId: 'i2' });
+    fixture.detectChanges();
+
+    const previewed = (fixture.nativeElement as HTMLElement).querySelectorAll(
+      'button.is-previewed',
+    );
+    expect([...previewed].map((element) => element.textContent.trim())).toEqual(['あり', 'ます']);
   });
 
   it('activates a word without the press reaching the paragraph', () => {

@@ -185,6 +185,7 @@ const SCROLL_SETTLE_MS = 1000;
                   [selectedSentenceId]="selectedSentenceId()"
                   [playingSentenceId]="playback.currentSentenceId()"
                   [selectedWord]="selectedWord()"
+                  [previewedWord]="previewedWord()"
                   (activated)="inspect($event)"
                   (previewed)="previewWord($event)"
                   (previewEnded)="endPreview()"
@@ -445,6 +446,10 @@ export class ReaderPageComponent {
       ? null
       : { sentenceId: selected.sentence.id, tokenId: selected.token.id };
   });
+
+  /** The whole word currently under the pointer or keyboard focus. */
+  private readonly previewedWordSignal = signal<SelectedWord | null>(null);
+  protected readonly previewedWord = this.previewedWordSignal.asReadonly();
 
   /** Every mounted sentence by id, for resolving what a press selected. */
   private readonly sentencesById = computed(() => {
@@ -876,6 +881,7 @@ export class ReaderPageComponent {
    * and never a request. Focus returns to the token when the popover closes.
    */
   protected inspect(activation: TokenActivation): void {
+    this.endPreview();
     void this.inspector.inspect({
       token: activation.token,
       word: activation.word,
@@ -912,6 +918,10 @@ export class ReaderPageComponent {
     if (this.inspector.isOpen() || this.selectedSentenceIdSignal() !== null) {
       return;
     }
+    this.previewedWordSignal.set({
+      sentenceId: activation.sentence.sentence.id,
+      tokenId: activation.token.id,
+    });
     this.cancelPreviewTimer();
     this.previewTimer = setTimeout(() => {
       this.previewTimer = null;
@@ -930,6 +940,7 @@ export class ReaderPageComponent {
 
   protected endPreview(): void {
     this.cancelPreviewTimer();
+    this.previewedWordSignal.set(null);
     this.previewRef?.close();
     this.previewRef = null;
     this.inspector.clearPreview();

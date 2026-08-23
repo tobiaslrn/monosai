@@ -52,6 +52,7 @@ export interface TokenActivationSource {
         class="token"
         [class]="markerClass()"
         [class.is-selected]="selected()"
+        [class.is-previewed]="previewedState()"
         (click)="onActivate($event)"
         (focus)="onPreview($event)"
         (mouseenter)="onPreview($event)"
@@ -112,7 +113,8 @@ export interface TokenActivationSource {
     }
 
     .token:hover,
-    .token:focus-visible {
+    .token:focus-visible,
+    .token.is-previewed {
       background: var(--action-primary-soft);
       border-radius: 4px;
     }
@@ -167,6 +169,7 @@ export class ReaderTokenComponent {
   readonly showFurigana = input(true);
   readonly showMarkers = input(true);
   readonly selected = input(false);
+  readonly previewedState = input(false);
   /** Set only when a finding supplies a span that covers this token. */
   readonly grammarConcern = input(false);
 
