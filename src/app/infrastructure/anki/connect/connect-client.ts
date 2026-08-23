@@ -20,7 +20,11 @@ import {
  * addresses is what keeps an "Anki connection" from becoming a way to point the
  * application at anything at all.
  */
-export const DESKTOP_ENDPOINTS = ['http://127.0.0.1:8765', 'http://localhost:8765'] as const;
+export function desktopEndpoints(port: number): readonly string[] {
+  return [`http://127.0.0.1:${String(port)}`, `http://localhost:${String(port)}`];
+}
+
+export const DESKTOP_ENDPOINTS = desktopEndpoints(8_765);
 
 /** The unofficial Android bridge listens on the same port by convention. */
 export const ANDROID_ENDPOINTS = ['http://127.0.0.1:8765', 'http://localhost:8765'] as const;
@@ -277,9 +281,14 @@ export class AnkiConnectClient {
     try {
       const response = await this.options.fetchFn(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, version: REQUEST_API_VERSION, params }),
         signal: controller.signal,
+        // Do not set Content-Type here. AnkiConnect parses the JSON body without
+        // it, while application/json would force a CORS preflight. Some add-on
+        // configurations answer that preflight with the allowlisted
+        // `http://localhost` instead of the requesting origin including its
+        // port, so the browser blocks requestPermission before Anki can show
+        // its permission prompt.
         // The endpoint is local and unauthenticated; sending anything with the
         // request would only widen what a rogue local listener could see.
         credentials: 'omit',

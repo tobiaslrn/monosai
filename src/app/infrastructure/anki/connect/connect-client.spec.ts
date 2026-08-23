@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Logger } from '../../../application/shared/diagnostics';
 import { CONTRACT_COLLECTION } from '../../../../testing/anki-collection';
 import { FakeAnkiConnectServer } from '../../../../testing/anki-connect-server';
-import { AnkiConnectClient, DESKTOP_ENDPOINTS } from './connect-client';
+import { AnkiConnectClient, DESKTOP_ENDPOINTS, desktopEndpoints } from './connect-client';
 
 function clientWith(
   fetchFn: typeof fetch,
@@ -18,6 +18,30 @@ function clientWith(
 }
 
 describe('AnkiConnectClient', () => {
+  it('builds only loopback endpoints for a custom port', () => {
+    expect(desktopEndpoints(9_999)).toEqual(['http://127.0.0.1:9999', 'http://localhost:9999']);
+  });
+
+  it('uses a CORS-simple request so Anki can display its permission prompt', async () => {
+    let request: RequestInit | undefined;
+    const client = clientWith((_input, init) => {
+      request = init;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            result: { permission: 'granted', requireApikey: false, version: 6 },
+            error: null,
+          }),
+        ),
+      );
+    });
+
+    const result = await client.requestPermission();
+
+    expect(result.ok).toBe(true);
+    expect(new Headers(request?.headers).has('Content-Type')).toBe(false);
+  });
+
   it('logs an unavailable local Anki service as a warning', async () => {
     const warn = vi.fn();
     const error = vi.fn();

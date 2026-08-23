@@ -33,11 +33,6 @@ export class DesktopConnectAdapter implements AnkiVocabularyProvider {
       return err(ankiError('not-running', 'This Anki connection was already closed.'));
     }
 
-    const version = await this.client.version(signal);
-    if (!version.ok) {
-      return version;
-    }
-
     const permission = await this.client.requestPermission(signal);
     if (!permission.ok) {
       return permission;
@@ -57,6 +52,13 @@ export class DesktopConnectAdapter implements AnkiVocabularyProvider {
           'This AnkiConnect installation requires an API key, which Monosai does not support. Use an Anki package instead.',
         ),
       );
+    }
+
+    const reportedVersion = permission.value.version;
+    const version =
+      reportedVersion === undefined ? await this.client.version(signal) : ok(reportedVersion);
+    if (!version.ok) {
+      return version;
     }
 
     return ok({

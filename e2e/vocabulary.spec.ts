@@ -14,7 +14,7 @@ const CONTRACT_PACKAGE = 'contract-schema18-zstd.apkg';
 
 async function openAddSource(page: Page): Promise<void> {
   await page.getByTestId('add-source').click();
-  await expect(page.getByRole('menu', { name: 'Source kind' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Add vocabulary source' })).toBeVisible();
 }
 
 async function addTextList(page: Page, name: string, content: string): Promise<void> {
@@ -28,6 +28,7 @@ async function addTextList(page: Page, name: string, content: string): Promise<v
 
 async function addLiveAnki(page: Page): Promise<void> {
   await openAddSource(page);
+  await page.getByTestId('choose-ankiconnect').click();
   await page.getByTestId('connect-ankiconnect').click();
 }
 
@@ -61,7 +62,7 @@ test.describe('vocabulary', () => {
     await expect(page.getByTestId('mapping-locked')).toContainText('No sources yet');
     await expect(page.getByTestId('current-snapshot')).toContainText('No words yet');
     await openAddSource(page);
-    await expect(page.getByTestId('connect-ankiconnect')).toBeVisible();
+    await expect(page.getByTestId('choose-ankiconnect')).toBeVisible();
     await expect(page.getByTestId('package-input')).toBeAttached();
     await expect(page.getByTestId('add-text-source')).toBeVisible();
     await expect(page.getByTestId('start-refresh')).toHaveCount(0);
@@ -72,7 +73,7 @@ test.describe('vocabulary', () => {
   test('dismisses the add-source menu without triggering another action', async ({ page }) => {
     await openVocabulary(page);
     const toggle = page.getByTestId('add-source');
-    const menu = page.getByRole('menu', { name: 'Source kind' });
+    const menu = page.getByRole('dialog', { name: 'Add vocabulary source' });
 
     await openAddSource(page);
     await page.getByRole('heading', { name: 'Sources', level: 2 }).click();
