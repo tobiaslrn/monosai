@@ -3,7 +3,7 @@ import { env } from 'node:process';
 
 const PORT = 4300;
 const BASE_URL = `http://127.0.0.1:${PORT}/monosai/`;
-const IS_CI = env['CI'] === 'true';
+const IS_CI = env.CI === 'true';
 
 /**
  * Exercises the production build through the service worker.

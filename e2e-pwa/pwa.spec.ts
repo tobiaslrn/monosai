@@ -25,11 +25,11 @@ interface WebAppManifest {
 async function importReading(page: Page): Promise<void> {
   await page.goto('./#/add');
   await page.getByLabel('Japanese text').fill(SAMPLE_TEXT);
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByRole('button', { name: 'Save reading' })).toBeEnabled({
+  const addReading = page.getByRole('button', { name: 'Add reading' });
+  await expect(addReading).toBeEnabled({
     timeout: 60_000,
   });
-  await page.getByRole('button', { name: 'Save reading' }).click();
+  await addReading.click();
   await expect(page).toHaveURL(/#\/reader\//);
   await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
 }
@@ -101,7 +101,7 @@ test.describe('diagnostics', () => {
 
     await page.goto('./#/settings');
 
-    const diagnostics = page.getByRole('region', { name: 'Diagnostics' });
+    const diagnostics = page.getByRole('region', { name: 'Troubleshooting' });
     await expect(diagnostics.getByRole('button', { name: 'Copy diagnostics' })).toBeVisible();
     await diagnostics.getByRole('button', { name: 'Copy diagnostics' }).click();
     await expect(diagnostics.getByRole('status')).toHaveText(
