@@ -36,11 +36,6 @@ export function estimateTokens(text: string): number {
   return Math.ceil(ascii / 4) + wide;
 }
 
-function estimateList(values: readonly string[]): number {
-  // One separator token per entry, which is what a delimited list costs.
-  return values.reduce((total, value) => total + estimateTokens(value) + 1, 0);
-}
-
 /**
  * The size of everything that varies with the learner's configuration.
  *
@@ -51,14 +46,32 @@ function estimateList(values: readonly string[]): number {
 export const FIXED_PROMPT_OVERHEAD_TOKENS = 1_200;
 
 export function estimateRequestTokens(request: StoryGenerationRequest): number {
+  const allowed = new Set(request.allowedVocabulary);
+  const suggestedAllowedVocabulary = [...new Set(request.suggestedVocabulary)].filter((value) =>
+    allowed.has(value),
+  );
+  const suggested = new Set(suggestedAllowedVocabulary);
+  const compactDynamicJson = JSON.stringify({
+    grammarProfile: {
+      guidance: request.grammarGuidance,
+      register: request.registerPreference,
+    },
+    vocabularyInventory: {
+      suggestedAllowedVocabulary,
+      otherAllowedVocabulary: request.allowedVocabulary.filter((value) => !suggested.has(value)),
+      alwaysAvailableForms: request.structuralBaseline,
+    },
+    storyRequirements: {
+      form: request.form,
+      sentenceRange: request.sentenceRange,
+    },
+  });
   return (
     FIXED_PROMPT_OVERHEAD_TOKENS +
+    estimateTokens(compactDynamicJson) +
     estimateTokens(request.premise) +
     estimateTokens(request.specialInstructions ?? '') +
-    estimateTokens(request.grammarGuidance) +
-    estimateList(request.allowedVocabulary) +
-    estimateList(request.suggestedVocabulary) +
-    estimateList(request.structuralBaseline)
+    (request.sentenceRange.max > 50 ? estimateTokens(JSON.stringify({ segmentSize: 50 })) : 0)
   );
 }
 

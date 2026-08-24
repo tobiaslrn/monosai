@@ -52,6 +52,7 @@ const V4_STORES: Readonly<Record<string, string | null>> = {
 };
 
 const V5_STORES = V4_STORES;
+const V6_STORES = V5_STORES;
 
 export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   {
@@ -167,6 +168,25 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
         });
         await settings.put(ttsRow);
       }
+    },
+  },
+  {
+    version: 6,
+    stores: V6_STORES,
+    upgrade: async (transaction) => {
+      const settings = transaction.table('settings');
+      const ttsRow = (await settings.get('tts')) as Record<string, unknown> | undefined;
+      if (ttsRow === undefined) {
+        return;
+      }
+      const value = requireRecord(ttsRow['value'], 'voice model settings');
+      value['speechInstructions'] = 'unsupported';
+      const presets = Array.isArray(value['presets']) ? value['presets'] : [];
+      value['presets'] = presets.map((entry) => ({
+        ...requireRecord(entry, 'voice model preset'),
+        speechInstructions: 'unsupported',
+      }));
+      await settings.put(ttsRow);
     },
   },
 ];

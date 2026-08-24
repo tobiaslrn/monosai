@@ -387,6 +387,7 @@ export class SentenceAidsStore {
       config.value.modelId,
       config.value.voiceId,
       config.value.optionsFingerprint,
+      config.value.speechInstructions,
     );
   }
 

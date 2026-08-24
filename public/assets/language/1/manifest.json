@@ -70,8 +70,8 @@
       "files": [
         {
           "path": "grammar-presets.json",
-          "bytes": 6809,
-          "sha256": "eceb703ba3dfb349fde6881403c4583e4de89b5689fb43e800e37ee12ab6f1b4"
+          "bytes": 6659,
+          "sha256": "1a3470bf373f938b5a932819b7da21d96c1888387b7d8edfb186461c75fb6562"
         }
       ],
       "attribution": {

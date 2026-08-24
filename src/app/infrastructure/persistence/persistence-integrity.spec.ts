@@ -156,6 +156,57 @@ describe('database schema', () => {
       await Dexie.delete(name);
     }
   });
+
+  it('defaults every pre-instructions voice preset conservatively during the v6 upgrade', async () => {
+    const name = `monosai-v5-tts-${Date.now()}`;
+    const legacy = new Dexie(name);
+    const v5 = SCHEMA_VERSIONS.find((entry) => entry.version === 5);
+    if (v5 === undefined) {
+      throw new Error('The immutable v5 schema is missing.');
+    }
+    legacy.version(5).stores(v5.stores);
+
+    try {
+      await legacy.open();
+      await legacy.table('settings').put({
+        key: 'tts',
+        v: 1,
+        value: {
+          modelId: 'vendor/voice',
+          voiceId: 'sakura',
+          speed: 1,
+          lastTestFingerprint: null,
+          lastTestedAt: null,
+          activePresetId: 'voice-1',
+          presets: [
+            {
+              id: 'voice-1',
+              name: 'Voice',
+              modelId: 'vendor/voice',
+              voiceId: 'sakura',
+              speed: 1,
+              lastTestFingerprint: null,
+              lastTestedAt: null,
+            },
+          ],
+        },
+      });
+      legacy.close();
+
+      const upgraded = new MonosaiDatabase(name);
+      await upgraded.open();
+      const row = (await upgraded.settings.get('tts')) as
+        { readonly value?: Record<string, unknown> } | undefined;
+      expect(row?.value?.['speechInstructions']).toBe('unsupported');
+      expect(row?.value?.['presets']).toEqual([
+        expect.objectContaining({ id: 'voice-1', speechInstructions: 'unsupported' }),
+      ]);
+      upgraded.close();
+    } finally {
+      legacy.close();
+      await Dexie.delete(name);
+    }
+  });
 });
 
 describe('storage failure handling', () => {

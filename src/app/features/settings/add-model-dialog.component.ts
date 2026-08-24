@@ -484,6 +484,9 @@ export class AddModelDialogComponent {
         modelId: model.modelId,
         voiceId: resolveTtsVoice(model.modelId, this.voiceId()),
         speed: this.speedSupported() ? this.speed() : 1,
+        speechInstructions: model.supportedParameters.includes('instructions')
+          ? 'supported'
+          : 'unsupported',
       },
     });
   }

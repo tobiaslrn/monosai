@@ -1,4 +1,5 @@
 import type { StructuredOutputMode } from '../ai/model-test';
+import type { SpeechInstructionsSupport } from '../ai/speech-instructions';
 import type { SnapshotId } from '../shared/ids';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
@@ -132,6 +133,7 @@ export interface TtsSettings {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speed: number;
+  readonly speechInstructions?: SpeechInstructionsSupport;
   readonly lastTestFingerprint: string | null;
   readonly lastTestedAt: number | null;
   readonly activePresetId: string | null;
@@ -144,6 +146,7 @@ export interface TtsPreset {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speed: number;
+  readonly speechInstructions?: SpeechInstructionsSupport;
   readonly lastTestFingerprint?: string | null;
   readonly lastTestedAt?: number | null;
 }
@@ -152,6 +155,7 @@ export const DEFAULT_TTS_SETTINGS: TtsSettings = {
   modelId: '',
   voiceId: '',
   speed: 1,
+  speechInstructions: 'unsupported',
   lastTestFingerprint: null,
   lastTestedAt: null,
   activePresetId: null,

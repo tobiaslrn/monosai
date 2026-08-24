@@ -62,6 +62,48 @@ describe('OpenRouterTtsSynthesizer', () => {
     expect(harness.server.requests[1]?.body['input']).toBe(SENTENCE);
   });
 
+  it('sends contextual delivery instructions separately and never speaks the context', async () => {
+    const harness = run();
+    const result = await harness.tts.synthesize(
+      {
+        ...REQUEST,
+        speechInstructions: 'supported',
+        beforeJa: '雨が強くなりました。',
+        afterJa: 'でも、ねこは帰りませんでした。',
+      },
+      new AbortController().signal,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    const body = harness.server.requests[0].body;
+    expect(body['input']).toBe(SENTENCE);
+    expect(body['input']).not.toContain('雨');
+    expect(body['instructions']).toContain('雨が強くなりました。');
+    expect(body['instructions']).toContain('Never add, repeat, translate');
+    expect(result.value.speechInstructionsApplied).toBe(true);
+  });
+
+  it('falls back to exact-text synthesis when advertised instructions are rejected', async () => {
+    const harness = run({ supportsInstructions: false });
+    const result = await harness.tts.synthesize(
+      { ...REQUEST, speechInstructions: 'supported', beforeJa: '前の文。' },
+      new AbortController().signal,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(harness.server.callCount).toBe(2);
+    expect(harness.server.requests[0]?.body['instructions']).toBeDefined();
+    expect(harness.server.requests[1]?.body['instructions']).toBeUndefined();
+    expect(harness.server.requests[1]?.body['input']).toBe(SENTENCE);
+    expect(result.value.speechInstructionsApplied).toBe(false);
+  });
+
   it('synthesizes with Gemini TTS without sending its unsupported speed option', async () => {
     const modelId = 'google/gemini-3.1-flash-tts-preview';
     const harness = run({ knownTtsModels: [modelId] });

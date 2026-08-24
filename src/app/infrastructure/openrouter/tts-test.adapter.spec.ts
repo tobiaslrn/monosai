@@ -49,6 +49,25 @@ describe('OpenRouterTtsTester', () => {
     expect(harness.server.requests[1]?.body['speed']).toBeUndefined();
   });
 
+  it('verifies advertised speech instructions and reports rejection fallback', async () => {
+    const supported = run();
+    const accepted = await supported.tts.testConfiguration({
+      ...CONFIG,
+      speechInstructions: 'supported',
+    });
+    expect(accepted.ok && accepted.value.speechInstructionsApplied).toBe(true);
+    expect(supported.server.requests[0]?.body['instructions']).toBeDefined();
+
+    const rejected = run({ supportsInstructions: false });
+    const fallback = await rejected.tts.testConfiguration({
+      ...CONFIG,
+      speechInstructions: 'supported',
+    });
+    expect(fallback.ok && fallback.value.speechInstructionsApplied).toBe(false);
+    expect(rejected.server.callCount).toBe(2);
+    expect(rejected.server.requests[1]?.body['instructions']).toBeUndefined();
+  });
+
   it('supports Gemini TTS without claiming its ignored speed setting was applied', async () => {
     const geminiModel = 'google/gemini-3.1-flash-tts-preview';
     const harness = run({ knownTtsModels: [geminiModel] });

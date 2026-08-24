@@ -51,7 +51,7 @@ describe('estimateRequestTokens', () => {
     expect(large).toBeGreaterThan(small);
   });
 
-  it('includes the fixed protocol and policy layers', () => {
+  it('includes the fixed layers plus the actual compact JSON field structure', () => {
     expect(
       estimateRequestTokens(
         request({
@@ -62,7 +62,7 @@ describe('estimateRequestTokens', () => {
           grammarGuidance: '',
         }),
       ),
-    ).toBe(FIXED_PROMPT_OVERHEAD_TOKENS);
+    ).toBeGreaterThan(FIXED_PROMPT_OVERHEAD_TOKENS);
   });
 
   it('fits the supported vocabulary range comfortably inside the budget', () => {
@@ -90,7 +90,9 @@ describe('checkContextBudget', () => {
 
   it('fails before spending when the assembled request is too large', () => {
     const result = checkContextBudget(
-      request({ allowedVocabulary: Array.from({ length: 100_000 }, () => '猫') }),
+      request({
+        allowedVocabulary: Array.from({ length: 100_000 }, (_value, index) => `語${String(index)}`),
+      }),
       'story-generation',
     );
 

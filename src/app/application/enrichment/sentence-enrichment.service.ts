@@ -16,7 +16,7 @@ import { LanguageStore } from '../language/language.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { READING_REPOSITORY } from '../shared/repository-tokens';
 import { AudioConfigurationService } from './audio-configuration.service';
-import { AudioSynthesisService } from './audio-synthesis.service';
+import { AudioSynthesisService, speechContextFor } from './audio-synthesis.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { GrammarAnalysisService } from './grammar-analysis.service';
 import { TranslationService } from './translation.service';
@@ -236,6 +236,7 @@ export class SentenceEnrichmentService {
       config.value.modelId,
       config.value.voiceId,
       config.value.optionsFingerprint,
+      config.value.speechInstructions,
     );
     const cacheKey = cacheKeys.get(sentence.id);
     if (cacheKey === undefined) {
@@ -250,7 +251,24 @@ export class SentenceEnrichmentService {
       });
     }
 
-    const produced = await this.audio.run(sentence, readingId, cacheKey, config.value, signal);
+    let contextSentences: readonly Sentence[] = [sentence];
+    if (config.value.speechInstructions === 'supported') {
+      const index = refs.value.findIndex((ref) => ref.id === sentence.id);
+      const contextIds = refs.value.slice(Math.max(0, index - 1), index + 2).map((ref) => ref.id);
+      const loadedContext = await this.readings.loadSentences(contextIds);
+      if (!loadedContext.ok) {
+        return err({ source: 'storage', error: loadedContext.error });
+      }
+      contextSentences = loadedContext.value;
+    }
+    const produced = await this.audio.run(
+      sentence,
+      readingId,
+      cacheKey,
+      config.value,
+      signal,
+      speechContextFor(sentence, contextSentences),
+    );
     if (!produced.ok) {
       return err({ source: 'provider', error: produced.error });
     }

@@ -176,6 +176,7 @@ export class AudioPlaybackStore {
       config.value.modelId,
       config.value.voiceId,
       config.value.optionsFingerprint,
+      config.value.speechInstructions,
     );
     this.cacheKeysSignal.set(cacheKeys);
 

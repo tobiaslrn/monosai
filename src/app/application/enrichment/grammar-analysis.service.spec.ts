@@ -131,6 +131,27 @@ describe('GrammarAnalysisService', () => {
     });
   });
 
+  it('reviews long stories in batches of at most twenty sentences', async () => {
+    const list = sentences(41);
+    provider.grammarQueue.push(ok({ findings: [] }), ok({ findings: [] }), ok({ findings: [] }));
+
+    const outcome = await service.run(
+      list,
+      READING_ID,
+      keysFor(list),
+      'profile-hash',
+      'guidance',
+      'either',
+      'vendor/model',
+      'grammar/2',
+      { modelId: 'vendor/model', structuredOutput: 'native-schema' },
+      new AbortController().signal,
+    );
+
+    expect(outcome.status).toBe('complete');
+    expect(provider.generationCalls.grammar).toBe(3);
+  });
+
   it('drops a finding for a sentence outside the batch rather than storing it', async () => {
     const list = sentences(1);
     provider.grammarQueue.push(

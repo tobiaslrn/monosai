@@ -22,4 +22,14 @@ describe('PROMPT_VERSIONS', () => {
       expect(version.length).toBeGreaterThan(0);
     }
   });
+
+  it('invalidates every enrichment and generation prompt changed by version two', () => {
+    expect(PROMPT_VERSIONS).toEqual({
+      story: 'story/2',
+      repair: 'repair/2',
+      'exception-review': 'exception-review/2',
+      grammar: 'grammar/2',
+      translation: 'translation/2',
+    });
+  });
 });

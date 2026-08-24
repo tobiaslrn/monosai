@@ -189,6 +189,7 @@ describe('AudioSynthesisService', () => {
         voiceId: 'voice-a',
         speed: 0.75,
         responseFormat: 'mp3',
+        speechInstructions: 'unsupported',
       },
     ]);
   });

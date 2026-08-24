@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
+import type { SpeechContext, SpeechInstructionsSupport } from '../../domain/ai/speech-instructions';
 import type { AudioAsset, AudioAssetSummary } from '../../domain/enrichment/records';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { assetId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
@@ -13,7 +14,24 @@ export interface AudioSynthesisConfig {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speed: number;
+  readonly speechInstructions: SpeechInstructionsSupport;
   readonly optionsFingerprint: string;
+}
+
+export function speechContextFor(
+  sentence: Sentence,
+  orderedSentences: readonly Sentence[],
+): SpeechContext {
+  const ordered = [...orderedSentences].sort(
+    (left, right) => left.positionInReading - right.positionInReading,
+  );
+  const index = ordered.findIndex((item) => item.id === sentence.id);
+  if (index < 0) {
+    return {};
+  }
+  const beforeJa = ordered[index - 1]?.japaneseText;
+  const afterJa = ordered[index + 1]?.japaneseText;
+  return { beforeJa, afterJa };
 }
 
 /** MP3 is what is requested and what the audio cache stores. */
@@ -52,6 +70,7 @@ export class AudioSynthesisService {
     cacheKey: string,
     config: AudioSynthesisConfig,
     signal: AbortSignal,
+    context: SpeechContext = {},
   ): Promise<Result<AudioAsset, AiError>> {
     const cached = await this.enrichment.getAudioByCacheKey(cacheKey);
     if (cached.ok && cached.value !== null) {
@@ -65,6 +84,9 @@ export class AudioSynthesisService {
         voiceId: config.voiceId,
         speed: config.speed,
         responseFormat: RESPONSE_FORMAT,
+        speechInstructions: config.speechInstructions,
+        ...(context.beforeJa === undefined ? {} : { beforeJa: context.beforeJa }),
+        ...(context.afterJa === undefined ? {} : { afterJa: context.afterJa }),
       },
       signal,
     );

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_STORY_SEGMENT_SENTENCES, MAX_STORY_SENTENCES } from '../../domain/ai/story-request';
 
 /**
  * Runtime shapes for everything the provider can send back.
@@ -81,7 +82,7 @@ export const storyCandidateSchema = z.object({
         textJa: z.string(),
       }),
     )
-    .max(64),
+    .max(MAX_STORY_SEGMENT_SENTENCES),
 });
 
 export type StoryCandidatePayload = z.infer<typeof storyCandidateSchema>;
@@ -98,6 +99,7 @@ export const STORY_CANDIDATE_JSON_SCHEMA = {
       titleJa: { type: 'string' },
       sentences: {
         type: 'array',
+        maxItems: MAX_STORY_SEGMENT_SENTENCES,
         items: {
           type: 'object',
           additionalProperties: false,
@@ -112,11 +114,93 @@ export const STORY_CANDIDATE_JSON_SCHEMA = {
   },
 } as const;
 
+export const storyBlueprintSchema = z.object({
+  titleJa: z.string(),
+  segments: z
+    .array(
+      z.object({
+        index: z.number().int().nonnegative(),
+        sentenceCount: z.number().int().positive().max(MAX_STORY_SEGMENT_SENTENCES),
+        beatEn: z.string().min(1).max(1_000),
+      }),
+    )
+    .max(Math.ceil(MAX_STORY_SENTENCES / MAX_STORY_SEGMENT_SENTENCES)),
+});
+
+export const STORY_BLUEPRINT_JSON_SCHEMA = {
+  name: 'monosai_story_blueprint',
+  strict: true,
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['titleJa', 'segments'],
+    properties: {
+      titleJa: { type: 'string' },
+      segments: {
+        type: 'array',
+        maxItems: Math.ceil(MAX_STORY_SENTENCES / MAX_STORY_SEGMENT_SENTENCES),
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['index', 'sentenceCount', 'beatEn'],
+          properties: {
+            index: { type: 'integer', minimum: 0 },
+            sentenceCount: {
+              type: 'integer',
+              minimum: 1,
+              maximum: MAX_STORY_SEGMENT_SENTENCES,
+            },
+            beatEn: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+export const storySegmentCandidateSchema = z.object({
+  sentences: z
+    .array(
+      z.object({
+        index: z.number().int().nonnegative(),
+        textJa: z.string(),
+      }),
+    )
+    .max(MAX_STORY_SEGMENT_SENTENCES),
+  continuitySummaryEn: z.string().min(1).max(2_000),
+});
+
+export const STORY_SEGMENT_JSON_SCHEMA = {
+  name: 'monosai_story_segment',
+  strict: true,
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['sentences', 'continuitySummaryEn'],
+    properties: {
+      sentences: {
+        type: 'array',
+        maxItems: MAX_STORY_SEGMENT_SENTENCES,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['index', 'textJa'],
+          properties: {
+            index: { type: 'integer', minimum: 0 },
+            textJa: { type: 'string' },
+          },
+        },
+      },
+      continuitySummaryEn: { type: 'string' },
+    },
+  },
+} as const;
+
 /**
  * The exception review's answer.
  *
- * `category` is optional and free text; it is recorded but never given meaning,
- * because a taxonomy invented by the model is not one Monosai can validate.
+ * No free-form category is accepted: a taxonomy invented by a model is not
+ * validation evidence and only increases output ambiguity.
  */
 export const exceptionDecisionsSchema = z.object({
   decisions: z
@@ -125,7 +209,6 @@ export const exceptionDecisionsSchema = z.object({
         candidateId: z.string(),
         decision: z.enum(['approved', 'rejected']),
         explanationEn: z.string(),
-        category: z.string().nullable().optional(),
       }),
     )
     .max(256),
@@ -146,12 +229,11 @@ export const EXCEPTION_DECISIONS_JSON_SCHEMA = {
         items: {
           type: 'object',
           additionalProperties: false,
-          required: ['candidateId', 'decision', 'explanationEn', 'category'],
+          required: ['candidateId', 'decision', 'explanationEn'],
           properties: {
             candidateId: { type: 'string' },
             decision: { type: 'string', enum: ['approved', 'rejected'] },
             explanationEn: { type: 'string' },
-            category: { type: ['string', 'null'] },
           },
         },
       },

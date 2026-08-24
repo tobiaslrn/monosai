@@ -19,6 +19,12 @@ export type ChatContentKind =
   | 'story-repaired'
   | 'story-duplicate-index'
   | 'story-too-short'
+  | 'story-50'
+  | 'story-blueprint-100'
+  | 'story-blueprint-200'
+  | 'story-blueprint-800'
+  | 'story-segment-50'
+  | 'story-segment-short'
   | 'decisions-approved'
   | 'decisions-rejected'
   | 'grammar-complete'
@@ -44,6 +50,8 @@ export interface FakeOpenRouterOptions {
   readonly jsonSchemaErrorParam?: string | null;
   /** When false, a request carrying `speed` is refused with a 400. */
   readonly supportsSpeed?: boolean;
+  /** When false, a request carrying speech `instructions` is refused with a 400. */
+  readonly supportsInstructions?: boolean;
   readonly content?: ChatContentKind;
   /** Content for every chat request after the first, so recovery can differ. */
   readonly recoveryContent?: ChatContentKind;
@@ -99,6 +107,29 @@ const MICRO_SENTENCES = [
   'ねこはのみます。',
 ];
 
+function numberedSentences(count: number): readonly string[] {
+  return Array.from({ length: count }, (_, index) => `ねこはあるきます${String(index + 1)}。`);
+}
+
+function blueprint(total: number): string {
+  const segmentCount = Math.ceil(total / 50);
+  return JSON.stringify({
+    titleJa: 'ねこの長い旅',
+    segments: Array.from({ length: segmentCount }, (_, index) => ({
+      index,
+      sentenceCount: Math.min(50, total - index * 50),
+      beatEn: `Story beat ${String(index + 1)} of ${String(segmentCount)}.`,
+    })),
+  });
+}
+
+function storySegment(count: number): string {
+  return JSON.stringify({
+    sentences: numberedSentences(count).map((textJa, index) => ({ index, textJa })),
+    continuitySummaryEn: 'The cat continues its journey in order.',
+  });
+}
+
 function decisions(decision: 'approved' | 'rejected'): string {
   return JSON.stringify({
     decisions: [
@@ -135,6 +166,12 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
     ],
   }),
   'story-too-short': story(['ねこがいます。', 'ねこはねます。']),
+  'story-50': story(numberedSentences(50), 'ねこの長い旅'),
+  'story-blueprint-100': blueprint(100),
+  'story-blueprint-200': blueprint(200),
+  'story-blueprint-800': blueprint(800),
+  'story-segment-50': storySegment(50),
+  'story-segment-short': storySegment(2),
   'decisions-approved': decisions('approved'),
   'decisions-rejected': decisions('rejected'),
   'grammar-complete': JSON.stringify({
@@ -354,6 +391,14 @@ export class FakeOpenRouterServer {
     }
     if (body['speed'] !== undefined && this.options.supportsSpeed === false) {
       return this.providerError(400, 'This model does not support speed', {}, 'speed');
+    }
+    if (body['instructions'] !== undefined && this.options.supportsInstructions === false) {
+      return this.providerError(
+        400,
+        'This model does not support instructions',
+        {},
+        'instructions',
+      );
     }
 
     switch (this.options.audio ?? 'valid') {

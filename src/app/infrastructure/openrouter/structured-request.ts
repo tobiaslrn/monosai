@@ -1,5 +1,6 @@
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
+import { estimateTokens, MAX_REQUEST_TOKENS } from '../../domain/ai/context-budget';
 import type { StructuredOutputMode } from '../../domain/ai/model-test';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import { isGeminiModel } from '../../domain/ai/tts-configuration';
@@ -68,6 +69,20 @@ export class StructuredTaskRunner {
     mode: StructuredOutputMode,
   ): Promise<Result<T, AiError>> {
     const native = mode === 'native-schema';
+    const system = native
+      ? request.prompt.system
+      : `${request.prompt.system}\n\n${request.prompt.jsonContract}\n${JSON_CONTRACT_REMINDER}`;
+    const estimatedInputTokens = estimateTokens(system) + estimateTokens(request.prompt.user);
+    if (estimatedInputTokens > MAX_REQUEST_TOKENS) {
+      return err(
+        aiError(
+          'context-budget-exceeded',
+          request.task,
+          'The assembled request is larger than Monosai can send safely.',
+          { detail: { issueCode: 'assembled-request-too-large' } },
+        ),
+      );
+    }
     const response = await this.client.postJson(
       {
         path: CHAT_COMPLETIONS_PATH,
@@ -82,9 +97,7 @@ export class StructuredTaskRunner {
           messages: [
             {
               role: 'system',
-              content: native
-                ? request.prompt.system
-                : `${request.prompt.system}\n${JSON_CONTRACT_REMINDER}`,
+              content: system,
             },
             { role: 'user', content: request.prompt.user },
           ],

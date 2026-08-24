@@ -1,5 +1,6 @@
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { TtsConfig, TtsTest } from '../../domain/ai/model-test';
+import { buildSpeechInstructions } from '../../domain/ai/speech-instructions';
 import {
   isGeminiTtsModel,
   resolveTtsVoice,
@@ -61,36 +62,42 @@ export class OpenRouterTtsTester {
       );
     }
 
-    if (!supportsTtsSpeed(modelId)) {
-      const withoutSpeed = await this.synthesize(modelId, voiceId, undefined, signal);
-      return withoutSpeed.ok
-        ? this.verify(withoutSpeed.value, modelId, voiceId, false)
-        : err(withoutSpeed.error);
+    let speed = supportsTtsSpeed(modelId) ? config.speed : undefined;
+    let instructions =
+      config.speechInstructions === 'supported' ? buildSpeechInstructions() : undefined;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const response = await this.synthesize(modelId, voiceId, speed, instructions, signal);
+      if (response.ok) {
+        return this.verify(
+          response.value,
+          modelId,
+          voiceId,
+          speed !== undefined,
+          instructions !== undefined,
+        );
+      }
+      const refused = response.error.detail?.capability;
+      if (response.error.code !== 'capability-unsupported') {
+        return err(response.error);
+      }
+      if (refused === 'instructions' && instructions !== undefined) {
+        instructions = undefined;
+        continue;
+      }
+      if (refused === 'speed' && speed !== undefined) {
+        speed = undefined;
+        continue;
+      }
+      return err(response.error);
     }
-
-    const withSpeed = await this.synthesize(modelId, voiceId, config.speed, signal);
-    if (withSpeed.ok) {
-      return this.verify(withSpeed.value, modelId, voiceId, true);
-    }
-
-    const speedRefused =
-      withSpeed.error.code === 'capability-unsupported' &&
-      withSpeed.error.detail?.capability === 'speed';
-    if (!speedRefused) {
-      return err(withSpeed.error);
-    }
-
-    const withoutSpeed = await this.synthesize(modelId, voiceId, undefined, signal);
-    if (!withoutSpeed.ok) {
-      return err(withoutSpeed.error);
-    }
-    return this.verify(withoutSpeed.value, modelId, voiceId, false);
+    throw new Error('Unreachable TTS test capability fallback state.');
   }
 
   private synthesize(
     modelId: string,
     voiceId: string,
     speed: number | undefined,
+    instructions: string | undefined,
     signal?: AbortSignal,
   ): Promise<Result<AudioResponse, AiError>> {
     return this.client.postAudio({
@@ -106,6 +113,7 @@ export class OpenRouterTtsTester {
         input: TTS_TEST_PHRASE,
         response_format: isGeminiTtsModel(modelId) ? 'pcm' : REQUESTED_FORMAT,
         ...(speed === undefined ? {} : { speed }),
+        ...(instructions === undefined ? {} : { instructions }),
       },
     });
   }
@@ -115,6 +123,7 @@ export class OpenRouterTtsTester {
     modelId: string,
     voiceId: string,
     speedApplied: boolean,
+    speechInstructionsApplied: boolean,
   ): Promise<Result<TtsTest, AiError>> {
     const normalized = isGeminiTtsModel(modelId) ? geminiPcmToWav(response) : response;
     const verified = await verifyAudio(normalized, this.decoder, { task: TASK, modelId, voiceId });
@@ -126,6 +135,7 @@ export class OpenRouterTtsTester {
       modelId,
       voiceId,
       speedApplied,
+      speechInstructionsApplied,
       mimeType: verified.value.declaredMimeType,
       byteLength: verified.value.bytes.byteLength,
       sample: new Blob([verified.value.bytes], { type: verified.value.declaredMimeType }),

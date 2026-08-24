@@ -5,6 +5,7 @@ import {
   STORY_SENTENCE_COUNTS,
   countCodePoints,
   normalizeStorySentenceCount,
+  planStorySegments,
   sentenceRangeForCount,
   storyFormForSentenceCount,
   validateStoryInput,
@@ -31,6 +32,21 @@ describe('story length', () => {
     expect(storyFormForSentenceCount(30)).toBe('medium');
     expect(storyFormForSentenceCount(50)).toBe('long');
     expect(storyFormForSentenceCount(800)).toBe('long');
+  });
+
+  it.each([
+    [50, [50]],
+    [100, [50, 50]],
+    [200, [50, 50, 50, 50]],
+    [800, Array.from({ length: 16 }, () => 50)],
+  ] as const)('plans %i sentences as bounded exact segments', (count, expected) => {
+    const segments = planStorySegments(count);
+
+    expect(segments.map((segment) => segment.sentenceCount)).toEqual(expected);
+    expect(segments.reduce((total, segment) => total + segment.sentenceCount, 0)).toBe(count);
+    expect(segments.map((segment) => segment.index)).toEqual(
+      Array.from({ length: expected.length }, (_, index) => index),
+    );
   });
 });
 

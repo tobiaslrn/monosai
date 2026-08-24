@@ -81,6 +81,16 @@ describe('TranslationService', () => {
     expect(outcome.records).toHaveLength(3);
     expect(outcome.failures).toHaveLength(0);
     expect(provider.generationCalls.translate).toBe(1);
+    expect(provider.translationRequests[0].sentences).toEqual([
+      { id: list[0].id, textJa: '文0。', contextAfterJa: '文1。' },
+      {
+        id: list[1].id,
+        textJa: '文1。',
+        contextBeforeJa: '文0。',
+        contextAfterJa: '文2。',
+      },
+      { id: list[2].id, textJa: '文2。', contextBeforeJa: '文1。' },
+    ]);
     expect(outcome.records[0]).toMatchObject({
       sentenceId: list[0].id,
       readingId: READING_ID,

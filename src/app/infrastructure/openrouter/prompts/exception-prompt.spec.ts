@@ -13,7 +13,7 @@ describe('buildExceptionPrompt', () => {
           lemma: '図書館',
           readingHiragana: 'としょかん',
           partOfSpeech: 'noun',
-          contextJa: '図書館へ行った。',
+          contextsJa: ['図書館へ行った。'],
         },
       ],
       promptVersion: 'exception-review/1',
@@ -21,9 +21,9 @@ describe('buildExceptionPrompt', () => {
 
     const prompt = buildExceptionPrompt(request);
 
-    expect(prompt.user).toContain('lemma: 図書館');
-    expect(prompt.user).toContain('reading: としょかん');
-    expect(prompt.user).toContain('part of speech: noun');
+    expect(prompt.user).toContain('"lemma":"図書館"');
+    expect(prompt.user).toContain('"readingHiragana":"としょかん"');
+    expect(prompt.user).toContain('"partOfSpeech":"noun"');
   });
 
   it('omits lemma, reading, and part of speech when a candidate lacks them', () => {
@@ -33,7 +33,7 @@ describe('buildExceptionPrompt', () => {
         {
           id: 'candidate-2',
           surface: 'にゃー',
-          contextJa: 'にゃーと鳴いた。',
+          contextsJa: ['にゃーと鳴いた。'],
         },
       ],
       promptVersion: 'exception-review/1',
@@ -41,8 +41,8 @@ describe('buildExceptionPrompt', () => {
 
     const prompt = buildExceptionPrompt(request);
 
-    expect(prompt.user).not.toContain('lemma:');
-    expect(prompt.user).not.toContain('reading:');
-    expect(prompt.user).not.toContain('part of speech:');
+    expect(prompt.user).not.toContain('"lemma"');
+    expect(prompt.user).not.toContain('"readingHiragana"');
+    expect(prompt.user).not.toContain('"partOfSpeech"');
   });
 });

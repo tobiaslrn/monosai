@@ -72,11 +72,13 @@ export class AudioConfigurationService {
     const optionsFingerprint = audioOptionsFingerprint(this.hasher, {
       responseFormat: RESPONSE_FORMAT,
       speed: selected.speed,
+      speechInstructions: selected.speechInstructions ?? 'unsupported',
     });
     return ok({
       modelId: selected.modelId,
       voiceId: selected.voiceId,
       speed: selected.speed,
+      speechInstructions: selected.speechInstructions ?? 'unsupported',
       optionsFingerprint,
       configFingerprint: audioConfigFingerprint(
         this.hasher,

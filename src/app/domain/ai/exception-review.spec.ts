@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { applyDecisions, noApprovals, type ExceptionCandidate } from './exception-review';
 
 const CANDIDATES: readonly ExceptionCandidate[] = [
-  { id: 'c1', surface: '図書館', contextJa: '図書館へ行った。' },
-  { id: 'c2', surface: '匂い', lemma: '匂い', contextJa: '匂いがした。' },
+  { id: 'c1', surface: '図書館', contextsJa: ['図書館へ行った。'] },
+  { id: 'c2', surface: '匂い', lemma: '匂い', contextsJa: ['匂いがした。'] },
 ];
 
 const REASON = 'A place name the policy allows because the learner named it.';
