@@ -130,6 +130,37 @@ const TRANSLATIONS_SCHEMA = 'monosai_translations';
  * a run accepted.
  */
 function requestedSentences(text: string): readonly { id: string; textJa: string }[] {
+  // Enrichment prompts carry their targets as JSON inside a data block. Keep
+  // the parser tolerant of the old line-oriented representation as well: the
+  // route is shared by tests that exercise prompt compatibility and by the
+  // current production prompt contract.
+  const dataBlock =
+    /<<<MONOSAI_DATA\s+(?:translation targets|sentences in reading order)\n([\s\S]*?)\nMONOSAI_DATA>>>/.exec(
+      text,
+    );
+  if (dataBlock?.[1] !== undefined) {
+    try {
+      const parsed: unknown = JSON.parse(dataBlock[1]);
+      if (Array.isArray(parsed)) {
+        return parsed.flatMap((value) => {
+          if (
+            typeof value !== 'object' ||
+            value === null ||
+            typeof (value as { id?: unknown }).id !== 'string' ||
+            typeof (value as { textJa?: unknown }).textJa !== 'string'
+          ) {
+            return [];
+          }
+          const sentence = value as { id: string; textJa: string };
+          return [{ id: sentence.id, textJa: sentence.textJa }];
+        });
+      }
+    } catch {
+      // Fall through to the legacy parser so a malformed test prompt remains
+      // observable as an empty request rather than breaking the route itself.
+    }
+  }
+
   const lines = text.split('\n');
   const found: { id: string; textJa: string }[] = [];
   lines.forEach((line, index) => {
@@ -290,7 +321,11 @@ export async function stubOpenRouter(
     // Matched on the task instruction, not on the guidance block: the story and
     // repair prompts carry the same grammar guidance and must not be answered
     // with a review.
-    if (schema === GRAMMAR_SCHEMA || text.includes('review each given Japanese sentence')) {
+    if (
+      schema === GRAMMAR_SCHEMA ||
+      text.includes('review each given Japanese sentence') ||
+      text.includes('sentences in reading order')
+    ) {
       const outcome = nextOf(options.generation?.grammar, served.grammar) ?? 'ok';
       served.grammar += 1;
       if (outcome === 'hang') {
@@ -318,7 +353,11 @@ export async function stubOpenRouter(
       // A review with no findings is a complete review, not a missing one.
       return outcome === 'unavailable' ? 'Sure, happy to help!' : JSON.stringify({ findings: [] });
     }
-    if (schema === TRANSLATIONS_SCHEMA || text.includes('translate each given Japanese sentence')) {
+    if (
+      schema === TRANSLATIONS_SCHEMA ||
+      text.includes('translate each given Japanese sentence') ||
+      text.includes('translation targets')
+    ) {
       const outcome = nextOf(options.generation?.translations, served.translations) ?? 'ok';
       served.translations += 1;
       if (outcome === 'hang') {
