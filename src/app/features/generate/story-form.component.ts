@@ -117,26 +117,19 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           }
         </div>
 
-        <div class="word-selection">
-          <div class="setting-label">
-            <label for="mn-word-selection">Anki word selection</label>
-            <span>Inspiration only</span>
-          </div>
+        <div class="mn-field word-selection">
+          <label for="mn-word-selection">Anki word selection</label>
           <select
             id="mn-word-selection"
             data-testid="word-priority-select"
             [value]="ankiWordPriorityMode()"
             [disabled]="disabled()"
-            aria-describedby="mn-word-selection-help"
             (change)="onWordPriorityMode($event)"
           >
             <option value="uniform">Uniform</option>
             <option value="recent">Recently learned</option>
             <option value="difficult">Difficult</option>
           </select>
-          <p id="mn-word-selection-help" class="word-selection-help">
-            The full vocabulary remains allowed; this only changes hidden inspiration.
-          </p>
         </div>
 
         <div class="generation-sources" data-testid="form-sources">
@@ -229,13 +222,11 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       justify-content: space-between;
     }
 
-    .setting-heading label,
-    .setting-label label {
+    .setting-heading label {
       font-weight: 600;
     }
 
-    .setting-heading p,
-    .word-selection p {
+    .setting-heading p {
       margin: var(--space-1) 0 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);
@@ -356,36 +347,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       margin-top: var(--space-5);
       padding-top: var(--space-4);
       border-top: 1px solid var(--border-subtle);
-    }
-
-    .setting-label {
-      display: flex;
-      gap: var(--space-2);
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .setting-label span {
-      padding: 2px var(--space-2);
-      border-radius: var(--radius-pill);
-      background: var(--surface-sunken);
-      color: var(--text-secondary);
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .word-selection select {
-      width: 100%;
-      min-height: var(--touch-target);
-      margin-top: var(--space-2);
-    }
-
-    .word-selection-help {
-      margin: var(--space-2) 0 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
     }
 
     @media (max-width: 719px) {
