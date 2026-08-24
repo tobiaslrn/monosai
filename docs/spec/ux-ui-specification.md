@@ -81,7 +81,7 @@ Exact final colors may be tuned only to meet contrast. Do not use semantic token
 ### Typography
 
 - UI: local system sans-serif stack.
-- Japanese reading text: system Japanese serif stack with sans-serif fallback; do not download remote fonts.
+- Japanese reading text: system Japanese Gothic/sans-serif stack; do not download remote fonts.
 - Ruby: native `<ruby><rt>` semantics with the token button as the ruby base. Use whole-token readings, omit ruby for kana-only tokens and punctuation.
 - Base reader size: 20px desktop and 19px mobile, multiplied by the learner's text scale (0.8–2.5) and additionally user-scalable through browser/OS.
 - Line height >= 2.05 with furigana, >= 1.75 without. The leading is not only room for ruby: it is the whitespace a sentence is pressed in, so it is deliberately looser than prose would need. The ratio eases off as the scale grows, because what matters is the gap in pixels.
