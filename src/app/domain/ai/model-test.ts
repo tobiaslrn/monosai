@@ -26,6 +26,8 @@ export interface TtsConfig {
   readonly voiceId: string;
   /** Playback rate multiplier. Providers that ignore it are reported, not hidden. */
   readonly speed: number;
+  /** Provider catalog evidence, verified by the configuration test. */
+  readonly speechInstructions?: SpeechInstructionsSupport;
 }
 
 export interface TtsTest {
@@ -37,8 +39,11 @@ export interface TtsTest {
    * took effect.
    */
   readonly speedApplied: boolean;
+  /** False when advertised instructions were rejected and the test fell back safely. */
+  readonly speechInstructionsApplied?: boolean;
   readonly mimeType: string;
   readonly byteLength: number;
   /** The verified clip, so the learner can play it on an explicit action. */
   readonly sample: Blob;
 }
+import type { SpeechInstructionsSupport } from './speech-instructions';

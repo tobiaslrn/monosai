@@ -1,6 +1,11 @@
 import { Injectable, inject } from '@angular/core';
-import type { GrammarReviewRequest } from '../../domain/ai/grammar-review-request';
+import {
+  MAX_GRAMMAR_REVIEW_BATCH,
+  type GrammarReviewRequest,
+  type ReviewedFinding,
+} from '../../domain/ai/grammar-review-request';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
+import { planBatches } from '../../domain/ai/translation-request';
 import { normalizeReview } from '../../domain/enrichment/grammar-normalization';
 import type { GrammarAnalysisRecord, GrammarFinding } from '../../domain/enrichment/records';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
@@ -15,13 +20,14 @@ export type GrammarRunOutcome =
   | { readonly status: 'unavailable'; readonly records: readonly []; readonly reasonCode: string };
 
 /**
- * Reviews a generated story's grammar in one automatic pass.
+ * Reviews a generated story's grammar in bounded ordered batches.
  *
  * Unlike translation, this is not cache-lookup-first: a freshly generated
  * story's sentences are new, so a cache hit is impossible on the only path
  * that reaches this service, and checking anyway would just be a wasted read
- * per sentence. Grammar review also has no batching bound in the domain
- * contracts, so the whole story is reviewed in one request.
+ * per sentence. Batches keep long stories within predictable input and output
+ * limits; one failed batch makes the optional review unavailable rather than
+ * pretending the whole story was reviewed.
  */
 @Injectable({ providedIn: 'root' })
 export class GrammarAnalysisService {
@@ -42,24 +48,25 @@ export class GrammarAnalysisService {
     config: TextTaskConfig,
     signal: AbortSignal,
   ): Promise<GrammarRunOutcome> {
-    const request: GrammarReviewRequest = {
-      profileGuidance,
-      registerPreference,
-      sentences: sentences.map((sentence) => ({ id: sentence.id, textJa: sentence.japaneseText })),
-      promptVersion,
-    };
-
-    const reviewed = await this.provider.reviewGrammar(request, config, signal);
-    if (!reviewed.ok) {
-      return { status: 'unavailable', records: [], reasonCode: reviewed.error.code };
+    const normalized: ReviewedFinding[] = [];
+    for (const batch of planBatches(sentences, MAX_GRAMMAR_REVIEW_BATCH)) {
+      const request: GrammarReviewRequest = {
+        profileGuidance,
+        registerPreference,
+        sentences: batch.map((sentence) => ({ id: sentence.id, textJa: sentence.japaneseText })),
+        promptVersion,
+      };
+      const reviewed = await this.provider.reviewGrammar(request, config, signal);
+      if (!reviewed.ok) {
+        return { status: 'unavailable', records: [], reasonCode: reviewed.error.code };
+      }
+      if (signal.aborted) {
+        return { status: 'unavailable', records: [], reasonCode: 'cancelled' };
+      }
+      const sentenceIds = batch.map((sentence) => sentence.id);
+      const textById = new Map(batch.map((sentence) => [sentence.id, sentence.japaneseText]));
+      normalized.push(...normalizeReview(sentenceIds, reviewed.value, textById));
     }
-    if (signal.aborted) {
-      return { status: 'unavailable', records: [], reasonCode: 'cancelled' };
-    }
-
-    const sentenceIds = sentences.map((sentence) => sentence.id);
-    const textById = new Map(sentences.map((sentence) => [sentence.id, sentence.japaneseText]));
-    const normalized = normalizeReview(sentenceIds, reviewed.value, textById);
 
     const findingsBySentence = new Map<SentenceId, GrammarFinding[]>();
     for (const finding of normalized) {

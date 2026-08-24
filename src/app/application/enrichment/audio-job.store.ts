@@ -12,7 +12,7 @@ import {
 } from '../shared/repository-tokens';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { AudioConfigurationService, type ResolvedAudioConfig } from './audio-configuration.service';
-import { AudioSynthesisService } from './audio-synthesis.service';
+import { AudioSynthesisService, speechContextFor } from './audio-synthesis.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 
@@ -54,6 +54,7 @@ interface JobContext {
   readonly readingId: ReadingId;
   readonly config: ResolvedAudioConfig;
   readonly cacheKeys: ReadonlyMap<SentenceId, string>;
+  readonly orderedSentenceIds: readonly SentenceId[];
   readonly total: number;
 }
 
@@ -214,8 +215,10 @@ export class AudioJobStore {
         config.value.modelId,
         config.value.voiceId,
         config.value.optionsFingerprint,
+        config.value.speechInstructions,
       ),
       total: refs.value.length,
+      orderedSentenceIds: refs.value.map((ref) => ref.id),
     };
 
     const active = await this.jobs.findActive(readingId, 'prepare-audio');
@@ -317,7 +320,7 @@ export class AudioJobStore {
       return;
     }
 
-    const loaded = await this.readings.loadSentences(outstanding);
+    const loaded = await this.readings.loadSentences(context.orderedSentenceIds);
     if (!loaded.ok) {
       this.failStorage(loaded.error, counts);
       return;
@@ -336,7 +339,12 @@ export class AudioJobStore {
     // `loadSentences` answers in reading order, which is the order clips are
     // produced in: a learner who stops a run halfway has the beginning of the
     // reading, which is the half they can use.
-    for (const sentence of orderedByReading(loaded.value)) {
+    const outstandingSet = new Set(outstanding);
+    const allSentences = orderedByReading(loaded.value);
+    for (const sentence of allSentences) {
+      if (!outstandingSet.has(sentence.id)) {
+        continue;
+      }
       if (isAborted(signal)) {
         await this.markCancelled(job, counts);
         return;
@@ -353,6 +361,7 @@ export class AudioJobStore {
         cacheKey,
         context.config,
         signal,
+        speechContextFor(sentence, allSentences),
       );
       if (!produced.ok) {
         // Cancelling aborts the request already in flight, and that arrives

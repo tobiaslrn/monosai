@@ -34,47 +34,37 @@ describe('normalizeReview', () => {
     expect(result).toEqual([]);
   });
 
-  it('strips an out-of-range offset but keeps the finding', () => {
+  it('drops a finding with an out-of-range offset', () => {
     const text = 'これはテストです。';
     const textById = new Map([[S1, text]]);
     const input = finding({ startUtf16: 0, endUtf16: text.length + 5 });
 
     const result = normalizeReview(sentenceIds, { findings: [input] }, textById);
 
-    expect(result).toHaveLength(1);
-    const [normalized] = result;
-    expect(normalized.startUtf16).toBeUndefined();
-    expect(normalized.endUtf16).toBeUndefined();
-    expect(normalized.label).toBe(input.label);
+    expect(result).toEqual([]);
   });
 
-  it('strips a reversed range but keeps the finding', () => {
+  it('drops a finding with a reversed range', () => {
     const text = 'これはテストです。';
     const textById = new Map([[S1, text]]);
     const input = finding({ startUtf16: 4, endUtf16: 2 });
 
     const result = normalizeReview(sentenceIds, { findings: [input] }, textById);
 
-    expect(result).toHaveLength(1);
-    const [normalized] = result;
-    expect(normalized.startUtf16).toBeUndefined();
-    expect(normalized.endUtf16).toBeUndefined();
+    expect(result).toEqual([]);
   });
 
-  it('strips a non-integer offset but keeps the finding', () => {
+  it('drops a finding with a non-integer offset', () => {
     const text = 'これはテストです。';
     const textById = new Map([[S1, text]]);
     const input = finding({ startUtf16: 1.5, endUtf16: 4 });
 
     const result = normalizeReview(sentenceIds, { findings: [input] }, textById);
 
-    expect(result).toHaveLength(1);
-    const [normalized] = result;
-    expect(normalized.startUtf16).toBeUndefined();
-    expect(normalized.endUtf16).toBeUndefined();
+    expect(result).toEqual([]);
   });
 
-  it('strips an offset that splits a surrogate pair but keeps the finding', () => {
+  it('drops a finding whose offset splits a surrogate pair', () => {
     // U+20000 is outside the BMP and takes two UTF-16 code units; offset 1
     // lands between its high and low surrogate.
     const text = `${String.fromCodePoint(0x20000)}です。`;
@@ -83,10 +73,7 @@ describe('normalizeReview', () => {
 
     const result = normalizeReview(sentenceIds, { findings: [input] }, textById);
 
-    expect(result).toHaveLength(1);
-    const [normalized] = result;
-    expect(normalized.startUtf16).toBeUndefined();
-    expect(normalized.endUtf16).toBeUndefined();
+    expect(result).toEqual([]);
   });
 
   it('keeps a valid offset range untouched', () => {
@@ -121,6 +108,21 @@ describe('normalizeReview', () => {
     );
 
     expect(result).toEqual([]);
+  });
+
+  it('deduplicates findings and keeps at most three per sentence, prioritizing concerns', () => {
+    const textById = new Map([[S1, 'これはテストです。']]);
+    const findings = [
+      finding({ label: 'a', explanationEn: 'first' }),
+      finding({ label: 'a', explanationEn: 'duplicate' }),
+      finding({ label: 'b', explanationEn: 'second' }),
+      finding({ label: 'c', explanationEn: 'concern', inProfile: false }),
+      finding({ label: 'd', explanationEn: 'fourth' }),
+    ];
+
+    const result = normalizeReview(sentenceIds, { findings }, textById);
+
+    expect(result.map((item) => item.label)).toEqual(['c', 'a', 'b']);
   });
 });
 

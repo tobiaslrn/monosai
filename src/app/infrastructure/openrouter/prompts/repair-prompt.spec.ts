@@ -40,7 +40,7 @@ describe('buildRepairPrompt', () => {
     const prompt = buildRepairPrompt(request);
 
     expect(prompt.user).not.toContain('learner style instructions');
-    expect(prompt.user).toContain('Title');
+    expect(prompt.user).toContain('"titleJa"');
   });
 
   it('includes learner style instructions and a sentence-indexed span when given', () => {
@@ -59,6 +59,6 @@ describe('buildRepairPrompt', () => {
 
     expect(prompt.user).toContain('learner style instructions');
     expect(prompt.user).toContain('Keep it playful.');
-    expect(prompt.user).toContain('Sentence 2');
+    expect(prompt.user).toContain('"sentenceIndex":2');
   });
 });

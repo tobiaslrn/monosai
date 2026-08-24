@@ -2,9 +2,10 @@ import type { Result } from '../shared/result';
 import type { AiError } from './ai-error';
 import type { AudioMimeType } from '../enrichment/records';
 import type { TtsConfig, TtsTest } from './model-test';
+import type { SpeechContext, SpeechInstructionsSupport } from './speech-instructions';
 
 /** One sentence's synthesis request, exactly as the cache key describes it. */
-export interface TtsRequest {
+export interface TtsRequest extends SpeechContext {
   /** The exact saved Japanese. Never a normalized or re-segmented variant. */
   readonly text: string;
   readonly modelId: string;
@@ -12,6 +13,7 @@ export interface TtsRequest {
   readonly speed: number;
   /** The container asked for. MP3 is what the audio cache stores. */
   readonly responseFormat: 'mp3';
+  readonly speechInstructions?: SpeechInstructionsSupport;
 }
 
 /** A verified clip, ready to be stored. */
@@ -24,6 +26,7 @@ export interface AudioPayload {
    * setting took effect (ADR 0018).
    */
   readonly speedApplied: boolean;
+  readonly speechInstructionsApplied?: boolean;
 }
 
 /**

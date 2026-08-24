@@ -5,7 +5,12 @@ import { err, ok, type Result } from '../shared/result';
 export const MAX_TRANSLATION_BATCH = 10;
 
 export interface TranslationBatchRequest {
-  readonly sentences: readonly { readonly id: SentenceId; readonly textJa: string }[];
+  readonly sentences: readonly {
+    readonly id: SentenceId;
+    readonly textJa: string;
+    readonly contextBeforeJa?: string;
+    readonly contextAfterJa?: string;
+  }[];
   readonly promptVersion: string;
 }
 

@@ -115,6 +115,7 @@ export class TtsStore {
     const current = this.settingsSignal();
     const registered: TtsPreset = {
       ...preset,
+      speechInstructions: preset.speechInstructions ?? 'unsupported',
       lastTestFingerprint: preset.lastTestFingerprint ?? null,
       lastTestedAt: preset.lastTestedAt ?? null,
     };
@@ -128,6 +129,7 @@ export class TtsStore {
             modelId: preset.modelId,
             voiceId: preset.voiceId,
             speed: preset.speed,
+            speechInstructions: registered.speechInstructions ?? 'unsupported',
             lastTestFingerprint: registered.lastTestFingerprint ?? null,
             lastTestedAt: registered.lastTestedAt ?? null,
           }
@@ -161,6 +163,7 @@ export class TtsStore {
       modelId: preset.modelId,
       voiceId: preset.voiceId,
       speed: preset.speed,
+      speechInstructions: preset.speechInstructions ?? 'unsupported',
       lastTestFingerprint: preset.lastTestFingerprint ?? null,
       lastTestedAt: preset.lastTestedAt ?? null,
     });
@@ -189,6 +192,7 @@ export class TtsStore {
             modelId: '',
             voiceId: '',
             speed: DEFAULT_TTS_SETTINGS.speed,
+            speechInstructions: DEFAULT_TTS_SETTINGS.speechInstructions,
             lastTestFingerprint: null,
             lastTestedAt: null,
           }
@@ -323,7 +327,12 @@ export class TtsStore {
     }
 
     const result = await this.provider.testConfiguration(
-      { modelId: settings.modelId, voiceId: settings.voiceId, speed: settings.speed },
+      {
+        modelId: settings.modelId,
+        voiceId: settings.voiceId,
+        speed: settings.speed,
+        speechInstructions: settings.speechInstructions ?? 'unsupported',
+      },
       controller.signal,
     );
 
@@ -340,8 +349,11 @@ export class TtsStore {
 
     this.speedAppliedSignal.set(result.value.speedApplied);
     this.sampleSignal.set(result.value.sample);
+    const speechInstructions = result.value.speechInstructionsApplied ? 'supported' : 'unsupported';
+    const testedSettings = { ...settings, speechInstructions } as const;
     const saved = await this.repository.updateTtsSettings({
-      lastTestFingerprint: this.fingerprintFor(settings),
+      speechInstructions,
+      lastTestFingerprint: this.fingerprintFor(testedSettings),
       lastTestedAt: this.clock.now(),
     });
     if (saved.ok) {
@@ -364,22 +376,34 @@ export class TtsStore {
     this.testFailureSignal.set(null);
     this.sampleSignal.set(null);
     const result = await this.provider.testConfiguration(
-      { modelId: preset.modelId, voiceId: preset.voiceId, speed: preset.speed },
+      {
+        modelId: preset.modelId,
+        voiceId: preset.voiceId,
+        speed: preset.speed,
+        speechInstructions: preset.speechInstructions ?? 'unsupported',
+      },
       controller.signal,
     );
+
     if (this.controller !== controller) {
       return;
     }
     this.controller = null;
     this.actionSignal.set('idle');
+
     if (!result.ok) {
       this.testFailureSignal.set(result.error);
       return;
     }
-    const fingerprint = this.fingerprintFor(preset);
+
+    const speechInstructions = result.value.speechInstructionsApplied ? 'supported' : 'unsupported';
+    const testedPreset = { ...preset, speechInstructions } as const;
+    const fingerprint = this.fingerprintFor(testedPreset);
     const testedAt = this.clock.now();
     const presets = this.settingsSignal().presets.map((item) =>
-      item.id === id ? { ...item, lastTestFingerprint: fingerprint, lastTestedAt: testedAt } : item,
+      item.id === id
+        ? { ...testedPreset, lastTestFingerprint: fingerprint, lastTestedAt: testedAt }
+        : item,
     );
     const isDefault = this.settingsSignal().activePresetId === id;
     const becomesDefault = this.settingsSignal().activePresetId === null;
@@ -391,6 +415,7 @@ export class TtsStore {
             modelId: preset.modelId,
             voiceId: preset.voiceId,
             speed: preset.speed,
+            speechInstructions,
             lastTestFingerprint: fingerprint,
             lastTestedAt: testedAt,
           }
@@ -417,11 +442,16 @@ export class TtsStore {
     this.actionSignal.set('idle');
   }
 
-  private fingerprintFor(settings: Pick<TtsSettings, 'modelId' | 'voiceId' | 'speed'>): string {
+  private fingerprintFor(
+    settings: Pick<TtsSettings, 'modelId' | 'voiceId' | 'speed'> & {
+      readonly speechInstructions?: NonNullable<TtsSettings['speechInstructions']>;
+    },
+  ): string {
     return ttsFingerprint(this.hasher, this.credential.keyGeneration(), {
       modelId: settings.modelId,
       voiceId: settings.voiceId,
       speed: settings.speed,
+      speechInstructions: settings.speechInstructions ?? 'unsupported',
     });
   }
 

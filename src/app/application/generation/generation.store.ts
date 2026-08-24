@@ -700,13 +700,17 @@ export class GenerationStore {
           continue;
         }
         const key = candidateKey(token);
-        if (byKey.has(key)) {
+        const existing = byKey.get(key);
+        if (existing !== undefined) {
+          if (!existing.contextsJa.includes(unit.textJa) && existing.contextsJa.length < 3) {
+            byKey.set(key, { ...existing, contextsJa: [...existing.contextsJa, unit.textJa] });
+          }
           continue;
         }
         byKey.set(key, {
           id: key,
           surface: token.surface,
-          contextJa: unit.textJa,
+          contextsJa: [unit.textJa],
           ...(token.lemma === undefined ? {} : { lemma: token.lemma }),
           ...(token.readingHiragana === undefined
             ? {}

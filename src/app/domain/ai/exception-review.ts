@@ -14,15 +14,14 @@ export interface ExceptionCandidate {
   readonly lemma?: string;
   readonly readingHiragana?: string;
   readonly partOfSpeech?: PartOfSpeech;
-  /** The sentence or title the word occurs in, so the policy has context. */
-  readonly contextJa: string;
+  /** Up to three distinct sentences/title occurrences, so the policy has context. */
+  readonly contextsJa: readonly string[];
 }
 
 export interface ExceptionDecision {
   readonly candidateId: string;
   readonly decision: 'approved' | 'rejected';
   readonly explanationEn: string;
-  readonly category?: string;
 }
 
 export type DecisionRejectionCode =

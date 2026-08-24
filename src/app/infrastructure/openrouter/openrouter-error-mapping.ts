@@ -20,6 +20,7 @@ export interface RequestContext {
  * providers agree on the vocabulary but not on the sentence.
  */
 const CAPABILITY_KEYWORDS: readonly { readonly match: string; readonly capability: string }[] = [
+  { match: 'instructions', capability: 'instructions' },
   { match: 'response_format', capability: 'structured-output' },
   { match: 'json_schema', capability: 'structured-output' },
   { match: 'structured output', capability: 'structured-output' },

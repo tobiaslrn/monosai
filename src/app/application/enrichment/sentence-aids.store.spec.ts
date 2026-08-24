@@ -295,7 +295,7 @@ describe('SentenceAidsStore', () => {
     expect(aids?.translation?.textEn).toBe('Sentence zero.');
   });
 
-  it('shows one shared translation row for every repeated sentence', async () => {
+  it('does not reuse a translation across repeated text with different neighbor context', async () => {
     const base = sentences(2);
     const window = [
       base[0],
@@ -307,7 +307,7 @@ describe('SentenceAidsStore', () => {
     await store.load(importedReading(), window);
 
     expect(store.aids().get(window[0].id)?.translation?.textEn).toBe('The repeated sentence.');
-    expect(store.aids().get(window[1].id)?.translation?.textEn).toBe('The repeated sentence.');
+    expect(store.aids().get(window[1].id)?.translation?.textEn).toBeUndefined();
   });
 
   it('marks an imported analysis judged against an older profile as stale', async () => {

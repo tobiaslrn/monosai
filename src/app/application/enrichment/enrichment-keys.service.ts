@@ -35,9 +35,16 @@ export class EnrichmentKeysService {
     promptVersion: string,
   ): ReadonlyMap<SentenceId, string> {
     return new Map(
-      sentences.map((sentence) => [
+      sentences.map((sentence, index) => [
         sentence.id,
-        translationCacheKey(this.hasher, sentence.contentHash, modelId, promptVersion),
+        translationCacheKey(
+          this.hasher,
+          sentence.contentHash,
+          modelId,
+          promptVersion,
+          sentences[index - 1]?.contentHash ?? null,
+          sentences[index + 1]?.contentHash ?? null,
+        ),
       ]),
     );
   }
@@ -66,11 +73,20 @@ export class EnrichmentKeysService {
     modelId: string,
     voiceId: string,
     optionsFingerprint: string,
+    speechInstructions: 'supported' | 'unsupported' = 'unsupported',
   ): ReadonlyMap<SentenceId, string> {
     return new Map(
-      sentences.map((sentence) => [
+      sentences.map((sentence, index) => [
         sentence.id,
-        audioCacheKey(this.hasher, sentence.contentHash, modelId, voiceId, optionsFingerprint),
+        audioCacheKey(
+          this.hasher,
+          sentence.contentHash,
+          modelId,
+          voiceId,
+          optionsFingerprint,
+          speechInstructions === 'supported' ? (sentences[index - 1]?.contentHash ?? null) : null,
+          speechInstructions === 'supported' ? (sentences[index + 1]?.contentHash ?? null) : null,
+        ),
       ]),
     );
   }

@@ -14,7 +14,7 @@ export const AI_ENDPOINT_VERSION = 'openrouter-v1';
 export const TEXT_MODEL_TEST_VERSION = 2;
 
 /** Bumped when the TTS compatibility test itself changes what it proves. */
-export const TTS_TEST_VERSION = 2;
+export const TTS_TEST_VERSION = 3;
 
 /**
  * How many times the saved key has changed, used in place of the key.
@@ -59,6 +59,7 @@ export function ttsFingerprint(
     modelId: config.modelId,
     voiceId: config.voiceId,
     speed: config.speed,
+    speechInstructions: config.speechInstructions,
     endpointVersion: AI_ENDPOINT_VERSION,
     testVersion: TTS_TEST_VERSION,
   });

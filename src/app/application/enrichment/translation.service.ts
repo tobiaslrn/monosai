@@ -89,15 +89,23 @@ export class TranslationService {
     const failures: SentenceId[] = [];
     let error: AiError | null = null;
     const batches = planBatches(misses);
+    const positionById = new Map(sentences.map((sentence, index) => [sentence.id, index]));
 
     for (const batch of batches) {
       if (signal.aborted) {
         break;
       }
-      const requested = batch.map((sentence) => ({
-        id: sentence.id,
-        textJa: sentence.japaneseText,
-      }));
+      const requested = batch.map((sentence) => {
+        const position = positionById.get(sentence.id);
+        const before = position === undefined ? undefined : sentences[position - 1];
+        const after = position === undefined ? undefined : sentences[position + 1];
+        return {
+          id: sentence.id,
+          textJa: sentence.japaneseText,
+          ...(before === undefined ? {} : { contextBeforeJa: before.japaneseText }),
+          ...(after === undefined ? {} : { contextAfterJa: after.japaneseText }),
+        };
+      });
       const answered = await this.provider.translate(
         { sentences: requested, promptVersion },
         config,

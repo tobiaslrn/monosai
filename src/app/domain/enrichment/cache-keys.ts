@@ -1,5 +1,6 @@
 import type { Hasher } from '../shared/hashing';
 import { hashCanonical } from '../shared/hashing';
+import { SPEECH_INSTRUCTION_VERSION } from '../ai/speech-instructions';
 
 /**
  * Cache keys and fingerprints for translation, grammar review, and audio.
@@ -18,11 +19,15 @@ export function translationCacheKey(
   sentenceContentHash: string,
   modelId: string,
   promptVersion: string,
+  contextBeforeContentHash: string | null = null,
+  contextAfterContentHash: string | null = null,
 ): string {
   return hashCanonical(hasher, 'translation', {
     sentenceContentHash,
     modelId,
     promptVersion,
+    contextBeforeContentHash,
+    contextAfterContentHash,
   });
 }
 
@@ -69,11 +74,17 @@ export function translationConfigFingerprint(
  */
 export function audioOptionsFingerprint(
   hasher: Hasher,
-  options: { readonly responseFormat: string; readonly speed: number },
+  options: {
+    readonly responseFormat: string;
+    readonly speed: number;
+    readonly speechInstructions?: 'supported' | 'unsupported';
+  },
 ): string {
   return hashCanonical(hasher, 'tts-options', {
     responseFormat: options.responseFormat,
     speed: options.speed,
+    speechInstructions: options.speechInstructions ?? 'unsupported',
+    speechInstructionVersion: SPEECH_INSTRUCTION_VERSION,
   });
 }
 
@@ -83,12 +94,16 @@ export function audioCacheKey(
   modelId: string,
   voiceId: string,
   optionsFingerprint: string,
+  contextBeforeContentHash: string | null = null,
+  contextAfterContentHash: string | null = null,
 ): string {
   return hashCanonical(hasher, 'tts', {
     sentenceContentHash,
     modelId,
     voiceId,
     optionsFingerprint,
+    contextBeforeContentHash,
+    contextAfterContentHash,
   });
 }
 

@@ -86,6 +86,13 @@ describe('audioOptionsFingerprint', () => {
 
     expect(audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speed: 1.25 })).not.toBe(base);
     expect(audioOptionsFingerprint(HASHER, { responseFormat: 'opus', speed: 1 })).not.toBe(base);
+    expect(
+      audioOptionsFingerprint(HASHER, {
+        responseFormat: 'mp3',
+        speed: 1,
+        speechInstructions: 'supported',
+      }),
+    ).not.toBe(base);
   });
 });
 
@@ -117,6 +124,25 @@ describe('audioCacheKey', () => {
     // clock, no counter, no credential — may leak into a key that is compared
     // across sessions.
     expect(audioCacheKey(HASHER, 'content-hash', 'tts-a', 'voice-a', OPTIONS)).toBe(base);
+  });
+
+  it('changes when either contextual neighbor changes', () => {
+    const base = audioCacheKey(
+      HASHER,
+      'content-hash',
+      'tts-a',
+      'voice-a',
+      OPTIONS,
+      'before-a',
+      'after-a',
+    );
+
+    expect(
+      audioCacheKey(HASHER, 'content-hash', 'tts-a', 'voice-a', OPTIONS, 'before-b', 'after-a'),
+    ).not.toBe(base);
+    expect(
+      audioCacheKey(HASHER, 'content-hash', 'tts-a', 'voice-a', OPTIONS, 'before-a', 'after-b'),
+    ).not.toBe(base);
   });
 
   /**

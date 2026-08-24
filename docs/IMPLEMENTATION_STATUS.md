@@ -25,6 +25,16 @@ Sections marked **Superseded** describe what was built at the time and why.
 They are kept as the record; the Reader-first rework at the end of this document
 states what replaced them.
 
+## Prompt-system optimization
+
+- Text tasks now share a neutral transport protocol and task-specific roles. Stable instructions stay in the system message; compact JSON data envelopes carry profile, vocabulary, premise, context, candidates, and repair evidence.
+- Story, repair, exception-review, grammar, and translation prompts are version 2. Native-schema requests no longer repeat a textual schema; JSON-contract models receive one compact fallback contract.
+- Vocabulary is transmitted once as disjoint suggested/other allowed arrays. Story prompts explicitly require premise fidelity, causal or temporal continuity, a complete narrative arc, natural level-appropriate Japanese, and low repetition.
+- Stories above 50 sentences use a blueprint plus sequential segments of at most 50 with continuity summaries and preceding-sentence context. Unit coverage assembles exact 50, 100, 200, and 800 sentence results, repairs a bad segment, and cancels in flight.
+- Translation includes bounded neighbor context and context-sensitive cache keys. Grammar review batches at 20, enforces valid UTF-16 spans, deduplicates findings, and stores at most three per sentence. Exception review receives up to three distinct contexts and no model-invented category.
+- Speech instructions are separately capability-tested and never enter spoken input. Supported models receive versioned, target-only natural-Japanese delivery guidance plus bounded neighbor context; older or rejecting presets fall back conservatively to exact-text synthesis. Database schema v6 migrates old presets to unsupported.
+- The fixed cross-model corpus and adoption scorecard live in `scripts/evals/`. Live three-family text evaluation and human contextual-prosody A/B review remain manual compatibility work, not automated claims.
+
 ## Milestone 0 — Repository and decision scaffolding
 
 ### Delivered

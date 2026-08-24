@@ -72,7 +72,7 @@ describe('GenerationStore strict pass', () => {
     const provenance = bed.readings.provenance[0];
     expect(provenance.repairAttempts).toBe(0);
     expect(provenance.modelId).toBe('vendor/text-model');
-    expect(provenance.promptVersions).toMatchObject({ story: 'story/1' });
+    expect(provenance.promptVersions).toMatchObject({ story: 'story/2' });
     expect(provenance.grammarProfileSnapshotId.length).toBeGreaterThan(0);
     expect(provenance.suggestedVocabularyItemIds.length).toBeGreaterThan(0);
   });

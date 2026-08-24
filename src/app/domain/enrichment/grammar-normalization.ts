@@ -46,7 +46,7 @@ export function normalizeReview(
   sentenceTextById: ReadonlyMap<SentenceId, string>,
 ): readonly ReviewedFinding[] {
   const knownIds = new Set(sentenceIds);
-  const normalized: ReviewedFinding[] = [];
+  const candidates = new Map<SentenceId, ReviewedFinding[]>();
 
   for (const finding of result.findings) {
     if (!knownIds.has(finding.sentenceId)) {
@@ -58,18 +58,41 @@ export function normalizeReview(
 
     const text = sentenceTextById.get(finding.sentenceId);
     const { startUtf16, endUtf16 } = finding;
-    const keepOffsets =
+    const hasOffsets = startUtf16 !== undefined || endUtf16 !== undefined;
+    const validOffsets =
       startUtf16 !== undefined &&
       endUtf16 !== undefined &&
       text !== undefined &&
       isValidRange(text, startUtf16, endUtf16);
-
-    normalized.push(
-      keepOffsets ? finding : { ...finding, startUtf16: undefined, endUtf16: undefined },
-    );
+    if (hasOffsets && !validOffsets) {
+      continue;
+    }
+    const existing = candidates.get(finding.sentenceId) ?? [];
+    const identity = `${finding.label.trim().toLowerCase()}\u0000${String(startUtf16)}\u0000${String(endUtf16)}`;
+    if (
+      existing.some(
+        (item) =>
+          `${item.label.trim().toLowerCase()}\u0000${String(item.startUtf16)}\u0000${String(item.endUtf16)}` ===
+          identity,
+      )
+    ) {
+      continue;
+    }
+    existing.push(finding);
+    candidates.set(finding.sentenceId, existing);
   }
 
-  return normalized;
+  return sentenceIds.flatMap((sentenceId) => {
+    const findings = candidates.get(sentenceId) ?? [];
+    return findings
+      .map((finding, index) => ({ finding, index }))
+      .sort((left, right) => {
+        const profilePriority = Number(left.finding.inProfile) - Number(right.finding.inProfile);
+        return profilePriority === 0 ? left.index - right.index : profilePriority;
+      })
+      .slice(0, 3)
+      .map(({ finding }) => finding);
+  });
 }
 
 export function concernCount(

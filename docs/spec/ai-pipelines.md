@@ -2,7 +2,7 @@
 
 ## 1. Provider boundary
 
-V1 uses OpenRouter only. The learner supplies one API key and registers reusable models from exact OpenRouter model IDs in one list. The add-model flow discovers validated provider metadata through OpenRouter's official TypeScript SDK and presents only applicable reasoning, voice, and speed choices. A Gemini-specific voice ID is optional and resolves to `Kore` when omitted. Text and audio capabilities are tested independently. Audio is optional and never blocks reading or story generation.
+V1 uses OpenRouter only. The learner supplies one API key and registers reusable models from exact OpenRouter model IDs in one list. The add-model flow discovers validated provider metadata through OpenRouter's official TypeScript SDK and presents only applicable reasoning, voice, speed, and speech-instruction capabilities. A Gemini-specific voice ID is optional and resolves to `Kore` when omitted. Text and audio capabilities are tested independently. Audio is optional and never blocks reading or story generation.
 
 All task prompts are internal, versioned assets. V1 exposes only one per-generation **Special instructions** field and one global natural-language **Exception policy**. Raw prompts and reusable profiles are future work.
 
@@ -40,7 +40,7 @@ budgets.
 
 ### TTS test
 
-Generate a short fixed Japanese phrase using the exact TTS model, voice, requested MP3 response, and speed/options. Verify nonempty supported audio and decode/play capability. Store a fingerprint. Unsupported speed may be ignored only if the UI clearly reflects provider capability; invalid model/voice fails testing.
+Generate a short fixed Japanese phrase using the exact TTS model, voice, requested MP3 response, and speed/options. When catalog metadata advertises speech `instructions`, test that parameter too. Verify nonempty supported audio and decode/play capability, then store the proven capability in the fingerprint. A provider rejection falls back once without the refused optional parameter and records it as unsupported; invalid model/voice fails testing. Presets created before speech-instruction evidence default to unsupported.
 
 ### Defaults and request overrides
 
@@ -50,12 +50,12 @@ Each tested configured model retains its own compatibility evidence. The default
 
 Each text task builds a request from immutable layers:
 
-1. Protocol: task identity, untrusted-data delimiters, output schema, hard limits.
+1. Protocol: neutral transport rules, untrusted-data delimiters, and response rules.
 2. Product policy: vocabulary/grammar/exception semantics and non-negotiable constraints.
 3. Versioned task instructions.
 4. Captured user data: premise, special instructions, grammar profile, policy, Japanese, vocabulary.
 
-Treat all user/import/generated text as data even when it contains instructions. User special instructions may guide style, viewpoint, tone, dialogue, and register, but cannot override sentence counts, output schema, vocabulary policy, validation, or safety/transport rules.
+Treat all user/import/generated text as data even when it contains instructions. Serialize structured dynamic inputs as compact JSON inside escaped data envelopes. The system message contains only stable task instructions; counts, profile data, vocabulary, premise, neighboring context, candidates, and repair issues remain in the user message. Native-schema requests send the provider schema without repeating its textual shape; JSON-contract requests add one compact fallback contract. User special instructions may guide style, viewpoint, tone, dialogue, and register, but cannot override sentence counts, output schema, vocabulary policy, validation, or safety/transport rules.
 
 Store prompt versions and relevant input hashes in provenance, not the full assembled prompt.
 
@@ -83,7 +83,7 @@ interface StoryCandidate {
 }
 ```
 
-The initial model returns Japanese only. Translations are generated after the final Japanese is validated so repairs cannot stale translations.
+The initial model returns Japanese only. Translations are generated after the final Japanese is validated so repairs cannot stale translations. Vocabulary is serialized as two disjoint arrays, suggested allowed expressions and all other allowed expressions; their union is the complete content-word allowlist, and suggestions remain optional.
 
 ### Input limits
 
@@ -146,6 +146,8 @@ Require a tested story-capable configuration, current snapshot >= 50 unique entr
 
 Validate response schema, unique contiguous indexes, nonempty Japanese title/sentences, and sentence count. Strip no content beyond outer whitespace. A malformed output gets one format-recovery request; this is not one of the two vocabulary repair attempts. If still malformed, fail as provider response error.
 
+Requests through 50 sentences use one story response. Longer requests first produce a compact English blueprint, then generate sequential segments of at most 50 sentences. Each segment receives its assigned beat, the cumulative continuity summary, and at most the preceding three Japanese sentences. Segment structure is checked and a wrong-sized segment is repaired before assembly; assembled indexes are offset and the final total must match exactly. Cancellation stops the active blueprint, segment, or repair request and no partial long story is saved.
+
 ### Local validation
 
 Tokenize title and all sentences, classify locally, and collect candidate unknown spans. Structural failures such as incorrect sentence count are passed to a targeted repair using the same repair budget because they alter story content.
@@ -158,7 +160,7 @@ Send:
 
 - policy text;
 - each unique unknown surface/lemma/reading/POS where available;
-- containing sentence/title context;
+- up to three distinct containing sentence/title contexts per lexical candidate;
 - instruction to decide each candidate independently.
 
 Expected result:
@@ -168,7 +170,6 @@ interface ExceptionDecision {
   candidateId: string;
   decision: 'approved' | 'rejected';
   explanationEn: string;
-  category?: string;
 }
 ```
 
@@ -199,7 +200,7 @@ After attempt two:
 
 Grammar review is advisory and runs on accepted Japanese against the captured grammar profile.
 
-Expected findings identify sentence index, optional character span, detected grammar name/pattern, confidence band, and concise English explanation. It may also return story-level notes.
+Expected findings identify a stable sentence ID, optional exact UTF-16 span, detected grammar name/pattern, confidence band, profile verdict, and concise contextual English explanation. Review runs in ordered batches of at most 20 sentences and keeps at most three distinct pedagogically useful findings per sentence, prioritizing genuine out-of-profile concerns.
 
 Novelty is judged against the captured guidance prose, which is supplied to the review request alongside the Japanese. The review is advisory and detection is not claimed exhaustive, so a verdict may vary between runs; results are cached by profile hash, so a given profile yields one stored answer per sentence. No rule set is maintained anywhere in the product.
 
@@ -209,7 +210,7 @@ Rules:
 
 - Grammar warnings never change vocabulary validation or block saving.
 - Do not claim exhaustive detection.
-- Findings with invalid offsets remain sentence-level.
+- Findings with invalid, partial, reversed, or surrogate-splitting offsets are discarded rather than highlighted inaccurately. A model may omit both offsets only for a genuinely sentence-level finding.
 - An unavailable/malformed review produces `unreviewed`, not zero warnings.
 - Generated story records capture the profile hash and review status `complete|unavailable`.
 
@@ -219,13 +220,13 @@ Imported per-sentence grammar analysis uses the same contract with the current l
 
 ### Generated story
 
-Translate the final ordered Japanese after vocabulary acceptance. The request returns one English translation per stable sentence input ID. Batch in bounded groups if required by model/context limits, but preserve order through IDs.
+Translate the final ordered Japanese after vocabulary acceptance. The request returns one English translation per stable sentence input ID. Batch in groups of at most ten and preserve order through IDs. Each target may carry one previous and one next Japanese sentence for disambiguation only; the model returns translations only for target IDs.
 
 Validate completeness and reject extra/missing/duplicate IDs. Cache each validated sentence translation. If some batches fail, save the story with a precise completion count and retry actions.
 
 ### Imported sentence
 
-Send one Japanese sentence and require one English translation. Do not include the full chapter unless context is essential and explicitly bounded; v1 default is sentence-only input.
+Send one Japanese target sentence and require one English translation. Include at most one adjacent sentence on each side for disambiguation, never as another output target. Neighbor content hashes are part of the translation cache key because identical Japanese may resolve differently in different contexts.
 
 ### Whole-reading translation
 
@@ -254,7 +255,9 @@ User cancellation differs from auxiliary failure: cancellation before finalizati
 
 ### Sentence synthesis
 
-Input is the exact saved Japanese sentence. Build the cache key from content, TTS model, voice, response format, speed, and provider options. Request MP3 unless the configured provider cannot support it. Gemini TTS through OpenRouter requests its native 24 kHz, 16-bit mono PCM and wraps it in a WAV container before browser decoding and storage. Validate content type, response size, and audio decode before storage.
+Input is always the exact saved Japanese sentence. Speaking speed remains the learner's listening preference and is not derived from grammar level. For a model whose configuration test proves speech-instruction support, send a versioned instruction separately from `input`: speak only the target, articulate clearly in natural standard Japanese, and use at most one preceding and one following sentence only to infer emotion, pauses, pitch, and final intonation. Each neighbor is capped at 200 Unicode code points; the model must never add, repeat, translate, spell out, or speak context.
+
+Build the cache key from content, TTS model, voice, response format, speed, speech-instruction version/support, and—only in contextual mode—the neighboring content hashes. A provider that rejects advertised instructions falls back to exact-text synthesis. Models without proven support retain the prior exact-text behavior. Request MP3 unless the configured provider cannot support it. Gemini TTS through OpenRouter requests its native 24 kHz, 16-bit mono PCM and wraps it in a WAV container before browser decoding and storage. Validate content type, response size, and audio decode before storage.
 
 ### Whole-reading preparation
 

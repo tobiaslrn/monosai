@@ -43,10 +43,10 @@ describe('EnrichmentKeysService', () => {
 
     expect(keys.size).toBe(2);
     expect(keys.get(sentenceId('s1'))).toBe(
-      translationCacheKey(TEST_HASHER, 'hash-1', 'vendor/model', 'translation/1'),
+      translationCacheKey(TEST_HASHER, 'hash-1', 'vendor/model', 'translation/1', null, 'hash-2'),
     );
     expect(keys.get(sentenceId('s2'))).toBe(
-      translationCacheKey(TEST_HASHER, 'hash-2', 'vendor/model', 'translation/1'),
+      translationCacheKey(TEST_HASHER, 'hash-2', 'vendor/model', 'translation/1', 'hash-1', null),
     );
   });
 
@@ -81,6 +81,41 @@ describe('EnrichmentKeysService', () => {
     const second = service.audioKeys(sentences, 'vendor/tts', 'voice-b', 'options-fp');
 
     expect(first.get(sentenceId('s1'))).not.toBe(second.get(sentenceId('s1')));
+  });
+
+  it('includes neighbor hashes only when contextual speech instructions are supported', () => {
+    const sentences = [
+      sentence('s1', 'hash-1'),
+      sentence('s2', 'hash-2'),
+      sentence('s3', 'hash-3'),
+    ];
+    const contextual = service.audioKeys(
+      sentences,
+      'vendor/tts',
+      'voice-a',
+      'options-fp',
+      'supported',
+    );
+    const exactText = service.audioKeys(
+      sentences,
+      'vendor/tts',
+      'voice-a',
+      'options-fp',
+      'unsupported',
+    );
+
+    expect(contextual.get(sentenceId('s2'))).toBe(
+      audioCacheKey(
+        TEST_HASHER,
+        'hash-2',
+        'vendor/tts',
+        'voice-a',
+        'options-fp',
+        'hash-1',
+        'hash-3',
+      ),
+    );
+    expect(contextual.get(sentenceId('s2'))).not.toBe(exactText.get(sentenceId('s2')));
   });
 
   /**
