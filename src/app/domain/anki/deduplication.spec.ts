@@ -70,6 +70,19 @@ describe('mergeEntries', () => {
     expect(result.duplicateOccurrences).toBe(1);
   });
 
+  it('merges scheduling signals in the direction each priority mode needs', () => {
+    const result = mergeEntries(
+      [
+        entry({ sourceRecordId: 'n1', reps: 8, lapseRatio: 0.1, easeFactor: 2_400 }),
+        entry({ sourceRecordId: 'n2', reps: 2, lapseRatio: 0.6, easeFactor: 1_700 }),
+      ],
+      SNAPSHOT,
+      idSequence(),
+    );
+
+    expect(result.items[0]).toMatchObject({ reps: 2, lapseRatio: 0.6, easeFactor: 1_700 });
+  });
+
   it('retains one provenance record per mapping and note', () => {
     const result = mergeEntries(
       [

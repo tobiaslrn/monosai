@@ -145,7 +145,7 @@ For each selected mapping, include a note's field value when:
 2. At least one card for that note is within the selected deck scope.
 3. At least one such card has review evidence equivalent to `reps > 0` or a provider query that excludes never-reviewed/new cards.
 
-Suspended, buried, lapsed, or mature state does not remove eligibility after at least one review. Review recency, interval, ease, and card maturity do not weight vocabulary in v1.
+Suspended, buried, lapsed, or mature state does not remove eligibility after at least one review. Optional scheduling signals are normalized per note: the lowest positive `reps`, the highest `lapses / reps` ratio, and the lowest non-zero ease factor across eligible cards. Missing columns remain valid and produce neutral palette weighting; these signals never change the complete vocabulary allowlist.
 
 When a provider returns notes rather than cards, its query semantics must be contract-tested to prove that each returned note has at least one qualifying card. If that cannot be established, the adapter cannot create a snapshot.
 

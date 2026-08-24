@@ -215,6 +215,9 @@ export class AutomaticAnkiSyncCoordinator {
           entries: (entries.get(source.id) ?? []).map((entry) => ({
             rawValue: entry.rawFieldValue,
             ...(entry.sourceNoteId === undefined ? {} : { sourceRecordId: entry.sourceNoteId }),
+            ...(entry.reps === undefined ? {} : { reps: entry.reps }),
+            ...(entry.lapseRatio === undefined ? {} : { lapseRatio: entry.lapseRatio }),
+            ...(entry.easeFactor === undefined ? {} : { easeFactor: entry.easeFactor }),
           })),
           warnings,
         })),

@@ -278,6 +278,7 @@ export function generatedStoryDraftFixture(
     promptVersions: { story: 'story/1' },
     repairAttempts: 0,
     suggestedVocabularyItemIds: [],
+    ankiWordPriorityMode: 'uniform',
     createdAt,
     ...options.provenance,
   };

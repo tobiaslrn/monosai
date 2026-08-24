@@ -268,6 +268,9 @@ export class VocabularyRefreshStore {
       entriesBySource.get(entry.sourceMappingId)?.push({
         rawValue: entry.rawFieldValue,
         ...(entry.sourceNoteId === undefined ? {} : { sourceRecordId: entry.sourceNoteId }),
+        ...(entry.reps === undefined ? {} : { reps: entry.reps }),
+        ...(entry.lapseRatio === undefined ? {} : { lapseRatio: entry.lapseRatio }),
+        ...(entry.easeFactor === undefined ? {} : { easeFactor: entry.easeFactor }),
       });
     }
     const refreshedAt = Date.now();

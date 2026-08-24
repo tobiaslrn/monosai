@@ -2,12 +2,18 @@ import { Injectable, inject } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
 import { checkContextBudget, type ContextBudget } from '../../domain/ai/context-budget';
 import type { StoryGenerationRequest } from '../../domain/ai/story-request';
-import { paletteSizeFor, samplePalette } from '../../domain/ai/suggestion-palette';
+import {
+  paletteSizeFor,
+  sampleWeightedPalette,
+  type PaletteCandidate,
+} from '../../domain/ai/suggestion-palette';
+import { mergeSchedulingSignals } from '../../domain/anki/scheduling-signals';
 import type { StoryForm } from '../../domain/reading/reading';
 import type { SnapshotId, VocabularyItemId } from '../../domain/shared/ids';
 import { ok, type Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { RANDOM_SOURCE, VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
+import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
 
 /** Items read per streamed batch, matching the reader's classification path. */
 const ITEM_BATCH_SIZE = 500;
@@ -44,32 +50,49 @@ export class VocabularyPreparationService {
   async prepare(
     snapshotId: SnapshotId,
     form: StoryForm,
+    priorityMode: AnkiWordPriorityMode = 'uniform',
   ): Promise<Result<PreparedVocabulary, StorageError>> {
-    const expressionByItem = new Map<VocabularyItemId, string>();
-    const canonical = new Set<string>();
+    const candidatesByExpression = new Map<string, PaletteCandidate>();
 
     for await (const batch of this.vocabulary.streamItems(snapshotId, ITEM_BATCH_SIZE)) {
       for (const item of batch) {
         if (item.canonicalExpression === '') {
           continue;
         }
-        canonical.add(item.canonicalExpression);
-        expressionByItem.set(item.id, item.canonicalExpression);
+        const existing = candidatesByExpression.get(item.canonicalExpression);
+        if (existing === undefined) {
+          candidatesByExpression.set(item.canonicalExpression, {
+            id: item.id,
+            ...mergeSchedulingSignals(undefined, item),
+          });
+        } else {
+          candidatesByExpression.set(item.canonicalExpression, {
+            ...existing,
+            ...mergeSchedulingSignals(existing, item),
+          });
+        }
       }
     }
 
-    const itemIds = [...expressionByItem.keys()];
-    const suggestedItemIds = samplePalette(
-      itemIds,
-      paletteSizeFor(form, itemIds.length),
+    const candidates = [...candidatesByExpression.values()];
+    const expressionByItem = new Map(
+      [...candidatesByExpression.entries()].map(([expression, candidate]) => [
+        candidate.id,
+        expression,
+      ]),
+    );
+    const suggestedItemIds = sampleWeightedPalette(
+      candidates,
+      paletteSizeFor(form, candidates.length),
+      priorityMode,
       this.random,
     );
 
     return ok({
-      allowedVocabulary: [...canonical],
+      allowedVocabulary: [...candidatesByExpression.keys()],
       suggestedVocabulary: suggestedItemIds.map((id) => expressionByItem.get(id) ?? ''),
       suggestedItemIds,
-      uniqueExpressionCount: canonical.size,
+      uniqueExpressionCount: candidates.length,
     });
   }
 

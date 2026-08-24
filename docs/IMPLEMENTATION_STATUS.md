@@ -677,6 +677,13 @@ only in the store.
 Only distinct expressions are tokenized — a deck with heavy duplication would
 otherwise pay for the same analysis many times.
 
+The Anki adapters also retain optional scheduling signals without widening
+eligibility: minimum positive `reps`, maximum `lapses / reps`, and minimum
+non-zero ease. AnkiConnect reads `lapses` and `factor` from `cardsInfo`; package
+imports read those columns when present and still require only `reps`. Duplicate
+expressions merge the signals, and automatic refreshes commit scheduling-only
+changes silently when the canonical allowlist is unchanged.
+
 ### Verified
 
 - 834 unit tests, including the shared contract across five provider
@@ -883,9 +890,10 @@ test on its own: `story-request.ts` (the request, the four exact slider counts, 
 whitespace trimmed and nothing else, a wrong sentence count reported as
 _repairable_ rather than malformed), `exception-review.ts` (a decision must name
 an input id exactly once and give a real reason; rejected, unreviewed, and
-invalidly decided candidates all stay unknown), `suggestion-palette.ts` (a
-partial Fisher–Yates shuffle over an injected `RandomSource`, scaling from 40
-for Tiny to 180 for Long and capped by snapshot size), `context-budget.ts` (a deterministic
+invalidly decided candidates all stay unknown), `suggestion-palette.ts` (the
+uniform partial Fisher–Yates sampler plus weighted without-replacement Recent
+and Difficult modes, scaling from 40 for Tiny to 180 for Long and capped by
+snapshot size), `context-budget.ts` (a deterministic
 estimate and the 60,000-token guard that fails before spending), plus
 `prompt-versions.ts` and `generation-provenance.ts`.
 
@@ -952,8 +960,10 @@ warning when the preset outruns the snapshot — the item Milestones 4 and 5
 deferred here.
 
 The form has aligned premise and special-instruction fields beside a compact
-settings panel with a four-stop Tiny-to-Long slider and a preview-only Anki
-word-selection control. Both text fields have live counters. Read-only snapshot
+settings panel with a four-stop Tiny-to-Long slider and an enabled Anki
+word-priority select whose Uniform, Recently learned, and Difficult modes are
+remembered immediately; the captured mode is written alongside sampled item IDs
+in generation provenance. Both text fields have live counters. Read-only snapshot
 and preset links sit above a Generate button that says a request is coming and
 estimates no price. There is no
 genre picker, no topic suggestions, no visible target vocabulary, no temperature,

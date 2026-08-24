@@ -93,9 +93,28 @@ The initial model returns Japanese only. Translations are generated after the fi
 - Grammar/profile serialization and vocabulary lists are bounded by a request-size guard of 60,000 tokens for the assembled request. With the supported 50–1,800 vocabulary range, include the complete canonical expression list when it fits that budget.
 - If a configuration cannot fit the request, fail before spending with `context-budget-exceeded`; do not truncate silently.
 
-### Uniform variety
+### Word-priority palette
 
-Before each generation, use a cryptographically adequate random shuffle of the snapshot IDs and select a hidden suggestion palette. Default palette sizes are 40 for Tiny/Micro, 100 for Short, 140 for Medium, and 180 for Long, capped by snapshot size. The complete vocabulary list remains the allowlist and local validation authority; suggested items are inspiration, not required targets. Store the sampled item IDs in provenance for debugging/reproducibility but never display a target list in the UI.
+Before each generation, capture the persisted Anki word-priority mode and select
+a hidden suggestion palette. `uniform` retains the partial Fisher–Yates sampler;
+`recent` moderately favours fewer reviews and `difficult` moderately favours
+lapses and lower ease. Palette sizes remain 40 for Tiny/Micro, 100 for Short,
+140 for Medium, and 180 for Long, capped by snapshot size. The complete
+vocabulary list remains the allowlist and local validation authority; suggested
+items are inspiration, not required targets.
+
+For biased modes every candidate starts at integer weight `1000`:
+
+- Recently learned: `1000 + round(3000 / sqrt(reps))`.
+- Difficult: `1000 + round(3000 × (0.75 × lapseRatio + 0.25 × easePenalty))`,
+  where `easePenalty = clamp((2500 - factor) / 1200, 0, 1)`.
+
+Weighted selection is without replacement. Missing scheduling signals use the
+neutral baseline, and duplicate expressions merge signals using the lowest
+review count, highest lapse ratio, and lowest valid ease. Store the sampled item
+IDs and the captured mode in provenance, but never display a target list in the
+UI. Existing provenance rows and snapshots without these fields read as
+`uniform`/neutral until their Anki source is synchronized or reimported.
 
 ## 5. Generation state machine
 

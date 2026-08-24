@@ -3,7 +3,8 @@ import { env } from 'node:process';
 
 const PORT = 4200;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
-const IS_CI = env.CI === 'true';
+const PROCESS_ENV = env as Record<string, string | undefined>;
+const IS_CI = PROCESS_ENV.CI === 'true';
 
 /**
  * Chrome is the only officially supported browser family, so both projects use

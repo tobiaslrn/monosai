@@ -4,6 +4,7 @@ import {
   DEFAULT_READER_PREFERENCES,
   isValidAnkiConnectPort,
   type AppSettings,
+  type AnkiWordPriorityMode,
   type ReaderPreferences,
   type ThemeSetting,
 } from '../../domain/settings/settings';
@@ -27,6 +28,7 @@ export class AppSettingsStore {
   readonly theme = computed(() => this.appSettings().theme);
   readonly activeSnapshotId = computed(() => this.appSettings().activeSnapshotId);
   readonly ankiConnectPort = computed(() => this.appSettings().ankiConnectPort);
+  readonly ankiWordPriorityMode = computed(() => this.appSettings().ankiWordPriorityMode);
   readonly readerPreferences = this.preferences.asReadonly();
   readonly lastFailure = this.failure.asReadonly();
 
@@ -87,6 +89,23 @@ export class AppSettingsStore {
     this.appSettings.set({ ...previous, ankiConnectPort: port });
 
     const saved = await this.repository.updateAppSettings({ ankiConnectPort: port });
+    if (saved.ok) {
+      this.appSettings.set(saved.value);
+      this.failure.set(null);
+    } else {
+      this.appSettings.set(previous);
+      this.failure.set(saved.error);
+    }
+  }
+
+  async setAnkiWordPriorityMode(mode: AnkiWordPriorityMode): Promise<void> {
+    if (!['uniform', 'recent', 'difficult'].includes(mode)) {
+      return;
+    }
+    const previous = this.appSettings();
+    this.appSettings.set({ ...previous, ankiWordPriorityMode: mode });
+
+    const saved = await this.repository.updateAppSettings({ ankiWordPriorityMode: mode });
     if (saved.ok) {
       this.appSettings.set(saved.value);
       this.failure.set(null);

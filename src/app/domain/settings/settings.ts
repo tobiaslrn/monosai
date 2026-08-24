@@ -2,6 +2,7 @@ import type { StructuredOutputMode } from '../ai/model-test';
 import type { SnapshotId } from '../shared/ids';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
+export type AnkiWordPriorityMode = 'uniform' | 'recent' | 'difficult';
 
 export const DEFAULT_ANKI_CONNECT_PORT = 8_765;
 
@@ -13,6 +14,7 @@ export interface AppSettings {
   readonly theme: ThemeSetting;
   readonly activeSnapshotId: SnapshotId | null;
   readonly ankiConnectPort: number;
+  readonly ankiWordPriorityMode: AnkiWordPriorityMode;
   readonly updatedAt: number;
 }
 
@@ -20,6 +22,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   theme: 'system',
   activeSnapshotId: null,
   ankiConnectPort: DEFAULT_ANKI_CONNECT_PORT,
+  ankiWordPriorityMode: 'uniform',
   updatedAt: 0,
 };
 

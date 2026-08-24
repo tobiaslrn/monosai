@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { MAX_PREMISE_LENGTH } from '../../domain/ai/story-request';
+import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
 import { StoryFormComponent } from './story-form.component';
 
 @Component({
@@ -14,12 +15,15 @@ import { StoryFormComponent } from './story-form.component';
     [disabled]="disabled()"
     snapshotSummary="200 reviewed words"
     presetName="Starter forms"
+    [ankiWordPriorityMode]="priorityMode()"
+    (ankiWordPriorityModeChanged)="priorityMode.set($event)"
     (generate)="generated = generated + 1"
   />`,
 })
 class HostComponent {
   readonly canGenerate = signal(true);
   readonly disabled = signal(false);
+  readonly priorityMode = signal<AnkiWordPriorityMode>('uniform');
   generated = 0;
 }
 
@@ -116,14 +120,32 @@ describe('StoryFormComponent', () => {
     expect(slider.getAttribute('aria-valuetext')).toBe('Long, 50 sentences');
   });
 
-  it('names unavailable Anki word selection without roadmap copy', () => {
+  it('offers the remembered Anki word-priority modes', () => {
     const { element } = render();
 
     const select = element.querySelector<HTMLSelectElement>('#mn-word-selection');
-    expect(select?.disabled).toBe(true);
-    expect(select?.textContent).toContain('Word selection unavailable');
-    expect(element.querySelector('.word-selection')?.textContent).toContain('Unavailable');
-    expect(element.textContent).not.toContain('coming later');
+    expect(select?.disabled).toBe(false);
+    expect(select?.value).toBe('uniform');
+    expect(select?.textContent).toContain('Recently learned');
+    expect(select?.textContent).toContain('Difficult');
+    expect(element.querySelector('.word-selection')?.textContent).toContain('Inspiration only');
+  });
+
+  it('emits a changed mode and locks the select during generation', () => {
+    const { element, fixture, host } = render();
+    const select = element.querySelector<HTMLSelectElement>('#mn-word-selection');
+    if (select === null) {
+      throw new Error('word-priority select was not rendered');
+    }
+
+    select.value = 'recent';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(host.priorityMode()).toBe('recent');
+
+    host.disabled.set(true);
+    fixture.detectChanges();
+    expect(select.disabled).toBe(true);
   });
 
   it('names the missing text model and sends the learner to Settings', () => {

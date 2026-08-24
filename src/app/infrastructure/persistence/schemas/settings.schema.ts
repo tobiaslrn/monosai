@@ -13,6 +13,7 @@ export const appSettingsSchema = z.object({
   theme: z.enum(['system', 'light', 'dark']),
   activeSnapshotId: snapshotIdSchema.nullable(),
   ankiConnectPort: z.number().int().min(1).max(65_535).default(DEFAULT_ANKI_CONNECT_PORT),
+  ankiWordPriorityMode: z.enum(['uniform', 'recent', 'difficult']).default('uniform'),
   updatedAt: timestampSchema,
 });
 

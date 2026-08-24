@@ -5,6 +5,7 @@ import type { SourceMapping } from '../vocabulary/source-mapping';
 import type { AnkiCapabilities } from './capabilities';
 import type { AnkiCatalog } from './catalog';
 import type { AnkiError } from './anki-error';
+import type { AnkiSchedulingSignals } from './scheduling-signals';
 
 /**
  * One reviewed field value, exactly as the provider read it.
@@ -19,6 +20,10 @@ export interface ExtractedEntry {
   readonly rawFieldValue?: string;
   /** Diagnostic only. Providers that cannot expose note ids safely omit it. */
   readonly sourceNoteId?: string;
+  /** Optional normalized scheduling state from eligible cards for this note. */
+  readonly reps?: AnkiSchedulingSignals['reps'];
+  readonly lapseRatio?: AnkiSchedulingSignals['lapseRatio'];
+  readonly easeFactor?: AnkiSchedulingSignals['easeFactor'];
 }
 
 /**

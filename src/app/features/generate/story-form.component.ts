@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output } f
 import { RouterLink } from '@angular/router';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { STORY_SENTENCE_COUNTS } from '../../domain/ai/story-request';
+import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
 const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
@@ -119,11 +120,23 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         <div class="word-selection">
           <div class="setting-label">
             <label for="mn-word-selection">Anki word selection</label>
-            <span>Unavailable</span>
+            <span>Inspiration only</span>
           </div>
-          <select id="mn-word-selection" disabled>
-            <option>Word selection unavailable</option>
+          <select
+            id="mn-word-selection"
+            data-testid="word-priority-select"
+            [value]="ankiWordPriorityMode()"
+            [disabled]="disabled()"
+            aria-describedby="mn-word-selection-help"
+            (change)="onWordPriorityMode($event)"
+          >
+            <option value="uniform">Uniform</option>
+            <option value="recent">Recently learned</option>
+            <option value="difficult">Difficult</option>
           </select>
+          <p id="mn-word-selection-help" class="word-selection-help">
+            The full vocabulary remains allowed; this only changes hidden inspiration.
+          </p>
         </div>
 
         <div class="generation-sources" data-testid="form-sources">
@@ -369,6 +382,12 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       margin-top: var(--space-2);
     }
 
+    .word-selection-help {
+      margin: var(--space-2) 0 0;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
     @media (max-width: 719px) {
       .composer-grid {
         grid-template-columns: minmax(0, 1fr);
@@ -454,9 +473,11 @@ export class StoryFormComponent {
     readonly { readonly id: string; readonly name: string; readonly isDefault: boolean }[]
   >([]);
   readonly selectedModelId = input<string | null>(null);
+  readonly ankiWordPriorityMode = input<AnkiWordPriorityMode>('uniform');
 
   readonly generate = output<void>();
   readonly modelSelected = output<string | null>();
+  readonly ankiWordPriorityModeChanged = output<AnkiWordPriorityMode>();
 
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
   protected readonly lengthLabels = LENGTH_LABELS;
@@ -500,6 +521,13 @@ export class StoryFormComponent {
     const sentenceCount = STORY_SENTENCE_COUNTS.at(index);
     if (sentenceCount !== undefined) {
       this.draft.setSentenceCount(sentenceCount);
+    }
+  }
+
+  protected onWordPriorityMode(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    if (value === 'uniform' || value === 'recent' || value === 'difficult') {
+      this.ankiWordPriorityModeChanged.emit(value);
     }
   }
 }

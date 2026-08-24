@@ -262,6 +262,28 @@ describe('PackageWorkerHost', () => {
       expect(result.fields.map((field) => field.rawFieldValue)).toContain('to see');
     });
 
+    it('returns normalized scheduling signals when package card columns exist', async () => {
+      const harness = createPackageHarness();
+      await open(harness, 'contract-schema18-zstd.apkg');
+      const result = await extract(harness, BASIC_EXPRESSION);
+
+      const neko = result.fields.find((field) => field.rawFieldValue === '<b>ねこ</b>');
+      expect(neko).toMatchObject({ reps: 3, lapseRatio: 1 / 3, easeFactor: 2_400 });
+
+      const plainNeko = result.fields.find((field) => field.rawFieldValue === 'ねこ');
+      expect(plainNeko).toMatchObject({ reps: 1, lapseRatio: 0 });
+      expect(plainNeko).not.toHaveProperty('easeFactor');
+
+      const legacyHarness = createPackageHarness();
+      await open(legacyHarness, 'contract-schema11.apkg');
+      const legacy = await extract(legacyHarness, BASIC_EXPRESSION);
+      expect(legacy.fields.find((field) => field.rawFieldValue === '<b>ねこ</b>')).toMatchObject({
+        reps: 3,
+        lapseRatio: 1 / 3,
+        easeFactor: 2_400,
+      });
+    });
+
     it('counts a review made in a filtered deck against the card home deck', async () => {
       const harness = createPackageHarness();
       await open(harness, 'filtered-deck.apkg');

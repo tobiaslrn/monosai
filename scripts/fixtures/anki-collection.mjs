@@ -19,13 +19,13 @@ export const CONTRACT_COLLECTION = {
       id: 'n-neko-html',
       noteTypeName: 'Basic',
       fieldValues: ['<b>ねこ</b>', 'cat'],
-      cards: [{ deckName: 'Core Japanese', reps: 3 }],
+      cards: [{ deckName: 'Core Japanese', reps: 3, lapses: 1, factor: 2400 }],
     },
     {
       id: 'n-neko-plain',
       noteTypeName: 'Basic',
       fieldValues: ['ねこ', 'cat again'],
-      cards: [{ deckName: 'Core Japanese', reps: 1 }],
+      cards: [{ deckName: 'Core Japanese', reps: 1, lapses: 0, factor: 0 }],
     },
     {
       id: 'n-mainichi',
@@ -45,20 +45,20 @@ export const CONTRACT_COLLECTION = {
       fieldValues: ['見る', 'to see'],
       cards: [
         { deckName: 'Core Japanese', reps: 0 },
-        { deckName: 'Core Japanese', reps: 5, suspended: true },
+        { deckName: 'Core Japanese', reps: 5, lapses: 3, factor: 1700, suspended: true },
       ],
     },
     {
       id: 'n-inu',
       noteTypeName: 'Basic',
       fieldValues: ['<script>alert(1)</script>犬', 'dog'],
-      cards: [{ deckName: 'Core Japanese', reps: 2 }],
+      cards: [{ deckName: 'Core Japanese', reps: 2, lapses: 1, factor: 2200 }],
     },
     {
       id: 'n-onaka',
       noteTypeName: 'Basic',
       fieldValues: ['お腹 が 空いた', 'hungry'],
-      cards: [{ deckName: 'Core Japanese', reps: 1 }],
+      cards: [{ deckName: 'Core Japanese', reps: 1, lapses: 0, factor: 2500 }],
     },
     {
       id: 'n-pen',
