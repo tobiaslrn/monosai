@@ -131,7 +131,7 @@ Each milestone should leave the main branch production-buildable. Commit generat
 ### Build
 
 - Implement Generate prerequisites and form: premise, form, special instructions, snapshot/profile summaries.
-- Implement vocabulary preparation, hidden uniform suggestion palette, prompt builder, schema validation, and one format recovery.
+- Implement vocabulary preparation, hidden word-priority suggestion palette (uniform, recently learned, and difficult), prompt builder, schema validation, and one format recovery.
 - Implement generation state machine, full local validation of title/sentences, exception review, at-most-two targeted repairs, cancellation, and invalid draft UI.
 - Capture all provenance and enforce accepted-story domain invariants.
 

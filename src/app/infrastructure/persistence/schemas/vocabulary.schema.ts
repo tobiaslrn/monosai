@@ -11,6 +11,12 @@ import {
 export const providerKindSchema = z.enum(['desktop-connect', 'android-connect', 'package']);
 export const sourceKindSchema = z.enum(['anki-connect', 'anki-package', 'text-list']);
 
+const schedulingSignalsShape = {
+  reps: z.number().int().positive().optional(),
+  lapseRatio: z.number().min(0).max(1).optional(),
+  easeFactor: z.number().positive().optional(),
+};
+
 export const vocabularySnapshotRowSchema = z.object({
   v: rowVersionSchema,
   id: snapshotIdSchema,
@@ -39,6 +45,7 @@ export const vocabularyItemRowSchema = z.object({
   visibleExpression: nonEmptyString,
   canonicalExpression: nonEmptyString,
   expressionHash: nonEmptyString,
+  ...schedulingSignalsShape,
   analyzedSequence: z
     .array(
       z.object({
@@ -110,6 +117,7 @@ export const vocabularySourceCacheRowSchema = z.object({
       z.object({
         rawValue: z.string().optional(),
         sourceRecordId: z.string().optional(),
+        ...schedulingSignalsShape,
       }),
     )
     .readonly(),

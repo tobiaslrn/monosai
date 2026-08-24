@@ -24,6 +24,9 @@ export interface CollectionNoteType {
 export interface ReviewedNote {
   readonly noteId: string;
   readonly fieldValues: readonly string[];
+  readonly reps?: number;
+  readonly lapseRatio?: number;
+  readonly easeFactor?: number;
 }
 
 export interface CollectionReader {
@@ -198,6 +201,10 @@ export function openCollectionReader(
     );
   }
 
+  const cardsColumns = columnNames(database, 'cards');
+  const hasLapses = cardsColumns.has('lapses');
+  const hasFactor = cardsColumns.has('factor');
+
   const layout = tables.has('notetypes') && tables.has('fields') ? 'normalized' : 'legacy-json';
   let catalog: { decks: CollectionDeck[]; noteTypes: CollectionNoteType[] };
   try {
@@ -238,22 +245,34 @@ export function openCollectionReader(
       // studying a card in Custom Study must not move it out of its mapping.
       const placeholders = deckIds.map(() => '?').join(', ');
       const rows: readonly SqliteRow[] = database.query(
-        `select n.id, n.flds from notes n
+        `select n.id, n.flds,
+                min(c.reps) as reps,
+                ${hasLapses ? 'max(case when c.lapses >= 0 then cast(c.lapses as real) / c.reps end)' : 'null'} as lapseRatio,
+                ${hasFactor ? 'min(case when c.factor > 0 then c.factor end)' : 'null'} as easeFactor
+         from notes n
+         join cards c on c.nid = n.id
          where n.mid = ?
-           and exists (
-             select 1 from cards c
-             where c.nid = n.id
-               and c.reps > 0
-               and (case when c.odid != 0 then c.odid else c.did end) in (${placeholders})
-           )
+           and c.reps > 0
+           and (case when c.odid != 0 then c.odid else c.did end) in (${placeholders})
+         group by n.id, n.flds
          order by n.id`,
         [noteType.id, ...deckIds],
       );
 
-      return rows.map((row) => ({
-        noteId: text(row[0]),
-        fieldValues: text(row[1]).split(FIELD_SEPARATOR),
-      }));
+      return rows.map((row) => {
+        const reps = integer(row[2]);
+        const lapseRatio = Number(row[3]);
+        const easeFactor = integer(row[4]);
+        return {
+          noteId: text(row[0]),
+          fieldValues: text(row[1]).split(FIELD_SEPARATOR),
+          ...(reps > 0 ? { reps } : {}),
+          ...(row[3] !== null && Number.isFinite(lapseRatio) && lapseRatio >= 0 && lapseRatio <= 1
+            ? { lapseRatio }
+            : {}),
+          ...(easeFactor > 0 ? { easeFactor } : {}),
+        };
+      });
     },
   });
 }

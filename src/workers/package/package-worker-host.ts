@@ -286,6 +286,9 @@ export class PackageWorkerHost {
       return {
         sourceNoteId: note.noteId,
         ...(value === undefined ? {} : { rawFieldValue: value }),
+        ...(note.reps === undefined ? {} : { reps: note.reps }),
+        ...(note.lapseRatio === undefined ? {} : { lapseRatio: note.lapseRatio }),
+        ...(note.easeFactor === undefined ? {} : { easeFactor: note.easeFactor }),
       };
     });
 

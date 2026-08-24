@@ -77,6 +77,22 @@ describe('GenerationStore strict pass', () => {
     expect(provenance.suggestedVocabularyItemIds.length).toBeGreaterThan(0);
   });
 
+  it('captures the selected priority mode in generation provenance', async () => {
+    bed = configureGenerationTestBed({ ankiWordPriorityMode: 'difficult' });
+    bed.provider.storyQueue.push(ok(strictStory()));
+    const answerAuxiliary = bed.provider.beforeAnswer;
+    bed.provider.beforeAnswer = () => {
+      answerAuxiliary?.();
+      if (bed.provider.storyRequests.length === 1) {
+        bed.setPriorityMode('recent');
+      }
+    };
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.readings.provenance[0]?.ankiWordPriorityMode).toBe('difficult');
+  });
+
   it('never stores an unknown category on an accepted story', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 

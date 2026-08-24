@@ -18,6 +18,8 @@ export interface FixtureCard {
   readonly deckName: string;
   /** Anki's `reps`. Anything above zero is review evidence, forever. */
   readonly reps: number;
+  readonly lapses?: number;
+  readonly factor?: number;
   readonly suspended?: boolean;
 }
 
@@ -62,13 +64,13 @@ export const CONTRACT_COLLECTION: FixtureCollection = {
       id: 'n-neko-html',
       noteTypeName: 'Basic',
       fieldValues: ['<b>ねこ</b>', 'cat'],
-      cards: [{ deckName: 'Core Japanese', reps: 3 }],
+      cards: [{ deckName: 'Core Japanese', reps: 3, lapses: 1, factor: 2_400 }],
     },
     {
       id: 'n-neko-plain',
       noteTypeName: 'Basic',
       fieldValues: ['ねこ', 'cat again'],
-      cards: [{ deckName: 'Core Japanese', reps: 1 }],
+      cards: [{ deckName: 'Core Japanese', reps: 1, lapses: 0, factor: 0 }],
     },
     {
       id: 'n-mainichi',
@@ -88,20 +90,20 @@ export const CONTRACT_COLLECTION: FixtureCollection = {
       fieldValues: ['見る', 'to see'],
       cards: [
         { deckName: 'Core Japanese', reps: 0 },
-        { deckName: 'Core Japanese', reps: 5, suspended: true },
+        { deckName: 'Core Japanese', reps: 5, lapses: 3, factor: 1_700, suspended: true },
       ],
     },
     {
       id: 'n-inu',
       noteTypeName: 'Basic',
       fieldValues: ['<script>alert(1)</script>犬', 'dog'],
-      cards: [{ deckName: 'Core Japanese', reps: 2 }],
+      cards: [{ deckName: 'Core Japanese', reps: 2, lapses: 1, factor: 2_200 }],
     },
     {
       id: 'n-onaka',
       noteTypeName: 'Basic',
       fieldValues: ['お腹 が 空いた', 'hungry'],
-      cards: [{ deckName: 'Core Japanese', reps: 1 }],
+      cards: [{ deckName: 'Core Japanese', reps: 1, lapses: 0, factor: 2_500 }],
     },
     {
       id: 'n-pen',

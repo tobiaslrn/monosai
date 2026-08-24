@@ -34,6 +34,9 @@ export const cardsInfoSchema = z.array(
     cardId: z.number().int(),
     note: z.number().int(),
     reps: z.number().int().nonnegative(),
+    /** Scheduling columns are absent from some Anki-compatible bridges. */
+    lapses: z.number().int().nonnegative().nullable().optional(),
+    factor: z.number().int().nonnegative().nullable().optional(),
     deckName: z.string(),
   }),
 );

@@ -6,6 +6,10 @@ import { err, ok, type Result } from '../app/domain/shared/result';
 import type { AnkiProviderKind } from '../app/domain/vocabulary/snapshot';
 import type { SourceMapping } from '../app/domain/vocabulary/source-mapping';
 import {
+  mergeSchedulingSignals,
+  schedulingSignalsFromCard,
+} from '../app/domain/anki/scheduling-signals';
+import {
   deckSeparatorChildren,
   fieldValueOf,
   type FixtureCollection,
@@ -157,6 +161,22 @@ export class FakeAnkiProvider implements AnkiVocabularyProvider {
             sourceMappingId: mapping.id,
             ...(value === undefined ? {} : { rawFieldValue: value }),
             sourceNoteId: note.id,
+            ...note.cards
+              .filter((card) => {
+                const scoped =
+                  card.deckName === mapping.deckName ||
+                  (mapping.deckScope === 'deck-and-subdecks' &&
+                    card.deckName.startsWith(`${mapping.deckName}::`));
+                return scoped && card.reps > 0;
+              })
+              .reduce(
+                (signals, card) =>
+                  mergeSchedulingSignals(
+                    signals,
+                    schedulingSignalsFromCard(card.reps, card.lapses, card.factor),
+                  ),
+                {},
+              ),
           },
         };
       }

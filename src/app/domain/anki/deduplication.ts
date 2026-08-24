@@ -1,8 +1,9 @@
 import type { SnapshotId, VocabularyItemId } from '../shared/ids';
 import type { VocabularyItem, VocabularyProvenance, VocabularyToken } from '../vocabulary/snapshot';
+import { mergeSchedulingSignals, type AnkiSchedulingSignals } from './scheduling-signals';
 
 /** One accepted field value with everything needed to become a vocabulary item. */
-export interface PreparedEntry {
+export interface PreparedEntry extends AnkiSchedulingSignals {
   readonly provenance: Omit<VocabularyProvenance, 'vocabularyItemId'>;
   readonly visibleExpression: string;
   readonly canonicalExpression: string;
@@ -55,10 +56,14 @@ export function mergeEntries(
         canonicalExpression: entry.canonicalExpression,
         expressionHash: entry.expressionHash,
         analyzedSequence: entry.analyzedSequence,
+        ...mergeSchedulingSignals(undefined, entry),
       };
       itemsByHash.set(entry.expressionHash, item);
     } else {
       duplicateOccurrences += 1;
+      const scheduling = mergeSchedulingSignals(item, entry);
+      item = { ...item, ...scheduling };
+      itemsByHash.set(entry.expressionHash, item);
     }
 
     const key = provenanceKey(item.id, entry);

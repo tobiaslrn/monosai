@@ -33,6 +33,7 @@ import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import type { VocabularyItemId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
+import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
 import { EnrichmentKeysService } from '../enrichment/enrichment-keys.service';
 import { GrammarAnalysisService } from '../enrichment/grammar-analysis.service';
 import { TranslationService } from '../enrichment/translation.service';
@@ -40,6 +41,7 @@ import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { LanguageStore } from '../language/language.store';
 import { VocabularyClassificationService } from '../reading/vocabulary-classification.service';
 import { ExceptionPolicyStore } from '../settings/exception-policy.store';
+import { AppSettingsStore } from '../settings/app-settings.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
@@ -181,6 +183,7 @@ interface CapturedContext {
   readonly policyHash: string;
   readonly taskConfig: TextTaskConfig;
   readonly grammarTaskConfig: TextTaskConfig;
+  readonly ankiWordPriorityMode: AnkiWordPriorityMode;
 }
 
 /** Title and sentences carry the same analysis; only the title has no row. */
@@ -222,6 +225,7 @@ export class GenerationStore {
   private readonly classification = inject(VocabularyClassificationService);
   private readonly grammar = inject(GrammarProfileStore);
   private readonly policy = inject(ExceptionPolicyStore);
+  private readonly appSettings = inject(AppSettingsStore);
   private readonly textModel = inject(TextModelStore);
   private readonly language = inject(LanguageStore);
   private readonly enrichmentKeys = inject(EnrichmentKeysService);
@@ -301,6 +305,9 @@ export class GenerationStore {
     const controller = new AbortController();
     this.controller = controller;
     const signal = controller.signal;
+    // Read the mode synchronously with the other run inputs. Settings are
+    // optimistic, so a later UI change cannot alter this in-flight request.
+    const capturedPriorityMode = this.appSettings.ankiWordPriorityMode();
 
     this.logger.info('job.started', { kind: 'generation', count: sentenceCount });
 
@@ -310,7 +317,7 @@ export class GenerationStore {
     this.stateSignal.set({ kind: 'checking-prerequisites' });
     this.announce('Checking what this story needs…');
 
-    const captured = await this.capture(modelPresetId);
+    const captured = await this.capture(modelPresetId, capturedPriorityMode);
     if (!captured.ok) {
       this.fail(captured.error);
       return;
@@ -335,7 +342,11 @@ export class GenerationStore {
 
     const context = captured.value;
     const form = storyFormForSentenceCount(sentenceCount);
-    const prepared = await this.preparation.prepare(context.snapshot.id, form);
+    const prepared = await this.preparation.prepare(
+      context.snapshot.id,
+      form,
+      context.ankiWordPriorityMode,
+    );
     if (!prepared.ok) {
       this.fail(prepared.error);
       return;
@@ -544,6 +555,7 @@ export class GenerationStore {
   /** Captures the snapshot, profile, policy, and model before anything is spent. */
   private async capture(
     modelPresetId: string | null,
+    ankiWordPriorityMode: AnkiWordPriorityMode,
   ): Promise<
     | { readonly ok: true; readonly value: CapturedContext }
     | { readonly ok: false; readonly error: GenerationFailure }
@@ -603,6 +615,7 @@ export class GenerationStore {
         taskConfig: selected,
         grammarTaskConfig:
           configurable.configForPreset?.(settings.grammarPresetId ?? null) ?? selected,
+        ankiWordPriorityMode,
       },
     };
   }
@@ -788,6 +801,7 @@ export class GenerationStore {
       modelId: context.taskConfig.modelId,
       repairAttempts: this.repairSignal(),
       suggestedVocabularyItemIds: suggestedItemIds,
+      ankiWordPriorityMode: context.ankiWordPriorityMode,
       exceptionCount,
       ...(request.specialInstructions === undefined
         ? {}

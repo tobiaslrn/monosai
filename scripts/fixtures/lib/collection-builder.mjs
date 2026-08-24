@@ -63,7 +63,8 @@ export function buildSchema18(collection, { separator = FIELD_SEPARATOR } = {}) 
       create table notes (id integer primary key, guid text, mid integer not null, flds text not null, sfld text);
       create table cards (id integer primary key, nid integer not null, did integer not null,
                           ord integer, odid integer not null default 0, queue integer default 0,
-                          type integer default 0, reps integer not null default 0, lapses integer default 0);
+                          type integer default 0, reps integer not null default 0, lapses integer default 0,
+                          factor integer default 0);
       create table revlog (id integer primary key, cid integer not null, ease integer);
     `);
     database
@@ -108,7 +109,7 @@ export function buildSchema18(collection, { separator = FIELD_SEPARATOR } = {}) 
         const cardId = cardRowId++;
         database
           .prepare(
-            'insert into cards (id, nid, did, ord, odid, queue, type, reps) values (?, ?, ?, ?, ?, ?, ?, ?)',
+            'insert into cards (id, nid, did, ord, odid, queue, type, reps, lapses, factor) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           )
           .run(
             cardId,
@@ -119,6 +120,8 @@ export function buildSchema18(collection, { separator = FIELD_SEPARATOR } = {}) 
             card.suspended ? -1 : 2,
             card.reps > 0 ? 2 : 0,
             card.reps,
+            card.lapses ?? 0,
+            card.factor ?? 0,
           );
         for (let review = 0; review < card.reps; review += 1) {
           database
@@ -155,7 +158,8 @@ export function buildSchema11(collection) {
       create table notes (id integer primary key, guid text, mid integer not null, flds text not null, sfld text);
       create table cards (id integer primary key, nid integer not null, did integer not null,
                           ord integer, odid integer not null default 0, queue integer default 0,
-                          type integer default 0, reps integer not null default 0, lapses integer default 0);
+                          type integer default 0, reps integer not null default 0, lapses integer default 0,
+                          factor integer default 0);
       create table revlog (id integer primary key, cid integer not null, ease integer);
     `);
     database
@@ -178,7 +182,7 @@ export function buildSchema11(collection) {
       for (const card of note.cards) {
         database
           .prepare(
-            'insert into cards (id, nid, did, ord, odid, queue, type, reps) values (?, ?, ?, ?, ?, ?, ?, ?)',
+            'insert into cards (id, nid, did, ord, odid, queue, type, reps, lapses, factor) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           )
           .run(
             cardRowId++,
@@ -189,6 +193,8 @@ export function buildSchema11(collection) {
             card.suspended ? -1 : 2,
             card.reps > 0 ? 2 : 0,
             card.reps,
+            card.lapses ?? 0,
+            card.factor ?? 0,
           );
       }
     }

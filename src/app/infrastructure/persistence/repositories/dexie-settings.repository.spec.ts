@@ -31,6 +31,7 @@ describe('DexieSettingsRepository', () => {
     expect(app.ok && app.value.theme).toBe('system');
     expect(app.ok && app.value.activeSnapshotId).toBeNull();
     expect(app.ok && app.value.ankiConnectPort).toBe(8_765);
+    expect(app.ok && app.value.ankiWordPriorityMode).toBe('uniform');
     expect(preferences.ok && preferences.value).toEqual(DEFAULT_READER_PREFERENCES);
 
     const textModel = await repository.getTextModelSettings();
@@ -45,6 +46,31 @@ describe('DexieSettingsRepository', () => {
     expect(invalid.ok).toBe(false);
     const reloaded = await repository.getAppSettings();
     expect(reloaded.ok && reloaded.value.ankiConnectPort).toBe(9_999);
+  });
+
+  it('round-trips the Anki word-priority mode immediately', async () => {
+    const saved = await repository.updateAppSettings({ ankiWordPriorityMode: 'difficult' });
+
+    expect(saved.ok && saved.value.ankiWordPriorityMode).toBe('difficult');
+    const reloaded = await repository.getAppSettings();
+    expect(reloaded.ok && reloaded.value.ankiWordPriorityMode).toBe('difficult');
+  });
+
+  it('defaults the priority mode when reading an older app row', async () => {
+    await db.settings.put({
+      key: SETTINGS_KEYS.app,
+      v: ROW_VERSION,
+      value: {
+        theme: 'system',
+        activeSnapshotId: null,
+        ankiConnectPort: 8_765,
+        updatedAt: 0,
+      },
+    });
+
+    const loaded = await repository.getAppSettings();
+
+    expect(loaded.ok && loaded.value.ankiWordPriorityMode).toBe('uniform');
   });
 
   it('starts every reader aid enabled, at unscaled text', async () => {

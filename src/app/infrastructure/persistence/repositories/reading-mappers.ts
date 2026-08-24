@@ -82,7 +82,11 @@ export function toFrozenValidation(row: FrozenValidationRow): FrozenSentenceVali
 export function toGenerationProvenanceRow(
   provenance: GenerationProvenance,
 ): GenerationProvenanceRow {
-  return { ...provenance, v: ROW_VERSION };
+  return {
+    ...provenance,
+    ankiWordPriorityMode: provenance.ankiWordPriorityMode,
+    v: ROW_VERSION,
+  };
 }
 
 export function toGenerationProvenance(row: GenerationProvenanceRow): GenerationProvenance {

@@ -69,6 +69,7 @@ export const generationProvenanceRowSchema = z.object({
   promptVersions: z.record(z.string(), nonEmptyString),
   repairAttempts: z.number().int().min(0).max(2),
   suggestedVocabularyItemIds: z.array(vocabularyItemIdSchema).readonly(),
+  ankiWordPriorityMode: z.enum(['uniform', 'recent', 'difficult']).default('uniform'),
   createdAt: timestampSchema,
 });
 

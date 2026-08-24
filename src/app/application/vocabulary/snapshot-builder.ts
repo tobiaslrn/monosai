@@ -145,6 +145,9 @@ export class SnapshotBuilder {
         canonicalExpression: item.canonicalExpression,
         expressionHash: item.expressionHash,
         analyzedSequence: analyzed.value.get(item.expressionHash) ?? [],
+        ...(item.entry.reps === undefined ? {} : { reps: item.entry.reps }),
+        ...(item.entry.lapseRatio === undefined ? {} : { lapseRatio: item.entry.lapseRatio }),
+        ...(item.entry.easeFactor === undefined ? {} : { easeFactor: item.entry.easeFactor }),
       });
     }
 

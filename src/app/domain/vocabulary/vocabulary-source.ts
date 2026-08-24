@@ -1,4 +1,5 @@
 import type { VocabularySourceId } from '../shared/ids';
+import type { AnkiSchedulingSignals } from '../anki/scheduling-signals';
 
 export type AnkiConnectionKind = 'desktop-connect' | 'android-connect';
 export type AnkiProviderKind = AnkiConnectionKind | 'package';
@@ -33,7 +34,7 @@ export interface TextListVocabularySource extends VocabularySourceBase {
 
 export type VocabularySource = AnkiVocabularySource | TextListVocabularySource;
 
-export interface VocabularySourceCacheEntry {
+export interface VocabularySourceCacheEntry extends AnkiSchedulingSignals {
   readonly rawValue?: string;
   readonly sourceRecordId?: string;
 }

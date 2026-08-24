@@ -340,7 +340,7 @@ The grammar preset is always set and is therefore not a check. It is shown as a 
 ### Form
 
 - Required premise, multiline, with a reasonable UI limit stated in the AI specification.
-- On desktop, the premise and special-instructions fields occupy the wider left column. A smaller settings panel on the right contains a rectangular four-stop length slider: Tiny (5 sentences), Short (15), Medium (30), and Long (50). The settings panel stacks below the fields on narrow screens. It may preview a disabled Anki word-selection control, clearly marked as unavailable until its behavior is implemented.
+- On desktop, the premise and special-instructions fields occupy the wider left column. A smaller settings panel on the right contains a rectangular four-stop length slider: Tiny (5 sentences), Short (15), Medium (30), and Long (50), plus an enabled, keyboard-accessible Anki word-selection select with Uniform, Recently learned, and Difficult modes. The settings panel stacks below the fields on narrow screens. The select is disabled while generation is in flight and its remembered value is persisted immediately.
 - Optional special instructions with examples such as tone, viewpoint, dialogue, or desired register.
 - Current vocabulary summary and current grammar preset name are read-only links.
 - Generate button includes an OpenRouter/network indicator but no price estimate.

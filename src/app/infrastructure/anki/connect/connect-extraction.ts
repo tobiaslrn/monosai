@@ -3,6 +3,11 @@ import type { AnkiExtractionEvent } from '../../../domain/anki/anki-provider';
 import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
 import type { AnkiConnectClient } from './connect-client';
 import { batched, searchFor } from './connect-search';
+import {
+  mergeSchedulingSignals,
+  schedulingSignalsFromCard,
+  type AnkiSchedulingSignals,
+} from '../../../domain/anki/scheduling-signals';
 
 /** Ids per `cardsInfo` or `notesInfo` request when the endpoint states no limit. */
 export const DEFAULT_BATCH_SIZE = 200;
@@ -32,8 +37,7 @@ export async function* extractMapping(
     return;
   }
 
-  const eligibleNoteIds: number[] = [];
-  const seenNotes = new Set<number>();
+  const schedulingByNote = new Map<number, AnkiSchedulingSignals>();
   let examined = 0;
 
   for (const batch of batched(found.value, batchSize)) {
@@ -50,16 +54,24 @@ export async function* extractMapping(
 
     for (const card of cards.value) {
       examined += 1;
-      if (card.reps <= 0 || !inScope(card.deckName, mapping) || seenNotes.has(card.note)) {
+      if (card.reps <= 0 || !inScope(card.deckName, mapping)) {
         continue;
       }
-      seenNotes.add(card.note);
-      eligibleNoteIds.push(card.note);
+      const signals = schedulingSignalsFromCard(
+        card.reps,
+        card.lapses ?? undefined,
+        card.factor ?? undefined,
+      );
+      schedulingByNote.set(
+        card.note,
+        mergeSchedulingSignals(schedulingByNote.get(card.note), signals),
+      );
     }
 
     yield { kind: 'progress', mappingId: mapping.id, examined, total: found.value.length };
   }
 
+  const eligibleNoteIds = [...schedulingByNote.keys()];
   for (const batch of batched(eligibleNoteIds, batchSize)) {
     if (signal?.aborted === true) {
       yield { kind: 'failed', error: ankiError('cancelled', 'The refresh was cancelled.') };
@@ -89,6 +101,7 @@ export async function* extractMapping(
           sourceMappingId: mapping.id,
           sourceNoteId: String(note.noteId),
           ...(field === undefined ? {} : { rawFieldValue: field.value }),
+          ...schedulingByNote.get(note.noteId),
         },
       };
     }

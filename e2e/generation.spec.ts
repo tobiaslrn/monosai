@@ -63,6 +63,19 @@ test.describe('generate prerequisites', () => {
 
     expect(calls.urls).toEqual([]);
   });
+
+  test('remembers the Anki word-priority mode across a reload', async ({ page }) => {
+    await openGenerate(page);
+
+    const select = page.getByTestId('word-priority-select');
+    await expect(select).toBeEnabled();
+    await expect(select).toHaveValue('uniform');
+    await select.selectOption('difficult');
+
+    await page.reload();
+
+    await expect(page.getByTestId('word-priority-select')).toHaveValue('difficult');
+  });
 });
 
 test.describe('generating a story', () => {

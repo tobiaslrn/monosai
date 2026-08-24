@@ -80,6 +80,41 @@ describe('AutomaticAnkiSyncCoordinator', () => {
     expect(beds.vocabulary.commitCount).toBe(2);
   });
 
+  it('commits scheduling-only changes without showing an update', async () => {
+    const source = configureAutomaticSource();
+
+    await coordinator.trigger(true);
+    const before = beds.mappings.caches
+      .get(source.id)
+      ?.entries.find((entry) => entry.rawValue === '<b>ねこ</b>');
+
+    providerFactory = () =>
+      new FakeAnkiProvider(
+        {
+          ...CONTRACT_COLLECTION,
+          notes: CONTRACT_COLLECTION.notes.map((note) => ({
+            ...note,
+            cards: note.cards.map((card) =>
+              card.deckName === 'Core Japanese' && card.reps > 0
+                ? { ...card, lapses: (card.lapses ?? 0) + 1, factor: 1_800 }
+                : card,
+            ),
+          })),
+        },
+        { kind: 'desktop-connect' },
+      );
+
+    await coordinator.trigger(true);
+
+    const after = beds.mappings.caches
+      .get(source.id)
+      ?.entries.find((entry) => entry.rawValue === '<b>ねこ</b>');
+    expect(coordinator.status()).toEqual({ kind: 'idle' });
+    expect(beds.vocabulary.commitCount).toBe(2);
+    expect(after?.lapseRatio).toBeGreaterThan(before?.lapseRatio ?? 0);
+    expect(after?.easeFactor).toBe(1_800);
+  });
+
   it('coalesces concurrent triggers and observes the cooldown', async () => {
     configureAutomaticSource();
 

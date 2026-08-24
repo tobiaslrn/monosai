@@ -17,6 +17,8 @@ interface ServerCard {
   readonly cardId: number;
   readonly note: number;
   readonly reps: number;
+  readonly lapses?: number;
+  readonly factor?: number;
   readonly deckName: string;
   readonly noteTypeName: string;
 }
@@ -50,6 +52,8 @@ export class FakeAnkiConnectServer {
           cardId: cardId++,
           note: currentNote,
           reps: card.reps,
+          lapses: card.lapses,
+          factor: card.factor,
           deckName: card.deckName,
           noteTypeName: note.noteTypeName,
         });
@@ -139,7 +143,14 @@ export class FakeAnkiConnectServer {
         const ids = new Set((params['cards'] as number[] | undefined) ?? []);
         return this.cards
           .filter((card) => ids.has(card.cardId))
-          .map(({ cardId, note, reps, deckName }) => ({ cardId, note, reps, deckName }));
+          .map(({ cardId, note, reps, lapses, factor, deckName }) => ({
+            cardId,
+            note,
+            reps,
+            ...(lapses === undefined ? {} : { lapses }),
+            ...(factor === undefined ? {} : { factor }),
+            deckName,
+          }));
       }
       case 'notesInfo': {
         const ids = (params['notes'] as number[] | undefined) ?? [];

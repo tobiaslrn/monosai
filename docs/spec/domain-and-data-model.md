@@ -125,7 +125,16 @@ interface VocabularySnapshot {
   stats: SnapshotStats;
 }
 
-interface VocabularyItem {
+interface AnkiSchedulingSignals {
+  /** Minimum positive reps across eligible cards for this note/expression. */
+  reps?: number;
+  /** Maximum lapses / reps ratio across eligible cards. */
+  lapseRatio?: number;
+  /** Minimum non-zero Anki ease factor across eligible cards. */
+  easeFactor?: number;
+}
+
+interface VocabularyItem extends AnkiSchedulingSignals {
   id: VocabularyItemId;
   snapshotId: SnapshotId;
   visibleExpression: string;
@@ -144,7 +153,13 @@ interface VocabularyProvenance {
 }
 ```
 
-There is one current snapshot row. A successful refresh replaces that row, its items, and its provenance atomically while reusing the current snapshot identity, so generated stories keep a stable link. A failed refresh is represented by a transient refresh job, not a snapshot row with an incomplete status. Current snapshot identity is stored in settings and changed in the replacement transaction.
+Each persisted Anki source cache entry carries the raw field value, source
+record ID, and optional `AnkiSchedulingSignals`. Text-list cache entries omit
+the signals. These optional fields were added without a Dexie table/index
+change, so older cache and item rows remain readable and simply receive the
+neutral weighting baseline.
+
+There is one current snapshot row. A successful refresh replaces that row, its items, and its provenance atomically while reusing the current snapshot identity, so generated stories keep a stable link. Scheduling-only refreshes may therefore rewrite item metadata without changing the allowlist or snapshot identity. A failed refresh is represented by a transient refresh job, not a snapshot row with an incomplete status. Current snapshot identity is stored in settings and changed in the replacement transaction.
 
 ### Grammar
 
@@ -286,7 +301,9 @@ Cancellation changes state and stops scheduling new work. Successfully stored re
 
 Separate settings by concern rather than one unvalidated JSON object:
 
-- `AppSettings`: theme, schema-aware flags, active snapshot ID.
+- `AppSettings`: theme, active snapshot ID, AnkiConnect port, and the persisted
+  Anki word-priority mode (`uniform`, `recent`, or `difficult`). Missing mode
+  values in older rows default to `uniform` at read time.
 - `ReaderPreferences`: furigana, token spacing, markers, translations expanded; all true initially.
 - `OpenRouterCredential`: API key and created/updated timestamps. Repository methods expose `isConfigured`, replace, remove, and an internal request credential; UI facades never receive the saved string.
 - Configured OpenRouter models are presented as one list while retaining capability-specific configuration and test evidence per model. Text capability data includes reasoning and structured-output proof; audio capability data includes voice, speed/options, and audio-test proof.

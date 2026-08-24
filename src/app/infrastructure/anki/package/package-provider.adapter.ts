@@ -124,6 +124,9 @@ export class PackageProviderAdapter implements AnkiVocabularyProvider {
             sourceMappingId: mapping.id,
             sourceNoteId: field.sourceNoteId,
             ...(field.rawFieldValue === undefined ? {} : { rawFieldValue: field.rawFieldValue }),
+            ...(field.reps === undefined ? {} : { reps: field.reps }),
+            ...(field.lapseRatio === undefined ? {} : { lapseRatio: field.lapseRatio }),
+            ...(field.easeFactor === undefined ? {} : { easeFactor: field.easeFactor }),
           },
         };
       }

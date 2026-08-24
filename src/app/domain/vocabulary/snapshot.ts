@@ -1,6 +1,7 @@
 import type { SnapshotId, VocabularyItemId } from '../shared/ids';
 import type { VocabularySourceId } from '../shared/ids';
 import type { VocabularySourceKind } from './vocabulary-source';
+import type { AnkiSchedulingSignals } from '../anki/scheduling-signals';
 
 export type { AnkiProviderKind } from './vocabulary-source';
 
@@ -33,7 +34,7 @@ export interface VocabularyToken {
   readonly readingHiragana?: string;
 }
 
-export interface VocabularyItem {
+export interface VocabularyItem extends AnkiSchedulingSignals {
   readonly id: VocabularyItemId;
   readonly snapshotId: SnapshotId;
   readonly visibleExpression: string;

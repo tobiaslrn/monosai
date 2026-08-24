@@ -22,6 +22,7 @@ import type {
 import { hashCanonical } from '../../domain/shared/hashing';
 import { paragraphId, readingId, sentenceId } from '../../domain/shared/ids';
 import type { SnapshotId, VocabularyItemId } from '../../domain/shared/ids';
+import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
 import type { Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { GrammarRunOutcome } from '../enrichment/grammar-analysis.service';
@@ -55,6 +56,7 @@ export interface AcceptedStory {
   readonly modelId: string;
   readonly repairAttempts: number;
   readonly suggestedVocabularyItemIds: readonly VocabularyItemId[];
+  readonly ankiWordPriorityMode?: AnkiWordPriorityMode;
   readonly exceptionCount: number;
 }
 
@@ -157,6 +159,7 @@ export class StoryAssemblyService {
       promptVersions: promptVersionRecord(),
       repairAttempts: accepted.repairAttempts,
       suggestedVocabularyItemIds: accepted.suggestedVocabularyItemIds,
+      ankiWordPriorityMode: accepted.ankiWordPriorityMode ?? 'uniform',
       createdAt: now,
     };
 

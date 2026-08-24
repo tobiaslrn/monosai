@@ -21,6 +21,7 @@ import { GrammarProfileStore } from '../../application/grammar/grammar-profile.s
 import { CredentialStore } from '../../application/settings/credential.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { ExceptionPolicyStore } from '../../application/settings/exception-policy.store';
+import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { technicalCode } from '../../domain/shared/errors';
 import {
@@ -163,7 +164,9 @@ import { StoryFormComponent } from './story-form.component';
             [presetName]="presetLine().presetName"
             [models]="storyModels()"
             [selectedModelId]="selectedModelId() ?? textModel.activePresetId()"
+            [ankiWordPriorityMode]="appSettings.ankiWordPriorityMode()"
             (modelSelected)="selectedModelId.set($event)"
+            (ankiWordPriorityModeChanged)="appSettings.setAnkiWordPriorityMode($event)"
             (generate)="generate()"
           />
         </section>
@@ -211,6 +214,7 @@ export class GeneratePageComponent implements OnDestroy {
   protected readonly textModel = inject(TextModelStore);
   private readonly credential = inject(CredentialStore);
   private readonly policy = inject(ExceptionPolicyStore);
+  protected readonly appSettings = inject(AppSettingsStore);
   private readonly grammar = inject(GrammarProfileStore);
   private readonly snapshots = inject(SnapshotHistoryStore);
   private readonly dialog = inject(Dialog);

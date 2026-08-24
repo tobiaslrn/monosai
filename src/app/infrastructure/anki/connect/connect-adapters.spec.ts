@@ -76,6 +76,31 @@ describe('DesktopConnectAdapter', () => {
     expect(new Set(requested).size).toBe(requested.length);
   });
 
+  it('carries optional lapses and ease signals from cardsInfo', async () => {
+    const { client } = serverAnd();
+    const collected = await collectExtraction(new DesktopConnectAdapter(client), [mappingFor()]);
+    const neko = collected.entries.find((entry) => entry.rawFieldValue === '<b>ねこ</b>');
+
+    expect(neko).toMatchObject({ reps: 3, lapseRatio: 1 / 3, easeFactor: 2_400 });
+  });
+
+  it('keeps working when a bridge omits optional scheduling columns', async () => {
+    const collection = {
+      ...CONTRACT_COLLECTION,
+      notes: CONTRACT_COLLECTION.notes.map((note) => ({
+        ...note,
+        cards: note.cards.map(({ lapses: _lapses, factor: _factor, ...card }) => card),
+      })),
+    };
+    const { client } = serverAnd({}, collection);
+    const collected = await collectExtraction(new DesktopConnectAdapter(client), [mappingFor()]);
+    const neko = collected.entries.find((entry) => entry.rawFieldValue === '<b>ねこ</b>');
+
+    expect(neko).toMatchObject({ reps: 3 });
+    expect(neko).not.toHaveProperty('lapseRatio');
+    expect(neko).not.toHaveProperty('easeFactor');
+  });
+
   it('stops at the first failure instead of continuing to the next mapping', async () => {
     const { client } = serverAnd({ failingActions: ['findCards'] });
     const collected = await collectExtraction(new DesktopConnectAdapter(client), [

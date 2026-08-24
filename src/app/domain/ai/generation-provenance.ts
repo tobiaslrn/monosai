@@ -1,4 +1,5 @@
 import type { ReadingId, SnapshotId, VocabularyItemId } from '../shared/ids';
+import type { AnkiWordPriorityMode } from '../settings/settings';
 
 /**
  * Everything needed to explain or reproduce one generated story.
@@ -23,6 +24,8 @@ export interface GenerationProvenance {
   /** Content repairs actually spent, 0 to 2. Format recovery is not counted. */
   readonly repairAttempts: number;
   readonly suggestedVocabularyItemIds: readonly VocabularyItemId[];
+  /** The palette mode captured when this generation began. */
+  readonly ankiWordPriorityMode: AnkiWordPriorityMode;
   readonly createdAt: number;
 }
 

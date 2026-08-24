@@ -43,7 +43,7 @@ import { snapshotId, vocabularyItemId, type SnapshotId } from '../app/domain/sha
 import type { RandomSource } from '../app/domain/shared/random';
 import { ok, type Result } from '../app/domain/shared/result';
 import type { StorageError } from '../app/domain/storage/storage-error';
-import type { ExceptionPolicy } from '../app/domain/settings/settings';
+import type { AnkiWordPriorityMode, ExceptionPolicy } from '../app/domain/settings/settings';
 import {
   DEFAULT_EXCEPTION_POLICY,
   DEFAULT_STORY_TOKEN_BUDGET,
@@ -318,6 +318,8 @@ export interface GenerationTestBed {
   readonly enrichment: FakeEnrichmentRepository;
   readonly vocabulary: StubVocabularyRepository;
   readonly policy: StubPolicyRepository;
+  /** Changes the remembered palette mode while a run is in flight. */
+  setPriorityMode(mode: AnkiWordPriorityMode): void;
   /** Sets the captured exception policy for the next run. */
   setPolicy(text: string): Promise<void>;
 }
@@ -327,6 +329,7 @@ export interface GenerationTestBedOptions {
   readonly modelId?: string;
   readonly storyTokenBudget?: number;
   readonly uniqueEntryCount?: number;
+  readonly ankiWordPriorityMode?: AnkiWordPriorityMode;
 }
 
 /**
@@ -348,6 +351,7 @@ export function configureGenerationTestBed(
   const enrichment = new FakeEnrichmentRepository();
   const vocabulary = new StubVocabularyRepository();
   const policyRepository = new StubPolicyRepository();
+  const priorityMode = signal<AnkiWordPriorityMode>(options.ankiWordPriorityMode ?? 'uniform');
 
   const snapshot = snapshotFixture(options.uniqueEntryCount ?? REVIEWED_EXPRESSIONS.length);
   vocabulary.snapshots.push(snapshot);
@@ -396,7 +400,10 @@ export function configureGenerationTestBed(
       },
       {
         provide: AppSettingsStore,
-        useValue: { activeSnapshotId: signal<SnapshotId | null>(snapshot.id) },
+        useValue: {
+          activeSnapshotId: signal<SnapshotId | null>(snapshot.id),
+          ankiWordPriorityMode: priorityMode,
+        },
       },
       {
         provide: TextModelStore,
@@ -429,6 +436,9 @@ export function configureGenerationTestBed(
     enrichment,
     vocabulary,
     policy: policyRepository,
+    setPriorityMode: (mode: AnkiWordPriorityMode) => {
+      priorityMode.set(mode);
+    },
     setPolicy: async (text: string) => {
       policy.setDraft(text);
       await policy.save();
