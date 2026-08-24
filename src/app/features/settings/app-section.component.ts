@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
-import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { InstallPromptService } from '../../core/platform/install-prompt.service';
 
 /**
@@ -23,26 +22,6 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
           <dd>{{ install.isStandalone() ? 'Yes' : 'No' }}</dd>
         </div>
       </dl>
-
-      <div class="mn-field connection-port">
-        <label for="mn-anki-connect-port">AnkiConnect port</label>
-        <input
-          id="mn-anki-connect-port"
-          type="number"
-          inputmode="numeric"
-          min="1"
-          max="65535"
-          step="1"
-          required
-          [value]="settings.ankiConnectPort()"
-          aria-describedby="mn-anki-connect-port-hint"
-          data-testid="anki-connect-port"
-          (change)="saveAnkiConnectPort($event)"
-        />
-        <span id="mn-anki-connect-port-hint" class="mn-hint">
-          The AnkiConnect add-on uses 8765 by default. Changes apply to the next connection.
-        </span>
-      </div>
 
       @let update = updates.status();
       <div class="actions">
@@ -102,14 +81,6 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
       margin-top: var(--space-4);
     }
 
-    .connection-port {
-      max-width: 24rem;
-    }
-
-    .connection-port input {
-      max-width: 10rem;
-    }
-
     @media (max-width: 32rem) {
       dl div {
         grid-template-columns: 1fr auto;
@@ -120,16 +91,6 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
 export class AppSectionComponent {
   protected readonly install = inject(InstallPromptService);
   protected readonly updates = inject(AppUpdateStore);
-  protected readonly settings = inject(AppSettingsStore);
-
-  protected saveAnkiConnectPort(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.validity.valid) {
-      input.value = String(this.settings.ankiConnectPort());
-      return;
-    }
-    void this.settings.setAnkiConnectPort(input.valueAsNumber);
-  }
 
   protected async installApp(): Promise<void> {
     await this.install.install();
