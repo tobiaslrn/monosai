@@ -307,11 +307,13 @@ export class DexieReadingRepository implements ReadingRepository {
     const parsed = parseRecords(sentenceRowSchema, loaded.value, 'sentences');
     return parsed.ok
       ? ok(
-          parsed.value.map((row) => ({
-            id: row.id,
-            contentHash: row.contentHash,
-            positionInReading: row.positionInReading,
-          })),
+          parsed.value
+            .map((row) => ({
+              id: row.id,
+              contentHash: row.contentHash,
+              positionInReading: row.positionInReading,
+            }))
+            .sort((left, right) => left.positionInReading - right.positionInReading),
         )
       : parsed;
   }

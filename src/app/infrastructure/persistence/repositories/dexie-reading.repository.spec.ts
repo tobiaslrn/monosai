@@ -371,6 +371,18 @@ describe('DexieReadingRepository', () => {
       expect(graph.value.sentences[0].japaneseText).toBe('ねこがすきです。');
     });
 
+    it('returns lightweight sentence references in source order', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+
+      const refs = await repository.listSentenceRefs(draft.reading.id);
+
+      expect(refs.ok && refs.value.map((ref) => ref.positionInReading)).toEqual([0, 1, 2]);
+      expect(refs.ok && refs.value.map((ref) => ref.id)).toEqual(
+        draft.sentences.map((sentence) => sentence.id),
+      );
+    });
+
     it('loads only the requested paragraph window', async () => {
       const draft = importedReadingFixture({
         paragraphTexts: [['一。'], ['二。'], ['三。'], ['四。']],
