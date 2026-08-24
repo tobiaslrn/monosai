@@ -960,7 +960,9 @@ warning when the preset outruns the snapshot — the item Milestones 4 and 5
 deferred here.
 
 The form has aligned premise and special-instruction fields beside a compact
-settings panel with a four-stop Tiny-to-Long slider and an enabled Anki
+settings panel with an eight-stop, 5-to-800-sentence slider that retains the
+Tiny-to-Long names and gives a non-blocking reliability warning from 100 sentences,
+plus an enabled Anki
 word-priority select whose Uniform, Recently learned, and Difficult modes are
 remembered immediately; the captured mode is written alongside sampled item IDs
 in generation provenance. Both text fields have live counters. Read-only snapshot

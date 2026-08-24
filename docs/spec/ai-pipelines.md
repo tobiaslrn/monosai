@@ -64,7 +64,7 @@ Store prompt versions and relevant input hashes in provenance, not the full asse
 ```ts
 interface StoryGenerationRequest {
   form: 'micro' | 'short' | 'medium' | 'long';
-  sentenceRange: { min: 5; max: 5 } | { min: 15; max: 15 } | { min: 30; max: 30 } | { min: 50; max: 50 };
+  sentenceRange: { min: 5; max: 5 } | { min: 15; max: 15 } | { min: 30; max: 30 } | { min: 50; max: 50 } | { min: 100; max: 100 } | { min: 200; max: 200 } | { min: 400; max: 400 } | { min: 800; max: 800 };
   premise: string;
   specialInstructions?: string;
   allowedVocabulary: readonly string[];

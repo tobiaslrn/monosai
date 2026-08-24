@@ -11,16 +11,18 @@ import {
 } from './story-request';
 
 describe('story length', () => {
-  it('uses four named slider stops and enforces the selected count exactly', () => {
-    expect(STORY_SENTENCE_COUNTS).toEqual([5, 15, 30, 50]);
+  it('supports very long stories and enforces the selected count exactly', () => {
+    expect(STORY_SENTENCE_COUNTS).toEqual([5, 15, 30, 50, 100, 200, 400, 800]);
     expect(sentenceRangeForCount(30)).toEqual({ min: 30, max: 30 });
+    expect(sentenceRangeForCount(800)).toEqual({ min: 800, max: 800 });
   });
 
   it('normalizes untrusted slider values to the nearest supported stop', () => {
     expect(normalizeStorySentenceCount(Number.NaN)).toBe(15);
     expect(normalizeStorySentenceCount(-10)).toBe(5);
     expect(normalizeStorySentenceCount(28)).toBe(30);
-    expect(normalizeStorySentenceCount(100)).toBe(50);
+    expect(normalizeStorySentenceCount(90)).toBe(100);
+    expect(normalizeStorySentenceCount(1_000)).toBe(800);
   });
 
   it('maps selected counts to stable saved-story formats', () => {
@@ -28,6 +30,7 @@ describe('story length', () => {
     expect(storyFormForSentenceCount(15)).toBe('short');
     expect(storyFormForSentenceCount(30)).toBe('medium');
     expect(storyFormForSentenceCount(50)).toBe('long');
+    expect(storyFormForSentenceCount(800)).toBe('long');
   });
 });
 
