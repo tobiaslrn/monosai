@@ -111,7 +111,7 @@ A grammar preset is always set, so it is never a prerequisite. When the selected
 
 Flow:
 
-1. The user enters a premise, chooses a length on a four-stop slider — Tiny (5 sentences), Short (15), Medium (30), or Long (50) — optionally enters special instructions, and starts.
+1. The user enters a premise, chooses a length on an eight-stop slider — 5, 15, 30, 50, 100, 200, 400, or 800 sentences — optionally enters special instructions, and starts. The established Tiny, Short, Medium, and Long names remain; every selection above 50 is Long. At 100 sentences and above, the form warns that models are much less reliable at following grammar and vocabulary constraints, without blocking generation.
 2. Monosai displays cancellable progress through preparation, writing, parsing, local validation, exception review, repair if needed, grammar review, translation, and finalization.
 3. Ordinary vocabulary is validated locally. Candidate exceptions are reviewed against the captured exception policy. Unknowns receive at most two targeted repair attempts.
 4. If unknowns remain, the result is shown as an unsaved marked draft.

@@ -9,10 +9,12 @@ export interface SentenceRange {
   readonly max: number;
 }
 
-export const STORY_SENTENCE_COUNTS = [5, 15, 30, 50] as const;
+export const STORY_SENTENCE_COUNTS = [5, 15, 30, 50, 100, 200, 400, 800] as const;
 export const MIN_STORY_SENTENCES = STORY_SENTENCE_COUNTS[0];
 export const MAX_STORY_SENTENCES = STORY_SENTENCE_COUNTS[STORY_SENTENCE_COUNTS.length - 1];
 export const DEFAULT_STORY_SENTENCES = 15;
+/** At and above this count, models become notably less reliable at obeying constraints. */
+export const STORY_LENGTH_RELIABILITY_WARNING_SENTENCES = 100;
 
 export function normalizeStorySentenceCount(value: number): number {
   if (!Number.isFinite(value)) {

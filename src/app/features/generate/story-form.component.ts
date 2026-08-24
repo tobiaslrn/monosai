@@ -1,7 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
-import { STORY_SENTENCE_COUNTS } from '../../domain/ai/story-request';
+import {
+  STORY_LENGTH_RELIABILITY_WARNING_SENTENCES,
+  STORY_SENTENCE_COUNTS,
+} from '../../domain/ai/story-request';
 import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
@@ -66,7 +69,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         <div class="setting-heading">
           <div>
             <label for="mn-story-length">Length</label>
-            <p id="mn-length-help">{{ selectedLengthLabel() }}</p>
           </div>
           <output for="mn-story-length" aria-live="polite">
             <strong>{{ draft.sentenceCount() }}</strong>
@@ -84,8 +86,9 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           [value]="selectedLengthIndex()"
           [disabled]="disabled()"
           [attr.aria-valuetext]="lengthAriaValue()"
-          [attr.aria-describedby]="'mn-length-help'"
+          [attr.aria-describedby]="lengthDescriptionIds()"
           [style.--slider-progress.%]="sliderProgress()"
+          [style.--slider-step.%]="sliderStep()"
           (input)="onSentenceCount($event)"
         />
         <div class="length-scale" aria-hidden="true">
@@ -93,6 +96,15 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <span>{{ label }}</span>
           }
         </div>
+        @if (showLengthWarning()) {
+          <p id="mn-length-warning" class="length-warning" role="status">
+            <mn-icon name="warning" [size]="17" />
+            <span>
+              At this length, models are much less reliable at following your grammar and vocabulary
+              settings. You can still generate the story.
+            </span>
+          </p>
+        }
 
         <div class="mn-field model-picker">
           <label for="mn-story-model">Model</label>
@@ -226,12 +238,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       font-weight: 600;
     }
 
-    .setting-heading p {
-      margin: var(--space-1) 0 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
     output {
       display: flex;
       flex-direction: column;
@@ -269,8 +275,9 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       background-image:
         repeating-linear-gradient(
           to right,
-          transparent 0 calc(11.111% - 1px),
-          color-mix(in srgb, var(--border-strong) 20%, transparent) calc(11.111% - 1px) 11.111%
+          transparent 0 calc(var(--slider-step) - 1px),
+          color-mix(in srgb, var(--border-strong) 20%, transparent) calc(var(--slider-step) - 1px)
+            var(--slider-step)
         ),
         linear-gradient(
           to right,
@@ -296,8 +303,9 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       background-color: var(--surface-sunken);
       background-image: repeating-linear-gradient(
         to right,
-        transparent 0 calc(11.111% - 1px),
-        color-mix(in srgb, var(--border-strong) 20%, transparent) calc(11.111% - 1px) 11.111%
+        transparent 0 calc(var(--slider-step) - 1px),
+        color-mix(in srgb, var(--border-strong) 20%, transparent) calc(var(--slider-step) - 1px)
+          var(--slider-step)
       );
     }
 
@@ -341,6 +349,24 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
 
     .length-scale span:last-child {
       text-align: right;
+    }
+
+    .length-warning {
+      display: flex;
+      gap: var(--space-2);
+      align-items: flex-start;
+      margin: var(--space-3) 0 0;
+      padding: var(--space-3);
+      border: 1px solid color-mix(in srgb, var(--status-warning) 28%, transparent);
+      border-radius: var(--radius-control);
+      background: var(--status-warning-soft);
+      color: var(--status-warning);
+      font-size: var(--text-sm);
+      line-height: 1.45;
+    }
+
+    .length-warning mn-icon {
+      margin-top: 1px;
     }
 
     .word-selection {
@@ -451,7 +477,7 @@ export class StoryFormComponent {
   });
 
   protected readonly selectedLengthLabel = computed(
-    () => LENGTH_LABELS[this.selectedLengthIndex()],
+    () => LENGTH_LABELS[Math.min(this.selectedLengthIndex(), LENGTH_LABELS.length - 1)],
   );
 
   protected readonly lengthAriaValue = computed(
@@ -460,6 +486,16 @@ export class StoryFormComponent {
 
   protected readonly sliderProgress = computed(
     () => (this.selectedLengthIndex() / (STORY_SENTENCE_COUNTS.length - 1)) * 100,
+  );
+
+  protected readonly sliderStep = computed(() => 100 / (STORY_SENTENCE_COUNTS.length - 1));
+
+  protected readonly showLengthWarning = computed(
+    () => this.draft.sentenceCount() >= STORY_LENGTH_RELIABILITY_WARNING_SENTENCES,
+  );
+
+  protected readonly lengthDescriptionIds = computed(() =>
+    this.showLengthWarning() ? 'mn-length-warning' : null,
   );
 
   protected readonly premiseTooLong = computed(

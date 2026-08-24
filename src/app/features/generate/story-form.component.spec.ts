@@ -92,7 +92,7 @@ describe('StoryFormComponent', () => {
     );
   });
 
-  it('offers a four-stop length slider with a 50-sentence maximum', () => {
+  it('offers more length stops up to 800 sentences without adding length names', () => {
     const { element } = render();
 
     const text = element.querySelector('.story-settings')?.textContent ?? '';
@@ -100,8 +100,10 @@ describe('StoryFormComponent', () => {
     expect(text).toContain('Short');
     expect(text).toContain('Medium');
     expect(text).toContain('Long');
-    expect(element.querySelector<HTMLInputElement>('[data-testid="story-length"]')?.max).toBe('3');
+    expect(element.querySelectorAll('.length-scale span')).toHaveLength(4);
+    expect(element.querySelector<HTMLInputElement>('[data-testid="story-length"]')?.max).toBe('7');
     expect(text).toContain('15');
+    expect(element.querySelector('#mn-length-help')).toBeNull();
   });
 
   it('snaps to the selected named length and stores its exact sentence count', () => {
@@ -118,6 +120,29 @@ describe('StoryFormComponent', () => {
     expect(draft.sentenceCount()).toBe(50);
     expect(element.querySelector('output')?.textContent).toContain('50');
     expect(slider.getAttribute('aria-valuetext')).toBe('Long, 50 sentences');
+  });
+
+  it('allows very long stories while warning that models follow constraints less reliably', () => {
+    const { element, fixture } = render();
+    const slider = element.querySelector<HTMLInputElement>('[data-testid="story-length"]');
+    if (slider === null) {
+      throw new Error('story length slider was not rendered');
+    }
+
+    expect(element.querySelector('#mn-length-warning')).toBeNull();
+    slider.value = '7';
+    slider.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(draft.sentenceCount()).toBe(800);
+    expect(slider.getAttribute('aria-valuetext')).toBe('Long, 800 sentences');
+    expect(slider.getAttribute('aria-describedby')).toContain('mn-length-warning');
+    expect(element.querySelector('#mn-length-warning')?.textContent).toContain(
+      'less reliable at following your grammar and vocabulary settings',
+    );
+    expect(element.querySelector<HTMLButtonElement>('[data-testid="generate"]')?.disabled).toBe(
+      false,
+    );
   });
 
   it('offers the remembered Anki word-priority modes', () => {
