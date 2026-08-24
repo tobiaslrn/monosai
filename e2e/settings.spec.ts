@@ -42,6 +42,12 @@ test.describe('settings persistence', () => {
     await expect(page.getByRole('checkbox', { name: 'Warning markers' })).toHaveCount(0);
   });
 
+  test('keeps the AnkiConnect port out of App settings', async ({ page }) => {
+    await page.goto('/#/settings');
+
+    await expect(page.getByLabel('AnkiConnect port')).toHaveCount(0);
+  });
+
   test('creates the local database and reports its schema version', async ({ page }) => {
     await page.goto('/#/settings');
 
