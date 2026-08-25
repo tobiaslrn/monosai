@@ -11,7 +11,7 @@ async function openGrammar(page: Page): Promise<void> {
 }
 
 test.describe('grammar profile', () => {
-  test('starts a fresh install on the easiest preset', async ({ page }) => {
+  test('starts a fresh install on the easiest preset @mobile', async ({ page }) => {
     await openGrammar(page);
 
     await expect(page.getByRole('radio', { name: new RegExp(STARTER) })).toBeChecked();

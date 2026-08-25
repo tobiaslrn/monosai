@@ -228,7 +228,9 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     expect(callCount(calls)).toBeGreaterThan(afterSetup);
   });
 
-  test('opens one floating surface at a time, and closes it on Escape', async ({ page }) => {
+  test('opens one floating surface at a time, and closes it on Escape @mobile', async ({
+    page,
+  }) => {
     await prepareReading(page, SAMPLE_TEXT);
 
     await openSentence(page);

@@ -20,20 +20,19 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: IS_CI,
   retries: IS_CI ? 2 : 0,
-  workers: IS_CI ? 2 : undefined,
+  workers: IS_CI ? 4 : undefined,
   reporter: IS_CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
   },
+  // The worker, the manifest, and the base path do not vary with the viewport,
+  // so this suite runs on one project; `playwright.config.ts` is where the
+  // phone-sized journeys live.
   projects: [
     {
       name: 'desktop-chrome',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
-    },
-    {
-      name: 'android-chrome',
-      use: { ...devices['Pixel 5'] },
     },
   ],
   webServer: {

@@ -6,7 +6,17 @@ import { extname, join, normalize } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const DIST_DIR = 'dist/monosai/browser';
-const BASE_PATH = '/monosai/';
+
+/**
+ * Where the build is mounted: `/monosai/` for the Pages build, `/` for the
+ * root-based build the main end-to-end suite runs against.
+ */
+const BASE_PATH = normalizeBasePath(process.env.BASE_PATH ?? '/monosai/');
+
+function normalizeBasePath(value) {
+  const withLeading = value.startsWith('/') ? value : `/${value}`;
+  return withLeading.endsWith('/') ? withLeading : `${withLeading}/`;
+}
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -18,12 +28,13 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml',
   '.woff2': 'font/woff2',
   '.ico': 'image/x-icon',
+  '.wasm': 'application/wasm',
   '.txt': 'text/plain; charset=utf-8',
 };
 
 /**
  * A minimal static server for `dist/monosai/browser`, mounted under
- * `/monosai/` exactly as GitHub Pages serves it.
+ * `BASE_PATH` (`/monosai/` by default, exactly as GitHub Pages serves it).
  *
  * Needed because `ng serve` disables the service worker in development
  * (`isDevMode()`), so offline reload, the update prompt, and installability
@@ -35,7 +46,7 @@ async function requestListener(req, res) {
   const url = new URL(req.url ?? '/', 'http://localhost');
   if (!url.pathname.startsWith(BASE_PATH)) {
     res.writeHead(404, { 'content-type': 'text/plain' });
-    res.end('Not found outside /monosai/');
+    res.end(`Not found outside ${BASE_PATH}`);
     return;
   }
 

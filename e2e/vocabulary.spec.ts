@@ -55,7 +55,7 @@ function ankiAnswers(expressions: readonly string[]) {
 }
 
 test.describe('vocabulary', () => {
-  test('uses one add-source menu and one unified empty list', async ({ page }) => {
+  test('uses one add-source menu and one unified empty list @mobile', async ({ page }) => {
     await openVocabulary(page);
 
     await expect(page.getByTestId('add-source')).toHaveCount(1);

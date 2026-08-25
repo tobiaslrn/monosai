@@ -20,7 +20,7 @@ const PREMISE = 'A cat plays in the garden and meets a friend.';
 const SETUP_TIMEOUT = 180_000;
 
 test.describe('generate prerequisites', () => {
-  test('names each missing prerequisite and links to the screen that fixes it', async ({
+  test('names each missing prerequisite and links to the screen that fixes it @mobile', async ({
     page,
   }) => {
     await stubOpenRouter(page);
