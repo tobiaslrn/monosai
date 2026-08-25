@@ -72,9 +72,10 @@ export function clampTextScale(scale: number): number {
 }
 
 /**
- * The story request's completion budget includes hidden reasoning and the
- * visible structured reply. It is deliberately bounded so a typo cannot turn
- * one generation into an unbounded spend.
+ * A request's completion budget includes hidden reasoning and the visible
+ * structured reply. It is deliberately bounded so a typo cannot turn one
+ * generation into an unbounded spend. Every model uses one: the story model
+ * stores its own on the settings row, and each routed model may override it.
  */
 export const MIN_STORY_TOKEN_BUDGET = 4_096;
 export const MAX_STORY_TOKEN_BUDGET = 32_768;
@@ -104,6 +105,8 @@ export interface TextModelSettings {
   readonly activePresetId: string | null;
   /** Optional dedicated model for grammar judgement; null falls back to the text default. */
   readonly grammarPresetId?: string | null;
+  /** Optional dedicated model for translation; null falls back to the story model. */
+  readonly translationPresetId?: string | null;
   readonly presets: readonly TextModelPreset[];
   readonly favoriteModelIds?: readonly string[];
 }
@@ -113,6 +116,8 @@ export interface TextModelPreset {
   readonly name: string;
   readonly modelId: string;
   readonly reasoningEffort: string | null;
+  /** Completion budget for this model; null follows the story budget. */
+  readonly tokenBudget?: number | null;
   readonly lastTestFingerprint?: string | null;
   readonly lastTestedAt?: number | null;
   readonly structuredOutput?: StructuredOutputMode | null;
@@ -127,6 +132,7 @@ export const DEFAULT_TEXT_MODEL_SETTINGS: TextModelSettings = {
   structuredOutput: null,
   activePresetId: null,
   grammarPresetId: null,
+  translationPresetId: null,
   presets: [],
   favoriteModelIds: [],
 };

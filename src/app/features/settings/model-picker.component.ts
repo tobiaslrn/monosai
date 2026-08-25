@@ -24,18 +24,32 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
         #trigger
         type="button"
         class="mn-control trigger"
+        [class.trigger--unset]="selectedId() === ''"
         aria-haspopup="listbox"
         [attr.aria-expanded]="open()"
         [disabled]="disabled()"
         (click)="toggle()"
       >
         <span>
-          <strong>{{ (selected()?.name ?? selectedId()) || placeholder() }}</strong>
+          <strong>{{
+            (selected()?.name ?? selectedLabel() ?? selectedId()) ||
+              fallbackLabel() ||
+              placeholder()
+          }}</strong>
           @if (selected(); as model) {
             <small>{{ model.modelId }}</small>
           }
         </span>
-        <span aria-hidden="true">⌄</span>
+        <svg class="chevron" [class.chevron--up]="open()" viewBox="0 0 16 16" aria-hidden="true">
+          <path
+            d="M4 6.5 8 10.5 12 6.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
       </button>
 
       @if (open()) {
@@ -65,6 +79,17 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
           }
 
           <div class="results" role="listbox" [attr.aria-label]="label()">
+            @if (fallbackLabel(); as fallback) {
+              <button
+                type="button"
+                class="fallback"
+                role="option"
+                [attr.aria-selected]="selectedId() === ''"
+                (click)="chooseFallback()"
+              >
+                <strong>{{ fallback }}</strong>
+              </button>
+            }
             @if (loading()) {
               <p class="state" role="status">Loading OpenRouter models…</p>
             } @else if (failure()) {
@@ -120,13 +145,27 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       align-items: center;
       justify-content: space-between;
       gap: var(--space-3);
-      min-height: 3.5rem;
       text-align: left;
       cursor: pointer;
     }
     .trigger > span:first-child {
       display: grid;
       min-width: 0;
+    }
+    /* Nothing chosen yet is a prompt, not a value; it should not read as one. */
+    .trigger--unset strong {
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+    .chevron {
+      flex: none;
+      width: 1rem;
+      height: 1rem;
+      color: var(--text-secondary);
+      transition: transform var(--motion-fast) ease-out;
+    }
+    .chevron--up {
+      transform: rotate(180deg);
     }
     small {
       overflow: hidden;
@@ -191,7 +230,8 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       box-shadow: inset 3px 0 var(--action-primary);
     }
     .model-choice,
-    .star {
+    .star,
+    .fallback {
       border: 0;
       background: transparent;
       color: inherit;
@@ -205,13 +245,21 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       text-align: left;
     }
     .model-choice:hover,
-    .star:hover {
+    .star:hover,
+    .fallback:hover {
       background: var(--surface-sunken);
     }
     .star {
       min-width: var(--touch-target);
       color: var(--action-primary);
       font-size: 20px;
+    }
+    .fallback {
+      width: 100%;
+      min-height: var(--touch-target);
+      padding: var(--space-2) var(--space-3);
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: left;
     }
     .state {
       margin: 0;
@@ -227,15 +275,18 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 export class ModelPickerComponent {
   readonly label = input.required<string>();
   readonly placeholder = input('Choose a model');
+  readonly fallbackLabel = input<string | null>(null);
   readonly models = input<readonly ModelCapabilities[]>([]);
   readonly favoriteIds = input<readonly string[]>([]);
   readonly selectedId = input('');
+  readonly selectedLabel = input<string | null>(null);
   readonly loading = input(false);
   readonly failure = input<string | null>(null);
   readonly disabled = input(false);
   readonly opened = output<void>();
   readonly modelSelected = output<ModelCapabilities>();
   readonly favoriteToggled = output<string>();
+  readonly fallbackSelected = output<void>();
 
   protected readonly open = signal(false);
   protected readonly query = signal('');
@@ -278,6 +329,10 @@ export class ModelPickerComponent {
   }
   protected choose(model: ModelCapabilities): void {
     this.modelSelected.emit(model);
+    this.close();
+  }
+  protected chooseFallback(): void {
+    this.fallbackSelected.emit();
     this.close();
   }
   protected isFavorite(modelId: string): boolean {

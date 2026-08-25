@@ -43,6 +43,7 @@ export const textModelSettingsSchema = z.object({
   structuredOutput: z.enum(['native-schema', 'json-contract']).nullable().default(null),
   activePresetId: z.string().nullable().default(null),
   grammarPresetId: z.string().nullable().default(null),
+  translationPresetId: z.string().nullable().default(null),
   presets: z
     .array(
       z.object({
@@ -50,6 +51,15 @@ export const textModelSettingsSchema = z.object({
         name: nonEmptyString,
         modelId: nonEmptyString,
         reasoningEffort: z.string().nullable(),
+        // Absent on rows written before per-model budgets existed, which means
+        // "follow the story budget" rather than a corrupt value.
+        tokenBudget: z
+          .number()
+          .int()
+          .min(MIN_STORY_TOKEN_BUDGET)
+          .max(MAX_STORY_TOKEN_BUDGET)
+          .nullable()
+          .default(null),
         lastTestFingerprint: z.string().nullable().default(null),
         lastTestedAt: timestampSchema.nullable().default(null),
         structuredOutput: z.enum(['native-schema', 'json-contract']).nullable().default(null),

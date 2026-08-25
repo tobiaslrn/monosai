@@ -295,6 +295,85 @@ describe('TextModelStore', () => {
       });
     });
 
+    it('keeps independently tested translation and grammar routes without changing Story', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      await store.test();
+
+      await store.setTaskModel('translation', {
+        modelId: 'vendor/translator',
+        name: 'Translator',
+        reasoningEffort: 'low',
+      });
+      await store.setTaskModel('grammar', {
+        modelId: 'vendor/grammar',
+        name: 'Grammar',
+        reasoningEffort: null,
+      });
+
+      expect(store.routeReadiness('translation')).toBe('untested');
+      await store.testTask('translation');
+      await store.testTask('grammar');
+
+      expect(store.configForTask('text')?.modelId).toBe(MODEL);
+      expect(store.configForTask('translation')?.modelId).toBe('vendor/translator');
+      expect(store.configForTask('grammar')?.modelId).toBe('vendor/grammar');
+      expect(settings.textModel.modelId).toBe(MODEL);
+    });
+
+    it('gives a routed task its own generation limit and leaves the rest alone', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      await store.test();
+      await store.setTaskModel('translation', {
+        modelId: 'vendor/translator',
+        name: 'Translator',
+        reasoningEffort: null,
+      });
+      await store.testTask('translation');
+
+      expect(store.routeTokenBudget('translation')).toBe(DEFAULT_STORY_TOKEN_BUDGET);
+      await expect(store.setTaskTokenBudget('translation', MIN_STORY_TOKEN_BUDGET)).resolves.toBe(
+        true,
+      );
+
+      expect(store.routeTokenBudget('translation')).toBe(MIN_STORY_TOKEN_BUDGET);
+      expect(store.configForTask('translation')?.storyTokenBudget).toBe(MIN_STORY_TOKEN_BUDGET);
+      expect(store.configForTask('grammar')?.storyTokenBudget).toBe(DEFAULT_STORY_TOKEN_BUDGET);
+      expect(store.settings().storyTokenBudget).toBe(DEFAULT_STORY_TOKEN_BUDGET);
+      // A budget says nothing about compatibility, so the test still vouches.
+      expect(store.routeReadiness('translation')).toBe('ready');
+    });
+
+    it('refuses a routed limit outside the allowed range', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      await store.test();
+      await store.setTaskModel('grammar', {
+        modelId: 'vendor/grammar',
+        name: 'Grammar',
+        reasoningEffort: null,
+      });
+
+      await expect(store.setTaskTokenBudget('grammar', MAX_STORY_TOKEN_BUDGET + 1)).resolves.toBe(
+        false,
+      );
+      await expect(store.setTaskTokenBudget('grammar', MIN_STORY_TOKEN_BUDGET - 1)).resolves.toBe(
+        false,
+      );
+
+      expect(store.routeTokenBudget('grammar')).toBe(DEFAULT_STORY_TOKEN_BUDGET);
+    });
+
+    it('has no routed limit to set while the task follows the story model', async () => {
+      const store = await ready();
+
+      await expect(store.setTaskTokenBudget('translation', MIN_STORY_TOKEN_BUDGET)).resolves.toBe(
+        false,
+      );
+      expect(store.routeTokenBudget('translation')).toBe(DEFAULT_STORY_TOKEN_BUDGET);
+    });
+
     it('reverts nothing and reports a storage failure', async () => {
       const store = await ready();
       settings.failWrites = storageError('unavailable', 'closed');
