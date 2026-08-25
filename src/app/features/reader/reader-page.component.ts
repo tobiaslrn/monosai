@@ -22,7 +22,6 @@ import { TranslationJobStore } from '../../application/enrichment/translation-jo
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
-import { CredentialStore } from '../../application/settings/credential.store';
 import { LanguageStore } from '../../application/language/language.store';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
@@ -53,6 +52,22 @@ import {
   type WordGrammarState,
 } from './word-inspector.component';
 import { WordPreviewComponent } from './word-preview.component';
+
+/**
+ * The word buttons, which a press reaches even while a surface is open.
+ *
+ * Restricted to real buttons: punctuation and whitespace carry the same class
+ * but are not words, and a press on one is a press on the line.
+ */
+const WORD_TARGET = 'button.token';
+
+/**
+ * How much of the reading is kept between a sheet and the word it explains.
+ *
+ * A word butted against the sheet's edge reads as being underneath it; a line
+ * of breathing room is what makes it look deliberately left visible.
+ */
+const SHEET_CLEARANCE = 12;
 
 /** How long a pointer must rest on a word before its preview appears. */
 const PREVIEW_DELAY_MS = 250;
@@ -446,7 +461,6 @@ export class ReaderPageComponent {
   protected readonly inspector = inject(WordInspectorStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly library = inject(LibraryStore);
-  private readonly credential = inject(CredentialStore);
   private readonly textModel = inject(TextModelStore);
   private readonly tts = inject(TtsStore);
   private readonly audioConfig = inject(AudioConfigurationService);
@@ -637,18 +651,14 @@ export class ReaderPageComponent {
   /** The navigation count the follow state was last reconciled against. */
   private lastNavigation = 0;
   private previewTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Watches an open sheet, so a growing one never covers its own subject. */
+  private sheetClearance: ResizeObserver | null = null;
   private previewRef: PopoverRef | null = null;
 
   constructor() {
-    // What a sentence action needs before it can key or send anything. Loading
-    // is a local read of stored settings; none of it contacts a provider, and
-    // no aid is requested as a result.
-    void this.credential.load();
-    void this.textModel.load();
+    // Model and credential settings are ready from bootstrap. The remaining
+    // local state below is specific to the reader route.
     void this.grammarProfile.load();
-    // The saved speech model and voice, for the same reason: keying a stored
-    // clip and offering to play one both need them, and reading them is local.
-    void this.tts.load();
     // The bundle the live grammar profile is resolved against. Already started
     // at bootstrap; asking again is idempotent and keeps a reading opened
     // straight after startup from showing an unresolved profile.
@@ -755,6 +765,7 @@ export class ReaderPageComponent {
 
     inject(DestroyRef).onDestroy(() => {
       this.endPreview();
+      this.releaseSheetClearance();
       this.popover.close();
       this.releasePlayerHeight();
       if (this.audioPlayerOutlet.hasAttached()) {
@@ -836,6 +847,7 @@ export class ReaderPageComponent {
   /** Clears every surface whose content belongs to the current reading. */
   private closeReaderSurfaces(): void {
     this.endPreview();
+    this.releaseSheetClearance();
     this.popover.close();
     if (this.audioPlayerOutlet.hasAttached()) {
       this.audioPlayerOutlet.detach();
@@ -901,6 +913,11 @@ export class ReaderPageComponent {
     if (sentence === undefined) {
       return;
     }
+    if (this.selectedSentenceIdSignal() === sentence.sentence.id) {
+      // The same gesture on the same sentence, for the same reason as a word.
+      this.popover.close();
+      return;
+    }
     this.endPreview();
     this.openSentence(sentence.sentence.id, { x: selection.x, y: selection.y });
   }
@@ -909,16 +926,27 @@ export class ReaderPageComponent {
     sentenceId: SentenceId,
     origin: { x: number; y: number } | HTMLElement,
   ): void {
+    // For the same reason as a word: the closing surface clears the selection,
+    // so whatever is open goes first and the new sentence is set after it.
+    this.popover.close();
     this.selectedSentenceIdSignal.set(sentenceId);
     this.popover.open({
       origin,
       template: this.sentencePopover(),
       viewContainerRef: this.viewContainerRef,
       closeOnScroll: true,
+      // A press on a word is about that word, whatever is open at the time.
+      retargetSelector: WORD_TARGET,
       onClosed: () => {
+        this.releaseSheetClearance();
         this.selectedSentenceIdSignal.set(null);
       },
     });
+    this.keepClearOfSheet(
+      origin instanceof HTMLElement
+        ? origin
+        : document.querySelector<HTMLElement>(`[data-sentence-id="${CSS.escape(sentenceId)}"]`),
+    );
   }
 
   protected translateSelectedSentence(): void {
@@ -973,7 +1001,22 @@ export class ReaderPageComponent {
    * and never a request. Focus returns to the token when the popover closes.
    */
   protected inspect(activation: TokenActivation): void {
+    const open = this.inspector.selected();
+    if (
+      open !== null &&
+      open.sentence.id === activation.sentence.sentence.id &&
+      open.token.id === activation.token.id
+    ) {
+      // Pressing the open word again puts it away. Reopening it would replay
+      // the sheet's entrance over the same word and leave a reader who meant
+      // to dismiss it exactly where they started.
+      this.popover.close();
+      return;
+    }
     this.endPreview();
+    // Before the new word is set, because closing the surface over the old one
+    // clears the selection, and a close that ran afterwards would clear this.
+    this.popover.close();
     void this.inspector.inspect({
       token: activation.token,
       word: activation.word,
@@ -987,10 +1030,78 @@ export class ReaderPageComponent {
       viewContainerRef: this.viewContainerRef,
       returnFocusTo: activation.origin,
       closeOnScroll: true,
+      // Moving on to the next word is one press, not one to put this card away
+      // and a second to open the next.
+      retargetSelector: WORD_TARGET,
       onClosed: () => {
+        this.releaseSheetClearance();
         this.inspector.close();
       },
     });
+    this.keepClearOfSheet(activation.origin);
+  }
+
+  /**
+   * Scrolls the word or line a sheet is about back into what is left of the
+   * page.
+   *
+   * A sheet docks over the bottom of the screen, so on a phone the press that
+   * opened it is as often as not underneath it — details about a word the
+   * reader can no longer see, in a sentence they can no longer read. Nothing
+   * happens on a desktop, where the card is anchored beside its word, or when
+   * the subject is already clear of the sheet.
+   */
+  private keepClearOfSheet(anchor: HTMLElement | null): void {
+    this.releaseSheetClearance();
+    if (anchor === null || !this.viewport.isMobile()) {
+      return;
+    }
+    // After the frame the sheet is laid out in: it is the sheet's own top edge
+    // that has to be cleared, and it has none until it has been rendered.
+    requestAnimationFrame(() => {
+      const sheet = document.querySelector<HTMLElement>('.mn-popover-pane.is-sheet');
+      if (sheet === null) {
+        return;
+      }
+      let scrolled = false;
+      let target = window.scrollY;
+      const clear = (): void => {
+        const overlap =
+          anchor.getBoundingClientRect().bottom -
+          sheet.getBoundingClientRect().top +
+          SHEET_CLEARANCE;
+        // Resolved to a position rather than a distance, so a measurement taken
+        // while a smooth scroll is still running does not ask for the same
+        // distance twice.
+        const wanted = window.scrollY + overlap;
+        if (overlap <= 0 || wanted <= target + 1) {
+          return;
+        }
+        target = wanted;
+        this.scrollingProgrammatically = true;
+        window.scrollTo({
+          top: target,
+          // The first move is the one the reader sees answer their press. A
+          // correction after the sheet has grown is not a second journey.
+          behavior: scrolled || this.viewport.prefersReducedMotion() ? 'auto' : 'smooth',
+        });
+        scrolled = true;
+        setTimeout(() => {
+          this.scrollingProgrammatically = false;
+        }, SCROLL_SETTLE_MS);
+      };
+      // A sheet is as tall as what it has to say, and it has nothing to say
+      // until a lookup or a stored translation has arrived: measuring only once
+      // would clear an edge the sheet is about to grow past. The observer
+      // reports the first size as well, so this is also the initial check.
+      this.sheetClearance = new ResizeObserver(clear);
+      this.sheetClearance.observe(sheet);
+    });
+  }
+
+  private releaseSheetClearance(): void {
+    this.sheetClearance?.disconnect();
+    this.sheetClearance = null;
   }
 
   protected closeInspector(): void {

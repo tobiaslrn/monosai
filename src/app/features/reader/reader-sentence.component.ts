@@ -124,6 +124,11 @@ export interface TokenActivation {
      * paragraph resolves geometrically.
      */
     .sentence {
+      /* A tint fades in rather than snapping, which is what a press on a
+       * sentence feels like on a phone. */
+      transition: background-color var(--motion-fast) ease-out;
+      /* The platform's grey flash would fight every tint defined here. */
+      -webkit-tap-highlight-color: transparent;
       /*
        * Constant, never introduced by a state: switching from the initial
        * slice to clone re-applies the inline padding to every wrapped line, so
@@ -153,11 +158,14 @@ export interface TokenActivation {
     /*
      * Hovering says a sentence is something you can act on without printing a
      * control on the page. Only the colour changes, so nothing moves.
+     *
+     * A mouse only. A phone answers a tap with a synthesized hover that it
+     * never takes back, so on touch this used to leave a whole sentence shaded
+     * behind every tap — including taps that did nothing at all. "data-pointer"
+     * follows the hardware, so a touchscreen laptop is covered too.
      */
-    @media (hover: hover) {
-      .sentence:hover {
-        background: var(--surface-sunken);
-      }
+    :host-context(html[data-pointer='mouse']) .sentence:hover {
+      background: var(--surface-sunken);
     }
 
     /*
@@ -169,13 +177,24 @@ export interface TokenActivation {
       background: var(--surface-sunken);
     }
 
+    @media (prefers-reduced-motion: reduce) {
+      .sentence {
+        transition: none;
+      }
+    }
+
     /*
      * The open sentence keeps a tint of its own. Without it an anchored
      * popover would be orphaned from the sentence it is about.
+     *
+     * The same colour a word is tinted with, because it means the same thing —
+     * this is what the open surface is about — and only one of the two can be
+     * open at a time. Two colours for one idea read as two kinds of selection
+     * a reader could not tell apart or choose between.
      */
     .sentence.is-selected,
     .sentence.is-selected:hover {
-      background: var(--action-primary-soft);
+      background: var(--accent-secondary-soft);
     }
 
     /*

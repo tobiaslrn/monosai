@@ -4,6 +4,16 @@ import { sentenceAt, sentenceBoxesIn } from './sentence-hit-testing';
 /** How long a touch must rest on a sentence before it is selected. */
 const LONG_PRESS_MS = 450;
 
+/**
+ * How long a finger must rest before the sentence under it is tinted.
+ *
+ * Short enough to answer a press that is going somewhere well before it
+ * resolves, and long enough that a tap or the start of a scroll — neither of
+ * which selects anything — leaves the page alone instead of flashing a shaded
+ * sentence at the reader.
+ */
+const PRESS_FEEDBACK_MS = 140;
+
 /** Movement that turns a press into a scroll or a drag rather than a long press. */
 const MOVE_TOLERANCE_PX = 10;
 
@@ -50,6 +60,7 @@ export class ParagraphGesturesDirective {
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
 
   private pressTimer: ReturnType<typeof setTimeout> | null = null;
+  private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private pressOrigin: { x: number; y: number } | null = null;
   private armedSwallow: ((event: Event) => void) | null = null;
   private swallowTimer: ReturnType<typeof setTimeout> | null = null;
@@ -103,20 +114,26 @@ export class ParagraphGesturesDirective {
       return;
     }
     this.cancelPress();
-    this.pressOrigin = { x: event.clientX, y: event.clientY };
-    // Answered at once rather than after the delay: half a second of nothing
-    // happening under a finger reads as the page having ignored it.
-    this.markPressed(sentenceAt(sentenceBoxesIn(this.element.nativeElement), this.pressOrigin));
+    const origin = { x: event.clientX, y: event.clientY };
+    this.pressOrigin = origin;
+    // Answered well before the press resolves, because half a second of nothing
+    // happening under a finger reads as the page having ignored it — but not on
+    // the very first frame, because a tap and the first frame of a scroll are
+    // also presses, and neither of them selects a sentence.
+    this.feedbackTimer = setTimeout(() => {
+      this.feedbackTimer = null;
+      this.markPressed(sentenceAt(sentenceBoxesIn(this.element.nativeElement), origin));
+    }, PRESS_FEEDBACK_MS);
     this.pressTimer = setTimeout(() => {
       this.pressTimer = null;
-      const origin = this.pressOrigin;
-      if (origin === null || hasTextSelection()) {
+      const resting = this.pressOrigin;
+      if (resting === null || hasTextSelection()) {
         return;
       }
       this.swallowNextClick();
       buzz();
       this.markPressed(null);
-      this.select(origin.x, origin.y);
+      this.select(resting.x, resting.y);
     }, LONG_PRESS_MS);
   }
 
@@ -165,6 +182,10 @@ export class ParagraphGesturesDirective {
     if (this.pressTimer !== null) {
       clearTimeout(this.pressTimer);
       this.pressTimer = null;
+    }
+    if (this.feedbackTimer !== null) {
+      clearTimeout(this.feedbackTimer);
+      this.feedbackTimer = null;
     }
     this.pressOrigin = null;
     this.markPressed(null);

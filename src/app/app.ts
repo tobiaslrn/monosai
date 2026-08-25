@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
 import { AppShellComponent } from './core/layout/app-shell.component';
+import { PointerModalityService } from './core/platform/pointer-modality.service';
 import { ErrorScreenComponent } from './shared-ui/error-screen/error-screen.component';
 import { technicalCode } from './domain/shared/errors';
 
@@ -38,6 +39,12 @@ import { technicalCode } from './domain/shared/errors';
 })
 export class App {
   protected readonly initializer = inject(AppInitializerService);
+  /**
+   * Started here so `data-pointer` is on the document root before anything is
+   * rendered, and stays right for the whole session: hover styling everywhere
+   * else keys off it.
+   */
+  private readonly pointerModality = inject(PointerModalityService);
   protected readonly technicalCode = technicalCode;
 
   protected retry(): void {

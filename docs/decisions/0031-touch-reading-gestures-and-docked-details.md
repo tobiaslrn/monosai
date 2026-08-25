@@ -1,7 +1,7 @@
 # 0031 — On touch, a long press selects a sentence and details dock as a sheet
 
 Date: 2026-08-25
-Status: Accepted
+Status: Accepted — refined by ADR 0032 (what a word tap costs and looks like)
 
 ## Context
 

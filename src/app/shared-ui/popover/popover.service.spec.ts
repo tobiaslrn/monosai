@@ -17,6 +17,7 @@ import { ReaderPopoverComponent } from './reader-popover.component';
   imports: [ReaderPopoverComponent],
   template: `
     <button #anchor type="button">anchor</button>
+    <button #word type="button" class="token">猫</button>
 
     <ng-template #previewContent>
       <span class="preview-body">ねこ — cat</span>
@@ -32,6 +33,7 @@ import { ReaderPopoverComponent } from './reader-popover.component';
 })
 class HostComponent {
   readonly anchor = viewChild.required<ElementRef<HTMLButtonElement>>('anchor');
+  readonly word = viewChild.required<ElementRef<HTMLButtonElement>>('word');
   readonly content = viewChild.required<TemplateRef<unknown>>('content');
   readonly previewContent = viewChild.required<TemplateRef<unknown>>('previewContent');
   readonly viewContainerRef = inject(ViewContainerRef);
@@ -39,12 +41,13 @@ class HostComponent {
 
   closedCount = 0;
 
-  open(mobileSheet?: boolean): PopoverRef {
+  open(mobileSheet?: boolean, retargetSelector?: string): PopoverRef {
     return this.popover.open({
       origin: this.anchor(),
       template: this.content(),
       viewContainerRef: this.viewContainerRef,
       mobileSheet,
+      retargetSelector,
       returnFocusTo: this.anchor().nativeElement,
       onClosed: () => {
         this.closedCount += 1;
@@ -79,9 +82,15 @@ describe('PopoverService', () => {
     media = installFakeMatchMedia(1440);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     TestBed.inject(PopoverService).close();
     media.restore();
+    // A dismissal arms a one-shot guard against the click it was answering,
+    // disarmed on the next macrotask. Letting that run keeps one test's
+    // dismissal from eating the first click of the next one.
+    await new Promise((resolve) => {
+      setTimeout(resolve);
+    });
   });
 
   it('renders the content in an overlay with a labelled dialog', () => {
@@ -155,6 +164,51 @@ describe('PopoverService', () => {
     fixture.detectChanges();
     expect(pane()).toBeNull();
     expect(fixture.componentInstance.closedCount).toBe(1);
+  });
+
+  /**
+   * Dismissal normally eats the click it was answering. A word is the
+   * exception: without this, every tap on the next word was spent closing the
+   * card over the previous one, and a reader had to tap the same word twice.
+   * The surface is left standing so that the click can decide — which is what
+   * lets a press on the open word put it away rather than reopen it.
+   */
+  it('leaves a tap on a retargetable element to its own click', () => {
+    const fixture = render();
+    fixture.componentInstance.open(undefined, 'button.token');
+    fixture.detectChanges();
+    const word = fixture.componentInstance.word().nativeElement;
+    let clicked = 0;
+    word.addEventListener('click', () => {
+      clicked += 1;
+    });
+
+    press(word, 10, 10);
+    release(word, 10, 10);
+    word.click();
+    fixture.detectChanges();
+
+    expect(pane()).not.toBeNull();
+    expect(fixture.componentInstance.closedCount).toBe(0);
+    expect(clicked).toBe(1);
+  });
+
+  it('still eats the click of a tap that only dismisses', () => {
+    const fixture = render();
+    fixture.componentInstance.open(undefined, 'button.token');
+    fixture.detectChanges();
+    let clicked = 0;
+    document.body.addEventListener('click', () => {
+      clicked += 1;
+    });
+
+    press(document.body, 40, 200);
+    release(document.body, 40, 200);
+    document.body.click();
+    fixture.detectChanges();
+
+    expect(pane()).toBeNull();
+    expect(clicked).toBe(0);
   });
 
   it('leaves a press inside the popover alone', () => {

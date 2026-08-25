@@ -120,6 +120,19 @@ const DISMISS_DISTANCE_PX = 80;
       }
     }
 
+    /*
+     * The card takes focus when it opens, so that a screen reader hears what
+     * appeared before it hears the first thing inside it — but it is a
+     * container rather than a control, and a ring drawn around the whole
+     * surface after a tap reads as a rendering fault rather than as focus.
+     * Every control inside it keeps its own ring, which is where a keyboard
+     * lands on the first Tab.
+     */
+    .popover:focus,
+    .popover:focus-visible {
+      outline: none;
+    }
+
     /* The drag follows the finger exactly; only letting go is animated. */
     :host(.is-sheet) .popover.is-dragging {
       transition: none;

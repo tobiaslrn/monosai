@@ -40,6 +40,17 @@ export interface PopoverOptions {
   /** Whether a modal surface should dock to the bottom on a mobile viewport. */
   readonly mobileSheet?: boolean;
   /**
+   * Elements an outside press should reach after dismissing this surface.
+   *
+   * Dismissal normally eats the click it was answering, so that putting a
+   * surface away never also acts on whatever was underneath it. A word is the
+   * exception: with a surface open, every tap on the next word was spent
+   * closing the previous one, and the reader had to tap the same word twice to
+   * read it. A press on a matching target dismisses nothing and keeps its
+   * click, leaving what happens next to whatever handles it.
+   */
+  readonly retargetSelector?: string;
+  /**
    * Closes the popover as soon as the page scrolls.
    *
    * What a reader anchored to a word or a line should do when that line moves:
@@ -51,6 +62,19 @@ export interface PopoverOptions {
 
 export interface PopoverRef {
   close(): void;
+}
+
+/**
+ * Whether the click this press is about to produce belongs to its target
+ * rather than to the surface that was just dismissed.
+ */
+function retargets(event: PointerEvent, selector: string | undefined): boolean {
+  if (selector === undefined) {
+    return false;
+  }
+  const target = event.target;
+  const element = target instanceof Element ? target : null;
+  return element !== null && element.closest(selector) !== null;
 }
 
 function panelClasses(modal: boolean, sheet: boolean): string[] {
@@ -175,6 +199,12 @@ export class PopoverService {
           Math.abs(event.clientX - start.x) > OUTSIDE_TAP_TOLERANCE_PX ||
           Math.abs(event.clientY - start.y) > OUTSIDE_TAP_TOLERANCE_PX;
         if (travelled) {
+          return;
+        }
+        if (retargets(event, options.retargetSelector)) {
+          // Left open and left alone: the click this press is about to produce
+          // decides what happens, which is what lets pressing the open word
+          // put it away and pressing the next one move on to it.
           return;
         }
         close();

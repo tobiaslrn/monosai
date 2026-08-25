@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
+import { PointerModalityService } from '../../core/platform/pointer-modality.service';
 import { ReaderTokenComponent, type TokenActivationSource } from './reader-token.component';
 
 function token(overrides: Partial<Token> = {}): Token {
@@ -30,6 +31,7 @@ function token(overrides: Partial<Token> = {}): Token {
       [showMarkers]="markers()"
       [grammarConcern]="concern()"
       (activated)="activations.push($event)"
+      (previewed)="previews.push($event)"
     />
   `,
 })
@@ -40,6 +42,7 @@ class HostComponent {
   readonly markers = signal(true);
   readonly concern = signal(false);
   readonly activations: TokenActivationSource[] = [];
+  readonly previews: TokenActivationSource[] = [];
 }
 
 describe('ReaderTokenComponent', () => {
@@ -77,6 +80,39 @@ describe('ReaderTokenComponent', () => {
     // is what proves keyboard activation works without custom handlers.
     expect(button?.tagName).toBe('BUTTON');
     button?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    button?.click();
+    expect(fixture.componentInstance.activations).toHaveLength(1);
+  });
+
+  /**
+   * The hover preview belongs to a mouse and a keyboard. A tap both focuses a
+   * word and synthesizes a pointer entering it, so on a phone every tap used
+   * to raise a preview card that the tap's own details card then replaced.
+   */
+  it('previews on hover and focus for a mouse', () => {
+    const fixture = render();
+    const button = (fixture.nativeElement as HTMLElement).querySelector('button');
+
+    button?.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+    button?.dispatchEvent(new FocusEvent('focus'));
+
+    expect(fixture.componentInstance.previews).toHaveLength(2);
+  });
+
+  it('stays silent for a finger, which has no hover to offer', () => {
+    // Instantiated first, so the service is listening when the finger lands.
+    TestBed.inject(PointerModalityService);
+    document.body.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }),
+    );
+    const fixture = render();
+    const button = (fixture.nativeElement as HTMLElement).querySelector('button');
+
+    button?.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'touch' }));
+    button?.dispatchEvent(new FocusEvent('focus'));
+
+    expect(fixture.componentInstance.previews).toHaveLength(0);
+    // The tap itself still opens the word.
     button?.click();
     expect(fixture.componentInstance.activations).toHaveLength(1);
   });
