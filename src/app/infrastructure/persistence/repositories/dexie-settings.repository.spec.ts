@@ -156,6 +156,34 @@ describe('DexieSettingsRepository', () => {
     expect(loaded.ok && loaded.value.storyTokenBudget).toBe(DEFAULT_STORY_TOKEN_BUDGET);
   });
 
+  it('keeps both patches when two updates to one row overlap', async () => {
+    // Each patch describes a different field, and neither may be lost: the
+    // settings page fires exactly this pair when a model is chosen while the
+    // learner is editing another field, and the model choice used to vanish.
+    const [route, budget] = await Promise.all([
+      repository.updateTextModelSettings({ translationPresetId: 'task-translation' }),
+      repository.updateTextModelSettings({ storyTokenBudget: 20_000 }),
+    ]);
+
+    expect(route.ok && budget.ok).toBe(true);
+    const loaded = await repository.getTextModelSettings();
+    expect(loaded.ok && loaded.value.translationPresetId).toBe('task-translation');
+    expect(loaded.ok && loaded.value.storyTokenBudget).toBe(20_000);
+  });
+
+  it('leaves the stored row untouched when an overlapping update is invalid', async () => {
+    const [valid, invalid] = await Promise.all([
+      repository.updateTextModelSettings({ modelId: 'vendor/model' }),
+      repository.updateTextModelSettings({ storyTokenBudget: 1_024 }),
+    ]);
+
+    expect(valid.ok).toBe(true);
+    expect(invalid.ok).toBe(false);
+    const loaded = await repository.getTextModelSettings();
+    expect(loaded.ok && loaded.value.modelId).toBe('vendor/model');
+    expect(loaded.ok && loaded.value.storyTokenBudget).toBe(DEFAULT_STORY_TOKEN_BUDGET);
+  });
+
   it('stores the exception policy with its hash', async () => {
     const saved = await repository.updateExceptionPolicy({
       text: 'Allow common katakana loanwords.',
