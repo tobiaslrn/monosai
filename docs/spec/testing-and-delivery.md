@@ -81,8 +81,19 @@ Run task-specific OpenRouter adapter tests for status handling, cancellation, ti
 
 Use Playwright's current stable Chrome channel and two projects:
 
-- Windows-like desktop viewport with keyboard/mouse.
-- Android mobile viewport/touch context with Android Chrome user-agent characteristics.
+- Windows-like desktop viewport with keyboard/mouse, which runs every scenario.
+- Android mobile viewport/touch context with Android Chrome user-agent
+  characteristics, which runs the scenarios tagged `@mobile`: touch gestures,
+  docked sheets, narrow layouts, and one accessibility sweep per screen area.
+  A scenario whose behavior does not depend on the viewport is covered once.
+
+The suite runs against the optimized `e2e` build (`npm run build:e2e`, served
+by `scripts/serve-dist.mjs` at the root path) rather than the development
+server. Every test starts with an empty browser cache, so the unbundled
+development output costs roughly 60MB across 76 requests per test where the
+built output costs 1.4MB across 15. That build ships no service worker; the
+worker, installability, and offline reload are covered by the separate
+`e2e:pwa` suite against the real Pages build.
 
 Core E2E scenarios:
 

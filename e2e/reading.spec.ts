@@ -153,7 +153,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('mn-reader-paragraph')).toHaveCount(2);
   });
 
-  test('paste, save, and read without a review step', async ({ page }) => {
+  test('paste, save, and read without a review step @mobile', async ({ page }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
 
@@ -237,7 +237,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('ruby', { hasText: '猫' }).first().locator('rt')).toHaveText('ねこ');
   });
 
-  test('wraps fitting bunsetsu atomically without horizontal overflow', async ({ page }) => {
+  test('wraps fitting bunsetsu atomically without horizontal overflow @mobile', async ({
+    page,
+  }) => {
     await importReading(page, '名前があります。', 'Bunsetsu wrapping');
 
     await setReaderAids(page, { furigana: true, spacing: true });
@@ -441,7 +443,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     expect(external).toEqual([]);
   });
 
-  test('a tap dismisses what is open instead of opening the next sentence', async ({
+  test('a tap dismisses what is open instead of opening the next sentence @mobile', async ({
     page,
     isMobile,
   }) => {
@@ -458,7 +460,10 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('mn-sentence-popover')).toHaveCount(0);
   });
 
-  test('a tap opens a word, and one more tap moves on to the next', async ({ page, isMobile }) => {
+  test('a tap opens a word, and one more tap moves on to the next @mobile', async ({
+    page,
+    isMobile,
+  }) => {
     test.skip(!isMobile, 'the two-tap problem only ever existed on touch');
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
@@ -474,7 +479,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('button.token.is-selected')).toHaveCount(1);
   });
 
-  test('a tap on the open word puts it away', async ({ page, isMobile }) => {
+  test('a tap on the open word puts it away @mobile', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'a phone is where a word is opened and closed by tapping');
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
@@ -490,7 +495,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('button.token.is-selected')).toHaveCount(0);
   });
 
-  test('a tap leaves no hover behind on a phone', async ({ page, isMobile }) => {
+  test('a tap leaves no hover behind on a phone @mobile', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'a synthesized hover is a touch device problem');
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
@@ -507,7 +512,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('.sentence.is-pressing')).toHaveCount(0);
   });
 
-  test('the word a sheet explains stays visible above it', async ({ page, isMobile }) => {
+  test('the word a sheet explains stays visible above it @mobile', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'only a docked sheet can cover the word it is about');
     await page.goto('/#/add');
     await pasteAndContinue(
@@ -539,7 +544,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       .toBeLessThanOrEqual(0);
   });
 
-  test('the reading scrolls on with a sheet still open', async ({ page, isMobile }) => {
+  test('the reading scrolls on with a sheet still open @mobile', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'only a docked sheet stays put while the page moves');
     await page.goto('/#/add');
     // Long enough that there is somewhere to scroll to behind the sheet.
@@ -569,7 +574,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     expect((card?.y ?? 0) + (card?.height ?? 0)).toBeCloseTo(viewport?.height ?? 0, 0);
   });
 
-  test('sentence details dock as a sheet on a phone, above the text they explain', async ({
+  test('sentence details dock as a sheet on a phone, above the text they explain @mobile', async ({
     page,
     isMobile,
   }) => {
@@ -653,7 +658,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.getByRole('checkbox', { name: 'Furigana' })).not.toBeChecked();
   });
 
-  test('keeps every Reader action usable in the compact 320px header', async ({ page }) => {
+  test('keeps every Reader action usable in the compact 320px header @mobile', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
@@ -684,7 +689,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       .toBe(true);
   });
 
-  test('has no serious accessibility violations across the workflow', async ({ page }) => {
+  test('has no serious accessibility violations across the workflow @mobile', async ({ page }) => {
     await page.goto('/#/add');
     await expectNoSeriousAccessibilityViolations(page);
 
@@ -739,7 +744,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
   });
 
   /** Chips are chrome until there are enough readings for filtering to help. */
-  test('hides the filter chips on a shelf too small to need them', async ({ page }) => {
+  test('hides the filter chips on a shelf too small to need them @mobile', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
     await page.goto('/#/library');
 
@@ -818,7 +823,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await expect(page).toHaveURL(/#\/library/);
   });
 
-  test('has no serious accessibility violations in the library', async ({ page }) => {
+  test('has no serious accessibility violations in the library @mobile', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
     await page.goto('/#/library');
     await expect(page.locator('mn-reading-card')).toHaveCount(1);

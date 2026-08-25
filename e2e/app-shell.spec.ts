@@ -36,7 +36,7 @@ test.describe('application shell', () => {
     await expect(diagnostics.getByText('Build commit')).toBeVisible();
   });
 
-  test('has no serious accessibility violations', async ({ page }) => {
+  test('has no serious accessibility violations @mobile', async ({ page }) => {
     await page.goto('/#/settings');
     await expectNoSeriousAccessibilityViolations(page);
   });
@@ -47,7 +47,9 @@ test.describe('application shell', () => {
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   });
 
-  test('keeps the Library identity and Settings action usable at 320px', async ({ page }) => {
+  test('keeps the Library identity and Settings action usable at 320px @mobile', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('/#/library');
 

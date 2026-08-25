@@ -18,6 +18,7 @@
     "start": "ng serve",
     "build": "ng build",
     "build:pages": "ng build --configuration pages --stats-json",
+    "build:e2e": "ng build --configuration e2e",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:coverage": "ng test --coverage",

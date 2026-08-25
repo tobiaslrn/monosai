@@ -138,9 +138,9 @@ test.describe('the model tree', () => {
       'true',
     );
     await expect(page.getByRole('alert')).toContainText('between 4096 and 32768');
-    expect(textModelSettings(await readSettingsRecord(page, 'text-model'))['storyTokenBudget']).toBe(
-      16_384,
-    );
+    expect(
+      textModelSettings(await readSettingsRecord(page, 'text-model'))['storyTokenBudget'],
+    ).toBe(16_384);
   });
 
   test('tests audio independently through its preview', async ({ page }) => {
@@ -180,7 +180,7 @@ test.describe('the model tree', () => {
     await expectReadiness(textModelReadiness(page), 'ready');
   });
 
-  test('is accessible without horizontal overflow', async ({ page }) => {
+  test('is accessible without horizontal overflow @mobile', async ({ page }) => {
     await stubOpenRouter(page);
     await page.goto('/#/settings');
     await saveApiKey(page);

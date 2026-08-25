@@ -100,7 +100,7 @@ test.describe('settings persistence', () => {
     expect(content).not.toContain('sk-or-');
   });
 
-  test('has no serious accessibility violations', async ({ page }) => {
+  test('has no serious accessibility violations @mobile', async ({ page }) => {
     await page.goto('/#/settings');
     await expectNoSeriousAccessibilityViolations(page);
   });

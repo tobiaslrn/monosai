@@ -223,7 +223,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(audioPlayer(page).getByText('Stopped.')).toBeVisible({ timeout: 15_000 });
   });
 
-  test('stays fixed at the bottom without horizontal overflow or dismissal', async ({ page }) => {
+  test('stays fixed at the bottom without horizontal overflow or dismissal @mobile', async ({
+    page,
+  }) => {
     await prepareReading(page, TEXT.repeat(20));
     await openAudioPlayer(page);
 
@@ -438,7 +440,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(await storedClipCount(page)).toBe(0);
   });
 
-  test('the reader stays accessible with the player visible and a sentence open', async ({
+  test('the reader stays accessible with the player visible and a sentence open @mobile', async ({
     page,
   }) => {
     await prepareReading(page);
