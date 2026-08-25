@@ -59,6 +59,7 @@ The concrete tokenizer and open grammar dataset are implementation-time dependen
 | [Domain and data model](domain-and-data-model.md) | Canonical types, persistence schema, identity, immutability, caching, migrations |
 | [Anki and language processing](anki-and-language-processing.md) | Provider adapters, package import, current vocabulary, parsing, dictionary, furigana, validation |
 | [AI pipelines](ai-pipelines.md) | OpenRouter configuration and generation, repair, translation, grammar, exception, and TTS workflows |
+| [AI model configuration](ai-model-configuration.md) | *Proposed.* Connections, model profiles, capability probes, and per-feature routing. Supersedes the configuration sections of AI pipelines on acceptance |
 | [Testing and delivery](testing-and-delivery.md) | Test layers, fixtures, quality gates, CI, deployment, manual acceptance |
 | [Implementation roadmap](implementation-roadmap.md) | Ordered build milestones, checkpoints, and definition of done |
 
