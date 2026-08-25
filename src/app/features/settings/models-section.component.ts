@@ -1,134 +1,270 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import type { ElementRef } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { CredentialStore } from '../../application/settings/credential.store';
-import { TextModelStore } from '../../application/settings/text-model.store';
+import { TextModelStore, type TextModelTask } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import { MODEL_CATALOG } from '../../application/shared/ai-tokens';
+import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { ModelPickerComponent } from './model-picker.component';
+import { TokenBudgetFieldComponent } from './token-budget-field.component';
 
+/**
+ * The AI configuration, shaped as the tree it actually is.
+ *
+ * One text model answers for everything by default; translation and grammar
+ * review are branches of it that exist only when a learner deliberately opens
+ * them. Nothing here has a Test button: choosing a model or changing how it
+ * thinks is what makes a test necessary, so the test runs then, and the status
+ * beside the model doubles as the retry when it did not pass.
+ */
 @Component({
   selector: 'mn-models-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ModelPickerComponent],
+  imports: [ModelPickerComponent, TokenBudgetFieldComponent],
+  host: {
+    '(document:pointerdown)': 'closeConnectionMenuFromOutside($event)',
+    '(document:keydown.escape)': 'connectionMenuOpen.set(false)',
+  },
   template: `
     <section class="mn-panel models" aria-labelledby="mn-models-heading">
-      <div>
-        <h2 id="mn-models-heading">AI models</h2>
-        <p class="mn-hint">Choose directly from OpenRouter. Changes are saved on this device.</p>
-      </div>
+      <header class="section-head">
+        <h2 id="mn-models-heading">AI &amp; generation</h2>
+        <div class="connection">
+          <button
+            #connectionButton
+            type="button"
+            class="mn-button connection-button"
+            [class.mn-button--primary]="!credential.isConfigured()"
+            [attr.aria-expanded]="connectionMenuOpen()"
+            aria-haspopup="dialog"
+            (click)="toggleConnectionMenu()"
+          >
+            <span class="connection-dot" [class.connected]="credential.isConfigured()"></span>
+            {{ credential.isConfigured() ? 'OpenRouter connected' : 'Connect OpenRouter' }}
+            <svg
+              class="chevron"
+              [class.chevron--up]="connectionMenuOpen()"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 6.5 8 10.5 12 6.5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          @if (connectionMenuOpen()) {
+            <div
+              #connectionMenu
+              class="connection-menu"
+              role="dialog"
+              aria-label="OpenRouter connection"
+            >
+              <label class="mn-field">
+                <span>{{ credential.isConfigured() ? 'Replace API key' : 'API key' }}</span>
+                <input
+                  class="mn-control"
+                  type="password"
+                  autocomplete="off"
+                  spellcheck="false"
+                  data-testid="api-key-input"
+                  placeholder="sk-or-…"
+                  [value]="keyDraft()"
+                  (input)="onKeyInput($event)"
+                />
+              </label>
+              <div class="connection-actions">
+                <button
+                  type="button"
+                  class="mn-button mn-button--primary"
+                  data-testid="save-key"
+                  [disabled]="keyDraft().trim() === '' || credential.action() !== 'idle'"
+                  (click)="saveKey()"
+                >
+                  {{ credential.isConfigured() ? 'Replace key' : 'Connect' }}
+                </button>
+                @if (credential.isConfigured()) {
+                  <button type="button" class="mn-button mn-button--danger" (click)="removeKey()">
+                    Delete key
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </header>
 
-      <details class="key-card mn-disclosure" [open]="!credential.isConfigured()">
-        <summary>
-          OpenRouter
-          <span class="connection-state">{{
-            credential.isConfigured() ? 'Connected' : 'Not connected'
-          }}</span>
-        </summary>
-        <div class="key-controls">
-          <label class="mn-visually-hidden" for="mn-openrouter-key">OpenRouter API key</label>
-          <div class="credential-row">
-            <input
-              class="mn-control"
-              id="mn-openrouter-key"
-              type="password"
-              autocomplete="off"
-              spellcheck="false"
-              data-testid="api-key-input"
-              [placeholder]="credential.isConfigured() ? 'Replace saved key' : 'Paste your key'"
-              [value]="keyDraft()"
-              (input)="onKeyInput($event)"
-            />
-            <div class="actions">
+      <div class="tree">
+        <section class="node" aria-labelledby="mn-text-model-label">
+          <div class="node-head">
+            <h3 id="mn-text-model-label">Text</h3>
+            @if (retestable(text.readiness())) {
               <button
                 type="button"
-                class="mn-button mn-button--primary"
-                data-testid="save-key"
-                [disabled]="keyDraft().trim() === '' || credential.action() !== 'idle'"
-                (click)="saveKey()"
+                class="status status--action"
+                data-testid="test-text-model"
+                [disabled]="text.action() !== 'idle'"
+                (click)="text.test()"
               >
-                {{ credential.isConfigured() ? 'Replace key' : 'Save key' }}
+                {{ statusLabel(text.readiness(), text.action() === 'testing') }}
               </button>
-              @if (credential.isConfigured()) {
-                <button type="button" class="mn-button mn-button--danger" (click)="removeKey()">
-                  Remove
-                </button>
-              }
-            </div>
+            } @else if (text.readiness() === 'ready') {
+              <span class="status status--ok">Ready</span>
+            }
           </div>
-        </div>
-      </details>
 
-      <div class="model-fields" [class.disabled]="!credential.isConfigured()">
-        <section class="model-field" aria-labelledby="mn-text-model-label">
-          <div class="field-heading">
-            <div>
-              <h3 id="mn-text-model-label">Text model</h3>
-              <p class="mn-hint">Used for stories, translations, and grammar.</p>
-            </div>
-            <span class="status" [attr.data-readiness]="text.readiness()">{{ textStatus() }}</span>
-          </div>
           <mn-model-picker
+            class="picker"
             label="text models"
-            data-testid="text-model-picker"
             [models]="textModels()"
             [favoriteIds]="text.favoriteModelIds()"
             [selectedId]="text.settings().modelId"
+            [selectedLabel]="storyModelLabel()"
             [loading]="catalogLoading()"
             [failure]="catalogFailure()"
             [disabled]="!credential.isConfigured()"
             (opened)="loadCatalog()"
-            (modelSelected)="selectTextModel($event)"
+            (modelSelected)="selectStoryModel($event)"
             (favoriteToggled)="text.toggleFavorite($event)"
           />
-          @if (selectedTextModel(); as model) {
-            <div class="options">
-              <label class="mn-field"
-                ><span>Reasoning</span>
-                <select
-                  class="mn-control"
-                  [value]="text.settings().reasoningEffort ?? ''"
-                  (change)="setReasoning($event)"
-                >
-                  <option value="">Automatic</option>
-                  @for (effort of reasoningEfforts(model); track effort) {
-                    <option [value]="effort">{{ titleCase(effort) }}</option>
-                  }
-                </select>
-              </label>
+
+          <div class="options">
+            <label class="option">
+              <span>Reasoning</span>
+              <select
+                class="mn-control"
+                [disabled]="!credential.isConfigured()"
+                [value]="text.settings().reasoningEffort ?? ''"
+                (change)="setStoryReasoning($event)"
+              >
+                <option value="">Automatic</option>
+                @for (effort of reasoningEfforts(selectedStoryModel()); track effort) {
+                  <option [value]="effort">{{ titleCase(effort) }}</option>
+                }
+              </select>
+            </label>
+            <div class="option">
+              <span id="mn-text-limit-label">Token limit</span>
+              <mn-token-budget-field
+                testId="story-token-budget-input"
+                labelledBy="mn-text-limit-label"
+                [value]="text.settings().storyTokenBudget"
+                [disabled]="!credential.isConfigured()"
+                (committed)="saveStoryBudget($event)"
+              />
             </div>
-          }
-          <div class="actions">
-            <button
-              type="button"
-              class="mn-button"
-              data-testid="test-text-model"
-              [disabled]="text.settings().modelId === '' || text.action() !== 'idle'"
-              (click)="text.test()"
-            >
-              {{ text.action() === 'testing' ? 'Testing…' : 'Test text model' }}
-            </button>
           </div>
-          @if (text.testFailure(); as failure) {
-            <p class="error" role="alert">{{ failure.message }}</p>
-          }
+
+          <details class="mn-disclosure branches" [open]="hasOverrides()">
+            <summary>Separate models for translation and grammar</summary>
+            @for (task of textTasks; track task.id) {
+              <div class="branch" [attr.aria-labelledby]="'mn-' + task.id + '-label'">
+                <div class="node-head">
+                  <h4 [id]="'mn-' + task.id + '-label'">{{ task.label }}</h4>
+                  @if (text.routePreset(task.id) !== null && retestable(text.routeReadiness(task.id))) {
+                    <button
+                      type="button"
+                      class="status status--action"
+                      data-testid="test-text-model"
+                      [disabled]="text.action() !== 'idle'"
+                      (click)="text.testTask(task.id)"
+                    >
+                      {{ statusLabel(text.routeReadiness(task.id), text.action() === 'testing') }}
+                    </button>
+                  } @else if (
+                    text.routePreset(task.id) !== null && text.routeReadiness(task.id) === 'ready'
+                  ) {
+                    <span class="status status--ok">Ready</span>
+                  }
+                </div>
+
+                <mn-model-picker
+                  class="picker"
+                  [label]="task.label + ' models'"
+                  fallbackLabel="Same as text"
+                  [models]="textModels()"
+                  [favoriteIds]="text.favoriteModelIds()"
+                  [selectedId]="routeModelId(task.id)"
+                  [selectedLabel]="text.routePreset(task.id)?.name ?? null"
+                  [loading]="catalogLoading()"
+                  [failure]="catalogFailure()"
+                  [disabled]="!credential.isConfigured()"
+                  (opened)="loadCatalog()"
+                  (fallbackSelected)="clearTaskModel(task.id)"
+                  (modelSelected)="selectTaskModel(task.id, $event)"
+                  (favoriteToggled)="text.toggleFavorite($event)"
+                />
+
+                @if (text.routePreset(task.id) !== null) {
+                  <div class="options">
+                    <label class="option">
+                      <span>Reasoning</span>
+                      <select
+                        class="mn-control"
+                        [value]="text.routePreset(task.id)?.reasoningEffort ?? ''"
+                        (change)="setTaskReasoning(task.id, $event)"
+                      >
+                        <option value="">Automatic</option>
+                        @for (effort of reasoningEfforts(routeModel(task.id)); track effort) {
+                          <option [value]="effort">{{ titleCase(effort) }}</option>
+                        }
+                      </select>
+                    </label>
+                    <div class="option">
+                      <span [id]="'mn-' + task.id + '-limit'">Token limit</span>
+                      <mn-token-budget-field
+                        [labelledBy]="'mn-' + task.id + '-limit'"
+                        [value]="text.routeTokenBudget(task.id)"
+                        (committed)="setTaskBudget(task.id, $event)"
+                      />
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </details>
         </section>
 
-        <section class="model-field" aria-labelledby="mn-audio-model-label">
-          <div class="field-heading">
-            <div>
-              <h3 id="mn-audio-model-label">Reading audio</h3>
-              <p class="mn-hint">Speech models only.</p>
-            </div>
-            <span class="status" [attr.data-readiness]="tts.readiness()">{{ audioStatus() }}</span>
+        <section class="node" aria-labelledby="mn-audio-model-label">
+          <div class="node-head">
+            <h3 id="mn-audio-model-label">Audio</h3>
+            <button
+              type="button"
+              class="status status--action"
+              data-testid="test-tts"
+              [disabled]="
+                tts.draft().modelId === '' || tts.draft().voiceId === '' || tts.action() !== 'idle'
+              "
+              (click)="testAudio()"
+            >
+              {{ tts.action() === 'testing' ? 'Playing…' : 'Preview' }}
+            </button>
           </div>
+
           <mn-model-picker
+            class="picker"
             label="speech models"
-            data-testid="audio-model-picker"
             [models]="speechModels()"
             [favoriteIds]="tts.favoriteModelIds()"
             [selectedId]="tts.settings().modelId"
+            [selectedLabel]="speechModelLabel()"
             [loading]="catalogLoading()"
             [failure]="catalogFailure()"
             [disabled]="!credential.isConfigured()"
@@ -136,156 +272,258 @@ import { ModelPickerComponent } from './model-picker.component';
             (modelSelected)="selectSpeechModel($event)"
             (favoriteToggled)="tts.toggleFavorite($event)"
           />
-          @if (selectedSpeechModel(); as model) {
-            <div class="options audio-options">
-              <div class="mn-field">
-                <span>Voice</span>
-                @if (model.supportedVoices.length > 0) {
-                  <select
-                    aria-label="Voice"
-                    class="mn-control"
-                    [value]="tts.draft().voiceId"
-                    (change)="setVoice($event)"
-                  >
-                    @for (voice of model.supportedVoices; track voice) {
-                      <option [value]="voice">{{ voice }}</option>
-                    }
-                  </select>
-                } @else {
-                  <input
-                    aria-label="Voice ID"
-                    class="mn-control"
-                    type="text"
-                    placeholder="Voice ID"
-                    [value]="tts.draft().voiceId"
-                    (change)="setVoice($event)"
-                  />
-                }
-              </div>
-              <label class="mn-field compact"
-                ><span>Speed</span>
+
+          <div class="options">
+            <div class="option">
+              <span id="mn-voice-label">Voice</span>
+              @if (selectedSpeechModel()?.supportedVoices?.length) {
+                <select
+                  class="mn-control"
+                  aria-labelledby="mn-voice-label"
+                  [disabled]="!credential.isConfigured()"
+                  [value]="tts.draft().voiceId"
+                  (change)="setVoice($event)"
+                >
+                  @for (voice of selectedSpeechModel()?.supportedVoices ?? []; track voice) {
+                    <option [value]="voice">{{ voice }}</option>
+                  }
+                </select>
+              } @else {
                 <input
                   class="mn-control"
-                  type="number"
-                  min="0.5"
-                  max="2"
-                  step="0.05"
-                  [value]="tts.draft().speed"
-                  (change)="setSpeed($event)"
+                  type="text"
+                  aria-labelledby="mn-voice-label"
+                  placeholder="Voice ID"
+                  [disabled]="!credential.isConfigured()"
+                  [value]="tts.draft().voiceId"
+                  (change)="setVoice($event)"
                 />
-              </label>
+              }
             </div>
-          }
-          <div class="actions">
-            <button
-              type="button"
-              class="mn-button"
-              data-testid="test-tts"
-              [disabled]="
-                tts.draft().modelId === '' || tts.draft().voiceId === '' || tts.action() !== 'idle'
-              "
-              (click)="tts.test()"
-            >
-              {{ tts.action() === 'testing' ? 'Testing…' : 'Test reading audio' }}
-            </button>
+            <label class="option">
+              <span>Speed</span>
+              <input
+                class="mn-control"
+                type="number"
+                min="0.5"
+                max="2"
+                step="0.05"
+                [disabled]="!credential.isConfigured()"
+                [value]="tts.draft().speed"
+                (change)="setSpeed($event)"
+              />
+            </label>
           </div>
-          @if (tts.testFailure(); as failure) {
-            <p class="error" role="alert">{{ failure.message }}</p>
+
+          <!-- The preview is heard, not operated: it starts itself and leaves no player behind. -->
+          @if (sampleUrl(); as url) {
+            <audio
+              #sampleAudio
+              class="mn-visually-hidden"
+              autoplay
+              preload="auto"
+              [src]="url"
+              (canplay)="playSample()"
+            ></audio>
           }
         </section>
       </div>
+
+      @if (text.testFailure(); as failure) {
+        <p class="error" role="alert">{{ failure.message }}</p>
+      }
+      @if (tts.testFailure(); as failure) {
+        <p class="error" role="alert">{{ failure.message }}</p>
+      }
     </section>
   `,
   styles: `
-    .models,
-    .model-fields,
-    .model-field {
-      gap: var(--space-4);
+    .models {
+      gap: var(--space-3);
     }
     h2,
     h3,
+    h4,
     p {
       margin: 0;
     }
-    .key-card,
-    .model-field {
+    h2 {
+      font-size: var(--text-lg);
+      letter-spacing: -0.01em;
+    }
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+    .connection {
+      position: relative;
+    }
+    .connection-button {
+      white-space: nowrap;
+    }
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentcolor;
+      opacity: 0.55;
+    }
+    .chevron {
+      flex: none;
+      width: 1rem;
+      height: 1rem;
+      opacity: 0.7;
+      transition: transform var(--motion-fast) ease-out;
+    }
+    .chevron--up {
+      transform: rotate(180deg);
+    }
+    .connection-dot.connected {
+      background: var(--status-success);
+      opacity: 1;
+    }
+    .connection-menu {
+      position: absolute;
+      z-index: 30;
+      inset: calc(100% + var(--space-1)) 0 auto auto;
+      display: grid;
+      gap: var(--space-3);
+      width: min(23rem, calc(100vw - 2 * var(--space-4)));
+      padding: var(--space-3);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-control);
+      background: var(--surface-panel);
+      box-shadow: var(--shadow-overlay);
+    }
+    .connection-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-2);
+    }
+    /* Two jobs, two columns on a desktop; one column as soon as that is tight. */
+    .tree {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+      gap: var(--space-3);
+    }
+    .node {
+      display: grid;
+      /* Equal-height cards must not spread their rows to fill the difference:
+         the spare space belongs at the bottom, not between the fields. */
+      align-content: start;
+      gap: var(--space-2);
+      min-width: 0;
       padding: var(--space-3);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-control);
+      border-radius: var(--radius-card);
+      background: var(--surface-raised);
     }
-    .key-card summary {
+    /*
+     * A fixed height regardless of what sits on the right. Otherwise a pill
+     * button makes one head taller than a head carrying plain text, and every
+     * field below it in that column sits a few pixels off its neighbour.
+     */
+    .node-head {
       display: flex;
       align-items: center;
-      min-height: var(--touch-target);
-      font-weight: 700;
+      justify-content: space-between;
+      gap: var(--space-2);
+      min-height: 1.75rem;
+      min-width: 0;
     }
-    .connection-state {
-      margin-left: auto;
+    .node-head h3 {
+      overflow: hidden;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+    }
+    /* A branch is subordinate to its node, and its label says so. */
+    .node-head h4 {
+      overflow: hidden;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      text-overflow: ellipsis;
+    }
+    .picker {
+      display: block;
+      min-width: 0;
+    }
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+    .option {
+      display: grid;
+      flex: 1 1 7rem;
+      gap: 2px;
+      min-width: 0;
+    }
+    .option > span {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+    .status {
+      flex: none;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      white-space: nowrap;
+    }
+    .status--ok {
+      color: var(--status-success);
+    }
+    .status--action {
+      padding: 2px var(--space-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      background: none;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+    .status--action:hover:not(:disabled) {
+      background: var(--surface-sunken);
+    }
+    .status--action:disabled {
+      color: var(--text-secondary);
+      cursor: default;
+    }
+    .branches {
+      margin-top: var(--space-1);
+      border-top: 1px solid var(--border-subtle);
+    }
+    .branches > summary {
+      min-height: 2rem;
       color: var(--text-secondary);
       font-size: var(--text-sm);
       font-weight: 500;
     }
-    .key-controls {
-      padding-top: var(--space-2);
-    }
-    .credential-row {
+    .branch {
       display: grid;
-      grid-template-columns: minmax(12rem, 1fr) auto;
       gap: var(--space-2);
+      padding-block: var(--space-1) var(--space-3);
+      padding-inline-start: var(--space-3);
+      border-inline-start: 2px solid var(--border-subtle);
     }
-    .actions,
-    .field-heading {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-    }
-    .field-heading {
-      justify-content: space-between;
-    }
-    .model-fields,
-    .model-field {
-      display: grid;
-    }
-    .model-fields.disabled {
-      opacity: 0.65;
-    }
-    .status {
-      flex: none;
-      padding: 0.15rem 0.55rem;
-      border-radius: var(--radius-pill);
-      background: var(--surface-sunken);
-      color: var(--text-secondary);
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .status[data-readiness='ready'] {
-      background: var(--status-success-soft);
-      color: var(--status-success);
-    }
-    .status[data-readiness='failed'] {
+    .error {
+      padding: var(--space-3);
+      border-radius: var(--radius-control);
       background: var(--status-danger-soft);
       color: var(--status-danger);
     }
-    .options {
-      display: grid;
-      grid-template-columns: minmax(12rem, 20rem);
-      gap: var(--space-3);
-      padding-left: var(--space-3);
-      border-left: 2px solid var(--action-primary-soft);
-    }
-    .audio-options {
-      grid-template-columns: minmax(12rem, 20rem) minmax(7rem, 9rem);
-    }
-    .error {
-      color: var(--status-danger);
-    }
-    @media (max-width: 36rem) {
-      .credential-row,
-      .audio-options {
-        grid-template-columns: 1fr;
+    @media (max-width: 40rem) {
+      .connection,
+      .connection-button {
+        width: 100%;
       }
-      .field-heading {
-        align-items: flex-start;
+      .connection-menu {
+        inset-inline: 0;
+        width: 100%;
       }
     }
   `,
@@ -293,26 +531,87 @@ import { ModelPickerComponent } from './model-picker.component';
 export class ModelsSectionComponent {
   private readonly dialog = inject(Dialog);
   private readonly catalog = inject(MODEL_CATALOG);
+  private readonly document = inject(DOCUMENT);
   protected readonly credential = inject(CredentialStore);
   protected readonly text = inject(TextModelStore);
   protected readonly tts = inject(TtsStore);
   protected readonly keyDraft = signal('');
+  protected readonly connectionMenuOpen = signal(false);
   protected readonly textModels = signal<readonly ModelCapabilities[]>([]);
   protected readonly speechModels = signal<readonly ModelCapabilities[]>([]);
   protected readonly catalogLoading = signal(false);
   protected readonly catalogFailure = signal<string | null>(null);
+  protected readonly sampleUrl = signal<string | null>(null);
+  protected readonly textTasks = [
+    { id: 'translation' as const, label: 'Translation' },
+    { id: 'grammar' as const, label: 'Grammar' },
+  ];
   private catalogLoaded = false;
+  private readonly connectionMenu = viewChild<ElementRef<HTMLElement>>('connectionMenu');
+  private readonly connectionButton =
+    viewChild.required<ElementRef<HTMLButtonElement>>('connectionButton');
+  private readonly sampleAudio = viewChild<ElementRef<HTMLAudioElement>>('sampleAudio');
 
-  protected readonly selectedTextModel = computed(
-    () => this.textModels().find((model) => model.modelId === this.text.settings().modelId) ?? null,
+  protected readonly selectedStoryModel = computed(() =>
+    this.modelById(this.text.settings().modelId),
+  );
+  protected readonly storyModelLabel = computed(
+    () =>
+      this.text.presets().find((preset) => preset.id === this.text.activePresetId())?.name ?? null,
   );
   protected readonly selectedSpeechModel = computed(
     () =>
       this.speechModels().find((model) => model.modelId === this.tts.settings().modelId) ?? null,
   );
-  protected readonly textStatus = computed(() => this.statusLabel(this.text.readiness()));
-  protected readonly audioStatus = computed(() => this.statusLabel(this.tts.readiness()));
+  protected readonly speechModelLabel = computed(
+    () =>
+      this.tts.presets().find((preset) => preset.id === this.tts.settings().activePresetId)?.name ??
+      null,
+  );
+  /** The branches open on their own once a learner has set one. */
+  protected readonly hasOverrides = computed(
+    () => this.text.grammarPresetId() != null || this.text.translationPresetId() != null,
+  );
 
+  constructor() {
+    // The saved configuration cannot be shown correctly until the catalogue is
+    // known: a stored speech model has no listed voices, and a stored text
+    // model no reasoning efforts, until its entry is in hand. Waiting for a
+    // picker to be opened left those fields showing a fallback the learner
+    // never chose, so the list is fetched as soon as a key can pay for it.
+    effect(() => {
+      if (this.credential.isConfigured()) {
+        untracked(() => void this.loadCatalog());
+      }
+    });
+    effect((onCleanup) => {
+      const sample = this.tts.sample();
+      if (sample === null) {
+        this.sampleUrl.set(null);
+        return;
+      }
+      const url = this.document.defaultView?.URL.createObjectURL(sample) ?? null;
+      this.sampleUrl.set(url);
+      if (url !== null) onCleanup(() => this.document.defaultView?.URL.revokeObjectURL(url));
+    });
+    effect(() => {
+      const url = this.sampleUrl();
+      const audio = this.sampleAudio()?.nativeElement;
+      if (url === null || audio === undefined) return;
+      audio.currentTime = 0;
+      void audio.play().catch(() => undefined);
+    });
+  }
+
+  protected toggleConnectionMenu(): void {
+    this.connectionMenuOpen.update((open) => !open);
+  }
+  protected closeConnectionMenuFromOutside(event: PointerEvent): void {
+    if (!this.connectionMenuOpen() || !(event.target instanceof Node)) return;
+    if (this.connectionMenu()?.nativeElement.contains(event.target)) return;
+    if (this.connectionButton().nativeElement.contains(event.target)) return;
+    this.connectionMenuOpen.set(false);
+  }
   protected onKeyInput(event: Event): void {
     this.keyDraft.set((event.target as HTMLInputElement).value);
   }
@@ -320,20 +619,24 @@ export class ModelsSectionComponent {
     const saved = await this.credential.save(this.keyDraft());
     this.keyDraft.set('');
     if (saved) {
+      this.connectionMenuOpen.set(false);
       this.catalogLoaded = false;
       await this.loadCatalog();
     }
   }
   protected async removeKey(): Promise<void> {
     const confirmed = await openConfirmDialog(this.dialog, {
-      title: 'Remove API key?',
-      message: 'AI requests will be unavailable until another key is saved.',
+      title: 'Delete OpenRouter key?',
+      message: 'AI requests will stop until you connect again.',
       details: ['Your model choices and saved content stay on this device.'],
-      confirmLabel: 'Remove key',
+      confirmLabel: 'Delete key',
       cancelLabel: 'Keep key',
       tone: 'danger',
     });
-    if (confirmed) await this.credential.remove();
+    if (confirmed) {
+      await this.credential.remove();
+      this.connectionMenuOpen.set(false);
+    }
   }
   protected async loadCatalog(): Promise<void> {
     if (this.catalogLoaded || this.catalogLoading() || !this.credential.isConfigured()) return;
@@ -355,18 +658,54 @@ export class ModelsSectionComponent {
     this.speechModels.set(speech.value);
     this.catalogLoaded = true;
   }
-  protected async selectTextModel(model: ModelCapabilities): Promise<void> {
+
+  /**
+   * Choosing a model is what makes the previous test meaningless, so the new
+   * configuration is tested immediately instead of leaving a button to press.
+   */
+  protected async selectStoryModel(model: ModelCapabilities): Promise<void> {
     this.text.setDraftModelId(model.modelId);
     await this.text.save();
     await this.text.setReasoningEffort(model.reasoning?.defaultEffort ?? null);
+    await this.text.test();
+  }
+  protected async selectTaskModel(task: TextModelTask, model: ModelCapabilities): Promise<void> {
+    const stored = await this.text.setTaskModel(task, {
+      modelId: model.modelId,
+      name: model.name,
+      reasoningEffort: model.reasoning?.defaultEffort ?? null,
+    });
+    if (stored) await this.text.testTask(task);
+  }
+  protected clearTaskModel(task: TextModelTask): void {
+    void this.text.setTaskModel(task, null);
+  }
+  protected routeModelId(task: TextModelTask): string {
+    return this.text.routePreset(task)?.modelId ?? '';
+  }
+  protected routeModel(task: TextModelTask): ModelCapabilities | null {
+    return this.modelById(this.routeModelId(task));
+  }
+  protected async setStoryReasoning(event: Event): Promise<void> {
+    const value = (event.target as HTMLSelectElement).value;
+    await this.text.setReasoningEffort(value || null);
+    await this.text.test();
+  }
+  protected async setTaskReasoning(task: TextModelTask, event: Event): Promise<void> {
+    const value = (event.target as HTMLSelectElement).value;
+    await this.text.setTaskReasoning(task, value || null);
+    await this.text.testTask(task);
+  }
+  protected saveStoryBudget(tokenBudget: number): void {
+    this.text.setStoryTokenBudgetDraft(String(tokenBudget));
+    void this.text.saveStoryTokenBudget();
+  }
+  protected setTaskBudget(task: TextModelTask, tokenBudget: number): void {
+    void this.text.setTaskTokenBudget(task, tokenBudget);
   }
   protected async selectSpeechModel(model: ModelCapabilities): Promise<void> {
     this.tts.setDraft({ modelId: model.modelId, voiceId: model.supportedVoices[0] ?? '' });
     await this.tts.save();
-  }
-  protected setReasoning(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    void this.text.setReasoningEffort(value || null);
   }
   protected setVoice(event: Event): void {
     this.tts.setDraft({ voiceId: (event.target as HTMLInputElement).value });
@@ -376,23 +715,37 @@ export class ModelsSectionComponent {
     this.tts.setDraft({ speed: Number((event.target as HTMLInputElement).value) });
     void this.tts.save();
   }
-  protected reasoningEfforts(model: ModelCapabilities): readonly string[] {
-    return model.reasoning?.supportedEfforts ?? ['low', 'medium', 'high'];
+  protected testAudio(): void {
+    void this.tts.test();
+  }
+  protected playSample(): void {
+    void this.sampleAudio()
+      ?.nativeElement.play()
+      .catch(() => undefined);
+  }
+  protected reasoningEfforts(model: ModelCapabilities | null): readonly string[] {
+    return model?.reasoning?.supportedEfforts ?? ['low', 'medium', 'high'];
   }
   protected titleCase(value: string): string {
     return value.charAt(0).toLocaleUpperCase() + value.slice(1);
   }
-  private statusLabel(readiness: string): string {
-    return (
-      (
-        {
-          ready: 'Ready',
-          untested: 'Not tested',
-          stale: 'Test again',
-          failed: 'Test failed',
-          'not-configured': 'Not configured',
-        } as Record<string, string>
-      )[readiness] ?? readiness
-    );
+  /** Only a configured model that no test vouches for can be retried. */
+  protected retestable(readiness: ConfigurationReadiness): boolean {
+    return readiness === 'untested' || readiness === 'stale' || readiness === 'failed';
+  }
+  protected statusLabel(readiness: ConfigurationReadiness, busy = false): string {
+    if (busy) {
+      return 'Testing…';
+    }
+    return {
+      ready: 'Ready',
+      untested: 'Test now',
+      stale: 'Test again',
+      failed: 'Failed — retry',
+      'not-configured': 'No model',
+    }[readiness];
+  }
+  private modelById(modelId: string): ModelCapabilities | null {
+    return this.textModels().find((model) => model.modelId === modelId) ?? null;
   }
 }

@@ -54,4 +54,18 @@ describe('ModelPickerComponent', () => {
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('.trigger')?.textContent).toContain('vendor/saved-model');
   });
+
+  it('offers a fallback choice inside the same searchable dropdown', async () => {
+    await TestBed.configureTestingModule({ imports: [ModelPickerComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(ModelPickerComponent);
+    fixture.componentRef.setInput('label', 'translation models');
+    fixture.componentRef.setInput('fallbackLabel', 'Same as Story');
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('.trigger')?.textContent).toContain('Same as Story');
+    element.querySelector<HTMLButtonElement>('.trigger')!.click();
+    fixture.detectChanges();
+    expect(element.querySelector('.fallback')?.textContent).toContain('Same as Story');
+  });
 });

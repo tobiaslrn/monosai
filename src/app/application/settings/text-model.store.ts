@@ -14,6 +14,7 @@ import { CLOCK, HASHER, SETTINGS_REPOSITORY } from '../shared/repository-tokens'
 import { CredentialStore } from './credential.store';
 
 export type TextModelAction = 'idle' | 'saving' | 'testing';
+export type TextModelTask = 'translation' | 'grammar';
 
 /**
  * The exact text model and its compatibility test.
@@ -58,6 +59,7 @@ export class TextModelStore {
   readonly favoriteModelIds = computed(() => this.settingsSignal().favoriteModelIds ?? []);
   readonly activePresetId = computed(() => this.settingsSignal().activePresetId);
   readonly grammarPresetId = computed(() => this.settingsSignal().grammarPresetId);
+  readonly translationPresetId = computed(() => this.settingsSignal().translationPresetId);
   readonly compatiblePresets = computed(() =>
     this.settingsSignal().presets.filter((preset) => this.isPresetReady(preset)),
   );
@@ -210,6 +212,112 @@ export class TextModelStore {
     return true;
   }
 
+  routePreset(task: TextModelTask): TextModelPreset | null {
+    const id =
+      task === 'grammar'
+        ? (this.settingsSignal().grammarPresetId ?? null)
+        : (this.settingsSignal().translationPresetId ?? null);
+    return this.settingsSignal().presets.find((preset) => preset.id === id) ?? null;
+  }
+
+  routeReadiness(task: TextModelTask): ConfigurationReadiness {
+    const preset = this.routePreset(task);
+    if (preset === null) return this.readiness();
+    return readinessOf({
+      complete: true,
+      hasCredential: this.credential.isConfigured(),
+      savedFingerprint: preset.lastTestFingerprint ?? null,
+      currentFingerprint: this.fingerprintForConfig(preset.modelId, preset.reasoningEffort),
+      lastAttemptFailed: this.testFailureSignal() !== null,
+    });
+  }
+
+  async setTaskModel(
+    task: TextModelTask,
+    model: {
+      readonly modelId: string;
+      readonly name: string;
+      readonly reasoningEffort: string | null;
+    } | null,
+  ): Promise<boolean> {
+    const current = this.settingsSignal();
+    const routeKey = task === 'grammar' ? 'grammarPresetId' : 'translationPresetId';
+    if (model === null) {
+      const saved = await this.repository.updateTextModelSettings({ [routeKey]: null });
+      if (!saved.ok) {
+        this.storageFailureSignal.set(saved.error);
+        return false;
+      }
+      this.settingsSignal.set(saved.value);
+      return true;
+    }
+    const id = `task-${task}`;
+    const prior = current.presets.find((preset) => preset.id === id);
+    const unchanged = prior?.modelId === model.modelId;
+    const preset: TextModelPreset = {
+      id,
+      name: model.name,
+      modelId: model.modelId,
+      reasoningEffort: model.reasoningEffort,
+      tokenBudget: unchanged ? (prior.tokenBudget ?? null) : null,
+      lastTestFingerprint: unchanged ? (prior.lastTestFingerprint ?? null) : null,
+      lastTestedAt: unchanged ? (prior.lastTestedAt ?? null) : null,
+      structuredOutput: unchanged ? (prior.structuredOutput ?? null) : null,
+    };
+    const saved = await this.repository.updateTextModelSettings({
+      presets: [...current.presets.filter((item) => item.id !== id), preset],
+      [routeKey]: id,
+    });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    this.testFailureSignal.set(null);
+    return true;
+  }
+
+  /** The budget a routed task sends, falling back to the story budget. */
+  routeTokenBudget(task: TextModelTask): number {
+    return this.routePreset(task)?.tokenBudget ?? this.settingsSignal().storyTokenBudget;
+  }
+
+  /**
+   * Stores a routed task's own completion budget.
+   *
+   * The stored test still vouches for the configuration: the fingerprint covers
+   * the model and its reasoning effort, neither of which a budget changes.
+   */
+  async setTaskTokenBudget(task: TextModelTask, tokenBudget: number): Promise<boolean> {
+    const preset = this.routePreset(task);
+    if (preset === null || !isValidStoryTokenBudget(tokenBudget)) {
+      return false;
+    }
+    const current = this.settingsSignal();
+    const saved = await this.repository.updateTextModelSettings({
+      presets: current.presets.map((item) =>
+        item.id === preset.id ? { ...item, tokenBudget } : item,
+      ),
+    });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    this.storageFailureSignal.set(null);
+    return true;
+  }
+
+  async setTaskReasoning(task: TextModelTask, reasoningEffort: string | null): Promise<boolean> {
+    const preset = this.routePreset(task);
+    return preset === null ? false : this.updatePreset(preset.id, { reasoningEffort });
+  }
+
+  async testTask(task: TextModelTask): Promise<void> {
+    const preset = this.routePreset(task);
+    if (preset !== null) await this.testPreset(preset.id);
+  }
+
   async setReasoningEffort(reasoningEffort: string | null): Promise<boolean> {
     const settings = this.settingsSignal();
     if (settings.reasoningEffort === reasoningEffort) return true;
@@ -298,6 +406,7 @@ export class TextModelStore {
           }
         : {}),
       ...(current.grammarPresetId === id ? { grammarPresetId: null } : {}),
+      ...(current.translationPresetId === id ? { translationPresetId: null } : {}),
     });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
@@ -442,7 +551,7 @@ export class TextModelStore {
         : item,
     );
     const isDefault = this.settingsSignal().activePresetId === id;
-    const becomesDefault = this.settingsSignal().activePresetId === null;
+    const becomesDefault = this.settingsSignal().activePresetId === null && !id.startsWith('task-');
     const saved = await this.repository.updateTextModelSettings({
       presets,
       ...(isDefault || becomesDefault
@@ -478,11 +587,11 @@ export class TextModelStore {
       modelId: preset.modelId,
       reasoningEffort: preset.reasoningEffort,
       structuredOutput: preset.structuredOutput,
-      storyTokenBudget: this.settingsSignal().storyTokenBudget,
+      storyTokenBudget: preset.tokenBudget ?? this.settingsSignal().storyTokenBudget,
     };
   }
 
-  configForTask(task: 'text' | 'grammar'): {
+  configForTask(task: 'text' | 'translation' | 'grammar'): {
     readonly modelId: string;
     readonly reasoningEffort: string | null;
     readonly structuredOutput: NonNullable<TextModelSettings['structuredOutput']>;
@@ -492,7 +601,9 @@ export class TextModelStore {
     const presetId =
       task === 'grammar'
         ? (settings.grammarPresetId ?? settings.activePresetId)
-        : settings.activePresetId;
+        : task === 'translation'
+          ? (settings.translationPresetId ?? settings.activePresetId)
+          : settings.activePresetId;
     const preset = this.configForPreset(presetId);
     if (preset !== null) {
       return preset;
