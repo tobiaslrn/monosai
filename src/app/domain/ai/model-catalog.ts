@@ -19,7 +19,6 @@ export interface ModelCapabilities {
 }
 
 export interface ModelCatalog {
-  discover(modelId: string, signal?: AbortSignal): Promise<Result<ModelCapabilities, AiError>>;
   list(
     output: 'text' | 'speech',
     signal?: AbortSignal,
