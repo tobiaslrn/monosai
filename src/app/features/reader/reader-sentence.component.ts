@@ -161,6 +161,15 @@ export interface TokenActivation {
     }
 
     /*
+     * The sentence a finger is resting on, while the long press is being timed.
+     * The class is put on by the paragraph's gesture directive, which is the
+     * only thing that knows which sentence a press in the leading belongs to.
+     */
+    .sentence.is-pressing {
+      background: var(--surface-sunken);
+    }
+
+    /*
      * The open sentence keeps a tint of its own. Without it an anchored
      * popover would be orphaned from the sentence it is about.
      */

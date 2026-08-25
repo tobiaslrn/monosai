@@ -58,6 +58,21 @@ import {
        */
       line-height: var(--reader-line-height-ruby);
     }
+
+    /*
+     * A long press is the reader's gesture for a sentence on touch, and the
+     * platform answers the same press by starting a text selection with a
+     * callout menu over it. Selecting text with a finger is given up here so
+     * the gesture the application does offer works every time; a mouse keeps
+     * both, because a mouse selects by dragging rather than by resting.
+     */
+    @media (pointer: coarse) {
+      .paragraph {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+    }
   `,
 })
 export class ReaderParagraphComponent {

@@ -4,12 +4,20 @@ import { expectSettingPersisted } from './storage';
 import {
   countOwnedRows,
   importReading,
+  openSentence,
   pasteAndContinue,
   saveAndOpenReader,
+  tap,
   SAMPLE_TEXT,
 } from './reading';
 
-/** Word details are one floating popover at every width (ADR 0022). */
+/** What separates two paragraphs in a paste. */
+const PARAGRAPH_BREAK = '\n\n';
+
+/**
+ * Word details are one floating popover: anchored to the word on a desktop
+ * viewport, docked as a sheet on a phone (ADR 0022).
+ */
 function wordDetails(page: Page) {
   return page.locator('mn-word-inspector');
 }
@@ -291,7 +299,8 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(previewed).toHaveText(['あり', 'ます']);
   });
 
-  test('anchors word details beside the word at every viewport', async ({ page }) => {
+  test('anchors word details beside the word on a desktop viewport', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'a phone docks word details as a sheet instead');
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
@@ -412,10 +421,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('article.text [lang="en"]')).toHaveCount(0);
   });
 
-  test('pressing the whitespace in a sentence opens it, and costs nothing', async ({
-    page,
-    baseURL,
-  }) => {
+  test('the sentence gesture opens it, and costs nothing', async ({ page, baseURL }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
@@ -427,13 +433,82 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       }
     });
 
-    await page.locator('.sentence').first().locator('.token.is-plain').first().click();
+    await openSentence(page);
 
     // No model is configured, so the offer is all there is — and it is an
     // offer, never a request made on the reader's behalf.
     await expect(page.locator('mn-sentence-popover')).toBeVisible();
-    await expect(page.locator('.mn-popover-pane')).not.toHaveClass(/is-sheet/);
     expect(external).toEqual([]);
+  });
+
+  test('a tap dismisses what is open instead of opening the next sentence', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'the tap-versus-long-press split only exists on touch');
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    await openSentence(page);
+    // The gesture a reader makes to put a sheet away. It used to land on the
+    // text underneath and open the next sentence instead of closing anything.
+    await tap(page, page.locator('article.text'));
+
+    await expect(page.locator('mn-sentence-popover')).toHaveCount(0);
+  });
+
+  test('the reading scrolls on with a sheet still open', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'only a docked sheet stays put while the page moves');
+    await page.goto('/#/add');
+    // Long enough that there is somewhere to scroll to behind the sheet.
+    await pasteAndContinue(
+      page,
+      Array.from({ length: 12 }, () => SAMPLE_TEXT).join(PARAGRAPH_BREAK),
+    );
+    await saveAndOpenReader(page);
+
+    await openSentence(page);
+    await page.evaluate(() => {
+      window.scrollBy(0, 600);
+    });
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+    // Nothing is pinned in place while a sheet is open. A blocked page is
+    // frozen by being positioned, which is what used to trap the reader on the
+    // line they had pressed.
+    expect(
+      await page.evaluate(() => window.getComputedStyle(document.documentElement).position),
+    ).toBe('static');
+
+    // Still open, and still where it was docked: a sheet is fixed to an edge
+    // rather than to the line it explains.
+    await expect(page.locator('mn-sentence-popover')).toBeVisible();
+    const viewport = page.viewportSize();
+    const card = await page.locator('.mn-popover-pane .popover').boundingBox();
+    expect((card?.y ?? 0) + (card?.height ?? 0)).toBeCloseTo(viewport?.height ?? 0, 0);
+  });
+
+  test('sentence details dock as a sheet on a phone, above the text they explain', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'an anchored card is what a desktop viewport has room for');
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    await openSentence(page);
+
+    const pane = page.locator('.mn-popover-pane');
+    await expect(pane).toHaveClass(/is-sheet/);
+    const viewport = page.viewportSize();
+    const card = await pane.locator('.popover').boundingBox();
+    expect(card?.width).toBe(viewport?.width);
+    // Docked: the bottom of the card is the bottom of the screen, so the sheet
+    // is never half off the viewport the way an anchored card was.
+    expect((card?.y ?? 0) + (card?.height ?? 0)).toBeCloseTo(viewport?.height ?? 0, 0);
+    // And the way out is a real control, not only a gesture.
+    await expect(pane.getByRole('button', { name: 'Close' })).toBeVisible();
   });
 
   test('offers Settings when sentence translation has no model', async ({ page }) => {
@@ -441,7 +516,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
-    await page.locator('.sentence').first().locator('.token.is-plain').first().click();
+    await openSentence(page);
     await page.getByRole('button', { name: 'Translate', exact: true }).click();
 
     const popover = page.locator('mn-sentence-popover');

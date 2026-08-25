@@ -67,6 +67,12 @@ describe('ParagraphGesturesDirective', () => {
     paragraph().dispatchEvent(new MouseEvent('click', { bubbles: true, clientX, clientY }));
   }
 
+  function pointerDown(pointerType: string, clientX: number, clientY: number): void {
+    paragraph().dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerType, clientX, clientY }),
+    );
+  }
+
   function selections(): readonly SentenceSelection[] {
     return fixture.componentInstance.selections;
   }
@@ -106,6 +112,67 @@ describe('ParagraphGesturesDirective', () => {
     click(50, 110);
 
     expect(selections()).toHaveLength(0);
+  });
+
+  it('ignores a tap, which on touch is how the reader dismisses and scrolls on', () => {
+    // The gesture that used to select. Answering it with a popover meant every
+    // attempt to put one away opened the next one.
+    pointerDown('touch', 50, 110);
+    paragraph().dispatchEvent(
+      new PointerEvent('pointerup', { bubbles: true, pointerType: 'touch' }),
+    );
+    click(50, 110);
+
+    expect(selections()).toHaveLength(0);
+  });
+
+  it('selects on a mouse click again after a touch tap, on a device with both', () => {
+    pointerDown('touch', 50, 110);
+    click(50, 110);
+    pointerDown('mouse', 50, 110);
+    click(50, 110);
+
+    expect(selections()).toHaveLength(1);
+  });
+
+  it('tints the sentence under a finger while the press is being timed', () => {
+    vi.useFakeTimers();
+    const target = paragraph().querySelector<HTMLElement>('[data-sentence-id="s2"]')!;
+
+    pointerDown('touch', 50, 150);
+    expect(target.classList.contains('is-pressing')).toBe(true);
+
+    // Selecting hands the tint over to the open sentence, and a press that
+    // turns into a scroll takes it away again.
+    vi.advanceTimersByTime(450);
+    expect(target.classList.contains('is-pressing')).toBe(false);
+
+    pointerDown('touch', 50, 150);
+    paragraph().dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerType: 'touch',
+        clientX: 50,
+        clientY: 190,
+      }),
+    );
+    expect(target.classList.contains('is-pressing')).toBe(false);
+  });
+
+  it('suppresses the platform long-press menu that would cover the popover', () => {
+    pointerDown('touch', 50, 110);
+    const menu = new Event('contextmenu', { bubbles: true, cancelable: true });
+    paragraph().dispatchEvent(menu);
+
+    expect(menu.defaultPrevented).toBe(true);
+  });
+
+  it('leaves the mouse its own context menu', () => {
+    pointerDown('mouse', 50, 110);
+    const menu = new Event('contextmenu', { bubbles: true, cancelable: true });
+    paragraph().dispatchEvent(menu);
+
+    expect(menu.defaultPrevented).toBe(false);
   });
 
   it('selects on a touch long press, including one that started on a word', () => {

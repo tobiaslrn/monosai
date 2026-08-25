@@ -66,6 +66,14 @@ const PREVIEW_DELAY_MS = 250;
 const SCROLL_SETTLE_MS = 1000;
 
 /**
+ * How tall the docked player currently is, published on the document root.
+ *
+ * The overlay a sheet is rendered into is a sibling of the reader, so this is
+ * the only place both of them can read.
+ */
+const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
+
+/**
  * The reader.
  *
  * The page is Japanese and nothing else. Every piece of English — a
@@ -231,7 +239,7 @@ const SCROLL_SETTLE_MS = 1000;
     }
 
     <ng-template #sentencePopover>
-      <mn-reader-popover label="Sentence details" [mobileSheet]="false">
+      <mn-reader-popover label="Sentence details" (closed)="popover.close()">
         <mn-sentence-popover
           [aids]="selectedSentenceAids()"
           [canAnalyze]="canAnalyzeGrammar()"
@@ -251,7 +259,7 @@ const SCROLL_SETTLE_MS = 1000;
     </ng-template>
 
     <ng-template #wordPopover>
-      <mn-reader-popover label="Word details" [mobileSheet]="false">
+      <mn-reader-popover label="Word details" (closed)="popover.close()">
         <mn-word-inspector [grammar]="wordGrammar()" (closed)="closeInspector()" />
       </mn-reader-popover>
     </ng-template>
@@ -289,8 +297,14 @@ const SCROLL_SETTLE_MS = 1000;
       margin-inline: auto;
     }
 
+    /*
+     * Clearance for the floating player, so the last line of a reading is never
+     * parked permanently underneath it. Sized for the player's ordinary height
+     * rather than its bounded maximum: at the maximum it reserved a third of a
+     * phone screen of blank page under every reading.
+     */
     .reader.has-audio-player {
-      padding-bottom: calc(20rem + var(--space-4) + env(safe-area-inset-bottom));
+      padding-bottom: calc(11rem + var(--space-4) + env(safe-area-inset-bottom));
     }
 
     /*
@@ -387,6 +401,27 @@ const SCROLL_SETTLE_MS = 1000;
       transform: translateX(-50%);
     }
 
+    /*
+     * On a phone the transport docks to the bottom edge instead of floating
+     * clear of it. An inset card there wasted both margins on a screen that has
+     * none to spare, and left the controls hovering over the text they are
+     * about; docked, the reading ends where the player begins.
+     */
+    @media (max-width: 600px) {
+      .audio-player-shell {
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        max-height: 60dvh;
+        padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
+        border-inline: 0;
+        border-block-end: 0;
+        border-radius: var(--radius-card) var(--radius-card) 0 0;
+        transform: none;
+      }
+    }
+
     /* Room for the ruby above the first line of the reading. */
     .text {
       max-width: var(--reader-measure);
@@ -417,7 +452,7 @@ export class ReaderPageComponent {
   private readonly audioConfig = inject(AudioConfigurationService);
   private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly language = inject(LanguageStore);
-  private readonly popover = inject(PopoverService);
+  protected readonly popover = inject(PopoverService);
   private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
   private readonly viewContainerRef = inject(ViewContainerRef);
@@ -587,6 +622,8 @@ export class ReaderPageComponent {
   );
 
   private edgeObserver: IntersectionObserver | null = null;
+  /** Keeps the docked sheet clear of the docked player as the player resizes. */
+  private playerResizeObserver: ResizeObserver | null = null;
   /**
    * Whether playback may scroll the page to the sentence it has reached.
    *
@@ -719,6 +756,7 @@ export class ReaderPageComponent {
     inject(DestroyRef).onDestroy(() => {
       this.endPreview();
       this.popover.close();
+      this.releasePlayerHeight();
       if (this.audioPlayerOutlet.hasAttached()) {
         this.audioPlayerOutlet.detach();
       }
@@ -785,6 +823,7 @@ export class ReaderPageComponent {
         this.audioPlayerOutlet.detach();
       }
       this.audioPlayerPortal = null;
+      this.releasePlayerHeight();
       this.playback.stop();
       this.audioPlayerSentenceIdSignal.set(null);
       this.audioPlayerOpenSignal.set(false);
@@ -802,6 +841,7 @@ export class ReaderPageComponent {
       this.audioPlayerOutlet.detach();
     }
     this.audioPlayerPortal = null;
+    this.releasePlayerHeight();
     this.playback.stop();
     this.audioPlayerSentenceIdSignal.set(null);
     this.audioPlayerOpenSignal.set(false);
@@ -819,6 +859,35 @@ export class ReaderPageComponent {
     }
     this.audioPlayerPortal = new DomPortal(shell);
     this.audioPlayerOutlet.attach(this.audioPlayerPortal);
+    this.trackPlayerHeight(shell);
+  }
+
+  /**
+   * Publishes how tall the player is, for anything else docked to the bottom.
+   *
+   * On a phone both the player and a details sheet dock to the bottom edge, and
+   * the sheet has no other way to know what it is landing on. Measured rather
+   * than assumed, because the player is a transport in one state and a
+   * generation panel in another.
+   */
+  private trackPlayerHeight(shell: HTMLElement): void {
+    this.playerResizeObserver?.disconnect();
+    const publish = (): void => {
+      document.documentElement.style.setProperty(
+        DOCKED_PLAYER_HEIGHT,
+        `${String(Math.round(shell.getBoundingClientRect().height))}px`,
+      );
+    };
+    publish();
+    this.playerResizeObserver = new ResizeObserver(publish);
+    this.playerResizeObserver.observe(shell);
+  }
+
+  /** Gives the bottom edge back once the player is gone. */
+  private releasePlayerHeight(): void {
+    this.playerResizeObserver?.disconnect();
+    this.playerResizeObserver = null;
+    document.documentElement.style.removeProperty(DOCKED_PLAYER_HEIGHT);
   }
 
   /**
@@ -845,7 +914,6 @@ export class ReaderPageComponent {
       origin,
       template: this.sentencePopover(),
       viewContainerRef: this.viewContainerRef,
-      mobileSheet: false,
       closeOnScroll: true,
       onClosed: () => {
         this.selectedSentenceIdSignal.set(null);
@@ -917,7 +985,6 @@ export class ReaderPageComponent {
       origin: activation.origin,
       template: this.wordPopover(),
       viewContainerRef: this.viewContainerRef,
-      mobileSheet: false,
       returnFocusTo: activation.origin,
       closeOnScroll: true,
       onClosed: () => {

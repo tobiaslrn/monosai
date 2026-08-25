@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import { configureTextModel } from './generation';
-import { countOwnedRows, importReading, SAMPLE_TEXT } from './reading';
+import { countOwnedRows, importReading, openSentence, SAMPLE_TEXT } from './reading';
 import { stubOpenRouter, type ProviderCalls } from './openrouter';
 
 /** Enough sentences for a whole-reading job to need more than one batch. */
@@ -21,32 +21,6 @@ function sentencePopover(page: Page): Locator {
 
 function wordDetails(page: Page): Locator {
   return page.locator('mn-word-inspector');
-}
-
-function isDesktop(page: Page): boolean {
-  return (page.viewportSize()?.width ?? 0) >= 960;
-}
-
-/**
- * Selects a sentence the way the current input device would.
- *
- * Desktop presses the punctuation between words, which is sentence whitespace
- * rather than a token button; touch long-presses the sentence. There is no
- * control to click either way — the press is the control.
- */
-async function selectSentence(page: Page, index = 0): Promise<void> {
-  const target = sentence(page, index);
-  if (isDesktop(page)) {
-    await target.locator('.token.is-plain').first().click();
-  } else {
-    const box = await target.boundingBox();
-    await target.dispatchEvent('pointerdown', {
-      pointerType: 'touch',
-      clientX: (box?.x ?? 0) + 2,
-      clientY: (box?.y ?? 0) + 2,
-    });
-  }
-  await expect(sentencePopover(page)).toBeVisible({ timeout: 5_000 });
 }
 
 /** Opens the word popover, which is where grammar lives. */
@@ -112,7 +86,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await importReading(page, SAMPLE_TEXT);
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
 
-    await selectSentence(page);
+    await openSentence(page);
     await sentencePopover(page).getByRole('button', { name: 'Grammar', exact: true }).click();
     await expect(
       sentencePopover(page).getByRole('button', { name: 'Grammar', exact: true }),
@@ -140,7 +114,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     expect(callCount(calls), 'opening a reading makes no request').toBe(afterSetup);
 
     // Selecting a sentence is free; only the button inside it spends anything.
-    await selectSentence(page);
+    await openSentence(page);
     expect(callCount(calls), 'opening a sentence makes no request').toBe(afterSetup);
 
     await sentencePopover(page).getByRole('button', { name: 'Translate', exact: true }).click();
@@ -150,7 +124,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
 
     // Grammar is asked for on the sentence, where everything that spends a
     // request lives, and read back at the word it is about.
-    await selectSentence(page);
+    await openSentence(page);
     await sentencePopover(page).getByRole('button', { name: 'Grammar', exact: true }).click();
     // Polled rather than asserted on the popover's text: an assertion that the
     // offer is gone passes vacuously while the popover is still rendering.
@@ -171,7 +145,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     // A reload re-reads both from storage, and asks for nothing.
     await page.reload();
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
-    await selectSentence(page);
+    await openSentence(page);
     await expect(sentencePopover(page)).toContainText('EN:');
     expect(callCount(calls) - afterSetup).toBe(2);
 
@@ -183,7 +157,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     const calls = await prepareReading(page, SAMPLE_TEXT);
     const afterSetup = callCount(calls);
 
-    await selectSentence(page);
+    await openSentence(page);
     await sentencePopover(page).getByRole('button', { name: 'Translate', exact: true }).click();
     await expect(sentencePopover(page)).toContainText('EN:');
     await dismissPopover(page);
@@ -199,7 +173,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     const readerUrl = page.url();
     const afterSetup = callCount(calls);
 
-    await selectSentence(page);
+    await openSentence(page);
     await sentencePopover(page).getByRole('button', { name: 'Grammar', exact: true }).click();
     await expect.poll(() => callCount(calls), { timeout: 30_000 }).toBeGreaterThan(afterSetup);
     await expect(
@@ -220,7 +194,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await expect(wordDetails(page)).toContainText('earlier grammar profile');
     await dismissPopover(page);
 
-    await selectSentence(page);
+    await openSentence(page);
     await sentencePopover(page).getByRole('button', { name: 'Grammar again', exact: true }).click();
     await expect.poll(() => callCount(calls) - afterFirstAnalysis, { timeout: 30_000 }).toBe(1);
     await expect(
@@ -240,7 +214,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
     const afterSetup = callCount(calls);
 
-    await selectSentence(page);
+    await openSentence(page);
     await sentencePopover(page).getByRole('button', { name: 'Translate', exact: true }).click();
 
     // The Japanese is untouched and the failure is offered as a retry.
@@ -257,7 +231,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
   test('opens one floating surface at a time, and closes it on Escape', async ({ page }) => {
     await prepareReading(page, SAMPLE_TEXT);
 
-    await selectSentence(page);
+    await openSentence(page);
     await expect(sentencePopover(page)).toBeVisible();
 
     // An open surface takes the next press as a dismissal, so reading the text

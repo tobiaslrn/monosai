@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { SentenceAids } from '../../application/enrichment/sentence-aids.store';
+import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { describeEnrichmentFailure } from './enrichment-failure-copy';
 
 /** One word in this sentence that the learner's vocabulary does not cover. */
@@ -35,7 +36,7 @@ export interface UnknownWord {
 @Component({
   selector: 'mn-sentence-popover',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, IconComponent],
   template: `
     <div class="sentence-popover">
       @if (aids().translation; as translation) {
@@ -102,39 +103,62 @@ export interface UnknownWord {
       }
 
       <!--
-        Every action that spends a request, as three labels and nothing else.
-        What an AI action sends is said once, in Settings, rather than under each
-        button that could trigger one.
+        Every action that spends a request, as a tray of three: an icon, a
+        label, and nothing else. What an AI action sends is said once, in
+        Settings, rather than under each button that could trigger one.
+
+        A tray rather than a row of ordinary buttons because these are the only
+        controls in the popover and they share one shape: on a phone they split
+        the width evenly and reach the touch target without stretching into
+        three full-width bars.
       -->
-      <div class="actions">
-        @if (translateOffer(); as offer) {
-          <button type="button" class="mn-button" (click)="translate.emit()">{{ offer }}</button>
-        }
+      @if (hasActions()) {
+        <div class="actions">
+          @if (translateOffer(); as offer) {
+            <button type="button" class="action" (click)="translate.emit()">
+              <mn-icon name="translate" [size]="18" />
+              <span>{{ offer }}</span>
+            </button>
+          }
 
-        @if (grammarOffer(); as offer) {
-          <button type="button" class="mn-button" (click)="analyzeGrammar.emit()">
-            {{ offer }}
-          </button>
-        }
+          @if (grammarOffer(); as offer) {
+            <button type="button" class="action" (click)="analyzeGrammar.emit()">
+              <mn-icon name="grammar" [size]="18" />
+              <span>{{ offer }}</span>
+            </button>
+          }
 
-        @if (audioOffer(); as offer) {
-          <button type="button" class="mn-button" (click)="audioAction()">{{ offer }}</button>
-        }
-      </div>
+          @if (audioOffer(); as offer) {
+            <button
+              type="button"
+              class="action"
+              [class.is-primary]="offer === 'Play'"
+              (click)="audioAction()"
+            >
+              <mn-icon [name]="offer === 'Play' ? 'play' : 'audio'" [size]="18" />
+              <span>{{ offer }}</span>
+            </button>
+          }
+        </div>
+      }
     </div>
   `,
   styles: `
     .sentence-popover {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: var(--space-4);
       align-items: flex-start;
     }
 
+    /*
+     * The answer to the press, so it leads at reading size rather than at the
+     * size of the notes under it.
+     */
     .translation {
       margin: 0;
-      font-size: var(--text-md);
-      line-height: 1.6;
+      font-size: var(--text-lg);
+      line-height: 1.55;
     }
 
     /* Ruled in each marker's own colour, so a section names its underline. */
@@ -149,11 +173,75 @@ export interface UnknownWord {
       border-inline-start-color: var(--marker-vocabulary);
     }
 
+    /*
+     * A tray: one row, equal shares, and a rule above it, so the three things
+     * that spend a request are visibly one group and visibly the bottom of the
+     * card rather than three loose buttons among the notes.
+     */
     .actions {
       display: flex;
-      flex-wrap: wrap;
       gap: var(--space-2);
       align-self: stretch;
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .action {
+      display: flex;
+      flex: 1 1 0;
+      gap: var(--space-2);
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      min-height: var(--touch-target);
+      padding: var(--space-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-control);
+      background: var(--surface-raised);
+      color: var(--text-primary);
+      font: inherit;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      cursor: pointer;
+      transition:
+        background-color var(--motion-fast) ease-out,
+        border-color var(--motion-fast) ease-out,
+        transform var(--motion-fast) ease-out;
+    }
+
+    .action span {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .action mn-icon {
+      flex: none;
+      color: var(--text-secondary);
+    }
+
+    .action:hover {
+      border-color: var(--action-primary);
+      background: var(--action-primary-soft);
+    }
+
+    .action:active {
+      transform: translateY(1px);
+    }
+
+    /* Playing a clip that already exists is a result rather than a request. */
+    .action.is-primary {
+      border-color: transparent;
+      background: var(--action-primary);
+      color: var(--text-on-action);
+    }
+
+    .action.is-primary mn-icon {
+      color: inherit;
+    }
+
+    .action.is-primary:hover {
+      background: var(--action-primary-hover);
     }
 
     .words {
@@ -181,9 +269,14 @@ export interface UnknownWord {
       font-size: var(--text-sm);
     }
 
+    /* A quiet section label rather than a heading competing with the answer. */
     h3 {
-      margin: 0 0 var(--space-1);
-      font-size: var(--text-md);
+      margin: 0 0 var(--space-2);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
     .finding-label {
@@ -237,6 +330,12 @@ export class SentencePopoverComponent {
   readonly playAudio = output<void>();
 
   protected readonly isRunning = computed(() => this.aids().translationAction.state === 'running');
+
+  /** Whether the tray has anything in it, so an empty one is never ruled off. */
+  protected readonly hasActions = computed(
+    () =>
+      this.translateOffer() !== null || this.grammarOffer() !== null || this.audioOffer() !== null,
+  );
 
   /** Null once a translation is stored: the English above it is the answer. */
   protected readonly translateOffer = computed(() => {
