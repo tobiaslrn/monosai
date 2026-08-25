@@ -18,7 +18,6 @@ import { GenerationStore } from '../../application/generation/generation.store';
 import { StoryAssemblyService } from '../../application/generation/story-assembly.service';
 import { VocabularyPreparationService } from '../../application/generation/vocabulary-preparation.service';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
-import { CredentialStore } from '../../application/settings/credential.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { ExceptionPolicyStore } from '../../application/settings/exception-policy.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
@@ -212,7 +211,6 @@ export class GeneratePageComponent implements OnDestroy {
   protected readonly generation = inject(GenerationStore);
   protected readonly draft = inject(GenerationDraftStore);
   protected readonly textModel = inject(TextModelStore);
-  private readonly credential = inject(CredentialStore);
   private readonly policy = inject(ExceptionPolicyStore);
   protected readonly appSettings = inject(AppSettingsStore);
   private readonly grammar = inject(GrammarProfileStore);
@@ -374,8 +372,6 @@ export class GeneratePageComponent implements OnDestroy {
   });
 
   constructor() {
-    void this.credential.load();
-    void this.textModel.load();
     void this.policy.load();
     void this.grammar.load();
     void this.snapshots.load();

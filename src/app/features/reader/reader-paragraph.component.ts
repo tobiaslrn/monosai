@@ -57,6 +57,13 @@ import {
        * above, and the same leading is the whitespace a sentence is pressed in.
        */
       line-height: var(--reader-line-height-ruby);
+      /*
+       * Scrolling and pinch-zoom stay; the browser's own double-tap zoom does
+       * not. A reader tapping two words in quick succession was having the
+       * second tap held back while the browser waited to see whether it was a
+       * zoom, which is what made a word sometimes need pressing twice.
+       */
+      touch-action: manipulation;
     }
 
     /*

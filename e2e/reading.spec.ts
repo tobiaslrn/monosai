@@ -458,6 +458,87 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('mn-sentence-popover')).toHaveCount(0);
   });
 
+  test('a tap opens a word, and one more tap moves on to the next', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'the two-tap problem only ever existed on touch');
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    await tap(page, page.getByRole('button', { name: new RegExp('猫') }).first());
+    await expect(wordDetails(page).locator('.dictionary-form')).toHaveText('猫');
+
+    // The press that used to be spent closing the card over the previous word.
+    await tap(page, page.getByRole('button', { name: new RegExp('名前') }).first());
+    await expect(wordDetails(page).locator('.dictionary-form')).toHaveText('名前');
+    // And exactly one word is ever marked as the one being read.
+    await expect(page.locator('button.token.is-selected')).toHaveCount(1);
+  });
+
+  test('a tap on the open word puts it away', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'a phone is where a word is opened and closed by tapping');
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    const word = page.getByRole('button', { name: new RegExp('猫') }).first();
+    await tap(page, word);
+    await expect(wordDetails(page)).toBeVisible();
+
+    await tap(page, word);
+
+    await expect(wordDetails(page)).toHaveCount(0);
+    await expect(page.locator('button.token.is-selected')).toHaveCount(0);
+  });
+
+  test('a tap leaves no hover behind on a phone', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'a synthesized hover is a touch device problem');
+    await page.goto('/#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    await tap(page, page.getByRole('button', { name: new RegExp('猫') }).first());
+    await expect(wordDetails(page)).toBeVisible();
+
+    // The preview belongs to a pointer that can hover. On touch it used to
+    // arrive alongside the details card, in a second colour, and stay behind
+    // on the word after the card was dismissed.
+    await expect(page.locator('button.is-previewed')).toHaveCount(0);
+    await expect(page.locator('mn-word-preview')).toHaveCount(0);
+    await expect(page.locator('.sentence.is-pressing')).toHaveCount(0);
+  });
+
+  test('the word a sheet explains stays visible above it', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'only a docked sheet can cover the word it is about');
+    await page.goto('/#/add');
+    await pasteAndContinue(
+      page,
+      Array.from({ length: 12 }, () => SAMPLE_TEXT).join(PARAGRAPH_BREAK),
+    );
+    await saveAndOpenReader(page);
+
+    // A word in the lower half of the screen, which the sheet docks over.
+    const words = page.locator('button.token');
+    const lowIndex = await words.evaluateAll((elements) =>
+      elements.findIndex((element) => {
+        const box = element.getBoundingClientRect();
+        return box.top > window.innerHeight / 2 && box.bottom < window.innerHeight;
+      }),
+    );
+    expect(lowIndex).toBeGreaterThanOrEqual(0);
+    const low = words.nth(lowIndex);
+
+    await tap(page, low);
+    await expect(wordDetails(page)).toBeVisible();
+
+    await expect
+      .poll(async () => {
+        const word = await low.boundingBox();
+        const sheet = await page.locator('.mn-popover-pane .popover').boundingBox();
+        return (word?.y ?? 0) + (word?.height ?? 0) - (sheet?.y ?? 0);
+      })
+      .toBeLessThanOrEqual(0);
+  });
+
   test('the reading scrolls on with a sheet still open', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'only a docked sheet stays put while the page moves');
     await page.goto('/#/add');

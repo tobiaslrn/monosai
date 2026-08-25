@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { PointerModalityService } from '../../core/platform/pointer-modality.service';
 import { isInspectable, presentStatus, rubyFor } from '../../domain/reading/token-presentation';
 import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
@@ -55,9 +56,9 @@ export interface TokenActivationSource {
         [class.is-previewed]="previewedState()"
         (click)="onActivate($event)"
         (focus)="onPreview($event)"
-        (mouseenter)="onPreview($event)"
+        (pointerenter)="onPreview($event)"
         (blur)="previewEnded.emit()"
-        (mouseleave)="previewEnded.emit()"
+        (pointerleave)="previewEnded.emit()"
       >
         {{ token().surface }}
         @if (statusLabel(); as label) {
@@ -96,6 +97,15 @@ export interface TokenActivationSource {
       line-height: 1.15;
       text-align: inherit;
       cursor: pointer;
+      /* The platform's own grey flash would fight the tint below. */
+      -webkit-tap-highlight-color: transparent;
+      transition: background-color var(--motion-fast) ease-out;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .token {
+        transition: none;
+      }
     }
 
     .is-plain {
@@ -112,11 +122,60 @@ export interface TokenActivationSource {
       text-underline-offset: 0.2em;
     }
 
-    .token:hover,
-    .token:focus-visible,
-    .token.is-previewed {
-      background: var(--action-primary-soft);
+    /*
+     * One tint for a word, in one colour, in every state that means "this is
+     * the word being looked at": hovered, focused, held, and open. A second
+     * colour said nothing a learner could act on — only one word is ever the
+     * subject — and on a phone the hover tint arrived alongside the open tint
+     * and left two words looking chosen at once.
+     */
+    button.token:focus-visible,
+    button.token.is-previewed,
+    button.token.is-selected {
+      background: var(--accent-secondary-soft);
       border-radius: 4px;
+    }
+
+    /*
+     * Hover belongs to a mouse. A phone synthesizes "mouseenter" on tap and
+     * never takes it back, which left a tinted word behind after every tap;
+     * "data-pointer" follows the hardware rather than the media query, so a
+     * touchscreen laptop gets the same treatment while a finger is in use.
+     */
+    :host-context(html[data-pointer='mouse']) button.token:hover {
+      background: var(--accent-secondary-soft);
+      border-radius: 4px;
+    }
+
+    /*
+     * The press itself is answered, before anything opens. On a phone this is
+     * the whole of the feedback between a tap and its sheet, and its absence
+     * was most of why tapping a word felt like nothing had happened.
+     */
+    button.token:active {
+      background: var(--accent-secondary-soft);
+      border-radius: 4px;
+    }
+
+    /*
+     * A finger is not a pointer tip. Vertical padding on an inline box grows
+     * what a press can land on, reaching into the leading that the ruby line
+     * makes generous, without moving a single glyph.
+     *
+     * A media query rather than the pointer attribute, unlike the paint-only
+     * rules above: this one changes layout, and a hit area that appears in the
+     * middle of the very gesture that asked for it is one the browser then
+     * hands to the line behind the word — a tap that does nothing at all.
+     * A device's pointer does not change; which one last touched the page does.
+     *
+     * Words only: punctuation and whitespace are rendered with the same class
+     * but are not targets, and padding one of them out pushes the line it sits
+     * on around.
+     */
+    @media (pointer: coarse) {
+      button.token {
+        padding-block: 0.4em;
+      }
     }
 
     /*
@@ -128,11 +187,6 @@ export interface TokenActivationSource {
     :host(.has-grammar-concern) {
       text-decoration: underline wavy var(--marker-grammar) 1.5px;
       text-underline-offset: 0.36em;
-    }
-
-    .token.is-selected {
-      background: var(--accent-secondary-soft);
-      border-radius: 4px;
     }
 
     /*
@@ -164,6 +218,8 @@ export interface TokenActivationSource {
   `,
 })
 export class ReaderTokenComponent {
+  private readonly pointerModality = inject(PointerModalityService);
+
   readonly token = input.required<Token>();
   readonly status = input<TokenStatusAssignment | null>(null);
   readonly showFurigana = input(true);
@@ -186,7 +242,17 @@ export class ReaderTokenComponent {
     this.activated.emit({ token: this.token(), origin: event.currentTarget as HTMLElement });
   }
 
+  /**
+   * Offers the hover preview to a mouse and a keyboard, and to nothing else.
+   *
+   * A tap both focuses a word and synthesizes a pointer entering it, so on a
+   * phone this fired twice for every tap and put a preview card on screen that
+   * the tap's own details card then replaced.
+   */
   protected onPreview(event: Event): void {
+    if (this.pointerModality.isTouch()) {
+      return;
+    }
     this.previewed.emit({ token: this.token(), origin: event.currentTarget as HTMLElement });
   }
 

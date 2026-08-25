@@ -561,10 +561,6 @@ export class ModelsSectionComponent {
     return [...rows.values()];
   });
 
-  constructor() {
-    void this.credential.load().then(() => Promise.all([this.text.load(), this.tts.load()]));
-  }
-
   protected onKeyInput(event: Event): void {
     this.keyDraft.set((event.target as HTMLInputElement).value);
   }

@@ -140,14 +140,20 @@ describe('ParagraphGesturesDirective', () => {
     const target = paragraph().querySelector<HTMLElement>('[data-sentence-id="s2"]')!;
 
     pointerDown('touch', 50, 150);
+    // A tap is a press too, so the tint waits long enough to be sure the finger
+    // is resting rather than tapping or starting a scroll.
+    expect(target.classList.contains('is-pressing')).toBe(false);
+    vi.advanceTimersByTime(140);
     expect(target.classList.contains('is-pressing')).toBe(true);
 
     // Selecting hands the tint over to the open sentence, and a press that
     // turns into a scroll takes it away again.
-    vi.advanceTimersByTime(450);
+    vi.advanceTimersByTime(310);
     expect(target.classList.contains('is-pressing')).toBe(false);
 
     pointerDown('touch', 50, 150);
+    vi.advanceTimersByTime(140);
+    expect(target.classList.contains('is-pressing')).toBe(true);
     paragraph().dispatchEvent(
       new PointerEvent('pointermove', {
         bubbles: true,

@@ -37,6 +37,10 @@ test.describe('unified models', () => {
     await row.getByTestId('test-text-model').click();
     await expectReadiness(textModelReadiness(page), 'ready');
     await expect(row).toContainText('Default text');
+    await page.goto('/#/library');
+    await page.goto('/#/settings');
+    await expectReadiness(textModelReadiness(page), 'ready');
+    await expect(page.getByTestId('model-row-vendor-text-model')).toContainText('Default text');
     await page.reload();
     await expectReadiness(textModelReadiness(page), 'ready');
     await expect(page.getByTestId('model-row-vendor-text-model')).toContainText('Default text');
