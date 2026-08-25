@@ -6,17 +6,21 @@ test.describe('settings persistence', () => {
   test('puts learner controls before advanced and technical settings', async ({ page }) => {
     await page.goto('/#/settings');
 
-    await expect(
-      page.locator('main section.mn-panel > h2, main section.mn-panel > .heading-row > h2'),
-    ).toHaveText([
-      'Your setup',
-      'Appearance',
-      'Models',
-      'Generation policy',
-      'Storage',
-      'App',
-      'Troubleshooting',
-    ]);
+    const headingsLocator = page.locator(
+      'main section.mn-panel > h2, main section.mn-panel > header > h2',
+    );
+    // Read only once the page has rendered: reading text does not wait on its own.
+    await expect(headingsLocator.first()).toBeVisible();
+    const headings = await headingsLocator.allInnerTexts();
+
+    // The order is what this asserts, not the census: a section added between
+    // these is a decision about that section, not a regression in the ordering.
+    const positions = ['Your setup', 'Appearance', 'AI & generation', 'Storage', 'App'].map(
+      (heading) => headings.indexOf(heading),
+    );
+    expect(positions).not.toContain(-1);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    expect(headings.at(-1)).toBe('Troubleshooting');
   });
 
   test('remembers the chosen theme across a reload', async ({ page }) => {
