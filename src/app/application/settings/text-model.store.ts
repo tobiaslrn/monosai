@@ -55,6 +55,7 @@ export class TextModelStore {
    */
   readonly structuredOutput = computed(() => this.settingsSignal().structuredOutput);
   readonly presets = computed(() => this.settingsSignal().presets);
+  readonly favoriteModelIds = computed(() => this.settingsSignal().favoriteModelIds ?? []);
   readonly activePresetId = computed(() => this.settingsSignal().activePresetId);
   readonly grammarPresetId = computed(() => this.settingsSignal().grammarPresetId);
   readonly compatiblePresets = computed(() =>
@@ -201,6 +202,39 @@ export class TextModelStore {
       }
     }
     const saved = await this.repository.updateTextModelSettings({ grammarPresetId: id });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    return true;
+  }
+
+  async setReasoningEffort(reasoningEffort: string | null): Promise<boolean> {
+    const settings = this.settingsSignal();
+    if (settings.reasoningEffort === reasoningEffort) return true;
+    const saved = await this.repository.updateTextModelSettings({
+      reasoningEffort,
+      activePresetId: null,
+      lastTestFingerprint: null,
+      lastTestedAt: null,
+      structuredOutput: null,
+    });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
+    this.testFailureSignal.set(null);
+    return true;
+  }
+
+  async toggleFavorite(modelId: string): Promise<boolean> {
+    const current = this.settingsSignal().favoriteModelIds ?? [];
+    const favoriteModelIds = current.includes(modelId)
+      ? current.filter((id) => id !== modelId)
+      : [...current, modelId];
+    const saved = await this.repository.updateTextModelSettings({ favoriteModelIds });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
       return false;

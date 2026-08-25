@@ -1,88 +1,33 @@
 import { Dialog } from '@angular/cdk/dialog';
-import type { ElementRef } from '@angular/core';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CredentialStore } from '../../application/settings/credential.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
-import type { TextModelPreset, TtsPreset } from '../../domain/settings/settings';
+import { MODEL_CATALOG } from '../../application/shared/ai-tokens';
+import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
-import { openAddModelDialog, type AddModelKind } from './add-model-dialog.component';
-
-interface ModelRow {
-  readonly key: string;
-  readonly name: string;
-  readonly modelId: string;
-  readonly text: TextModelPreset | null;
-  readonly audio: TtsPreset | null;
-}
+import { ModelPickerComponent } from './model-picker.component';
 
 @Component({
   selector: 'mn-models-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [],
-  host: {
-    '(document:pointerdown)': 'onDocumentPointerDown($event)',
-    '(document:keydown.escape)': 'closeAddMenu($event)',
-  },
+  imports: [ModelPickerComponent],
   template: `
     <section class="mn-panel models" aria-labelledby="mn-models-heading">
-      <div class="heading-row">
-        <h2 id="mn-models-heading">Models</h2>
-        <div class="add-menu">
-          <button
-            #addMenuButton
-            type="button"
-            class="mn-button add-menu-button"
-            popovertarget="mn-add-model-menu"
-            aria-haspopup="menu"
-            aria-controls="mn-add-model-menu"
-            [attr.aria-expanded]="addMenuOpen()"
-            data-testid="add-model"
-          >
-            Add model
-          </button>
-          <div
-            #addMenu
-            id="mn-add-model-menu"
-            class="menu"
-            popover
-            role="menu"
-            aria-label="Model type"
-            (toggle)="onAddMenuToggle($event)"
-          >
-            <button
-              type="button"
-              role="menuitem"
-              data-testid="add-text-model"
-              (click)="add('text')"
-            >
-              Text model
-            </button>
-            <button type="button" role="menuitem" data-testid="add-tts-model" (click)="add('tts')">
-              Audio model
-            </button>
-          </div>
-        </div>
+      <div>
+        <h2 id="mn-models-heading">AI models</h2>
+        <p class="mn-hint">Choose directly from OpenRouter. Changes are saved on this device.</p>
       </div>
 
-      <details class="key-card mn-disclosure" open>
-        <summary>API key</summary>
+      <details class="key-card mn-disclosure" [open]="!credential.isConfigured()">
+        <summary>
+          OpenRouter
+          <span class="connection-state">{{
+            credential.isConfigured() ? 'Connected' : 'Not connected'
+          }}</span>
+        </summary>
         <div class="key-controls">
-          <p class="mn-visually-hidden" role="status" data-testid="credential-state">
-            {{
-              credential.isConfigured()
-                ? 'Key saved. Monosai does not display saved keys.'
-                : 'No key saved.'
-            }}
-          </p>
-          <label class="mn-visually-hidden" for="mn-openrouter-key">API key</label>
+          <label class="mn-visually-hidden" for="mn-openrouter-key">OpenRouter API key</label>
           <div class="credential-row">
             <input
               class="mn-control"
@@ -91,7 +36,7 @@ interface ModelRow {
               autocomplete="off"
               spellcheck="false"
               data-testid="api-key-input"
-              [placeholder]="credential.isConfigured() ? '••••••••••••••••' : 'Paste your key'"
+              [placeholder]="credential.isConfigured() ? 'Replace saved key' : 'Paste your key'"
               [value]="keyDraft()"
               (input)="onKeyInput($event)"
             />
@@ -103,15 +48,10 @@ interface ModelRow {
                 [disabled]="keyDraft().trim() === '' || credential.action() !== 'idle'"
                 (click)="saveKey()"
               >
-                Save
+                {{ credential.isConfigured() ? 'Replace key' : 'Save key' }}
               </button>
               @if (credential.isConfigured()) {
-                <button
-                  type="button"
-                  class="mn-button mn-button--danger"
-                  data-testid="remove-key"
-                  (click)="removeKey()"
-                >
+                <button type="button" class="mn-button mn-button--danger" (click)="removeKey()">
                   Remove
                 </button>
               }
@@ -120,583 +60,339 @@ interface ModelRow {
         </div>
       </details>
 
-      <section class="defaults" aria-labelledby="mn-defaults-heading">
-        <h3 id="mn-defaults-heading">Default models</h3>
-        <div class="default-list">
-          <label class="default-row">
-            <span>Text</span>
-            <select
-              class="mn-control"
-              data-testid="text-preset-select"
-              [value]="text.activePresetId() ?? ''"
-              (change)="setTextDefault($event)"
-            >
-              <option value="">Not configured</option>
-              @for (preset of text.compatiblePresets(); track preset.id) {
-                <option [value]="preset.id">{{ preset.name }}</option>
-              }
-            </select>
-          </label>
-          <label class="default-row">
-            <span>Audio</span>
-            <select
-              class="mn-control"
-              data-testid="tts-preset-select"
-              [value]="tts.activePresetId() ?? ''"
-              (change)="setAudioDefault($event)"
-            >
-              <option value="">Not configured</option>
-              @for (preset of tts.compatiblePresets(); track preset.id) {
-                <option [value]="preset.id">{{ preset.name }}</option>
-              }
-            </select>
-          </label>
-          <label class="default-row">
-            <span>Grammar judgement</span>
-            <select
-              class="mn-control"
-              data-testid="default-grammar-model"
-              [value]="text.grammarPresetId() ?? ''"
-              (change)="setGrammarDefault($event)"
-            >
-              <option value="">Use default text</option>
-              @for (preset of text.compatiblePresets(); track preset.id) {
-                <option [value]="preset.id">{{ preset.name }}</option>
-              }
-            </select>
-          </label>
-        </div>
-      </section>
-
-      @if (rows().length === 0) {
-        <p class="empty">No models configured.</p>
-      } @else {
-        <ul class="model-list" aria-label="Configured models">
-          @for (row of rows(); track row.key) {
-            <li class="model-row" [attr.data-testid]="'model-row-' + row.key">
-              <div class="model-main">
-                <div class="model-name">
-                  <strong>{{ row.name }}</strong>
-                  <div class="badges" aria-label="Capabilities and defaults">
-                    @if (row.text) {
-                      <span>Story</span><span>Translation</span><span>Grammar</span>
-                    }
-                    @if (row.audio) {
-                      <span>Audio</span>
-                    }
-                    @if (row.text?.id === text.activePresetId()) {
-                      <span class="default">Default text</span>
-                    }
-                    @if (row.text?.id === text.grammarPresetId()) {
-                      <span class="default">Grammar judgement</span>
-                    }
-                    @if (row.audio?.id === tts.activePresetId()) {
-                      <span class="default">Default audio</span>
-                    }
-                  </div>
-                </div>
-                <div class="row-actions">
-                  @if (row.text) {
-                    <span
-                      class="mn-visually-hidden"
-                      data-capability="text"
-                      [attr.data-readiness]="rowReadiness(row, 'text')"
-                      >{{ rowReadiness(row, 'text') }}</span
-                    >
-                    <button
-                      type="button"
-                      class="mn-button"
-                      data-testid="test-text-model"
-                      [disabled]="!credential.isConfigured() || testing() !== null"
-                      (click)="testText(row)"
-                    >
-                      {{ testing() === row.key + ':text' ? 'Testing…' : 'Test' }}
-                    </button>
+      <div class="model-fields" [class.disabled]="!credential.isConfigured()">
+        <section class="model-field" aria-labelledby="mn-text-model-label">
+          <div class="field-heading">
+            <div>
+              <h3 id="mn-text-model-label">Text model</h3>
+              <p class="mn-hint">Used for stories, translations, and grammar.</p>
+            </div>
+            <span class="status" [attr.data-readiness]="text.readiness()">{{ textStatus() }}</span>
+          </div>
+          <mn-model-picker
+            label="text models"
+            data-testid="text-model-picker"
+            [models]="textModels()"
+            [favoriteIds]="text.favoriteModelIds()"
+            [selectedId]="text.settings().modelId"
+            [loading]="catalogLoading()"
+            [failure]="catalogFailure()"
+            [disabled]="!credential.isConfigured()"
+            (opened)="loadCatalog()"
+            (modelSelected)="selectTextModel($event)"
+            (favoriteToggled)="text.toggleFavorite($event)"
+          />
+          @if (selectedTextModel(); as model) {
+            <div class="options">
+              <label class="mn-field"
+                ><span>Reasoning</span>
+                <select
+                  class="mn-control"
+                  [value]="text.settings().reasoningEffort ?? ''"
+                  (change)="setReasoning($event)"
+                >
+                  <option value="">Automatic</option>
+                  @for (effort of reasoningEfforts(model); track effort) {
+                    <option [value]="effort">{{ titleCase(effort) }}</option>
                   }
-                  @if (row.audio) {
-                    <span
-                      class="mn-visually-hidden"
-                      data-capability="audio"
-                      [attr.data-readiness]="rowReadiness(row, 'audio')"
-                      >{{ rowReadiness(row, 'audio') }}</span
-                    >
-                    <button
-                      type="button"
-                      class="mn-button"
-                      data-testid="test-tts"
-                      [disabled]="!credential.isConfigured() || testing() !== null"
-                      (click)="testAudio(row)"
-                    >
-                      {{ testing() === row.key + ':audio' ? 'Testing…' : 'Test' }}
-                    </button>
-                  }
-                  <button
-                    type="button"
-                    class="mn-button"
-                    (click)="toggleDetails(row.key)"
-                    [attr.aria-expanded]="expanded() === row.key"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    class="mn-button danger"
-                    [attr.data-testid]="row.text ? 'remove-text-model' : 'remove-tts-model'"
-                    (click)="remove(row)"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-              @if (expanded() === row.key) {
-                <div class="details">
-                  <p>
-                    <span>Model ID</span><strong>{{ row.modelId }}</strong>
-                  </p>
-                  @if (row.text; as textPreset) {
-                    <label
-                      ><span>Reasoning</span
-                      ><input
-                        class="mn-control"
-                        type="text"
-                        [value]="textPreset.reasoningEffort ?? ''"
-                        (change)="updateReasoning(textPreset.id, $event)"
-                    /></label>
-                  }
-                  @if (row.audio; as audio) {
-                    <label
-                      ><span>Voice</span
-                      ><input
-                        class="mn-control"
-                        type="text"
-                        [value]="audio.voiceId"
-                        (change)="updateVoice(audio.id, $event)"
-                    /></label>
-                    <label
-                      ><span>Speed</span
-                      ><input
-                        class="mn-control"
-                        type="number"
-                        min="0.5"
-                        max="2"
-                        step="0.05"
-                        [value]="audio.speed"
-                        (change)="updateSpeed(audio.id, $event)"
-                    /></label>
-                  }
-                  @if (row.text && text.testFailure(); as failure) {
-                    <p role="alert" class="error">{{ failure.message }}</p>
-                  }
-                  @if (row.audio && tts.testFailure(); as failure) {
-                    <p role="alert" class="error">{{ failure.message }}</p>
-                  }
-                </div>
-              }
-            </li>
+                </select>
+              </label>
+            </div>
           }
-        </ul>
-      }
-
-      <details class="key-card mn-disclosure">
-        <summary>Generation settings</summary>
-        <div class="key-controls">
-          <div class="budget-setting">
-            <label for="mn-story-token-budget">Story token budget</label>
-            <input
-              id="mn-story-token-budget"
-              class="mn-control"
-              type="number"
-              min="4096"
-              max="32768"
-              step="1"
-              data-testid="story-token-budget-input"
-              [value]="text.storyTokenBudgetDraft()"
-              [attr.aria-invalid]="!text.isStoryTokenBudgetValid()"
-              (input)="setBudget($event)"
-            />
+          <div class="actions">
             <button
               type="button"
               class="mn-button"
-              data-testid="save-story-token-budget"
-              [disabled]="!text.isStoryTokenBudgetValid() || !text.hasUnsavedStoryTokenBudget()"
-              (click)="saveBudget()"
+              data-testid="test-text-model"
+              [disabled]="text.settings().modelId === '' || text.action() !== 'idle'"
+              (click)="text.test()"
             >
-              Save
+              {{ text.action() === 'testing' ? 'Testing…' : 'Test text model' }}
             </button>
           </div>
-        </div>
-      </details>
+          @if (text.testFailure(); as failure) {
+            <p class="error" role="alert">{{ failure.message }}</p>
+          }
+        </section>
+
+        <section class="model-field" aria-labelledby="mn-audio-model-label">
+          <div class="field-heading">
+            <div>
+              <h3 id="mn-audio-model-label">Reading audio</h3>
+              <p class="mn-hint">Speech models only.</p>
+            </div>
+            <span class="status" [attr.data-readiness]="tts.readiness()">{{ audioStatus() }}</span>
+          </div>
+          <mn-model-picker
+            label="speech models"
+            data-testid="audio-model-picker"
+            [models]="speechModels()"
+            [favoriteIds]="tts.favoriteModelIds()"
+            [selectedId]="tts.settings().modelId"
+            [loading]="catalogLoading()"
+            [failure]="catalogFailure()"
+            [disabled]="!credential.isConfigured()"
+            (opened)="loadCatalog()"
+            (modelSelected)="selectSpeechModel($event)"
+            (favoriteToggled)="tts.toggleFavorite($event)"
+          />
+          @if (selectedSpeechModel(); as model) {
+            <div class="options audio-options">
+              <div class="mn-field">
+                <span>Voice</span>
+                @if (model.supportedVoices.length > 0) {
+                  <select
+                    aria-label="Voice"
+                    class="mn-control"
+                    [value]="tts.draft().voiceId"
+                    (change)="setVoice($event)"
+                  >
+                    @for (voice of model.supportedVoices; track voice) {
+                      <option [value]="voice">{{ voice }}</option>
+                    }
+                  </select>
+                } @else {
+                  <input
+                    aria-label="Voice ID"
+                    class="mn-control"
+                    type="text"
+                    placeholder="Voice ID"
+                    [value]="tts.draft().voiceId"
+                    (change)="setVoice($event)"
+                  />
+                }
+              </div>
+              <label class="mn-field compact"
+                ><span>Speed</span>
+                <input
+                  class="mn-control"
+                  type="number"
+                  min="0.5"
+                  max="2"
+                  step="0.05"
+                  [value]="tts.draft().speed"
+                  (change)="setSpeed($event)"
+                />
+              </label>
+            </div>
+          }
+          <div class="actions">
+            <button
+              type="button"
+              class="mn-button"
+              data-testid="test-tts"
+              [disabled]="
+                tts.draft().modelId === '' || tts.draft().voiceId === '' || tts.action() !== 'idle'
+              "
+              (click)="tts.test()"
+            >
+              {{ tts.action() === 'testing' ? 'Testing…' : 'Test reading audio' }}
+            </button>
+          </div>
+          @if (tts.testFailure(); as failure) {
+            <p class="error" role="alert">{{ failure.message }}</p>
+          }
+        </section>
+      </div>
     </section>
   `,
   styles: `
-    .models {
+    .models,
+    .model-fields,
+    .model-field {
       gap: var(--space-4);
-    }
-    .heading-row,
-    .model-main,
-    .row-actions,
-    .actions {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-    }
-    .heading-row,
-    .model-main {
-      justify-content: space-between;
     }
     h2,
     h3,
     p {
       margin: 0;
     }
-    .add-menu {
-      display: flex;
-    }
-    .add-menu-button {
-      anchor-name: --mn-add-model-anchor;
-    }
-    .menu {
-      position: absolute;
-      position-anchor: --mn-add-model-anchor;
-      position-area: bottom span-left;
-      z-index: 3;
-      inset: auto;
-      min-width: 11rem;
-      margin: var(--space-1) 0 0;
-      padding: var(--space-1);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-control);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
-    }
-    .menu:not(:popover-open) {
-      display: none;
-    }
-    .menu button {
-      width: 100%;
-      min-height: var(--touch-target);
-      padding: var(--space-2);
-      border: 0;
-      border-radius: var(--radius-control);
-      background: none;
-      color: inherit;
-      font: inherit;
-      text-align: left;
-      cursor: pointer;
-    }
-    .menu button:hover,
-    .menu button:focus-visible {
-      background: var(--surface-sunken);
-    }
     .key-card,
-    .defaults {
+    .model-field {
       padding: var(--space-3);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-control);
     }
     .key-card summary {
+      display: flex;
+      align-items: center;
       min-height: var(--touch-target);
-      cursor: pointer;
       font-weight: 700;
     }
+    .connection-state {
+      margin-left: auto;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      font-weight: 500;
+    }
     .key-controls {
-      display: grid;
-      gap: var(--space-2);
       padding-top: var(--space-2);
     }
     .credential-row {
       display: grid;
       grid-template-columns: minmax(12rem, 1fr) auto;
       gap: var(--space-2);
-      align-items: center;
     }
-    .budget-setting {
-      display: grid;
-      grid-template-columns: auto minmax(8rem, 10rem) auto;
-      gap: var(--space-2);
-      align-items: center;
-      justify-content: start;
-    }
-    .default-list {
-      display: grid;
-      margin: var(--space-2) calc(-1 * var(--space-3)) calc(-1 * var(--space-3));
-    }
-    .default-row {
-      display: grid;
-      grid-template-columns: minmax(10rem, 1fr) minmax(14rem, 20rem);
-      gap: var(--space-3);
-      align-items: center;
-      padding: var(--space-3);
-      border-top: 1px solid var(--border-subtle);
-    }
-    .default-row > span {
-      font-weight: 600;
-    }
-    .model-list {
-      display: grid;
-      gap: var(--space-2);
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-    .model-row {
-      padding: var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-control);
-      background: var(--surface-raised);
-    }
-    .model-name {
-      min-width: 0;
-    }
-    .badges {
+    .actions,
+    .field-heading {
       display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-1);
-      margin-top: var(--space-1);
+      align-items: center;
+      gap: var(--space-2);
     }
-    .badges span {
-      padding: 0.15rem 0.5rem;
+    .field-heading {
+      justify-content: space-between;
+    }
+    .model-fields,
+    .model-field {
+      display: grid;
+    }
+    .model-fields.disabled {
+      opacity: 0.65;
+    }
+    .status {
+      flex: none;
+      padding: 0.15rem 0.55rem;
       border-radius: var(--radius-pill);
       background: var(--surface-sunken);
       color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-    .badges .default {
-      background: var(--action-primary-soft);
-      color: var(--action-primary);
+      font-size: 12px;
       font-weight: 700;
     }
-    .details {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3);
-      margin-top: var(--space-3);
-      padding-top: var(--space-3);
-      border-top: 1px solid var(--border-subtle);
+    .status[data-readiness='ready'] {
+      background: var(--status-success-soft);
+      color: var(--status-success);
     }
-    .details p,
-    .details label {
+    .status[data-readiness='failed'] {
+      background: var(--status-danger-soft);
+      color: var(--status-danger);
+    }
+    .options {
       display: grid;
-      gap: var(--space-1);
-      min-width: 8rem;
+      grid-template-columns: minmax(12rem, 20rem);
+      gap: var(--space-3);
+      padding-left: var(--space-3);
+      border-left: 2px solid var(--action-primary-soft);
     }
-    .details span {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
+    .audio-options {
+      grid-template-columns: minmax(12rem, 20rem) minmax(7rem, 9rem);
     }
-    .details strong {
-      overflow-wrap: anywhere;
-    }
-    .danger,
     .error {
       color: var(--status-danger);
     }
-    .empty {
-      padding: var(--space-4);
-      color: var(--text-secondary);
-      text-align: center;
-    }
-    @media (max-width: 42rem) {
-      .default-row {
+    @media (max-width: 36rem) {
+      .credential-row,
+      .audio-options {
         grid-template-columns: 1fr;
-        gap: var(--space-1);
       }
-      .model-main {
+      .field-heading {
         align-items: flex-start;
-        flex-direction: column;
-      }
-      .credential-row {
-        grid-template-columns: 1fr;
-      }
-    }
-    @media (max-width: 30rem) {
-      .budget-setting {
-        grid-template-columns: minmax(0, 1fr) auto;
-      }
-      .budget-setting label {
-        grid-column: 1 / -1;
       }
     }
   `,
 })
 export class ModelsSectionComponent {
   private readonly dialog = inject(Dialog);
+  private readonly catalog = inject(MODEL_CATALOG);
   protected readonly credential = inject(CredentialStore);
   protected readonly text = inject(TextModelStore);
   protected readonly tts = inject(TtsStore);
   protected readonly keyDraft = signal('');
-  protected readonly expanded = signal<string | null>(null);
-  protected readonly testing = signal<string | null>(null);
-  protected readonly addMenuOpen = signal(false);
-  private readonly addMenu = viewChild.required<ElementRef<HTMLElement>>('addMenu');
-  private readonly addMenuButton =
-    viewChild.required<ElementRef<HTMLButtonElement>>('addMenuButton');
+  protected readonly textModels = signal<readonly ModelCapabilities[]>([]);
+  protected readonly speechModels = signal<readonly ModelCapabilities[]>([]);
+  protected readonly catalogLoading = signal(false);
+  protected readonly catalogFailure = signal<string | null>(null);
+  private catalogLoaded = false;
 
-  protected readonly rows = computed<readonly ModelRow[]>(() => {
-    const rows = new Map<string, ModelRow>();
-    for (const preset of this.text.presets()) {
-      rows.set(preset.modelId, {
-        key: preset.modelId.replaceAll('/', '-'),
-        name: preset.name,
-        modelId: preset.modelId,
-        text: preset,
-        audio: null,
-      });
-    }
-    for (const preset of this.tts.presets()) {
-      const prior = rows.get(preset.modelId);
-      rows.set(
-        preset.modelId,
-        prior === undefined
-          ? {
-              key: preset.modelId.replaceAll('/', '-'),
-              name: preset.name,
-              modelId: preset.modelId,
-              text: null,
-              audio: preset,
-            }
-          : { ...prior, audio: preset },
-      );
-    }
-    return [...rows.values()];
-  });
+  protected readonly selectedTextModel = computed(
+    () => this.textModels().find((model) => model.modelId === this.text.settings().modelId) ?? null,
+  );
+  protected readonly selectedSpeechModel = computed(
+    () =>
+      this.speechModels().find((model) => model.modelId === this.tts.settings().modelId) ?? null,
+  );
+  protected readonly textStatus = computed(() => this.statusLabel(this.text.readiness()));
+  protected readonly audioStatus = computed(() => this.statusLabel(this.tts.readiness()));
 
   protected onKeyInput(event: Event): void {
     this.keyDraft.set((event.target as HTMLInputElement).value);
   }
-  protected saveKey(): void {
-    const value = this.keyDraft();
+  protected async saveKey(): Promise<void> {
+    const saved = await this.credential.save(this.keyDraft());
     this.keyDraft.set('');
-    void this.credential.save(value);
+    if (saved) {
+      this.catalogLoaded = false;
+      await this.loadCatalog();
+    }
   }
   protected async removeKey(): Promise<void> {
     const confirmed = await openConfirmDialog(this.dialog, {
       title: 'Remove API key?',
       message: 'AI requests will be unavailable until another key is saved.',
-      details: ['Configured models and saved content stay on this device.'],
+      details: ['Your model choices and saved content stay on this device.'],
       confirmLabel: 'Remove key',
       cancelLabel: 'Keep key',
       tone: 'danger',
     });
     if (confirmed) await this.credential.remove();
   }
-  protected async add(kind: AddModelKind): Promise<void> {
-    this.hideAddMenu();
-    const result = await openAddModelDialog(this.dialog, { kind });
-    if (result?.kind === 'text') await this.text.registerPreset(result.preset);
-    if (result?.kind === 'tts') await this.tts.registerPreset(result.preset);
-  }
-
-  protected onAddMenuToggle(event: Event): void {
-    this.addMenuOpen.set((event.currentTarget as HTMLElement).matches(':popover-open'));
-  }
-
-  protected closeAddMenu(event: Event): void {
-    const menu = this.addMenu().nativeElement;
-    if (!menu.matches(':popover-open')) {
+  protected async loadCatalog(): Promise<void> {
+    if (this.catalogLoaded || this.catalogLoading() || !this.credential.isConfigured()) return;
+    this.catalogLoading.set(true);
+    this.catalogFailure.set(null);
+    const [text, speech] = await Promise.all([
+      this.catalog.list('text'),
+      this.catalog.list('speech'),
+    ]);
+    this.catalogLoading.set(false);
+    if (!text.ok || !speech.ok) {
+      this.catalogFailure.set(
+        (!text.ok ? text.error : !speech.ok ? speech.error : null)?.message ??
+          'Could not load models.',
+      );
       return;
     }
-    event.preventDefault();
-    this.hideAddMenu();
+    this.textModels.set(text.value);
+    this.speechModels.set(speech.value);
+    this.catalogLoaded = true;
   }
-
-  protected onDocumentPointerDown(event: PointerEvent): void {
-    const menu = this.addMenu().nativeElement;
-    if (!menu.matches(':popover-open') || !(event.target instanceof Node)) {
-      return;
-    }
-    if (menu.contains(event.target) || this.addMenuButton().nativeElement.contains(event.target)) {
-      return;
-    }
-    this.hideAddMenu();
+  protected async selectTextModel(model: ModelCapabilities): Promise<void> {
+    this.text.setDraftModelId(model.modelId);
+    await this.text.save();
+    await this.text.setReasoningEffort(model.reasoning?.defaultEffort ?? null);
   }
-
-  private hideAddMenu(): void {
-    const menu = this.addMenu().nativeElement;
-    if (typeof menu.hidePopover === 'function' && menu.matches(':popover-open')) {
-      menu.hidePopover();
-    }
+  protected async selectSpeechModel(model: ModelCapabilities): Promise<void> {
+    this.tts.setDraft({ modelId: model.modelId, voiceId: model.supportedVoices[0] ?? '' });
+    await this.tts.save();
   }
-  protected setTextDefault(event: Event): void {
-    const id = (event.target as HTMLSelectElement).value;
-    if (id) void this.text.selectPreset(id);
+  protected setReasoning(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    void this.text.setReasoningEffort(value || null);
   }
-  protected setAudioDefault(event: Event): void {
-    const id = (event.target as HTMLSelectElement).value;
-    if (id) void this.tts.selectPreset(id);
+  protected setVoice(event: Event): void {
+    this.tts.setDraft({ voiceId: (event.target as HTMLInputElement).value });
+    void this.tts.save();
   }
-  protected setGrammarDefault(event: Event): void {
-    void this.text.setGrammarPreset((event.target as HTMLSelectElement).value || null);
+  protected setSpeed(event: Event): void {
+    this.tts.setDraft({ speed: Number((event.target as HTMLInputElement).value) });
+    void this.tts.save();
   }
-  protected setBudget(event: Event): void {
-    this.text.setStoryTokenBudgetDraft((event.target as HTMLInputElement).value);
+  protected reasoningEfforts(model: ModelCapabilities): readonly string[] {
+    return model.reasoning?.supportedEfforts ?? ['low', 'medium', 'high'];
   }
-  protected saveBudget(): void {
-    void this.text.saveStoryTokenBudget();
+  protected titleCase(value: string): string {
+    return value.charAt(0).toLocaleUpperCase() + value.slice(1);
   }
-  protected updateReasoning(id: string, event: Event): void {
-    const value = (event.target as HTMLInputElement).value.trim();
-    void this.text.updatePreset(id, { reasoningEffort: value || null });
-  }
-  protected updateVoice(id: string, event: Event): void {
-    void this.tts.updatePreset(id, { voiceId: (event.target as HTMLInputElement).value.trim() });
-  }
-  protected updateSpeed(id: string, event: Event): void {
-    void this.tts.updatePreset(id, { speed: Number((event.target as HTMLInputElement).value) });
-  }
-  protected toggleDetails(key: string): void {
-    this.expanded.update((value) => (value === key ? null : key));
-  }
-  protected async testText(row: ModelRow): Promise<void> {
-    if (!row.text) return;
-    this.testing.set(row.key + ':text');
-    try {
-      await this.text.testPreset(row.text.id);
-    } finally {
-      this.testing.set(null);
-      this.expanded.set(row.key);
-    }
-  }
-  protected async testAudio(row: ModelRow): Promise<void> {
-    if (!row.audio) return;
-    this.testing.set(row.key + ':audio');
-    try {
-      await this.tts.testPreset(row.audio.id);
-    } finally {
-      this.testing.set(null);
-      this.expanded.set(row.key);
-    }
-  }
-  protected rowReadiness(row: ModelRow, capability: 'text' | 'audio'): string {
-    if (!this.credential.isConfigured()) return 'not-configured';
-    if (capability === 'text') {
-      if (row.text && this.text.compatiblePresets().some((item) => item.id === row.text?.id))
-        return 'ready';
-      if (this.text.testFailure() !== null) return 'failed';
-      return row.text?.lastTestFingerprint ? 'stale' : 'untested';
-    }
-    if (row.audio && this.tts.compatiblePresets().some((item) => item.id === row.audio?.id))
-      return 'ready';
-    if (this.tts.testFailure() !== null) return 'failed';
-    return row.audio?.lastTestFingerprint ? 'stale' : 'untested';
-  }
-  protected async remove(row: ModelRow): Promise<void> {
-    const affectsDefault =
-      row.text?.id === this.text.activePresetId() ||
-      row.audio?.id === this.tts.activePresetId() ||
-      row.text?.id === this.text.grammarPresetId();
-    const confirmed = await openConfirmDialog(this.dialog, {
-      title: `Remove ${row.name}?`,
-      message: affectsDefault
-        ? 'This model is a default. The affected default will be left unconfigured.'
-        : 'This removes the configured model from this device.',
-      details: [row.modelId, 'Saved stories, aids, and audio stay.'],
-      confirmLabel: 'Remove model',
-      cancelLabel: 'Keep model',
-      tone: 'danger',
-    });
-    if (!confirmed) return;
-    if (row.text) await this.text.removePreset(row.text.id);
-    if (row.audio) await this.tts.removePreset(row.audio.id);
+  private statusLabel(readiness: string): string {
+    return (
+      (
+        {
+          ready: 'Ready',
+          untested: 'Not tested',
+          stale: 'Test again',
+          failed: 'Test failed',
+          'not-configured': 'Not configured',
+        } as Record<string, string>
+      )[readiness] ?? readiness
+    );
   }
 }

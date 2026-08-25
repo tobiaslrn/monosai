@@ -20,6 +20,7 @@ describe('ModelCapabilitiesStore', () => {
   it('keeps text and TTS discovery results independent', async () => {
     const catalog: ModelCatalog = {
       discover: (modelId) => Promise.resolve(ok({ ...CAPABILITIES, modelId })),
+      list: () => Promise.resolve(ok([])),
     };
     TestBed.configureTestingModule({
       providers: [ModelCapabilitiesStore, { provide: MODEL_CATALOG, useValue: catalog }],
@@ -36,6 +37,7 @@ describe('ModelCapabilitiesStore', () => {
   it('clears one target without disturbing the other', async () => {
     const catalog: ModelCatalog = {
       discover: (modelId) => Promise.resolve(ok({ ...CAPABILITIES, modelId })),
+      list: () => Promise.resolve(ok([])),
     };
     TestBed.configureTestingModule({
       providers: [ModelCapabilitiesStore, { provide: MODEL_CATALOG, useValue: catalog }],

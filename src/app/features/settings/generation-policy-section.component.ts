@@ -3,6 +3,7 @@ import {
   ExceptionPolicyStore,
   MAX_POLICY_LENGTH,
 } from '../../application/settings/exception-policy.store';
+import { TextModelStore } from '../../application/settings/text-model.store';
 
 /**
  * The single global exception policy.
@@ -34,6 +35,34 @@ import {
           (input)="onInput($event)"
         ></textarea>
         <p id="mn-policy-count" class="mn-hint">{{ countLabel() }}</p>
+      </div>
+
+      <div class="mn-field token-budget">
+        <label for="mn-story-token-budget">Story token budget</label>
+        <div class="budget-row">
+          <input
+            id="mn-story-token-budget"
+            class="mn-control"
+            type="number"
+            min="4096"
+            max="32768"
+            step="1"
+            data-testid="story-token-budget-input"
+            [value]="text.storyTokenBudgetDraft()"
+            [attr.aria-invalid]="!text.isStoryTokenBudgetValid()"
+            (input)="setBudget($event)"
+          />
+          <button
+            type="button"
+            class="mn-button"
+            data-testid="save-story-token-budget"
+            [disabled]="!text.isStoryTokenBudgetValid() || !text.hasUnsavedStoryTokenBudget()"
+            (click)="saveBudget()"
+          >
+            Save
+          </button>
+        </div>
+        <p class="mn-hint">Maximum completion budget for generated stories, including reasoning.</p>
       </div>
 
       @if (policy.isTooLong()) {
@@ -72,10 +101,19 @@ import {
       margin: 0;
       color: var(--status-danger);
     }
+    .token-budget {
+      max-width: 28rem;
+    }
+    .budget-row {
+      display: grid;
+      grid-template-columns: minmax(8rem, 1fr) auto;
+      gap: var(--space-2);
+    }
   `,
 })
 export class GenerationPolicySectionComponent {
   protected readonly policy = inject(ExceptionPolicyStore);
+  protected readonly text = inject(TextModelStore);
   protected readonly maxLength = MAX_POLICY_LENGTH;
 
   protected readonly countLabel = computed(
@@ -104,5 +142,13 @@ export class GenerationPolicySectionComponent {
 
   protected save(): void {
     void this.policy.save();
+  }
+
+  protected setBudget(event: Event): void {
+    this.text.setStoryTokenBudgetDraft((event.target as HTMLInputElement).value);
+  }
+
+  protected saveBudget(): void {
+    void this.text.saveStoryTokenBudget();
   }
 }

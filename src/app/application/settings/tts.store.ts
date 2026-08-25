@@ -66,6 +66,7 @@ export class TtsStore {
 
   readonly lastTestedAt = computed(() => this.settingsSignal().lastTestedAt);
   readonly presets = computed(() => this.settingsSignal().presets);
+  readonly favoriteModelIds = computed(() => this.settingsSignal().favoriteModelIds ?? []);
   readonly activePresetId = computed(() => this.settingsSignal().activePresetId);
   readonly compatiblePresets = computed(() =>
     this.settingsSignal().presets.filter((preset) => this.isPresetReady(preset)),
@@ -174,6 +175,20 @@ export class TtsStore {
     this.settingsSignal.set(saved.value);
     this.draftSignal.set({ modelId: preset.modelId, voiceId: preset.voiceId, speed: preset.speed });
     this.testFailureSignal.set(null);
+    return true;
+  }
+
+  async toggleFavorite(modelId: string): Promise<boolean> {
+    const current = this.settingsSignal().favoriteModelIds ?? [];
+    const favoriteModelIds = current.includes(modelId)
+      ? current.filter((id) => id !== modelId)
+      : [...current, modelId];
+    const saved = await this.repository.updateTtsSettings({ favoriteModelIds });
+    if (!saved.ok) {
+      this.storageFailureSignal.set(saved.error);
+      return false;
+    }
+    this.settingsSignal.set(saved.value);
     return true;
   }
 

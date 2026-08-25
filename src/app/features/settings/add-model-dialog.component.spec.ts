@@ -26,7 +26,10 @@ const GEMINI: ModelCapabilities = {
 describe('AddModelDialogComponent', () => {
   it('discovers text choices and returns a registered preset', async () => {
     const close = vi.fn<(result?: AddModelDialogResult) => void>();
-    const catalog: ModelCatalog = { discover: () => Promise.resolve(ok(GEMINI)) };
+    const catalog: ModelCatalog = {
+      discover: () => Promise.resolve(ok(GEMINI)),
+      list: () => Promise.resolve(ok([])),
+    };
     await TestBed.configureTestingModule({
       imports: [AddModelDialogComponent],
       providers: [
@@ -70,7 +73,10 @@ describe('AddModelDialogComponent', () => {
       supportedVoices: ['Kore', 'Puck'],
       reasoning: null,
     };
-    const catalog: ModelCatalog = { discover: () => Promise.resolve(ok(model)) };
+    const catalog: ModelCatalog = {
+      discover: () => Promise.resolve(ok(model)),
+      list: () => Promise.resolve(ok([])),
+    };
     await TestBed.configureTestingModule({
       imports: [AddModelDialogComponent],
       providers: [

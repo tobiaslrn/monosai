@@ -57,6 +57,7 @@ export const textModelSettingsSchema = z.object({
     )
     .readonly()
     .default([]),
+  favoriteModelIds: z.array(nonEmptyString).readonly().default([]),
 });
 
 export const ttsSettingsSchema = z.object({
@@ -82,6 +83,7 @@ export const ttsSettingsSchema = z.object({
     )
     .readonly()
     .default([]),
+  favoriteModelIds: z.array(nonEmptyString).readonly().default([]),
 });
 
 export const exceptionPolicySchema = z.object({
