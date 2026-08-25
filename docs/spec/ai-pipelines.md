@@ -44,7 +44,7 @@ Generate a short fixed Japanese phrase using the exact TTS model, voice, request
 
 ### Defaults and request overrides
 
-Each tested configured model retains its own compatibility evidence. The default text model serves story generation and translation. Grammar judgement may use a dedicated tested text model and otherwise falls back explicitly to the text default. The default audio model supplies speech configuration. Story and audio surfaces may select another compatible configured model for one request without changing a default. Removing a default leaves that default unconfigured; no arbitrary replacement is selected.
+Each tested configured model retains its own compatibility evidence. The default text model serves story generation and translation. Grammar judgement may use a dedicated tested text model and otherwise falls back explicitly to the text default. The default audio model supplies speech configuration. Story generation and audio always use these defaults; models are chosen in Settings only. Removing a default leaves that default unconfigured; no arbitrary replacement is selected.
 
 ## 3. Prompt layering
 

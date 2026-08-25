@@ -174,15 +174,10 @@ describe('StoryFormComponent', () => {
     expect(select.disabled).toBe(true);
   });
 
-  it('names the missing text model and sends the learner to Settings', () => {
+  it('leaves model choice to Settings', () => {
     const { element } = render();
-    const select = element.querySelector<HTMLSelectElement>('[data-testid="story-model-select"]');
 
-    expect(select?.disabled).toBe(true);
-    expect(select?.textContent).toContain('No text model configured');
-    expect(element.querySelector('a[routerlink="/settings"]')?.textContent).toContain(
-      'Open Settings',
-    );
+    expect(element.querySelector('[data-testid="story-model-select"]')).toBeNull();
   });
 
   it('keeps special instructions optional', () => {

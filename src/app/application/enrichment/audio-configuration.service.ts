@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import {
@@ -34,12 +34,6 @@ export interface ResolvedAudioConfig extends AudioSynthesisConfig {
 export class AudioConfigurationService {
   private readonly tts = inject(TtsStore);
   private readonly hasher = inject(HASHER);
-  private readonly selectedPresetIdSignal = signal<string | null>(null);
-  readonly selectedPresetId = this.selectedPresetIdSignal.asReadonly();
-
-  selectForRequest(presetId: string | null): void {
-    this.selectedPresetIdSignal.set(presetId);
-  }
 
   /**
    * Refuses unless the exact saved configuration has passed its own test.
@@ -51,9 +45,7 @@ export class AudioConfigurationService {
   resolve(task: AiTask): Result<ResolvedAudioConfig, AiError> {
     const settings = this.tts.settings();
     const configurable = this.tts as Partial<Pick<TtsStore, 'configForPreset'>>;
-    const preset =
-      configurable.configForPreset?.(this.selectedPresetIdSignal() ?? settings.activePresetId) ??
-      null;
+    const preset = configurable.configForPreset?.(settings.activePresetId) ?? null;
     if (preset === null && this.tts.readiness() !== 'ready') {
       const readiness = this.tts.readiness();
       return err(
