@@ -82,6 +82,11 @@ Build Monosai according to the repository specifications. Read the relevant spec
 4. Refactor immediately if a change creates poor structure or oversized files.
 5. Finish with a clean working tree or clearly report unrelated existing changes.
 
+## File Writing
+
+- Never write long or multi-line content through shell heredocs, `echo`, or similar string literals; quoting and escaping break them.
+- Use the Write and Edit tools for file content. Shell string literals are only acceptable for short single-line values.
+
 ## UI Verification
 
 - Use the Browser tool for visual QA, responsive inspection, console errors, and interaction checks.
