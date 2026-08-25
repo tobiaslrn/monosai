@@ -47,6 +47,7 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
             #connectionButton
             type="button"
             class="mn-button connection-button"
+            data-testid="connect-openrouter"
             [class.mn-button--primary]="!credential.isConfigured()"
             [attr.aria-expanded]="connectionMenuOpen()"
             aria-haspopup="dialog"
@@ -112,7 +113,12 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
       </header>
 
       <div class="tree">
-        <section class="node" aria-labelledby="mn-text-model-label">
+        <section
+          class="node"
+          aria-labelledby="mn-text-model-label"
+          data-capability="text"
+          [attr.data-readiness]="text.readiness()"
+        >
           <div class="node-head">
             <h3 id="mn-text-model-label">Text</h3>
             @if (retestable(text.readiness())) {
@@ -132,6 +138,7 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
 
           <mn-model-picker
             class="picker"
+            data-testid="text-model-picker"
             label="text models"
             [models]="textModels()"
             [favoriteIds]="text.favoriteModelIds()"
@@ -173,9 +180,18 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
           </div>
 
           <details class="mn-disclosure branches" [open]="hasOverrides()">
-            <summary>Separate models for translation and grammar</summary>
+            <summary data-testid="task-models-toggle">
+              Separate models for translation and grammar
+            </summary>
             @for (task of textTasks; track task.id) {
-              <div class="branch" [attr.aria-labelledby]="'mn-' + task.id + '-label'">
+              <div
+                class="branch"
+                [attr.aria-labelledby]="'mn-' + task.id + '-label'"
+                [attr.data-capability]="task.id"
+                [attr.data-readiness]="
+                  text.routePreset(task.id) === null ? 'inherited' : text.routeReadiness(task.id)
+                "
+              >
                 <div class="node-head">
                   <h4 [id]="'mn-' + task.id + '-label'">{{ task.label }}</h4>
                   @if (text.routePreset(task.id) !== null && retestable(text.routeReadiness(task.id))) {
@@ -197,6 +213,7 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
 
                 <mn-model-picker
                   class="picker"
+                  [attr.data-testid]="task.id + '-model-picker'"
                   [label]="task.label + ' models'"
                   fallbackLabel="Same as text"
                   [models]="textModels()"
@@ -242,7 +259,12 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
           </details>
         </section>
 
-        <section class="node" aria-labelledby="mn-audio-model-label">
+        <section
+          class="node"
+          aria-labelledby="mn-audio-model-label"
+          data-capability="audio"
+          [attr.data-readiness]="tts.readiness()"
+        >
           <div class="node-head">
             <h3 id="mn-audio-model-label">Audio</h3>
             <button
@@ -260,6 +282,7 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
 
           <mn-model-picker
             class="picker"
+            data-testid="audio-model-picker"
             label="speech models"
             [models]="speechModels()"
             [favoriteIds]="tts.favoriteModelIds()"

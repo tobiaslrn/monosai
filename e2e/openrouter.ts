@@ -192,6 +192,48 @@ function nextOf<T>(queue: readonly T[] | undefined, index: number): T | undefine
   return queue[Math.min(index, queue.length - 1)];
 }
 
+/**
+ * The models the stubbed catalogue offers.
+ *
+ * The settings pickers choose from this list rather than from a typed model
+ * ID, so every model a test wants to pick has to exist here.
+ */
+const CATALOGUE = [
+  'vendor/text-model',
+  'vendor/grammar-model',
+  'vendor/translator',
+  'vendor/tts-model',
+  'vendor/second-tts-model',
+];
+
+function isSpeechModel(modelId: string): boolean {
+  return modelId.includes('tts');
+}
+
+/** One model as OpenRouter describes it on the wire. */
+function modelPayload(modelId: string): Record<string, unknown> {
+  const tts = isSpeechModel(modelId);
+  return {
+    id: modelId,
+    name: `Test ${modelId.slice(modelId.indexOf('/') + 1)}`,
+    canonical_slug: modelId,
+    context_length: 32_768,
+    created: 0,
+    default_parameters: null,
+    architecture: {
+      modality: tts ? 'text->audio' : 'text->text',
+      input_modalities: ['text'],
+      output_modalities: [tts ? 'audio' : 'text'],
+    },
+    supported_parameters: tts ? ['response_format'] : ['reasoning', 'structured_outputs'],
+    supported_voices: tts ? ['sakura', 'Kore'] : [],
+    links: { details: `https://openrouter.ai/${modelId}` },
+    per_request_limits: null,
+    pricing: { prompt: '0', completion: '0' },
+    top_provider: { is_moderated: false },
+  };
+}
+
 function providerError(route: Route, status: number, message: string): Promise<void> {
   return route.fulfill({
     status,
@@ -212,34 +254,32 @@ export async function stubOpenRouter(
     const url = route.request().url();
     urls.push(url);
 
-    if (url.includes('/api/v1/model/')) {
-      const marker = '/api/v1/model/';
-      const modelId = decodeURIComponent(url.slice(url.indexOf(marker) + marker.length));
-      const tts = modelId.includes('tts');
+    // The settings pickers browse the catalogue, so the list is served before
+    // the single-model lookup and filtered by the modality that was asked for:
+    // a speech picker that offered a text model would make "an incompatible
+    // model cannot be chosen" untestable.
+    if (url.includes('/api/v1/models')) {
+      const speech = /speech|audio/.test(url);
+      const data = CATALOGUE.filter((modelId) => isSpeechModel(modelId) === speech).map(
+        modelPayload,
+      );
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            id: modelId,
-            name: tts ? 'Test voice model' : 'Test text model',
-            canonical_slug: modelId,
-            context_length: 32_768,
-            created: 0,
-            default_parameters: null,
-            architecture: {
-              modality: tts ? 'text->audio' : 'text->text',
-              input_modalities: ['text'],
-              output_modalities: [tts ? 'audio' : 'text'],
-            },
-            supported_parameters: tts ? ['response_format'] : ['reasoning', 'structured_outputs'],
-            supported_voices: tts ? ['sakura', 'Kore'] : [],
-            links: { details: `https://openrouter.ai/${modelId}` },
-            per_request_limits: null,
-            pricing: { prompt: '0', completion: '0' },
-            top_provider: { is_moderated: false },
-          },
-        }),
+        // The listing is paginated on the wire, and the SDK refuses a page that
+        // does not say where it ends: one page, and there is no next.
+        body: JSON.stringify({ data, links: { next: null }, total_count: data.length }),
+      });
+      return;
+    }
+
+    if (url.includes('/api/v1/model/')) {
+      const marker = '/api/v1/model/';
+      const modelId = decodeURIComponent(url.slice(url.indexOf(marker) + marker.length));
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: modelPayload(modelId) }),
       });
       return;
     }
@@ -397,54 +437,82 @@ export async function stubOpenRouter(
 }
 
 /**
- * The readiness badge of one section.
+ * The node of one job in the settings tree.
  *
- * Asserted through its `data-readiness` attribute rather than its wording,
- * because the surrounding hints legitimately talk about tests being out of
- * date and a text match cannot tell the two apart.
+ * Readiness is asserted through the node's `data-readiness` attribute rather
+ * than its wording, because the visible status doubles as the retry control
+ * and a text match cannot tell a state from an invitation to act on it.
  */
 export function textModelReadiness(page: Page): Locator {
-  return page.getByRole('region', { name: 'Models' }).locator('[data-capability="text"]');
+  return page.locator('[data-capability="text"]');
 }
 
 export function ttsReadiness(page: Page): Locator {
-  return page.getByRole('region', { name: 'Models' }).locator('[data-capability="audio"]');
+  return page.locator('[data-capability="audio"]');
+}
+
+export function taskReadiness(page: Page, task: 'translation' | 'grammar'): Locator {
+  return page.locator(`[data-capability="${task}"]`);
 }
 
 export async function expectReadiness(locator: Locator, readiness: string): Promise<void> {
   await expect(locator).toHaveAttribute('data-readiness', readiness);
 }
 
-/** Saves a key through the UI, which is the only way one can be stored. */
+/** Saves a key through the connection menu, which is the only way one can be stored. */
 export async function saveApiKey(page: Page, key = 'e2e-placeholder-key'): Promise<void> {
+  await page.getByTestId('connect-openrouter').click();
   await page.getByTestId('api-key-input').fill(key);
   await page.getByTestId('save-key').click();
-  await expect(page.getByTestId('credential-state')).toContainText('Key saved');
+  await expect(page.getByTestId('connect-openrouter')).toContainText('OpenRouter connected');
 }
 
-/** Registers a text-model preset through the same discovery dialog learners use. */
+/** Opens one picker and chooses a model from the catalogue it lists. */
+async function chooseModel(page: Page, picker: string, modelId: string): Promise<void> {
+  await page.getByTestId(picker).click();
+  await page.getByTestId(`model-option-${modelId}`).click();
+}
+
+/**
+ * Chooses the text model.
+ *
+ * Choosing is all a learner does: the compatibility test runs on selection, so
+ * the caller asserts readiness rather than pressing anything. The click returns
+ * before the choice is stored, so the helper waits for the node to stop saying
+ * it has no model; without that a following edit races the write.
+ */
 export async function addTextModel(page: Page, modelId: string): Promise<void> {
-  if (!(await page.getByTestId('add-text-model').isVisible())) {
-    await page.getByTestId('add-model').click();
-  }
-  await page.getByTestId('add-text-model').click();
-  await page.getByTestId('add-model-id').fill(modelId);
-  await page.getByTestId('dialog-discover-model').click();
-  await expect(page.getByText('Preset options')).toBeVisible();
-  await page.getByTestId('save-model-preset').click();
-  await expect(page.getByTestId('text-preset-select')).toBeVisible();
+  await chooseModel(page, 'text-model-picker', modelId);
+  await expect(textModelReadiness(page)).not.toHaveAttribute('data-readiness', 'not-configured');
 }
 
-/** Registers a voice-model preset through capability-aware model and voice dropdowns. */
-export async function addTtsModel(page: Page, modelId: string, voiceId = 'sakura'): Promise<void> {
-  if (!(await page.getByTestId('add-tts-model').isVisible())) {
-    await page.getByTestId('add-model').click();
+/** Opens the translation and grammar branches of the text node. */
+export async function openTaskModels(page: Page): Promise<void> {
+  const toggle = page.getByTestId('task-models-toggle');
+  if (!(await page.getByTestId('translation-model-picker').isVisible())) {
+    await toggle.click();
   }
-  await page.getByTestId('add-tts-model').click();
-  await page.getByTestId('add-model-id').fill(modelId);
-  await page.getByTestId('dialog-discover-model').click();
-  await expect(page.getByText('Preset options')).toBeVisible();
-  await page.getByTestId('voice-select').selectOption(voiceId);
-  await page.getByTestId('save-model-preset').click();
-  await expect(page.getByTestId('tts-preset-select')).toBeVisible();
+  await expect(page.getByTestId('translation-model-picker')).toBeVisible();
+}
+
+/** Routes one task to its own model, which also tests it. */
+export async function addTaskModel(
+  page: Page,
+  task: 'translation' | 'grammar',
+  modelId: string,
+): Promise<void> {
+  await openTaskModels(page);
+  await chooseModel(page, `${task}-model-picker`, modelId);
+  // The branch keeps showing the inherited model until the route is stored.
+  await expect(taskReadiness(page, task)).not.toHaveAttribute('data-readiness', 'inherited');
+}
+
+/** Chooses the speech model and voice. The preview is what tests them. */
+export async function addTtsModel(page: Page, modelId: string, voiceId = 'sakura'): Promise<void> {
+  await chooseModel(page, 'audio-model-picker', modelId);
+  // The voice field is a free-text box until the chosen model's own voices are
+  // known, so the list has to be waited for rather than typed over.
+  const voice = page.getByRole('combobox', { name: 'Voice' });
+  await expect(voice).toBeVisible();
+  await voice.selectOption(voiceId);
 }

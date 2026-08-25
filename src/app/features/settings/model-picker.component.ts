@@ -60,6 +60,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
               class="mn-control"
               type="search"
               autocomplete="off"
+              data-testid="model-picker-search"
               placeholder="Search by model or provider"
               [value]="query()"
               (input)="setQuery($event)"
@@ -83,6 +84,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
               <button
                 type="button"
                 class="fallback"
+                data-testid="model-picker-fallback"
                 role="option"
                 [attr.aria-selected]="selectedId() === ''"
                 (click)="chooseFallback()"
@@ -115,6 +117,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
           type="button"
           class="model-choice"
           role="option"
+          [attr.data-testid]="'model-option-' + model.modelId"
           [attr.aria-selected]="model.modelId === selectedId()"
           (click)="choose(model)"
         >

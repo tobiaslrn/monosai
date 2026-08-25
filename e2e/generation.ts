@@ -184,8 +184,8 @@ export async function stubReviewedCollection(page: Page): Promise<void> {
 export async function configureTextModel(page: Page): Promise<void> {
   await page.goto('/#/settings');
   await saveApiKey(page);
+  // Choosing the model runs the test; readiness is what says it passed.
   await addTextModel(page, TEXT_MODEL);
-  await page.getByTestId('test-text-model').click();
   await expectReadiness(textModelReadiness(page), 'ready');
 }
 
