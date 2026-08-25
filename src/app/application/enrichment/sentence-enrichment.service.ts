@@ -62,9 +62,12 @@ export class SentenceEnrichmentService {
 
   /** The cache key a translation of this sentence would be stored under now. */
   translationKeyFor(sentence: Sentence): string {
+    const configurable = this.textModel as Partial<Pick<TextModelStore, 'configForTask'>>;
+    const modelId =
+      configurable.configForTask?.('translation')?.modelId ?? this.textModel.settings().modelId;
     return (
       this.keys
-        .translationKeys([sentence], this.textModel.settings().modelId, PROMPT_VERSIONS.translation)
+        .translationKeys([sentence], modelId, PROMPT_VERSIONS.translation)
         .get(sentence.id) ?? ''
     );
   }
@@ -288,7 +291,7 @@ export class SentenceEnrichmentService {
     const settings = this.textModel.settings();
     const configurable = this.textModel as Partial<Pick<TextModelStore, 'configForTask'>>;
     const config =
-      configurable.configForTask?.(task === 'grammar-review' ? 'grammar' : 'text') ??
+      configurable.configForTask?.(task === 'grammar-review' ? 'grammar' : 'translation') ??
       (settings.modelId !== '' && settings.structuredOutput !== null
         ? {
             modelId: settings.modelId,

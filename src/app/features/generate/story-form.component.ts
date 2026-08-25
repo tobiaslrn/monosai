@@ -63,6 +63,8 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             {{ draft.instructionsLength() }} / {{ draft.instructionsLimit }} characters
           </p>
         </div>
+
+        <ng-content select="[text-fields-extra]" />
       </div>
 
       <aside class="story-settings" aria-label="Story settings">

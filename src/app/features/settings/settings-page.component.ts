@@ -3,7 +3,6 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
 import { AppSectionComponent } from './app-section.component';
 import { AppearanceSectionComponent } from './appearance-section.component';
 import { DiagnosticsSectionComponent } from './diagnostics-section.component';
-import { GenerationPolicySectionComponent } from './generation-policy-section.component';
 import { LearningDataSectionComponent } from './learning-data-section.component';
 import { ModelsSectionComponent } from './models-section.component';
 import { StorageSectionComponent } from './storage-section.component';
@@ -15,7 +14,6 @@ import { StorageSectionComponent } from './storage-section.component';
     PageHeaderComponent,
     LearningDataSectionComponent,
     ModelsSectionComponent,
-    GenerationPolicySectionComponent,
     AppearanceSectionComponent,
     StorageSectionComponent,
     AppSectionComponent,
@@ -34,7 +32,6 @@ import { StorageSectionComponent } from './storage-section.component';
       <mn-appearance-section />
 
       <mn-models-section />
-      <mn-generation-policy-section />
 
       <mn-storage-section />
       <mn-app-section />

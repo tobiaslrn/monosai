@@ -183,6 +183,7 @@ interface CapturedContext {
   readonly policyHash: string;
   readonly taskConfig: TextTaskConfig;
   readonly grammarTaskConfig: TextTaskConfig;
+  readonly translationTaskConfig: TextTaskConfig;
   readonly ankiWordPriorityMode: AnkiWordPriorityMode;
 }
 
@@ -615,6 +616,8 @@ export class GenerationStore {
         taskConfig: selected,
         grammarTaskConfig:
           configurable.configForPreset?.(settings.grammarPresetId ?? null) ?? selected,
+        translationTaskConfig:
+          configurable.configForPreset?.(settings.translationPresetId ?? null) ?? selected,
         ankiWordPriorityMode,
       },
     };
@@ -819,7 +822,7 @@ export class GenerationStore {
     });
     this.announce('Reviewing grammar and translating…');
 
-    const modelId = context.taskConfig.modelId;
+    const modelId = context.translationTaskConfig.modelId;
     const grammarModelId = context.grammarTaskConfig.modelId;
     const translationKeys = this.enrichmentKeys.translationKeys(
       draft.sentences,
@@ -852,7 +855,7 @@ export class GenerationStore {
         translationKeys,
         modelId,
         PROMPT_VERSIONS.translation,
-        context.taskConfig,
+        context.translationTaskConfig,
         signal,
       ),
     ]);
