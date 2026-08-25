@@ -105,6 +105,7 @@ export interface TextModelSettings {
   /** Optional dedicated model for grammar judgement; null falls back to the text default. */
   readonly grammarPresetId?: string | null;
   readonly presets: readonly TextModelPreset[];
+  readonly favoriteModelIds?: readonly string[];
 }
 
 export interface TextModelPreset {
@@ -127,6 +128,7 @@ export const DEFAULT_TEXT_MODEL_SETTINGS: TextModelSettings = {
   activePresetId: null,
   grammarPresetId: null,
   presets: [],
+  favoriteModelIds: [],
 };
 
 export interface TtsSettings {
@@ -138,6 +140,7 @@ export interface TtsSettings {
   readonly lastTestedAt: number | null;
   readonly activePresetId: string | null;
   readonly presets: readonly TtsPreset[];
+  readonly favoriteModelIds?: readonly string[];
 }
 
 export interface TtsPreset {
@@ -160,6 +163,7 @@ export const DEFAULT_TTS_SETTINGS: TtsSettings = {
   lastTestedAt: null,
   activePresetId: null,
   presets: [],
+  favoriteModelIds: [],
 };
 
 export interface ExceptionPolicy {
