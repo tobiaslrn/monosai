@@ -22,6 +22,15 @@ export interface AudioPlayer {
   resume(): Promise<void>;
   /** Stops, unloads, and revokes the current object URL. */
   stop(): void;
+  /**
+   * How far into the loaded clip playback has reached, in seconds.
+   *
+   * Read by Previous, which means "again" near the start of a sentence and
+   * "the one before" at the start of it.
+   */
+  elapsed(): number;
+  /** Plays the loaded clip again from its start, without reloading it. */
+  restart(): Promise<void>;
   /** Called when the loaded clip finishes on its own. */
   onEnded(handler: () => void): void;
   /** Called when the loaded clip cannot be decoded or played. */
@@ -58,6 +67,13 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
     },
     resume(): Promise<void> {
       return element.play();
+    },
+    elapsed(): number {
+      return element.currentTime;
+    },
+    async restart(): Promise<void> {
+      element.currentTime = 0;
+      await element.play();
     },
     stop(): void {
       element.pause();

@@ -11,6 +11,16 @@ import { MEDIA_SESSION } from './media-session';
 export type PlaybackStatus = 'idle' | 'loading' | 'playing' | 'paused';
 
 /**
+ * How far into a sentence Previous stops meaning "the sentence before".
+ *
+ * Past this point the learner has heard enough of this sentence to be asking
+ * to hear it again — which is what a learner reaching for Previous mid-sentence
+ * almost always wants, since the reason to press it is that the sentence went
+ * by too fast. Before it, they are still at the seam and mean the one before.
+ */
+export const REPLAY_WINDOW_SECONDS = 1.5;
+
+/**
  * Why playback stopped, when it was not the learner who stopped it.
  *
  * Each variant names the sentence it happened at, because "the reading would
@@ -263,7 +273,19 @@ export class AudioPlaybackStore {
     return this.step(1);
   }
 
+  /**
+   * Back to the start of this sentence, and only then to the one before it.
+   *
+   * A learner presses Previous because a sentence went past too fast, so the
+   * first press replays the sentence being read from its beginning; pressing
+   * again at the start of one steps back. Jumping straight to the previous
+   * sentence meant the sentence they actually wanted could only be reached by
+   * going back and then forward again.
+   */
   previous(): Promise<void> {
+    if (this.currentSignal() !== null && this.player.elapsed() > REPLAY_WINDOW_SECONDS) {
+      return this.replayCurrent();
+    }
     return this.step(-1);
   }
 
@@ -308,6 +330,19 @@ export class AudioPlaybackStore {
     this.navigationSignal.update((count) => count + 1);
     this.single = false;
     await this.load(sentenceId);
+  }
+
+  /** Plays the loaded clip again from its start. Loads nothing and reads nothing. */
+  private async replayCurrent(): Promise<void> {
+    this.navigationSignal.update((count) => count + 1);
+    try {
+      await this.player.restart();
+    } catch {
+      this.stopWithFailure({ kind: 'decode-failed', position: this.currentPosition() });
+      return;
+    }
+    this.statusSignal.set('playing');
+    this.mediaSession.setPlaybackState('playing');
   }
 
   private async step(offset: number): Promise<void> {

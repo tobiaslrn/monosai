@@ -1,5 +1,4 @@
 import {
-  createBlockScrollStrategy,
   createFlexibleConnectedPositionStrategy,
   createGlobalPositionStrategy,
   createOverlayRef,
@@ -70,6 +69,9 @@ function panelClasses(modal: boolean, sheet: boolean): string[] {
  * inside the viewport when neither fits — the anchor is often a word at the
  * very edge of a line.
  */
+/** How far an outside press may travel and still count as a tap, not a scroll. */
+const OUTSIDE_TAP_TOLERANCE_PX = 10;
+
 const POSITIONS: readonly ConnectedPosition[] = [
   { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 8 },
   { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -8 },
@@ -107,9 +109,12 @@ export class PopoverService {
             .withPush(true)
             .withViewportMargin(8)
             .withPositions([...POSITIONS]),
-      // A docked sheet covers the text it came from, so the page behind it
-      // should not scroll; an anchored popover follows its anchor instead.
-      scrollStrategy: sheet ? createBlockScrollStrategy(this.injector) : undefined,
+      // Nothing is blocked or repositioned by scrolling. A docked sheet is
+      // fixed to an edge rather than to a line, so the reading is free to move
+      // behind it — which is what makes it possible to read on with a
+      // translation still open. An anchored card closes instead, through
+      // `closeOnScroll`, because it would otherwise drag down the page.
+      scrollStrategy: undefined,
       hasBackdrop: modal,
       backdropClass: ['cdk-overlay-transparent-backdrop', 'reader-popover-backdrop'],
       panelClass: panelClasses(modal, sheet),
@@ -137,33 +142,66 @@ export class PopoverService {
       /**
        * The transparent CDK backdrop still owns dismissal, but it cannot own
        * pointer hit-testing: the reader header and independent audio player
-       * deliberately sit above it. Capture the same outside-click rule here,
-       * letting the Audio toggle receive its own click without dismissing the
-       * current reader popover. Other outside clicks keep their old behavior.
+       * deliberately sit above it. The same outside-press rule is captured
+       * here, letting the Audio toggle receive its own press without
+       * dismissing the current popover.
+       *
+       * Dismissal waits for the release rather than acting on the press,
+       * because a press outside a docked sheet is as often the start of a
+       * scroll as it is a dismissal: closing on the press meant a reader could
+       * not scroll on with a translation open. A press that travels is a
+       * scroll and leaves the surface alone; one that stays put is a tap and
+       * closes it.
        */
-      const onPointerDown = (event: Event): void => {
+      let origin: { x: number; y: number } | null = null;
+      const isOutside = (event: Event): boolean => {
         const target = event.target;
         if (!(target instanceof Node) || overlayRef.overlayElement.contains(target)) {
-          return;
+          return false;
         }
         const element = target instanceof Element ? target : target.parentElement;
-        if (element?.closest('.audio-button') !== null) {
+        return element?.closest('.audio-button') === null;
+      };
+      const onPointerDown = (event: PointerEvent): void => {
+        origin = isOutside(event) ? { x: event.clientX, y: event.clientY } : null;
+      };
+      const onPointerUp = (event: PointerEvent): void => {
+        const start = origin;
+        origin = null;
+        if (start === null || !isOutside(event)) {
+          return;
+        }
+        const travelled =
+          Math.abs(event.clientX - start.x) > OUTSIDE_TAP_TOLERANCE_PX ||
+          Math.abs(event.clientY - start.y) > OUTSIDE_TAP_TOLERANCE_PX;
+        if (travelled) {
           return;
         }
         close();
-        event.preventDefault();
-        event.stopPropagation();
+        // The click this release is about to produce belonged to dismissing
+        // the surface, and must not also act on whatever is underneath.
+        const swallow = (click: Event): void => {
+          click.preventDefault();
+          click.stopPropagation();
+        };
+        document.addEventListener('click', swallow, { capture: true, once: true });
+        setTimeout(() => {
+          document.removeEventListener('click', swallow, { capture: true });
+        });
       };
       document.addEventListener('pointerdown', onPointerDown, true);
+      document.addEventListener('pointerup', onPointerUp, true);
       overlayRef.detachments().subscribe(() => {
         document.removeEventListener('pointerdown', onPointerDown, true);
+        document.removeEventListener('pointerup', onPointerUp, true);
       });
     }
 
-    if (options.closeOnScroll === true) {
-      // Armed a frame late and only for scrolls outside the card: a docked
-      // sheet blocks page scrolling by moving it, and that move must not read
-      // as the reader scrolling away from what they just opened.
+    if (options.closeOnScroll === true && !sheet) {
+      // Armed a frame late and only for scrolls outside the card. A docked
+      // sheet never arms it at all: it is fixed to an edge rather than to the
+      // line that moved, so scrolling past the sentence it explains is exactly
+      // what a reader does while reading its translation.
       const onScroll = (event: Event): void => {
         if (!overlayRef.overlayElement.contains(event.target as Node)) {
           close();

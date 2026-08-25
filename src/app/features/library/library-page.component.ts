@@ -164,7 +164,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     </div>
 
     <ng-template #newReadingMenu>
-      <mn-reader-popover label="New reading">
+      <mn-reader-popover label="New reading" (closed)="closeNewReading()">
         <mn-new-reading-menu (chosen)="closeNewReading()" />
       </mn-reader-popover>
     </ng-template>

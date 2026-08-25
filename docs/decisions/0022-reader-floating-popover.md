@@ -1,7 +1,7 @@
 # 0022 — One floating popover replaces the reader's side panel and bottom sheet
 
 Date: 2026-08-20
-Status: Accepted
+Status: Accepted — placement below the desktop breakpoint superseded by ADR 0031
 
 ## Context
 
@@ -33,7 +33,10 @@ reading column keeps one width at every viewport.
 - At every viewport the same card stays connected to its anchor: below it when
   there is room, above it when needed, and pushed inside the viewport otherwise.
   It remains a compact card rather than becoming a bottom sheet. The library's
-  separate new-reading chooser may still opt into a mobile sheet.
+  separate new-reading chooser may still opt into a mobile sheet. **Superseded by
+  ADR 0031:** below the desktop breakpoint the reader's own details dock as a
+  sheet, because an anchored card on a phone lands on the text it explains and
+  leaves nowhere to scroll.
 - The card takes focus, traps it, is dismissed by `Escape` or a click away, and
   returns focus to whatever opened it.
 - Exactly one popover exists at a time; opening a second closes the first.

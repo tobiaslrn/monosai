@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * Shared steps for the reading journeys.
@@ -55,6 +55,60 @@ export async function importReading(page: Page, text: string, title?: string): P
   }
   await page.getByRole('button', { name: 'Add reading' }).click();
   await expect(page).toHaveURL(/#\/reader\//, { timeout: 60_000 });
+}
+
+/** How long a touch has to rest before the reader treats it as a long press. */
+const LONG_PRESS_MS = 700;
+
+/** The width at which the reader is driven by a mouse rather than a finger. */
+const DESKTOP_WIDTH_PX = 960;
+
+/**
+ * Long-presses an element with a finger, as the reader's sentence gesture asks.
+ *
+ * Playwright's touchscreen only taps, so the press is dispatched through CDP: a
+ * touch that starts, rests, and is then lifted, which is what the reader is
+ * timing.
+ */
+export async function longPress(page: Page, target: Locator): Promise<void> {
+  const box = await target.boundingBox();
+  if (box === null) {
+    throw new Error('nothing to press: the target has no box');
+  }
+  const touchPoints = [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }];
+  const client = await page.context().newCDPSession(page);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints });
+  await page.waitForTimeout(LONG_PRESS_MS);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await client.detach();
+}
+
+/** Taps an element with a finger, which on the reading surface selects nothing. */
+export async function tap(page: Page, target: Locator): Promise<void> {
+  const box = await target.boundingBox();
+  if (box === null) {
+    throw new Error('nothing to tap: the target has no box');
+  }
+  await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+}
+
+/**
+ * Opens a sentence the way the device in use opens one.
+ *
+ * The two gestures are deliberately different: a mouse clicks the whitespace
+ * between words, while a finger long-presses, because on touch a tap is how the
+ * reader dismisses what is open and scrolls on. A helper keeps every journey
+ * that needs an open sentence from having to know which gesture it is running.
+ */
+export async function openSentence(page: Page, index = 0): Promise<void> {
+  const sentence = page.locator('.sentence').nth(index);
+  await expect(sentence).toBeVisible();
+  if ((page.viewportSize()?.width ?? 0) >= DESKTOP_WIDTH_PX) {
+    await sentence.locator('.token.is-plain').first().click();
+  } else {
+    await longPress(page, sentence);
+  }
+  await expect(page.locator('mn-sentence-popover')).toBeVisible({ timeout: 5_000 });
 }
 
 /** Counts rows in every store a reading owns, to prove a cascade left nothing. */

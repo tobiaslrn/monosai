@@ -262,10 +262,21 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       cursor: pointer;
     }
 
+    /* The same quiet section label the sentence card uses, so the two match. */
     h3 {
-      margin: 0 0 var(--space-1);
+      margin: 0 0 var(--space-2);
+      color: var(--text-secondary);
       font-size: var(--text-sm);
       font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    /* Except this one, which is a status badge rather than a label. */
+    .status h3 {
+      color: inherit;
+      letter-spacing: normal;
+      text-transform: none;
     }
 
     .badge {

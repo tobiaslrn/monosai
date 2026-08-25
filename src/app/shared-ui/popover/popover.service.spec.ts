@@ -66,6 +66,14 @@ describe('PopoverService', () => {
     return document.querySelector('.mn-popover-pane');
   }
 
+  function press(target: HTMLElement, clientX: number, clientY: number): void {
+    target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX, clientY }));
+  }
+
+  function release(target: HTMLElement, clientX: number, clientY: number): void {
+    target.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX, clientY }));
+  }
+
   beforeEach(() => {
     TestBed.resetTestingModule();
     media = installFakeMatchMedia(1440);
@@ -125,6 +133,41 @@ describe('PopoverService', () => {
 
     expect(pane()).toBeNull();
     expect(fixture.componentInstance.closedCount).toBe(1);
+  });
+
+  /**
+   * A press outside a docked sheet is as often the start of a scroll as it is a
+   * dismissal, and closing on the press meant a reader could not read on with a
+   * translation still open.
+   */
+  it('dismisses on a tap outside, and leaves a scroll outside alone', () => {
+    const fixture = render();
+    fixture.componentInstance.open();
+    fixture.detectChanges();
+
+    press(document.body, 40, 200);
+    release(document.body, 40, 60);
+    fixture.detectChanges();
+    expect(pane()).not.toBeNull();
+
+    press(document.body, 40, 200);
+    release(document.body, 42, 203);
+    fixture.detectChanges();
+    expect(pane()).toBeNull();
+    expect(fixture.componentInstance.closedCount).toBe(1);
+  });
+
+  it('leaves a press inside the popover alone', () => {
+    const fixture = render();
+    fixture.componentInstance.open();
+    fixture.detectChanges();
+    const inside = pane()?.querySelector<HTMLElement>('.inside');
+
+    press(inside!, 10, 10);
+    release(inside!, 10, 10);
+    fixture.detectChanges();
+
+    expect(pane()).not.toBeNull();
   });
 
   it('keeps only one popover open at a time', () => {

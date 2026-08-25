@@ -2,10 +2,16 @@ import { DestroyRef, Directive, ElementRef, HostListener, inject, output } from 
 import { sentenceAt, sentenceBoxesIn } from './sentence-hit-testing';
 
 /** How long a touch must rest on a sentence before it is selected. */
-const LONG_PRESS_MS = 500;
+const LONG_PRESS_MS = 450;
 
 /** Movement that turns a press into a scroll or a drag rather than a long press. */
 const MOVE_TOLERANCE_PX = 10;
+
+/** A short buzz, so a long press is felt rather than waited out. */
+const HAPTIC_MS = 12;
+
+/** Marks the sentence a finger is resting on, before the press has resolved. */
+const PRESSING_CLASS = 'is-pressing';
 
 /** The selected sentence, and the point its popover is anchored to. */
 export interface SentenceSelection {
@@ -15,12 +21,15 @@ export interface SentenceSelection {
 }
 
 /**
- * The two pointer routes to a sentence.
+ * The two pointer routes to a sentence, one per input device.
  *
  * The reader prints no control for a sentence, so the press has to be the
- * control: a click anywhere in a paragraph that is not a word selects the
- * sentence it fell in or nearest to, and a touch long-press does the same from
- * anywhere in the sentence including on a word.
+ * control — but the two devices cannot share one gesture. A mouse click
+ * anywhere in a paragraph that is not a word selects the sentence it fell in or
+ * nearest to, because a mouse has nothing else to do with a click on prose. A
+ * finger does: a tap is how a reader dismisses what is open and how they scroll
+ * on to the next line, so on touch only a long press selects, from anywhere in
+ * the sentence including on a word.
  *
  * Listening on the paragraph rather than on each sentence is deliberate. A
  * press in the leading between two lines lands on the paragraph and on no
@@ -44,6 +53,15 @@ export class ParagraphGesturesDirective {
   private pressOrigin: { x: number; y: number } | null = null;
   private armedSwallow: ((event: Event) => void) | null = null;
   private swallowTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * The device the pending click belongs to.
+   *
+   * A click carries no pointer type of its own, and the two devices mean
+   * opposite things by one. It starts as a mouse so a click synthesized without
+   * any pointer sequence — which is how assistive technology and a keyboard
+   * reach the page — still selects.
+   */
+  private lastPointerType = 'mouse';
 
   constructor() {
     const cancel = (): void => {
@@ -60,6 +78,12 @@ export class ParagraphGesturesDirective {
 
   @HostListener('click', ['$event'])
   protected onClick(event: MouseEvent): void {
+    // A tap is not a selection. On touch the reader taps to dismiss what is
+    // open and to scroll on, so answering a tap with a popover meant every
+    // attempt to put one away opened the next one.
+    if (this.lastPointerType !== 'mouse') {
+      return;
+    }
     // A press that produced a text selection was a reader copying a line, and
     // a click reported at the origin was synthesized rather than aimed — for
     // assistive technology the word buttons are the route in.
@@ -74,11 +98,15 @@ export class ParagraphGesturesDirective {
     // A new gesture is never the click the previous long press was guarding
     // against, and leaving the guard armed would silently eat it.
     this.disarmSwallow();
+    this.lastPointerType = event.pointerType;
     if (event.pointerType === 'mouse') {
       return;
     }
     this.cancelPress();
     this.pressOrigin = { x: event.clientX, y: event.clientY };
+    // Answered at once rather than after the delay: half a second of nothing
+    // happening under a finger reads as the page having ignored it.
+    this.markPressed(sentenceAt(sentenceBoxesIn(this.element.nativeElement), this.pressOrigin));
     this.pressTimer = setTimeout(() => {
       this.pressTimer = null;
       const origin = this.pressOrigin;
@@ -86,6 +114,8 @@ export class ParagraphGesturesDirective {
         return;
       }
       this.swallowNextClick();
+      buzz();
+      this.markPressed(null);
       this.select(origin.x, origin.y);
     }, LONG_PRESS_MS);
   }
@@ -110,6 +140,20 @@ export class ParagraphGesturesDirective {
     this.cancelPress();
   }
 
+  /**
+   * Suppresses the platform's own long-press menu on touch.
+   *
+   * A long press is the reader's gesture for a sentence, and on Android the
+   * browser answers the same press with a text-selection menu that covers the
+   * popover it just opened.
+   */
+  @HostListener('contextmenu', ['$event'])
+  protected onContextMenu(event: Event): void {
+    if (this.lastPointerType !== 'mouse') {
+      event.preventDefault();
+    }
+  }
+
   private select(x: number, y: number): void {
     const sentenceId = sentenceAt(sentenceBoxesIn(this.element.nativeElement), { x, y });
     if (sentenceId !== null) {
@@ -123,6 +167,29 @@ export class ParagraphGesturesDirective {
       this.pressTimer = null;
     }
     this.pressOrigin = null;
+    this.markPressed(null);
+  }
+
+  /**
+   * Tints the sentence under the finger while the press is being timed.
+   *
+   * Set on the element rather than through the sentence component, because the
+   * sentence a press belongs to is resolved from line boxes here and nowhere
+   * else, and a press in the leading belongs to a sentence that is not under
+   * the pointer at all.
+   */
+  private markPressed(sentenceId: string | null): void {
+    for (const element of this.element.nativeElement.querySelectorAll<HTMLElement>(
+      `.${PRESSING_CLASS}`,
+    )) {
+      element.classList.remove(PRESSING_CLASS);
+    }
+    if (sentenceId === null) {
+      return;
+    }
+    this.element.nativeElement
+      .querySelector<HTMLElement>(`[data-sentence-id="${CSS.escape(sentenceId)}"]`)
+      ?.classList.add(PRESSING_CLASS);
   }
 
   /**
@@ -161,4 +228,16 @@ export class ParagraphGesturesDirective {
 function hasTextSelection(): boolean {
   const selection = window.getSelection();
   return selection !== null && !selection.isCollapsed;
+}
+
+/**
+ * Confirms a long press where the device can, and does nothing where it cannot.
+ *
+ * `vibrate` is typed as always present but is absent on iOS Safari and on every
+ * desktop browser, so it is feature-detected rather than called.
+ */
+function buzz(): void {
+  if ('vibrate' in navigator) {
+    navigator.vibrate(HAPTIC_MS);
+  }
 }

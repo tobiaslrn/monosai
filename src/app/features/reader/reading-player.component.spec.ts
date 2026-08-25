@@ -95,6 +95,9 @@ describe('ReadingPlayerComponent', () => {
     return fixture;
   }
 
+  /** Back names both of the things it does, because its icon can name neither. */
+  const BACK_LABEL = 'Restart this sentence, or go back to the one before';
+
   function control(element: HTMLElement, label: string): HTMLButtonElement | null {
     return element.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
   }
@@ -256,7 +259,7 @@ describe('ReadingPlayerComponent', () => {
       expect(element.textContent).toContain('6 sentences ready');
       expect(control(element, 'Play')).not.toBeNull();
       expect(element.textContent).not.toContain('Generate audio');
-      expect(control(element, 'Previous sentence')).not.toBeNull();
+      expect(control(element, BACK_LABEL)).not.toBeNull();
       expect(control(element, 'Pause')).toBeNull();
       expect(control(element, 'Next sentence')).not.toBeNull();
       expect(control(element, 'Stop')).toBeNull();
@@ -294,7 +297,7 @@ describe('ReadingPlayerComponent', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(control(element, 'Next sentence')?.disabled).toBe(true);
-      expect(control(element, 'Previous sentence')?.disabled).toBe(true);
+      expect(control(element, BACK_LABEL)?.disabled).toBe(true);
       expect(control(element, 'Stop')).toBeNull();
     });
 
@@ -304,7 +307,7 @@ describe('ReadingPlayerComponent', () => {
       const element = render().nativeElement as HTMLElement;
 
       control(element, 'Next sentence')?.click();
-      control(element, 'Previous sentence')?.click();
+      control(element, BACK_LABEL)?.click();
 
       expect(store.calls).toEqual(['next', 'previous']);
     });

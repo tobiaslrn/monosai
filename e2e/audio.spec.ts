@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import { configureTextModel, configureTts } from './generation';
-import { countOwnedRows, importReading } from './reading';
+import { countOwnedRows, importReading, openSentence } from './reading';
 import { stubOpenRouter, type ProviderCalls, type StubOptions } from './openrouter';
 
 /** Four sentences: short enough to prepare in full, long enough to fail partway. */
@@ -11,9 +11,11 @@ const TEXT = Array.from(
   (_value, index) => `これは第${String(index)}の文です。`,
 ).join('');
 
-function sentence(page: Page, index = 0): Locator {
-  return page.locator('.sentence').nth(index);
-}
+/**
+ * The transport's Back control, which names both of the things it does: it
+ * restarts the sentence being read, and steps back only at the start of one.
+ */
+const BACK_LABEL = 'Restart this sentence, or go back to the one before';
 
 function sentencePopover(page: Page): Locator {
   return page.locator('mn-sentence-popover');
@@ -38,31 +40,6 @@ async function expectAudioReady(page: Page): Promise<void> {
   await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeVisible({
     timeout: 60_000,
   });
-}
-
-function isDesktop(page: Page): boolean {
-  return (page.viewportSize()?.width ?? 0) >= 960;
-}
-
-/**
- * Selects a sentence the way the current input device would.
- *
- * There is no control printed on the page either way — the press is the
- * control — so audio for one sentence is reached only through the popover.
- */
-async function selectSentence(page: Page, index = 0): Promise<void> {
-  const target = sentence(page, index);
-  if (isDesktop(page)) {
-    await target.locator('.token.is-plain').first().click();
-  } else {
-    const box = await target.boundingBox();
-    await target.dispatchEvent('pointerdown', {
-      pointerType: 'touch',
-      clientX: (box?.x ?? 0) + 2,
-      clientY: (box?.y ?? 0) + 2,
-    });
-  }
-  await expect(sentencePopover(page)).toBeVisible({ timeout: 5_000 });
 }
 
 /**
@@ -137,7 +114,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     const calls = await prepareReading(page);
     const afterSetup = synthesisCount(calls);
 
-    await selectSentence(page);
+    await openSentence(page);
     expect(synthesisCount(calls), 'opening a sentence synthesizes nothing').toBe(afterSetup);
 
     await sentenceAudioAction(page, 'Audio').click();
@@ -151,7 +128,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     page,
   }) => {
     const calls = await prepareReading(page);
-    await selectSentence(page);
+    await openSentence(page);
     await sentenceAudioAction(page, 'Audio').click();
     await expect(sentenceAudioAction(page, 'Play')).toBeVisible({ timeout: 15_000 });
     const afterFirst = synthesisCount(calls);
@@ -159,7 +136,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     // The same sentence again, in the same session.
     await dismissPopover(page);
-    await selectSentence(page);
+    await openSentence(page);
     await expect(sentenceAudioAction(page, 'Play')).toBeVisible();
     expect(synthesisCount(calls), 'a stored clip is offered, not re-made').toBe(afterFirst);
 
@@ -167,7 +144,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await page.reload();
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
     expect(callCount(calls), 'opening a reading makes no request at all').toBe(callsAfterFirst);
-    await selectSentence(page);
+    await openSentence(page);
     await expect(sentenceAudioAction(page, 'Play')).toBeVisible();
     expect(synthesisCount(calls)).toBe(afterFirst);
   });
@@ -191,9 +168,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // Nothing autoplays: the transport is offered, and the reading is silent
     // until the learner presses play.
     await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeVisible();
-    await expect(
-      audioPlayer(page).getByRole('button', { name: 'Previous sentence' }),
-    ).toBeDisabled();
+    await expect(audioPlayer(page).getByRole('button', { name: BACK_LABEL })).toBeDisabled();
     await expect(audioPlayer(page).getByRole('button', { name: 'Next sentence' })).toBeDisabled();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
   });
@@ -217,7 +192,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
   test('opens and closes from the header while a sentence popover is open', async ({ page }) => {
     await prepareReading(page);
-    await selectSentence(page);
+    await openSentence(page);
 
     await audioButton(page).click();
     await expect(audioPlayer(page)).toBeVisible();
@@ -406,9 +381,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await openAudioPlayer(page);
     await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeVisible();
     await expect(audioPlayer(page).getByRole('button', { name: 'Resume' })).toHaveCount(0);
-    await expect(
-      audioPlayer(page).getByRole('button', { name: 'Previous sentence' }),
-    ).toBeDisabled();
+    await expect(audioPlayer(page).getByRole('button', { name: BACK_LABEL })).toBeDisabled();
     await expect(audioPlayer(page).getByRole('button', { name: 'Next sentence' })).toBeDisabled();
   });
 
@@ -426,7 +399,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(audioPlayer(page).getByText('Sentence 2 of 4')).toBeVisible({ timeout: 15_000 });
     await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
 
-    await audioPlayer(page).getByRole('button', { name: 'Previous sentence' }).click();
+    // At the start of a sentence Back means the sentence before; a press once
+    // one is under way restarts it instead, which the unit tests pin down.
+    await audioPlayer(page).getByRole('button', { name: BACK_LABEL }).click();
     await expect(audioPlayer(page).getByText('Sentence 1 of 4')).toBeVisible({ timeout: 15_000 });
   });
 
@@ -474,7 +449,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expectNoSeriousAccessibilityViolations(page);
 
     await page.keyboard.press('Escape');
-    await selectSentence(page);
+    await openSentence(page);
     await expect(sentencePopover(page)).toBeVisible();
     await expect(audioPlayer(page)).toBeVisible();
     await waitForPopoverSettled(page);

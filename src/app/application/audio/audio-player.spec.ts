@@ -4,6 +4,7 @@ import { createAudioPlayer } from './audio-player';
 /** A minimal stand-in for `HTMLAudioElement`, just enough for the player port. */
 class FakeAudioElement {
   src = '';
+  currentTime = 0;
   played = 0;
   paused = false;
   loaded = 0;
@@ -54,6 +55,30 @@ function fakeView(element: FakeAudioElement): {
 }
 
 describe('createAudioPlayer', () => {
+  it('reports how far into the loaded clip playback has reached', async () => {
+    const element = new FakeAudioElement();
+    const player = createAudioPlayer(fakeView(element).view);
+
+    await player.play(new Blob(['a']));
+    element.currentTime = 3.5;
+
+    expect(player.elapsed()).toBe(3.5);
+  });
+
+  it('restarts the loaded clip without loading it again', async () => {
+    const element = new FakeAudioElement();
+    const { view, createObjectURL } = fakeView(element);
+    const player = createAudioPlayer(view);
+
+    await player.play(new Blob(['a']));
+    element.currentTime = 3.5;
+    await player.restart();
+
+    expect(element.currentTime).toBe(0);
+    expect(element.played).toBe(2);
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+  });
+
   it('plays a clip without revoking a URL that does not exist yet', async () => {
     const element = new FakeAudioElement();
     const { view, createObjectURL, revokeObjectURL } = fakeView(element);

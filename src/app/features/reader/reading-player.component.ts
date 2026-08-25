@@ -64,47 +64,49 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
         }
 
         @case ('ready') {
-          <div class="controls">
+          <div class="transport">
+            <!--
+              Back replays the sentence being read before it steps to the one
+              before it, because the reason to reach for it is that the sentence
+              went past too fast. The name says so, since the icon cannot.
+            -->
             <button
               type="button"
-              class="mn-icon-button"
-              aria-label="Previous sentence"
+              class="mn-icon-button step"
+              aria-label="Restart this sentence, or go back to the one before"
               [disabled]="!canNavigate()"
               (click)="previous()"
             >
-              <mn-icon name="skip-back" [size]="18" />
+              <mn-icon name="skip-back" [size]="20" />
             </button>
 
             @if (isPlaying()) {
-              <button
-                type="button"
-                class="mn-icon-button primary"
-                aria-label="Pause"
-                (click)="store.pause()"
-              >
-                <mn-icon name="pause" [size]="20" />
+              <button type="button" class="play" aria-label="Pause" (click)="store.pause()">
+                <mn-icon name="pause" [size]="24" />
               </button>
             } @else {
               <button
                 type="button"
-                class="mn-icon-button primary"
+                class="play"
                 [attr.aria-label]="playLabel()"
                 [disabled]="isLoading()"
                 (click)="play()"
               >
-                <mn-icon name="play" [size]="20" />
+                <mn-icon name="play" [size]="24" />
               </button>
             }
 
             <button
               type="button"
-              class="mn-icon-button"
+              class="mn-icon-button step"
               aria-label="Next sentence"
               [disabled]="!canNavigate()"
               (click)="next()"
             >
-              <mn-icon name="skip-forward" [size]="18" />
+              <mn-icon name="skip-forward" [size]="20" />
             </button>
+
+            <p class="position" role="status">{{ positionLabel() }}</p>
           </div>
 
           <div
@@ -117,7 +119,6 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
           >
             <span class="fill" [style.inline-size.%]="percent()"></span>
           </div>
-          <p class="line" role="status">{{ positionLabel() }}</p>
 
           <!--
             Start from where the learner is rather than from the top. Offered
@@ -137,6 +138,7 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
               <label class="model-picker"
                 >Model
                 <select
+                  class="mn-control"
                   data-testid="audio-model-select"
                   [value]="selectedModelId() ?? ''"
                   (change)="modelSelected.emit($any($event.target).value)"
@@ -173,17 +175,60 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
       min-width: 0;
     }
 
-    .controls {
+    /*
+     * The transport reads left to right as one row: the three controls, then
+     * where in the reading they are acting. Centring it left the position line
+     * on a row of its own and made a compact bar twice as tall as it needs.
+     */
+    .transport {
       display: flex;
-      gap: var(--space-1);
+      gap: var(--space-2);
       align-items: center;
-      justify-content: center;
     }
 
-    .mn-icon-button.primary {
-      border-color: transparent;
+    .step {
+      width: var(--touch-target);
+      height: var(--touch-target);
+    }
+
+    /* Play is the one control that is pressed repeatedly, so it is the big one. */
+    .play {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      width: 3.25rem;
+      height: 3.25rem;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-pill);
       background: var(--action-primary);
       color: var(--text-on-action);
+      cursor: pointer;
+      transition:
+        background-color var(--motion-fast) ease-out,
+        transform var(--motion-fast) ease-out;
+    }
+
+    .play:hover:not(:disabled) {
+      background: var(--action-primary-hover);
+    }
+
+    .play:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
+    .play:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .position {
+      flex: 1;
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      text-align: end;
     }
 
     .row {
@@ -238,7 +283,8 @@ export type PlayerMode = 'generating' | 'stopped' | 'ready' | 'absent';
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .fill {
+      .fill,
+      .play {
         transition: none;
       }
     }

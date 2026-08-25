@@ -36,6 +36,9 @@ class FakeAudioPlayer implements AudioPlayer {
   stops = 0;
   pauses = 0;
   resumes = 0;
+  restarts = 0;
+  /** How far into the loaded clip playback has reached, as the element reports. */
+  position = 0;
   /** Set to make the next `play` reject, standing in for an undecodable clip. */
   failNextPlay = false;
 
@@ -56,6 +59,16 @@ class FakeAudioPlayer implements AudioPlayer {
 
   resume(): Promise<void> {
     this.resumes += 1;
+    return Promise.resolve();
+  }
+
+  elapsed(): number {
+    return this.position;
+  }
+
+  restart(): Promise<void> {
+    this.restarts += 1;
+    this.position = 0;
     return Promise.resolve();
   }
 
@@ -391,6 +404,52 @@ describe('AudioPlaybackStore', () => {
 
       expect(bed.store.status()).toBe('idle');
       expect(bed.player.played).toHaveLength(1);
+    });
+
+    /**
+     * Why Previous is not simply "one back": the reason to reach for it is that
+     * the sentence being read went past too fast, so the first press has to be
+     * able to answer that.
+     */
+    it('replays the sentence being read before stepping back to the one before', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.playFrom(sentences[1].id);
+      bed.player.position = 4;
+
+      await bed.store.previous();
+
+      expect(bed.player.restarts).toBe(1);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.status()).toBe('playing');
+
+      // Restarting put playback back at the beginning, where Previous means
+      // the sentence before this one again.
+      await bed.store.previous();
+
+      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+    });
+
+    it('steps back rather than replaying when a sentence has only just started', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.playFrom(sentences[1].id);
+      bed.player.position = 0.4;
+
+      await bed.store.previous();
+
+      expect(bed.player.restarts).toBe(0);
+      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+    });
+
+    it('replays from the start of a paused sentence rather than resuming it', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.playFrom(sentences[1].id);
+      bed.player.position = 4;
+      bed.store.pause();
+
+      await bed.store.previous();
+
+      expect(bed.player.restarts).toBe(1);
+      expect(bed.store.status()).toBe('playing');
     });
 
     it('pauses and resumes without reloading the clip', async () => {
