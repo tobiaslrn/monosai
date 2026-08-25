@@ -16,7 +16,6 @@ import { DomPortal, DomPortalOutlet } from '@angular/cdk/portal';
 import { Router, RouterLink } from '@angular/router';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
-import { AudioConfigurationService } from '../../application/enrichment/audio-configuration.service';
 import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
@@ -242,9 +241,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
         <mn-reading-player
           [progress]="audioJob.progress()"
           [selectedSentenceId]="audioPlayerSentenceId()"
-          [models]="audioModels()"
-          [selectedModelId]="selectedAudioModelId()"
-          (modelSelected)="selectAudioModel($event)"
+          [modelConfigured]="hasAudioModel()"
           (generate)="startWholeReadingAudio()"
           (cancelGeneration)="audioJob.cancel()"
           (retryGeneration)="retryWholeReadingAudio()"
@@ -463,7 +460,6 @@ export class ReaderPageComponent {
   private readonly library = inject(LibraryStore);
   private readonly textModel = inject(TextModelStore);
   private readonly tts = inject(TtsStore);
-  private readonly audioConfig = inject(AudioConfigurationService);
   private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly language = inject(LanguageStore);
   protected readonly popover = inject(PopoverService);
@@ -598,16 +594,7 @@ export class ReaderPageComponent {
    */
   private readonly audioPlayerSentenceIdSignal = signal<SentenceId | null>(null);
   protected readonly audioPlayerSentenceId = this.audioPlayerSentenceIdSignal.asReadonly();
-  protected readonly selectedAudioModelId = computed(
-    () => this.audioConfig.selectedPresetId() ?? this.tts.activePresetId(),
-  );
-  protected readonly audioModels = computed(() =>
-    this.tts.compatiblePresets().map((preset) => ({
-      id: preset.id,
-      name: preset.name,
-      isDefault: preset.id === this.tts.activePresetId(),
-    })),
-  );
+  protected readonly hasAudioModel = computed(() => this.tts.compatiblePresets().length > 0);
 
   /** The audio button says its state out loud, because its icon never changes. */
   protected readonly audioButtonLabel = computed(() => {
@@ -708,7 +695,6 @@ export class ReaderPageComponent {
       const reading = this.store.reading();
       this.audioJob.progress();
       this.tts.settings();
-      this.audioConfig.selectedPresetId();
       if (reading !== null) {
         void this.playback.prepare(reading);
       }
@@ -807,14 +793,6 @@ export class ReaderPageComponent {
 
   protected retryWholeReadingAudio(): void {
     void this.audioJob.retry(readingId(this.id()));
-  }
-
-  protected selectAudioModel(presetId: string): void {
-    this.audioConfig.selectForRequest(presetId);
-    const reading = this.store.reading();
-    if (reading !== null) {
-      void this.playback.prepare(reading);
-    }
   }
 
   /**

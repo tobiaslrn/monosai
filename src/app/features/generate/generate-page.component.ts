@@ -3,7 +3,6 @@ import {
   Component,
   computed,
   inject,
-  signal,
   type OnDestroy,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
@@ -163,10 +162,7 @@ import { ExceptionPolicyFieldComponent } from './exception-policy-field.componen
             [disabled]="generation.isBusy()"
             [snapshotSummary]="snapshotSummary()"
             [presetName]="presetLine().presetName"
-            [models]="storyModels()"
-            [selectedModelId]="selectedModelId() ?? textModel.activePresetId()"
             [ankiWordPriorityMode]="appSettings.ankiWordPriorityMode()"
-            (modelSelected)="selectedModelId.set($event)"
             (ankiWordPriorityModeChanged)="appSettings.setAnkiWordPriorityMode($event)"
             (generate)="generate()"
           >
@@ -223,15 +219,6 @@ export class GeneratePageComponent implements OnDestroy {
   private readonly router = inject(Router);
 
   protected readonly state = this.generation.state;
-  protected readonly selectedModelId = signal<string | null>(null);
-  protected readonly storyModels = computed(() =>
-    this.textModel.compatiblePresets().map((preset) => ({
-      id: preset.id,
-      name: preset.name,
-      isDefault: preset.id === this.textModel.activePresetId(),
-    })),
-  );
-
   protected readonly pageHeading = computed(() => {
     switch (this.state().kind) {
       case 'idle':
@@ -390,7 +377,7 @@ export class GeneratePageComponent implements OnDestroy {
     void this.generation.generate(
       this.draft.sentenceCount(),
       this.draft.input(),
-      this.selectedModelId() ?? this.textModel.activePresetId(),
+      this.textModel.activePresetId(),
     );
   }
 

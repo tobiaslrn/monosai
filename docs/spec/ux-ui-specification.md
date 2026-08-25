@@ -491,7 +491,7 @@ readiness, errors, and retry actions remain visible.
 - Default assignments appear as badges in the model rows. Removing a default leaves it unconfigured and never silently promotes another model.
 - Test, edit, and remove actions are consistent per row. Exact IDs, reasoning, voice/speed, compatibility results, and technical details are disclosed within the row.
 - API key entry, Save/Replace, Remove, and configured/not-configured indicator stay separate and compact. Never show the saved value or a reveal toggle after save.
-- Story generation offers a compact selector containing tested Story models and marks the default. Reader audio does the same for tested Audio models. These selections affect one request and are captured in provenance/cache identity without changing Settings defaults.
+- Story generation and reader audio use the Settings defaults for their capability and offer no per-request model selector. The model actually used is still captured in provenance/cache identity.
 - Story generation token budget remains bounded to 4,096–32,768 (default 16,384). Changing key/model marks matching test evidence stale but preserves cached content.
 
 ### Generation policy

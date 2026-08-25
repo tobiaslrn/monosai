@@ -108,29 +108,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           </p>
         }
 
-        <div class="mn-field model-picker">
-          <label for="mn-story-model">Model</label>
-          <select
-            id="mn-story-model"
-            data-testid="story-model-select"
-            [value]="selectedModelId() ?? ''"
-            [disabled]="disabled() || models().length === 0"
-            (change)="modelSelected.emit($any($event.target).value || null)"
-          >
-            @if (models().length === 0) {
-              <option value="">No text model configured</option>
-            }
-            @for (model of models(); track model.id) {
-              <option [value]="model.id">
-                {{ model.name }}{{ model.isDefault ? ' (Default)' : '' }}
-              </option>
-            }
-          </select>
-          @if (models().length === 0) {
-            <a class="model-settings" routerLink="/settings">Open Settings</a>
-          }
-        </div>
-
         <div class="mn-field word-selection">
           <label for="mn-word-selection">Anki word selection</label>
           <select
@@ -192,14 +169,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     .counter.is-over {
       color: var(--status-danger);
       font-weight: 600;
-    }
-
-    .model-settings {
-      justify-self: start;
-      color: var(--text-primary);
-      font-size: var(--text-sm);
-      text-decoration: underline;
-      text-underline-offset: 3px;
     }
 
     .composer-grid {
@@ -458,14 +427,9 @@ export class StoryFormComponent {
   readonly disabled = input.required<boolean>();
   readonly snapshotSummary = input.required<string>();
   readonly presetName = input.required<string>();
-  readonly models = input<
-    readonly { readonly id: string; readonly name: string; readonly isDefault: boolean }[]
-  >([]);
-  readonly selectedModelId = input<string | null>(null);
   readonly ankiWordPriorityMode = input<AnkiWordPriorityMode>('uniform');
 
   readonly generate = output<void>();
-  readonly modelSelected = output<string | null>();
   readonly ankiWordPriorityModeChanged = output<AnkiWordPriorityMode>();
 
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
