@@ -30,7 +30,7 @@ import {
   ttsSettingsSchema,
   type SettingsKey,
 } from '../schemas/settings.schema';
-import { runStorage } from './storage-operation';
+import { runStorage, runStorageWithRules, StorageRuleViolation } from './storage-operation';
 
 /**
  * Settings persistence. Each concern has its own validated row so one corrupt
@@ -147,32 +147,45 @@ export class DexieSettingsRepository implements SettingsRepository {
     return parseRecord(schema, loaded.value.value, `settings:${key}`);
   }
 
-  private async write<T extends object>(
+  /**
+   * Merges a patch into one settings row.
+   *
+   * The read and the write are one transaction because a patch describes a
+   * field, not a record: two of them in flight at once would otherwise both
+   * merge onto the same stored copy, and the second write would silently drop
+   * whatever the first one had just saved. Overlapping writes to a row are rare
+   * but entirely reachable — choosing a model runs a test that stores its
+   * result while the learner is already editing the next field.
+   */
+  private write<T extends object>(
     key: SettingsKey,
     schema: ZodType<T>,
     fallback: T,
     patch: Partial<T>,
     touchUpdatedAt: boolean,
   ): Promise<Result<T, StorageError>> {
-    const current = await this.read(key, schema, fallback);
-    if (!current.ok) {
-      return current;
-    }
+    return runStorageWithRules(`settings.write(${key})`, () =>
+      this.db.transaction('rw', this.db.settings, async () => {
+        const loaded = await this.db.settings.get(key);
+        const current = loaded ? parseRecord(schema, loaded.value, `settings:${key}`) : ok(fallback);
+        if (!current.ok) {
+          throw new StorageRuleViolation(current.error);
+        }
 
-    const merged: T = {
-      ...current.value,
-      ...patch,
-      ...(touchUpdatedAt ? { updatedAt: this.clock.now() } : {}),
-    };
+        const merged: T = {
+          ...current.value,
+          ...patch,
+          ...(touchUpdatedAt ? { updatedAt: this.clock.now() } : {}),
+        };
 
-    const validated = parseRecord(schema, merged, `settings:${key}`);
-    if (!validated.ok) {
-      return validated;
-    }
+        const validated = parseRecord(schema, merged, `settings:${key}`);
+        if (!validated.ok) {
+          throw new StorageRuleViolation(validated.error);
+        }
 
-    const stored = await runStorage(`settings.put(${key})`, () =>
-      this.db.settings.put({ key, v: ROW_VERSION, value: validated.value }),
+        await this.db.settings.put({ key, v: ROW_VERSION, value: validated.value });
+        return validated.value;
+      }),
     );
-    return stored.ok ? ok(validated.value) : stored;
   }
 }
