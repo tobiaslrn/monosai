@@ -273,16 +273,6 @@ export async function stubOpenRouter(
       return;
     }
 
-    if (url.includes('/api/v1/model/')) {
-      const marker = '/api/v1/model/';
-      const modelId = decodeURIComponent(url.slice(url.indexOf(marker) + marker.length));
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: modelPayload(modelId) }),
-      });
-      return;
-    }
 
     if (url.includes('/audio/speech')) {
       const audio = nextOf(options.audioSequence, audioRequests) ??
