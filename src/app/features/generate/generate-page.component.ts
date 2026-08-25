@@ -35,6 +35,7 @@ import { GenerationWaitComponent } from './generation-wait.component';
 import { InvalidDraftComponent } from './invalid-draft.component';
 import { PrerequisitePanelComponent } from './prerequisite-panel.component';
 import { StoryFormComponent } from './story-form.component';
+import { ExceptionPolicyFieldComponent } from './exception-policy-field.component';
 
 /**
  * The Generate screen.
@@ -57,6 +58,7 @@ import { StoryFormComponent } from './story-form.component';
     PageHeaderComponent,
     PrerequisitePanelComponent,
     StoryFormComponent,
+    ExceptionPolicyFieldComponent,
   ],
   template: `
     <div class="mn-page">
@@ -167,7 +169,9 @@ import { StoryFormComponent } from './story-form.component';
             (modelSelected)="selectedModelId.set($event)"
             (ankiWordPriorityModeChanged)="appSettings.setAnkiWordPriorityMode($event)"
             (generate)="generate()"
-          />
+          >
+            <mn-exception-policy-field text-fields-extra />
+          </mn-story-form>
         </section>
       }
 

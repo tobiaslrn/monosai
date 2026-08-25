@@ -365,11 +365,10 @@ export class SentenceAidsStore {
 
   /** The cache keys the current model and prompt would use for these sentences. */
   private translationKeys(sentences: readonly Sentence[]): ReadonlyMap<SentenceId, string> {
-    return this.keys.translationKeys(
-      sentences,
-      this.textModel.settings().modelId,
-      PROMPT_VERSIONS.translation,
-    );
+    const configurable = this.textModel as Partial<Pick<TextModelStore, 'configForTask'>>;
+    const modelId =
+      configurable.configForTask?.('translation')?.modelId ?? this.textModel.settings().modelId;
+    return this.keys.translationKeys(sentences, modelId, PROMPT_VERSIONS.translation);
   }
 
   /**
@@ -392,9 +391,12 @@ export class SentenceAidsStore {
   }
 
   private grammarKeys(sentences: readonly Sentence[]): ReadonlyMap<SentenceId, string> {
+    const configurable = this.textModel as Partial<Pick<TextModelStore, 'configForTask'>>;
+    const modelId =
+      configurable.configForTask?.('grammar')?.modelId ?? this.textModel.settings().modelId;
     return this.keys.grammarKeys(
       sentences,
-      this.textModel.settings().modelId,
+      modelId,
       PROMPT_VERSIONS.grammar,
       this.grammarProfile.liveProfileHash() ?? '',
     );

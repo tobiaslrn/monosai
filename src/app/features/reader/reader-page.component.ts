@@ -628,7 +628,7 @@ export class ReaderPageComponent {
   );
 
   protected readonly hasTranslationModel = computed(
-    () => this.textModel.configForTask('text') !== null,
+    () => this.textModel.configForTask('translation') !== null,
   );
 
   protected readonly hasGrammarModel = computed(
