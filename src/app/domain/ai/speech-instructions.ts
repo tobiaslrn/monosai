@@ -1,7 +1,7 @@
 export type SpeechInstructionsSupport = 'supported' | 'unsupported';
 
 /** Bumped whenever the learner-facing delivery instruction changes. */
-export const SPEECH_INSTRUCTION_VERSION = 'speech/1';
+export const SPEECH_INSTRUCTION_VERSION = 'speech/2';
 
 /** Neighbor text is context, not another unbounded prompt input. */
 export const MAX_SPEECH_CONTEXT_CODE_POINTS = 200;
@@ -25,6 +25,8 @@ export function buildSpeechInstructions(context: SpeechContext = {}): string {
 
   return [
     'Speak only the exact target text in natural standard Japanese.',
+    'Pronounce every written word, including narration that describes laughter, crying, sighing, or other actions.',
+    'Do not replace any written word or phrase with laughter, crying, a sigh, or any other non-verbal sound effect.',
     'Articulate clearly at the requested speed; do not use unnatural mora-by-mora pronunciation.',
     'Use any adjacent sentences only to infer emotion, pauses, pitch, and sentence-final intonation.',
     'Never add, repeat, translate, spell out, or speak the context.',

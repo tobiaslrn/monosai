@@ -532,7 +532,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(audioPlayer(page).getByText('Sentence 1 of 4')).toBeVisible({ timeout: 15_000 });
   });
 
-  test('clearing the audio cache stops playback and empties the summaries', async ({ page }) => {
+  test('deleting saved audio stops playback and empties the summaries', async ({ page }) => {
     await prepareReading(page);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
@@ -541,8 +541,8 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
 
     await page.goto('/#/settings');
-    await page.getByRole('button', { name: 'Clear audio cache' }).click();
-    await expect(page.getByText(/Audio cache cleared/)).toBeVisible();
+    await page.getByRole('button', { name: 'Delete saved audio' }).click();
+    await expect(page.getByText(/Saved audio deleted/)).toBeVisible();
 
     expect(await storedClipCount(page)).toBe(0);
   });

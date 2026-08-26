@@ -512,7 +512,7 @@ readiness, errors, and retry actions remain visible.
 
 - Browser storage protection status.
 - Approximate usage when available.
-- Clear audio cache.
+- Delete saved audio without deleting readings or other generated aids.
 - Install instructions when browser criteria permit.
 - Update available action; never force reload during work.
 - Full reset in a danger zone with two-step confirmation.

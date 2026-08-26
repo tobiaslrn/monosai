@@ -64,16 +64,16 @@ function formatBytes(bytes: number | null): string {
           [disabled]="storage.action() !== 'idle'"
           (click)="clearAudio()"
         >
-          Clear audio cache
+          Delete saved audio
         </button>
       </div>
       <p class="mn-hint">
-        Clearing audio leaves readings, translations, and grammar results in place. Playback stops
-        first if necessary.
+        Deleting saved audio leaves readings, translations, and grammar results in place. Playback
+        stops first if necessary. You can generate the audio again later.
       </p>
       <p aria-live="polite" class="mn-hint">
         @if (storage.audioCleared()) {
-          Audio cache cleared{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
+          Saved audio deleted{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
         }
       </p>
 
