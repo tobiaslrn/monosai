@@ -147,22 +147,20 @@ describe('DexieReadingRepository', () => {
       expect(stored.value.snapshotId).toBe(storySnapshotId);
     });
 
-    it('refuses a draft that still marks a word unknown, and writes nothing', async () => {
+    it('saves a draft whose repairs left a word unknown, marker and all', async () => {
       const draft = generatedStoryDraftFixture(storySnapshotId, {
         firstTokenValidation: { category: 'unknown', reason: 'unresolved-after-repair' },
       });
 
       const saved = await repository.saveGeneratedStory(draft);
 
-      expect(saved.ok).toBe(false);
-      if (saved.ok) {
-        throw new Error('expected a conflict');
-      }
-      expect(saved.error.code).toBe('conflict');
-      expect(await db.readings.count()).toBe(0);
-      expect(await db.sentences.count()).toBe(0);
-      expect(await db.frozenValidations.count()).toBe(0);
-      expect(await db.generationProvenance.count()).toBe(0);
+      expect(saved.ok).toBe(true);
+      expect(await db.readings.count()).toBe(1);
+      const stored = await db.frozenValidations.get(draft.frozenValidations[0].sentenceId);
+      expect(stored?.tokenStatuses[0].validation).toEqual({
+        category: 'unknown',
+        reason: 'unresolved-after-repair',
+      });
     });
 
     it('refuses a draft carrying the imported-only not-in-snapshot category', async () => {

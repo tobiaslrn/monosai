@@ -44,7 +44,7 @@ import {
 import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
 import {
   assertEnrichmentConsistent,
-  assertNoUnacceptedValidation,
+  assertNoSnapshotDependentValidation,
   assertProvenanceComplete,
   assertUniqueIds,
   assertUniquePositions,
@@ -399,7 +399,7 @@ export class DexieReadingRepository implements ReadingRepository {
 
   /** The rules only a generated story has to satisfy. */
   private assertGeneratedIntegrity(draft: GeneratedStoryDraft): void {
-    assertNoUnacceptedValidation(draft.frozenValidations);
+    assertNoSnapshotDependentValidation(draft.frozenValidations);
     assertProvenanceComplete(draft.provenance, draft.reading);
 
     const sentenceIds = new Set<string>(draft.sentences.map((sentence) => sentence.id));

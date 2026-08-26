@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import {
   LONG_STRICT_STORY,
+  SHORT_STORY,
   STORY_WITH_UNKNOWN,
   STRICT_STORY,
   openGenerate,
@@ -118,7 +119,9 @@ test.describe('generating a story', () => {
     await expect(firstSentence).toContainText('庭');
   });
 
-  test('shows an invalid draft and leaves the library empty', async ({ page }) => {
+  test('saves a word two repairs could not replace and marks it in the reader', async ({
+    page,
+  }) => {
     test.setTimeout(SETUP_TIMEOUT);
     await prepareGeneration(page, {
       generation: {
@@ -132,8 +135,33 @@ test.describe('generating a story', () => {
     await page.getByTestId('story-length').fill('0');
     await page.getByTestId('generate').click();
 
+    // The story is in the library, and nothing warns about it here: the word
+    // itself carries the warning, in the reader.
+    await expect(page.getByTestId('saved-title')).toHaveText(STORY_WITH_UNKNOWN.titleJa, {
+      timeout: 60_000,
+    });
+    await expect(page.getByTestId('invalid-draft-text')).toHaveCount(0);
+
+    await page.getByTestId('open-story').click();
+    await expect(page).toHaveURL(/#\/reader\//);
+    const marked = page.locator('.is-warning-vocabulary');
+    await expect(marked.first()).toBeVisible({ timeout: 60_000 });
+    await expect(marked.first()).toContainText('図書館');
+  });
+
+  test('shows an invalid draft and leaves the library empty', async ({ page }) => {
+    test.setTimeout(SETUP_TIMEOUT);
+    await prepareGeneration(page, {
+      generation: { stories: [SHORT_STORY], repairs: [SHORT_STORY, SHORT_STORY] },
+    });
+
+    await openGenerate(page);
+    await page.getByTestId('premise').fill(PREMISE);
+    await page.getByTestId('story-length').fill('0');
+    await page.getByTestId('generate').click();
+
     await expect(page.getByTestId('invalid-draft-text')).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByTestId('invalid-draft-issues')).toContainText('図書館');
+    await expect(page.getByTestId('invalid-draft-issues')).toContainText('sentence');
     await expect(page.getByText('2 repair attempts')).toBeVisible();
     await expect(page.getByRole('button', { name: /save anyway/i })).toHaveCount(0);
 

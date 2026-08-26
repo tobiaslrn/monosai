@@ -136,7 +136,7 @@ accepted-japanese
  -> saved
 ```
 
-Any cancellable state may transition to `cancelled`; cancelled generations persist no reading or generated enrichment. `invalid-draft` remains only in feature memory and is never a library record.
+Any cancellable state may transition to `cancelled`; cancelled generations persist no reading or generated enrichment. `invalid-draft` remains only in feature memory and is never a library record; it is reached by structural failure alone. Words the repair budget could not replace do not block acceptance: they are saved marked, and the reader carries the warning. See ADR 0033.
 
 ### Prerequisite check
 
@@ -193,8 +193,8 @@ After each repair, discard all previous token/exception results, parse the entir
 
 After attempt two:
 
-- no unknowns and valid structure -> accepted Japanese;
-- any unknown/invalid structure -> unsaved invalid draft with final local markers and issue list.
+- valid structure -> accepted Japanese, with any word still unknown frozen as `unresolved-after-repair` and marked in the reader;
+- invalid structure -> unsaved invalid draft with final local markers and issue list.
 
 ## 8. Grammar review
 
@@ -323,7 +323,8 @@ Do not include raw response bodies in production errors. UI copy distinguishes O
 - A strict story validates and saves with translations/grammar.
 - A candidate unknown is approved by policy, remains visibly an exception, and saves.
 - A rejected unknown is repaired once and validates on full reparse.
-- Two repairs leave an unknown; the marked result never enters the library.
+- Two repairs leave an unknown; the story saves with that word marked `unresolved-after-repair`.
+- Two repairs leave the wrong sentence count; the marked result never enters the library.
 - Exception review fails; unknowns are repaired rather than silently accepted.
 - Grammar review fails; valid Japanese saves as unreviewed.
 - One translation batch fails; valid Japanese and completed translations save with an incomplete count.
