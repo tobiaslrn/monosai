@@ -44,7 +44,11 @@ over speculative abstractions.
   `@mobile` only when mobile behavior materially differs.
 - Every Playwright test gets a fresh context. Use semantic locators and
   observable state instead of fixed sleeps. Stub OpenRouter and Anki traffic.
-- Keep PWA tests separate; ordinary E2E runs disable the service worker.
+- Keep PWA tests separate. There is one application build: ordinary E2E runs
+  block the service worker through Playwright, and the PWA suite runs that same
+  artifact with the worker live.
+- Navigate relatively (`page.goto('./#/library')`). The build bakes
+  `<base href="/monosai/">`, so a leading slash escapes the base path.
 - For UI work, inspect the rendered app on desktop and Android-sized viewports.
   Use Playwright for uploads, offline behavior, IndexedDB, and durable coverage.
 
@@ -58,8 +62,24 @@ Commands:
 - `npm run e2e:pwa` — production-build PWA and offline suite
 
 Before finishing, run checks proportional to the risk, including lint, type
-checks, and the production build when relevant. CI runs coverage, smoke E2E, and
-PWA checks on pull requests; pushes to `main` use the full browser lane.
+checks, and the production build when relevant. `npm run verify` runs exactly
+CI's blocking gates; when you add a gate to one, add it to the other.
+
+## Build and CI
+
+- One application build per run. The `build` job produces the Pages artifact;
+  the browser shards, the PWA job, and the deployment all consume that same
+  artifact with `MONOSAI_PREBUILT_DIST=true`. Nothing else rebuilds.
+- `static`, `unit`, and `build` start together. Add `needs` only for a real
+  artifact dependency, never for ordering alone.
+- The browser lane is sharded three ways; `e2e-report` merges the shard blob
+  reports into one report that names the tests that retried.
+- `gate` is the single required status check. Add a job to its `needs` when the
+  job must block merging, so branch protection never needs editing.
+- `deploy` downloads the artifact CI verified and never builds, so the deployed
+  bytes are the tested bytes.
+- CI runs coverage, smoke E2E, and PWA checks on pull requests; pushes to `main`
+  use the full browser lane.
 
 ## Working method
 

@@ -4,9 +4,12 @@ import { env } from 'node:process';
 // Not 4200: `ng serve` owns that port, and the suite must never silently run
 // against a development server someone left running.
 const PORT = 4210;
-const BASE_URL = `http://127.0.0.1:${PORT}`;
+// The production build bakes `<base href="/monosai/">` into index.html, so it
+// can only be served from that path. Every `page.goto` is relative to this.
+const BASE_URL = `http://127.0.0.1:${PORT}/monosai/`;
 const PROCESS_ENV = env as Record<string, string | undefined>;
-const IS_CI = PROCESS_ENV.CI === 'true';
+const IS_CI = PROCESS_ENV['CI'] === 'true';
+const USE_PREBUILT_DIST = PROCESS_ENV['MONOSAI_PREBUILT_DIST'] === 'true';
 
 /**
  * Chrome is the only officially supported browser family, so both projects use
@@ -19,9 +22,14 @@ const IS_CI = PROCESS_ENV.CI === 'true';
  * whole suite twice cost more than an hour of machine time per run without
  * covering anything the desktop project had not already covered.
  *
- * The suite runs against the optimized `e2e` build rather than `ng serve`:
- * every test starts with an empty browser cache, and the development bundles
- * are around 60MB across 76 requests per test against 1.4MB across 15.
+ * The suite runs against the real `pages` build rather than `ng serve`: every
+ * test starts with an empty browser cache, and the development bundles are
+ * around 60MB across 76 requests per test against 1.4MB across 15.
+ *
+ * It is the same artifact that `e2e-pwa` and the deployment consume. The only
+ * difference is that service workers are blocked here (see `use` below), so
+ * this suite and the PWA suite together cover the shipped bundle with the
+ * worker both dormant and live.
  */
 export default defineConfig({
   testDir: './e2e',
@@ -32,10 +40,14 @@ export default defineConfig({
   forbidOnly: IS_CI,
   retries: IS_CI ? 2 : 0,
   workers: IS_CI ? 4 : undefined,
-  reporter: IS_CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
+  reporter: IS_CI ? [['blob'], ['github']] : [['list']],
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
+    // The shipped bundle registers `ngsw-worker.js`. Letting it install would
+    // put an asynchronous cache and an update lifecycle underneath 150-odd
+    // journeys that are not about either. `e2e-pwa` covers the worker itself.
+    serviceWorkers: 'block',
   },
   projects: [
     {
@@ -57,12 +69,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run build:e2e && npm run serve-dist`,
-    env: { PORT: String(PORT), BASE_PATH: '/' },
+    command: USE_PREBUILT_DIST ? 'npm run serve-dist' : 'npm run build:pages && npm run serve-dist',
+    env: { PORT: String(PORT) },
     url: BASE_URL,
     // A reused server would serve whatever was built last, which is the wrong
     // application as soon as anything under `src` changes.
     reuseExistingServer: false,
-    timeout: 180_000,
+    timeout: 300_000,
   },
 });

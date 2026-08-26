@@ -87,13 +87,23 @@ Use Playwright's current stable Chrome channel and two projects:
   docked sheets, narrow layouts, and one accessibility sweep per screen area.
   A scenario whose behavior does not depend on the viewport is covered once.
 
-The suite runs against the optimized `e2e` build (`npm run build:e2e`, served
-by `scripts/serve-dist.mjs` at the root path) rather than the development
-server. Every test starts with an empty browser cache, so the unbundled
-development output costs roughly 60MB across 76 requests per test where the
-built output costs 1.4MB across 15. That build ships no service worker; the
-worker, installability, and offline reload are covered by the separate
-`e2e:pwa` suite against the real Pages build.
+The suite runs against the real Pages build (`npm run build:pages`, served by
+`scripts/serve-dist.mjs` at `/monosai/`) rather than the development server.
+Every test starts with an empty browser cache, so the unbundled development
+output costs roughly 60MB across 76 requests per test where the built output
+costs 1.4MB across 15.
+
+There is exactly one application build. The browser suite, the `e2e:pwa`
+suite, and the deployment all consume the same artifact, so no test can pass
+against bytes that differ from what ships. The browser suite blocks service
+worker registration through Playwright (`serviceWorkers: 'block'`) so that an
+asynchronous cache and an update lifecycle do not sit underneath scenarios
+that are not about either; `e2e:pwa` runs the same artifact with the worker
+live and covers installability, offline reload, and update activation.
+
+Because the build bakes `<base href="/monosai/">`, navigation in tests is
+relative (`page.goto('./#/library')`). A root-absolute path would escape the
+base path — the same defect class `npm run verify-dist` checks for.
 
 `npm run e2e` is the critical-journey lane used during ordinary development
 and on pull requests. Tests in that lane carry `@smoke`. `npm run e2e:full`
@@ -233,7 +243,11 @@ Required pull-request jobs:
 7. Playwright desktop/mobile smoke and accessibility scan.
 8. Static-link, manifest, service-worker, and GitHub Pages base-path check.
 
-Main-branch deployment runs the same gates, uploads immutable build artifacts, deploys Pages, and performs a post-deploy smoke test at the repository base URL. Do not deploy from an untested local tree.
+These run as parallel jobs, not one serial lane. The application is built
+exactly once per run; the resulting artifact feeds the browser suite, the PWA
+suite, and the deployment.
+
+Main-branch deployment runs the same gates, uploads immutable build artifacts, deploys Pages, and performs a post-deploy smoke test at the repository base URL. Do not deploy from an untested local tree: the deploy job downloads the artifact CI verified and never rebuilds, so the deployed bytes are the tested bytes.
 
 ## 10. PWA and offline acceptance
 

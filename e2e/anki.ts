@@ -61,7 +61,7 @@ export async function refuseAnkiConnect(page: Page): Promise<void> {
 }
 
 export async function openVocabulary(page: Page): Promise<void> {
-  await page.goto('/#/vocabulary');
+  await page.goto('./#/vocabulary');
   await expect(page.getByRole('heading', { name: 'Vocabulary', level: 1 })).toBeVisible();
 }
 

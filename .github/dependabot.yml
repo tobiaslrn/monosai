@@ -1,0 +1,30 @@
+version: 2
+
+# CI gates on `npm audit --audit-level=high`, so a new advisory can fail an
+# unrelated pull request. These updates keep something queued to fix it rather
+# than leaving the next contributor to discover it.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      angular:
+        patterns: ['@angular/*', '@angular-eslint/*', 'angular-eslint']
+      typescript-eslint:
+        patterns: ['typescript-eslint', '@typescript-eslint/*', 'eslint', '@eslint/*']
+      playwright:
+        patterns: ['@playwright/*', 'playwright', '@axe-core/*']
+      vitest:
+        patterns: ['vitest', '@vitest/*']
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']

@@ -1,0 +1,14 @@
+name: Set up Node and dependencies
+description: >
+  Reads the Node version from .nvmrc so local and CI cannot drift, then
+  installs from the lockfile with the npm cache warm.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+    - run: npm ci
+      shell: bash

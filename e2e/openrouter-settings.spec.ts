@@ -25,7 +25,7 @@ function textModelSettings(stored: unknown): Record<string, unknown> {
 test.describe('the model tree', () => {
   test('keeps the saved key secret @smoke', async ({ page }) => {
     await stubOpenRouter(page);
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await saveApiKey(page, KEY);
     await expect(page.getByTestId('api-key-input')).toHaveCount(0);
     expect(await page.content()).not.toContain(KEY);
@@ -34,7 +34,7 @@ test.describe('the model tree', () => {
 
   test('tests the text model on selection and restores it', async ({ page }) => {
     await stubOpenRouter(page);
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await saveApiKey(page);
     await expectReadiness(textModelReadiness(page), 'not-configured');
 
@@ -51,7 +51,7 @@ test.describe('the model tree', () => {
 
   test('offers a speech picker only speech models', async ({ page }) => {
     await stubOpenRouter(page);
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await saveApiKey(page);
 
     await page.getByTestId('audio-model-picker').click();
@@ -63,7 +63,7 @@ test.describe('the model tree', () => {
     page,
   }) => {
     await stubOpenRouter(page);
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await saveApiKey(page);
     await addTextModel(page, MODEL);
     await addTaskModel(page, 'grammar', 'vendor/grammar-model');
@@ -79,7 +79,7 @@ test.describe('the model tree', () => {
 
   test('returns a routed task to the text model', async ({ page }) => {
     await stubOpenRouter(page);
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await saveApiKey(page);
     await addTextModel(page, MODEL);
     await addTaskModel(page, 'translation', 'vendor/translator');
@@ -96,7 +96,7 @@ test.describe('the model tree', () => {
 
   test('keeps a generation limit per model', async ({ page }) => {
     await stubOpenRouter(page);
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await saveApiKey(page);
     await addTextModel(page, MODEL);
     await addTaskModel(page, 'translation', 'vendor/translator');
@@ -126,7 +126,7 @@ test.describe('the model tree', () => {
 
   test('refuses a generation limit outside the allowed range', async ({ page }) => {
     await stubOpenRouter(page);
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await saveApiKey(page);
     await addTextModel(page, MODEL);
 
@@ -145,7 +145,7 @@ test.describe('the model tree', () => {
 
   test('tests audio independently through its preview', async ({ page }) => {
     await stubOpenRouter(page);
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await saveApiKey(page);
     await addTtsModel(page, 'vendor/tts-model');
     await expectReadiness(ttsReadiness(page), 'untested');
@@ -161,7 +161,7 @@ test.describe('the model tree', () => {
 
   test('shows offline failure without losing the chosen model', async ({ page, context }) => {
     await stubOpenRouter(page);
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await saveApiKey(page);
     // The catalogue is in hand before the device drops, so what fails here is
     // the test the selection starts rather than the browsing that precedes it.
@@ -182,7 +182,7 @@ test.describe('the model tree', () => {
 
   test('is accessible without horizontal overflow @mobile', async ({ page }) => {
     await stubOpenRouter(page);
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await saveApiKey(page);
     await addTextModel(page, MODEL);
     await openTaskModels(page);

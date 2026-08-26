@@ -4,8 +4,8 @@ import { env } from 'node:process';
 const PORT = 4300;
 const BASE_URL = `http://127.0.0.1:${PORT}/monosai/`;
 const PROCESS_ENV = env as Record<string, string | undefined>;
-const IS_CI = PROCESS_ENV.CI === 'true';
-const USE_PREBUILT_DIST = PROCESS_ENV.MONOSAI_PWA_PREBUILT === 'true';
+const IS_CI = PROCESS_ENV['CI'] === 'true';
+const USE_PREBUILT_DIST = PROCESS_ENV['MONOSAI_PREBUILT_DIST'] === 'true';
 
 /**
  * Exercises the production build through the service worker.

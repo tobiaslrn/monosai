@@ -1,0 +1,22 @@
+name: Install the Playwright browser
+description: >
+  Restores the cached Chromium download and installs only what the cache
+  cannot carry. The browser lives in ~/.cache/ms-playwright and caches
+  cleanly; the apt system libraries it links against do not, so they are
+  installed either way — but `install-deps` alone is markedly cheaper than a
+  full `install --with-deps`.
+
+runs:
+  using: composite
+  steps:
+    - id: cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+    - if: steps.cache.outputs.cache-hit == 'true'
+      run: npx playwright install-deps chromium
+      shell: bash
+    - if: steps.cache.outputs.cache-hit != 'true'
+      run: npx playwright install --with-deps chromium
+      shell: bash

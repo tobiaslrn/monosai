@@ -22,7 +22,7 @@ function paragraphAtPosition(page: Page, position: number) {
 test.describe('reader performance at the 50,000-character budget', () => {
   test('mounts only a bounded paragraph window, not all 200 paragraphs', async ({ page }) => {
     test.setTimeout(120_000);
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, FIXTURE.text);
 
     await saveAndOpenReader(page);
@@ -42,7 +42,7 @@ test.describe('reader performance at the 50,000-character budget', () => {
     page,
   }) => {
     test.setTimeout(120_000);
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, FIXTURE.text);
     await saveAndOpenReader(page);
 

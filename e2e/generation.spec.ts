@@ -105,7 +105,7 @@ test.describe('generating a story', () => {
 
     await expectNoSeriousAccessibilityViolations(page);
 
-    await page.goto('/#/library');
+    await page.goto('./#/library');
     const card = page.locator('mn-reading-card').first();
     await expect(card).toContainText(STRICT_STORY.titleJa);
     await expect(card).toContainText(/\d+ characters/);
@@ -287,7 +287,7 @@ test.describe('generating a story', () => {
     expect(rows['translations']).toBe(10);
     expect(rows['grammarAnalyses']).toBe(0);
 
-    await page.goto('/#/library');
+    await page.goto('./#/library');
     const card = page.locator('mn-reading-card').first();
     await expect(card).toContainText(LONG_STRICT_STORY.titleJa);
     await expect(card).not.toContainText('Grammar:');

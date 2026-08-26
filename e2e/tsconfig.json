@@ -8,5 +8,5 @@
     "module": "preserve",
     "moduleResolution": "bundler"
   },
-  "include": ["**/*.ts", "../playwright.config.ts"]
+  "include": ["**/*.ts", "../playwright.config.ts", "../playwright.full.config.ts"]
 }

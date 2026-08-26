@@ -55,9 +55,15 @@ async function setReaderAids(
   await page.keyboard.press('Escape');
   await page.evaluate(async () => {
     await document.fonts.ready;
-    await new Promise<void>((resolve) =>
-      requestAnimationFrame(() => requestAnimationFrame(resolve)),
-    );
+    await new Promise<void>((resolve) => {
+      // `resolve` cannot be passed straight to requestAnimationFrame: the
+      // callback receives a timestamp, which does not match Promise<void>.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+    });
   });
 }
 
@@ -126,7 +132,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
    * both starting paths and keeps the New reading action available.
    */
   test('a first visit lands on an empty library and needs no setup', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('./');
 
     await expect(page).toHaveURL(/#\/library/);
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
@@ -138,7 +144,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('New reading offers both ways in, and Paste text reaches the reader', async ({ page }) => {
-    await page.goto('/#/library');
+    await page.goto('./#/library');
 
     await page.getByRole('button', { name: 'New reading' }).click();
     const chooser = page.getByRole('dialog', { name: 'New reading' });
@@ -154,7 +160,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('paste, save, and read without a review step @mobile @smoke', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
 
     await saveAndOpenReader(page);
@@ -162,7 +168,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('uses singular wording for a one-sentence paragraph', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, '猫が寝た。');
     await saveAndOpenReader(page);
     await expect(page.locator('mn-reader-paragraph')).toHaveCount(1);
@@ -179,7 +185,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('does not leave reader controls on a missing reading', async ({ page }) => {
-    await page.goto('/#/reader/does-not-exist');
+    await page.goto('./#/reader/does-not-exist');
 
     await expect(
       page.getByRole('heading', { name: 'Reading unavailable', level: 1 }),
@@ -228,7 +234,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('reading text carries Japanese language metadata and whole-token ruby', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -260,7 +266,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     page,
     baseURL,
   }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -288,7 +294,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('hovering a morpheme tints the whole word', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, 'あります。');
     await saveAndOpenReader(page);
 
@@ -303,7 +309,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
   test('anchors word details beside the word on a desktop viewport', async ({ page, isMobile }) => {
     test.skip(isMobile, 'a phone docks word details as a sheet instead');
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -329,7 +335,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('an inflected word is a compact lookup with no derivation controls', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, '僕には分からなかった。昨日は学校へ行きませんでした。');
     await saveAndOpenReader(page);
 
@@ -347,7 +353,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('a polite negative past keeps only the high-level form labels', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, '昨日は学校へ行きませんでした。');
     await saveAndOpenReader(page);
 
@@ -360,7 +366,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('reaches More from the keyboard and expands all dictionary meanings', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, '昨日は行く。');
     await saveAndOpenReader(page);
 
@@ -378,7 +384,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('Escape closes word details and returns focus to its token', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -401,7 +407,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   test('marks no words when vocabulary is not configured, and says nothing about it', async ({
     page,
   }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -411,7 +417,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('the reading surface is Japanese, with no controls printed on it', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -424,7 +430,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('the sentence gesture opens it, and costs nothing', async ({ page, baseURL }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -448,7 +454,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     isMobile,
   }) => {
     test.skip(!isMobile, 'the tap-versus-long-press split only exists on touch');
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -465,7 +471,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     isMobile,
   }) => {
     test.skip(!isMobile, 'the two-tap problem only ever existed on touch');
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -481,7 +487,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
   test('a tap on the open word puts it away @mobile', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'a phone is where a word is opened and closed by tapping');
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -497,7 +503,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
   test('a tap leaves no hover behind on a phone @mobile', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'a synthesized hover is a touch device problem');
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -514,7 +520,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
   test('the word a sheet explains stays visible above it @mobile', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'only a docked sheet can cover the word it is about');
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(
       page,
       Array.from({ length: 12 }, () => SAMPLE_TEXT).join(PARAGRAPH_BREAK),
@@ -546,7 +552,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
   test('the reading scrolls on with a sheet still open @mobile', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'only a docked sheet stays put while the page moves');
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     // Long enough that there is somewhere to scroll to behind the sheet.
     await pasteAndContinue(
       page,
@@ -579,7 +585,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     isMobile,
   }) => {
     test.skip(!isMobile, 'an anchored card is what a desktop viewport has room for');
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -598,7 +604,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('offers Settings when sentence translation has no model', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -612,7 +618,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('the text scale changes the reading, and is remembered', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -642,7 +648,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('reader aid switches are changed and remembered in the Aids panel', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -660,7 +666,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
   test('keeps every Reader action usable in the compact 320px header @mobile', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
@@ -692,7 +698,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   test('has no serious accessibility violations across the workflow @mobile @smoke', async ({
     page,
   }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await expectNoSeriousAccessibilityViolations(page);
 
     await pasteAndContinue(page, SAMPLE_TEXT);
@@ -708,7 +714,7 @@ test.describe('scenario 2 — pasted text validation', () => {
   test('keeps Add reading disabled for pasted text over the 50,000-character limit', async ({
     page,
   }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await page.getByLabel('Japanese text').fill('あ'.repeat(50_001));
 
     await expect(page.getByText('50,001 of 50,000 characters')).toBeVisible();
@@ -718,7 +724,7 @@ test.describe('scenario 2 — pasted text validation', () => {
   });
 
   test('blocks empty input with an inline message @smoke', async ({ page }) => {
-    await page.goto('/#/add');
+    await page.goto('./#/add');
     await page.getByLabel('Japanese text').fill('   \n  ');
 
     await expect(page.getByRole('button', { name: 'Add reading' })).toBeDisabled();
@@ -732,7 +738,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     page,
   }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
-    await page.goto('/#/library');
+    await page.goto('./#/library');
 
     const card = page.locator('mn-reading-card');
     await expect(card).toContainText('第一章');
@@ -748,7 +754,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
   /** Chips are chrome until there are enough readings for filtering to help. */
   test('hides the filter chips on a shelf too small to need them @mobile', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
-    await page.goto('/#/library');
+    await page.goto('./#/library');
 
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
     await expect(page.getByRole('group', { name: 'Filter readings' })).toHaveCount(0);
@@ -756,7 +762,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
   test('dismisses a reading actions menu on outside press and Escape', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
-    await page.goto('/#/library');
+    await page.goto('./#/library');
 
     const toggle = page.getByRole('button', { name: 'Actions for 第一章' });
     const menu = page.getByRole('menu', { name: '第一章 actions' });
@@ -775,7 +781,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
   test('deleting asks first, then leaves zero owned orphan rows @smoke', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
-    await page.goto('/#/library');
+    await page.goto('./#/library');
 
     await page.getByRole('button', { name: 'Actions for 第一章' }).click();
     await page.getByRole('menuitem', { name: 'Delete' }).click();
@@ -795,7 +801,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
   test('cancelling the confirmation keeps the reading', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
-    await page.goto('/#/library');
+    await page.goto('./#/library');
 
     await page.getByRole('button', { name: 'Actions for 第一章' }).click();
     await page.getByRole('menuitem', { name: 'Delete' }).click();
@@ -807,7 +813,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
   test('deleting one reading leaves the others on the shelf', async ({ page }) => {
     await importReading(page, '最初の話です。', '第一章');
     await importReading(page, '二番目の話です。', '第二章');
-    await page.goto('/#/library');
+    await page.goto('./#/library');
     await expect(page.locator('mn-reading-card')).toHaveCount(2);
 
     await page.getByRole('button', { name: 'Actions for 第二章' }).click();
@@ -821,13 +827,13 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
   test('a returning profile with readings opens the library', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
 
-    await page.goto('/');
+    await page.goto('./');
     await expect(page).toHaveURL(/#\/library/);
   });
 
   test('has no serious accessibility violations in the library @mobile', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
-    await page.goto('/#/library');
+    await page.goto('./#/library');
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
 
     await expectNoSeriousAccessibilityViolations(page);

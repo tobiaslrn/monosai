@@ -4,7 +4,7 @@ import { expectSettingPersisted, monosaiDatabaseExists } from './storage';
 
 test.describe('settings persistence', () => {
   test('puts learner controls before advanced and technical settings', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
 
     const headingsLocator = page.locator(
       'main section.mn-panel > h2, main section.mn-panel > header > h2',
@@ -24,7 +24,7 @@ test.describe('settings persistence', () => {
   });
 
   test('remembers the chosen theme across a reload', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
 
     await page.getByRole('radio', { name: 'Dark' }).check();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -37,7 +37,7 @@ test.describe('settings persistence', () => {
   });
 
   test('leaves reader aid controls to the Reader Aids panel', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
 
     await expect(page.getByRole('group', { name: 'Reading aids' })).toHaveCount(0);
     await expect(page.getByRole('slider', { name: 'Text size' })).toHaveCount(0);
@@ -47,13 +47,13 @@ test.describe('settings persistence', () => {
   });
 
   test('keeps the AnkiConnect port out of App settings', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
 
     await expect(page.getByLabel('AnkiConnect port')).toHaveCount(0);
   });
 
   test('creates the local database and reports its schema version', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
 
     const diagnostics = page.getByRole('region', { name: 'Troubleshooting' });
     await expect(diagnostics.getByText('Database schema version')).toBeHidden();
@@ -65,7 +65,7 @@ test.describe('settings persistence', () => {
   });
 
   test('asks twice before deleting all local data', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await page.getByRole('radio', { name: 'Dark' }).check();
     await expectSettingPersisted(page, 'app', 'theme', 'dark');
 
@@ -79,7 +79,7 @@ test.describe('settings persistence', () => {
   });
 
   test('full reset deletes local data and returns to first use @smoke', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await page.getByRole('radio', { name: 'Dark' }).check();
     await expectSettingPersisted(page, 'app', 'theme', 'dark');
 
@@ -93,7 +93,7 @@ test.describe('settings persistence', () => {
   });
 
   test('never exposes a saved credential in the DOM', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
 
     const content = await page.content();
     expect(content).not.toContain('apiKey');
@@ -101,7 +101,7 @@ test.describe('settings persistence', () => {
   });
 
   test('has no serious accessibility violations @mobile', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await expectNoSeriousAccessibilityViolations(page);
   });
 });

@@ -540,7 +540,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
 
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await page.getByRole('button', { name: 'Delete saved audio' }).click();
     await expect(page.getByText(/Saved audio deleted/)).toBeVisible();
 
