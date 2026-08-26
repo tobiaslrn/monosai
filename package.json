@@ -27,6 +27,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "e2e": "playwright test",
+    "e2e:full": "playwright test --config=playwright.full.config.ts",
     "e2e:pwa": "playwright test --config=playwright.pwa.config.ts",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run assets:verify && npm run fixtures:verify && npm run test && npm run build",
     "assets:build": "node scripts/assets/build-language-assets.mjs",

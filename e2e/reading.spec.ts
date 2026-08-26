@@ -153,7 +153,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('mn-reader-paragraph')).toHaveCount(2);
   });
 
-  test('paste, save, and read without a review step @mobile', async ({ page }) => {
+  test('paste, save, and read without a review step @mobile @smoke', async ({ page }) => {
     await page.goto('/#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
 
@@ -256,7 +256,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await assertBunsetsuWrap(page, '320px with furigana and spacing off');
   });
 
-  test('inspecting a word shows local details with no request leaving the origin', async ({
+  test('inspecting a word shows local details with no request leaving the origin @smoke', async ({
     page,
     baseURL,
   }) => {
@@ -689,7 +689,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       .toBe(true);
   });
 
-  test('has no serious accessibility violations across the workflow @mobile', async ({ page }) => {
+  test('has no serious accessibility violations across the workflow @mobile @smoke', async ({
+    page,
+  }) => {
     await page.goto('/#/add');
     await expectNoSeriousAccessibilityViolations(page);
 
@@ -715,7 +717,7 @@ test.describe('scenario 2 — pasted text validation', () => {
     await expect(page).toHaveURL(/#\/add/);
   });
 
-  test('blocks empty input with an inline message', async ({ page }) => {
+  test('blocks empty input with an inline message @smoke', async ({ page }) => {
     await page.goto('/#/add');
     await page.getByLabel('Japanese text').fill('   \n  ');
 
@@ -771,7 +773,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await expect(toggle).toBeFocused();
   });
 
-  test('deleting asks first, then leaves zero owned orphan rows', async ({ page }) => {
+  test('deleting asks first, then leaves zero owned orphan rows @smoke', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
     await page.goto('/#/library');
 
@@ -838,7 +840,7 @@ test.describe('scenario 15 — offline reading', () => {
   // Milestone 10. What this milestone promises is that everything reading needs
   // is already local, so these navigate inside the running application with the
   // network removed.
-  test('a saved reading reopens and inspects with the network removed', async ({
+  test('a saved reading reopens and inspects with the network removed @smoke', async ({
     page,
     context,
   }) => {

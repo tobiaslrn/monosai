@@ -23,7 +23,7 @@ function textModelSettings(stored: unknown): Record<string, unknown> {
 }
 
 test.describe('the model tree', () => {
-  test('keeps the saved key secret', async ({ page }) => {
+  test('keeps the saved key secret @smoke', async ({ page }) => {
     await stubOpenRouter(page);
     await page.goto('/#/settings');
     await saveApiKey(page, KEY);

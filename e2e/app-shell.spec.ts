@@ -6,7 +6,9 @@ test.describe('application shell', () => {
    * There is no application-wide navigation. Each page states where it goes
    * back to, so the reading is the only thing that persists on screen.
    */
-  test('renders the settings route with a way back and no navigation bar', async ({ page }) => {
+  test('renders the settings route with a way back and no navigation bar @smoke', async ({
+    page,
+  }) => {
     await page.goto('/#/settings');
 
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
@@ -36,7 +38,7 @@ test.describe('application shell', () => {
     await expect(diagnostics.getByText('Build commit')).toBeVisible();
   });
 
-  test('has no serious accessibility violations @mobile', async ({ page }) => {
+  test('has no serious accessibility violations @mobile @smoke', async ({ page }) => {
     await page.goto('/#/settings');
     await expectNoSeriousAccessibilityViolations(page);
   });

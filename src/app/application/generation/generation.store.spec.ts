@@ -306,9 +306,35 @@ describe('GenerationStore repair', () => {
     ]);
   });
 
-  it('stops after two repairs and writes no rows at all', async () => {
+  it('saves the story after two repairs, with the words they could not replace marked', async () => {
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.provider.generationCalls).toEqual({
+      story: 1,
+      repair: 2,
+      review: 0,
+      grammar: 1,
+      translate: 1,
+    });
+    expect(bed.store.state().kind).toBe('saved');
+    expect(bed.readings.provenance[0].repairAttempts).toBe(2);
+
+    const unknown = bed.readings.frozenValidations
+      .flatMap((validation) => validation.tokenStatuses)
+      .filter((status) => status.validation.category === 'unknown');
+    expect(unknown).not.toHaveLength(0);
+    expect(unknown[0].validation).toEqual({
+      category: 'unknown',
+      reason: 'unresolved-after-repair',
+    });
+  });
+
+  it('keeps a story whose structure two repairs never fixed out of the library', async () => {
+    bed.provider.storyQueue.push(ok(shortStory()));
+    bed.provider.repairQueue.push(ok(shortStory()), ok(shortStory()));
 
     await bed.store.generate(5, PREMISE);
 
@@ -325,8 +351,7 @@ describe('GenerationStore repair', () => {
       return;
     }
     expect(state.draft.repairAttempts).toBe(2);
-    expect(state.draft.sentences[1].unknownSurfaces).toEqual(['図書館']);
-    expect(state.draft.issues).toContain('“図書館” is not in your reviewed vocabulary.');
+    expect(state.draft.issues).not.toHaveLength(0);
 
     expect(bed.readings.readings).toHaveLength(0);
     expect(bed.readings.sentences).toHaveLength(0);
@@ -335,8 +360,8 @@ describe('GenerationStore repair', () => {
   });
 
   it('offers no way out of an invalid draft except starting over', async () => {
-    bed.provider.storyQueue.push(ok(storyWithUnknown()));
-    bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
+    bed.provider.storyQueue.push(ok(shortStory()));
+    bed.provider.repairQueue.push(ok(shortStory()), ok(shortStory()));
 
     await bed.store.generate(5, PREMISE);
     bed.store.reset();

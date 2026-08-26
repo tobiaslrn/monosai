@@ -58,8 +58,14 @@ test.describe('reader performance at the 50,000-character budget', () => {
       // way under touch emulation on the Android project.
       await page.evaluate(() => {
         window.scrollBy(0, 4_000);
+        return new Promise<void>((resolve) => {
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              resolve();
+            }),
+          );
+        });
       });
-      await page.waitForTimeout(200);
 
       const mounted = await paragraphLocator(page).count();
       expect(mounted).toBeLessThanOrEqual(MAXIMUM_MOUNTED_PARAGRAPHS);

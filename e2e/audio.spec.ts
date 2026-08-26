@@ -1,8 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
-import { configureTextModel, configureTts } from './generation';
 import { countOwnedRows, importReading, openSentence } from './reading';
 import { stubOpenRouter, type ProviderCalls, type StubOptions } from './openrouter';
+import { TTS_READY_STATE } from './state';
 
 /** Four sentences: short enough to prepare in full, long enough to fail partway. */
 const SENTENCE_COUNT = 4;
@@ -123,8 +123,6 @@ async function prepareReading(
   options: StubOptions = {},
 ): Promise<ProviderCalls> {
   const calls = await stubOpenRouter(page, { generation: {}, ...options });
-  await configureTextModel(page);
-  await configureTts(page);
   await importReading(page, text);
   await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
   return calls;
@@ -139,7 +137,9 @@ async function prepareReading(
  * clip is paid for by an explicit action, and every sound follows a second one.
  */
 test.describe('scenario 13 — audio preparation and playback', () => {
-  test('generates audio for one sentence, and for that sentence only', async ({ page }) => {
+  test.use({ storageState: TTS_READY_STATE });
+
+  test('generates audio for one sentence, and for that sentence only @smoke', async ({ page }) => {
     const calls = await prepareReading(page);
     const afterSetup = synthesisCount(calls);
 
@@ -293,10 +293,13 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(scrolledBox?.y).toBeCloseTo(initialBox?.y ?? 0, 0);
   });
 
-  test('fails fast, keeps the clips that arrived, and retries only the rest', async ({ page }) => {
-    // The first entry answers the configuration test, which has to pass before
-    // anything may be synthesized. Then the first batch: two clips, a refusal,
-    // and a fourth clip. The last entry repeats, so the retry succeeds.
+  test('fails fast, keeps the clips that arrived, and retries only the rest @smoke', async ({
+    page,
+  }) => {
+    // The model compatibility test lives in the setup project, so the sequence
+    // begins at the first synthesis request: the first batch of four is two
+    // clips, a refusal, and a fourth clip. The last entry repeats, which is
+    // what lets the retry finish everything still missing.
     //
     // 402 rather than a 5xx deliberately: the client auto-retries outages, so
     // the request that "fails" would otherwise succeed on a transport retry and
@@ -305,8 +308,8 @@ test.describe('scenario 13 — audio preparation and playback', () => {
       audioSequence: [
         { kind: 'valid' },
         { kind: 'valid' },
-        { kind: 'valid' },
         { kind: 'status', status: 402, message: 'Refused' },
+        { kind: 'valid' },
         { kind: 'valid' },
       ],
     });
@@ -332,9 +335,15 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(kept, 'the clips that arrived were kept').toBeGreaterThan(0);
     expect(kept, 'the refused sentence produced nothing').toBeLessThan(CONCURRENCY);
 
-    // The prefix stays playable while the remainder is offered again, which is
-    // the whole difference from the complete-set gate this replaced.
-    await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeEnabled();
+    // A transport is offered at all, which is the whole difference from the
+    // complete-set gate this replaced: a failed run used to leave the player
+    // with nothing but its failure.
+    //
+    // Which sentence the refusal landed on is not asserted. The stub answers
+    // in arrival order and four requests are in flight, so the 402 may reach
+    // any of the first batch — including sentence one, which would correctly
+    // leave Play disabled while the rest stays playable.
+    await expect(audioPlayer(page).getByRole('button', { name: BACK_LABEL })).toBeVisible();
 
     await page.getByRole('button', { name: 'Try again' }).click();
     await expectAudioComplete(page, LONG_SENTENCE_COUNT);
@@ -556,7 +565,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(await storedClipCount(page)).toBe(0);
   });
 
-  test('the reader stays accessible with the player visible and a sentence open @mobile', async ({
+  test('the reader stays accessible with the player visible and a sentence open @mobile @smoke', async ({
     page,
   }) => {
     await prepareReading(page);

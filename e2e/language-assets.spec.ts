@@ -29,7 +29,9 @@ async function expectPrepared(page: Page): Promise<LanguageAssetsRecord> {
 }
 
 test.describe('offline language assets', () => {
-  test('prepares, verifies, and activates the bundle without being asked', async ({ page }) => {
+  test('prepares, verifies, and activates the bundle without being asked @smoke', async ({
+    page,
+  }) => {
     await page.goto('/#/settings');
 
     const record = await expectPrepared(page);
@@ -41,20 +43,31 @@ test.describe('offline language assets', () => {
   });
 
   test('renders and navigates while the bundle is still downloading', async ({ page }) => {
+    let releaseDownload: () => void = () => undefined;
+    const downloadGate = new Promise<void>((resolve) => {
+      releaseDownload = resolve;
+    });
+
     // Hold the largest asset open so preparation cannot finish during the test.
     await page.route(`**${BUNDLE_PREFIX}tokenizer/*`, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 5_000));
+      await downloadGate;
       await route.abort();
     });
 
-    await page.goto('/#/settings');
+    try {
+      await page.goto('/#/settings');
 
-    // The shell is interactive and the route renders even though the language
-    // bundle is still in flight.
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('radio', { name: 'Dark' })).toBeEnabled();
-    await page.getByRole('radio', { name: 'Dark' }).check();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+      // The shell is interactive and the route renders even though the language
+      // bundle is still in flight.
+      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.getByRole('radio', { name: 'Dark' })).toBeEnabled();
+      await page.getByRole('radio', { name: 'Dark' }).check();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    } finally {
+      releaseDownload();
+    }
   });
 
   test('initializes from the cache when the network is unavailable', async ({ page }) => {
@@ -83,7 +96,9 @@ test.describe('offline language assets', () => {
     expect(blocked).toEqual([]);
   });
 
-  test('reports a typed error instead of crashing when an asset is corrupted', async ({ page }) => {
+  test('reports a typed error instead of crashing when an asset is corrupted @smoke', async ({
+    page,
+  }) => {
     await page.route(`**${BUNDLE_PREFIX}structural-baseline.json`, (route) =>
       route.fulfill({
         status: 200,

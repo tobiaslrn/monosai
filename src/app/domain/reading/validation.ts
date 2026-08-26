@@ -45,14 +45,16 @@ export interface TokenStatusAssignment {
   readonly validation: TokenValidation;
 }
 
-/** Frozen generated-story validation; accepted stories never contain `unknown`. */
+/**
+ * Frozen generated-story validation.
+ *
+ * A saved story may still contain `unknown`: repair is given a budget, not a
+ * guarantee, and a word it could not replace is marked rather than allowed to
+ * cost the whole story.
+ */
 export interface FrozenSentenceValidation {
   readonly sentenceId: SentenceId;
   readonly snapshotId: SnapshotId;
   readonly validatorVersion: string;
   readonly tokenStatuses: readonly TokenStatusAssignment[];
-}
-
-export function isAcceptedCategory(category: TokenValidationCategory): boolean {
-  return category !== 'unknown';
 }

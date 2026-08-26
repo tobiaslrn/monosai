@@ -18,6 +18,7 @@ npm-debug.log
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+/.playwright-cli/
 
 # IDEs and editors
 .idea/

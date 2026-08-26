@@ -25,6 +25,9 @@ const IS_CI = PROCESS_ENV.CI === 'true';
  */
 export default defineConfig({
   testDir: './e2e',
+  // The default command is the task/PR feedback lane. `npm run e2e:full`
+  // overrides this grep and runs the complete browser regression suite.
+  grep: /@smoke/,
   fullyParallel: true,
   forbidOnly: IS_CI,
   retries: IS_CI ? 2 : 0,
@@ -36,13 +39,21 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+    },
+    {
       name: 'desktop-chrome',
+      testIgnore: /.*\.setup\.ts/,
+      dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     {
       name: 'android-chrome',
+      testIgnore: /.*\.setup\.ts/,
+      dependencies: ['setup'],
       use: { ...devices['Pixel 5'] },
-      grep: /@mobile/,
+      grep: /(?=.*@mobile)(?=.*@smoke)/,
     },
   ],
   webServer: {

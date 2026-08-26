@@ -78,7 +78,7 @@ test.describe('settings persistence', () => {
     expect(await monosaiDatabaseExists(page)).toBe(true);
   });
 
-  test('full reset deletes local data and returns to first use', async ({ page }) => {
+  test('full reset deletes local data and returns to first use @smoke', async ({ page }) => {
     await page.goto('/#/settings');
     await page.getByRole('radio', { name: 'Dark' }).check();
     await expectSettingPersisted(page, 'app', 'theme', 'dark');

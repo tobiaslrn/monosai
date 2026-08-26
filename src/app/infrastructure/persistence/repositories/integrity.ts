@@ -31,27 +31,28 @@ export function assertUniquePositions(positions: readonly number[], label: strin
 }
 
 /**
- * Refuses a generated save whose frozen validation still marks a word unknown.
+ * Refuses a generated save whose frozen validation defers to live vocabulary.
  *
- * This is the storage-level half of "no unknown-containing result can enter the
- * library". The generation state machine refuses the same draft before it gets
- * here; both checks exist because a single one is a promise, and two
- * independent ones are an invariant. `not-in-snapshot` is refused alongside it:
- * that category belongs to imported readings, which follow the current
- * vocabulary, while a generated story is frozen against the validation
- * evidence captured when it was written.
+ * `not-in-snapshot` belongs to imported readings, which follow the current
+ * vocabulary; a generated story is frozen against the validation evidence
+ * captured when it was written, so a status meaning "ask the snapshot" can
+ * never be part of it.
+ *
+ * `unknown` is deliberately allowed. A word the repair budget could not
+ * replace is saved marked rather than thrown away, and the reader underlines
+ * it: the learner sees which words the story reaches beyond their vocabulary
+ * instead of losing the story to them.
  */
-export function assertNoUnacceptedValidation(
+export function assertNoSnapshotDependentValidation(
   validations: readonly FrozenSentenceValidation[],
 ): void {
   for (const validation of validations) {
     for (const status of validation.tokenStatuses) {
-      const category = status.validation.category;
-      if (category === 'unknown' || category === 'not-in-snapshot') {
+      if (status.validation.category === 'not-in-snapshot') {
         throw new StorageRuleViolation(
           storageError(
             'conflict',
-            'A generated story cannot be saved while any word is still unvalidated.',
+            'A generated story cannot be saved with a validation that defers to the current vocabulary.',
           ),
         );
       }

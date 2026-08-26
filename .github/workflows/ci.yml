@@ -32,9 +32,8 @@ jobs:
         run: npm run assets:verify
       - name: App icon structure and source digest check
         run: npm run icons:verify
-      - name: Test coverage (advisory)
+      - name: Test coverage
         run: npm run test:coverage
-        continue-on-error: true
       - name: Production build
         run: npm run build:pages -- --define MONOSAI_BUILD_COMMIT='"${{ github.sha }}"'
       - name: Verify the GitHub Pages dist (base path, manifest, icons)
@@ -63,7 +62,12 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium
-      - run: npm run e2e
+      - name: Critical browser journeys
+        if: github.event_name == 'pull_request'
+        run: npm run e2e
+      - name: Full browser regression suite
+        if: github.event_name == 'push'
+        run: npm run e2e:full
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -72,6 +76,7 @@ jobs:
           retention-days: 7
 
   e2e-pwa:
+    needs: quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -79,6 +84,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/monosai/browser
       - run: npm ci
       - name: Cache the Playwright browsers
         uses: actions/cache@v4
@@ -88,6 +97,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: PWA suite against the production build (offline reload, installability, base path)
         run: npm run e2e:pwa
+        env:
+          MONOSAI_PWA_PREBUILT: 'true'
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

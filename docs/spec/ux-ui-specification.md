@@ -398,7 +398,7 @@ Cancel remains available until saving begins. During saving it is disabled for t
 
 ### Invalid draft
 
-Show the unsaved Japanese with unknown markers, an issue list, repair-attempt count, and actions **Try a new generation**, **Change premise/instructions**, and **Close**. No Save anyway action exists. Closing loses the draft after confirmation.
+Reached only when repair could not give the story the shape that was asked for; unknown words alone save with the story and are marked in the reader. Show the unsaved Japanese with unknown markers, an issue list, repair-attempt count, and actions **Try a new generation**, **Change premise/instructions**, and **Close**. No Save anyway action exists. Closing loses the draft after confirmation.
 
 ## 8. Vocabulary sources
 
