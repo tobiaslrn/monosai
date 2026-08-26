@@ -1,8 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
-import { configureTextModel, configureTts } from './generation';
 import { countOwnedRows, importReading, openSentence } from './reading';
 import { stubOpenRouter, type ProviderCalls, type StubOptions } from './openrouter';
+import { TTS_READY_STATE } from './state';
 
 /** Four sentences: short enough to prepare in full, long enough to fail partway. */
 const SENTENCE_COUNT = 4;
@@ -94,8 +94,6 @@ async function prepareReading(
   options: StubOptions = {},
 ): Promise<ProviderCalls> {
   const calls = await stubOpenRouter(page, { generation: {}, ...options });
-  await configureTextModel(page);
-  await configureTts(page);
   await importReading(page, text);
   await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
   return calls;
@@ -110,7 +108,9 @@ async function prepareReading(
  * clip is paid for by an explicit action, and every sound follows a second one.
  */
 test.describe('scenario 13 — audio preparation and playback', () => {
-  test('generates audio for one sentence, and for that sentence only', async ({ page }) => {
+  test.use({ storageState: TTS_READY_STATE });
+
+  test('generates audio for one sentence, and for that sentence only @smoke', async ({ page }) => {
     const calls = await prepareReading(page);
     const afterSetup = synthesisCount(calls);
 
@@ -264,12 +264,12 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(scrolledBox?.y).toBeCloseTo(initialBox?.y ?? 0, 0);
   });
 
-  test('stops at the sentence that failed, keeps the earlier clips, and resumes there', async ({
+  test('stops at the sentence that failed, keeps the earlier clips, and resumes there @smoke', async ({
     page,
   }) => {
-    // The first entry answers the configuration test, which has to pass before
-    // anything may be synthesized. Then two clips, then a refusal; the last
-    // entry repeats, so the retry succeeds.
+    // The model compatibility test lives in the setup project. This test's
+    // sequence therefore begins with two clips, then a refusal; the remaining
+    // entries let the retry finish the failed sentence and the one after it.
     //
     // 402 rather than a 5xx deliberately: the client auto-retries outages, so
     // the sentence that "fails" would otherwise succeed on a transport retry
@@ -278,8 +278,8 @@ test.describe('scenario 13 — audio preparation and playback', () => {
       audioSequence: [
         { kind: 'valid' },
         { kind: 'valid' },
-        { kind: 'valid' },
         { kind: 'status', status: 402, message: 'Refused' },
+        { kind: 'valid' },
         { kind: 'valid' },
       ],
     });
@@ -440,7 +440,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(await storedClipCount(page)).toBe(0);
   });
 
-  test('the reader stays accessible with the player visible and a sentence open @mobile', async ({
+  test('the reader stays accessible with the player visible and a sentence open @mobile @smoke', async ({
     page,
   }) => {
     await prepareReading(page);

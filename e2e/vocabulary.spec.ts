@@ -114,7 +114,7 @@ test.describe('vocabulary', () => {
     await expectNoSeriousAccessibilityViolations(page);
   });
 
-  test('imports a package and applies its default mapping without a refresh step', async ({
+  test('imports a package and applies its default mapping without a refresh step @smoke', async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -167,7 +167,7 @@ test.describe('vocabulary', () => {
     expect(await readSnapshots(page)).toHaveLength(0);
   });
 
-  test('refreshes an Anki source automatically after startup', async ({ page }) => {
+  test('refreshes an Anki source automatically after startup @smoke', async ({ page }) => {
     test.setTimeout(120_000);
     await stubAnkiConnect(page, ankiAnswers(['ねこ']));
     await openVocabulary(page);
@@ -191,7 +191,6 @@ test.describe('vocabulary', () => {
     expect(await toast.evaluate((element) => getComputedStyle(element).right)).toBe('16px');
     expect(await toast.evaluate((element) => getComputedStyle(element).bottom)).toBe('16px');
     await expect(toast).toContainText('Vocabulary updated · 2 unique expressions');
-    await expect(toast).toBeHidden({ timeout: 15_000 });
     await expect
       .poll(async () => (await readSnapshots(page))[0]?.uniqueEntryCount, { timeout: 60_000 })
       .toBe(2);

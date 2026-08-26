@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONTRACT_COLLECTION } from '../../../testing/anki-collection';
 import { FakeAnkiProvider } from '../../../testing/anki-fakes';
 import { mappingFor } from '../../../testing/anki-provider-contract';
@@ -37,6 +37,10 @@ describe('AutomaticAnkiSyncCoordinator', () => {
     coordinator = TestBed.inject(AutomaticAnkiSyncCoordinator);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   function configureAutomaticSource(): ReturnType<typeof mappingFor> {
     const source = mappingFor({
       kind: 'anki-connect',
@@ -55,6 +59,18 @@ describe('AutomaticAnkiSyncCoordinator', () => {
     expect(coordinator.status().kind).toBe('updated');
     expect(beds.vocabulary.commitCount).toBe(1);
     expect(beds.mappings.caches.get(source.id)?.entries.length).toBeGreaterThan(0);
+  });
+
+  it('hides a successful automatic update after its presentation window', async () => {
+    vi.useFakeTimers();
+    configureAutomaticSource();
+
+    await coordinator.trigger(true);
+    expect(coordinator.status().kind).toBe('updated');
+
+    await vi.advanceTimersByTimeAsync(8_000);
+
+    expect(coordinator.status()).toEqual({ kind: 'idle' });
   });
 
   it('keeps an unchanged merged vocabulary silent when source records change', async () => {
