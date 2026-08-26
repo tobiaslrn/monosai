@@ -2,6 +2,12 @@ import { expect, test, type Page } from '@playwright/test';
 import { readSettingsRecord } from './storage';
 
 const BUNDLE_PREFIX = '/assets/language/1/';
+/**
+ * The same files as they are actually cached: the suite serves the production
+ * build from `/monosai/`, so every cache key carries that base path. Route
+ * globs below stay base-relative because they are matched with a `**` prefix.
+ */
+const CACHED_BUNDLE_PREFIX = `/monosai${BUNDLE_PREFIX}`;
 
 interface LanguageAssetsRecord {
   readonly value?: {
@@ -32,7 +38,7 @@ test.describe('offline language assets', () => {
   test('prepares, verifies, and activates the bundle without being asked @smoke', async ({
     page,
   }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
 
     const record = await expectPrepared(page);
     expect(record.value?.tokenizerVersion).toBeTruthy();
@@ -55,7 +61,7 @@ test.describe('offline language assets', () => {
     });
 
     try {
-      await page.goto('/#/settings');
+      await page.goto('./#/settings');
 
       // The shell is interactive and the route renders even though the language
       // bundle is still in flight.
@@ -71,13 +77,13 @@ test.describe('offline language assets', () => {
   });
 
   test('initializes from the cache when the network is unavailable', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await expectPrepared(page);
 
     // Every request for a bundle file now fails. Initialization must still
     // succeed from the verified Cache Storage copy. The application shell itself
-    // is still served by the development server, because its offline fallback is
-    // service-worker work that a later milestone delivers.
+    // is still served normally: this suite blocks the service worker, so shell
+    // offline behavior belongs to the `e2e:pwa` suite rather than here.
     const blocked: string[] = [];
     await page.route(`**${BUNDLE_PREFIX}*`, (route) => {
       blocked.push(route.request().url());
@@ -91,8 +97,8 @@ test.describe('offline language assets', () => {
       const cache = await caches.open('monosai-language-1');
       return (await cache.keys()).map((request) => new URL(request.url).pathname);
     });
-    expect(cached).toContain('/assets/language/1/dictionary.json');
-    expect(cached).toContain('/assets/language/1/tokenizer/lindera_wasm_bg.wasm');
+    expect(cached).toContain(`${CACHED_BUNDLE_PREFIX}dictionary.json`);
+    expect(cached).toContain(`${CACHED_BUNDLE_PREFIX}tokenizer/lindera_wasm_bg.wasm`);
     expect(blocked).toEqual([]);
   });
 
@@ -107,7 +113,7 @@ test.describe('offline language assets', () => {
       }),
     );
 
-    await page.goto('/#/grammar');
+    await page.goto('./#/grammar');
 
     const failure = page.getByRole('heading', { name: 'Language assets are unavailable' });
     await expect(failure).toBeVisible({ timeout: 120_000 });
@@ -132,7 +138,7 @@ test.describe('offline language assets', () => {
       await route.fallback();
     });
 
-    await page.goto('/#/grammar');
+    await page.goto('./#/grammar');
     await expect(
       page.getByRole('heading', { name: 'Language assets are unavailable' }),
     ).toBeVisible({ timeout: 120_000 });

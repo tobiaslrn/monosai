@@ -49,6 +49,10 @@ export default tseslint.config(
       '.asset-cache/**',
       'playwright-report/**',
       'test-results/**',
+      'blob-report/**',
+      // Agent worktrees hold entire copies of this repository. Linting them
+      // duplicates every file and resolves them against the wrong project.
+      '.claude/**',
     ],
   },
   {
@@ -63,6 +67,11 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
+          // Root-level config files resolve to the nearest tsconfig up their
+          // directory tree, which is `tsconfig.json` — a solution file with
+          // `files: []`. They therefore need an inferred project here, even
+          // though `npm run typecheck:e2e` does check them through
+          // e2e/tsconfig.json.
           allowDefaultProject: [
             'playwright.config.ts',
             'playwright.full.config.ts',
@@ -132,7 +141,7 @@ export default tseslint.config(
     rules: {},
   },
   {
-    files: ['e2e/**/*.ts', '*.config.ts', 'scripts/**/*.{ts,mjs,js}'],
+    files: ['e2e/**/*.ts', 'e2e-pwa/**/*.ts', '*.config.ts', 'scripts/**/*.{ts,mjs,js}'],
     rules: {
       'no-console': 'off',
     },

@@ -9,7 +9,7 @@ test.describe('application shell', () => {
   test('renders the settings route with a way back and no navigation bar @smoke', async ({
     page,
   }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
 
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
     await expect(page.getByRole('navigation')).toHaveCount(0);
@@ -19,7 +19,7 @@ test.describe('application shell', () => {
   });
 
   test('reaches Vocabulary and Grammar through Settings', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
 
     await page.getByRole('link', { name: /Vocabulary/ }).click();
     await expect(page.getByRole('heading', { name: 'Vocabulary', level: 1 })).toBeVisible();
@@ -30,7 +30,7 @@ test.describe('application shell', () => {
   });
 
   test('shows build diagnostics without user content', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
 
     const diagnostics = page.getByRole('region', { name: 'Troubleshooting' });
     await diagnostics.getByText('Advanced technical details').click();
@@ -39,12 +39,12 @@ test.describe('application shell', () => {
   });
 
   test('has no serious accessibility violations @mobile @smoke', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await expectNoSeriousAccessibilityViolations(page);
   });
 
   test('deep links restore after reload', async ({ page }) => {
-    await page.goto('/#/settings');
+    await page.goto('./#/settings');
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   });
@@ -53,7 +53,7 @@ test.describe('application shell', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 320, height: 640 });
-    await page.goto('/#/library');
+    await page.goto('./#/library');
 
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();

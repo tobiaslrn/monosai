@@ -7,6 +7,8 @@ const BASE_PATH = '/monosai/';
 
 const REQUIRED_FILES = [
   'index.html',
+  // The GitHub Pages deep-link fallback, written by `npm run dist:fallback`.
+  '404.html',
   'ngsw.json',
   'ngsw-worker.js',
   'manifest.webmanifest',

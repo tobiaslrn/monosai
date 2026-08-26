@@ -21,11 +21,6 @@ import { providePersistence } from './infrastructure/persistence/persistence.pro
 import { providePwa } from './infrastructure/pwa/pwa.providers';
 import { readBuildInfo } from './core/diagnostics/build-info';
 
-/** Whether the builder emitted `ngsw-worker.js` alongside this bundle. */
-function shipsServiceWorker(): boolean {
-  return typeof MONOSAI_SERVICE_WORKER === 'boolean' ? MONOSAI_SERVICE_WORKER : true;
-}
-
 export const appConfig: ApplicationConfig = {
   providers: [
     AutomaticAnkiSyncCoordinator,
@@ -64,9 +59,10 @@ export const appConfig: ApplicationConfig = {
       });
     }),
     provideServiceWorker('ngsw-worker.js', {
-      // The e2e build is optimized but ships no worker, so `isDevMode()` alone
-      // would try to register a file that is not there.
-      enabled: !isDevMode() && shipsServiceWorker(),
+      // Every optimized build emits the worker; only `ng serve` does not.
+      // Browser suites that need a quiet worker block registration through
+      // Playwright rather than through a separate build.
+      enabled: !isDevMode(),
       // Never take control mid-form or mid-job; updates are user activated.
       registrationStrategy: 'registerWhenStable:30000',
     }),

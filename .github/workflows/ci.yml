@@ -4,104 +4,224 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # A superseded pull-request run is wasted work, but a `main` run may already
+  # be deploying, and cancelling that would leave Pages half-published.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  quality:
+  # Cheap checks first so an obvious break reports in seconds. Ordered by cost:
+  # the advisory formatting check runs last because it cannot fail the job.
+  static:
+    name: Static analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Dependency audit (production)
-        run: npm audit --omit=dev --audit-level=high
-      - name: Third-party licence check
-        run: npm run licenses:check
-      - name: Formatting check (advisory)
-        run: npm run format:check
-        continue-on-error: true
-      - run: npm run lint
-      - run: npm run typecheck
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
       - name: Language dataset schema, digest, and attribution check
         run: npm run assets:verify
       - name: App icon structure and source digest check
         run: npm run icons:verify
+      - name: Anki fixture reproducibility check
+        run: npm run fixtures:verify
+      - name: Third-party licence check
+        run: npm run licenses:check
+      - name: Dependency audit (production)
+        run: npm audit --omit=dev --audit-level=high
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: Formatting check (advisory)
+        run: npm run format:check
+        continue-on-error: true
+
+  unit:
+    name: Unit and integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
       - name: Test coverage
         run: npm run test:coverage
-      - name: Production build
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The only application build in the pipeline. Its artifact is what the
+  # browser suite, the PWA suite, and the deployment all consume, so nothing
+  # can pass against bytes that differ from what ships.
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Build the GitHub Pages bundle
         run: npm run build:pages -- --define MONOSAI_BUILD_COMMIT='"${{ github.sha }}"'
-      - name: Verify the GitHub Pages dist (base path, manifest, icons)
+      - name: Add the SPA deep-link fallback
+        run: npm run dist:fallback
+      - name: Verify the dist (base path, manifest, icons, fallback)
         run: npm run verify-dist
       - name: Bundle size report
         run: npm run report-bundle:check
         continue-on-error: true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: dist
+          name: pages-dist
           path: dist/monosai/browser
           retention-days: 7
 
   e2e:
+    name: Browser journeys ${{ matrix.shard }}/3
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      # One shard failing should not hide the state of the others.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v8
+        with:
+          name: pages-dist
+          path: dist/monosai/browser
+      - uses: ./.github/actions/playwright-browsers
+      - name: Critical journeys
+        if: github.event_name == 'pull_request'
+        run: npm run e2e -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+        env:
+          MONOSAI_PREBUILT_DIST: 'true'
+      - name: Full browser regression suite
+        if: github.event_name != 'pull_request'
+        run: npm run e2e:full -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+        env:
+          MONOSAI_PREBUILT_DIST: 'true'
+      - name: Upload this shard's partial report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report
+          retention-days: 1
+          if-no-files-found: ignore
+
+  # Three shards produce three partial reports and no cross-shard view of
+  # which tests retried. Merging them gives one report that names the flakes.
+  e2e-report:
+    name: Browser report
+    if: always() && needs.e2e.result != 'skipped'
+    needs: e2e
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v8
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Cache the Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npx playwright install --with-deps chromium
-      - name: Critical browser journeys
-        if: github.event_name == 'pull_request'
-        run: npm run e2e
-      - name: Full browser regression suite
-        if: github.event_name == 'push'
-        run: npm run e2e:full
-      - if: failure()
-        uses: actions/upload-artifact@v4
+          pattern: blob-report-*
+          path: blob-report
+          merge-multiple: true
+      - name: Merge the shard reports
+        run: |
+          if [ -z "$(ls -A blob-report 2>/dev/null)" ]; then
+            echo "No shard reports were produced; nothing to merge."
+            exit 0
+          fi
+          npx playwright merge-reports --reporter html blob-report
+      - uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: playwright-report
           retention-days: 7
+          if-no-files-found: ignore
 
   e2e-pwa:
-    needs: quality
+    name: PWA suite
+    needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v8
         with:
-          node-version: 24
-          cache: npm
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
+          name: pages-dist
           path: dist/monosai/browser
-      - run: npm ci
-      - name: Cache the Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npx playwright install --with-deps chromium
-      - name: PWA suite against the production build (offline reload, installability, base path)
+      - uses: ./.github/actions/playwright-browsers
+      - name: Offline reload, installability, and base path
         run: npm run e2e:pwa
         env:
-          MONOSAI_PWA_PREBUILT: 'true'
+          MONOSAI_PREBUILT_DIST: 'true'
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-pwa
           path: playwright-report
           retention-days: 7
+          if-no-files-found: ignore
+
+  # One required status check for branch protection, so adding a job above
+  # never means editing repository settings.
+  gate:
+    name: All checks
+    if: always()
+    needs: [static, unit, build, e2e, e2e-pwa]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report each job's result
+        run: |
+          echo "static:  ${{ needs.static.result }}"
+          echo "unit:    ${{ needs.unit.result }}"
+          echo "build:   ${{ needs.build.result }}"
+          echo "e2e:     ${{ needs.e2e.result }}"
+          echo "e2e-pwa: ${{ needs.e2e-pwa.result }}"
+      - name: Fail unless every job succeeded
+        if: >-
+          contains(needs.*.result, 'failure')
+          || contains(needs.*.result, 'cancelled')
+          || contains(needs.*.result, 'skipped')
+        run: |
+          echo "::error::One or more required jobs did not succeed."
+          exit 1
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: [build, gate]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    # Pages allows one deployment at a time, and a half-finished one should
+    # never be cancelled by the next push.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # No checkout and no build: the artifact below is the exact tree the
+      # browser and PWA suites passed against, already stamped with this SHA.
+      - uses: actions/download-artifact@v8
+        with:
+          name: pages-dist
+          path: dist/monosai/browser
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist/monosai/browser
+      - id: deployment
+        uses: actions/deploy-pages@v5
+      - name: Post-deploy smoke test
+        run: curl --fail --silent --show-error --location "${{ steps.deployment.outputs.page_url }}" > /dev/null

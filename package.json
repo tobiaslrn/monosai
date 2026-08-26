@@ -5,6 +5,9 @@
   "private": true,
   "type": "module",
   "license": "ISC",
+  "engines": {
+    "node": ">=24"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tobiaslrn/monosai.git"
@@ -18,18 +21,22 @@
     "start": "ng serve",
     "build": "ng build",
     "build:pages": "ng build --configuration pages --stats-json",
-    "build:e2e": "ng build --configuration e2e",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:coverage": "ng test --coverage",
-    "typecheck": "tsc -b tsconfig.json --pretty false",
+    "typecheck": "npm run typecheck:app && npm run typecheck:e2e",
+    "typecheck:app": "tsc -b tsconfig.json --pretty false",
+    "typecheck:e2e": "tsc -p e2e/tsconfig.json --pretty false && tsc -p e2e-pwa/tsconfig.json --pretty false",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "e2e": "playwright test",
     "e2e:full": "playwright test --config=playwright.full.config.ts",
     "e2e:pwa": "playwright test --config=playwright.pwa.config.ts",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run assets:verify && npm run fixtures:verify && npm run test && npm run build",
+    "verify": "npm run verify:static && npm run test:coverage && npm run verify:build",
+    "verify:static": "npm run format:check && npm run lint && npm run typecheck && npm run assets:verify && npm run fixtures:verify && npm run icons:verify && npm run licenses:check",
+    "verify:build": "npm run build:pages && npm run dist:fallback && npm run verify-dist",
+    "dist:fallback": "node scripts/dist-fallback.mjs",
     "assets:build": "node scripts/assets/build-language-assets.mjs",
     "assets:verify": "node scripts/assets/verify-language-assets.mjs",
     "fixtures:build": "node scripts/fixtures/build-anki-fixtures.mjs",
@@ -43,6 +50,11 @@
     "licenses:build": "node scripts/licenses/check-licenses.mjs",
     "licenses:check": "node scripts/licenses/check-licenses.mjs --check",
     "test:manual": "vitest run --config vitest.manual.config.ts"
+  },
+  "overrides": {
+    "eslint-plugin-import": {
+      "eslint": "$eslint"
+    }
   },
   "dependencies": {
     "@angular/cdk": "^22.1.3",

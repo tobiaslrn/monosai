@@ -193,7 +193,7 @@ export async function stubReviewedCollection(page: Page): Promise<void> {
 
 /** Saves a key and puts the text model through its real compatibility test. */
 export async function configureTextModel(page: Page): Promise<void> {
-  await page.goto('/#/settings');
+  await page.goto('./#/settings');
   await saveApiKey(page);
   // Choosing the model runs the test; readiness is what says it passed.
   await addTextModel(page, TEXT_MODEL);
@@ -208,7 +208,7 @@ export async function configureTextModel(page: Page): Promise<void> {
  * here rather than by writing a settings row.
  */
 export async function configureTts(page: Page): Promise<void> {
-  await page.goto('/#/settings');
+  await page.goto('./#/settings');
   await addTtsModel(page, TTS_MODEL, TTS_VOICE);
   await page.getByTestId('test-tts').click();
   await expectReadiness(ttsReadiness(page), 'ready');
@@ -216,7 +216,7 @@ export async function configureTts(page: Page): Promise<void> {
 
 /** Builds a real snapshot from the scripted collection. */
 export async function buildSnapshot(page: Page): Promise<void> {
-  await page.goto('/#/vocabulary');
+  await page.goto('./#/vocabulary');
   await page.getByTestId('add-source').click();
   await expect(page.getByRole('dialog', { name: 'Add vocabulary source' })).toBeVisible();
   await page.getByTestId('choose-ankiconnect').click();
@@ -238,13 +238,13 @@ export async function prepareGeneration(page: Page, options: StubOptions): Promi
   // Playwright intentionally does not serialize Cache Storage or a live WASM
   // worker. Visit the grammar route to activate the verified language runtime
   // before generation captures its profile.
-  await page.goto('/#/grammar');
+  await page.goto('./#/grammar');
   await expect(page.getByRole('radio', { name: /Starter forms/ })).toBeVisible({
     timeout: 120_000,
   });
 }
 
 export async function openGenerate(page: Page): Promise<void> {
-  await page.goto('/#/generate');
+  await page.goto('./#/generate');
   await expect(page.getByRole('heading', { name: 'Write with AI', level: 1 })).toBeVisible();
 }

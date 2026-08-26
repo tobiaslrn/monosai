@@ -48,7 +48,7 @@ export async function saveAndOpenReader(page: Page): Promise<void> {
 
 /** Imports one reading and returns to the library. */
 export async function importReading(page: Page, text: string, title?: string): Promise<void> {
-  await page.goto('/#/add');
+  await page.goto('./#/add');
   await page.getByLabel('Japanese text').fill(text);
   if (title !== undefined) {
     await page.getByLabel('Title (optional)').fill(title);

@@ -6,7 +6,7 @@ const EVERYDAY = 'Everyday forms';
 
 /** The picker only exists once the bundled presets have been verified and loaded. */
 async function openGrammar(page: Page): Promise<void> {
-  await page.goto('/#/grammar');
+  await page.goto('./#/grammar');
   await expect(page.getByRole('radio', { name: new RegExp(STARTER) })).toBeVisible();
 }
 

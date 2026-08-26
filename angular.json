@@ -45,8 +45,7 @@
             ],
             "styles": ["src/styles.scss"],
             "define": {
-              "MONOSAI_BUILD_COMMIT": "\"development\"",
-              "MONOSAI_SERVICE_WORKER": "true"
+              "MONOSAI_BUILD_COMMIT": "\"development\""
             },
             "allowedCommonJsDependencies": ["sql.js"]
           },
@@ -88,14 +87,6 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
-            },
-            "e2e": {
-              "extractLicenses": false,
-              "outputHashing": "none",
-              "define": {
-                "MONOSAI_BUILD_COMMIT": "\"e2e\"",
-                "MONOSAI_SERVICE_WORKER": "false"
-              }
             }
           },
           "defaultConfiguration": "production"
