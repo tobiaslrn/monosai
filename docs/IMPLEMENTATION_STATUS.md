@@ -1631,7 +1631,7 @@ could never have reached a passing configuration test.
   key, and still loads no blob.
 - **The sentence popover's Play is not subject to the complete-set gate.** The
   gate is a rule about reading a whole reading aloud; one stored clip is exactly
-  as playable on its own whether or not its neighbours exist. *(ADR 0033 later
+  as playable on its own whether or not its neighbours exist. *(ADR 0034 later
   applied the same reasoning to whole-reading playback and removed the gate.)*
 
 ### Open items
@@ -1809,7 +1809,7 @@ console contained no errors or warnings.
 ## Progressive playback and four-way generation
 
 Whole-reading audio now follows
-[ADR 0033](decisions/0033-progressive-four-way-audio.md), which supersedes ADR
+[ADR 0034](decisions/0034-progressive-four-way-audio.md), which supersedes ADR
 0024's "concurrency is one" and its complete-set playback gate. A learner can
 listen to the front of a reading while the rest is still being made, and a run
 that stops or fails leaves everything it produced playable.

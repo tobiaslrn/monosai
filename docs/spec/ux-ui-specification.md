@@ -319,7 +319,7 @@ and an open player adds bottom clearance to the reading. The sticky reader heade
 and the player sit above the CDK popover backdrop, so the Audio toggle and player
 remain reachable alongside a sentence or word popover.
 
-The player owns every audio state there is (ADR 0025, ADR 0028, and ADR 0033).
+The player owns every audio state there is (ADR 0025, ADR 0028, and ADR 0034).
 It is one card in two bands: a **transport** whenever there is anything to play,
 and a quieter **generation rail** beneath it whenever there is anything to say
 about preparing the rest. Either band may be absent; they are never alternatives
@@ -332,7 +332,7 @@ to each other.
 | Rail — stopped or failed | "Stopped with 4 of 13 sentences ready.", the failure, **Try again**, **Dismiss** |
 | Rail — nothing prepared or partly prepared | The sentence count, or "4 of 13 sentences have audio", and **Generate audio** |
 
-- The transport appears as soon as any sentence has a clip under the current voice, not when every sentence does. A reading whose set is partial is played as far as it goes and waits for the rest (ADR 0033).
+- The transport appears as soon as any sentence has a clip under the current voice, not when every sentence does. A reading whose set is partial is played as far as it goes and waits for the rest (ADR 0034).
 - The position line reads "Sentence 4 of 13" while playing, "4 of 13 sentences ready" while idle, and "Waiting for sentence 5 of 13" at the frontier. While waiting, the play control is disabled and named for what it is doing: the session has already started and there is nothing to press.
 - Generation reports how many sentences are ready rather than which one it is at, because four requests are open at once and there is no single sentence the run has reached.
 - A job that fails before it resolves what to send reports no position, rather than deriving a nonsensical one from empty counts.

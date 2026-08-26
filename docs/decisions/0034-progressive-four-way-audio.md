@@ -1,4 +1,4 @@
-# 0033 — Progressive playback and four-way audio generation
+# 0034 — Progressive playback and four-way audio generation
 
 Date: 2026-08-26
 Status: Accepted

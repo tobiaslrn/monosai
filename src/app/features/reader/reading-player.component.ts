@@ -19,7 +19,7 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
  * header's audio button is always there, and this is what it opens.
  *
  * Transport and generation are shown **together** rather than one instead of
- * the other (ADR 0033). Once any clip exists the transport is the primary thing
+ * the other (ADR 0034). Once any clip exists the transport is the primary thing
  * in the card, and the run that is still filling in the rest is a quiet rail
  * beneath it. Showing only the run would hide audio the learner has already
  * paid for and can already listen to.

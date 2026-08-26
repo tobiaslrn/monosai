@@ -51,7 +51,7 @@ const IDLE: AudioJobProgress = { kind: 'idle' };
  * waits four times as long for no benefit, and four rather than more because
  * the point of a bound is that the beginning of the reading still arrives
  * first: a wide queue would spread the first completions across the reading and
- * leave progressive playback with nothing to start on (ADR 0033).
+ * leave progressive playback with nothing to start on (ADR 0034).
  */
 export const AUDIO_GENERATION_CONCURRENCY = 4;
 
@@ -81,7 +81,7 @@ interface JobContext {
  * specification insists on. Sentences are **claimed in reading order by at most
  * `AUDIO_GENERATION_CONCURRENCY` workers**, so the beginning of the reading is
  * always the part that exists first and playback can start against a prefix
- * while the rest is still arriving (ADR 0033). And the first fully exhausted
+ * while the rest is still arriving (ADR 0034). And the first fully exhausted
  * failure **stops the job**: the remaining requests are aborted rather than
  * skipped past, because a set with a hole in it that reported itself complete
  * would be exactly the false completeness the release blockers name.
@@ -174,7 +174,7 @@ export class AudioJobStore {
    * Clips already stored stay stored. They cost money, they are exactly as
    * playable individually as they were, and discarding them would be a worse
    * answer to "stop" than keeping them — and the prefix they form stays
-   * playable, because playback no longer waits for a complete set (ADR 0033).
+   * playable, because playback no longer waits for a complete set (ADR 0034).
    *
    * This never stops a sound. Generation and playback are separate sessions,
    * and stopping the one that is spending money must not silence the one that
