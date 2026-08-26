@@ -21,6 +21,34 @@ export const providerErrorEnvelopeSchema = z.object({
 
 export type ProviderErrorEnvelope = z.infer<typeof providerErrorEnvelopeSchema>;
 
+/** Only the model-catalogue fields Monosai uses. */
+export const modelCatalogResponseSchema = z.object({
+  data: z.array(
+    z.object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      context_length: z.number().int().nonnegative().nullable(),
+      architecture: z.object({
+        input_modalities: z.array(z.string()),
+        output_modalities: z.array(z.string()),
+      }),
+      supported_parameters: z.array(z.string()),
+      supported_voices: z.array(z.string()).nullable(),
+      reasoning: z
+        .object({
+          supported_efforts: z.array(z.string().nullable()).nullable().optional(),
+          default_effort: z.string().nullable().optional(),
+          default_enabled: z.boolean().optional(),
+          mandatory: z.boolean(),
+          supports_max_tokens: z.boolean().optional(),
+        })
+        .optional(),
+    }),
+  ),
+});
+
+export type ModelCatalogResponse = z.infer<typeof modelCatalogResponseSchema>;
+
 /** Only the parts of a chat completion Monosai actually reads. */
 export const chatCompletionSchema = z.object({
   choices: z

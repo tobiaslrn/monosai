@@ -11,6 +11,7 @@ import {
 import { stubOpenRouter } from './openrouter';
 import { countOwnedRows } from './reading';
 import { GENERATION_READY_STATE } from './state';
+import { expectSettingPersisted } from './storage';
 
 const PREMISE = 'A cat plays in the garden and meets a friend.';
 
@@ -73,6 +74,7 @@ test.describe('generate prerequisites', () => {
     await expect(select).toBeEnabled();
     await expect(select).toHaveValue('uniform');
     await select.selectOption('difficult');
+    await expectSettingPersisted(page, 'app', 'ankiWordPriorityMode', 'difficult');
 
     await page.reload();
 

@@ -8,6 +8,9 @@
  */
 export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
+/** Model metadata used by the settings picker. */
+export const MODELS_PATH = '/models';
+
 /** Text tasks use the OpenAI-compatible chat completion shape. */
 export const CHAT_COMPLETIONS_PATH = '/chat/completions';
 
