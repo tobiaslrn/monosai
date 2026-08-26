@@ -19,6 +19,15 @@ function paragraphAtPosition(page: Page, position: number) {
   return page.locator(`mn-reader-paragraph p[data-paragraph-position="${String(position)}"]`);
 }
 
+async function furthestMountedParagraph(page: Page): Promise<number> {
+  const positions = await page
+    .locator('mn-reader-paragraph p')
+    .evaluateAll((elements) =>
+      elements.map((element) => Number(element.getAttribute('data-paragraph-position'))),
+    );
+  return Math.max(-1, ...positions);
+}
+
 test.describe('reader performance at the 50,000-character budget', () => {
   test('mounts only a bounded paragraph window, not all 200 paragraphs', async ({ page }) => {
     test.setTimeout(120_000);
@@ -46,36 +55,24 @@ test.describe('reader performance at the 50,000-character budget', () => {
     await pasteAndContinue(page, FIXTURE.text);
     await saveAndOpenReader(page);
 
-    // Repeatedly scroll further down. Each step lets the bottom sentinel
-    // intersect and the store extend the window. Progress is tracked by the
-    // furthest mounted paragraph position, not document height: once the
-    // window is saturated at its bound, trimming the far side and mounting the
-    // near side keep total height roughly constant even though the window
-    // keeps sliding forward, so height alone would look like it had stalled.
-    let furthestMounted = -1;
-    for (let step = 0; step < 120 && furthestMounted < FIXTURE.paragraphCount - 1; step += 1) {
-      // `window.scrollBy` rather than a mouse wheel, so this works the same
-      // way under touch emulation on the Android project.
+    // Scroll to the current document end, then wait for the observer-triggered
+    // load to advance the mounted range before scrolling again. Waiting on the
+    // range itself keeps the test independent of CI scheduling and layout
+    // speed while still exercising the real IntersectionObserver wiring.
+    let furthestMounted = await furthestMountedParagraph(page);
+    while (furthestMounted < FIXTURE.paragraphCount - 1) {
+      const beforeScroll = furthestMounted;
       await page.evaluate(() => {
-        window.scrollBy(0, 4_000);
-        return new Promise<void>((resolve) => {
-          requestAnimationFrame(() =>
-            requestAnimationFrame(() => {
-              resolve();
-            }),
-          );
-        });
+        window.scrollTo(0, document.body.scrollHeight);
       });
+      await expect
+        .poll(() => furthestMountedParagraph(page), {
+          message: `mounted paragraph window should advance beyond ${String(beforeScroll)}`,
+        })
+        .toBeGreaterThan(beforeScroll);
 
-      const mounted = await paragraphLocator(page).count();
-      expect(mounted).toBeLessThanOrEqual(MAXIMUM_MOUNTED_PARAGRAPHS);
-
-      const positions = await page
-        .locator('mn-reader-paragraph p')
-        .evaluateAll((elements) =>
-          elements.map((element) => Number(element.getAttribute('data-paragraph-position'))),
-        );
-      furthestMounted = Math.max(furthestMounted, ...positions);
+      furthestMounted = await furthestMountedParagraph(page);
+      expect(await paragraphLocator(page).count()).toBeLessThanOrEqual(MAXIMUM_MOUNTED_PARAGRAPHS);
     }
 
     // Having scrolled through the whole reading, the last paragraph was

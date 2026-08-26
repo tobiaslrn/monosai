@@ -316,9 +316,14 @@ test.describe('scenario 12 — whole-reading translation', () => {
     await expect(progress(page)).toContainText('Translation finished.', { timeout: 30_000 });
     expect(await storedTranslationCount(page)).toBe(SENTENCE_COUNT);
 
-    // Only the sentences that were still missing were asked for: one batch,
-    // not a second pass over the whole reading.
-    expect(callCount(resumeCalls)).toBe(1);
+    // Only the sentences that were still missing were requested. Count the
+    // translation targets rather than every OpenRouter URL: loading the model
+    // catalogue is unrelated provider traffic and may happen after a reload.
+    const resumedSentenceCount = resumeCalls.translations.reduce(
+      (count, request) => count + request.length,
+      0,
+    );
+    expect(resumedSentenceCount).toBe(SENTENCE_COUNT - storedAfterReload);
 
     // And the report leaves the reader when it is dismissed.
     await progress(page).getByRole('button', { name: 'Dismiss' }).click();

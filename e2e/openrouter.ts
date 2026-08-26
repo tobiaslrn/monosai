@@ -21,6 +21,8 @@ export type AudioOutcome =
 
 export interface ProviderCalls {
   readonly urls: string[];
+  /** Sentence targets carried by each translation request, in request order. */
+  readonly translations: readonly (readonly { id: string; textJa: string }[])[];
   /**
    * The most synthesis requests that were ever open at the same moment.
    *
@@ -255,10 +257,15 @@ export async function stubOpenRouter(
   options: StubOptions = {},
 ): Promise<ProviderCalls> {
   const urls: string[] = [];
+  const translationRequests: { id: string; textJa: string }[][] = [];
   const served = { story: 0, repair: 0, decisions: 0, grammar: 0, translations: 0 };
   let audioRequests = 0;
   let inFlightAudio = 0;
-  const calls: ProviderCalls = { urls, audio: { peakConcurrency: 0 } };
+  const calls: ProviderCalls = {
+    urls,
+    translations: translationRequests,
+    audio: { peakConcurrency: 0 },
+  };
 
   await page.route(OPENROUTER_PATTERN, async (route) => {
     const url = route.request().url();
@@ -405,13 +412,14 @@ export async function stubOpenRouter(
     ) {
       const outcome = nextOf(options.generation?.translations, served.translations) ?? 'ok';
       served.translations += 1;
+      const sentences = requestedSentences(text);
+      translationRequests.push(sentences.map((sentence) => ({ ...sentence })));
       if (outcome === 'hang') {
         return HANG;
       }
       if (outcome === 'unavailable') {
         return 'Sure, happy to help!';
       }
-      const sentences = requestedSentences(text);
       const answered = outcome === 'partial' ? sentences.slice(0, -1) : sentences;
       return JSON.stringify({
         translations: answered.map((sentence) => ({
