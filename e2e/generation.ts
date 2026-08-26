@@ -154,6 +154,17 @@ export const STORY_WITH_UNKNOWN = {
   ],
 } as const;
 
+/**
+ * A well-formed story of the wrong length, which repair is asked to fix.
+ *
+ * Every word is reviewed, so the only thing wrong with it is its shape, which
+ * is what keeps a story out of the library.
+ */
+export const SHORT_STORY = {
+  titleJa: '猫の朝',
+  sentences: ['猫は庭で遊びます。', '猫は魚を食べます。'],
+} as const;
+
 /** Scripts AnkiConnect with one reviewed note per expression. */
 export async function stubReviewedCollection(page: Page): Promise<void> {
   await stubAnkiConnect(page, {
@@ -222,8 +233,15 @@ export async function buildSnapshot(page: Page): Promise<void> {
 export async function prepareGeneration(page: Page, options: StubOptions): Promise<void> {
   await stubOpenRouter(page, options);
   await stubReviewedCollection(page);
-  await configureTextModel(page);
-  await buildSnapshot(page);
+
+  // Storage state restores the durable model and vocabulary records, but
+  // Playwright intentionally does not serialize Cache Storage or a live WASM
+  // worker. Visit the grammar route to activate the verified language runtime
+  // before generation captures its profile.
+  await page.goto('/#/grammar');
+  await expect(page.getByRole('radio', { name: /Starter forms/ })).toBeVisible({
+    timeout: 120_000,
+  });
 }
 
 export async function openGenerate(page: Page): Promise<void> {

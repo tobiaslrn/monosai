@@ -231,7 +231,7 @@ interface FrozenSentenceValidation {
 }
 ```
 
-Imported status is derived/cached against the current snapshot and uses `not-in-snapshot`, never a generated-story acceptance error. Generated status is frozen and uses `unknown` only for unsaved drafts; accepted generated rows cannot contain that category.
+Imported status is derived/cached against the current snapshot and uses `not-in-snapshot`, never a generated-story acceptance error. Generated status is frozen, and may carry `unknown` for a word the repair budget could not replace (reason `unresolved-after-repair`), which the reader marks; it can never carry the imported-only `not-in-snapshot`, which would defer a frozen validation to the current snapshot. See ADR 0033.
 
 ### Enrichment and provenance
 
@@ -433,7 +433,7 @@ Repository implementations translate storage failures into `StorageError` varian
 - Every table record parses against its versioned schema in development and at untrusted/import/migration boundaries.
 - Duplicate IDs or positions abort the parent transaction.
 - Sentence text hashes are verified when loading related cached data.
-- Accepted generated stories cannot be constructed with unknown validation categories or missing snapshot provenance.
+- Accepted generated stories cannot be constructed with snapshot-dependent validation categories or missing snapshot provenance.
 - Imported readings can exist with no vocabulary snapshot and no AI configuration.
 - Deleting any reading produces zero owned orphan rows in integrity tests.
 - Simulated quota failures leave the previously committed state intact and report whether partial batch assets were committed before the failure.

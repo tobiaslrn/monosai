@@ -1,8 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
-import { configureTextModel } from './generation';
 import { countOwnedRows, importReading, openSentence, SAMPLE_TEXT } from './reading';
 import { stubOpenRouter, type ProviderCalls } from './openrouter';
+import { TEXT_MODEL_READY_STATE } from './state';
 
 /** Enough sentences for a whole-reading job to need more than one batch. */
 const SENTENCE_COUNT = 14;
@@ -66,7 +66,6 @@ function callCount(calls: ProviderCalls): number {
 /** Sets up a stubbed model and one imported reading, open in the reader. */
 async function prepareReading(page: Page, text: string): Promise<ProviderCalls> {
   const calls = await stubOpenRouter(page, { generation: {} });
-  await configureTextModel(page);
   await importReading(page, text);
   await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
   return calls;
@@ -78,11 +77,12 @@ async function prepareReading(page: Page, text: string): Promise<ProviderCalls> 
  * profile changes.
  */
 test.describe('scenario 11 — per-sentence translation and grammar', () => {
+  test.use({ storageState: TEXT_MODEL_READY_STATE });
+
   test('keeps grammar labels compact and opens their Details disclosure by keyboard', async ({
     page,
   }) => {
     await stubOpenRouter(page, { generation: { grammar: ['finding'] } });
-    await configureTextModel(page);
     await importReading(page, SAMPLE_TEXT);
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
 
@@ -103,7 +103,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await expect(details.locator('.grammar-explanations')).toBeVisible();
   });
 
-  test('translates one sentence and analyzes another, then serves both from cache', async ({
+  test('translates one sentence and analyzes another, then serves both from cache @smoke', async ({
     page,
   }) => {
     const calls = await prepareReading(page, SAMPLE_TEXT);
@@ -209,7 +209,6 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
       // request genuinely fails; the third answer is what the retry gets.
       generation: { translations: ['unavailable', 'unavailable', 'ok'] },
     });
-    await configureTextModel(page);
     await importReading(page, SAMPLE_TEXT);
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
     const afterSetup = callCount(calls);
@@ -267,6 +266,8 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
  * survives a reload, and resumes over only what is still missing.
  */
 test.describe('scenario 12 — whole-reading translation', () => {
+  test.use({ storageState: TEXT_MODEL_READY_STATE });
+
   function progress(page: Page): Locator {
     return page.locator('mn-translation-progress');
   }
@@ -276,12 +277,11 @@ test.describe('scenario 12 — whole-reading translation', () => {
     await page.getByRole('menuitem', { name: 'Translate reading' }).click();
   }
 
-  test('cancels mid-run, keeps what was translated, and resumes after a reload', async ({
+  test('cancels mid-run, keeps what was translated, and resumes after a reload @smoke', async ({
     page,
   }) => {
     // The second batch never answers, so cancelling it is a real interruption.
     await stubOpenRouter(page, { generation: { translations: ['ok', 'hang'] } });
-    await configureTextModel(page);
     await importReading(page, LONG_TEXT);
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
 

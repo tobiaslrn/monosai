@@ -21,7 +21,9 @@ test.describe('grammar profile', () => {
     await expectNoSeriousAccessibilityViolations(page);
   });
 
-  test('remembers the chosen preset across a reload and says what changed', async ({ page }) => {
+  test('remembers the chosen preset across a reload and says what changed @smoke', async ({
+    page,
+  }) => {
     await openGrammar(page);
 
     await page.getByRole('radio', { name: new RegExp(EVERYDAY) }).check();

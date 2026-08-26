@@ -943,18 +943,20 @@ After every candidate — the first and each repair — the whole returned Japan
 is tokenized and classified again from scratch in `generated` mode, and every
 exception decision is asked again. Nothing from an earlier pass survives into a
 later one, because a model's claim to have fixed a word is not evidence that it
-did. At most two content repairs are spent; after that the result is an
-`invalid-draft` that lives in feature memory and has no path to storage.
+did. At most two content repairs are spent; after that a word still unknown is
+frozen as `unresolved-after-repair` and saved with the story for the reader to
+mark, and only a structure the repairs never fixed becomes an `invalid-draft`
+that lives in feature memory and has no path to storage. See ADR 0033.
 
-#### One transaction, and two independent refusals
+#### One transaction, and one storage refusal
 
 `ReadingRepository.saveGeneratedStory` writes the reading, its paragraph,
 sentences, token analyses, frozen validations, and provenance in a single
 transaction, mirroring `saveImportedReading`. `repositories/integrity.ts` refuses
-any draft whose frozen validation still carries `unknown` — or the imported-only
-`not-in-snapshot` — and any provenance that describes a different run. The store
-refuses the same draft before it ever gets there; both checks exist because one
-is a promise and two independent ones are an invariant.
+any draft whose frozen validation carries the imported-only `not-in-snapshot`,
+which would make a frozen validation defer to the current vocabulary, and any
+provenance that describes a different run. `unknown` is allowed through: a word
+repair could not replace is saved marked rather than costing the story.
 
 An accepted story is saved with its auxiliary summaries empty
 (`grammarSummary: not-requested`, translations and audio `0/N`). Milestone 8
@@ -1008,11 +1010,11 @@ existed reads as "nothing proved yet" rather than as a corrupt record. See
 | Strict pass                                                | `generation.store.spec.ts` — 1 provider call, saved, `validationOutcome: strict`                                                                                                     |
 | Exception approved                                         | 2 calls; the word saves as `policy-exception` with its explanation, never as `anki-*`                                                                                               |
 | Repair success on full reparse                             | 3 calls (story, review, repair); `repairAttempts: 1` recorded in provenance                                                                                                         |
-| Repair failure after two repairs                           | 3 calls, `invalid-draft`, and zero rows in every owned table                                                                                                                        |
+| Repair failure after two repairs                           | 3 calls; the story saves with the word frozen `unresolved-after-repair`. A structure two repairs never fixed ends `invalid-draft` with zero rows in every owned table                |
 | Malformed reply and bounded format recovery                | `story-generation.adapter.spec.ts` — prose costs exactly 2 calls; a duplicate index is malformed and never returned; a wrong-length story costs 1 and is repaired instead            |
 | Cancellation at each cancellable state                     | `generation.store.spec.ts` — prerequisites, writing, validating, exception review, and repairing each end `cancelled` with nothing saved; `canCancel()` is false once saving starts   |
 | Hard model failure                                         | An authentication failure is not repaired and writes nothing                                                                                                                        |
-| No unknown-containing result can enter the library         | `dexie-reading.repository.spec.ts` refuses `unknown` and `not-in-snapshot` drafts and writes zero rows; the store refuses independently                                              |
+| No snapshot-dependent validation can enter the library      | `dexie-reading.repository.spec.ts` refuses a `not-in-snapshot` draft and writes zero rows, and saves an `unresolved-after-repair` one with its marker intact                          |
 | Cancelled/invalid results create no reading rows           | `e2e/generation.spec.ts` counts every owned store after an invalid draft and after a cancellation                                                                                    |
 | Provenance captured                                        | Snapshot, profile capture, policy hash, model, prompt versions, repair count, and sampled item ids asserted on the stored row                                                        |
 
@@ -1037,9 +1039,8 @@ vocabulary snapshot in IndexedDB.
 ### Assumptions and decisions
 
 - **An accepted story is saved in this milestone**, with empty auxiliary
-  summaries, so that "no unknown-containing result can enter the library" and
-  "cancelled/invalid results create no reading rows" are provable end to end
-  rather than deferred to Milestone 8.
+  summaries, so that the storage refusals and "cancelled/invalid results create
+  no reading rows" are provable end to end rather than deferred to Milestone 8.
 - **A generated story is one paragraph.** A model returns ordered sentences and
   no structure above them; any split would be invented and then presented as if
   it came from the source. See ADR 0019.
