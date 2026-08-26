@@ -44,10 +44,26 @@ export type AudioJobProgress =
 
 const IDLE: AudioJobProgress = { kind: 'idle' };
 
+/**
+ * How many synthesis requests this job keeps in flight.
+ *
+ * Four rather than one because a learner waiting for a twenty-sentence reading
+ * waits four times as long for no benefit, and four rather than more because
+ * the point of a bound is that the beginning of the reading still arrives
+ * first: a wide queue would spread the first completions across the reading and
+ * leave progressive playback with nothing to start on (ADR 0033).
+ */
+export const AUDIO_GENERATION_CONCURRENCY = 4;
+
 /** Reads the flag through a call, so an earlier check never narrows a later one. */
 function isAborted(signal: AbortSignal): boolean {
   return signal.aborted;
 }
+
+/** The one refusal that stops a run, whichever worker met it first. */
+type TerminalFailure =
+  | { readonly source: 'provider'; readonly sentenceId: SentenceId; readonly error: AiError }
+  | { readonly source: 'storage'; readonly error: StorageError };
 
 /** Everything one run needs, captured once so no setting can change mid-flight. */
 interface JobContext {
@@ -62,18 +78,18 @@ interface JobContext {
  * The whole-reading audio preparation job.
  *
  * The same machine as `TranslationJobStore`, with two differences the
- * specification insists on. Sentences are synthesized **strictly in reading
- * order, one at a time**, because the endpoint takes one input per request and
- * concurrency one is what keeps rate limits and progress predictable
- * (`ai-pipelines.md` section 11 step 5). And the first failure **stops the job
- * at that sentence** rather than skipping it: the whole point of the set is
- * that it can be played end to end, and a set with a hole in it that reported
- * itself complete would be exactly the false completeness the release blockers
- * name.
+ * specification insists on. Sentences are **claimed in reading order by at most
+ * `AUDIO_GENERATION_CONCURRENCY` workers**, so the beginning of the reading is
+ * always the part that exists first and playback can start against a prefix
+ * while the rest is still arriving (ADR 0033). And the first fully exhausted
+ * failure **stops the job**: the remaining requests are aborted rather than
+ * skipped past, because a set with a hole in it that reported itself complete
+ * would be exactly the false completeness the release blockers name.
  *
  * The job performs no retries of its own, for the same reason the translation
  * job does not: `OpenRouterClient` already spends its capped transport retries,
- * and a second layer would silently multiply the retry budget.
+ * and a second layer would silently multiply the retry budget. **Try again** is
+ * the visible, learner-driven attempt that follows them.
  */
 @Injectable({ providedIn: 'root' })
 export class AudioJobStore {
@@ -124,7 +140,7 @@ export class AudioJobStore {
     if (prepared === null) {
       return;
     }
-    await this.process(prepared.context, prepared.job, controller.signal);
+    await this.process(prepared.context, prepared.job, controller);
   }
 
   /**
@@ -153,12 +169,16 @@ export class AudioJobStore {
   }
 
   /**
-   * Stops scheduling further sentences.
+   * Stops scheduling further sentences and aborts the ones in flight.
    *
    * Clips already stored stay stored. They cost money, they are exactly as
    * playable individually as they were, and discarding them would be a worse
-   * answer to "stop" than keeping them — even though the whole-reading gate
-   * stays shut until the set is finished.
+   * answer to "stop" than keeping them — and the prefix they form stays
+   * playable, because playback no longer waits for a complete set (ADR 0033).
+   *
+   * This never stops a sound. Generation and playback are separate sessions,
+   * and stopping the one that is spending money must not silence the one that
+   * is not.
    */
   cancel(): void {
     this.controller?.abort();
@@ -298,14 +318,26 @@ export class AudioJobStore {
   }
 
   /**
-   * Synthesizes the job's outstanding sentences, one request at a time, in the
-   * order they are read.
+   * Synthesizes the job's outstanding sentences through a bounded worker queue.
    *
-   * Each clip is stored and its job item recorded before the next request is
-   * made, so an interruption anywhere leaves a job whose recorded progress is
-   * exactly the progress its stored rows support.
+   * Workers claim sentences from one shared cursor that runs in reading order,
+   * so the clips that exist earliest are the ones at the front of the reading —
+   * which is what makes starting playback against a partial set useful rather
+   * than arbitrary. Each clip is stored and its job item recorded before that
+   * worker claims another, so an interruption anywhere leaves a job whose
+   * recorded progress is exactly the progress its stored rows support.
+   *
+   * Completions therefore arrive out of order. `completed` is counted here
+   * rather than read from whichever `recordCompletion` happened to settle last,
+   * because two overlapping transactions can resolve in either order and the
+   * progress number must never go backwards.
    */
-  private async process(context: JobContext, job: AssetJob, signal: AbortSignal): Promise<void> {
+  private async process(
+    context: JobContext,
+    job: AssetJob,
+    controller: AbortController,
+  ): Promise<void> {
+    const signal = controller.signal;
     const outstanding = remainingSentenceIds(job);
     let counts: AudioJobCounts = {
       total: context.total,
@@ -336,63 +368,99 @@ export class AudioJobStore {
 
     this.progressSignal.set({ kind: 'running', counts });
 
-    // `loadSentences` answers in reading order, which is the order clips are
-    // produced in: a learner who stops a run halfway has the beginning of the
-    // reading, which is the half they can use.
     const outstandingSet = new Set(outstanding);
     const allSentences = orderedByReading(loaded.value);
-    for (const sentence of allSentences) {
-      if (!outstandingSet.has(sentence.id)) {
-        continue;
-      }
-      if (isAborted(signal)) {
-        await this.markCancelled(job, counts);
-        return;
-      }
+    const queue = allSentences.filter((sentence) => outstandingSet.has(sentence.id));
 
-      const cacheKey = context.cacheKeys.get(sentence.id);
-      if (cacheKey === undefined) {
-        continue;
-      }
+    let cursor = 0;
+    let completed = counts.completed;
+    // A holder rather than a `let`, so the flag a worker sets is still visible
+    // to the checker after the queue has been awaited.
+    const outcome: { failure: TerminalFailure | null } = { failure: null };
 
-      const produced = await this.audio.run(
-        sentence,
-        context.readingId,
-        cacheKey,
-        context.config,
-        signal,
-        speechContextFor(sentence, allSentences),
-      );
-      if (!produced.ok) {
-        // Cancelling aborts the request already in flight, and that arrives
-        // here as a refusal. Reporting it as a failure would offer a Retry for
-        // something the learner had just stopped, so the signal decides which
-        // of the two this is.
-        if (isAborted(signal)) {
-          await this.markCancelled(job, counts);
+    /**
+     * Stops the whole run at the first failure that survived transport retries.
+     *
+     * Aborting the controller is what makes it fail *fast*: the requests the
+     * other workers already have in flight are cancelled rather than paid for,
+     * and only the first failure is reported.
+     */
+    const failFast = (failure: TerminalFailure): void => {
+      outcome.failure ??= failure;
+      controller.abort();
+    };
+
+    const worker = async (): Promise<void> => {
+      while (outcome.failure === null && !isAborted(signal)) {
+        const index = cursor;
+        cursor += 1;
+        if (index >= queue.length) {
           return;
         }
-        // Stop here rather than moving on: skipping would leave a hole in a set
-        // whose only purpose is to be played from end to end.
-        await this.stopAtFailure(job, sentence.id, produced.error, counts);
-        return;
-      }
-      // A clip that did arrive is stored even when the run has been cancelled
-      // since: it has already been paid for, and it is exactly as playable on
-      // its own as it would have been. The loop stops before the next request.
+        const sentence = queue[index];
+        const cacheKey = context.cacheKeys.get(sentence.id);
+        if (cacheKey === undefined) {
+          continue;
+        }
 
-      const stored = await this.audio.store(produced.value, context.cacheKeys);
-      if (!stored.ok) {
-        this.failStorage(stored.error, counts);
+        const produced = await this.audio.run(
+          sentence,
+          context.readingId,
+          cacheKey,
+          context.config,
+          signal,
+          speechContextFor(sentence, allSentences),
+        );
+        if (!produced.ok) {
+          // Cancelling — the learner's Stop, or another worker's fail-fast —
+          // aborts the request already in flight, and that arrives here as a
+          // refusal. Reporting it as a failure would offer a Retry for
+          // something that was stopped on purpose, so the signal decides which
+          // of the two this is.
+          if (isAborted(signal)) {
+            return;
+          }
+          failFast({ source: 'provider', sentenceId: sentence.id, error: produced.error });
+          return;
+        }
+        // A clip that did arrive is stored even when the run has been stopped
+        // since: it has already been paid for, and it is exactly as playable on
+        // its own as it would have been.
+
+        const stored = await this.audio.store(produced.value, context.cacheKeys);
+        if (!stored.ok) {
+          failFast({ source: 'storage', error: stored.error });
+          return;
+        }
+        const advanced = await this.jobs.recordCompletion(job.id, sentence.id);
+        if (!advanced.ok) {
+          failFast({ source: 'storage', error: advanced.error });
+          return;
+        }
+        completed += 1;
+        counts = { ...counts, completed };
+        this.progressSignal.set({ kind: 'running', counts });
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(AUDIO_GENERATION_CONCURRENCY, queue.length) }, () => worker()),
+    );
+
+    // The failure wins over the abort it caused, so a run that stopped because
+    // a request was refused is never reported as one the learner stopped.
+    const failure = outcome.failure;
+    if (failure !== null) {
+      if (failure.source === 'storage') {
+        this.failStorage(failure.error, counts);
         return;
       }
-      const advanced = await this.jobs.recordCompletion(job.id, sentence.id);
-      if (!advanced.ok) {
-        this.failStorage(advanced.error, counts);
-        return;
-      }
-      counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
-      this.progressSignal.set({ kind: 'running', counts });
+      await this.stopAtFailure(job, failure.sentenceId, failure.error, counts);
+      return;
+    }
+    if (isAborted(signal)) {
+      await this.markCancelled(job, counts);
+      return;
     }
 
     this.controller = null;
@@ -455,7 +523,7 @@ export class AudioJobStore {
 /**
  * Reading order, asserted here rather than assumed of the repository.
  *
- * "Strictly in reading order" is a rule of this job, and a rule that depends on
+ * "Claimed in reading order" is a rule of this job, and a rule that depends on
  * another layer's incidental ordering is a rule that breaks quietly.
  */
 function orderedByReading(sentences: readonly Sentence[]): readonly Sentence[] {

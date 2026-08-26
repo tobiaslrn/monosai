@@ -45,9 +45,10 @@ const RESPONSE_FORMAT = 'mp3';
  * attempt cannot leave a row behind, and `store` is the single place a clip and
  * its reading's summary are committed together.
  *
- * There is no batching helper. The speech endpoint takes one input per request
- * and `ai-pipelines.md` section 11 fixes concurrency at one, so a batch here
- * would be a loop pretending to be a request.
+ * There is no batching helper. The speech endpoint takes one input per request,
+ * so a batch here would be a loop pretending to be a request. Running several
+ * of them at once is the job's business, not this service's: `run` holds no
+ * state between calls and is safe to have several of in flight.
  */
 @Injectable({ providedIn: 'root' })
 export class AudioSynthesisService {

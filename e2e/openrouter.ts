@@ -21,6 +21,14 @@ export type AudioOutcome =
 
 export interface ProviderCalls {
   readonly urls: string[];
+  /**
+   * The most synthesis requests that were ever open at the same moment.
+   *
+   * Recorded by the route rather than counted from `urls`, because a bound on
+   * concurrency is a claim about overlap and a list of URLs cannot say whether
+   * two of them overlapped.
+   */
+  readonly audio: { peakConcurrency: number };
 }
 
 /**
@@ -249,6 +257,8 @@ export async function stubOpenRouter(
   const urls: string[] = [];
   const served = { story: 0, repair: 0, decisions: 0, grammar: 0, translations: 0 };
   let audioRequests = 0;
+  let inFlightAudio = 0;
+  const calls: ProviderCalls = { urls, audio: { peakConcurrency: 0 } };
 
   await page.route(OPENROUTER_PATTERN, async (route) => {
     const url = route.request().url();
@@ -273,23 +283,28 @@ export async function stubOpenRouter(
       return;
     }
 
-
     if (url.includes('/audio/speech')) {
       const audio = nextOf(options.audioSequence, audioRequests) ??
         options.audio ?? { kind: 'valid' };
       audioRequests += 1;
-      if (options.audioDelayMs !== undefined) {
-        await new Promise((resolve) => setTimeout(resolve, options.audioDelayMs));
+      inFlightAudio += 1;
+      calls.audio.peakConcurrency = Math.max(calls.audio.peakConcurrency, inFlightAudio);
+      try {
+        if (options.audioDelayMs !== undefined) {
+          await new Promise((resolve) => setTimeout(resolve, options.audioDelayMs));
+        }
+        if (audio.kind === 'status') {
+          await providerError(route, audio.status, audio.message ?? 'Refused');
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: audio.kind === 'wrong-mime' ? 'application/json' : 'audio/mpeg',
+          body: audio.kind === 'wrong-mime' ? Buffer.alloc(2048, 1) : silentMp3(),
+        });
+      } finally {
+        inFlightAudio -= 1;
       }
-      if (audio.kind === 'status') {
-        await providerError(route, audio.status, audio.message ?? 'Refused');
-        return;
-      }
-      await route.fulfill({
-        status: 200,
-        contentType: audio.kind === 'wrong-mime' ? 'application/json' : 'audio/mpeg',
-        body: audio.kind === 'wrong-mime' ? Buffer.alloc(2048, 1) : silentMp3(),
-      });
       return;
     }
 
@@ -423,7 +438,7 @@ export async function stubOpenRouter(
     return reply === undefined ? null : storyPayload(reply);
   }
 
-  return { urls };
+  return calls;
 }
 
 /**

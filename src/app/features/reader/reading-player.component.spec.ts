@@ -18,33 +18,47 @@ import { ReadingPlayerComponent } from './reading-player.component';
  *
  * A stub rather than the real store with a fake element: what is under test
  * here is which controls appear and which call is made, not what the store does
- * with them.
+ * with them. `ready` is how many sentences have a clip, which is now the thing
+ * the player is arranged around rather than a single complete/incomplete flag.
  */
 class StubPlaybackStore {
   readonly statusSignal = signal<PlaybackStatus>('idle');
-  readonly gate = signal(false);
-  readonly missing = signal(0);
-  readonly position = signal(0);
+  readonly ready = signal(0);
   readonly total = signal(0);
+  readonly position = signal(0);
+  readonly pending = signal(0);
   readonly current = signal<SentenceId | null>(null);
+  readonly nextIsAvailable = signal(true);
+  readonly startIsAvailable = signal(true);
+  readonly selectionIsAvailable = signal(true);
   readonly failureSignal = signal<PlaybackFailure | null>(null);
 
   readonly calls: string[] = [];
 
   readonly status = this.statusSignal.asReadonly();
   readonly failure = this.failureSignal.asReadonly();
-  readonly canPlayWholeReading = computed(() => this.gate());
-  readonly missingCount = computed(() => this.missing());
-  readonly currentPosition = computed(() => this.position());
-  readonly currentSentenceId = this.current.asReadonly();
   readonly sentenceCount = computed(() => this.total());
+  readonly availableCount = computed(() => this.ready());
+  readonly missingCount = computed(() => this.total() - this.ready());
+  readonly hasPlayableAudio = computed(() => this.ready() > 0);
+  readonly canPlayFromStart = computed(() => this.ready() > 0 && this.startIsAvailable());
+  readonly canPlayWholeReading = computed(() => this.total() > 0 && this.missingCount() === 0);
+  readonly currentPosition = computed(() => this.position());
+  readonly pendingPosition = computed(() => this.pending());
+  readonly currentSentenceId = this.current.asReadonly();
   readonly isActive = computed(() => this.statusSignal() !== 'idle');
+  readonly canGoNext = computed(() => this.current() !== null && this.nextIsAvailable());
+  readonly canGoPrevious = computed(() => this.current() !== null);
 
   play = (): Promise<void> => this.record('play');
   resume = (): Promise<void> => this.record('resume');
   playFrom = (id: SentenceId): Promise<void> => this.record(`playFrom:${id}`);
   next = (): Promise<void> => this.record('next');
   previous = (): Promise<void> => this.record('previous');
+
+  isAvailable(id: SentenceId | null): boolean {
+    return id !== null && this.selectionIsAvailable();
+  }
 
   pause(): void {
     this.calls.push('pause');
@@ -97,6 +111,7 @@ describe('ReadingPlayerComponent', () => {
 
   /** Back names both of the things it does, because its icon can name neither. */
   const BACK_LABEL = 'Restart this sentence, or go back to the one before';
+  const WAITING_LABEL = 'Waiting for the next sentence';
 
   function control(element: HTMLElement, label: string): HTMLButtonElement | null {
     return element.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
@@ -150,7 +165,8 @@ describe('ReadingPlayerComponent', () => {
   });
 
   describe('while it is being generated', () => {
-    it('reports which sentence it has reached, in the player', () => {
+    it('counts what is ready rather than claiming one sentence is being read', () => {
+      store.total.set(13);
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'running',
@@ -159,9 +175,35 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
-      expect(element.textContent).toContain('Sentence 4 of 13');
-      expect(element.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe(
-        '23',
+      expect(element.textContent).toContain('3 of 13 sentences ready');
+      expect(
+        element
+          .querySelector('[role="progressbar"][aria-label="Preparing audio for this reading"]')
+          ?.getAttribute('aria-valuenow'),
+      ).toBe('23');
+    });
+
+    /**
+     * The point of the four-way queue: what has already arrived is playable
+     * while the rest is still being made, so the transport is present *and* the
+     * run reports itself, rather than one replacing the other.
+     */
+    it('shows the transport and the run together once a prefix exists', () => {
+      store.total.set(13);
+      store.ready.set(4);
+      const fixture = render();
+      fixture.componentInstance.progress.set({
+        kind: 'running',
+        counts: { total: 13, requested: 13, completed: 4, failed: 0 },
+      });
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(control(element, 'Play')?.disabled).toBe(false);
+      expect(element.textContent).toContain('4 of 13 sentences ready');
+      expect(control(element, 'Stop')).toBeNull();
+      expect([...element.querySelectorAll('button')].map((button) => button.textContent)).toContain(
+        'Stop',
       );
     });
 
@@ -177,7 +219,7 @@ describe('ReadingPlayerComponent', () => {
   });
 
   describe('when generation stopped', () => {
-    it('names where it stopped, what failed, and both ways out', () => {
+    it('names what is ready, what failed, and both ways out', () => {
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'failed',
@@ -190,12 +232,32 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
-      expect(element.textContent).toContain('Stopped at sentence 5 of 13');
+      expect(element.textContent).toContain('Stopped with 4 of 13 sentences ready');
       expect(element.querySelector('[role="alert"]')).not.toBeNull();
 
       press(element, 'Try again');
       press(element, 'Dismiss');
       expect(fixture.componentInstance.emitted).toEqual(['retry', 'dismiss']);
+    });
+
+    /** The prefix that did arrive stays playable while the remainder is offered. */
+    it('keeps the transport after a failure that produced clips', () => {
+      store.total.set(13);
+      store.ready.set(4);
+      const fixture = render();
+      fixture.componentInstance.progress.set({
+        kind: 'failed',
+        counts: { total: 13, requested: 13, completed: 4, failed: 1 },
+        error: {
+          source: 'provider',
+          error: aiError('rate-limited', 'tts-synthesis', 'Too many requests.'),
+        },
+      });
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(control(element, 'Play')?.disabled).toBe(false);
+      expect(element.textContent).toContain('Try again');
     });
 
     it('reports a storage failure in the layer that refused', () => {
@@ -233,7 +295,7 @@ describe('ReadingPlayerComponent', () => {
       expect(element.textContent).not.toContain('of 0');
     });
 
-    it('says what was kept after a cancellation', () => {
+    it('says what is ready after a cancellation', () => {
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'cancelled',
@@ -242,18 +304,18 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
 
       expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-        'Sentences already read aloud were kept',
+        'Stopped with 4 of 13 sentences ready',
       );
     });
   });
 
-  describe('once the whole reading can be played', () => {
+  describe('once there is something to play', () => {
     beforeEach(() => {
-      store.gate.set(true);
       store.total.set(6);
+      store.ready.set(6);
     });
 
-    it('shows the transport and the position', () => {
+    it('shows the transport and the position, and nothing left to prepare', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(element.textContent).toContain('6 sentences ready');
@@ -263,6 +325,23 @@ describe('ReadingPlayerComponent', () => {
       expect(control(element, 'Pause')).toBeNull();
       expect(control(element, 'Next sentence')).not.toBeNull();
       expect(control(element, 'Stop')).toBeNull();
+    });
+
+    /**
+     * A partial set is playable and still incomplete, so the player says both:
+     * the transport for what exists, and the offer for what does not.
+     */
+    it('offers the remainder beside the transport when the set is partial', () => {
+      store.ready.set(4);
+
+      const element = render().nativeElement as HTMLElement;
+
+      expect(control(element, 'Play')?.disabled).toBe(false);
+      expect(element.textContent).toContain('4 of 6 sentences have audio');
+      expect(element.textContent).toContain('Generate audio');
+      // The rail already says how much there is; the position line does not
+      // repeat it while nothing is playing.
+      expect(element.textContent).not.toContain('sentences ready');
     });
 
     it('plays on the learner pressing play, and never on its own', () => {
@@ -312,6 +391,19 @@ describe('ReadingPlayerComponent', () => {
       expect(store.calls).toEqual(['next', 'previous']);
     });
 
+    /** Manual Next is a jump, and a jump needs somewhere to land. */
+    it('disables Next while the sentence after this one has no clip', () => {
+      store.statusSignal.set('playing');
+      store.current.set(sentenceId('s2'));
+      store.nextIsAvailable.set(false);
+
+      const element = render().nativeElement as HTMLElement;
+
+      expect(control(element, 'Next sentence')?.disabled).toBe(true);
+      // Back still works, because its first meaning is replaying this sentence.
+      expect(control(element, BACK_LABEL)?.disabled).toBe(false);
+    });
+
     it('starts from the open sentence when one is open', () => {
       const fixture = render();
       fixture.componentInstance.selected.set(sentenceId('s3'));
@@ -327,22 +419,65 @@ describe('ReadingPlayerComponent', () => {
 
       expect(element.textContent).not.toContain('Start from this sentence');
     });
+
+    it('offers no start-from-here when the open sentence has no clip yet', () => {
+      store.selectionIsAvailable.set(false);
+      const fixture = render();
+      fixture.componentInstance.selected.set(sentenceId('s3'));
+      fixture.detectChanges();
+
+      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+        'Start from this sentence',
+      );
+    });
+  });
+
+  describe('waiting at the frontier', () => {
+    beforeEach(() => {
+      store.total.set(6);
+      store.ready.set(4);
+      store.current.set(sentenceId('s4'));
+      store.position.set(4);
+      store.pending.set(5);
+      store.statusSignal.set('waiting');
+    });
+
+    it('says which sentence it is waiting for', () => {
+      const element = render().nativeElement as HTMLElement;
+
+      expect(element.querySelector('[role="status"]')?.textContent).toContain(
+        'Waiting for sentence 5 of 6',
+      );
+    });
+
+    /** The session has already started; there is nothing to press. */
+    it('leaves nothing to press while it waits', () => {
+      const element = render().nativeElement as HTMLElement;
+
+      expect(control(element, WAITING_LABEL)?.disabled).toBe(true);
+      expect(control(element, 'Play')).toBeNull();
+      expect(control(element, 'Pause')).toBeNull();
+    });
+  });
+
+  /**
+   * Clips arrive out of order, so a reading can have audio without having the
+   * audio Play from the beginning would need.
+   */
+  it('disables Play while sentence one has no clip', () => {
+    store.total.set(6);
+    store.ready.set(2);
+    store.startIsAvailable.set(false);
+
+    const element = render().nativeElement as HTMLElement;
+
+    expect(control(element, 'Play')?.disabled).toBe(true);
   });
 
   describe('failures name the sentence, not the reading', () => {
     beforeEach(() => {
       store.total.set(6);
-      store.gate.set(true);
-    });
-
-    it('says how many clips are still missing', () => {
-      store.failureSignal.set({ kind: 'incomplete', missing: 2 });
-
-      const element = render().nativeElement as HTMLElement;
-
-      expect(element.querySelector('[role="alert"]')?.textContent).toContain(
-        '2 sentences have no audio yet',
-      );
+      store.ready.set(6);
     });
 
     it('names the sentence whose clip has gone', () => {
