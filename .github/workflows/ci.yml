@@ -195,7 +195,9 @@ jobs:
 
   deploy:
     name: Deploy to GitHub Pages
-    needs: [build, gate]
+    # `gate` already depends on `build`, so it also guarantees that the
+    # deployable artifact exists without adding a redundant graph edge.
+    needs: gate
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
