@@ -194,7 +194,9 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
               >
                 <div class="node-head">
                   <h4 [id]="'mn-' + task.id + '-label'">{{ task.label }}</h4>
-                  @if (text.routePreset(task.id) !== null && retestable(text.routeReadiness(task.id))) {
+                  @if (
+                    text.routePreset(task.id) !== null && retestable(text.routeReadiness(task.id))
+                  ) {
                     <button
                       type="button"
                       class="status status--action"

@@ -167,7 +167,9 @@ export class DexieSettingsRepository implements SettingsRepository {
     return runStorageWithRules(`settings.write(${key})`, () =>
       this.db.transaction('rw', this.db.settings, async () => {
         const loaded = await this.db.settings.get(key);
-        const current = loaded ? parseRecord(schema, loaded.value, `settings:${key}`) : ok(fallback);
+        const current = loaded
+          ? parseRecord(schema, loaded.value, `settings:${key}`)
+          : ok(fallback);
         if (!current.ok) {
           throw new StorageRuleViolation(current.error);
         }
