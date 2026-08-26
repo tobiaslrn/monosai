@@ -24,7 +24,7 @@ import {
   READING_REPOSITORY,
 } from '../shared/repository-tokens';
 import { TtsStore } from '../settings/tts.store';
-import { AudioJobStore } from './audio-job.store';
+import { AUDIO_GENERATION_CONCURRENCY, AudioJobStore } from './audio-job.store';
 
 const NOW = 1_700_600_000_000;
 const SENTENCE_COUNT = 6;
@@ -110,6 +110,18 @@ async function configure(): Promise<AudioJobBed> {
   };
 }
 
+/**
+ * Holds a stubbed answer long enough for the other workers to reach the
+ * provider.
+ *
+ * A microtask is not enough: each worker awaits a real IndexedDB read on its
+ * way to the request, so an answer that settles within a microtask is already
+ * finished before its siblings arrive, and no overlap could ever be observed.
+ */
+function hold(ms = 5): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /** The Japanese of each sentence, in reading order. */
 function japaneseInOrder(draft: ImportedReadingDraft): readonly string[] {
   return [...draft.sentences]
@@ -128,12 +140,21 @@ describe('AudioJobStore', () => {
     await destroyTestDatabase(bed.db);
   });
 
-  it('synthesizes every sentence once, strictly in reading order', async () => {
+  it('synthesizes every sentence exactly once, and claims them in reading order', async () => {
     await bed.store.start(bed.draft.reading.id);
 
-    expect(bed.provider.synthesized.map((request) => request.text)).toEqual(
-      japaneseInOrder(bed.draft),
+    // Requests overlap, so the order they *answer* in is not fixed. What is
+    // fixed is that every sentence was asked for once and no other was.
+    expect([...bed.provider.synthesized.map((request) => request.text)].sort()).toEqual(
+      [...japaneseInOrder(bed.draft)].sort(),
     );
+    // The first batch claimed is the front of the reading, which is what makes
+    // playing a partial set useful rather than arbitrary.
+    expect(
+      bed.provider.synthesized
+        .slice(0, AUDIO_GENERATION_CONCURRENCY)
+        .map((request) => request.text),
+    ).toEqual(japaneseInOrder(bed.draft).slice(0, AUDIO_GENERATION_CONCURRENCY));
 
     const progress = bed.store.progress();
     expect(progress.kind).toBe('complete');
@@ -162,34 +183,85 @@ describe('AudioJobStore', () => {
   });
 
   /**
-   * `ai-pipelines.md` section 11 fixes concurrency at one, and each clip is
-   * stored before the next request so an interruption anywhere leaves a job
-   * whose recorded progress is exactly what its stored rows support.
+   * The bound is what keeps the front of the reading arriving first. Without
+   * one, a long reading would spread its first completions across the whole
+   * text and leave progressive playback with nothing to start on.
    */
-  it('keeps one request in flight and stores each clip before the next', async () => {
+  it('keeps at most four requests in flight and refills the queue', async () => {
     let inFlight = 0;
     let maxInFlight = 0;
-    const storedWhenRequested: number[] = [];
+    const observed: number[] = [];
 
-    bed.provider.synthesizeWith = () => {
+    bed.provider.synthesizeWith = async () => {
       inFlight += 1;
       maxInFlight = Math.max(maxInFlight, inFlight);
+      observed.push(inFlight);
+      await hold();
       inFlight -= 1;
       return ok(audioPayload());
-    };
-    // Counted between requests rather than inside one, because the stub answers
-    // synchronously: what matters is that request n+1 sees n rows on disk.
-    const original = bed.enrichment.getAudioByCacheKey.bind(bed.enrichment);
-    bed.enrichment.getAudioByCacheKey = async (cacheKey: string) => {
-      storedWhenRequested.push(await bed.db.audioAssets.count());
-      return original(cacheKey);
     };
 
     await bed.store.start(bed.draft.reading.id);
 
-    expect(maxInFlight).toBe(1);
-    expect(storedWhenRequested).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(maxInFlight).toBe(AUDIO_GENERATION_CONCURRENCY);
+    // Six sentences through four workers: the queue was refilled rather than
+    // stopping once the first batch was answered.
+    expect(observed).toHaveLength(SENTENCE_COUNT);
     expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT);
+    expect(bed.store.progress().kind).toBe('complete');
+  });
+
+  /** A reading shorter than the limit starts as many workers as it has work. */
+  it('never opens more requests than there are sentences left', async () => {
+    const short = importedReadingFixture({ seed: 21, paragraphTexts: [['短い。', '文です。']] });
+    await bed.readings.saveImportedReading(short);
+    let inFlight = 0;
+    let maxInFlight = 0;
+    bed.provider.synthesizeWith = async () => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await hold();
+      inFlight -= 1;
+      return ok(audioPayload());
+    };
+
+    await bed.store.start(short.reading.id);
+
+    expect(maxInFlight).toBe(2);
+    expect(bed.provider.synthesized).toHaveLength(2);
+  });
+
+  /**
+   * Completions arrive in whichever order the requests settle. The count is
+   * kept here rather than read from whichever `recordCompletion` transaction
+   * happened to resolve last, because two overlapping transactions can settle
+   * in either order and the progress number must never go backwards.
+   */
+  it('records completions that arrive out of order', async () => {
+    const order = japaneseInOrder(bed.draft);
+    const answered: string[] = [];
+    bed.provider.synthesizeWith = async (request) => {
+      // The later a sentence is in the reading, the sooner it answers.
+      const rank = order.indexOf(request.text);
+      await hold(40 - rank * 6);
+      answered.push(request.text);
+      return ok(audioPayload());
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(answered).not.toEqual(order);
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('complete');
+    if (progress.kind !== 'complete') {
+      return;
+    }
+    expect(progress.counts.completed).toBe(SENTENCE_COUNT);
+    expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT);
+
+    const rows = await bed.db.assetJobs.toArray();
+    expect(new Set(rows[0].completedSentenceIds).size).toBe(SENTENCE_COUNT);
+    expect(rows[0].state).toBe('complete');
   });
 
   it('stores every clip and refreshes the reading summary', async () => {
@@ -207,25 +279,29 @@ describe('AudioJobStore', () => {
   });
 
   /**
-   * The difference from translation, and the point of it: a set with a hole in
-   * it cannot be played end to end, so the job stops at the sentence that
-   * failed rather than carrying on past it.
+   * The difference from translation, and the point of it: the job stops on the
+   * first refusal that survived the client's transport retries rather than
+   * carrying on past it and calling a set with a hole in it complete. The
+   * requests its siblings had in flight are aborted rather than paid for.
    */
-  it('stops at the first failure without skipping the sentence', async () => {
+  it('fails fast on the first refusal and abandons the rest of the queue', async () => {
     let calls = 0;
-    bed.provider.synthesizeWith = () => {
+    bed.provider.synthesizeWith = async () => {
       calls += 1;
-      return calls === 3
+      const mine = calls;
+      await hold();
+      return mine === 3
         ? err(aiError('provider-unavailable', 'tts-synthesis', 'The provider was unavailable.'))
         : ok(audioPayload());
     };
 
     await bed.store.start(bed.draft.reading.id);
 
-    // Three requests: two that succeeded and the one that failed. Nothing after
-    // it was scheduled, so the client's transport retries stay the only retries.
-    expect(bed.provider.synthesized).toHaveLength(3);
-    expect(await bed.db.audioAssets.count()).toBe(2);
+    // Only the first batch was ever opened: nothing after the refusal was
+    // scheduled, so the client's transport retries stay the only retries.
+    expect(bed.provider.synthesized).toHaveLength(AUDIO_GENERATION_CONCURRENCY);
+    // The clips that did arrive were kept, and the one that failed was not.
+    expect(await bed.db.audioAssets.count()).toBe(AUDIO_GENERATION_CONCURRENCY - 1);
 
     const progress = bed.store.progress();
     expect(progress.kind).toBe('failed');
@@ -233,7 +309,7 @@ describe('AudioJobStore', () => {
       return;
     }
     expect(progress.error.source).toBe('provider');
-    expect(progress.counts.completed).toBe(2);
+    expect(progress.counts.completed).toBe(AUDIO_GENERATION_CONCURRENCY - 1);
     expect(progress.counts.failed).toBe(1);
 
     const rows = await bed.db.assetJobs.toArray();
@@ -242,34 +318,56 @@ describe('AudioJobStore', () => {
     expect(rows[0].failedItems.map((item) => item.errorCode)).toEqual(['provider-unavailable']);
   });
 
-  it('resumes a failed job at the sentence it stopped at, and finishes', async () => {
-    let calls = 0;
-    bed.provider.synthesizeWith = () => {
-      calls += 1;
-      return calls === 3
+  /**
+   * A run whose siblings were aborted by the fail-fast reports the refusal, not
+   * a cancellation. Reporting it as a stop would offer Dismiss for something
+   * the learner never asked to stop.
+   */
+  it('reports the refusal rather than the abort it caused', async () => {
+    bed.provider.synthesizeWith = async (request) => {
+      await hold();
+      return request.text === japaneseInOrder(bed.draft)[1]
+        ? err(aiError('rate-limited', 'tts-synthesis', 'Too many requests.'))
+        : ok(audioPayload());
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('failed');
+    if (progress.kind !== 'failed' || progress.error.source !== 'provider') {
+      return;
+    }
+    expect(progress.error.error.code).toBe('rate-limited');
+  });
+
+  it('retries only the clips that are still missing, and finishes', async () => {
+    bed.provider.synthesizeWith = async (request) => {
+      await hold();
+      return request.text === japaneseInOrder(bed.draft)[2]
         ? err(aiError('provider-unavailable', 'tts-synthesis', 'Unavailable.'))
         : ok(audioPayload());
     };
     await bed.store.start(bed.draft.reading.id);
+    const stored = await bed.db.audioAssets.count();
     const beforeRetry = bed.provider.synthesized.length;
 
     bed.provider.synthesizeWith = () => ok(audioPayload());
     await bed.store.retry(bed.draft.reading.id);
 
-    // Four more requests: the sentence that failed and the three after it. The
-    // two already stored were not asked for again.
-    expect(bed.provider.synthesized.length - beforeRetry).toBe(4);
+    expect(bed.provider.synthesized.length - beforeRetry).toBe(SENTENCE_COUNT - stored);
     expect(bed.store.progress().kind).toBe('complete');
     expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT);
   });
 
   it('keeps completed clips when the run is cancelled', async () => {
     let calls = 0;
-    bed.provider.synthesizeWith = () => {
+    bed.provider.synthesizeWith = async () => {
       calls += 1;
-      if (calls === 2) {
+      if (calls === AUDIO_GENERATION_CONCURRENCY) {
         bed.store.cancel();
       }
+      await hold();
       return ok(audioPayload());
     };
 
@@ -277,11 +375,15 @@ describe('AudioJobStore', () => {
 
     const progress = bed.store.progress();
     expect(progress.kind).toBe('cancelled');
-    expect(await bed.db.audioAssets.count()).toBe(2);
+    // The first batch was already paid for, so every clip it produced is kept,
+    // and nothing after it was scheduled.
+    const stored = await bed.db.audioAssets.count();
+    expect(stored).toBe(AUDIO_GENERATION_CONCURRENCY);
+    expect(bed.provider.synthesized).toHaveLength(AUDIO_GENERATION_CONCURRENCY);
 
     const rows = await bed.db.assetJobs.toArray();
     expect(rows[0].state).toBe('cancelled');
-    expect(rows[0].completedSentenceIds).toHaveLength(2);
+    expect(rows[0].completedSentenceIds).toHaveLength(stored);
   });
 
   /**
@@ -378,6 +480,7 @@ describe('AudioJobStore', () => {
     };
     await bed.store.start(bed.draft.reading.id);
     const firstJobId = (await bed.db.assetJobs.toArray())[0].id;
+    const underFirstVoice = await bed.db.audioAssets.count();
 
     bed.settings.set({ ...bed.settings(), voiceId: 'voice-b' });
     bed.provider.synthesizeWith = () => ok(audioPayload());
@@ -387,10 +490,11 @@ describe('AudioJobStore', () => {
     expect(rows).toHaveLength(2);
     expect(rows.find((row) => row.id === firstJobId)?.state).toBe('cancelled');
 
-    // Every sentence again, because no clip exists for the new voice.
+    // Every sentence again, because no clip exists for the new voice. The
+    // clips made under the old one stay on disk as historical output.
     expect(bed.store.progress().kind).toBe('complete');
     const summaries = await bed.enrichment.listAudioSummaries(bed.draft.reading.id);
-    expect(summaries.ok && summaries.value).toHaveLength(SENTENCE_COUNT + 2);
+    expect(summaries.ok && summaries.value).toHaveLength(SENTENCE_COUNT + underFirstVoice);
   });
 
   it('refuses, and requests nothing, when the configuration has not passed its test', async () => {

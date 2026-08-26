@@ -244,19 +244,47 @@ describe('AudioPlaybackStore', () => {
     });
   });
 
-  describe('the complete-set gate', () => {
-    it('refuses to start with one clip missing, and names how many', async () => {
-      await storeClips(bed, SENTENCE_COUNT - 1);
+  describe('starting against a partial set', () => {
+    /**
+     * The change ADR 0033 makes: a reading with one clip missing at the end is
+     * still a reading that can be listened to from the beginning. Waiting for
+     * the last clip before allowing the first is the thing progressive playback
+     * exists to stop doing.
+     */
+    it('starts from the beginning as soon as sentence one exists', async () => {
+      await storeClips(bed, 1);
       await bed.store.prepare(bed.reading);
 
       await bed.store.play();
 
-      expect(bed.player.played).toEqual([]);
-      expect(bed.store.status()).toBe('idle');
-      expect(bed.store.failure()).toEqual({ kind: 'incomplete', missing: 1 });
+      expect(bed.player.played).toHaveLength(1);
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.canPlayWholeReading()).toBe(false);
+      expect(bed.store.hasPlayableAudio()).toBe(true);
+      expect(bed.store.failure()).toBeNull();
     });
 
-    it('opens once the last clip exists', async () => {
+    it('refuses, and names the sentence, when the one asked for has no clip', async () => {
+      await storeClips(bed, 1);
+      await bed.store.prepare(bed.reading);
+
+      await bed.store.playFrom(orderedSentences(bed.draft)[2].id);
+
+      expect(bed.player.played).toEqual([]);
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.store.failure()).toEqual({ kind: 'missing-clip', position: 3 });
+    });
+
+    it('reports how many sentences are ready to play', async () => {
+      await storeClips(bed, 2);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.availableCount()).toBe(2);
+      expect(bed.store.missingCount()).toBe(SENTENCE_COUNT - 2);
+      expect(bed.store.canPlayFromStart()).toBe(true);
+    });
+
+    it('opens the completeness figure once the last clip exists', async () => {
       await storeClips(bed, SENTENCE_COUNT - 1);
       await bed.store.prepare(bed.reading);
       expect(bed.store.canPlayWholeReading()).toBe(false);
@@ -273,7 +301,7 @@ describe('AudioPlaybackStore', () => {
      * output, and must not count toward current completeness
      * (`domain-and-data-model.md` section 6).
      */
-    it('shuts again when the voice changes under a complete set', async () => {
+    it('discounts every clip when the voice changes under a complete set', async () => {
       await storeClips(bed);
       await bed.store.prepare(bed.reading);
       expect(bed.store.canPlayWholeReading()).toBe(true);
@@ -283,15 +311,19 @@ describe('AudioPlaybackStore', () => {
 
       expect(bed.store.canPlayWholeReading()).toBe(false);
       expect(bed.store.missingCount()).toBe(SENTENCE_COUNT);
+      // Nothing is playable either: a clip made by a voice that is no longer
+      // configured is not this reading's audio any more.
+      expect(bed.store.hasPlayableAudio()).toBe(false);
     });
 
-    it('shuts when no tested configuration exists at all', async () => {
+    it('counts nothing when no tested configuration exists at all', async () => {
       await storeClips(bed);
       bed.readiness.set('not-configured');
 
       await bed.store.prepare(bed.reading);
 
       expect(bed.store.canPlayWholeReading()).toBe(false);
+      expect(bed.store.hasPlayableAudio()).toBe(false);
     });
 
     /**
@@ -498,6 +530,112 @@ describe('AudioPlaybackStore', () => {
     });
   });
 
+  /**
+   * Reaching the end of what has been prepared is not the end of the reading.
+   * The session waits there and reads on when the next clip is stored, which is
+   * what makes generating and listening at the same time work (ADR 0033).
+   */
+  describe('waiting at the frontier', () => {
+    beforeEach(async () => {
+      await storeClips(bed, 2);
+      await bed.store.prepare(bed.reading);
+    });
+
+    it('waits rather than stopping when the next clip does not exist yet', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.play();
+
+      bed.player.finishClip();
+      await settle();
+      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+
+      bed.player.finishClip();
+      await settle();
+
+      expect(bed.store.status()).toBe('waiting');
+      // The cursor stays where the learner is, so the reader keeps showing it.
+      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.pendingSentenceId()).toBe(sentences[2].id);
+      expect(bed.store.pendingPosition()).toBe(3);
+      expect(bed.player.played).toHaveLength(2);
+    });
+
+    it('reads on by itself once the clip it was waiting for is stored', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.play();
+      bed.player.finishClip();
+      await settle();
+      bed.player.finishClip();
+      await settle();
+      expect(bed.store.status()).toBe('waiting');
+
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+      expect(bed.store.pendingSentenceId()).toBeNull();
+      expect(bed.player.played).toHaveLength(3);
+    });
+
+    /**
+     * The continuation belongs to a session the learner started. A clip
+     * arriving while nothing is playing is metadata, and metadata makes no
+     * sound.
+     */
+    it('makes no sound when clips arrive and nothing was started', async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.player.played).toEqual([]);
+    });
+
+    it('does not read on after the learner stopped a waiting session', async () => {
+      await bed.store.play();
+      bed.player.finishClip();
+      await settle();
+      bed.player.finishClip();
+      await settle();
+      bed.store.stop();
+
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.store.pendingSentenceId()).toBeNull();
+      expect(bed.player.played).toHaveLength(2);
+    });
+
+    it('offers Next only while the sentence after this one has a clip', async () => {
+      await bed.store.play();
+      expect(bed.store.canGoNext()).toBe(true);
+
+      bed.player.finishClip();
+      await settle();
+
+      expect(bed.store.canGoNext()).toBe(false);
+      await bed.store.next();
+      expect(bed.player.played).toHaveLength(2);
+
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+      expect(bed.store.canGoNext()).toBe(true);
+    });
+
+    it('stops at the end of the reading rather than waiting for a sentence after it', async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1].id);
+
+      bed.player.finishClip();
+      await settle();
+
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.store.pendingSentenceId()).toBeNull();
+    });
+  });
+
   describe('every stop trigger', () => {
     beforeEach(async () => {
       await storeClips(bed);
@@ -570,7 +708,7 @@ describe('AudioPlaybackStore', () => {
   it('clears a reported failure when the surface that showed it is done', async () => {
     await storeClips(bed, SENTENCE_COUNT - 1);
     await bed.store.prepare(bed.reading);
-    await bed.store.play();
+    await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1].id);
     expect(bed.store.failure()).not.toBeNull();
 
     bed.store.acknowledgeFailure();

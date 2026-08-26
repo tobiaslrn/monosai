@@ -1,7 +1,7 @@
 # 0024 — Audio cache keys and who owns playback
 
 Date: 2026-08-21
-Status: Accepted
+Status: Accepted, partly superseded by [ADR 0033](0033-progressive-four-way-audio.md)
 
 ## Context
 
@@ -145,6 +145,12 @@ second layer would silently multiply the retry budget.
 - Media Session is feature-detected behind its own adapter, so a browser without
   `navigator.mediaSession` satisfies the interface by doing nothing and the store
   stays testable without the API.
+- **The complete-set gate and "concurrency is one" are no longer part of this
+  decision.** ADR 0033 replaced the gate with per-sentence availability and the
+  single request with a four-wide queue claimed in reading order. What survives
+  from the two sections below is the cache-key rule, the ownership split, and
+  the requirement that clips made under a voice that is no longer configured
+  never count toward current completeness.
 - The player's placement is no longer part of this decision. ADR 0025 moved
   every audio surface into one panel behind an always-present header button, so
   the desktop dock and the compact header strip this ADR originally specified no

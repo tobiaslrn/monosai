@@ -12,6 +12,21 @@ const TEXT = Array.from(
 ).join('');
 
 /**
+ * Eight sentences: two full batches through the four-way queue.
+ *
+ * A reading that fits in one batch can never show a frontier, a refilled
+ * queue, or a run that is still going while its beginning is being played.
+ */
+const LONG_SENTENCE_COUNT = 8;
+const LONG_TEXT = Array.from(
+  { length: LONG_SENTENCE_COUNT },
+  (_value, index) => `これは第${String(index)}の長い文です。`,
+).join('');
+
+/** How many requests the job keeps open at once. */
+const CONCURRENCY = 4;
+
+/**
  * The transport's Back control, which names both of the things it does: it
  * restarts the sentence being read, and steps back only at the start of one.
  */
@@ -35,11 +50,25 @@ async function openAudioPlayer(page: Page): Promise<void> {
   await expect(audioPlayer(page)).toBeVisible();
 }
 
-/** Waits for a whole-reading run to finish, which is the player becoming a transport. */
-async function expectAudioReady(page: Page): Promise<void> {
-  await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeVisible({
+/** Waits for the first clip, which is the point playback becomes possible. */
+async function expectAudioPlayable(page: Page): Promise<void> {
+  await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeEnabled({
     timeout: 60_000,
   });
+}
+
+/**
+ * Waits for a whole-reading run to finish.
+ *
+ * Play appearing no longer means the run is over — it means the first clip
+ * exists — so completeness is asserted through the offer to prepare the
+ * remainder disappearing.
+ */
+async function expectAudioComplete(page: Page, total = SENTENCE_COUNT): Promise<void> {
+  await expect(
+    audioPlayer(page).getByText(`${String(total)} sentences ready`, { exact: true }),
+  ).toBeVisible({ timeout: 60_000 });
+  await expect(audioPlayer(page).getByRole('button', { name: 'Generate audio' })).toHaveCount(0);
 }
 
 /**
@@ -153,7 +182,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     const calls = await prepareReading(page);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expectAudioReady(page);
+    await expectAudioComplete(page);
 
     const afterPreparation = callCount(calls);
     await page.reload();
@@ -220,7 +249,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
       audioPlayer(page).getByRole('button', { name: 'Stop', exact: true }),
     ).toBeVisible();
     await audioPlayer(page).getByRole('button', { name: 'Stop', exact: true }).click();
-    await expect(audioPlayer(page).getByText('Stopped.')).toBeVisible({ timeout: 15_000 });
+    await expect(audioPlayer(page).getByText(/Stopped/)).toBeVisible({ timeout: 15_000 });
   });
 
   test('stays fixed at the bottom without horizontal overflow or dismissal @mobile', async ({
@@ -264,17 +293,15 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(scrolledBox?.y).toBeCloseTo(initialBox?.y ?? 0, 0);
   });
 
-  test('stops at the sentence that failed, keeps the earlier clips, and resumes there', async ({
-    page,
-  }) => {
+  test('fails fast, keeps the clips that arrived, and retries only the rest', async ({ page }) => {
     // The first entry answers the configuration test, which has to pass before
-    // anything may be synthesized. Then two clips, then a refusal; the last
-    // entry repeats, so the retry succeeds.
+    // anything may be synthesized. Then the first batch: two clips, a refusal,
+    // and a fourth clip. The last entry repeats, so the retry succeeds.
     //
     // 402 rather than a 5xx deliberately: the client auto-retries outages, so
-    // the sentence that "fails" would otherwise succeed on a transport retry
-    // and the run would never stop where this test needs it to.
-    const calls = await prepareReading(page, TEXT, {
+    // the request that "fails" would otherwise succeed on a transport retry and
+    // the run would never stop where this test needs it to.
+    const calls = await prepareReading(page, LONG_TEXT, {
       audioSequence: [
         { kind: 'valid' },
         { kind: 'valid' },
@@ -287,47 +314,136 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expect(audioPlayer(page).getByText(/Stopped at sentence 3 of 4/)).toBeVisible({
+    await expect(audioPlayer(page).getByText(/Stopped with \d+ of 8 sentences ready/)).toBeVisible({
       timeout: 60_000,
     });
 
     // The clips already produced are kept: they cost money and are exactly as
-    // playable individually as they were.
-    expect(await storedClipCount(page)).toBe(2);
-    expect(synthesisCount(calls) - afterSetup, 'nothing after the failure was scheduled').toBe(3);
+    // playable individually as they were. Nothing beyond the first batch was
+    // ever scheduled.
+    expect(synthesisCount(calls) - afterSetup, 'the queue was abandoned, not drained').toBe(
+      CONCURRENCY,
+    );
+    // Between one and three, not exactly three: the abort races the siblings
+    // that had already been sent, so a request that had not answered yet is
+    // cancelled rather than paid for. Which of them wins is the provider's
+    // timing, and pinning it would be pinning the race.
+    const kept = await storedClipCount(page);
+    expect(kept, 'the clips that arrived were kept').toBeGreaterThan(0);
+    expect(kept, 'the refused sentence produced nothing').toBeLessThan(CONCURRENCY);
 
-    // The gate stays shut: a set with a hole in it cannot be played end to end,
-    // so the player offers the failure and its recovery rather than a transport.
-    await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toHaveCount(0);
+    // The prefix stays playable while the remainder is offered again, which is
+    // the whole difference from the complete-set gate this replaced.
+    await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeEnabled();
 
     await page.getByRole('button', { name: 'Try again' }).click();
-    await expectAudioReady(page);
+    await expectAudioComplete(page, LONG_SENTENCE_COUNT);
 
-    // Two more requests, for the sentence that failed and the one after it.
-    expect(synthesisCount(calls) - afterSetup).toBe(5);
-    expect(await storedClipCount(page)).toBe(SENTENCE_COUNT);
+    expect(
+      synthesisCount(calls) - afterSetup - CONCURRENCY,
+      'only the clips that were still missing were asked for again',
+    ).toBe(LONG_SENTENCE_COUNT - kept);
+    expect(await storedClipCount(page)).toBe(LONG_SENTENCE_COUNT);
+  });
+
+  test('never opens more than four synthesis requests at once', async ({ page }) => {
+    const calls = await prepareReading(page, LONG_TEXT, { audioDelayMs: 300 });
+
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page, LONG_SENTENCE_COUNT);
+
+    expect(calls.audio.peakConcurrency, 'the queue is bounded').toBe(CONCURRENCY);
+    expect(await storedClipCount(page)).toBe(LONG_SENTENCE_COUNT);
+  });
+
+  test('plays the prepared beginning while the rest is still being made', async ({ page }) => {
+    const calls = await prepareReading(page, LONG_TEXT, { audioDelayMs: 3_000 });
+
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioPlayable(page);
+
+    // The run is still going: its Stop is on screen beside the transport.
+    await expect(
+      audioPlayer(page).getByRole('button', { name: 'Stop', exact: true }),
+    ).toBeVisible();
+    expect(await storedClipCount(page)).toBeLessThan(LONG_SENTENCE_COUNT);
+
+    await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
+    expect(synthesisCount(calls), 'playing asks for nothing').toBeLessThanOrEqual(
+      LONG_SENTENCE_COUNT + 1,
+    );
+  });
+
+  test('waits where generation has got to, and reads on when the clip arrives', async ({
+    page,
+  }) => {
+    // The second batch is held long enough that starting at the last sentence
+    // of the first one is guaranteed to reach the frontier.
+    await prepareReading(page, LONG_TEXT, { audioDelayMs: 3_000 });
+
+    await openAudioPlayer(page);
+    await audioPlayer(page).getByRole('button', { name: 'Generate audio' }).click();
+    await expect(
+      audioPlayer(page).getByRole('button', { name: 'Stop', exact: true }),
+    ).toBeVisible();
+
+    // Closing the player does not cancel the run, so the selection can be made
+    // and captured while the first batch is still being prepared. The popover
+    // is dismissed afterwards: the player captured the sentence on open, and a
+    // modal popover would swallow the click on the transport beneath it.
+    await audioButton(page).click();
+    await expect(audioPlayer(page)).toHaveCount(0);
+    await openSentence(page, CONCURRENCY - 1);
+    await openAudioPlayer(page);
+    await dismissPopover(page);
+
+    const startHere = audioPlayer(page).getByRole('button', { name: 'Start from this sentence' });
+    await expect(startHere).toBeVisible({ timeout: 60_000 });
+
+    await startHere.click();
+    await expect(audioPlayer(page).getByText(`Sentence ${String(CONCURRENCY)} of 8`)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Playback catches generation and says so rather than stopping.
+    await expect(
+      audioPlayer(page).getByText(`Waiting for sentence ${String(CONCURRENCY + 1)} of 8`),
+    ).toBeVisible({ timeout: 30_000 });
+
+    // And reads on by itself once the clip it was waiting for is stored.
+    await expect(
+      audioPlayer(page).getByText(`Sentence ${String(CONCURRENCY + 1)} of 8`),
+    ).toBeVisible({ timeout: 30_000 });
   });
 
   test('keeps completed clips when a run is stopped, and finishes them after a reload', async ({
     page,
   }) => {
-    const calls = await prepareReading(page, TEXT, { audioDelayMs: 500 });
+    // Eight sentences through a four-wide queue, so there is a second batch to
+    // stop before: a reading that fits in one batch is finished before a click
+    // on Stop could land.
+    const calls = await prepareReading(page, LONG_TEXT, { audioDelayMs: 2_000 });
 
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    // Stopped in the middle rather than at the start, so what is asserted is
-    // that finished clips survive rather than that none were made.
-    await expect(audioPlayer(page).getByText(/Sentence 2 of 4/)).toBeVisible({ timeout: 30_000 });
+    // Stopped between the batches rather than at the start, so what is asserted
+    // is that finished clips survive rather than that none were made.
+    await expect(
+      audioPlayer(page)
+        .getByText(/[1-9]\d* of 8 sentences ready/)
+        .first(),
+    ).toBeVisible({ timeout: 60_000 });
     await audioPlayer(page).getByRole('button', { name: 'Stop', exact: true }).click();
-    await expect(audioPlayer(page).getByText(/Sentences already read aloud were kept/)).toBeVisible(
-      {
-        timeout: 60_000,
-      },
-    );
+    await expect(audioPlayer(page).getByText(/Stopped with \d+ of 8 sentences ready/)).toBeVisible({
+      timeout: 60_000,
+    });
 
     const stopped = await storedClipCount(page);
     expect(stopped, 'stopping keeps what it produced').toBeGreaterThan(0);
-    expect(stopped).toBeLessThan(SENTENCE_COUNT);
+    expect(stopped).toBeLessThan(LONG_SENTENCE_COUNT);
     const afterStop = synthesisCount(calls);
 
     await page.reload();
@@ -336,19 +452,19 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expectAudioReady(page);
+    await expectAudioComplete(page, LONG_SENTENCE_COUNT);
 
     expect(synthesisCount(calls) - afterStop, 'only what was still missing was requested').toBe(
-      SENTENCE_COUNT - stopped,
+      LONG_SENTENCE_COUNT - stopped,
     );
-    expect(await storedClipCount(page)).toBe(SENTENCE_COUNT);
+    expect(await storedClipCount(page)).toBe(LONG_SENTENCE_COUNT);
   });
 
   test('plays the reading on request and stops through the header toggle', async ({ page }) => {
     await prepareReading(page);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expectAudioReady(page);
+    await expectAudioComplete(page);
 
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
 
@@ -366,7 +482,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await prepareReading(page);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expectAudioReady(page);
+    await expectAudioComplete(page);
 
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
@@ -391,7 +507,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await prepareReading(page);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expectAudioReady(page);
+    await expectAudioComplete(page);
 
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
@@ -411,7 +527,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await prepareReading(page);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expectAudioReady(page);
+    await expectAudioComplete(page);
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
 
@@ -426,7 +542,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await prepareReading(page);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expectAudioReady(page);
+    await expectAudioComplete(page);
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
     await page.keyboard.press('Escape');
@@ -446,7 +562,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await prepareReading(page);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expectAudioReady(page);
+    await expectAudioComplete(page);
 
     await expectNoSeriousAccessibilityViolations(page);
 

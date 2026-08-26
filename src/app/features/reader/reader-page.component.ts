@@ -596,18 +596,28 @@ export class ReaderPageComponent {
   protected readonly audioPlayerSentenceId = this.audioPlayerSentenceIdSignal.asReadonly();
   protected readonly hasAudioModel = computed(() => this.tts.compatiblePresets().length > 0);
 
-  /** The audio button says its state out loud, because its icon never changes. */
+  /**
+   * The audio button says its state out loud, because its icon never changes.
+   *
+   * Playback is named before generation, not after it: the two now run at the
+   * same time, and what the learner is hearing is the more useful of the two to
+   * be told about.
+   */
   protected readonly audioButtonLabel = computed(() => {
+    switch (this.playback.status()) {
+      case 'playing':
+        return 'Audio, playing';
+      case 'paused':
+        return 'Audio, paused';
+      case 'waiting':
+        return 'Audio, waiting for the next sentence';
+      default:
+        break;
+    }
     if (this.audioJob.isRunning()) {
       return 'Audio, being generated';
     }
-    if (this.playback.status() === 'playing') {
-      return 'Audio, playing';
-    }
-    if (this.playback.status() === 'paused') {
-      return 'Audio, paused';
-    }
-    return this.playback.canPlayWholeReading() ? 'Audio, ready' : 'Audio';
+    return this.playback.hasPlayableAudio() ? 'Audio, ready' : 'Audio';
   });
 
   protected readonly canAnalyzeGrammar = computed(
@@ -690,8 +700,10 @@ export class ReaderPageComponent {
 
     effect(() => {
       // Which clips exist, re-read whenever the reading changes and whenever
-      // the audio job has written more. Two local reads and no sound: the
-      // player appears because a set is complete, never because it started.
+      // the audio job has written more. Two local reads: the player appears
+      // because clips exist, never because a run started. The re-read is also
+      // what lets a session waiting at the frontier read on, since the clip it
+      // is waiting for becomes available here (ADR 0033).
       const reading = this.store.reading();
       this.audioJob.progress();
       this.tts.settings();

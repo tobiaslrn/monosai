@@ -290,7 +290,10 @@ there is no other surface it could be read on.
 The reader header carries an **Audio** button at all times, whether or not the
 reading has any audio. It is the only thing that tells a learner Monosai can
 read to them at all, and its accessible name states the current state (`Audio`,
-`Audio, ready`, `Audio, playing`, `Audio, paused`, `Audio, being generated`). Its
+`Audio, ready`, `Audio, playing`, `Audio, paused`,
+`Audio, waiting for the next sentence`, `Audio, being generated`). Playback is
+named before generation, because the two now run at the same time and what the
+learner is hearing is the more useful of the two to be told about. Its
 appearance follows that state, so playback or a job remains visible even while
 the player is closed. The button exposes `aria-expanded` and
 `aria-controls="reading-audio-player"`.
@@ -316,21 +319,28 @@ and an open player adds bottom clearance to the reading. The sticky reader heade
 and the player sit above the CDK popover backdrop, so the Audio toggle and player
 remain reachable alongside a sentence or word popover.
 
-The player owns every audio state there is (ADR 0025 and ADR 0028):
+The player owns every audio state there is (ADR 0025, ADR 0028, and ADR 0033).
+It is one card in two bands: a **transport** whenever there is anything to play,
+and a quieter **generation rail** beneath it whenever there is anything to say
+about preparing the rest. Either band may be absent; they are never alternatives
+to each other.
 
-| State | Player content |
+| Band | Content |
 | --- | --- |
-| No audio yet | The sentence count, and **Generate audio** |
-| Being generated | Progress bar, "Sentence 4 of 13", **Stop** |
-| Stopped or failed | What happened, the failure, **Try again**, **Dismiss** |
-| Ready | Transport (back / play, pause, or resume / next) with the position beside it, position bar, and **Start from this sentence** when one was selected |
+| Transport | Back / play, pause, or resume / next, with the position beside it, a position bar, and **Start from this sentence** when the selected sentence has a clip |
+| Rail — being generated | Progress bar, "4 of 13 sentences ready", **Stop** |
+| Rail — stopped or failed | "Stopped with 4 of 13 sentences ready.", the failure, **Try again**, **Dismiss** |
+| Rail — nothing prepared or partly prepared | The sentence count, or "4 of 13 sentences have audio", and **Generate audio** |
 
-- The transport appears only when every sentence has a clip under the current voice. A reading whose set is incomplete gets the failure state instead, because a player that stopped in the middle of a reading would be worse than no player (ADR 0024).
+- The transport appears as soon as any sentence has a clip under the current voice, not when every sentence does. A reading whose set is partial is played as far as it goes and waits for the rest (ADR 0033).
+- The position line reads "Sentence 4 of 13" while playing, "4 of 13 sentences ready" while idle, and "Waiting for sentence 5 of 13" at the frontier. While waiting, the play control is disabled and named for what it is doing: the session has already started and there is nothing to press.
+- Generation reports how many sentences are ready rather than which one it is at, because four requests are open at once and there is no single sentence the run has reached.
 - A job that fails before it resolves what to send reports no position, rather than deriving a nonsensical one from empty counts.
 - Back replays the sentence being read from its start, and steps to the sentence before only when pressed within the first moment of one. The reason to reach for it is that a sentence went past too fast, and jumping straight back meant the sentence actually wanted could only be reached by going back and then forward again. Its accessible name says both things it does.
-- Back and Next stay disabled until playback has an active sentence and do not wrap at either boundary. The ready player has no Stop button: closing through the header Audio toggle is the stop/reset action. Generation keeps its own **Stop** button.
+- Back and Next stay disabled until playback has an active sentence and do not wrap at either boundary. Next is also disabled while the sentence after this one has no clip yet, because a jump needs somewhere to land; Back stays available, because replaying this sentence never depends on a neighbour. Play is disabled while sentence one has no clip.
+- The transport has no Stop button: closing through the header Audio toggle is the stop/reset action. The rail keeps its own **Stop**, which aborts the requests in flight and stops no sound.
 - Per-sentence audio is generated and played from the sentence popover. No play control is printed on the reading surface itself, so pressing a sentence still costs nothing.
-- Audio never autoplays. Preparing a clip never plays it; playing is always a second, explicit action.
+- Audio never autoplays. Preparing a clip never plays it, a clip arriving never plays it, and playing is always a second, explicit action. Reading on after a wait continues a session the learner started.
 
 ## 7. Generate
 

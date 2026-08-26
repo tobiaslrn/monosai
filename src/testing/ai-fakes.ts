@@ -323,8 +323,15 @@ export class StubTtsProvider implements TextToSpeechProvider {
    * How many clips a whole-reading job asks for is the thing under test, so a
    * queue primed with a fixed number of answers would decide the expected count
    * in advance. The default answers every request with a small valid clip.
+   *
+   * May answer asynchronously, which is what makes a bounded concurrency
+   * testable at all: an answer that settles immediately never leaves two
+   * requests in flight at once.
    */
-  synthesizeWith: (request: TtsRequest) => Result<AudioPayload, AiError> = () => ok(audioPayload());
+  synthesizeWith: (
+    request: TtsRequest,
+  ) => Result<AudioPayload, AiError> | Promise<Result<AudioPayload, AiError>> = () =>
+    ok(audioPayload());
 
   constructor(private outcome: Result<TtsTest, AiError>) {}
 

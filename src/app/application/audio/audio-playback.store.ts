@@ -8,7 +8,14 @@ import { ENRICHMENT_REPOSITORY, READING_REPOSITORY } from '../shared/repository-
 import { AUDIO_PLAYER } from './audio-player';
 import { MEDIA_SESSION } from './media-session';
 
-export type PlaybackStatus = 'idle' | 'loading' | 'playing' | 'paused';
+/**
+ * `waiting` is a started session that has run out of prepared audio.
+ *
+ * It is not paused and it is not idle: the learner asked to be read to, the
+ * reading has not finished, and the next clip is still being made. Saying so is
+ * the whole difference between progressive playback and playback that stopped.
+ */
+export type PlaybackStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'waiting';
 
 /**
  * How far into a sentence Previous stops meaning "the sentence before".
@@ -28,7 +35,6 @@ export const REPLAY_WINDOW_SECONDS = 1.5;
  * for the voice you are using now" is.
  */
 export type PlaybackFailure =
-  | { readonly kind: 'incomplete'; readonly missing: number }
   | { readonly kind: 'missing-clip'; readonly position: number }
   | { readonly kind: 'decode-failed'; readonly position: number }
   | { readonly kind: 'storage'; readonly message: string };
@@ -39,8 +45,13 @@ export type PlaybackFailure =
  * Root-provided because `system-architecture.md` section 4 lists active audio
  * playback among the few application-wide signals: sound outlives the component
  * that started it, and a per-reader instance would leave one reading playing
- * behind another. It owns the application's single `AudioPlayer`, the playback
- * cursor, and the complete-set gate.
+ * behind another. It owns the application's single `AudioPlayer` and the
+ * playback cursor.
+ *
+ * Playback is **progressive at sentence granularity** (ADR 0033): a reading can
+ * be started as soon as the sentence being started from has a clip, and reading
+ * on waits at the frontier rather than stopping there. Nothing is streamed —
+ * each clip is a whole file, and the unit that arrives is a sentence.
  *
  * **Nothing here ever starts on its own.** There is no effect that plays, no
  * autoplay after preparation, and `prepare` is a pair of local reads that leave
@@ -73,6 +84,11 @@ export class AudioPlaybackStore {
    * Next, or Previous says they want to be taken back.
    */
   private readonly navigationSignal = signal(0);
+  /**
+   * The sentence a started session is waiting for, when it has caught up with
+   * generation. Null whenever nothing is waiting.
+   */
+  private readonly pendingSignal = signal<SentenceId | null>(null);
 
   /** Generation counter, so a clip loaded for a superseded call never starts. */
   private loadToken = 0;
@@ -90,6 +106,7 @@ export class AudioPlaybackStore {
   readonly currentSentenceId = this.currentSignal.asReadonly();
   readonly failure = this.failureSignal.asReadonly();
   readonly explicitNavigation = this.navigationSignal.asReadonly();
+  readonly pendingSentenceId = this.pendingSignal.asReadonly();
   readonly reading = this.readingSignal.asReadonly();
 
   readonly isActive = computed(() => this.statusSignal() !== 'idle');
@@ -110,18 +127,56 @@ export class AudioPlaybackStore {
     return this.refsSignal().findIndex((ref) => ref.id === current) + 1;
   });
 
+  /** Sentences with a clip under the current cache key. */
+  readonly availableCount = computed(() => this.refsSignal().length - this.missingCount());
+
   /**
-   * The complete-set gate.
+   * Whether there is anything at all that could be played right now.
    *
-   * True only when every sentence in the reading has a clip under the current
-   * cache key. A reading whose clips were made by a voice that is no longer
-   * configured is not playable, because playing it would silently mix voices —
-   * and a set with one clip missing is not playable at all, because the player
-   * would stop in the middle of it.
+   * This is what decides whether the player offers a transport. It is not the
+   * completeness gate: one clip is enough to be read to, and waiting for the
+   * rest is a state the session can be in rather than a reason to refuse.
+   */
+  readonly hasPlayableAudio = computed(() => this.availableCount() > 0);
+
+  /** Whether Play from the beginning has something to start on. */
+  readonly canPlayFromStart = computed(() => {
+    const first = this.refsSignal().at(0);
+    return first !== undefined && this.availableSignal().has(first.id);
+  });
+
+  /**
+   * Whether the reading is complete under the current voice.
+   *
+   * No longer a gate on playback (ADR 0033). It is what says the set is
+   * finished — the library's audio summary, and the player's offer to prepare
+   * whatever is still missing — and it still excludes clips made by a voice
+   * that is no longer configured, because counting them would silently mix
+   * voices into one completeness figure.
    */
   readonly canPlayWholeReading = computed(
     () => this.refsSignal().length > 0 && this.missingCount() === 0,
   );
+
+  /** Position of the sentence a waiting session is waiting for, or 0. */
+  readonly pendingPosition = computed(() => {
+    const pending = this.pendingSignal();
+    if (pending === null) {
+      return 0;
+    }
+    return this.refsSignal().findIndex((ref) => ref.id === pending) + 1;
+  });
+
+  /** Whether Next has a target and that target has a clip. */
+  readonly canGoNext = computed(() => this.neighbourIsAvailable(1));
+
+  /**
+   * Whether Back has anywhere to go.
+   *
+   * True whenever a sentence is current, because Back's first meaning is
+   * replaying the sentence being read, and that never depends on a neighbour.
+   */
+  readonly canGoPrevious = computed(() => this.currentSignal() !== null);
 
   constructor() {
     this.player.onEnded(() => {
@@ -208,9 +263,29 @@ export class AudioPlaybackStore {
       }
     }
     this.availableSignal.set(available);
+    await this.continueIfPendingArrived();
   }
 
-  /** Starts at the beginning of the reading. Refused unless the gate is open. */
+  /**
+   * Reads on when the clip a waiting session stopped at has been stored.
+   *
+   * This is not an autoplay. It is the continuation of a session the learner
+   * started by pressing Play, which is why it is reached only from `waiting` —
+   * a state that cannot be entered without that press.
+   */
+  private async continueIfPendingArrived(): Promise<void> {
+    const pending = this.pendingSignal();
+    if (pending === null || this.statusSignal() !== 'waiting') {
+      return;
+    }
+    if (!this.availableSignal().has(pending)) {
+      return;
+    }
+    this.pendingSignal.set(null);
+    await this.load(pending);
+  }
+
+  /** Starts at the beginning of the reading, as soon as sentence one exists. */
   play(): Promise<void> {
     const first = this.refsSignal().at(0);
     return first === undefined ? Promise.resolve() : this.startAt(first.id);
@@ -262,6 +337,7 @@ export class AudioPlaybackStore {
   stop(): void {
     this.loadToken += 1;
     this.single = false;
+    this.pendingSignal.set(null);
     this.player.stop();
     this.statusSignal.set('idle');
     this.currentSignal.set(null);
@@ -317,24 +393,38 @@ export class AudioPlaybackStore {
     this.failureSignal.set(null);
   }
 
+  /** Whether one sentence can be started from right now. */
+  isAvailable(sentenceId: SentenceId | null): boolean {
+    return sentenceId !== null && this.availableSignal().has(sentenceId);
+  }
+
   /** Clears a reported failure once the surface that showed it is done with it. */
   acknowledgeFailure(): void {
     this.failureSignal.set(null);
   }
 
+  /**
+   * Starts a reading session at one sentence.
+   *
+   * Refused only when *that* sentence has no clip. Whether the sentences after
+   * it exist yet is not this call's business: reading on waits for them.
+   */
   private async startAt(sentenceId: SentenceId): Promise<void> {
-    if (!this.canPlayWholeReading()) {
-      this.failureSignal.set({ kind: 'incomplete', missing: this.missingCount() });
+    if (!this.availableSignal().has(sentenceId)) {
+      const position = this.refsSignal().findIndex((ref) => ref.id === sentenceId) + 1;
+      this.failureSignal.set({ kind: 'missing-clip', position });
       return;
     }
     this.navigationSignal.update((count) => count + 1);
     this.single = false;
+    this.pendingSignal.set(null);
     await this.load(sentenceId);
   }
 
   /** Plays the loaded clip again from its start. Loads nothing and reads nothing. */
   private async replayCurrent(): Promise<void> {
     this.navigationSignal.update((count) => count + 1);
+    this.pendingSignal.set(null);
     try {
       await this.player.restart();
     } catch {
@@ -360,7 +450,14 @@ export class AudioPlaybackStore {
       return;
     }
     const next = refs[target];
+    // A manual step to a sentence that has no clip yet does nothing rather than
+    // failing. Next is disabled while that is true, and Back's own control
+    // stays available because its first meaning is replaying this sentence.
+    if (!this.availableSignal().has(next.id)) {
+      return;
+    }
     this.navigationSignal.update((count) => count + 1);
+    this.pendingSignal.set(null);
     await this.load(next.id);
   }
 
@@ -380,7 +477,17 @@ export class AudioPlaybackStore {
       this.stop();
       return;
     }
-    await this.load(refs[target].id);
+    const next = refs[target];
+    if (!this.availableSignal().has(next.id)) {
+      // The frontier. The cursor stays on the sentence just heard, so the
+      // reader keeps showing where the learner is, and the session waits for
+      // the clip rather than reporting that the reading would not play.
+      this.pendingSignal.set(next.id);
+      this.statusSignal.set('waiting');
+      this.mediaSession.setPlaybackState('paused');
+      return;
+    }
+    await this.load(next.id);
   }
 
   /**
@@ -436,6 +543,20 @@ export class AudioPlaybackStore {
       album: 'Monosai',
     });
     this.mediaSession.setPlaybackState('playing');
+  }
+
+  /** Whether the sentence `offset` away from the cursor exists and has a clip. */
+  private neighbourIsAvailable(offset: number): boolean {
+    const current = this.currentSignal();
+    if (current === null) {
+      return false;
+    }
+    const refs = this.refsSignal();
+    const target = refs.findIndex((ref) => ref.id === current) + offset;
+    if (target < 0 || target >= refs.length) {
+      return false;
+    }
+    return this.availableSignal().has(refs[target].id);
   }
 
   private stopWithFailure(failure: PlaybackFailure): void {

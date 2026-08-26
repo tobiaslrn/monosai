@@ -265,15 +265,17 @@ Build the cache key from content, TTS model, voice, response format, speed, spee
 2. Confirm sentence count and explicit network use.
 3. Create/reconcile a persisted `prepare-audio` job.
 4. Determine missing compatible cache keys.
-5. Generate strictly in reading order with concurrency 1 by default to simplify rate limits and predictable progress.
-6. Store and verify each clip immediately.
-7. On failure, stop the job at that sentence and expose Retry; do not skip and call the set complete.
-8. On cancellation, stop the active request and retain successful clips.
-9. Enable whole-reading Play only when every sentence has a compatible clip.
+5. Claim sentences in reading order through a fixed four-request queue, so the beginning of the reading is always the part that exists first and progress stays predictable. The limit is internal and is not a setting.
+6. Store and verify each clip immediately, and count completions in the job rather than reading them back, because they arrive out of order.
+7. On the first refusal that survives transport retries, stop scheduling, abort the requests still in flight, and expose **Try again** for whatever is still missing; do not skip and call the set complete. Report the refusal rather than the abort it caused.
+8. On cancellation, abort the active requests and retain successful clips. Cancelling generation stops no sound.
+9. Report progress as how many sentences are ready, not as a single sentence the run is at.
 
 ### Playback
 
 Playback is local once clips exist. Use one audio element/controller, advance by sentence order, update active-sentence styling and Media Session metadata where supported, and scroll only when the active sentence is outside the viewport. User-initiated scrolling disables automatic scrolling until the next explicit player navigation.
+
+Playback is progressive at sentence granularity, not byte-streaming: each clip is a whole file, and the unit that arrives progressively is a sentence. Play starts as soon as the first sentence has a compatible clip, and **Start from this sentence** as soon as the selected one does. Reading on stops at the frontier in a `waiting` state that names the sentence it is waiting for, keeps the cursor on the sentence just heard, and continues by itself when that clip is stored. Manual Next stays disabled until its target exists; Back stays available because its first meaning is replaying the current sentence. Whole-reading completeness remains what the library summary and the offer to prepare the remainder are measured by.
 
 The reader's Audio header toggle is the explicit activation boundary for the
 floating player: opening it only reveals the current state and captures the
@@ -284,9 +286,12 @@ start because the player was opened or because generation completed.
 Closing through that header toggle calls playback Stop, clears the active
 sentence and cursor, and hides the surface. It does not cancel a running
 `prepare-audio` job; its progress and failure remain persisted in the job store.
-Stop on reading deletion, audio-cache clearing, configuration-incompatible
-missing clip, decode failure, or the header-toggle close. Never autoplay on
-reader open or after generation.
+Generation Stop is its mirror: it aborts the requests in flight and stops no
+sound. Stop on reading deletion, audio-cache clearing,
+configuration-incompatible missing clip, decode failure, or the header-toggle
+close. Never autoplay on reader open, when a clip is stored, or after generation
+completes; continuing after a `waiting` state belongs to a session the learner
+had already started.
 
 ## 12. Retry and backoff policy
 

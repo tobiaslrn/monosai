@@ -1552,9 +1552,11 @@ callers, so the sentence action and the job cannot disagree about whether a stal
 test may spend money. `AudioSynthesisService` follows ADR 0021's `run`/`store`
 split. `AudioJobStore` is the translation job's machine with two differences the
 specification insists on: strictly one request at a time in reading order, and
-stop at the first failure rather than skipping. `AudioPlaybackStore` is
-root-provided and owns the cursor, the complete-set gate, and the five stop
-triggers; the element and the object-URL lifecycle sit behind an `AudioPlayer`
+stop at the first failure rather than skipping. *(The first of those was later
+replaced by a four-wide queue and the second by a fail-fast that aborts its
+siblings — see "Progressive playback and four-way generation" below.)*
+`AudioPlaybackStore` is root-provided and owns the cursor, the complete-set gate
+*(later replaced by per-sentence availability)*, and the five stop triggers; the element and the object-URL lifecycle sit behind an `AudioPlayer`
 port so that "nothing plays without an explicit call" is unit-testable.
 
 #### Reader surfaces
@@ -1629,7 +1631,8 @@ could never have reached a passing configuration test.
   key, and still loads no blob.
 - **The sentence popover's Play is not subject to the complete-set gate.** The
   gate is a rule about reading a whole reading aloud; one stored clip is exactly
-  as playable on its own whether or not its neighbours exist.
+  as playable on its own whether or not its neighbours exist. *(ADR 0033 later
+  applied the same reasoning to whole-reading playback and removed the gate.)*
 
 ### Open items
 
@@ -1802,6 +1805,75 @@ toggle remained reachable beside sentence and word popovers, focus stayed on
 the header toggle when the player opened, Escape did not dismiss it, and the
 console contained no errors or warnings.
 
+
+## Progressive playback and four-way generation
+
+Whole-reading audio now follows
+[ADR 0033](decisions/0033-progressive-four-way-audio.md), which supersedes ADR
+0024's "concurrency is one" and its complete-set playback gate. A learner can
+listen to the front of a reading while the rest is still being made, and a run
+that stops or fails leaves everything it produced playable.
+
+### Delivered
+
+- `AudioJobStore` replaced its sequential loop with a queue of
+  `AUDIO_GENERATION_CONCURRENCY = 4` workers over one shared cursor that
+  advances in reading order. The bound is not a setting: four is what keeps the
+  beginning of the reading arriving first, which is what makes starting against
+  a partial set useful rather than arbitrary.
+- Completions are counted in the job rather than read back from whichever
+  `recordCompletion` transaction settled last, because they now arrive out of
+  order and the progress number must never go backwards. Each worker still
+  stores its clip and records its item before claiming another.
+- The first refusal that survives the client's transport retries aborts the
+  controller, which cancels the requests its siblings have open. The refusal is
+  reported rather than the abort it caused, so a failed run is never shown as
+  one the learner stopped. Clips that had already arrived are kept.
+- `AudioPlaybackStore` gained a `waiting` status, `pendingSentenceId`,
+  `pendingPosition`, `availableCount`, `hasPlayableAudio`, `canPlayFromStart`,
+  `canGoNext`, `canGoPrevious`, and `isAvailable`. Starting is gated on the
+  sentence being started from, not on the set. Reaching the frontier keeps the
+  cursor on the sentence just heard and waits; the metadata refresh the reader
+  already ran on every job progress change is what lets it read on.
+- The `incomplete` playback failure was removed. Nothing produced it any more:
+  a start that cannot happen is a named sentence with no clip.
+- `canPlayWholeReading` survives as the completeness figure — what the library
+  summary reports, and whether the player still offers to prepare the remainder.
+- `ReadingPlayerComponent` became one card in two bands rather than a four-way
+  switch: a transport whenever anything is playable, and a generation rail
+  beneath it whenever there is something to say about the rest. Generation
+  progress reads "N of M ready", because with four requests open there is no
+  single sentence the run is at.
+- The reader's Audio button names playback before generation, and gained
+  `Audio, waiting for the next sentence`.
+
+### Tested
+
+- `audio-job.store.spec.ts` covers the four-in-flight bound, queue refill, a
+  reading shorter than the limit, out-of-order completion, fail-fast with the
+  siblings abandoned, the refusal winning over the abort it caused, retrying
+  only what is missing, cancellation, and reload reconciliation.
+- `audio-playback.store.spec.ts` covers starting against a partial set,
+  refusing a start whose own sentence has no clip, waiting at the frontier,
+  reading on when the clip is stored, staying silent when clips arrive with
+  nothing started, and Next being unavailable at the frontier.
+- `reading-player.component.spec.ts` covers the transport and rail appearing
+  together, the waiting position line and its disabled control, the partial-set
+  offer, and Play disabled while sentence one is missing.
+- `e2e/audio.spec.ts` proves the bound through a stub that records peak
+  concurrency, plays a prepared prefix while requests are still open, reaches
+  the frontier from a selected sentence and reads on, and retries only the
+  missing clips after a fail-fast.
+
+### Notes
+
+- Four concurrent requests raise rate-limit pressure that ADR 0024's
+  concurrency of one partly existed to avoid. The client's existing backoff
+  absorbs it, and the fail-fast keeps a rate-limited run from spending its way
+  through a whole reading before reporting.
+- No migration, settings field, or cache-key change. `AssetJob` records stay
+  compatible; `completedSentenceIds` may now be stored out of order, and order
+  is still derived from `orderedSentenceIds`.
 
 ## Milestone 10 — Release hardening
 
