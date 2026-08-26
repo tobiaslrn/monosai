@@ -7,6 +7,7 @@ import { aiError } from '../../domain/ai/ai-error';
 import { err, ok } from '../../domain/shared/result';
 import {
   configureGenerationTestBed,
+  shortStory,
   storyWithUnknown,
   strictStory,
   type GenerationTestBed,
@@ -173,8 +174,8 @@ describe('GenerationStepperComponent', () => {
 
   it('reports an unsaved draft as everything but the save', async () => {
     const { element, store, fixture } = render();
-    bed.provider.storyQueue.push(ok(storyWithUnknown()));
-    bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
+    bed.provider.storyQueue.push(ok(shortStory()));
+    bed.provider.repairQueue.push(ok(shortStory()), ok(shortStory()));
 
     await store.generate(5, { premise: 'ねこの話。' });
     fixture.detectChanges();

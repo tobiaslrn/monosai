@@ -74,8 +74,8 @@ function mark(textJa: string, surfaces: readonly string[]): MarkedLine {
     <p class="mn-hint">
       After
       {{ draft().repairAttempts }} repair
-      {{ draft().repairAttempts === 1 ? 'attempt' : 'attempts' }}, it still uses words you have not
-      reviewed. Nothing was added to your library.
+      {{ draft().repairAttempts === 1 ? 'attempt' : 'attempts' }}, it still does not have the shape
+      that was asked for. Nothing was added to your library.
     </p>
 
     <article class="story" lang="ja" data-testid="invalid-draft-text">

@@ -76,7 +76,9 @@ export interface InvalidDraft {
  * a single transaction that either writes the whole story or writes nothing.
  *
  * `invalid-draft` is a state, not a record. It lives in this store and dies
- * with the screen; there is deliberately no path from it to storage.
+ * with the screen; there is deliberately no path from it to storage. Only a
+ * structural failure reaches it — unknown words the repairs could not replace
+ * are saved with the story and marked in the reader instead.
  */
 export type GenerationState =
   | { readonly kind: 'idle' }
@@ -294,8 +296,9 @@ export class GenerationStore {
   /**
    * Runs one generation.
    *
-   * Nothing is written until the last step, and the only thing that is written
-   * is a story every word of which has a validation that is not `unknown`.
+   * Nothing is written until the last step. Words the repair budget could not
+   * replace do not stop the save: they are written as `unresolved-after-repair`
+   * and the reader marks them. Only a structural failure keeps a story out.
    */
   async generate(
     sentenceCount: number,
@@ -438,7 +441,9 @@ export class GenerationStore {
 
   /**
    * Parse, validate, review, and repair until the candidate is accepted, the
-   * repair budget runs out, or something fails.
+   * repair budget runs out, or something fails. A budget that runs out with
+   * words still unknown is not a rejection: the story is saved with those words
+   * marked. Only a structure the repairs never fixed ends in `invalid-draft`.
    *
    * Every pass reparses and revalidates the whole returned story. Nothing from
    * an earlier pass survives into a later one: a repair's token analysis,
@@ -503,9 +508,11 @@ export class GenerationStore {
 
       this.applyApprovals(units, review);
       const remaining = new Set(review.stillUnknown);
-      const accepted = remaining.size === 0 && structureIssues.length === 0;
+      const budgetSpent = this.repairSignal() >= MAX_REPAIR_ATTEMPTS;
+      const outstanding = remaining.size > 0 || structureIssues.length > 0;
 
-      if (accepted) {
+      if (!outstanding || (budgetSpent && structureIssues.length === 0)) {
+        this.markUnresolved(units, remaining);
         await this.finalize(
           units,
           request,
@@ -517,7 +524,7 @@ export class GenerationStore {
         return;
       }
 
-      if (this.repairSignal() >= MAX_REPAIR_ATTEMPTS) {
+      if (budgetSpent) {
         this.invalidDraft(units, candidates, remaining, structureIssues);
         return;
       }
@@ -745,6 +752,36 @@ export class GenerationStore {
     }
   }
 
+  /**
+   * Re-labels the words repair could not replace, on the way into the library.
+   *
+   * A story is saved with these still marked unknown rather than being thrown
+   * away: the reader underlines them and the learner decides what to do about
+   * them. The reason distinguishes them from a word that was merely never
+   * looked at, so a saved story records that repair was spent and lost.
+   */
+  private markUnresolved(units: AnalyzedUnit[], remaining: ReadonlySet<string>): void {
+    if (remaining.size === 0) {
+      return;
+    }
+    for (const unit of units) {
+      const tokenById = new Map(unit.tokens.map((token) => [token.id, token]));
+      unit.statuses = unit.statuses.map((status) => {
+        if (status.validation.category !== 'unknown') {
+          return status;
+        }
+        const token = tokenById.get(status.tokenId);
+        if (token === undefined || !remaining.has(candidateKey(token))) {
+          return status;
+        }
+        return {
+          tokenId: status.tokenId,
+          validation: { category: 'unknown', reason: 'unresolved-after-repair' },
+        };
+      });
+    }
+  }
+
   private unknownSpans(
     units: readonly AnalyzedUnit[],
     candidates: readonly ExceptionCandidate[],
@@ -910,7 +947,13 @@ export class GenerationStore {
     this.announce(`Saved “${saved.value.title}” to your library.`);
   }
 
-  /** The terminal state for a candidate that never validated. Nothing is saved. */
+  /**
+   * The terminal state for a candidate whose structure never validated.
+   *
+   * Only a structural failure gets here. Words the repairs could not replace
+   * are saved with the story and marked in the reader, so the issue list names
+   * them as context for a structure that is still wrong, not as the reason.
+   */
   private invalidDraft(
     units: readonly AnalyzedUnit[],
     candidates: readonly ExceptionCandidate[],
@@ -955,7 +998,7 @@ export class GenerationStore {
       },
     });
     this.announce(
-      'This story still uses words you have not reviewed, so it was not saved. Nothing was added to your library.',
+      'This story still does not have the shape that was asked for, so it was not saved. Nothing was added to your library.',
     );
   }
 
