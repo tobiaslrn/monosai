@@ -34,15 +34,18 @@ export interface OpenRouterClientOptions {
   readonly defaultTimeoutMs?: number;
 }
 
-export interface OpenRouterRequest {
+export interface OpenRouterRequestContext {
   readonly path: string;
   readonly task: AiTask;
-  readonly body: Record<string, unknown>;
   /** Echoed into errors so the copy can name the setting that has to change. */
   readonly modelId?: string;
   readonly voiceId?: string;
   readonly timeoutMs?: number;
   readonly signal?: AbortSignal;
+}
+
+export interface OpenRouterRequest extends OpenRouterRequestContext {
+  readonly body: Record<string, unknown>;
 }
 
 export interface AudioResponse {
@@ -55,7 +58,7 @@ interface RawResponse {
   readonly contentType: string;
 }
 
-function contextOf(request: OpenRouterRequest): RequestContext {
+function contextOf(request: OpenRouterRequestContext): RequestContext {
   return {
     task: request.task,
     ...(request.modelId === undefined ? {} : { modelId: request.modelId }),
@@ -105,7 +108,30 @@ export class OpenRouterClient {
    * payload is allowed further into the application.
    */
   async postJson<T>(request: OpenRouterRequest, schema: z.ZodType<T>): Promise<Result<T, AiError>> {
-    const raw = await this.send(request, 'application/json', MAX_JSON_RESPONSE_BYTES);
+    const raw = await this.send(
+      request,
+      'POST',
+      request.body,
+      'application/json',
+      MAX_JSON_RESPONSE_BYTES,
+    );
+    return this.parseJson(raw, request, schema);
+  }
+
+  /** Sends a bounded GET request and validates its JSON response. */
+  async getJson<T>(
+    request: OpenRouterRequestContext,
+    schema: z.ZodType<T>,
+  ): Promise<Result<T, AiError>> {
+    const raw = await this.send(request, 'GET', undefined, 'application/json', MAX_JSON_RESPONSE_BYTES);
+    return this.parseJson(raw, request, schema);
+  }
+
+  private parseJson<T>(
+    raw: Result<RawResponse, AiError>,
+    request: OpenRouterRequestContext,
+    schema: z.ZodType<T>,
+  ): Result<T, AiError> {
     if (!raw.ok) {
       return raw;
     }
@@ -137,7 +163,7 @@ export class OpenRouterClient {
 
   /** Sends a synthesis request and returns the raw clip for validation. */
   async postAudio(request: OpenRouterRequest): Promise<Result<AudioResponse, AiError>> {
-    const raw = await this.send(request, 'audio/*', MAX_AUDIO_RESPONSE_BYTES);
+    const raw = await this.send(request, 'POST', request.body, 'audio/*', MAX_AUDIO_RESPONSE_BYTES);
     if (!raw.ok) {
       return raw;
     }
@@ -160,7 +186,9 @@ export class OpenRouterClient {
    * outliving the screen that started it.
    */
   private async send(
-    request: OpenRouterRequest,
+    request: OpenRouterRequestContext,
+    method: 'GET' | 'POST',
+    body: Record<string, unknown> | undefined,
     accept: string,
     maxBytes: number,
   ): Promise<Result<RawResponse, AiError>> {
@@ -169,7 +197,7 @@ export class OpenRouterClient {
     this.logger?.info('ai.request.started', requestFields(request));
     let attempt = 0;
     for (;;) {
-      const outcome = await this.attempt(request, accept, maxBytes);
+      const outcome = await this.attempt(request, method, body, accept, maxBytes);
       if (outcome.ok) {
         this.logger?.info('ai.request.succeeded', {
           ...requestFields(request),
@@ -220,7 +248,9 @@ export class OpenRouterClient {
   }
 
   private async attempt(
-    request: OpenRouterRequest,
+    request: OpenRouterRequestContext,
+    method: 'GET' | 'POST',
+    body: Record<string, unknown> | undefined,
     accept: string,
     maxBytes: number,
   ): Promise<Result<RawResponse, AiError>> {
@@ -243,7 +273,7 @@ export class OpenRouterClient {
     }
 
     const unlocked = await this.options.credentials.useApiKey((apiKey) =>
-      this.exchange(url, apiKey, request, accept, maxBytes),
+      this.exchange(url, apiKey, request, method, body, accept, maxBytes),
     );
     if (!unlocked.ok) {
       return err(
@@ -259,7 +289,7 @@ export class OpenRouterClient {
   }
 
   private logFailure(
-    request: OpenRouterRequest,
+    request: OpenRouterRequestContext,
     error: AiError,
     attempt = 0,
     startedAt = Date.now(),
@@ -288,7 +318,9 @@ export class OpenRouterClient {
   private async exchange(
     url: string,
     apiKey: string,
-    request: OpenRouterRequest,
+    request: OpenRouterRequestContext,
+    method: 'GET' | 'POST',
+    body: Record<string, unknown> | undefined,
     accept: string,
     maxBytes: number,
   ): Promise<Result<RawResponse, AiError>> {
@@ -308,13 +340,13 @@ export class OpenRouterClient {
 
     try {
       const response = await this.options.fetchFn(url, {
-        method: 'POST',
+        method,
         headers: {
           Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
           Accept: accept,
         },
-        body: JSON.stringify(request.body),
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         signal: controller.signal,
         credentials: 'omit',
         cache: 'no-store',
@@ -336,7 +368,7 @@ export class OpenRouterClient {
   /** Reads a rejected response only far enough to classify it. */
   private async describeRejection(
     response: Response,
-    request: OpenRouterRequest,
+    request: OpenRouterRequestContext,
   ): Promise<AiError> {
     let envelope: z.infer<typeof providerErrorEnvelopeSchema> | null;
     try {
@@ -357,7 +389,7 @@ export class OpenRouterClient {
 
   private async readBody(
     response: Response,
-    request: OpenRouterRequest,
+    request: OpenRouterRequestContext,
     maxBytes: number,
   ): Promise<Result<RawResponse, AiError>> {
     // The declared length is checked first so an oversized body is refused
@@ -391,7 +423,7 @@ export class OpenRouterClient {
    */
   private describeTransportFailure(
     thrown: unknown,
-    request: OpenRouterRequest,
+    request: OpenRouterRequestContext,
     timedOut: boolean,
   ): AiError {
     if (timedOut) {
@@ -413,7 +445,7 @@ function elapsedMs(startedAt: number): number {
   return Math.max(0, Date.now() - startedAt);
 }
 
-function requestFields(request: OpenRouterRequest): {
+function requestFields(request: OpenRouterRequestContext): {
   readonly task: AiTask;
   readonly modelId?: string;
   readonly voiceId?: string;

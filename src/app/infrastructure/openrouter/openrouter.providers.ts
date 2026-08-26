@@ -42,13 +42,7 @@ export function provideOpenRouter(): Provider[] {
   return [
     {
       provide: MODEL_CATALOG,
-      useFactory: () => {
-        const view = inject(DOCUMENT).defaultView;
-        return new OpenRouterModelCatalog(
-          inject(CREDENTIAL_REPOSITORY),
-          () => view?.navigator.onLine ?? true,
-        );
-      },
+      useFactory: () => new OpenRouterModelCatalog(client()),
     },
     {
       provide: TEXT_GENERATION_PROVIDER,
