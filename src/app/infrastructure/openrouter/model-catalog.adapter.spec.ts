@@ -83,9 +83,13 @@ describe('OpenRouterModelCatalog', () => {
   });
 
   it('names a rejected key rather than an unavailable provider', async () => {
-    const catalog = new OpenRouterModelCatalog(new FakeCredentialRepository(), () => true, () => {
-      throw Object.assign(new Error('Unauthorized'), { statusCode: 401 });
-    });
+    const catalog = new OpenRouterModelCatalog(
+      new FakeCredentialRepository(),
+      () => true,
+      () => {
+        throw Object.assign(new Error('Unauthorized'), { statusCode: 401 });
+      },
+    );
 
     const result = await catalog.list('text');
 
@@ -94,10 +98,14 @@ describe('OpenRouterModelCatalog', () => {
 
   it('reports a cancelled listing as cancelled', async () => {
     const controller = new AbortController();
-    const catalog = new OpenRouterModelCatalog(new FakeCredentialRepository(), () => true, () => {
-      controller.abort();
-      throw new Error('aborted');
-    });
+    const catalog = new OpenRouterModelCatalog(
+      new FakeCredentialRepository(),
+      () => true,
+      () => {
+        controller.abort();
+        throw new Error('aborted');
+      },
+    );
 
     const result = await catalog.list('text', controller.signal);
 
