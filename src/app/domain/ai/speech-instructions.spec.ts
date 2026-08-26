@@ -9,10 +9,12 @@ describe('speech instructions', () => {
   it('is versioned and asks for exact target-only natural Japanese', () => {
     const instructions = buildSpeechInstructions();
 
-    expect(SPEECH_INSTRUCTION_VERSION).toBe('speech/1');
+    expect(SPEECH_INSTRUCTION_VERSION).toBe('speech/2');
     expect(instructions).toContain('Speak only the exact target text');
     expect(instructions).toContain('natural standard Japanese');
     expect(instructions).toContain('do not use unnatural mora-by-mora pronunciation');
+    expect(instructions).toContain('Pronounce every written word');
+    expect(instructions).toContain('Do not replace any written word or phrase with laughter');
   });
 
   it('caps each neighbor by Unicode code point and marks it as context only', () => {
