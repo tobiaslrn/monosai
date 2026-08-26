@@ -89,8 +89,10 @@ Build Monosai according to the repository specifications. Read the relevant spec
 
 ## UI Verification
 
-- Use the Browser tool for visual QA, responsive inspection, console errors, and interaction checks.
-- Use committed Playwright tests for repeatable end-to-end behavior.
+- Choose the Browser tool or Playwright CLI according to the task instead of defaulting to one browser surface.
+- Prefer the Browser tool for quick visual QA, responsive inspection, user-visible interaction, and workflows that benefit from an existing signed-in browser session.
+- Prefer Playwright CLI (`npx playwright cli`) for repeatable automation, accessibility snapshots and stable locators, console or network diagnostics, request mocking, storage-state control, tracing, video, and cross-browser checks.
+- Use committed Playwright tests when end-to-end behavior should become durable regression coverage.
 - Test desktop and Android-sized viewports.
-- Use Playwright—not manual browser interaction—for file uploads, offline behavior, IndexedDB, and regression coverage.
+- Use Playwright CLI or committed Playwright tests—not manual browser interaction—for file uploads, offline behavior, IndexedDB, and regression coverage.
 - Do not consider UI work complete until it has been inspected in the rendered application.
