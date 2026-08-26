@@ -48,7 +48,7 @@ export type PlaybackFailure =
  * behind another. It owns the application's single `AudioPlayer` and the
  * playback cursor.
  *
- * Playback is **progressive at sentence granularity** (ADR 0033): a reading can
+ * Playback is **progressive at sentence granularity** (ADR 0034): a reading can
  * be started as soon as the sentence being started from has a clip, and reading
  * on waits at the frontier rather than stopping there. Nothing is streamed —
  * each clip is a whole file, and the unit that arrives is a sentence.
@@ -148,7 +148,7 @@ export class AudioPlaybackStore {
   /**
    * Whether the reading is complete under the current voice.
    *
-   * No longer a gate on playback (ADR 0033). It is what says the set is
+   * No longer a gate on playback (ADR 0034). It is what says the set is
    * finished — the library's audio summary, and the player's offer to prepare
    * whatever is still missing — and it still excludes clips made by a voice
    * that is no longer configured, because counting them would silently mix

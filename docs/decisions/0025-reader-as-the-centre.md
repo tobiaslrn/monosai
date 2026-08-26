@@ -83,7 +83,7 @@ The complete-set gate of ADR 0024 is unchanged: an incomplete set still yields
 no transport. What changes is that its absence is now explained inside the
 panel rather than by a control silently not existing.
 
-*(Superseded by [ADR 0033](0033-progressive-four-way-audio.md): a partial set
+*(Superseded by [ADR 0034](0034-progressive-four-way-audio.md): a partial set
 now yields a transport for as far as it goes, with the run that is filling in
 the rest reported beneath it in the same panel. The panel still owns every audio
 state, which is what this decision was about.)*

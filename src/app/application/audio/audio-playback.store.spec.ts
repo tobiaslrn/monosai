@@ -246,7 +246,7 @@ describe('AudioPlaybackStore', () => {
 
   describe('starting against a partial set', () => {
     /**
-     * The change ADR 0033 makes: a reading with one clip missing at the end is
+     * The change ADR 0034 makes: a reading with one clip missing at the end is
      * still a reading that can be listened to from the beginning. Waiting for
      * the last clip before allowing the first is the thing progressive playback
      * exists to stop doing.
@@ -533,7 +533,7 @@ describe('AudioPlaybackStore', () => {
   /**
    * Reaching the end of what has been prepared is not the end of the reading.
    * The session waits there and reads on when the next clip is stored, which is
-   * what makes generating and listening at the same time work (ADR 0033).
+   * what makes generating and listening at the same time work (ADR 0034).
    */
   describe('waiting at the frontier', () => {
     beforeEach(async () => {

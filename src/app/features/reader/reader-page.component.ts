@@ -703,7 +703,7 @@ export class ReaderPageComponent {
       // the audio job has written more. Two local reads: the player appears
       // because clips exist, never because a run started. The re-read is also
       // what lets a session waiting at the frontier read on, since the clip it
-      // is waiting for becomes available here (ADR 0033).
+      // is waiting for becomes available here (ADR 0034).
       const reading = this.store.reading();
       this.audioJob.progress();
       this.tts.settings();
