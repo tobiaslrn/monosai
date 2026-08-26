@@ -5,6 +5,7 @@ const PORT = 4300;
 const BASE_URL = `http://127.0.0.1:${PORT}/monosai/`;
 const PROCESS_ENV = env as Record<string, string | undefined>;
 const IS_CI = PROCESS_ENV.CI === 'true';
+const USE_PREBUILT_DIST = PROCESS_ENV.MONOSAI_PWA_PREBUILT === 'true';
 
 /**
  * Exercises the production build through the service worker.
@@ -36,10 +37,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run build:pages && npm run serve-dist',
+    command: USE_PREBUILT_DIST ? 'npm run serve-dist' : 'npm run build:pages && npm run serve-dist',
     env: { PORT: String(PORT) },
     url: BASE_URL,
-    reuseExistingServer: !IS_CI,
+    reuseExistingServer: false,
     timeout: 300_000,
   },
 });

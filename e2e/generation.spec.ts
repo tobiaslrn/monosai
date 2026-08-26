@@ -10,6 +10,7 @@ import {
 } from './generation';
 import { stubOpenRouter } from './openrouter';
 import { countOwnedRows } from './reading';
+import { GENERATION_READY_STATE } from './state';
 
 const PREMISE = 'A cat plays in the garden and meets a friend.';
 
@@ -21,7 +22,7 @@ const PREMISE = 'A cat plays in the garden and meets a friend.';
 const SETUP_TIMEOUT = 180_000;
 
 test.describe('generate prerequisites', () => {
-  test('names each missing prerequisite and links to the screen that fixes it @mobile', async ({
+  test('names each missing prerequisite and links to the screen that fixes it @mobile @smoke', async ({
     page,
   }) => {
     await stubOpenRouter(page);
@@ -80,7 +81,9 @@ test.describe('generate prerequisites', () => {
 });
 
 test.describe('generating a story', () => {
-  test('saves a strict story, lists it, and opens it in the reader', async ({ page }) => {
+  test.use({ storageState: GENERATION_READY_STATE });
+
+  test('saves a strict story, lists it, and opens it in the reader @smoke', async ({ page }) => {
     test.setTimeout(SETUP_TIMEOUT);
     await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
 
@@ -149,7 +152,7 @@ test.describe('generating a story', () => {
     await expect(marked.first()).toContainText('図書館');
   });
 
-  test('shows an invalid draft and leaves the library empty', async ({ page }) => {
+  test('shows an invalid draft and leaves the library empty @smoke', async ({ page }) => {
     test.setTimeout(SETUP_TIMEOUT);
     await prepareGeneration(page, {
       generation: { stories: [SHORT_STORY], repairs: [SHORT_STORY, SHORT_STORY] },
@@ -211,7 +214,9 @@ test.describe('generating a story', () => {
     expect(rows['generationProvenance']).toBe(0);
   });
 
-  test('cancelling during the auxiliary stage stores no translation at all', async ({ page }) => {
+  test('cancelling during the auxiliary stage stores no translation at all @smoke', async ({
+    page,
+  }) => {
     test.setTimeout(SETUP_TIMEOUT);
     // Everything up to acceptance answers normally; both auxiliary branches
     // stay in flight, so the cancel lands exactly where the specification says
@@ -249,7 +254,7 @@ test.describe('generating a story', () => {
     expect(rows['generationProvenance']).toBe(0);
   });
 
-  test('saves a story whose grammar review failed and whose translation is partial', async ({
+  test('saves a story whose grammar review failed and whose translation is partial @smoke', async ({
     page,
   }) => {
     test.setTimeout(SETUP_TIMEOUT);

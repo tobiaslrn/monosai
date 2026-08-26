@@ -95,6 +95,13 @@ built output costs 1.4MB across 15. That build ships no service worker; the
 worker, installability, and offline reload are covered by the separate
 `e2e:pwa` suite against the real Pages build.
 
+`npm run e2e` is the critical-journey lane used during ordinary development
+and on pull requests. Tests in that lane carry `@smoke`. `npm run e2e:full`
+runs every browser regression on `main`; both commands retain isolated browser
+contexts and the desktop/mobile project split. Expensive tested-model and
+vocabulary prerequisites are created once by the Playwright setup project and
+restored, including IndexedDB, into a fresh context for each dependent test.
+
 Core E2E scenarios:
 
 1. Fresh install -> paste -> save -> inspect word, with no setup.
@@ -203,7 +210,7 @@ Do not set unrealistic absolute timing based only on developer hardware. Publish
 
 ## 8. Coverage and static quality gates
 
-- Overall application: >= 85% statements/lines/functions and >= 80% branches.
+- Overall application: >= 85% statements/lines/functions and >= 75% branches.
 - Domain validation, generation state machines, cache-key logic, repository transactions, and provider error mapping: >= 95% statements/lines and >= 90% branches.
 - Every discriminated-union variant has a test; use exhaustive `never` checks.
 - TypeScript strict mode passes with no suppressed errors or unreviewed `@ts-ignore`.

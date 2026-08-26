@@ -233,8 +233,15 @@ export async function buildSnapshot(page: Page): Promise<void> {
 export async function prepareGeneration(page: Page, options: StubOptions): Promise<void> {
   await stubOpenRouter(page, options);
   await stubReviewedCollection(page);
-  await configureTextModel(page);
-  await buildSnapshot(page);
+
+  // Storage state restores the durable model and vocabulary records, but
+  // Playwright intentionally does not serialize Cache Storage or a live WASM
+  // worker. Visit the grammar route to activate the verified language runtime
+  // before generation captures its profile.
+  await page.goto('/#/grammar');
+  await expect(page.getByRole('radio', { name: /Starter forms/ })).toBeVisible({
+    timeout: 120_000,
+  });
 }
 
 export async function openGenerate(page: Page): Promise<void> {
