@@ -15,14 +15,19 @@ function ankiFixture(name: string): Buffer {
  * the service worker and the browser follows its redirect — an API request
  * would bypass the worker entirely and prove nothing.
  */
-async function shareFile(page: Page, name: string, bytes: Buffer): Promise<void> {
+async function shareFile(
+  page: Page,
+  name: string,
+  bytes: Buffer,
+  mimeType = 'application/apkg',
+): Promise<void> {
   const navigated = page.waitForEvent('framenavigated', {
     predicate: (frame) => frame === page.mainFrame(),
   });
   await Promise.all([
     navigated,
     page.evaluate(
-      ({ name: fileName, base64 }) => {
+      ({ name: fileName, base64, mimeType: sharedMimeType }) => {
         const binary = atob(base64);
         const buffer = new Uint8Array(binary.length);
         for (let index = 0; index < binary.length; index += 1) {
@@ -36,13 +41,13 @@ async function shareFile(page: Page, name: string, bytes: Buffer): Promise<void>
         input.type = 'file';
         input.name = 'package';
         const transfer = new DataTransfer();
-        transfer.items.add(new File([buffer], fileName, { type: 'application/octet-stream' }));
+        transfer.items.add(new File([buffer], fileName, { type: sharedMimeType }));
         input.files = transfer.files;
         form.append(input);
         document.body.append(form);
         form.submit();
       },
-      { name, base64: bytes.toString('base64') },
+      { name, base64: bytes.toString('base64'), mimeType },
     ),
   ]);
 }
@@ -243,7 +248,17 @@ test.describe('Android share target', () => {
     // Android matches the share sheet by MIME type, and knows no mapping for
     // `.apkg`, so the types AnkiDroid shares with have to be listed too.
     expect(files[0].accept).toEqual(
-      expect.arrayContaining(['application/zip', 'application/octet-stream', '.apkg']),
+      expect.arrayContaining([
+        'application/zip',
+        'application/octet-stream',
+        'application/apkg',
+        'application/colpkg',
+        'application/vnd.anki',
+        'application/x-apkg',
+        'application/x-colpkg',
+        '.apkg',
+        '.colpkg',
+      ]),
     );
   });
 
@@ -291,7 +306,7 @@ test.describe('Android share target', () => {
     await page.goto('./');
     await waitForServiceWorkerControl(page);
 
-    await shareFile(page, 'holiday.jpg', Buffer.from('not a package'));
+    await shareFile(page, 'holiday.jpg', Buffer.from('not a package'), 'image/jpeg');
 
     await expect(page.getByTestId('package-import-failed')).toContainText('not an Anki package', {
       timeout: 30_000,

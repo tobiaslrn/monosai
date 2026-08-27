@@ -21,6 +21,11 @@
             "application/zip",
             "application/x-zip-compressed",
             "application/octet-stream",
+            "application/apkg",
+            "application/colpkg",
+            "application/vnd.anki",
+            "application/x-apkg",
+            "application/x-colpkg",
             ".apkg",
             ".colpkg"
           ]

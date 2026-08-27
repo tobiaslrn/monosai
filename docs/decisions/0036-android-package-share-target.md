@@ -16,8 +16,9 @@ application database before the learner accepts an ambiguous mapping.
 
 - Register `monosai-sw.js`, whose fetch listener handles only the scoped
   `share-target` POST and is installed before `ngsw-worker.js` is imported.
-- Accept ZIP and generic-binary MIME types plus `.apkg`/`.colpkg` extensions in
-  the manifest. Do not accept `*/*`, which would advertise Monosai for unrelated
+- Accept AnkiDroid's `application/apkg`, the known Anki package MIME variants,
+  ZIP and generic-binary MIME types, plus `.apkg`/`.colpkg` extensions in the
+  manifest. Do not accept `*/*`, which would advertise Monosai for unrelated
   photos and documents.
 - Validate exactly one package and the existing 512 MB ceiling in the wrapper.
   Replace one Cache Storage inbox entry and return a `303 See Other` redirect
