@@ -3,6 +3,9 @@
 Date: 2026-08-26
 Status: Accepted
 
+The failure-handling subsection is superseded by
+[ADR 0035](0035-priority-retry-audio-queue.md).
+
 Supersedes the "Concurrency is one" section and the complete-set playback gate
 of [ADR 0024](0024-audio-cache-and-playback-ownership.md).
 

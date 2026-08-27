@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import type { AiError } from '../../domain/ai/ai-error';
+import { isAutomaticallyRetryable, type AiError } from '../../domain/ai/ai-error';
 import { remainingSentenceIds, type AssetJob } from '../../domain/enrichment/jobs';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { jobId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
@@ -55,6 +55,13 @@ const IDLE: AudioJobProgress = { kind: 'idle' };
  */
 export const AUDIO_GENERATION_CONCURRENCY = 4;
 
+/**
+ * One queue-level retry when a request returned bytes that did not validate as
+ * audio. Transient transport failures already spend their complete retry budget
+ * inside the provider; retrying those again here would multiply that limit.
+ */
+export const AUDIO_SENTENCE_RETRY_LIMIT = 1;
+
 /** Reads the flag through a call, so an earlier check never narrows a later one. */
 function isAborted(signal: AbortSignal): boolean {
   return signal.aborted;
@@ -64,6 +71,47 @@ function isAborted(signal: AbortSignal): boolean {
 type TerminalFailure =
   | { readonly source: 'provider'; readonly sentenceId: SentenceId; readonly error: AiError }
   | { readonly source: 'storage'; readonly error: StorageError };
+
+interface AudioQueueItem {
+  readonly sentence: Sentence;
+  /** Number of provider refusals already received for this sentence. */
+  readonly failures: number;
+}
+
+/**
+ * A small stable priority queue keyed by reading position.
+ *
+ * Retried sentences are inserted back at their original priority, so an early
+ * sentence cannot fall behind the rest of a long reading merely because its
+ * invalid clip happened to return first.
+ */
+class AudioPriorityQueue {
+  private readonly items: AudioQueueItem[];
+
+  constructor(sentences: readonly Sentence[]) {
+    this.items = orderedByReading(sentences).map((sentence) => ({ sentence, failures: 0 }));
+  }
+
+  get length(): number {
+    return this.items.length;
+  }
+
+  take(): AudioQueueItem | null {
+    return this.items.shift() ?? null;
+  }
+
+  retry(item: AudioQueueItem): void {
+    const retried = { ...item, failures: item.failures + 1 };
+    const nextLaterSentence = this.items.findIndex(
+      (candidate) => candidate.sentence.positionInReading > retried.sentence.positionInReading,
+    );
+    if (nextLaterSentence < 0) {
+      this.items.push(retried);
+      return;
+    }
+    this.items.splice(nextLaterSentence, 0, retried);
+  }
+}
 
 /** Everything one run needs, captured once so no setting can change mid-flight. */
 interface JobContext {
@@ -81,15 +129,16 @@ interface JobContext {
  * specification insists on. Sentences are **claimed in reading order by at most
  * `AUDIO_GENERATION_CONCURRENCY` workers**, so the beginning of the reading is
  * always the part that exists first and playback can start against a prefix
- * while the rest is still arriving (ADR 0034). And the first fully exhausted
- * failure **stops the job**: the remaining requests are aborted rather than
- * skipped past, because a set with a hole in it that reported itself complete
- * would be exactly the false completeness the release blockers name.
+ * while the rest is still arriving (ADR 0034). Sentence-local failures are
+ * retried or recorded without abandoning later work, and a job with a hole is
+ * reported as failed rather than falsely complete. Configuration-wide and
+ * storage failures still stop the workers immediately (ADR 0035).
  *
- * The job performs no retries of its own, for the same reason the translation
- * job does not: `OpenRouterClient` already spends its capped transport retries,
- * and a second layer would silently multiply the retry budget. **Try again** is
- * the visible, learner-driven attempt that follows them.
+ * A sentence whose returned clip is invalid gets one queue-level retry.
+ * Exhausted sentence-local failures are recorded while the queue continues;
+ * configuration-wide failures still stop the run immediately so a bad key or
+ * model cannot spend one request per sentence. **Try again** remains the
+ * visible attempt for the missing clips.
  */
 @Injectable({ providedIn: 'root' })
 export class AudioJobStore {
@@ -320,12 +369,11 @@ export class AudioJobStore {
   /**
    * Synthesizes the job's outstanding sentences through a bounded worker queue.
    *
-   * Workers claim sentences from one shared cursor that runs in reading order,
-   * so the clips that exist earliest are the ones at the front of the reading —
-   * which is what makes starting playback against a partial set useful rather
-   * than arbitrary. Each clip is stored and its job item recorded before that
-   * worker claims another, so an interruption anywhere leaves a job whose
-   * recorded progress is exactly the progress its stored rows support.
+   * Workers take the earliest available sentence from a shared priority queue.
+   * A retryable invalid clip is reinserted at that sentence's reading position,
+   * so it cannot fall behind later pending work merely because its request
+   * settled first. Each clip is stored and its job item recorded before that
+   * worker claims another, so an interruption leaves progress its rows support.
    *
    * Completions therefore arrive out of order. `completed` is counted here
    * rather than read from whichever `recordCompletion` happened to settle last,
@@ -370,37 +418,66 @@ export class AudioJobStore {
 
     const outstandingSet = new Set(outstanding);
     const allSentences = orderedByReading(loaded.value);
-    const queue = allSentences.filter((sentence) => outstandingSet.has(sentence.id));
+    const queue = new AudioPriorityQueue(
+      allSentences.filter((sentence) => outstandingSet.has(sentence.id)),
+    );
 
-    let cursor = 0;
     let completed = counts.completed;
+    let failed = counts.failed;
     // A holder rather than a `let`, so the flag a worker sets is still visible
     // to the checker after the queue has been awaited.
-    const outcome: { failure: TerminalFailure | null } = { failure: null };
+    const outcome: {
+      failure: TerminalFailure | null;
+      firstSentenceFailure: { readonly error: AiError } | null;
+    } = { failure: null, firstSentenceFailure: null };
 
     /**
-     * Stops the whole run at the first failure that survived transport retries.
+     * Stops the whole run for a configuration-wide or storage failure.
      *
      * Aborting the controller is what makes it fail *fast*: the requests the
-     * other workers already have in flight are cancelled rather than paid for,
-     * and only the first failure is reported.
+     * Other workers already in flight are cancelled rather than paid for, and
+     * only the first terminal failure is reported. Sentence-local failures do
+     * not come through this path; they are persisted while the queue continues.
      */
     const failFast = (failure: TerminalFailure): void => {
       outcome.failure ??= failure;
       controller.abort();
     };
 
+    const recordSentenceFailure = async (
+      sentenceId: SentenceId,
+      error: AiError,
+    ): Promise<boolean> => {
+      const recorded = await this.jobs.recordFailure(job.id, {
+        sentenceId,
+        errorCode: error.code,
+        failedAt: this.clock.now(),
+      });
+      if (!recorded.ok) {
+        failFast({ source: 'storage', error: recorded.error });
+        return false;
+      }
+      outcome.firstSentenceFailure ??= { error };
+      failed = recorded.value.failedItems.length;
+      counts = { ...counts, failed };
+      this.progressSignal.set({ kind: 'running', counts });
+      return true;
+    };
+
     const worker = async (): Promise<void> => {
       while (outcome.failure === null && !isAborted(signal)) {
-        const index = cursor;
-        cursor += 1;
-        if (index >= queue.length) {
+        const item = queue.take();
+        if (item === null) {
           return;
         }
-        const sentence = queue[index];
+        const sentence = item.sentence;
         const cacheKey = context.cacheKeys.get(sentence.id);
         if (cacheKey === undefined) {
-          continue;
+          failFast({
+            source: 'storage',
+            error: missingCacheKeyError(sentence.id),
+          });
+          return;
         }
 
         const produced = await this.audio.run(
@@ -419,6 +496,16 @@ export class AudioJobStore {
           // of the two this is.
           if (isAborted(signal)) {
             return;
+          }
+          if (shouldRetryQueueItem(produced.error) && item.failures < AUDIO_SENTENCE_RETRY_LIMIT) {
+            queue.retry(item);
+            continue;
+          }
+          if (isSentenceLocalFailure(produced.error)) {
+            if (!(await recordSentenceFailure(sentence.id, produced.error))) {
+              return;
+            }
+            continue;
           }
           failFast({ source: 'provider', sentenceId: sentence.id, error: produced.error });
           return;
@@ -460,6 +547,16 @@ export class AudioJobStore {
     }
     if (isAborted(signal)) {
       await this.markCancelled(job, counts);
+      return;
+    }
+
+    if (outcome.firstSentenceFailure !== null) {
+      const marked = await this.jobs.setState(job.id, 'failed');
+      if (!marked.ok) {
+        this.failStorage(marked.error, counts);
+        return;
+      }
+      this.failProvider(outcome.firstSentenceFailure.error, counts);
       return;
     }
 
@@ -528,6 +625,27 @@ export class AudioJobStore {
  */
 function orderedByReading(sentences: readonly Sentence[]): readonly Sentence[] {
   return [...sentences].sort((left, right) => left.positionInReading - right.positionInReading);
+}
+
+/** Failures that can be specific to one sentence rather than the whole setup. */
+function isSentenceLocalFailure(error: AiError): boolean {
+  return (
+    isAutomaticallyRetryable(error) ||
+    error.code === 'malformed-response' ||
+    error.code === 'audio-invalid'
+  );
+}
+
+function shouldRetryQueueItem(error: AiError): boolean {
+  return error.code === 'audio-invalid';
+}
+
+function missingCacheKeyError(sentenceId: SentenceId): StorageError {
+  return {
+    domain: 'storage',
+    code: 'corrupt-record',
+    message: `The audio cache key for sentence ${sentenceId} was missing.`,
+  };
 }
 
 function emptyCounts(): AudioJobCounts {

@@ -265,9 +265,9 @@ Build the cache key from content, TTS model, voice, response format, speed, spee
 2. Confirm sentence count and explicit network use.
 3. Create/reconcile a persisted `prepare-audio` job.
 4. Determine missing compatible cache keys.
-5. Claim sentences in reading order through a fixed four-request queue, so the beginning of the reading is always the part that exists first and progress stays predictable. The limit is internal and is not a setting.
+5. Claim sentences through a fixed four-worker priority queue ordered by position in the reading, so the beginning of the reading is always the part that exists first and progress stays predictable. A sentence whose returned bytes fail audio validation returns to the queue at its original priority for one bounded queue-level retry. Transient transport failures keep the provider's existing maximum of two retries and are not retried again by the queue. The concurrency and retry limits are internal and are not settings.
 6. Store and verify each clip immediately, and count completions in the job rather than reading them back, because they arrive out of order.
-7. On the first refusal that survives transport retries, stop scheduling, abort the requests still in flight, and expose **Try again** for whatever is still missing; do not skip and call the set complete. Report the refusal rather than the abort it caused.
+7. After the queue or provider retry budget is exhausted, record a sentence-local invalid-audio, malformed-response, or transient failure and continue preparing the remaining sentences. Finish with the precise failed count and expose **Try again** for only the missing clips. Configuration-wide failures such as authentication, model, capability, context, offline, cancellation, or unknown errors stop scheduling and abort requests still in flight.
 8. On cancellation, abort the active requests and retain successful clips. Cancelling generation stops no sound.
 9. Report progress as how many sentences are ready, not as a single sentence the run is at.
 

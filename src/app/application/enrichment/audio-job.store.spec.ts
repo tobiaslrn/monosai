@@ -24,7 +24,11 @@ import {
   READING_REPOSITORY,
 } from '../shared/repository-tokens';
 import { TtsStore } from '../settings/tts.store';
-import { AUDIO_GENERATION_CONCURRENCY, AudioJobStore } from './audio-job.store';
+import {
+  AUDIO_GENERATION_CONCURRENCY,
+  AUDIO_SENTENCE_RETRY_LIMIT,
+  AudioJobStore,
+} from './audio-job.store';
 
 const NOW = 1_700_600_000_000;
 const SENTENCE_COUNT = 6;
@@ -278,67 +282,101 @@ describe('AudioJobStore', () => {
     });
   });
 
-  /**
-   * The difference from translation, and the point of it: the job stops on the
-   * first refusal that survived the client's transport retries rather than
-   * carrying on past it and calling a set with a hole in it complete. The
-   * requests its siblings had in flight are aborted rather than paid for.
-   */
-  it('fails fast on the first refusal and abandons the rest of the queue', async () => {
-    let calls = 0;
-    bed.provider.synthesizeWith = async () => {
-      calls += 1;
-      const mine = calls;
+  it('requeues an invalid clip at its reading priority and then finishes', async () => {
+    const order = japaneseInOrder(bed.draft);
+    let firstAttempts = 0;
+    bed.provider.synthesizeWith = async (request) => {
+      if (request.text === order[0]) {
+        firstAttempts += 1;
+        if (firstAttempts === 1) {
+          return err(aiError('audio-invalid', 'tts-synthesis', 'The clip was invalid.'));
+        }
+      }
       await hold();
-      return mine === 3
-        ? err(aiError('provider-unavailable', 'tts-synthesis', 'The provider was unavailable.'))
-        : ok(audioPayload());
+      return ok(audioPayload());
     };
 
     await bed.store.start(bed.draft.reading.id);
 
-    // Only the first batch was ever opened: nothing after the refusal was
-    // scheduled, so the client's transport retries stay the only retries.
-    expect(bed.provider.synthesized).toHaveLength(AUDIO_GENERATION_CONCURRENCY);
-    // The clips that did arrive were kept, and the one that failed was not.
-    expect(await bed.db.audioAssets.count()).toBe(AUDIO_GENERATION_CONCURRENCY - 1);
-
-    const progress = bed.store.progress();
-    expect(progress.kind).toBe('failed');
-    if (progress.kind !== 'failed') {
-      return;
-    }
-    expect(progress.error.source).toBe('provider');
-    expect(progress.counts.completed).toBe(AUDIO_GENERATION_CONCURRENCY - 1);
-    expect(progress.counts.failed).toBe(1);
-
-    const rows = await bed.db.assetJobs.toArray();
-    expect(rows).toHaveLength(1);
-    expect(rows[0].state).toBe('failed');
-    expect(rows[0].failedItems.map((item) => item.errorCode)).toEqual(['provider-unavailable']);
+    expect(bed.provider.synthesized.map((request) => request.text)).toEqual([
+      ...order.slice(0, AUDIO_GENERATION_CONCURRENCY),
+      order[0],
+      ...order.slice(AUDIO_GENERATION_CONCURRENCY),
+    ]);
+    expect(firstAttempts).toBe(1 + AUDIO_SENTENCE_RETRY_LIMIT);
+    expect(bed.store.progress().kind).toBe('complete');
+    expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT);
   });
 
-  /**
-   * A run whose siblings were aborted by the fail-fast reports the refusal, not
-   * a cancellation. Reporting it as a stop would offer Dismiss for something
-   * the learner never asked to stop.
-   */
-  it('reports the refusal rather than the abort it caused', async () => {
+  it('records an exhausted invalid clip and continues the rest of the queue', async () => {
+    const failedText = japaneseInOrder(bed.draft)[1];
+    let failedAttempts = 0;
     bed.provider.synthesizeWith = async (request) => {
       await hold();
-      return request.text === japaneseInOrder(bed.draft)[1]
-        ? err(aiError('rate-limited', 'tts-synthesis', 'Too many requests.'))
+      if (request.text === failedText) {
+        failedAttempts += 1;
+      }
+      return request.text === failedText
+        ? err(aiError('audio-invalid', 'tts-synthesis', 'The clip was invalid.'))
         : ok(audioPayload());
     };
 
     await bed.store.start(bed.draft.reading.id);
 
+    expect(bed.provider.synthesized).toHaveLength(SENTENCE_COUNT + AUDIO_SENTENCE_RETRY_LIMIT);
+    expect(failedAttempts).toBe(1 + AUDIO_SENTENCE_RETRY_LIMIT);
+    expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT - 1);
     const progress = bed.store.progress();
     expect(progress.kind).toBe('failed');
     if (progress.kind !== 'failed' || progress.error.source !== 'provider') {
       return;
     }
-    expect(progress.error.error.code).toBe('rate-limited');
+    expect(progress.error.error.code).toBe('audio-invalid');
+    expect(progress.counts).toMatchObject({ completed: SENTENCE_COUNT - 1, failed: 1 });
+
+    const rows = await bed.db.assetJobs.toArray();
+    expect(rows[0].state).toBe('failed');
+    expect(rows[0].failedItems.map((item) => item.errorCode)).toEqual(['audio-invalid']);
+  });
+
+  it('does not multiply exhausted provider transport retries and continues', async () => {
+    const failedText = japaneseInOrder(bed.draft)[1];
+    bed.provider.synthesizeWith = (request) =>
+      request.text === failedText
+        ? err(aiError('rate-limited', 'tts-synthesis', 'Too many requests.'))
+        : ok(audioPayload());
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(bed.provider.synthesized.filter((request) => request.text === failedText)).toHaveLength(
+      1,
+    );
+    expect(new Set(bed.provider.synthesized.map((request) => request.text))).toEqual(
+      new Set(japaneseInOrder(bed.draft)),
+    );
+    expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT - 1);
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('failed');
+    if (progress.kind === 'failed') {
+      expect(progress.counts).toMatchObject({ completed: SENTENCE_COUNT - 1, failed: 1 });
+    }
+  });
+
+  it('fails fast for a configuration-wide refusal', async () => {
+    bed.provider.synthesizeWith = async () => {
+      await hold();
+      return err(aiError('authentication', 'tts-synthesis', 'The key was rejected.'));
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(bed.provider.synthesized).toHaveLength(AUDIO_GENERATION_CONCURRENCY);
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('failed');
+    if (progress.kind !== 'failed' || progress.error.source !== 'provider') {
+      return;
+    }
+    expect(progress.error.error.code).toBe('authentication');
   });
 
   it('retries only the clips that are still missing, and finishes', async () => {
