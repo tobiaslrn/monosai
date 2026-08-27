@@ -20,21 +20,30 @@ import type {
   TextTaskConfig,
 } from '../../domain/ai/text-generation-provider';
 import { DEFAULT_STORY_TOKEN_BUDGET } from '../../domain/settings/settings';
+import { STORY_BLUEPRINT_TEMPERATURE } from '../../domain/ai/sampling';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { OpenRouterClient } from './openrouter-client';
 import {
-  EXCEPTION_DECISIONS_JSON_SCHEMA,
-  STORY_BLUEPRINT_JSON_SCHEMA,
-  STORY_CANDIDATE_JSON_SCHEMA,
-  STORY_SEGMENT_JSON_SCHEMA,
+  applyScopedRepair,
+  planScopedRepair,
+  scopedRepairTargets,
+  type ScopedRepairEntry,
+} from '../../domain/ai/repair-scope';
+import {
+  exceptionDecisionsJsonSchema,
   exceptionDecisionsSchema,
   storyBlueprintSchema,
+  storyBlueprintJsonSchema,
+  storyCandidateJsonSchema,
   storyCandidateSchema,
+  storyRepairPatchSchema,
+  storyRepairPatchJsonSchema,
   storySegmentCandidateSchema,
+  storySegmentJsonSchema,
 } from './openrouter-response.schema';
 import { buildBlueprintPrompt } from './prompts/blueprint-prompt';
-import { buildExceptionPrompt } from './prompts/exception-prompt';
-import { buildRepairPrompt } from './prompts/repair-prompt';
+import { buildExceptionPrompt, exceptionCandidateWireId } from './prompts/exception-prompt';
+import { buildRepairPrompt, buildScopedRepairPrompt } from './prompts/repair-prompt';
 import { buildSegmentPrompt } from './prompts/segment-prompt';
 import { buildStoryPrompt } from './prompts/story-prompt';
 import { StructuredTaskRunner } from './structured-request';
@@ -49,6 +58,15 @@ import { StructuredTaskRunner } from './structured-request';
  */
 const MAX_REVIEW_TOKENS = 2_048;
 const MAX_BLUEPRINT_TOKENS = 4_096;
+
+/**
+ * How much preceding Japanese a segment request carries.
+ *
+ * Enough to keep track of who is speaking and which pronouns are live across a
+ * segment boundary. It is a rounding error beside the vocabulary inventory the
+ * same request sends, so erring on the generous side costs almost nothing.
+ */
+const PRECEDING_SENTENCES = 6;
 
 /**
  * Story generation, repair, and exception review over the shared client.
@@ -88,13 +106,22 @@ export class OpenRouterStoryGenerator {
       task: 'story-generation',
       config,
       prompt: buildStoryPrompt(request),
-      jsonSchema: STORY_CANDIDATE_JSON_SCHEMA,
+      jsonSchema: storyCandidateJsonSchema(request.sentenceRange),
       maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
       read: storyReader(request.sentenceRange),
       ...(signal === undefined ? {} : { signal }),
     });
   }
 
+  /**
+   * Repairs a candidate, rewriting as little of it as the problems allow.
+   *
+   * A story whose only fault is vocabulary is repaired sentence by sentence:
+   * the returned patch is spliced in and then revalidated in full, so the
+   * checks are unchanged while the untouched sentences lose their chance to
+   * acquire a new unknown. A wrong sentence count is a property of the whole
+   * story, so those still travel as a whole story.
+   */
   async repairStory(
     request: StoryRepairRequest,
     config: TextTaskConfig,
@@ -103,7 +130,31 @@ export class OpenRouterStoryGenerator {
     if (request.original.sentenceRange.max > MAX_STORY_SEGMENT_SENTENCES) {
       return this.repairLongStory(request, config, signal);
     }
+    if (request.structureIssues.length === 0 && request.unknownSpans.length > 0) {
+      return this.repairScoped(request, config, signal);
+    }
     return this.repairBoundedStory(request, config, signal);
+  }
+
+  private async repairScoped(
+    request: StoryRepairRequest,
+    config: TextTaskConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<StoryCandidate, AiError>> {
+    const entries = planScopedRepair(request.candidate, request.unknownSpans);
+    if (scopedRepairTargets(entries).length === 0) {
+      return ok(request.candidate);
+    }
+    const patched = await this.runner.run<StoryCandidate>({
+      task: 'story-repair',
+      config,
+      prompt: buildScopedRepairPrompt(request, entries),
+      jsonSchema: storyRepairPatchJsonSchema(scopedRepairTargets(entries).length),
+      maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
+      read: scopedRepairReader(request.candidate, entries),
+      ...(signal === undefined ? {} : { signal }),
+    });
+    return patched;
   }
 
   private repairBoundedStory(
@@ -115,7 +166,7 @@ export class OpenRouterStoryGenerator {
       task: 'story-repair',
       config,
       prompt: buildRepairPrompt(request),
-      jsonSchema: STORY_CANDIDATE_JSON_SCHEMA,
+      jsonSchema: storyCandidateJsonSchema(request.original.sentenceRange),
       maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
       read: storyReader(request.original.sentenceRange),
       ...(signal === undefined ? {} : { signal }),
@@ -132,8 +183,9 @@ export class OpenRouterStoryGenerator {
       task: 'story-generation',
       config,
       prompt: buildBlueprintPrompt(request, planned),
-      jsonSchema: STORY_BLUEPRINT_JSON_SCHEMA,
+      jsonSchema: storyBlueprintJsonSchema(planned.length),
       maxTokens: MAX_BLUEPRINT_TOKENS,
+      temperature: STORY_BLUEPRINT_TEMPERATURE,
       read: blueprintReader(planned),
       ...(signal === undefined ? {} : { signal }),
     });
@@ -155,7 +207,7 @@ export class OpenRouterStoryGenerator {
           continuitySummaryEn,
           precedingSentencesJa,
         }),
-        jsonSchema: STORY_SEGMENT_JSON_SCHEMA,
+        jsonSchema: storySegmentJsonSchema(segment.sentenceCount),
         maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
         read: segmentReader(segment.sentenceCount),
         ...(signal === undefined ? {} : { signal }),
@@ -181,6 +233,7 @@ export class OpenRouterStoryGenerator {
               },
             ],
             attempt: 1,
+            previouslyAttempted: [],
             promptVersion: request.promptVersion.replace(/^story\//u, 'repair/'),
           },
           config,
@@ -199,7 +252,9 @@ export class OpenRouterStoryGenerator {
         })),
       );
       continuitySummaryEn = generated.value.continuitySummaryEn;
-      precedingSentencesJa = sentences.slice(-3).map((sentence) => sentence.textJa);
+      precedingSentencesJa = sentences
+        .slice(-PRECEDING_SENTENCES)
+        .map((sentence) => sentence.textJa);
     }
     return ok({ titleJa: blueprint.value.titleJa, sentences });
   }
@@ -249,20 +304,20 @@ export class OpenRouterStoryGenerator {
         ...request.original,
         sentenceRange: { min: plan.sentenceCount, max: plan.sentenceCount },
       };
-      const repaired = await this.repairBoundedStory(
-        {
-          ...request,
-          original: segmentOriginal,
-          candidate: {
-            titleJa,
-            sentences: texts.map((textJa, index) => ({ index, textJa })),
-          },
-          unknownSpans: spans,
-          structureIssues: countMismatch || carriesStructureIssue ? request.structureIssues : [],
+      const segmentRequest: StoryRepairRequest = {
+        ...request,
+        original: segmentOriginal,
+        candidate: {
+          titleJa,
+          sentences: texts.map((textJa, index) => ({ index, textJa })),
         },
-        config,
-        signal,
-      );
+        unknownSpans: spans,
+        structureIssues: countMismatch || carriesStructureIssue ? request.structureIssues : [],
+      };
+      const repaired =
+        segmentRequest.structureIssues.length === 0 && segmentRequest.unknownSpans.length > 0
+          ? await this.repairScoped(segmentRequest, config, signal)
+          : await this.repairBoundedStory(segmentRequest, config, signal);
       if (!repaired.ok) {
         return repaired;
       }
@@ -290,9 +345,9 @@ export class OpenRouterStoryGenerator {
       task: 'exception-review',
       config,
       prompt: buildExceptionPrompt(request),
-      jsonSchema: EXCEPTION_DECISIONS_JSON_SCHEMA,
+      jsonSchema: exceptionDecisionsJsonSchema(request.candidates.length),
       maxTokens: MAX_REVIEW_TOKENS,
-      read: readDecisions,
+      read: decisionsReader(request),
       ...(signal === undefined ? {} : { signal }),
     });
   }
@@ -380,16 +435,56 @@ function storyReader(range: SentenceRange): (parsed: unknown) => Result<StoryCan
   };
 }
 
-function readDecisions(parsed: unknown): Result<readonly ExceptionDecision[], string> {
-  const payload = exceptionDecisionsSchema.safeParse(parsed);
-  if (!payload.success) {
-    return err('decisions-shape');
-  }
-  return ok(
-    payload.data.decisions.map((decision) => ({
-      candidateId: decision.candidateId,
-      decision: decision.decision,
-      explanationEn: decision.explanationEn,
-    })),
+/**
+ * Restores the caller's candidate keys from the ordinals the prompt sent.
+ *
+ * An ordinal that was never issued is passed through unchanged rather than
+ * dropped: `applyDecisions` already treats an answer about a candidate that was
+ * not asked about as a discarded decision, and that judgement stays in the
+ * domain.
+ */
+function decisionsReader(
+  request: ExceptionReviewRequest,
+): (parsed: unknown) => Result<readonly ExceptionDecision[], string> {
+  const byWireId = new Map(
+    request.candidates.map(
+      (candidate, index) => [exceptionCandidateWireId(index), candidate.id] as const,
+    ),
   );
+
+  return (parsed: unknown) => {
+    const payload = exceptionDecisionsSchema.safeParse(parsed);
+    if (!payload.success) {
+      return err('decisions-shape');
+    }
+    return ok(
+      payload.data.decisions.map((decision) => ({
+        candidateId: byWireId.get(decision.candidateId) ?? decision.candidateId,
+        decision: decision.decision,
+        explanationEn: decision.explanationEn,
+      })),
+    );
+  };
+}
+
+/**
+ * Reads a scoped repair's patch and splices it into the candidate.
+ *
+ * A patch that does not answer exactly what was asked is refused here rather
+ * than partly applied, so the single format recovery covers it. What comes back
+ * is a complete story again, which the caller revalidates from scratch exactly
+ * as it would a rewritten one.
+ */
+function scopedRepairReader(
+  candidate: StoryCandidate,
+  entries: readonly ScopedRepairEntry[],
+): (parsed: unknown) => Result<StoryCandidate, string> {
+  return (parsed: unknown) => {
+    const payload = storyRepairPatchSchema.safeParse(parsed);
+    if (!payload.success) {
+      return err('story-repair-patch-shape');
+    }
+    const spliced = applyScopedRepair(candidate, entries, payload.data);
+    return spliced.ok ? ok(normalizeCandidate(spliced.value)) : spliced;
+  };
 }

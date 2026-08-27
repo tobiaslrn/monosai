@@ -2,7 +2,7 @@ import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
-import { MAX_TRANSLATION_BATCH } from '../../domain/ai/translation-request';
+import { MAX_TRANSLATION_BATCH, translationTargets } from '../../domain/ai/translation-request';
 import type { ImportedReadingDraft } from '../../domain/reading/reading-repository';
 import type { TextModelSettings } from '../../domain/settings/settings';
 import { fixedClock } from '../../domain/shared/clock';
@@ -100,7 +100,12 @@ async function configure(): Promise<JobTestBed> {
   });
 
   provider.translateWith = (request) =>
-    ok(request.sentences.map((sentence) => ({ id: sentence.id, textEn: `EN ${sentence.textJa}` })));
+    ok(
+      translationTargets(request).map((sentence) => ({
+        id: sentence.id,
+        textEn: `EN ${sentence.textJa}`,
+      })),
+    );
 
   return {
     db,
@@ -129,10 +134,9 @@ describe('TranslationJobStore', () => {
     await bed.store.start(bed.draft.reading.id);
 
     expect(bed.provider.generationCalls.translate).toBe(2);
-    expect(bed.provider.translationRequests.map((request) => request.sentences.length)).toEqual([
-      MAX_TRANSLATION_BATCH,
-      SENTENCE_COUNT - MAX_TRANSLATION_BATCH,
-    ]);
+    expect(
+      bed.provider.translationRequests.map((request) => translationTargets(request).length),
+    ).toEqual([MAX_TRANSLATION_BATCH, SENTENCE_COUNT - MAX_TRANSLATION_BATCH]);
 
     const progress = bed.store.progress();
     expect(progress.kind).toBe('complete');
@@ -193,7 +197,10 @@ describe('TranslationJobStore', () => {
 
     bed.provider.translateWith = (request) =>
       ok(
-        request.sentences.map((sentence) => ({ id: sentence.id, textEn: `EN ${sentence.textJa}` })),
+        translationTargets(request).map((sentence) => ({
+          id: sentence.id,
+          textEn: `EN ${sentence.textJa}`,
+        })),
       );
     await bed.store.retry(bed.draft.reading.id);
 
@@ -242,7 +249,7 @@ describe('TranslationJobStore', () => {
 
     const requestedAfterResume = bed.provider.translationRequests
       .slice(before)
-      .reduce((sum, request) => sum + request.sentences.length, 0);
+      .reduce((sum, request) => sum + translationTargets(request).length, 0);
     expect(requestedAfterResume).toBe(SENTENCE_COUNT - completed);
 
     const stored = await bed.enrichment.listTranslations(bed.draft.reading.id);

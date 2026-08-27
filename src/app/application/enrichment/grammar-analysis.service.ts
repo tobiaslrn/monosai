@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import {
   MAX_GRAMMAR_REVIEW_BATCH,
   type GrammarReviewRequest,
-  type ReviewedFinding,
+  type NormalizedFinding,
 } from '../../domain/ai/grammar-review-request';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import { planBatches } from '../../domain/ai/translation-request';
@@ -48,7 +48,7 @@ export class GrammarAnalysisService {
     config: TextTaskConfig,
     signal: AbortSignal,
   ): Promise<GrammarRunOutcome> {
-    const normalized: ReviewedFinding[] = [];
+    const normalized: NormalizedFinding[] = [];
     for (const batch of planBatches(sentences, MAX_GRAMMAR_REVIEW_BATCH)) {
       const request: GrammarReviewRequest = {
         profileGuidance,

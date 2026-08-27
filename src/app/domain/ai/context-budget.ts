@@ -62,8 +62,7 @@ export function estimateRequestTokens(request: StoryGenerationRequest): number {
       alwaysAvailableForms: request.structuralBaseline,
     },
     storyRequirements: {
-      form: request.form,
-      sentenceRange: request.sentenceRange,
+      sentenceCount: request.sentenceRange,
     },
   });
   return (

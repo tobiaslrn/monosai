@@ -23,20 +23,28 @@ export interface TextTaskConfig {
   readonly storyTokenBudget?: number;
 }
 
-/** One word the model must remove or replace, with the reason it must go. */
+/**
+ * One word the model must remove or replace.
+ *
+ * There is no per-span reason, because there is only one: the word is outside
+ * the allowed vocabulary and the exception policy did not approve it. Repeating
+ * that sentence once per span would pay for it once per span and say nothing
+ * new, so the repair prompt states it once.
+ */
 export interface UnknownSpan {
   /** Index of the offending sentence, or `null` when it is in the title. */
   readonly sentenceIndex: number | null;
   readonly surface: string;
-  readonly reason: string;
 }
 
 /**
  * A targeted repair of a candidate the local checks refused.
  *
- * The whole current story travels with it, because a repair returns a whole
- * story: nothing is ever patched into a previous candidate, and the returned
- * Japanese is reparsed and revalidated from scratch (ai-pipelines section 7).
+ * The whole current story travels with it, because a structure repair needs it:
+ * a wrong sentence count is a property of the story, not of one sentence. A
+ * repair that only has to replace words is scoped down to the sentences at
+ * fault by the adapter. Either way nothing returned is trusted — the reply is
+ * revalidated from scratch (ai-pipelines section 7).
  */
 export interface StoryRepairRequest {
   readonly original: StoryGenerationRequest;
@@ -44,6 +52,12 @@ export interface StoryRepairRequest {
   readonly unknownSpans: readonly UnknownSpan[];
   readonly structureIssues: readonly StructureIssue[];
   readonly attempt: number;
+  /**
+   * Surfaces an earlier repair in this run was already asked to remove and did
+   * not. Without them the model has no way to know its previous replacement is
+   * the one that just failed, and nothing stops it choosing that word again.
+   */
+  readonly previouslyAttempted: readonly string[];
   readonly promptVersion: string;
 }
 

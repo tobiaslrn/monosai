@@ -23,9 +23,16 @@ const PROBE_SYSTEM_PROMPT =
 
 const PROBE_USER_PROMPT = 'Reply with exactly {"ok": true, "language": "ja"} and no other text.';
 
-/** Added only when the model could not be driven by a provider-native schema. */
-const JSON_CONTRACT_REMINDER =
-  'Your previous reply was not a single valid JSON object. Reply with exactly {"ok": true, "language": "ja"} and nothing else: no prose, no code fences.';
+/**
+ * Added only when the model could not be driven by a provider-native schema.
+ *
+ * It says nothing about a previous reply, because there may not have been one:
+ * the same recovery runs when the provider refused the `response_format`
+ * parameter outright, and telling a model its last answer was malformed when it
+ * never gave one is a claim about a history that did not happen.
+ */
+const PROBE_CONTRACT_REMINDER =
+  'Reply with exactly {"ok": true, "language": "ja"} and nothing else: no prose, no code fences.';
 
 /** A compatibility probe needs a handful of tokens; a runaway reply is a failure. */
 const MAX_PROBE_TOKENS = 512;
@@ -107,7 +114,7 @@ export class OpenRouterTextModelTester {
               role: 'user',
               content: native
                 ? PROBE_USER_PROMPT
-                : `${PROBE_USER_PROMPT}\n${JSON_CONTRACT_REMINDER}`,
+                : `${PROBE_USER_PROMPT}\n${PROBE_CONTRACT_REMINDER}`,
             },
           ],
           ...(native

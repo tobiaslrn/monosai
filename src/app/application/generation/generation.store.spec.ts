@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
+import { translationTargets } from '../../domain/ai/translation-request';
 import { err, ok } from '../../domain/shared/result';
 import { storageError } from '../../domain/storage/storage-error';
 import {
@@ -72,7 +73,7 @@ describe('GenerationStore strict pass', () => {
     const provenance = bed.readings.provenance[0];
     expect(provenance.repairAttempts).toBe(0);
     expect(provenance.modelId).toBe('vendor/text-model');
-    expect(provenance.promptVersions).toMatchObject({ story: 'story/2' });
+    expect(provenance.promptVersions).toMatchObject({ story: 'story/3' });
     expect(provenance.grammarProfileSnapshotId.length).toBeGreaterThan(0);
     expect(provenance.suggestedVocabularyItemIds.length).toBeGreaterThan(0);
   });
@@ -272,6 +273,34 @@ describe('GenerationStore repair', () => {
     expect(bed.readings.provenance[0].repairAttempts).toBe(1);
   });
 
+  it('does not ask the policy twice about a word it already refused', async () => {
+    await bed.setPolicy(POLICY);
+    bed.provider.storyQueue.push(ok(storyWithUnknown()));
+    bed.provider.reviewQueue.push(ok([REJECTION]));
+    // Both repairs leave the same word in place, so it is a candidate again on
+    // every pass — but the policy's answer cannot have changed.
+    bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.provider.generationCalls).toMatchObject({ repair: 2, review: 1 });
+    expect(bed.store.state().kind).toBe('saved');
+  });
+
+  it('asks again about a word whose review never got an answer', async () => {
+    await bed.setPolicy(POLICY);
+    bed.provider.storyQueue.push(ok(storyWithUnknown()));
+    // A failed review settles nothing, so every pass has to ask again.
+    const unavailable = () =>
+      err(aiError('provider-unavailable', 'exception-review', 'The provider is down.'));
+    bed.provider.reviewQueue.push(unavailable(), unavailable(), unavailable());
+    bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.provider.generationCalls).toMatchObject({ repair: 2, review: 3 });
+  });
+
   it('repairs a story of the wrong length rather than treating it as malformed', async () => {
     bed.provider.storyQueue.push(ok(shortStory()));
     bed.provider.repairQueue.push(ok(strictStory()));
@@ -297,13 +326,21 @@ describe('GenerationStore repair', () => {
 
     await bed.store.generate(5, PREMISE);
 
+    // The reason is stated once by the repair prompt, not repeated per span.
     expect(bed.provider.repairRequests[0].unknownSpans).toEqual([
-      {
-        sentenceIndex: 1,
-        surface: '図書館',
-        reason: 'is not in the allowed vocabulary and was not approved by the exception policy.',
-      },
+      { sentenceIndex: 1, surface: '図書館' },
     ]);
+    expect(bed.provider.repairRequests[0].previouslyAttempted).toEqual([]);
+  });
+
+  it('names a surface an earlier repair already failed to remove', async () => {
+    bed.provider.storyQueue.push(ok(storyWithUnknown()));
+    bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.provider.repairRequests[0].previouslyAttempted).toEqual([]);
+    expect(bed.provider.repairRequests[1].previouslyAttempted).toEqual(['図書館']);
   });
 
   it('saves the story after two repairs, with the words they could not replace marked', async () => {
@@ -506,7 +543,7 @@ describe('GenerationStore auxiliary review', () => {
           const request = bed.provider.translationRequests[translateCallIndex - 1];
           bed.provider.translationQueue.push(
             ok(
-              request.sentences.map((sentence) => ({
+              translationTargets(request).map((sentence) => ({
                 id: sentence.id,
                 textEn: `EN: ${sentence.textJa}`,
               })),
@@ -579,7 +616,7 @@ describe('GenerationStore auxiliary review', () => {
     expect(bed.provider.generationCalls.grammar).toBe(1);
     expect(bed.provider.generationCalls.translate).toBe(1);
     expect(bed.provider.grammarRequests[0].sentences).toHaveLength(5);
-    expect(bed.provider.translationRequests[0].sentences).toHaveLength(5);
+    expect(translationTargets(bed.provider.translationRequests[0])).toHaveLength(5);
   });
 });
 

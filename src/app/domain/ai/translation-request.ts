@@ -4,19 +4,59 @@ import { err, ok, type Result } from '../shared/result';
 /** How many sentences one translation request may carry. */
 export const MAX_TRANSLATION_BATCH = 10;
 
+/**
+ * One entry of the passage a translation request sends.
+ *
+ * The window is the batch's sentences plus the immediate neighbours of each,
+ * in reading order and deduplicated. Sending one ordered passage rather than a
+ * before/after pair per sentence says the same thing for roughly half the
+ * Japanese, and gives the model the whole paragraph instead of a one-sentence
+ * keyhole — which matters for a language that drops its subjects.
+ */
+export interface TranslationWindowEntry {
+  readonly textJa: string;
+  /** The sentence to translate, or `null` when this entry is context only. */
+  readonly targetId: SentenceId | null;
+  /**
+   * English already produced for this entry earlier in the same run.
+   *
+   * Batches are independent requests, so nothing otherwise pins how a name or
+   * a recurring term was rendered in the previous one. Carrying the neighbour's
+   * finished English forward is what keeps 優希 from becoming both "Yuki" and
+   * "Yuuki" inside one reading.
+   */
+  readonly textEn?: string;
+}
+
 export interface TranslationBatchRequest {
-  readonly sentences: readonly {
-    readonly id: SentenceId;
-    readonly textJa: string;
-    readonly contextBeforeJa?: string;
-    readonly contextAfterJa?: string;
+  readonly window: readonly TranslationWindowEntry[];
+  /** The reading's Japanese title, when it has one, as subject-matter context. */
+  readonly titleJa?: string;
+  /** The register the Japanese was written for, so "preserve register" has a referent. */
+  readonly registerPreference?: string;
+  /** Earlier choices for recurring names or terms, represented by a translated use. */
+  readonly establishedRenderings?: readonly {
+    readonly surfaceJa: string;
+    readonly exampleJa: string;
+    readonly exampleEn: string;
   }[];
+  /** The learner's premise, when generation supplied one, as story-level context. */
+  readonly premiseJa?: string;
   readonly promptVersion: string;
 }
 
 export interface TranslationResult {
   readonly id: SentenceId;
   readonly textEn: string;
+}
+
+/** The entries a batch actually asks for, in reading order. */
+export function translationTargets(
+  request: TranslationBatchRequest,
+): readonly { readonly id: SentenceId; readonly textJa: string }[] {
+  return request.window.flatMap((entry) =>
+    entry.targetId === null ? [] : [{ id: entry.targetId, textJa: entry.textJa }],
+  );
 }
 
 /** Splits items into ordered, non-empty batches of at most `maxBatch`. */

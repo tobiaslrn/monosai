@@ -2,6 +2,7 @@ import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import { estimateTokens, MAX_REQUEST_TOKENS } from '../../domain/ai/context-budget';
 import type { StructuredOutputMode } from '../../domain/ai/model-test';
+import { temperatureForTask } from '../../domain/ai/sampling';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import { isGeminiModel } from '../../domain/ai/tts-configuration';
 import { err, ok, type Result } from '../../domain/shared/result';
@@ -21,6 +22,8 @@ export interface StructuredRequest<T> {
   readonly prompt: AssembledPrompt;
   readonly jsonSchema: Record<string, unknown>;
   readonly maxTokens: number;
+  /** Overrides the task default when one task contains both creative and judgement calls. */
+  readonly temperature?: number;
   readonly read: (parsed: unknown) => Result<T, string>;
   readonly signal?: AbortSignal;
 }
@@ -61,14 +64,21 @@ export class StructuredTaskRunner {
       return first;
     }
 
-    return this.attempt(request, 'json-contract');
+    return this.attempt(request, 'json-contract', false);
   }
 
   private async attempt<T>(
     request: StructuredRequest<T>,
     mode: StructuredOutputMode,
+    sample = true,
   ): Promise<Result<T, AiError>> {
     const native = mode === 'native-schema';
+    // A refused optional parameter is not always named in the 400, so the one
+    // recovery drops every optional parameter at once rather than guessing
+    // which of them the provider objected to.
+    const temperature = sample
+      ? (request.temperature ?? temperatureForTask(request.task))
+      : undefined;
     const system = native
       ? request.prompt.system
       : `${request.prompt.system}\n\n${request.prompt.jsonContract}\n${JSON_CONTRACT_REMINDER}`;
@@ -93,6 +103,7 @@ export class StructuredTaskRunner {
         body: {
           model: request.config.modelId,
           max_tokens: request.maxTokens,
+          ...(temperature === undefined ? {} : { temperature }),
           ...reasoningRequest(request.config.modelId, request.config.reasoningEffort),
           messages: [
             {

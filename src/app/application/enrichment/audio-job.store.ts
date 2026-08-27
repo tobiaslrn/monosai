@@ -175,7 +175,7 @@ export class AudioJobStore {
    *
    * Reuses an active job whose configuration still matches, so pressing the
    * action twice continues one job rather than racing two.
-  */
+   */
   async start(readingId: ReadingId): Promise<void> {
     const activeRun = this.activeRun;
     if (activeRun !== null) {

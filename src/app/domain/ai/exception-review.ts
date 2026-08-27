@@ -37,6 +37,15 @@ export interface ExceptionReviewOutcome {
   readonly approvals: ReadonlyMap<string, TokenValidation>;
   /** Candidates that stay unknown: rejected, unreviewed, or invalidly decided. */
   readonly stillUnknown: readonly string[];
+  /**
+   * Candidates the policy explicitly refused, as opposed to ones that stayed
+   * unknown because the review failed, skipped them, or answered unusably.
+   *
+   * Only an explicit refusal is a settled answer: the same policy asked about
+   * the same word will say the same thing, so a later pass in this run can skip
+   * it. Everything else deserves another attempt.
+   */
+  readonly rejections: readonly string[];
   readonly discarded: readonly DiscardedDecision[];
 }
 
@@ -44,36 +53,73 @@ export interface ExceptionReviewOutcome {
  * Shortest explanation that can carry a reason.
  *
  * The specification invalidates empty and vague explanations. A length floor
- * catches the empty half exactly; the vague half needs judgement, so the check
- * below is a small list of answers that restate the verdict instead of giving a
- * reason. Both are deliberately conservative: an invalid decision costs a
- * repair attempt, never an unearned approval.
+ * catches the empty half exactly; the vague half needs judgement. Both are
+ * deliberately conservative: an invalid decision costs a repair attempt, never
+ * an unearned approval.
  */
 const MINIMUM_EXPLANATION_LENGTH = 12;
 
-const VERDICT_RESTATEMENTS: readonly string[] = [
+/** Words that can appear in a restatement of the verdict without adding to it. */
+const VERDICT_WORDS: ReadonlySet<string> = new Set([
+  'a',
+  'allow',
+  'allowed',
+  'allows',
+  'an',
+  'and',
+  'approve',
+  'approved',
+  'approves',
+  'as',
+  'because',
+  'by',
+  'clearly',
+  'covered',
+  'covers',
+  'exception',
+  'fine',
+  'fits',
+  'for',
+  'in',
+  'is',
+  'it',
+  'its',
+  'matches',
+  'of',
   'ok',
   'okay',
-  'yes',
-  'fine',
-  'allowed',
-  'approved',
-  'accepted',
+  'per',
+  'permits',
+  'permitted',
   'policy',
-  'per policy',
-  'by policy',
-  'it is allowed',
-  'this is allowed',
-  'matches the policy',
-  'policy allows it',
-];
+  'so',
+  'the',
+  'this',
+  'to',
+  'under',
+  'word',
+  'yes',
+]);
 
+/** How many words an explanation must add beyond restating the verdict. */
+const MINIMUM_SUBSTANTIVE_WORDS = 2;
+
+/**
+ * Whether an explanation says nothing the verdict did not already say.
+ *
+ * An exact-match list of stock phrases was close to decorative: "it is allowed
+ * by the policy" is long enough for the floor and is not on any such list. What
+ * distinguishes a reason from a restatement is that a reason names something —
+ * a clause of the policy, a property of the word — so the test is whether
+ * anything is left once the words a bare verdict is made of are removed.
+ */
 function isVague(explanation: string): boolean {
-  const normalized = explanation
-    .trim()
+  const words = explanation
     .toLowerCase()
-    .replace(/[.!]+$/, '');
-  return VERDICT_RESTATEMENTS.includes(normalized);
+    .split(/[^\p{Letter}\p{Number}'-]+/u)
+    .filter((word) => word !== '');
+  const substantive = words.filter((word) => !VERDICT_WORDS.has(word));
+  return substantive.length < MINIMUM_SUBSTANTIVE_WORDS;
 }
 
 /**
@@ -96,6 +142,7 @@ export function applyDecisions(
   const byId = new Map(candidates.map((candidate) => [candidate.id, candidate]));
   const approvals = new Map<string, TokenValidation>();
   const discarded: DiscardedDecision[] = [];
+  const rejections = new Set<string>();
   const seen = new Set<string>();
 
   for (const decision of decisions) {
@@ -107,12 +154,14 @@ export function applyDecisions(
       // A second answer for the same word means the review contradicted itself;
       // neither answer is trustworthy, so the first one is withdrawn too.
       approvals.delete(decision.candidateId);
+      rejections.delete(decision.candidateId);
       discarded.push({ candidateId: decision.candidateId, code: 'duplicate-candidate' });
       continue;
     }
     seen.add(decision.candidateId);
 
     if (decision.decision === 'rejected') {
+      rejections.add(decision.candidateId);
       continue;
     }
 
@@ -137,7 +186,7 @@ export function applyDecisions(
     .filter((candidate) => !approvals.has(candidate.id))
     .map((candidate) => candidate.id);
 
-  return { approvals, stillUnknown, discarded };
+  return { approvals, stillUnknown, rejections: [...rejections], discarded };
 }
 
 /** Every candidate stays unknown, which is what a failed review means. */
@@ -145,6 +194,7 @@ export function noApprovals(candidates: readonly ExceptionCandidate[]): Exceptio
   return {
     approvals: new Map<string, TokenValidation>(),
     stillUnknown: candidates.map((candidate) => candidate.id),
+    rejections: [],
     discarded: [],
   };
 }

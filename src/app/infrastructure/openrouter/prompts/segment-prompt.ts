@@ -3,8 +3,10 @@ import {
   JAPANESE_OUTPUT_LAYER,
   PROTOCOL_LAYER,
   STORY_POLICY_LAYER,
+  asConfig,
   asData,
   assemble,
+  jsonConfigBlock,
   jsonDataBlock,
   vocabularyInventory,
   type AssembledPrompt,
@@ -32,11 +34,11 @@ export function buildSegmentPrompt(request: StorySegmentRequest): AssembledPromp
     TASK_LAYER.join('\n'),
   ]);
   const user = assemble([
-    jsonDataBlock('grammar profile', {
+    jsonConfigBlock('grammar profile', {
       guidance: request.original.grammarGuidance,
       register: request.original.registerPreference,
     }),
-    jsonDataBlock(
+    jsonConfigBlock(
       'vocabulary inventory',
       vocabularyInventory(
         request.original.allowedVocabulary,
@@ -45,7 +47,7 @@ export function buildSegmentPrompt(request: StorySegmentRequest): AssembledPromp
       ),
     ),
     jsonDataBlock('story blueprint', request.blueprint),
-    jsonDataBlock('current segment', {
+    jsonConfigBlock('current segment', {
       index: request.segment.index,
       sentenceCount: request.segment.sentenceCount,
       beatEn: request.segment.beatEn,
@@ -58,7 +60,7 @@ export function buildSegmentPrompt(request: StorySegmentRequest): AssembledPromp
     asData('premise', request.original.premise),
     request.original.specialInstructions === undefined
       ? ''
-      : asData('learner style instructions', request.original.specialInstructions),
+      : asConfig('learner style instructions', request.original.specialInstructions),
   ]);
   return { system, user, jsonContract: JSON_CONTRACT };
 }

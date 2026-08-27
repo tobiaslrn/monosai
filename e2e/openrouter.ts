@@ -128,6 +128,7 @@ function silentMp3(): Buffer {
 
 /** Names of the JSON schemas the generation and enrichment adapters send. */
 const STORY_SCHEMA = 'monosai_story';
+const STORY_REPAIR_SCHEMA = 'monosai_story_repair_patch';
 const DECISIONS_SCHEMA = 'monosai_exception_decisions';
 const GRAMMAR_SCHEMA = 'monosai_grammar_review';
 const TRANSLATIONS_SCHEMA = 'monosai_translations';
@@ -145,7 +146,7 @@ function requestedSentences(text: string): readonly { id: string; textJa: string
   // route is shared by tests that exercise prompt compatibility and by the
   // current production prompt contract.
   const dataBlock =
-    /<<<MONOSAI_DATA\s+(?:translation targets|sentences in reading order)\n([\s\S]*?)\nMONOSAI_DATA>>>/.exec(
+    /<<<MONOSAI_DATA\s+(?:reading window|translation targets|sentences in reading order)\n([\s\S]*?)\nMONOSAI_DATA>>>/.exec(
       text,
     );
   if (dataBlock?.[1] !== undefined) {
@@ -186,6 +187,54 @@ function requestedSentences(text: string): readonly { id: string; textJa: string
 interface ChatBody {
   readonly messages?: readonly { readonly role: string; readonly content: string }[];
   readonly response_format?: { readonly json_schema?: { readonly name?: string } };
+}
+
+/**
+ * The ids a translation request actually asks about.
+ *
+ * The window carries context entries too, and answering for one of those is an
+ * extra translation that rejects the whole batch — the same way a real model's
+ * would.
+ */
+function requestedTargetIds(text: string): readonly string[] | null {
+  const block = /<<<MONOSAI_CONFIG\s+translation requirements\n([\s\S]*?)\nMONOSAI_CONFIG>>>/.exec(
+    text,
+  );
+  if (block?.[1] === undefined) {
+    return null;
+  }
+  try {
+    const parsed: unknown = JSON.parse(block[1]);
+    const ids = (parsed as { targetIds?: unknown }).targetIds;
+    return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The indexes a scoped repair must answer for, and the title when it is one.
+ *
+ * A repair that only has to replace words no longer returns a whole story, so
+ * the stub answers the patch shape the adapter splices in.
+ */
+function repairTargets(text: string): { indexes: readonly number[]; title: boolean } {
+  const block = /<<<MONOSAI_CONFIG\s+repair requirements\n([\s\S]*?)\nMONOSAI_CONFIG>>>/.exec(text);
+  if (block?.[1] === undefined) {
+    return { indexes: [], title: false };
+  }
+  try {
+    const parsed = JSON.parse(block[1]) as { targetIndexes?: unknown; titleIndex?: unknown };
+    const titleIndex = typeof parsed.titleIndex === 'number' ? parsed.titleIndex : -1;
+    const raw = Array.isArray(parsed.targetIndexes) ? parsed.targetIndexes : [];
+    const indexes = raw.filter((index): index is number => typeof index === 'number');
+    return {
+      indexes: indexes.filter((index) => index !== titleIndex),
+      title: indexes.includes(titleIndex),
+    };
+  } catch {
+    return { indexes: [], title: false };
+  }
 }
 
 function storyPayload(reply: StoryReply): string {
@@ -408,11 +457,14 @@ export async function stubOpenRouter(
     if (
       schema === TRANSLATIONS_SCHEMA ||
       text.includes('translate each given Japanese sentence') ||
-      text.includes('translation targets')
+      text.includes('reading window')
     ) {
       const outcome = nextOf(options.generation?.translations, served.translations) ?? 'ok';
       served.translations += 1;
-      const sentences = requestedSentences(text);
+      const window = requestedSentences(text);
+      const targetIds = requestedTargetIds(text);
+      const sentences =
+        targetIds === null ? window : window.filter((sentence) => targetIds.includes(sentence.id));
       translationRequests.push(sentences.map((sentence) => ({ ...sentence })));
       if (outcome === 'hang') {
         return HANG;
@@ -433,10 +485,25 @@ export async function stubOpenRouter(
       served.decisions += 1;
       return JSON.stringify({ decisions: reply === undefined ? [] : [reply] });
     }
-    if (schema !== STORY_SCHEMA && !text.includes('allowed vocabulary (data)')) {
+    if (schema === STORY_REPAIR_SCHEMA || text.includes('story window in reading order')) {
+      const reply = nextOf(options.generation?.repairs, served.repair);
+      served.repair += 1;
+      if (reply === undefined) {
+        return null;
+      }
+      const targets = repairTargets(text);
+      return JSON.stringify({
+        titleJa: targets.title ? reply.titleJa : null,
+        replacements: targets.indexes.map((index) => ({
+          index,
+          textJa: reply.sentences.at(index) ?? reply.sentences[0],
+        })),
+      });
+    }
+    if (schema !== STORY_SCHEMA && !text.includes('vocabulary inventory')) {
       return null;
     }
-    if (text.includes('Repair attempt')) {
+    if (text.includes('repair requirements')) {
       const reply = nextOf(options.generation?.repairs, served.repair);
       served.repair += 1;
       return reply === undefined ? null : storyPayload(reply);
