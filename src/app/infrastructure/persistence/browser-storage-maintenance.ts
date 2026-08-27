@@ -2,6 +2,7 @@ import Dexie from 'dexie';
 import type { Logger } from '../../application/shared/diagnostics';
 import { safeErrorTypeOf } from '../../domain/shared/errors';
 import { ok, type Result } from '../../domain/shared/result';
+import type { ReadingId } from '../../domain/shared/ids';
 import {
   UNKNOWN_PERSISTENCE,
   type PersistenceStatus,
@@ -82,6 +83,30 @@ export class BrowserStorageMaintenance implements StorageMaintenance {
               audioSummary: { total: reading.sentenceCount, completed: 0, failed: 0 },
             });
           }
+        },
+      );
+    });
+  }
+
+  /** Deletes one reading's audio atomically, leaving every other aid intact. */
+  clearReadingAudio(readingId: ReadingId): Promise<Result<void, StorageError>> {
+    return runStorage('storage.clearReadingAudio', async () => {
+      await this.db.transaction(
+        'rw',
+        [this.db.audioAssets, this.db.assetJobs, this.db.readings],
+        async () => {
+          const reading = await this.db.readings.get(readingId);
+          if (reading === undefined) {
+            return;
+          }
+          await this.db.audioAssets.where('readingId').equals(readingId).delete();
+          await this.db.assetJobs
+            .where('[readingId+kind]')
+            .equals([readingId, 'prepare-audio'])
+            .delete();
+          await this.db.readings.update(readingId, {
+            audioSummary: { total: reading.sentenceCount, completed: 0, failed: 0 },
+          });
         },
       );
     });

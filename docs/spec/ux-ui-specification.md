@@ -341,6 +341,7 @@ to each other.
 - The transport has no Stop button: closing through the header Audio toggle is the stop/reset action. The rail keeps its own **Stop**, which aborts the requests in flight and stops no sound.
 - Per-sentence audio is generated and played from the sentence popover. No play control is printed on the reading surface itself, so pressing a sentence still costs nothing.
 - Audio never autoplays. Preparing a clip never plays it, a clip arriving never plays it, and playing is always a second, explicit action. Reading on after a wait continues a session the learner started.
+- Once any clip exists (or generation is active), the header's **Reading actions** dropdown includes **Delete audio**. It opens a confirmation dialog; confirmation stops playback and generation, deletes only this reading's clips and audio jobs, resets its audio summary, and leaves a fresh **Generate audio** action. A compact status beneath the header reports success or storage failure.
 
 ## 7. Generate
 

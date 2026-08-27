@@ -14,9 +14,8 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 /**
  * The reader's overflow menu.
  *
- * What is left of it: translating the reading, and deleting it. Audio moved out
- * to its own header button, and the per-button explanations went with the rest
- * of the reader's prose — the labels are the whole message.
+ * Reading-level actions live here: translating, clearing generated audio, and
+ * deleting the reading. The labels are deliberately sufficient on their own.
  *
  * A native popover anchored to its own button keeps top-layer and mutual-
  * exclusion behaviour on the platform. Explicit dismissal handlers make
@@ -61,6 +60,17 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
         } @else if (missingCount() > 0) {
           <button type="button" role="menuitem" (click)="choose(translateAll)">
             Translate reading
+          </button>
+        }
+
+        @if (hasAudio()) {
+          <button
+            type="button"
+            role="menuitem"
+            class="danger"
+            (click)="choose(deleteAudioRequested)"
+          >
+            Delete audio
           </button>
         }
 
@@ -133,9 +143,11 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 export class ReaderMenuComponent {
   readonly reading = input.required<Reading>();
   readonly isRunning = input(false);
+  readonly audioRunning = input(false);
 
   readonly translateAll = output<void>();
   readonly cancelled = output<void>();
+  readonly deleteAudioRequested = output<void>();
   readonly deleteRequested = output<void>();
 
   private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
@@ -146,6 +158,11 @@ export class ReaderMenuComponent {
   protected readonly missingCount = computed(() => {
     const summary = this.reading().translationSummary;
     return Math.max(summary.total - summary.completed, 0);
+  });
+
+  protected readonly hasAudio = computed(() => {
+    const summary = this.reading().audioSummary;
+    return this.audioRunning() || summary.completed > 0 || summary.failed > 0;
   });
 
   protected onMenuToggle(event: Event): void {

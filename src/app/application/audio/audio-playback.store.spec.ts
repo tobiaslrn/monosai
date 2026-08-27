@@ -673,6 +673,20 @@ describe('AudioPlaybackStore', () => {
       expect(bed.store.failure()).toBeNull();
     });
 
+    it('stops when this reading audio is cleared', () => {
+      bed.store.readingAudioCleared(bed.reading.id);
+
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.store.canPlayWholeReading()).toBe(false);
+    });
+
+    it('keeps playing when a different reading audio is cleared', () => {
+      bed.store.readingAudioCleared(importedReadingFixture({ seed: 19 }).reading.id);
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.canPlayWholeReading()).toBe(true);
+    });
+
     it('stops and names the sentence when a clip cannot be decoded', async () => {
       bed.player.failNextPlay = true;
 

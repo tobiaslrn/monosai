@@ -5,7 +5,7 @@ import type { Reading } from '../../domain/reading/reading';
 import { readingId } from '../../domain/shared/ids';
 import { ReaderMenuComponent } from './reader-menu.component';
 
-function reading(completed: number, total: number): Reading {
+function reading(completed: number, total: number, audioCompleted = 0): Reading {
   return {
     id: readingId('r1'),
     kind: 'imported',
@@ -18,7 +18,7 @@ function reading(completed: number, total: number): Reading {
     excerpt: '本文です。',
     translationSummary: { total, completed, failed: 0 },
     grammarSummary: { state: 'not-requested' },
-    audioSummary: { total, completed: 0, failed: 0 },
+    audioSummary: { total, completed: audioCompleted, failed: 0 },
     analyzerVersion: 'analyzer/1',
     importSource: 'paste',
     sourceTextHash: 'hash-0',
@@ -31,16 +31,20 @@ function reading(completed: number, total: number): Reading {
   template: `<mn-reader-menu
     [reading]="reading()"
     [isRunning]="running()"
+    [audioRunning]="audioRunning()"
     (translateAll)="translateAlls = translateAlls + 1"
     (cancelled)="cancels = cancels + 1"
+    (deleteAudioRequested)="audioDeletes = audioDeletes + 1"
     (deleteRequested)="deletes = deletes + 1"
   />`,
 })
 class HostComponent {
   readonly reading = signal<Reading>(reading(0, 4));
   readonly running = signal(false);
+  readonly audioRunning = signal(false);
   translateAlls = 0;
   cancels = 0;
+  audioDeletes = 0;
   deletes = 0;
 }
 
@@ -118,12 +122,25 @@ describe('ReaderMenuComponent', () => {
     expect(dismissals).toHaveLength(1);
   });
 
-  /** Audio moved out of the menu entirely, to its own header button and panel. */
-  it('says nothing about audio', () => {
-    const { element } = render();
+  it('offers audio deletion in the menu once this reading has generated audio', () => {
+    const { fixture, element, dismissals } = render();
+    fixture.componentInstance.reading.set(reading(0, 4, 2));
+    fixture.detectChanges();
 
-    expect(element.textContent).not.toContain('audio');
-    expect(element.textContent).not.toContain('Play reading');
+    press(element, 'Delete audio');
+
+    expect(fixture.componentInstance.audioDeletes).toBe(1);
+    expect(dismissals).toHaveLength(1);
+  });
+
+  it('offers audio deletion while generation is running, but not for a fresh reading', () => {
+    const { fixture, element } = render();
+
+    expect(element.textContent).not.toContain('Delete audio');
+
+    fixture.componentInstance.audioRunning.set(true);
+    fixture.detectChanges();
+    expect(element.textContent).toContain('Delete audio');
   });
 
   it('asks for deletion rather than performing it', () => {

@@ -424,6 +424,34 @@ describe('AudioJobStore', () => {
     expect(rows[0].completedSentenceIds).toHaveLength(stored);
   });
 
+  it('waits for cancelled in-flight workers before destructive maintenance continues', async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    bed.provider.synthesizeWith = async () => {
+      await held;
+      return ok(audioPayload());
+    };
+
+    const run = bed.store.start(bed.draft.reading.id);
+    while (bed.provider.synthesized.length < AUDIO_GENERATION_CONCURRENCY) {
+      await hold(1);
+    }
+    let settled = false;
+    const cancellation = bed.store.cancelAndWait().then(() => {
+      settled = true;
+    });
+    await hold(1);
+
+    expect(settled).toBe(false);
+
+    release();
+    await Promise.all([run, cancellation]);
+    expect(settled).toBe(true);
+    expect(bed.store.progress().kind).toBe('cancelled');
+  });
+
   /**
    * Cancelling aborts the request already in flight, which arrives as a
    * refusal. Reporting that as a failure would offer a Retry for something the

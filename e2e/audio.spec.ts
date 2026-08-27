@@ -532,6 +532,33 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(audioPlayer(page).getByText('Sentence 1 of 4')).toBeVisible({ timeout: 15_000 });
   });
 
+  test('deletes this reading audio and regenerates every sentence from scratch @mobile @smoke', async ({
+    page,
+  }) => {
+    const calls = await prepareReading(page);
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page);
+    const beforeDelete = synthesisCount(calls);
+
+    await openReaderMenu(page);
+    await page.getByRole('menuitem', { name: 'Delete audio' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Delete audio for this reading?' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Delete audio', exact: true }).click();
+
+    await expect(page.getByText(/Audio deleted/)).toBeVisible();
+    await expect(audioPlayer(page).getByRole('button', { name: 'Generate audio' })).toBeVisible();
+    expect(await storedClipCount(page)).toBe(0);
+
+    await audioPlayer(page).getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page);
+
+    expect(synthesisCount(calls) - beforeDelete).toBe(SENTENCE_COUNT);
+    expect(await storedClipCount(page)).toBe(SENTENCE_COUNT);
+  });
+
   test('deleting saved audio stops playback and empties the summaries', async ({ page }) => {
     await prepareReading(page);
     await openAudioPlayer(page);

@@ -16,6 +16,7 @@ import { DomPortal, DomPortalOutlet } from '@angular/cdk/portal';
 import { Router, RouterLink } from '@angular/router';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
+import { ReadingAudioMaintenanceStore } from '../../application/enrichment/reading-audio-maintenance.store';
 import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
@@ -28,6 +29,7 @@ import { TtsStore } from '../../application/settings/tts.store';
 import { LibraryStore } from '../../application/reading/library.store';
 import { ViewportService } from '../../core/platform/viewport.service';
 import { describeDeletion } from '../../domain/reading/deletion-plan';
+import type { Reading } from '../../domain/reading/reading';
 import { findingsCoveringToken, sentenceWideFindings } from '../../domain/enrichment/finding-spans';
 import { readingId, type SentenceId } from '../../domain/shared/ids';
 import { presentStatus } from '../../domain/reading/token-presentation';
@@ -115,7 +117,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     WordInspectorComponent,
     WordPreviewComponent,
   ],
-  providers: [ReaderStore, WordInspectorStore, SentenceAidsStore],
+  providers: [ReaderStore, WordInspectorStore, SentenceAidsStore, ReadingAudioMaintenanceStore],
   template: `
     <div
       class="reader"
@@ -151,8 +153,10 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                 <mn-reader-menu
                   [reading]="reading"
                   [isRunning]="translationJob.progress().kind === 'running'"
+                  [audioRunning]="audioJob.isRunning()"
                   (translateAll)="startWholeReadingTranslation()"
                   (cancelled)="translationJob.cancel()"
+                  (deleteAudioRequested)="confirmClearReadingAudio()"
                   (deleteRequested)="confirmDelete()"
                 />
               }
@@ -171,6 +175,15 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
             (retried)="retryWholeReadingTranslation()"
             (dismissed)="translationJob.acknowledge()"
           />
+          @if (readingAudioMaintenance.state() === 'cleared') {
+            <p class="audio-maintenance-message mn-hint" role="status">
+              Audio deleted. You can generate it again from scratch.
+            </p>
+          } @else if (readingAudioMaintenance.error(); as error) {
+            <p class="audio-maintenance-message mn-error" role="alert">
+              Deleting audio failed: {{ error.message }}
+            </p>
+          }
         }
       </header>
 
@@ -363,6 +376,11 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       align-items: center;
     }
 
+    .audio-maintenance-message {
+      margin: var(--space-2) 0 0 calc(var(--touch-target) + var(--space-2));
+      font-size: var(--text-sm);
+    }
+
     .audio-button.is-playing {
       border-color: transparent;
       background: var(--action-primary);
@@ -454,6 +472,7 @@ export class ReaderPageComponent {
   protected readonly translationJob = inject(TranslationJobStore);
   protected readonly audioJob = inject(AudioJobStore);
   protected readonly playback = inject(AudioPlaybackStore);
+  protected readonly readingAudioMaintenance = inject(ReadingAudioMaintenanceStore);
   protected readonly viewport = inject(ViewportService);
   protected readonly inspector = inject(WordInspectorStore);
   private readonly settings = inject(AppSettingsStore);
@@ -800,11 +819,40 @@ export class ReaderPageComponent {
    * voice. The only whole-reading audio request, and it starts here.
    */
   protected startWholeReadingAudio(): void {
+    this.readingAudioMaintenance.acknowledge();
     void this.audioJob.start(readingId(this.id()));
   }
 
   protected retryWholeReadingAudio(): void {
+    this.readingAudioMaintenance.acknowledge();
     void this.audioJob.retry(readingId(this.id()));
+  }
+
+  /** Confirms the destructive reading-level action selected from the More menu. */
+  protected async confirmClearReadingAudio(): Promise<void> {
+    const reading = this.store.reading();
+    if (reading === null || this.readingAudioMaintenance.state() === 'clearing') {
+      return;
+    }
+    const confirmed = await openConfirmDialog(this.dialog, {
+      title: 'Delete audio for this reading?',
+      message: 'This permanently deletes every generated audio clip for this reading.',
+      details: ['The reading, translations, and grammar results stay saved.'],
+      footnote: 'You can generate the audio again from scratch.',
+      confirmLabel: 'Delete audio',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (confirmed) {
+      await this.clearReadingAudioFromStorage(reading);
+    }
+  }
+
+  /** Deletes only this reading's clips and jobs, then refreshes every local view. */
+  private async clearReadingAudioFromStorage(reading: Reading): Promise<void> {
+    await this.readingAudioMaintenance.clear(reading);
+    this.audioJob.acknowledge();
+    await this.store.refreshSummaries();
   }
 
   /**
