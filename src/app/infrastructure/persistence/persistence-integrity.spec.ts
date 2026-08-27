@@ -12,7 +12,8 @@ import {
 import { DexieEnrichmentRepository } from './repositories/dexie-enrichment.repository';
 import { DexieReadingRepository } from './repositories/dexie-reading.repository';
 import { DexieVocabularyRepository } from './repositories/dexie-vocabulary.repository';
-import { assetId } from '../../domain/shared/ids';
+import { assetId, jobId } from '../../domain/shared/ids';
+import { DexieJobRepository } from './repositories/dexie-job.repository';
 import { uuid } from '../../../testing/persistence-fixtures';
 
 const clock = fixedClock(1_700_800_000_000);
@@ -361,6 +362,63 @@ describe('BrowserStorageMaintenance', () => {
     const reading = await readings.getReading(draft.reading.id);
     expect(reading.ok && reading.value?.audioSummary.completed).toBe(0);
     expect(reading.ok && reading.value?.translationSummary.completed).toBe(1);
+  });
+
+  it('clears audio and audio jobs for one reading without touching another', async () => {
+    const readings = new DexieReadingRepository(db, clock);
+    const enrichment = new DexieEnrichmentRepository(db);
+    const jobs = new DexieJobRepository(db, clock);
+    const target = importedReadingFixture({ seed: 31 });
+    const other = importedReadingFixture({ seed: 32 });
+    await readings.saveImportedReading(target);
+    await readings.saveImportedReading(other);
+
+    for (const [draft, key, seed] of [
+      [target, 'target-audio', 9300],
+      [other, 'other-audio', 9400],
+    ] as const) {
+      await enrichment.storeAudio(
+        {
+          id: assetId(uuid(seed)),
+          sentenceId: draft.sentences[0].id,
+          readingId: draft.reading.id,
+          sourceContentHash: draft.sentences[0].contentHash,
+          modelId: 'vendor/tts',
+          voiceId: 'voice-a',
+          optionsFingerprint: 'fingerprint',
+          mimeType: 'audio/mpeg',
+          byteLength: 2,
+          blob: new Blob([new Uint8Array([1, 2])], { type: 'audio/mpeg' }),
+          cacheKey: key,
+          createdAt: 1_700_800_000_000,
+        },
+        new Map([[draft.sentences[0].id, key]]),
+      );
+      await jobs.create({
+        id: jobId(uuid(seed + 1)),
+        kind: 'prepare-audio',
+        readingId: draft.reading.id,
+        state: 'complete',
+        orderedSentenceIds: [draft.sentences[0].id],
+        completedSentenceIds: [draft.sentences[0].id],
+        failedItems: [],
+        configFingerprint: 'fingerprint',
+        createdAt: 1_700_800_000_000,
+        updatedAt: 1_700_800_000_000,
+      });
+    }
+
+    const cleared = await maintenance.clearReadingAudio(target.reading.id);
+
+    expect(cleared.ok).toBe(true);
+    expect(await db.audioAssets.where('readingId').equals(target.reading.id).count()).toBe(0);
+    expect(await db.audioAssets.where('readingId').equals(other.reading.id).count()).toBe(1);
+    expect(await db.assetJobs.where('readingId').equals(target.reading.id).count()).toBe(0);
+    expect(await db.assetJobs.where('readingId').equals(other.reading.id).count()).toBe(1);
+    const targetReading = await readings.getReading(target.reading.id);
+    const otherReading = await readings.getReading(other.reading.id);
+    expect(targetReading.ok && targetReading.value?.audioSummary.completed).toBe(0);
+    expect(otherReading.ok && otherReading.value?.audioSummary.completed).toBe(1);
   });
 
   it('requests persistence and reports the refreshed status when a storage manager exists', async () => {

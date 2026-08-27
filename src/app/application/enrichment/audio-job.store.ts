@@ -154,6 +154,8 @@ export class AudioJobStore {
 
   private readonly progressSignal = signal<AudioJobProgress>(IDLE);
   private controller: AbortController | null = null;
+  /** The full prepare/process lifetime, so destructive maintenance can join it. */
+  private activeRun: Promise<void> | null = null;
 
   readonly progress = this.progressSignal.asReadonly();
 
@@ -173,11 +175,25 @@ export class AudioJobStore {
    *
    * Reuses an active job whose configuration still matches, so pressing the
    * action twice continues one job rather than racing two.
-   */
+  */
   async start(readingId: ReadingId): Promise<void> {
-    if (this.isRunning()) {
+    const activeRun = this.activeRun;
+    if (activeRun !== null) {
+      await activeRun;
       return;
     }
+    const run = this.run(readingId);
+    this.activeRun = run;
+    try {
+      await run;
+    } finally {
+      if (this.activeRun === run) {
+        this.activeRun = null;
+      }
+    }
+  }
+
+  private async run(readingId: ReadingId): Promise<void> {
     // The controller exists before the first await so that cancelling while
     // configuration is still being read stops the run rather than being ignored.
     const controller = new AbortController();
@@ -238,6 +254,12 @@ export class AudioJobStore {
     } else if (progress.kind === 'running') {
       this.progressSignal.set({ kind: 'cancelled', counts: progress.counts });
     }
+  }
+
+  /** Cancels and waits until no in-flight result can still be stored. */
+  async cancelAndWait(): Promise<void> {
+    this.cancel();
+    await this.activeRun;
   }
 
   /**

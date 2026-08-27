@@ -145,6 +145,7 @@ The user explicitly requests analysis for one sentence. The response identifies 
 - Whole-reading playback first prepares every missing clip in sentence order. Playback starts only after the complete compatible set exists.
 - Cancellation stops future requests and preserves completed clips.
 - Failure identifies the sentence and permits retry. Reading and translation remain available.
+- The reader can delete only the open reading's generated audio, after confirmation, and regenerate every sentence from scratch without affecting other readings or aids.
 - The reader header always exposes an Audio toggle with stateful accessible naming. Opening shows a compact fixed player without requesting or playing audio; closing calls playback Stop, clears the active sentence and cursor, and does not cancel generation.
 - The player supports Previous, Play/Pause/Resume, Next, current-sentence indication, progress, and starting from the captured current reading sentence. Previous and Next do not wrap and remain disabled until a sentence is active. Ready-state Stop is the header toggle rather than a player control; generation retains its own Stop action.
 

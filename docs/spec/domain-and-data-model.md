@@ -398,7 +398,7 @@ Delete reading cascade:
 3. Recompute Continue-reading pointer.
 4. Leave the current vocabulary, the global grammar profile, source mappings, settings, and credentials.
 
-Clear audio deletes all audio blobs and audio jobs, resets reading audio summaries, and stops playback. Full reset deletes the database and application Cache Storage after confirmations.
+Clear audio deletes all audio blobs and audio jobs, resets reading audio summaries, and stops playback. A reading-scoped clear performs the same transaction for one reading ID only and leaves every other reading and aid untouched. Full reset deletes the database and application Cache Storage after confirmations.
 
 ## 8. Database migrations
 

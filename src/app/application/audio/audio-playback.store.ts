@@ -393,6 +393,14 @@ export class AudioPlaybackStore {
     this.failureSignal.set(null);
   }
 
+  /** Stops and forgets clips only when they belong to the cleared reading. */
+  readingAudioCleared(readingId: ReadingId): void {
+    if (this.readingSignal()?.id !== readingId) {
+      return;
+    }
+    this.audioCacheCleared();
+  }
+
   /** Whether one sentence can be started from right now. */
   isAvailable(sentenceId: SentenceId | null): boolean {
     return sentenceId !== null && this.availableSignal().has(sentenceId);

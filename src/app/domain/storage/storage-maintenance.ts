@@ -1,4 +1,5 @@
 import type { Result } from '../shared/result';
+import type { ReadingId } from '../shared/ids';
 import type { PersistenceStatus } from './persistence-status';
 import type { StorageError } from './storage-error';
 
@@ -8,6 +9,8 @@ export interface StorageMaintenance {
   requestPersistence(): Promise<PersistenceStatus>;
   /** Deletes audio blobs and audio jobs only. */
   clearAudioCache(): Promise<Result<void, StorageError>>;
+  /** Deletes audio blobs and audio jobs owned by one reading only. */
+  clearReadingAudio(readingId: ReadingId): Promise<Result<void, StorageError>>;
   /** Deletes every Monosai database and cache after explicit confirmation. */
   resetAllData(): Promise<Result<void, StorageError>>;
 }
