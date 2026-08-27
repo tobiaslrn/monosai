@@ -182,8 +182,9 @@ describe('ReadingPlayerComponent', () => {
   });
 
   describe('while it is being generated', () => {
-    it('counts what is ready rather than claiming one sentence is being read', () => {
+    it('reports the run through the track alone, with no count in words', () => {
       store.total.set(13);
+      store.ready.set(3);
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'running',
@@ -192,11 +193,15 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
-      expect(element.textContent).toContain('3 of 13 sentences ready');
-      // One track, not two identical accent bars stacked. The generated fill is
-      // measured over the reading rather than over the job, so a retry covering
-      // two missing sentences never renders as half of the reading.
+      // The track is the whole report: one fill for how much of the reading has
+      // audio, measured over the reading rather than over the job, so a retry
+      // covering two missing sentences never renders as half of the reading.
+      // No count in words — it said again what the bar was already saying.
       expect(element.querySelectorAll('[role="progressbar"]')).toHaveLength(1);
+      expect(element.textContent).not.toContain('sentences ready');
+      expect(
+        element.querySelector('[role="progressbar"] .fill.generated')?.getAttribute('style'),
+      ).toContain('23%');
     });
 
     /**
@@ -216,13 +221,12 @@ describe('ReadingPlayerComponent', () => {
       const element = fixture.nativeElement as HTMLElement;
 
       expect(control(element, 'Play')?.disabled).toBe(false);
-      expect(element.textContent).toContain('4 of 13 sentences ready');
       expect(
         element.querySelector('[role="progressbar"] .fill.generated')?.getAttribute('style'),
       ).toContain('31%');
-      expect([...element.querySelectorAll('button')].map((button) => button.textContent)).toContain(
-        'Stop',
-      );
+      expect(
+        [...element.querySelectorAll('button')].map((button) => button.textContent.trim()),
+      ).toContain('Stop generating');
     });
 
     it('stops on request', () => {
@@ -230,7 +234,7 @@ describe('ReadingPlayerComponent', () => {
       fixture.componentInstance.progress.set({ kind: 'preparing' });
       fixture.detectChanges();
 
-      press(fixture.nativeElement as HTMLElement, 'Stop');
+      press(fixture.nativeElement as HTMLElement, 'Stop generating');
 
       expect(fixture.componentInstance.emitted).toEqual(['cancel']);
     });

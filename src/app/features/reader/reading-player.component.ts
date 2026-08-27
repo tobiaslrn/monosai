@@ -153,10 +153,16 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
 
       @switch (rail()) {
         @case ('running') {
+          <!--
+            No count. The track's quiet fill is already saying how much of the
+            reading has audio, and saying it again in words beneath it is one
+            more thing to read on a card that sits over the reading.
+          -->
           <div class="rail beneath">
-            <div class="row">
-              <p class="line" role="status">{{ jobLine() }}</p>
-              <button type="button" class="quiet" (click)="cancelGeneration.emit()">Stop</button>
+            <div class="row end">
+              <button type="button" class="quiet" (click)="cancelGeneration.emit()">
+                Stop generating
+              </button>
             </div>
           </div>
         }
@@ -293,6 +299,10 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
       display: flex;
       gap: var(--space-3);
       align-items: center;
+    }
+
+    .row.end {
+      justify-content: flex-end;
     }
 
     /*
@@ -507,20 +517,21 @@ export class ReadingPlayerComponent {
     this.store.isAvailable(this.selectedSentenceId()),
   );
 
+  /**
+   * What the rail says about a run that has stopped.
+   *
+   * Only a stopped run has anything to say. A run in progress is reported by
+   * the track's generation fill and by the Stop beside it; a count in words
+   * underneath repeated what the bar already showed.
+   */
   protected readonly jobLine = computed(() => {
     const progress = this.progress();
     switch (progress.kind) {
       case 'idle':
       case 'complete':
-        return '';
       case 'preparing':
-        return 'Preparing…';
       case 'running':
-        // Four requests are in flight at once, so there is no single sentence
-        // the run "is at". How many are ready is both true and the thing that
-        // decides how far playback can get. The full stop is what stops a
-        // screen reader running this line into the Stop button beside it.
-        return `${String(progress.counts.completed)} of ${String(progress.counts.requested)} sentences ready.`;
+        return '';
       case 'cancelled':
         return progress.counts.requested === 0
           ? 'Stopped.'
