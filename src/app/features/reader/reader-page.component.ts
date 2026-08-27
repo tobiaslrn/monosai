@@ -9,12 +9,14 @@ import {
   inject,
   input,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { DomPortal, DomPortalOutlet } from '@angular/cdk/portal';
 import { Router, RouterLink } from '@angular/router';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
+import { AudioConfigurationService } from '../../application/enrichment/audio-configuration.service';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { ReadingAudioMaintenanceStore } from '../../application/enrichment/reading-audio-maintenance.store';
 import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
@@ -479,6 +481,7 @@ export class ReaderPageComponent {
   private readonly library = inject(LibraryStore);
   private readonly textModel = inject(TextModelStore);
   private readonly tts = inject(TtsStore);
+  private readonly audioConfig = inject(AudioConfigurationService);
   private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly language = inject(LanguageStore);
   protected readonly popover = inject(PopoverService);
@@ -613,7 +616,15 @@ export class ReaderPageComponent {
    */
   private readonly audioPlayerSentenceIdSignal = signal<SentenceId | null>(null);
   protected readonly audioPlayerSentenceId = this.audioPlayerSentenceIdSignal.asReadonly();
-  protected readonly hasAudioModel = computed(() => this.tts.compatiblePresets().length > 0);
+  /**
+   * Whether generation would be refused for want of a configuration.
+   *
+   * Resolved through the same service the job itself gates on rather than
+   * through saved presets: a tested model and voice with no preset saved is an
+   * ordinary state, and it was being offered "Set up audio model" beside a
+   * Generate button that worked perfectly.
+   */
+  protected readonly hasAudioModel = computed(() => this.audioConfig.resolve('tts-synthesis').ok);
 
   /**
    * The audio button says its state out loud, because its icon never changes.
@@ -630,6 +641,8 @@ export class ReaderPageComponent {
         return 'Audio, paused';
       case 'waiting':
         return 'Audio, waiting for the next sentence';
+      case 'ended':
+        return 'Audio, finished';
       default:
         break;
     }
@@ -682,8 +695,14 @@ export class ReaderPageComponent {
 
     effect(() => {
       const nextReadingId = readingId(this.id());
-      this.closeReaderSurfaces();
-      void this.store.open(nextReadingId);
+      // Untracked, like every store call below it. An effect tracks the signals
+      // its body reads, including the ones read inside the calls it makes, and
+      // these stores read state they then rewrite — so a tracked call makes the
+      // effect its own trigger and it never stops running.
+      untracked(() => {
+        this.closeReaderSurfaces();
+        void this.store.open(nextReadingId);
+      });
     });
 
     effect(() => {
@@ -695,12 +714,14 @@ export class ReaderPageComponent {
         // A local read of the stored aids for exactly the sentences now
         // mounted. Nothing here reaches a provider: a missing aid is fetched
         // only when the learner asks for it.
-        void this.aids.load(
-          reading,
-          paragraphs.flatMap((paragraph) =>
-            paragraph.sentences.map((sentence) => sentence.sentence),
-          ),
-        );
+        untracked(() => {
+          void this.aids.load(
+            reading,
+            paragraphs.flatMap((paragraph) =>
+              paragraph.sentences.map((sentence) => sentence.sentence),
+            ),
+          );
+        });
       }
       queueMicrotask(() => {
         this.observeEdges();
@@ -713,7 +734,13 @@ export class ReaderPageComponent {
       // refreshes the summaries the menu counts, and that in turn re-runs the
       // aid load above for the mounted window.
       if (this.translationJob.progress().kind !== 'idle') {
-        void this.store.refreshSummaries();
+        // `refreshSummaries` reads the reading row it is about to replace, and
+        // replaces it with a fresh object. Tracked, that re-ran this effect,
+        // which refreshed again — an unbounded loop of reads behind a screen
+        // that looked idle.
+        untracked(() => {
+          void this.store.refreshSummaries();
+        });
       }
     });
 
@@ -727,14 +754,29 @@ export class ReaderPageComponent {
       this.audioJob.progress();
       this.tts.settings();
       if (reading !== null) {
-        void this.playback.prepare(reading);
+        untracked(() => {
+          void this.playback.prepare(reading);
+        });
       }
     });
 
     effect(() => {
       // The audio job writes rows the menu counts, exactly as translation does.
       if (this.audioJob.progress().kind !== 'idle') {
-        void this.store.refreshSummaries();
+        untracked(() => {
+          void this.store.refreshSummaries();
+        });
+      }
+    });
+
+    effect(() => {
+      // A session waiting at the frontier is waiting for a clip the run is
+      // about to store. Once the run has failed or been cancelled that clip is
+      // never coming, and only the reader knows: the playback store has no
+      // business watching a generation job, so the release is made from here.
+      const kind = this.audioJob.progress().kind;
+      if (kind === 'failed' || kind === 'cancelled') {
+        this.playback.abandonWaiting();
       }
     });
 
@@ -856,9 +898,9 @@ export class ReaderPageComponent {
   }
 
   /**
-   * Toggles the independent floating player. Opening is local and silent;
-   * closing is the header's explicit stop/reset action and never cancels a
-   * generation job.
+   * Toggles the independent floating player. Both directions are local and
+   * silent: opening loads nothing, closing stops neither playback nor a
+   * generation run. Playback is application-wide and outlives this card.
    */
   protected toggleAudioPlayer(): void {
     if (
@@ -873,7 +915,10 @@ export class ReaderPageComponent {
       }
       this.audioPlayerPortal = null;
       this.releasePlayerHeight();
-      this.playback.stop();
+      // Deliberately not a stop. Hiding the card to read the text underneath is
+      // not "stop reading to me", and the transport has its own Stop now; the
+      // header button keeps saying that a reading is playing, and reopening
+      // lands back on the live session.
       this.audioPlayerSentenceIdSignal.set(null);
       this.audioPlayerOpenSignal.set(false);
       return;
