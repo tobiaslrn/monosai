@@ -121,14 +121,47 @@ test.describe('vocabulary', () => {
     await openVocabulary(page);
     await connectPackage(page, CONTRACT_PACKAGE);
 
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('4', {
+    // The parent deck's four reviewed expressions plus one reviewed expression
+    // from Core Japanese::Verbs: package roots include their subdecks.
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('5', {
       timeout: 60_000,
     });
     await expect(page.getByTestId('start-refresh')).toHaveCount(0);
     await expect(page.getByTestId('confirm-refresh')).toHaveCount(0);
     const snapshots = await readSnapshots(page);
     expect(snapshots).toHaveLength(1);
-    expect(snapshots[0].uniqueEntryCount).toBe(4);
+    expect(snapshots[0].uniqueEntryCount).toBe(5);
+    await expectNoSeriousAccessibilityViolations(page);
+  });
+
+  test('re-importing the same deck replaces its source and keeps the others', async ({ page }) => {
+    test.setTimeout(180_000);
+    await openVocabulary(page);
+    await addTextList(page, 'My textbook', '犬');
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('1', {
+      timeout: 60_000,
+    });
+
+    await connectPackage(page, CONTRACT_PACKAGE);
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('5', {
+      timeout: 60_000,
+    });
+    await expect(page.locator('li.source')).toHaveCount(2);
+
+    // The same deck again: one source, replaced in place, and the pasted list
+    // is still enabled and still counted.
+    await connectPackage(page, CONTRACT_PACKAGE);
+    await expect(page.getByTestId('package-import-complete')).toContainText('Replaced');
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('5', {
+      timeout: 60_000,
+    });
+
+    const rows = page.locator('li.source');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.filter({ hasText: 'Anki package' })).toHaveCount(1);
+    await expect(rows.filter({ hasText: 'My textbook' })).toHaveCount(1);
+    const snapshots = await readSnapshots(page);
+    expect(snapshots).toHaveLength(1);
     await expectNoSeriousAccessibilityViolations(page);
   });
 
@@ -150,8 +183,10 @@ test.describe('vocabulary', () => {
     await choosePackage(page, 'missing-reps-column.apkg');
 
     const alert = page.getByRole('alert');
-    await expect(alert).toContainText('no review history', { timeout: 30_000 });
-    await expect(alert).toContainText('still current');
+    await expect(alert).toContainText('does not record which cards were reviewed', {
+      timeout: 30_000,
+    });
+    await expect(alert).toContainText('current vocabulary and other sources are unchanged');
     await expect(alert).toContainText('anki/package-review-data-missing');
     await expectNoSeriousAccessibilityViolations(page);
   });
@@ -203,7 +238,7 @@ test.describe('vocabulary', () => {
 
     await openVocabulary(page);
     await connectPackage(page, CONTRACT_PACKAGE);
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('4', {
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('5', {
       timeout: 60_000,
     });
 

@@ -125,7 +125,7 @@ export class AutomaticAnkiSyncCoordinator {
       return;
     }
 
-    const prepared = await this.sync.prepare(replacements);
+    const prepared = await this.sync.prepare({ caches: replacements });
     if (!prepared.ok) {
       this.statusSignal.set({
         kind: 'attention',

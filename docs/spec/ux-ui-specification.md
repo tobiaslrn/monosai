@@ -415,6 +415,17 @@ source kinds:
 - AnkiConnect access: preferred when AnkiConnect or a compatible local bridge is running.
 - Anki package: fallback using `.apkg` or `.colpkg`, processed locally.
 
+On an installed Android Chrome PWA, sharing one `.apkg` or `.colpkg` from
+AnkiDroid opens Vocabulary and runs the same import as the file picker. Show a
+compact incoming-package status inside Sources and use the page's existing live
+region for progress. A single unambiguous root deck imports automatically with
+its subdecks. Show one selection editor only when deck, replacement mapping,
+note type, or expression field is ambiguous; its actions are **Import
+vocabulary** and **Cancel**. Success names whether the deck was added or
+replaced and gives the resulting combined unique-expression count. Failure
+states say that current vocabulary was kept and offer retry only when the held
+file can plausibly succeed unchanged.
+
 Connection attempts show a specific error when needed and never claim the app
 can start Anki or install another application automatically.
 

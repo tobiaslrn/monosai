@@ -68,13 +68,33 @@ function readRequestId(data: unknown): string {
   return '';
 }
 
+/**
+ * The decks worth offering: those holding cards, and the parents that group
+ * them.
+ *
+ * An export always carries the collection's default deck and can carry parents
+ * that only exist to group subdecks. Neither can produce vocabulary, and
+ * filtering them by content rather than by name is what keeps this correct for
+ * a collection created in a language where the default deck is not called
+ * "Default".
+ */
+function importableDecks(reader: CollectionReader): readonly string[] {
+  const filled = reader.decks.filter((deck) => deck.hasCards).map((deck) => deck.name);
+  return reader.decks
+    .filter(
+      (deck) =>
+        deck.hasCards || filled.some((other) => other.startsWith(`${deck.name}${DECK_SEPARATOR}`)),
+    )
+    .map((deck) => deck.name);
+}
+
 /** Decks whose name is a prefix of another's are shown as having subdecks. */
 function toCatalog(reader: CollectionReader): AnkiCatalog {
-  const names = reader.decks.map((deck) => deck.name);
+  const names = importableDecks(reader);
   return {
-    decks: reader.decks.map((deck) => ({
-      name: deck.name,
-      hasChildren: names.some((other) => other.startsWith(`${deck.name}${DECK_SEPARATOR}`)),
+    decks: names.map((name) => ({
+      name,
+      hasChildren: names.some((other) => other.startsWith(`${name}${DECK_SEPARATOR}`)),
     })),
     noteTypes: reader.noteTypes.map((noteType) => ({
       name: noteType.name,
@@ -240,7 +260,7 @@ export class PackageWorkerHost {
       packageVersion: collection.value.packageVersion,
       schemaVersion: reader.value.schemaVersion,
       layout: reader.value.layout,
-      deckCount: reader.value.decks.length,
+      deckCount: importableDecks(reader.value).length,
       noteTypeCount: reader.value.noteTypes.length,
       hasAnyReviewEvidence: reader.value.hasAnyReviewEvidence,
       mediaEntryCount: archive.value.entries.filter((entry) => !COLLECTION_MEMBERS.has(entry.name))

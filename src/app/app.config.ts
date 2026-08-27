@@ -58,8 +58,10 @@ export const appConfig: ApplicationConfig = {
         }
       });
     }),
-    provideServiceWorker('ngsw-worker.js', {
-      // Every optimized build emits the worker; only `ng serve` does not.
+    // Monosai's own worker, which handles the Android share target and then
+    // hands everything else to Angular's `ngsw-worker.js` unchanged.
+    provideServiceWorker('monosai-sw.js', {
+      // Every optimized build emits Angular's worker; only `ng serve` does not.
       // Browser suites that need a quiet worker block registration through
       // Playwright rather than through a separate build.
       enabled: !isDevMode(),
