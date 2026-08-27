@@ -87,6 +87,17 @@ instead. Monosai reads the package fully offline; nothing is uploaded. A
 package without scheduling information cannot tell Monosai which cards you
 have actually reviewed, so export with it included.
 
+On Android Chrome, install Monosai first, then export a deck from AnkiDroid with
+scheduling information and choose Monosai in Android's share sheet. The share
+target accepts one `.apkg` or `.colpkg` at a time. A parent-deck export includes
+its subdecks. Sharing the same case-sensitive deck name again replaces that
+package source; pasted lists and other Anki sources are left alone.
+
+Chrome may need to refresh the installed app's manifest—or the app may need to
+be reinstalled—before Monosai appears as a share target after this feature is
+deployed. Browsers that do not support file share targets keep the file-picker
+workflow above.
+
 ## OpenRouter (optional)
 
 Story generation, translation, grammar review, and text-to-speech are
@@ -141,6 +152,8 @@ the language bundle have installed), offline supports:
   cached for a reading.
 - Importing and reading new plain text — Japanese analysis runs entirely
   on-device.
+- Importing an Anki package, including one shared into the installed Android
+  PWA, after the package parser and language assets have been used online once.
 
 Offline does **not** support anything that requires OpenRouter or a live Anki
 connection: story generation, new translation or grammar review, new

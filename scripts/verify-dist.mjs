@@ -11,6 +11,8 @@ const REQUIRED_FILES = [
   '404.html',
   'ngsw.json',
   'ngsw-worker.js',
+  // Monosai's worker wraps Angular's and owns the Android share target.
+  'monosai-sw.js',
   'manifest.webmanifest',
   'favicon.ico',
   'icons/favicon-32.png',

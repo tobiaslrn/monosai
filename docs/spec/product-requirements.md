@@ -84,7 +84,8 @@ Acceptance:
 
 ### UC-04: Refresh reviewed Anki vocabulary
 
-1. The user chooses Local Anki connection or Anki package.
+1. The user chooses Local Anki connection or an Anki package, or shares an
+   `.apkg`/`.colpkg` to the installed Android PWA from AnkiDroid.
 2. Monosai discovers available decks, note types, and fields.
 3. The user creates one or more explicit source mappings and enables the desired mappings.
 4. A manual refresh reads only cards reviewed at least once and extracts the selected field's visible text literally.
@@ -96,6 +97,10 @@ Acceptance:
 - No write-capable Anki action exists in the production adapter.
 - An unsuccessful or cancelled refresh never changes the current vocabulary.
 - Package import refuses to call entries reviewed when usable scheduling/review evidence is absent.
+- Re-importing the exact case-sensitive deck name replaces that package source
+  atomically while unrelated enabled sources remain combined.
+- A shared package is claimed once and removed from the service-worker inbox;
+  failed, cancelled, and abandoned imports preserve the current vocabulary.
 - Simple duplicates are deduplicated while source provenance is retained.
 
 ### UC-05: Generate a story

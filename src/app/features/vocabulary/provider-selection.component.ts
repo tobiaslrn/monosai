@@ -8,10 +8,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
-import {
-  ANKI_PROVIDER_FACTORY,
-  PACKAGE_PROVIDER_FACTORY,
-} from '../../application/shared/anki-tokens';
+import { ANKI_PROVIDER_FACTORY } from '../../application/shared/anki-tokens';
+import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
@@ -114,7 +112,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
             <button
               type="button"
               class="menu-item"
-              [disabled]="refresh.isBusy()"
+              [disabled]="refresh.isBusy() || packageBusy()"
               (click)="packageInput.click()"
             >
               <strong>Anki package</strong>
@@ -137,7 +135,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
           aria-hidden="true"
           tabindex="-1"
           accept=".apkg,.colpkg"
-          [disabled]="refresh.isBusy()"
+          [disabled]="refresh.isBusy() || packageBusy()"
           (change)="choosePackage($event)"
           data-testid="package-input"
         />
@@ -268,8 +266,9 @@ export class ProviderSelectionComponent {
   private readonly history = inject(SnapshotHistoryStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly createConnection = inject(ANKI_PROVIDER_FACTORY);
-  private readonly createPackage = inject(PACKAGE_PROVIDER_FACTORY);
+  private readonly packageImport = inject(PackageImportStore);
 
+  protected readonly packageBusy = this.packageImport.isActive;
   protected readonly mode = signal<AddMode>('closed');
   protected readonly ankiPortDraft = signal(String(this.settings.ankiConnectPort()));
   protected readonly ankiPortValid = computed(() => {
@@ -342,17 +341,24 @@ export class ProviderSelectionComponent {
     this.ankiPortDraft.set((event.target as HTMLInputElement).value);
   }
 
+  /**
+   * Hands a chosen file to the package import.
+   *
+   * Choosing a file and receiving one shared from Android run the same use
+   * case, so re-importing a deck replaces its source either way instead of
+   * adding a second one.
+   */
   protected async choosePackage(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.item(0);
     if (file === null || file === undefined) {
       return;
     }
+    // Cleared so choosing the same file twice in a row still raises `change`.
+    input.value = '';
     this.hideMenu();
-    await this.connectAndAdd(
-      'package',
-      this.createPackage({ fileName: file.name, bytes: () => file.arrayBuffer() }),
-    );
+    this.close();
+    await this.packageImport.start({ fileName: file.name, bytes: () => file.arrayBuffer() });
   }
 
   private hideMenu(): void {

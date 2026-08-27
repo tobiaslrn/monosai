@@ -11,7 +11,6 @@ import { DomMarkupTextExtractor } from '../app/infrastructure/anki/dom-markup-te
 import { sourceMappingId } from '../app/domain/shared/ids';
 import type { AnkiProviderKind } from '../app/domain/vocabulary/snapshot';
 import type { DeckScope, SourceMapping } from '../app/domain/vocabulary/source-mapping';
-import { CONTRACT_COLLECTION } from './anki-collection';
 
 /**
  * How a suite gets a provider for one fixture collection.
@@ -158,15 +157,18 @@ export function runProviderContract(
         expect(discovered.ok).toBe(true);
         if (!discovered.ok) return;
 
-        // A provider may expose decks the fixture did not declare — a real
-        // collection always carries Anki's own Default deck — so the contract
-        // asks that the declared ones are all there, not that nothing else is.
+        // What every provider must expose is the decks that hold cards. Around
+        // that they differ legitimately: a live connection also lists empty
+        // decks, including Anki's own Default, while a package lists only what
+        // it can actually produce vocabulary from.
         const deckNames = discovered.value.decks.map((deck) => deck.name);
-        expect(deckNames).toEqual(expect.arrayContaining([...CONTRACT_COLLECTION.deckNames]));
+        expect(deckNames).toEqual(
+          expect.arrayContaining(['Core Japanese', 'Core Japanese::Verbs']),
+        );
 
         const parent = discovered.value.decks.find((deck) => deck.name === 'Core Japanese');
         expect(parent?.hasChildren).toBe(true);
-        const leaf = discovered.value.decks.find((deck) => deck.name === 'Unused');
+        const leaf = discovered.value.decks.find((deck) => deck.name === 'Core Japanese::Verbs');
         expect(leaf?.hasChildren).toBe(false);
 
         const basic = discovered.value.noteTypes.find((noteType) => noteType.name === 'Basic');

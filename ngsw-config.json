@@ -28,6 +28,14 @@
           "!/icons/**"
         ]
       }
+    },
+    {
+      "name": "package-parser",
+      "installMode": "lazy",
+      "updateMode": "lazy",
+      "resources": {
+        "files": ["/assets/sqlite/*.wasm"]
+      }
     }
   ],
   "navigationUrls": ["!/**/*.*", "!/**/*__*", "!/**/*__*/**", "!/assets/**"]

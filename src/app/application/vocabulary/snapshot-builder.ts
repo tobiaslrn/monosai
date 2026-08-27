@@ -11,7 +11,7 @@ import type {
   VocabularySource,
   VocabularySourceCacheEntry,
 } from '../../domain/vocabulary/vocabulary-source';
-import type { SnapshotCommit } from '../../domain/vocabulary/vocabulary-repository';
+import type { VocabularyContent } from '../../domain/vocabulary/vocabulary-repository';
 import { MARKUP_TEXT_EXTRACTOR } from '../shared/anki-tokens';
 import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { CLOCK, HASHER, ID_GENERATOR } from '../shared/repository-tokens';
@@ -37,7 +37,7 @@ export interface SourceEntry extends VocabularySourceCacheEntry {
 }
 
 export interface BuiltSnapshot {
-  readonly commit: SnapshotCommit;
+  readonly content: VocabularyContent;
   readonly stats: SnapshotStats;
 }
 
@@ -165,7 +165,7 @@ export class SnapshotBuilder {
     };
 
     return ok({
-      commit: {
+      content: {
         snapshot: {
           id,
           createdAt: this.clock.now(),

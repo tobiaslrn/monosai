@@ -174,7 +174,9 @@ If database initialization fails, show a recovery screen with Retry and Full res
 
 Required transactions:
 
-- Replace current vocabulary: snapshot, vocabulary items, source provenance, and statistics; keep one stable snapshot identity and update settings only after all succeed.
+- Replace current vocabulary: source upserts, replacement source caches,
+  snapshot, vocabulary items, source provenance, statistics, and activation;
+  keep one stable snapshot identity and update settings only after all succeed.
 - Save imported reading: reading, paragraphs, sentences, token analyses, initial progress.
 - Save generated story: reading, captured configuration/profile/policy, paragraphs/sentences, frozen token validation, available translations/grammar review.
 - Delete reading: all owned children and assets, then repair Continue-reading pointer.
@@ -222,6 +224,18 @@ Cancellation checks occur between chunks and within loops at bounded intervals. 
 Each language bundle has an immutable versioned URL and manifest with hashes. A newly installed version is verified before being made active; the prior cached version remains until no stored analysis depends on it or a cleanup migration completes.
 
 Do not cache OpenRouter or Anki responses in the service worker. Domain caching occurs in IndexedDB only. Network-first navigation is unnecessary for an installed local-first app; use Angular's safe app-shell strategy with a user-controlled update prompt.
+
+The registered worker is a small Monosai wrapper that installs its share-target
+POST listener before importing Angular's `ngsw-worker.js`. It handles only the
+base-path-relative manifest action, validates exactly one `.apkg`/`.colpkg`
+under the parser's 512 MB limit, replaces a single temporary Cache Storage
+entry, and normally returns a base-path-safe 303 redirect. When offline, where
+Chromium follows that redirect outside the original service-worker fetch, it
+serves Angular's cached `index.html` with only the fixed route marker injected
+into history before bootstrap. All other requests remain Angular worker
+requests. The Vocabulary page claims and deletes the temporary
+entry through a typed inbox port; package bytes never enter Dexie before the
+final vocabulary transaction.
 
 ### Offline behavior
 

@@ -282,7 +282,7 @@ export class VocabularyRefreshStore {
     }));
 
     const built = await this.sync.prepare(
-      caches,
+      { caches },
       (progress) => {
         this.stateSignal.set({
           kind: 'analyzing',

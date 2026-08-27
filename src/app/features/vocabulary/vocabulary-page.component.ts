@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/automatic-anki-sync.coordinator';
+import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import { technicalCode } from '../../domain/shared/errors';
@@ -8,6 +10,7 @@ import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { copyForFailure } from './anki-error-copy';
 import { MappingEditorComponent } from './mapping-editor.component';
+import { PackageImportComponent } from './package-import.component';
 import { ProviderSelectionComponent } from './provider-selection.component';
 import { SnapshotHistoryComponent } from './snapshot-history.component';
 
@@ -16,11 +19,12 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Provided here rather than at the root, so leaving the page discards any
   // refresh in flight and releases the provider it was reading from.
-  providers: [VocabularyRefreshStore],
+  providers: [VocabularyRefreshStore, PackageImportStore],
   imports: [
     ErrorScreenComponent,
     PageHeaderComponent,
     MappingEditorComponent,
+    PackageImportComponent,
     ProviderSelectionComponent,
     SnapshotHistoryComponent,
   ],
@@ -34,7 +38,7 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
         aria-live="polite"
         data-testid="vocabulary-status"
       >
-        {{ refresh.announcement() }}
+        {{ announcement() }}
       </p>
 
       <section class="overview mn-panel" aria-labelledby="mn-vocab-current-heading">
@@ -74,6 +78,7 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
         </div>
 
         <div class="source-groups">
+          <mn-package-import />
           <mn-mapping-editor />
         </div>
       </section>
@@ -136,10 +141,33 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
 export class VocabularyPageComponent {
   protected readonly refresh = inject(VocabularyRefreshStore);
   protected readonly mappings = inject(SourceMappingStore);
+  private readonly packageImport = inject(PackageImportStore);
   private readonly history = inject(SnapshotHistoryStore);
   private readonly automatic = inject(AutomaticAnkiSyncCoordinator, { optional: true });
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  /**
+   * Set by the service worker's redirect after Android hands Monosai a file.
+   *
+   * Route parameters reach the page as inputs, so nothing here has to read the
+   * URL itself; the marker is removed again as soon as it has been acted on so
+   * a reload or a back navigation cannot replay the share.
+   */
+  readonly shared = input<string | undefined>();
+  readonly reason = input<string | undefined>();
 
   protected readonly state = this.refresh.state;
+
+  /**
+   * One live region for the page. An import in progress owns it, because it is
+   * the thing the learner just started; otherwise the refresh does.
+   */
+  protected readonly announcement = computed(() =>
+    this.packageImport.state().kind === 'idle'
+      ? this.refresh.announcement()
+      : this.packageImport.announcement(),
+  );
   protected readonly syncStatus = computed(() => {
     if (this.refresh.isBusy()) {
       return { message: 'Updating…', attention: false };
@@ -174,6 +202,14 @@ export class VocabularyPageComponent {
     void this.mappings.load();
     void this.history.load();
 
+    effect(() => {
+      const marker = this.shared();
+      if (marker === undefined) {
+        return;
+      }
+      void this.consumeShare(marker, this.reason());
+    });
+
     // The history is a read model of what has been committed, so it is reloaded
     // whenever a refresh finishes rather than being patched in place.
     effect(() => {
@@ -181,5 +217,22 @@ export class VocabularyPageComponent {
         void this.history.load();
       }
     });
+
+    // A package import commits on its own, so the history it produced is
+    // reloaded the same way a refresh's is.
+    effect(() => {
+      if (this.packageImport.state().kind === 'complete') {
+        void this.history.load();
+      }
+    });
+  }
+
+  private async consumeShare(marker: string, reason: string | undefined): Promise<void> {
+    await this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {},
+      replaceUrl: true,
+    });
+    await this.packageImport.receiveShared(marker, reason);
   }
 }

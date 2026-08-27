@@ -50,7 +50,7 @@ describe('SnapshotBuilder', () => {
   it('builds one item per distinct expression', async () => {
     const built = await build([entry('ねこ'), entry('犬')]);
 
-    expect(built.commit.items.map((item) => item.visibleExpression)).toEqual(['ねこ', '犬']);
+    expect(built.content.items.map((item) => item.visibleExpression)).toEqual(['ねこ', '犬']);
     expect(built.stats.uniqueExpressions).toBe(2);
   });
 
@@ -59,21 +59,21 @@ describe('SnapshotBuilder', () => {
 
     expect(built.stats.nonEmptyValues).toBe(1);
     expect(built.stats.rejectedEmptyValues).toBe(2);
-    expect(built.commit.items).toHaveLength(1);
+    expect(built.content.items).toHaveLength(1);
   });
 
   it('merges duplicates and counts the occurrences', async () => {
     const built = await build([entry('ねこ', 'n1'), entry('<b>ねこ</b>', 'n2')]);
 
-    expect(built.commit.items).toHaveLength(1);
+    expect(built.content.items).toHaveLength(1);
     expect(built.stats.duplicateOccurrences).toBe(1);
-    expect(built.commit.provenance).toHaveLength(2);
+    expect(built.content.provenance).toHaveLength(2);
   });
 
   it('records the mapping a value came from', async () => {
     const built = await build([entry('ねこ', 'n1')]);
 
-    expect(built.commit.provenance[0]).toMatchObject({
+    expect(built.content.provenance[0]).toMatchObject({
       sourceId: MAPPING.id,
       sourceKind: 'anki-package',
       sourceLabel: 'Anki · Core Japanese · Expression',
@@ -87,13 +87,13 @@ describe('SnapshotBuilder', () => {
   it('canonicalizes for identity while keeping the visible form', async () => {
     const built = await build([entry('ｱｲｳ')]);
 
-    expect(built.commit.items[0].visibleExpression).toBe('ｱｲｳ');
-    expect(built.commit.items[0].canonicalExpression).toBe('アイウ');
+    expect(built.content.items[0].visibleExpression).toBe('ｱｲｳ');
+    expect(built.content.items[0].canonicalExpression).toBe('アイウ');
   });
 
   it('gives every item a content hash', async () => {
     const built = await build([entry('ねこ'), entry('犬')]);
-    const hashes = built.commit.items.map((item) => item.expressionHash);
+    const hashes = built.content.items.map((item) => item.expressionHash);
 
     expect(new Set(hashes).size).toBe(2);
     expect(hashes.every((hash) => hash.length > 0)).toBe(true);
@@ -102,7 +102,7 @@ describe('SnapshotBuilder', () => {
   it('analyzes each expression into a token sequence for phrase matching', async () => {
     const built = await build([entry('お腹 が 空いた')]);
 
-    expect(built.commit.items[0].analyzedSequence).toEqual([
+    expect(built.content.items[0].analyzedSequence).toEqual([
       { surface: 'お腹 が 空いた', lemma: 'お腹 が 空いた', readingHiragana: 'お腹 が 空いた' },
     ]);
   });
@@ -110,31 +110,31 @@ describe('SnapshotBuilder', () => {
   it('stamps the analyzer and normalization versions', async () => {
     const built = await build([entry('ねこ')]);
 
-    expect(built.commit.snapshot.analyzerVersion).toBe(ANALYZER_VERSION);
-    expect(built.commit.snapshot.normalizationVersion).toBe(NORMALIZATION_VERSION);
+    expect(built.content.snapshot.analyzerVersion).toBe(ANALYZER_VERSION);
+    expect(built.content.snapshot.normalizationVersion).toBe(NORMALIZATION_VERSION);
   });
 
   it('records which mappings and providers produced the snapshot', async () => {
     const built = await build([entry('ねこ')]);
 
-    expect(built.commit.snapshot.sourceIds).toEqual([MAPPING.id]);
-    expect(built.commit.snapshot.sourceKinds).toEqual(['anki-package']);
-    expect(built.commit.snapshot.status).toBe('complete');
+    expect(built.content.snapshot.sourceIds).toEqual([MAPPING.id]);
+    expect(built.content.snapshot.sourceKinds).toEqual(['anki-package']);
+    expect(built.content.snapshot.status).toBe('complete');
   });
 
   it('agrees between the unique count and the items it produced', async () => {
     const built = await build([entry('ねこ'), entry('ねこ'), entry('犬')]);
 
-    expect(built.commit.snapshot.uniqueEntryCount).toBe(built.commit.items.length);
+    expect(built.content.snapshot.uniqueEntryCount).toBe(built.content.items.length);
   });
 
   it('points every item and provenance record at the same snapshot', async () => {
     const built = await build([entry('ねこ', 'n1')]);
-    const id = built.commit.snapshot.id;
-    const itemIds = new Set(built.commit.items.map((item) => item.id));
+    const id = built.content.snapshot.id;
+    const itemIds = new Set(built.content.items.map((item) => item.id));
 
-    expect(built.commit.items.every((item) => item.snapshotId === id)).toBe(true);
-    expect(built.commit.provenance.every((record) => itemIds.has(record.vocabularyItemId))).toBe(
+    expect(built.content.items.every((item) => item.snapshotId === id)).toBe(true);
+    expect(built.content.provenance.every((record) => itemIds.has(record.vocabularyItemId))).toBe(
       true,
     );
   });
@@ -157,7 +157,7 @@ describe('SnapshotBuilder', () => {
   it('builds an empty snapshot from no entries', async () => {
     const built = await build([]);
 
-    expect(built.commit.items).toEqual([]);
+    expect(built.content.items).toEqual([]);
     expect(built.stats.uniqueExpressions).toBe(0);
   });
 
@@ -169,12 +169,12 @@ describe('SnapshotBuilder', () => {
     });
     if (!built.ok) throw new Error(built.error.message);
 
-    expect(built.value.commit.items).toHaveLength(1);
-    expect(built.value.commit.provenance.map((record) => record.sourceKind)).toEqual([
+    expect(built.value.content.items).toHaveLength(1);
+    expect(built.value.content.provenance.map((record) => record.sourceKind)).toEqual([
       'anki-package',
       'text-list',
     ]);
-    expect(built.value.commit.snapshot.sourceKinds).toEqual(['anki-package', 'text-list']);
+    expect(built.value.content.snapshot.sourceKinds).toEqual(['anki-package', 'text-list']);
   });
 
   it('treats pasted-list values as literal text rather than Anki HTML', async () => {
@@ -185,6 +185,6 @@ describe('SnapshotBuilder', () => {
     });
     if (!built.ok) throw new Error(built.error.message);
 
-    expect(built.value.commit.items[0].visibleExpression).toBe('<b>literal</b>');
+    expect(built.value.content.items[0].visibleExpression).toBe('<b>literal</b>');
   });
 });

@@ -29,6 +29,11 @@ import type {
   VocabularyProvenance,
   VocabularySnapshot,
 } from '../app/domain/vocabulary/snapshot';
+import type {
+  SharedPackage,
+  SharedPackageInbox,
+} from '../app/domain/platform/shared-package-inbox.port';
+import { SHARED_PACKAGE_INBOX } from '../app/domain/platform/shared-package-inbox.port';
 import type { SourceMappingRepository } from '../app/domain/vocabulary/source-mapping-repository';
 import type {
   VocabularySource,
@@ -52,6 +57,8 @@ const FIXED_NOW = 1_700_000_000_000;
  * as it was.
  */
 export class StubVocabularyRepository implements VocabularyRepository {
+  /** Set so a commit writes its sources and caches the way the transaction does. */
+  sources: StubSourceMappingRepository | null = null;
   readonly snapshots: VocabularySnapshot[] = [];
   readonly items: VocabularyItem[] = [];
   readonly provenance: VocabularyProvenance[] = [];
@@ -65,6 +72,12 @@ export class StubVocabularyRepository implements VocabularyRepository {
       // Exactly like the real transaction aborting: nothing is written and the
       // The current vocabulary is untouched.
       return Promise.resolve({ ok: false, error: this.commitFailure });
+    }
+    for (const source of commit.sources) {
+      this.sources?.stored.set(source.id, source);
+    }
+    for (const cache of commit.caches) {
+      this.sources?.caches.set(cache.sourceId, cache);
     }
     const id = this.activeSnapshotId ?? commit.snapshot.id;
     const snapshot = id === commit.snapshot.id ? commit.snapshot : { ...commit.snapshot, id };
@@ -158,13 +171,6 @@ export class StubSourceMappingRepository implements SourceMappingRepository {
       ok(ids.flatMap((id) => (this.caches.has(id) ? [this.caches.get(id)!] : []))),
     );
   }
-
-  replaceCaches(caches: readonly VocabularySourceCache[]): Promise<Result<void, StorageError>> {
-    for (const cache of caches) {
-      this.caches.set(cache.sourceId, cache);
-    }
-    return Promise.resolve(ok(undefined));
-  }
 }
 
 /**
@@ -210,6 +216,29 @@ export class StubSettingsRepository implements SettingsSubset {
   ): Promise<Result<ReaderPreferences, StorageError>> {
     this.preferences = { ...this.preferences, ...patch };
     return Promise.resolve(ok(this.preferences));
+  }
+}
+
+/**
+ * The service worker's handover, in memory.
+ *
+ * Claiming empties it, like the real one, so a spec can prove a share is
+ * imported exactly once.
+ */
+export class StubSharedPackageInbox implements SharedPackageInbox {
+  waiting: SharedPackage | null = null;
+  claims = 0;
+
+  claim(): Promise<SharedPackage | null> {
+    this.claims += 1;
+    const shared = this.waiting;
+    this.waiting = null;
+    return Promise.resolve(shared);
+  }
+
+  clear(): Promise<void> {
+    this.waiting = null;
+    return Promise.resolve();
   }
 }
 
@@ -262,6 +291,7 @@ export interface VocabularyTestBed {
   readonly vocabulary: StubVocabularyRepository;
   readonly mappings: StubSourceMappingRepository;
   readonly runtime: SingleTokenLanguageRuntime;
+  readonly sharedInbox: StubSharedPackageInbox;
 }
 
 /** Sequential ids, so a failing assertion names something readable. */
@@ -285,7 +315,9 @@ function sequentialIds(): { nextId: () => string } {
 export function configureVocabularyTestBed(): VocabularyTestBed {
   const vocabulary = new StubVocabularyRepository();
   const mappings = new StubSourceMappingRepository();
+  vocabulary.sources = mappings;
   const runtime = new SingleTokenLanguageRuntime();
+  const sharedInbox = new StubSharedPackageInbox();
 
   TestBed.configureTestingModule({
     providers: [
@@ -302,9 +334,10 @@ export function configureVocabularyTestBed(): VocabularyTestBed {
       { provide: HASHER, useValue: TEST_HASHER },
       { provide: CLOCK, useValue: fixedClock(FIXED_NOW) },
       { provide: ID_GENERATOR, useValue: sequentialIds() },
+      { provide: SHARED_PACKAGE_INBOX, useValue: sharedInbox },
       { provide: LanguageStore, useValue: { initialize: () => Promise.resolve(true) } },
     ],
   });
 
-  return { vocabulary, mappings, runtime };
+  return { vocabulary, mappings, runtime, sharedInbox };
 }

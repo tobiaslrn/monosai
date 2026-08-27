@@ -20,6 +20,7 @@ export type AnkiFixtureName =
   | 'contract-schema18-zstd.colpkg'
   | 'no-review-evidence.apkg'
   | 'filtered-deck.apkg'
+  | 'nested-decks.apkg'
   | 'missing-reps-column.apkg'
   | 'no-collection.apkg'
   | 'not-a-database.apkg'
