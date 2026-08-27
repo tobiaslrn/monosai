@@ -459,6 +459,13 @@ export class GenerationStore {
     signal: AbortSignal,
   ): Promise<void> {
     let candidate = firstCandidate;
+    // Two memories that live exactly as long as this run. A word the policy has
+    // already refused would get the same answer from the same policy text, so
+    // asking again is a request the learner pays for twice; and a surface that
+    // survived a repair has to be named as such, or nothing stops the next
+    // repair reaching for the same replacement.
+    const settledRejections = new Set<string>();
+    const attemptedSurfaces = new Set<string>();
 
     for (;;) {
       this.stateSignal.set({ kind: 'parsing' });
@@ -478,25 +485,29 @@ export class GenerationStore {
 
       const units = analyzed.value;
       const candidates = this.collectCandidates(units);
+      const unsettled = candidates.filter((candidate) => !settledRejections.has(candidate.id));
 
-      let review: ExceptionReviewOutcome = noApprovals(candidates);
-      if (candidates.length > 0 && context.policyText !== '') {
-        this.stateSignal.set({ kind: 'exception-review', candidateCount: candidates.length });
+      let review: ExceptionReviewOutcome = noApprovals(unsettled);
+      if (unsettled.length > 0 && context.policyText !== '') {
+        this.stateSignal.set({ kind: 'exception-review', candidateCount: unsettled.length });
         this.reviewSignal.set(this.reviewSignal() + 1);
         this.announce(
-          `Asking your exception policy about ${String(candidates.length)} unfamiliar words…`,
+          `Asking your exception policy about ${String(unsettled.length)} unfamiliar words…`,
         );
         const reviewed = await this.provider.reviewExceptions(
           {
             policyText: context.policyText,
-            candidates,
+            candidates: unsettled,
             promptVersion: PROMPT_VERSIONS['exception-review'],
           },
           context.taskConfig,
           signal,
         );
         if (reviewed.ok) {
-          review = applyDecisions(candidates, reviewed.value);
+          review = applyDecisions(unsettled, reviewed.value);
+          for (const rejected of review.rejections) {
+            settledRejections.add(rejected);
+          }
         } else if (reviewed.error.code === 'cancelled' || isAborted(signal)) {
           this.cancelled();
           return;
@@ -507,7 +518,15 @@ export class GenerationStore {
       }
 
       this.applyApprovals(units, review);
-      const remaining = new Set(review.stillUnknown);
+      // Words the policy already refused never reached this pass's review, so
+      // they are added back here: skipping the request must not quietly turn a
+      // refusal into an acceptance.
+      const remaining = new Set([
+        ...review.stillUnknown,
+        ...candidates
+          .filter((candidate) => settledRejections.has(candidate.id))
+          .map((candidate) => candidate.id),
+      ]);
       const budgetSpent = this.repairSignal() >= MAX_REPAIR_ATTEMPTS;
       const outstanding = remaining.size > 0 || structureIssues.length > 0;
 
@@ -538,15 +557,28 @@ export class GenerationStore {
         unknownCount > 0
           ? `Replacing ${String(unknownCount)} unfamiliar ${unknownCount === 1 ? 'word' : 'words'}${structureIssueCount > 0 ? ' and fixing the story structure' : ''}`
           : 'Fixing the story structure';
-      this.announce(`${repairWork} (attempt ${String(attempt)} of 2)…`);
+      this.announce(
+        `${repairWork} (attempt ${String(attempt)} of ${String(MAX_REPAIR_ATTEMPTS)})…`,
+      );
+
+      const spans = this.unknownSpans(units, candidates, remaining);
+      const previouslyAttempted = [
+        ...new Set(
+          spans.map((span) => span.surface).filter((surface) => attemptedSurfaces.has(surface)),
+        ),
+      ];
+      for (const span of spans) {
+        attemptedSurfaces.add(span.surface);
+      }
 
       const repaired = await this.provider.repairStory(
         {
           original: request,
           candidate,
-          unknownSpans: this.unknownSpans(units, candidates, remaining),
+          unknownSpans: spans,
           structureIssues,
           attempt,
+          previouslyAttempted,
           promptVersion: PROMPT_VERSIONS.repair,
         },
         context.taskConfig,
@@ -809,7 +841,6 @@ export class GenerationStore {
         spans.push({
           sentenceIndex: unit.sentenceIndex,
           surface: byId.get(key)?.surface ?? token.surface,
-          reason: 'is not in the allowed vocabulary and was not approved by the exception policy.',
         });
       }
     }
@@ -894,6 +925,22 @@ export class GenerationStore {
         PROMPT_VERSIONS.translation,
         context.translationTaskConfig,
         signal,
+        // The generated path is the one place that knows both: the story was
+        // written to this register, and the title is its own subject matter.
+        {
+          titleJa: draft.reading.title,
+          registerPreference: context.profile.registerPreference,
+          premiseJa: request.premise,
+          consistencyTermsJa: [
+            ...new Set(
+              units.flatMap((unit) =>
+                unit.tokens
+                  .filter((token) => token.partOfSpeech === 'proper-noun')
+                  .map((token) => token.surface),
+              ),
+            ),
+          ],
+        },
       ),
     ]);
 

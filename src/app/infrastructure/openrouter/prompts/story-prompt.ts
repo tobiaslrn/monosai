@@ -3,9 +3,10 @@ import {
   JAPANESE_OUTPUT_LAYER,
   PROTOCOL_LAYER,
   STORY_POLICY_LAYER,
+  asConfig,
   asData,
   assemble,
-  jsonDataBlock,
+  jsonConfigBlock,
   vocabularyInventory,
   type AssembledPrompt,
 } from './prompt-layers';
@@ -15,7 +16,7 @@ const TASK_LAYER = [
   'Role: Write controlled Japanese reading material for one learner.',
   'Goal: Write one coherent story that follows the supplied premise and constraints.',
   'Success criteria:',
-  '- Use the exact requested sentence count.',
+  '- Write a number of sentences inside `sentenceCount`. When its `min` and `max` are equal, that count is exact.',
   '- Give the story a recognizable beginning, development, and ending, with causal or temporal continuity.',
   '- Keep the Japanese natural within the learner constraints. Avoid repetitive sentence templates and do not showcase vocabulary or grammar for its own sake.',
   '- Stay faithful to the premise and any compatible learner style instructions.',
@@ -29,10 +30,6 @@ const JSON_CONTRACT =
   'Return {"titleJa":string,"sentences":[{"index":integer,"textJa":string}]}. Include no other fields.';
 
 export function buildStoryPrompt(request: StoryGenerationRequest): AssembledPrompt {
-  const exactCount = request.sentenceRange.min === request.sentenceRange.max;
-  const userCount = exactCount
-    ? `exactly ${String(request.sentenceRange.min)} sentences`
-    : `${String(request.sentenceRange.min)}–${String(request.sentenceRange.max)} sentences`;
   const system = assemble([
     PROTOCOL_LAYER,
     STORY_POLICY_LAYER,
@@ -41,11 +38,11 @@ export function buildStoryPrompt(request: StoryGenerationRequest): AssembledProm
   ]);
 
   const user = assemble([
-    jsonDataBlock('grammar profile', {
+    jsonConfigBlock('grammar profile', {
       guidance: request.grammarGuidance,
       register: request.registerPreference,
     }),
-    jsonDataBlock(
+    jsonConfigBlock(
       'vocabulary inventory',
       vocabularyInventory(
         request.allowedVocabulary,
@@ -53,14 +50,13 @@ export function buildStoryPrompt(request: StoryGenerationRequest): AssembledProm
         request.structuralBaseline,
       ),
     ),
-    jsonDataBlock('story requirements', {
-      form: request.form,
-      sentenceCount: userCount,
+    jsonConfigBlock('story requirements', {
+      sentenceCount: { min: request.sentenceRange.min, max: request.sentenceRange.max },
     }),
     asData('premise', request.premise),
     request.specialInstructions === undefined
       ? ''
-      : asData('learner style instructions', request.specialInstructions),
+      : asConfig('learner style instructions', request.specialInstructions),
   ]);
 
   return { system, user, jsonContract: JSON_CONTRACT };

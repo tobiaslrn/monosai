@@ -27,9 +27,10 @@ import type {
   TextToSpeechProvider,
   TtsRequest,
 } from '../app/domain/ai/text-to-speech-provider';
-import type {
-  TranslationBatchRequest,
-  TranslationResult,
+import {
+  translationTargets,
+  type TranslationBatchRequest,
+  type TranslationResult,
 } from '../app/domain/ai/translation-request';
 import type { CredentialStatus } from '../app/domain/settings/credential';
 import type { CredentialRepository } from '../app/domain/settings/credential-repository';
@@ -469,7 +470,7 @@ export function autoAnswerAuxiliary(provider: StubTextProvider): void {
       const request = provider.translationRequests[provider.translationRequests.length - 1];
       provider.translationQueue.push(
         ok(
-          request.sentences.map((sentence) => ({
+          translationTargets(request).map((sentence) => ({
             id: sentence.id,
             textEn: `EN: ${sentence.textJa}`,
           })),

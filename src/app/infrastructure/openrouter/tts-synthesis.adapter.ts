@@ -37,14 +37,20 @@ export class OpenRouterTtsSynthesizer {
   async synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
     const resolved = { ...input, voiceId: resolveTtsVoice(input.modelId, input.voiceId) };
     let speed = supportsTtsSpeed(resolved.modelId) ? resolved.speed : undefined;
-    let instructions =
-      resolved.speechInstructions === 'supported'
-        ? buildSpeechInstructions({ beforeJa: resolved.beforeJa, afterJa: resolved.afterJa })
-        : undefined;
+    let instructed = resolved.speechInstructions === 'supported';
 
     // One retry per optional capability. A provider that advertised either
     // parameter but rejects it degrades to exact-text synthesis, never failure.
     for (let attempt = 0; attempt < 3; attempt += 1) {
+      // Rebuilt each attempt, so a refused `speed` also stops the instruction
+      // text referring to a speed that is no longer being requested.
+      const instructions = instructed
+        ? buildSpeechInstructions({
+            beforeJa: resolved.beforeJa,
+            afterJa: resolved.afterJa,
+            ...(speed === undefined ? {} : { speed }),
+          })
+        : undefined;
       const response = await this.request(resolved, speed, instructions, signal);
       if (response.ok) {
         return this.verify(
@@ -58,8 +64,8 @@ export class OpenRouterTtsSynthesizer {
       if (response.error.code !== 'capability-unsupported') {
         return err(response.error);
       }
-      if (refused === 'instructions' && instructions !== undefined) {
-        instructions = undefined;
+      if (refused === 'instructions' && instructed) {
+        instructed = false;
         continue;
       }
       if (refused === 'speed' && speed !== undefined) {

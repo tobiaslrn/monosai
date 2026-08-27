@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { MAX_STORY_SEGMENT_SENTENCES, MAX_STORY_SENTENCES } from '../../domain/ai/story-request';
+import {
+  MAX_STORY_SEGMENT_SENTENCES,
+  MAX_STORY_SENTENCES,
+  type SentenceRange,
+} from '../../domain/ai/story-request';
 
 /**
  * Runtime shapes for everything the provider can send back.
@@ -115,32 +119,110 @@ export const storyCandidateSchema = z.object({
 
 export type StoryCandidatePayload = z.infer<typeof storyCandidateSchema>;
 
-/** The JSON Schema sent to models driven by provider-native structured output. */
-export const STORY_CANDIDATE_JSON_SCHEMA = {
-  name: 'monosai_story',
-  strict: true,
-  schema: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['titleJa', 'sentences'],
-    properties: {
-      titleJa: { type: 'string' },
-      sentences: {
-        type: 'array',
-        maxItems: MAX_STORY_SEGMENT_SENTENCES,
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['index', 'textJa'],
-          properties: {
-            index: { type: 'integer', minimum: 0 },
-            textJa: { type: 'string' },
+/**
+ * The JSON Schema sent to models driven by provider-native structured output.
+ *
+ * Built per request rather than fixed, so the sentence count — the single most
+ * repaired constraint — is expressed where the provider can enforce it instead
+ * of only as prose the model may drift from. `description` carries the field
+ * semantics to the point where the field is emitted, which steers far harder
+ * than the same sentence in a system prompt several thousand tokens earlier.
+ */
+export function storyCandidateJsonSchema(range: SentenceRange): Record<string, unknown> {
+  return {
+    name: 'monosai_story',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['titleJa', 'sentences'],
+      properties: {
+        titleJa: {
+          type: 'string',
+          description:
+            'Short Japanese title. No romaji, furigana, translation, or parenthetical gloss.',
+        },
+        sentences: {
+          type: 'array',
+          minItems: Math.min(range.min, MAX_STORY_SEGMENT_SENTENCES),
+          maxItems: Math.min(range.max, MAX_STORY_SEGMENT_SENTENCES),
+          description: 'The story in reading order, one sentence per entry.',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['index', 'textJa'],
+            properties: {
+              index: {
+                type: 'integer',
+                minimum: 0,
+                description: 'Reading position, starting at 0 and contiguous.',
+              },
+              textJa: {
+                type: 'string',
+                description: 'Exactly one Japanese sentence. Never two, never a fragment of one.',
+              },
+            },
           },
         },
       },
     },
-  },
-} as const;
+  };
+}
+
+/** The patch a scoped repair returns: only the entries it was asked to rewrite. */
+export const storyRepairPatchSchema = z.object({
+  titleJa: z.string().nullable(),
+  replacements: z
+    .array(
+      z.object({
+        index: z.number().int(),
+        textJa: z.string(),
+      }),
+    )
+    .max(MAX_STORY_SEGMENT_SENTENCES),
+});
+
+export type StoryRepairPatchPayload = z.infer<typeof storyRepairPatchSchema>;
+
+export function storyRepairPatchJsonSchema(targetCount: number): Record<string, unknown> {
+  return {
+    name: 'monosai_story_repair_patch',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['titleJa', 'replacements'],
+      properties: {
+        titleJa: {
+          type: ['string', 'null'],
+          description: 'The rewritten Japanese title, or null when the title is not a target.',
+        },
+        replacements: {
+          type: 'array',
+          minItems: targetCount,
+          maxItems: targetCount,
+          description: 'One entry per target index, and no entry for any other index.',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['index', 'textJa'],
+            properties: {
+              index: {
+                type: 'integer',
+                description: 'A supplied target index, copied exactly.',
+              },
+              textJa: {
+                type: 'string',
+                description:
+                  'The rewritten Japanese sentence: same meaning and role, no disallowed expression.',
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+}
 
 export const storyBlueprintSchema = z.object({
   titleJa: z.string(),
@@ -155,36 +237,49 @@ export const storyBlueprintSchema = z.object({
     .max(Math.ceil(MAX_STORY_SENTENCES / MAX_STORY_SEGMENT_SENTENCES)),
 });
 
-export const STORY_BLUEPRINT_JSON_SCHEMA = {
-  name: 'monosai_story_blueprint',
-  strict: true,
-  schema: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['titleJa', 'segments'],
-    properties: {
-      titleJa: { type: 'string' },
-      segments: {
-        type: 'array',
-        maxItems: Math.ceil(MAX_STORY_SENTENCES / MAX_STORY_SEGMENT_SENTENCES),
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['index', 'sentenceCount', 'beatEn'],
-          properties: {
-            index: { type: 'integer', minimum: 0 },
-            sentenceCount: {
-              type: 'integer',
-              minimum: 1,
-              maximum: MAX_STORY_SEGMENT_SENTENCES,
+export function storyBlueprintJsonSchema(segmentCount: number): Record<string, unknown> {
+  return {
+    name: 'monosai_story_blueprint',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['titleJa', 'segments'],
+      properties: {
+        titleJa: {
+          type: 'string',
+          description:
+            "The finished story's Japanese title. No romaji, furigana, translation, or gloss.",
+        },
+        segments: {
+          type: 'array',
+          minItems: segmentCount,
+          maxItems: segmentCount,
+          description: 'One entry per supplied segment, in the supplied order.',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['index', 'sentenceCount', 'beatEn'],
+            properties: {
+              index: { type: 'integer', minimum: 0, description: 'The supplied index, unchanged.' },
+              sentenceCount: {
+                type: 'integer',
+                minimum: 1,
+                maximum: MAX_STORY_SEGMENT_SENTENCES,
+                description: 'The supplied sentence count, unchanged.',
+              },
+              beatEn: {
+                type: 'string',
+                description:
+                  'What happens in this segment, in one or two plain English sentences. Planning data, never shown to the learner, and not subject to the Japanese allowlist.',
+              },
             },
-            beatEn: { type: 'string' },
           },
         },
       },
     },
-  },
-} as const;
+  };
+}
 
 export const storySegmentCandidateSchema = z.object({
   sentences: z
@@ -198,31 +293,46 @@ export const storySegmentCandidateSchema = z.object({
   continuitySummaryEn: z.string().min(1).max(2_000),
 });
 
-export const STORY_SEGMENT_JSON_SCHEMA = {
-  name: 'monosai_story_segment',
-  strict: true,
-  schema: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['sentences', 'continuitySummaryEn'],
-    properties: {
-      sentences: {
-        type: 'array',
-        maxItems: MAX_STORY_SEGMENT_SENTENCES,
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['index', 'textJa'],
-          properties: {
-            index: { type: 'integer', minimum: 0 },
-            textJa: { type: 'string' },
+export function storySegmentJsonSchema(sentenceCount: number): Record<string, unknown> {
+  return {
+    name: 'monosai_story_segment',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['sentences', 'continuitySummaryEn'],
+      properties: {
+        sentences: {
+          type: 'array',
+          minItems: sentenceCount,
+          maxItems: sentenceCount,
+          description: 'This segment only, in reading order, one sentence per entry.',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['index', 'textJa'],
+            properties: {
+              index: {
+                type: 'integer',
+                minimum: 0,
+                description: 'Position within this segment, starting at 0 and contiguous.',
+              },
+              textJa: {
+                type: 'string',
+                description: 'Exactly one Japanese sentence.',
+              },
+            },
           },
         },
+        continuitySummaryEn: {
+          type: 'string',
+          description:
+            'Cumulative English summary of the story so far, written for the next request: who is present, where, what has happened, and what is unresolved. Never shown to the learner.',
+        },
       },
-      continuitySummaryEn: { type: 'string' },
     },
-  },
-} as const;
+  };
+}
 
 /**
  * The exception review's answer.
@@ -244,38 +354,56 @@ export const exceptionDecisionsSchema = z.object({
 
 export type ExceptionDecisionsPayload = z.infer<typeof exceptionDecisionsSchema>;
 
-export const EXCEPTION_DECISIONS_JSON_SCHEMA = {
-  name: 'monosai_exception_decisions',
-  strict: true,
-  schema: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['decisions'],
-    properties: {
-      decisions: {
-        type: 'array',
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['candidateId', 'decision', 'explanationEn'],
-          properties: {
-            candidateId: { type: 'string' },
-            decision: { type: 'string', enum: ['approved', 'rejected'] },
-            explanationEn: { type: 'string' },
+export function exceptionDecisionsJsonSchema(candidateCount: number): Record<string, unknown> {
+  return {
+    name: 'monosai_exception_decisions',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['decisions'],
+      properties: {
+        decisions: {
+          type: 'array',
+          minItems: candidateCount,
+          maxItems: candidateCount,
+          description: 'One entry per supplied candidate id, and no entry for any other id.',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['candidateId', 'decision', 'explanationEn'],
+            properties: {
+              candidateId: {
+                type: 'string',
+                description: 'A supplied candidate id, copied exactly.',
+              },
+              decision: {
+                type: 'string',
+                enum: ['approved', 'rejected'],
+                description:
+                  'Approved only when the learner exception policy clearly covers every supplied use of the word.',
+              },
+              explanationEn: {
+                type: 'string',
+                description:
+                  'One plain English sentence naming the part of the policy that applies and why this word falls under it. An explanation that only restates the verdict is discarded.',
+              },
+            },
           },
         },
       },
     },
-  },
-} as const;
+  };
+}
 
 /**
  * The grammar review's answer.
  *
- * Only schema shape is checked here: whether an offset is valid, whether a
- * sentence id is one the caller actually asked about, and dropping findings
- * that fail those checks are all judgements `domain/enrichment` makes with
- * context this schema does not have (ai-pipelines section on grammar review).
+ * Only schema shape is checked here: whether a span is really a substring of
+ * the sentence, whether a sentence id is one the caller actually asked about,
+ * and what to do when either fails are all judgements `domain/enrichment` makes
+ * with context this schema does not have (ai-pipelines section on grammar
+ * review).
  */
 export const grammarReviewSchema = z.object({
   findings: z
@@ -286,8 +414,7 @@ export const grammarReviewSchema = z.object({
         explanationEn: z.string(),
         confidence: z.enum(['low', 'medium', 'high']),
         inProfile: z.boolean(),
-        startUtf16: z.number().int().nullable().optional(),
-        endUtf16: z.number().int().nullable().optional(),
+        spanJa: z.string().nullable().optional(),
       }),
     )
     .max(128),
@@ -295,42 +422,59 @@ export const grammarReviewSchema = z.object({
 
 export type GrammarReviewPayload = z.infer<typeof grammarReviewSchema>;
 
-export const GRAMMAR_REVIEW_JSON_SCHEMA = {
-  name: 'monosai_grammar_review',
-  strict: true,
-  schema: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['findings'],
-    properties: {
-      findings: {
-        type: 'array',
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: [
-            'sentenceId',
-            'label',
-            'explanationEn',
-            'confidence',
-            'inProfile',
-            'startUtf16',
-            'endUtf16',
-          ],
-          properties: {
-            sentenceId: { type: 'string' },
-            label: { type: 'string' },
-            explanationEn: { type: 'string' },
-            confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
-            inProfile: { type: 'boolean' },
-            startUtf16: { type: ['integer', 'null'], minimum: 0 },
-            endUtf16: { type: ['integer', 'null'], minimum: 0 },
+export function grammarReviewJsonSchema(sentenceCount: number): Record<string, unknown> {
+  return {
+    name: 'monosai_grammar_review',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['findings'],
+      properties: {
+        findings: {
+          type: 'array',
+          maxItems: sentenceCount * 3,
+          description: 'At most three findings per sentence, above-ceiling constructions first.',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['sentenceId', 'label', 'explanationEn', 'confidence', 'inProfile', 'spanJa'],
+            properties: {
+              sentenceId: {
+                type: 'string',
+                description: 'A supplied sentence id, copied exactly.',
+              },
+              label: {
+                type: 'string',
+                description: 'The construction as a tutor would name it, for example "て-form".',
+              },
+              explanationEn: {
+                type: 'string',
+                description:
+                  'One or two plain sentences a beginner can read, saying what the construction does in this exact sentence. Gloss any grammatical term used.',
+              },
+              confidence: {
+                type: 'string',
+                enum: ['low', 'medium', 'high'],
+                description: 'How sure the construction is present and correctly named.',
+              },
+              inProfile: {
+                type: 'boolean',
+                description:
+                  "False when the construction exceeds the supplied profile's ceiling, true when it is within it.",
+              },
+              spanJa: {
+                type: ['string', 'null'],
+                description:
+                  'The exact substring of that sentence the finding is about, copied character for character, or null for a sentence-level observation.',
+              },
+            },
           },
         },
       },
     },
-  },
-} as const;
+  };
+}
 
 /**
  * The translation batch's answer.
@@ -353,26 +497,35 @@ export const translationsSchema = z.object({
 
 export type TranslationsPayload = z.infer<typeof translationsSchema>;
 
-export const TRANSLATIONS_JSON_SCHEMA = {
-  name: 'monosai_translations',
-  strict: true,
-  schema: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['translations'],
-    properties: {
-      translations: {
-        type: 'array',
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['id', 'textEn'],
-          properties: {
-            id: { type: 'string' },
-            textEn: { type: 'string' },
+export function translationsJsonSchema(targetCount: number): Record<string, unknown> {
+  return {
+    name: 'monosai_translations',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['translations'],
+      properties: {
+        translations: {
+          type: 'array',
+          minItems: targetCount,
+          maxItems: targetCount,
+          description: 'One entry per requested target id, and no entry for any other id.',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['id', 'textEn'],
+            properties: {
+              id: { type: 'string', description: 'A requested target id, copied exactly.' },
+              textEn: {
+                type: 'string',
+                description:
+                  'Natural English for that one Japanese sentence, readable beside it as a comprehension check. No notes, no glosses, no added detail.',
+              },
+            },
           },
         },
       },
     },
-  },
-} as const;
+  };
+}

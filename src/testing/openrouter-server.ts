@@ -17,6 +17,7 @@ export type ChatContentKind =
   | 'empty'
   | 'story'
   | 'story-repaired'
+  | 'story-repair-patch'
   | 'story-duplicate-index'
   | 'story-too-short'
   | 'story-50'
@@ -29,7 +30,7 @@ export type ChatContentKind =
   | 'decisions-rejected'
   | 'grammar-complete'
   | 'grammar-unavailable'
-  | 'grammar-invalid-offsets'
+  | 'grammar-unlocatable-span'
   | 'grammar-unknown-sentence'
   | 'translations-full'
   | 'translations-partial'
@@ -134,7 +135,9 @@ function decisions(decision: 'approved' | 'rejected'): string {
   return JSON.stringify({
     decisions: [
       {
-        candidateId: 'candidate-1',
+        // Candidate ids on the wire are ordinals; the adapter restores the
+        // caller's own key.
+        candidateId: '0',
         decision,
         explanationEn: 'The policy covers place names the learner mentioned in the premise.',
       },
@@ -156,6 +159,10 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
     'ねこはのみます。',
     'ねこはあるきます。',
   ]),
+  'story-repair-patch': JSON.stringify({
+    titleJa: null,
+    replacements: [{ index: 1, textJa: 'ねこはにわへ行きます。' }],
+  }),
   'story-duplicate-index': JSON.stringify({
     titleJa: 'ねこの一日',
     sentences: [
@@ -182,8 +189,7 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
         explanationEn: 'Uses the て-form to make a polite request.',
         confidence: 'high',
         inProfile: true,
-        startUtf16: 0,
-        endUtf16: 3,
+        spanJa: 'ねこが',
       },
       {
         sentenceId: 's1',
@@ -195,16 +201,15 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
     ],
   }),
   'grammar-unavailable': JSON.stringify({ findings: 'not-an-array' }),
-  'grammar-invalid-offsets': JSON.stringify({
+  'grammar-unlocatable-span': JSON.stringify({
     findings: [
       {
         sentenceId: 's0',
-        label: 'reversed offsets',
-        explanationEn: 'Offsets are reversed, so the highlight cannot be anchored.',
+        label: 'unquotable span',
+        explanationEn: 'Quotes text that is not in the sentence, so it cannot be anchored.',
         confidence: 'low',
         inProfile: true,
-        startUtf16: 5,
-        endUtf16: 2,
+        spanJa: 'ありません',
       },
     ],
   }),
@@ -219,26 +224,28 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
       },
     ],
   }),
+  // Translation ids on the wire are the entry's position in the window, not
+  // the sentence id the caller holds.
   'translations-full': JSON.stringify({
     translations: [
-      { id: 's0', textEn: 'The cat is here.' },
-      { id: 's1', textEn: 'The cat sleeps.' },
+      { id: '0', textEn: 'The cat is here.' },
+      { id: '1', textEn: 'The cat sleeps.' },
     ],
   }),
   'translations-partial': JSON.stringify({
-    translations: [{ id: 's0', textEn: 'The cat is here.' }],
+    translations: [{ id: '0', textEn: 'The cat is here.' }],
   }),
   'translations-duplicate-id': JSON.stringify({
     translations: [
-      { id: 's0', textEn: 'The cat is here.' },
-      { id: 's0', textEn: 'The cat is here, again.' },
+      { id: '0', textEn: 'The cat is here.' },
+      { id: '0', textEn: 'The cat is here, again.' },
     ],
   }),
   'translations-extra-id': JSON.stringify({
     translations: [
-      { id: 's0', textEn: 'The cat is here.' },
-      { id: 's1', textEn: 'The cat sleeps.' },
-      { id: 's7', textEn: 'An id nobody requested.' },
+      { id: '0', textEn: 'The cat is here.' },
+      { id: '1', textEn: 'The cat sleeps.' },
+      { id: '7', textEn: 'An id nobody requested.' },
     ],
   }),
 };

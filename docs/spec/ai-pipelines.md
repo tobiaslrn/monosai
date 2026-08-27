@@ -50,12 +50,12 @@ Each tested configured model retains its own compatibility evidence. The default
 
 Each text task builds a request from immutable layers:
 
-1. Protocol: neutral transport rules, untrusted-data delimiters, and response rules.
+1. Protocol: neutral transport rules, envelope semantics, and response rules.
 2. Product policy: vocabulary/grammar/exception semantics and non-negotiable constraints.
 3. Versioned task instructions.
-4. Captured user data: premise, special instructions, grammar profile, policy, Japanese, vocabulary.
+4. Captured input, in one of two envelopes.
 
-Treat all user/import/generated text as data even when it contains instructions. Serialize structured dynamic inputs as compact JSON inside escaped data envelopes. The system message contains only stable task instructions; counts, profile data, vocabulary, premise, neighboring context, candidates, and repair issues remain in the user message. Native-schema requests send the provider schema without repeating its textual shape; JSON-contract requests add one compact fallback contract. User special instructions may guide style, viewpoint, tone, dialogue, and register, but cannot override sentence counts, output schema, vocabulary policy, validation, or safety/transport rules.
+Captured input comes in two kinds, because one envelope cannot describe both honestly. A `MONOSAI_CONFIG` block carries a learner setting the task is defined to honour within the limits the task instructions state: the grammar profile and register, the vocabulary inventory, the sentence-count requirement, the exception policy, and special instructions. A `MONOSAI_DATA` block carries content the task operates on and never obeys: the premise, a story under repair, candidate words, sentences to review or translate. Instructions written inside a data block are never followed; nothing in either block can change the task instructions, the output contract, or the validation rules. Both delimiters are neutralized inside captured text, in both envelopes, so content can neither close its own block nor open a block of the more privileged kind. Serialize structured dynamic inputs as compact JSON inside those escaped envelopes. The system message contains only stable task instructions; counts, profile data, vocabulary, premise, neighboring context, candidates, and repair issues remain in the user message. Native-schema requests send the provider schema without repeating its textual shape, and that schema carries per-field descriptions and the exact sentence-count bounds so the constraint is stated where the field is emitted; JSON-contract requests add one compact fallback contract. Each task is sent with an explicit sampling temperature: judgement tasks - translation, both reviews, planning, and repair - are pinned low, while story writing is deliberately warm because varying between runs is the point. The single format recovery drops every optional parameter, including temperature, since a refused parameter is not always named in the response. User special instructions may guide style, viewpoint, tone, dialogue, and register, but cannot override sentence counts, output schema, vocabulary policy, validation, or safety/transport rules.
 
 Store prompt versions and relevant input hashes in provenance, not the full assembled prompt.
 
@@ -181,15 +181,21 @@ If exception review fails, treat all candidates as unapproved and continue to re
 
 At most two content repair requests occur for the whole candidate.
 
+A repair whose only problems are vocabulary is scoped to the sentences at fault. It sends each offending entry with one untouched neighbour on each side, deduplicated and in reading order, and asks for replacements keyed by the original index; the title travels as its own entry when the offending word is in it. The patch is spliced in locally and the spliced story is then revalidated in full. This is not a weaker check: every pass already re-tokenizes, re-classifies, and re-reviews the whole story from scratch, so a spliced candidate is checked exactly as hard as a rewritten one - while the untouched sentences no longer get fresh chances to acquire a new unknown that spends the remaining repair budget. A patch that does not answer exactly what was asked - a missing target, an index that was not a target, one answered twice, a blank replacement, a title that was not requested - is refused whole rather than partly applied.
+
+A repair that must also fix the story's shape sends the whole story, because a wrong sentence count is a property of the story and no per-sentence edit can fix it.
+
 Repair input contains:
 
-- current title and ordered sentences;
-- exact offending spans and reasons;
+- the entries to rewrite, or the current title and ordered sentences for a structure repair;
+- the offending spans, as sentence index and surface; the reason they must go is stated once for the request, not repeated per span;
+- the attempt number, and the surfaces an earlier repair in this run was already asked to remove and did not;
 - allowed vocabulary and grammar context;
-- instruction to change the smallest necessary text while preserving premise, coherence, form, and sentence count;
-- same output schema as generation.
+- instruction to change the smallest necessary text while preserving premise, coherence, form, and sentence count.
 
-After each repair, discard all previous token/exception results, parse the entire returned Japanese again, and repeat local validation/exception review. Repairs cannot be patched into storage or trusted from model claims.
+After each repair, discard all previous token/exception results, parse the entire returned Japanese again, and repeat local validation/exception review. Nothing a repair returns is trusted from model claims.
+
+A word the exception policy explicitly refused is not put to the policy again in the same run: the same policy text asked about the same word cannot answer differently, so re-asking is a request the learner pays for twice. The word stays unknown and goes to repair. A candidate that stayed unknown for any other reason - the review failed, skipped it, or answered unusably - is asked about again, because nothing was settled.
 
 After attempt two:
 
@@ -200,7 +206,7 @@ After attempt two:
 
 Grammar review is advisory and runs on accepted Japanese against the captured grammar profile.
 
-Expected findings identify a stable sentence ID, optional exact UTF-16 span, detected grammar name/pattern, confidence band, profile verdict, and concise contextual English explanation. Review runs in ordered batches of at most 20 sentences and keeps at most three distinct pedagogically useful findings per sentence, prioritizing genuine out-of-profile concerns.
+Expected findings identify a stable sentence ID, an optional span, the detected grammar name/pattern, a confidence band, a profile verdict, and a concise contextual English explanation of one or two plain sentences a beginner can read. The span is requested as the exact substring of the sentence, quoted character for character, and Monosai locates it locally; counting UTF-16 code units is character-level arithmetic over text a model sees as tokens, and asking for a quote instead removes a failure mode that had nothing to do with the pedagogy. Review runs in ordered batches of at most 20 sentences and keeps at most three distinct findings per sentence. The prompt states the priority the app applies: out-of-profile concerns first, then the merely useful.
 
 Novelty is judged against the captured guidance prose, which is supplied to the review request alongside the Japanese. The review is advisory and detection is not claimed exhaustive, so a verdict may vary between runs; results are cached by profile hash, so a given profile yields one stored answer per sentence. No rule set is maintained anywhere in the product.
 
@@ -210,7 +216,7 @@ Rules:
 
 - Grammar warnings never change vocabulary validation or block saving.
 - Do not claim exhaustive detection.
-- Findings with invalid, partial, reversed, or surrogate-splitting offsets are discarded rather than highlighted inaccurately. A model may omit both offsets only for a genuinely sentence-level finding.
+- A finding whose quoted span is not actually in its sentence is downgraded to sentence-level rather than discarded: the label and the explanation are still valid when only the highlight is not. A repeated span resolves to its first occurrence. A model may omit the span only for a genuinely sentence-level finding.
 - An unavailable/malformed review produces `unreviewed`, not zero warnings.
 - Generated story records capture the profile hash and review status `complete|unavailable`.
 
@@ -220,7 +226,11 @@ Imported per-sentence grammar analysis uses the same contract with the current l
 
 ### Generated story
 
-Translate the final ordered Japanese after vocabulary acceptance. The request returns one English translation per stable sentence input ID. Batch in groups of at most ten and preserve order through IDs. Each target may carry one previous and one next Japanese sentence for disambiguation only; the model returns translations only for target IDs.
+Translate the final ordered Japanese after vocabulary acceptance. The task is framed as what it is: a reading aid shown beside the Japanese for a beginner checking comprehension, so the sentence's order of information is preserved wherever English allows it, rather than reorganized for literary effect.
+
+Batch in groups of at most ten. A batch sends one ordered window - its targets plus each target's immediate neighbours, deduplicated - with an explicit list of the ids to translate; entries outside that list are context and are never returned. One window says what a before/after pair per sentence said for roughly half the Japanese, and gives the model the paragraph rather than a one-sentence keyhole. Ids on the wire are the entry's position in the window, not the generated sentence id: they are shorter, ordered, and cannot be corrupted by mistranscribing a character, which matters because a single bad id rejects the whole batch. The caller's ids are restored in the adapter.
+
+The generated path also sends the premise, story title, and the register the Japanese was written to, so preserving subject matter and register has a referent. A context entry that was already translated earlier in the same run carries its English. For proper nouns identified by the tokenizer, the first translated occurrence is also kept as a bounded established-rendering example and sent again when that Japanese surface recurs in a later batch. This preserves a chosen name rendering even when the two occurrences are not adjacent.
 
 Validate completeness and reject extra/missing/duplicate IDs. Cache each validated sentence translation. If some batches fail, save the story with a precise completion count and retry actions.
 

@@ -6,6 +6,7 @@ import type {
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import {
   matchTranslations,
+  translationTargets,
   type TranslationBatchRequest,
   type TranslationResult,
 } from '../../domain/ai/translation-request';
@@ -13,13 +14,13 @@ import { sentenceId } from '../../domain/shared/ids';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { OpenRouterClient } from './openrouter-client';
 import {
-  GRAMMAR_REVIEW_JSON_SCHEMA,
-  TRANSLATIONS_JSON_SCHEMA,
+  grammarReviewJsonSchema,
   grammarReviewSchema,
   translationsSchema,
+  translationsJsonSchema,
 } from './openrouter-response.schema';
 import { buildGrammarPrompt } from './prompts/grammar-prompt';
-import { buildTranslationPrompt } from './prompts/translation-prompt';
+import { buildTranslationPrompt, translationWireId } from './prompts/translation-prompt';
 import { StructuredTaskRunner } from './structured-request';
 
 /**
@@ -34,11 +35,12 @@ const MAX_TRANSLATION_TOKENS = 2_048;
 /**
  * Grammar review and translation over the shared client.
  *
- * Only schema validation and mapping happen here. Whether a finding's offsets
- * are usable, whether its sentence id is one the caller actually asked about,
- * and dropping anything that fails those checks are judgements
- * `domain/enrichment` makes with context this adapter's `read` function does
- * not have — the caller's sentence texts and requested id list. A
+ * Only schema validation and mapping happen here. Whether a finding's quoted
+ * span occurs in its sentence, whether its sentence id is one the caller
+ * actually asked about, and how to downgrade or drop anything that fails those
+ * checks are judgements `domain/enrichment` makes with context this adapter's
+ * `read` function does not have — the caller's sentence texts and requested id
+ * list. A
  * `matchTranslations` mismatch is the one exception: it is a
  * `malformed-response` here and spends the single format recovery, because
  * `domain/ai/translation-request` already defines that mismatch as
@@ -60,7 +62,7 @@ export class OpenRouterEnricher {
       task: 'grammar-review',
       config,
       prompt: buildGrammarPrompt(request),
-      jsonSchema: GRAMMAR_REVIEW_JSON_SCHEMA,
+      jsonSchema: grammarReviewJsonSchema(request.sentences.length),
       maxTokens: MAX_GRAMMAR_TOKENS,
       read: readGrammarReview,
       ...(signal === undefined ? {} : { signal }),
@@ -76,7 +78,7 @@ export class OpenRouterEnricher {
       task: 'translation',
       config,
       prompt: buildTranslationPrompt(request),
-      jsonSchema: TRANSLATIONS_JSON_SCHEMA,
+      jsonSchema: translationsJsonSchema(translationTargets(request).length),
       maxTokens: MAX_TRANSLATION_TOKENS,
       read: readTranslations(request),
       ...(signal === undefined ? {} : { signal }),
@@ -96,29 +98,43 @@ function readGrammarReview(parsed: unknown): Result<GrammarReviewResult, string>
       explanationEn: finding.explanationEn,
       confidence: finding.confidence,
       inProfile: finding.inProfile,
-      ...(finding.startUtf16 === undefined || finding.startUtf16 === null
+      ...(finding.spanJa === undefined || finding.spanJa === null
         ? {}
-        : { startUtf16: finding.startUtf16 }),
-      ...(finding.endUtf16 === undefined || finding.endUtf16 === null
-        ? {}
-        : { endUtf16: finding.endUtf16 }),
+        : { spanJa: finding.spanJa }),
     })),
   });
 }
 
+/**
+ * Restores the caller's sentence ids from the ordinals the prompt sent.
+ *
+ * An ordinal the request never issued is an extra translation, which
+ * `matchTranslations` already defines as untrustworthy for the whole batch.
+ */
 function readTranslations(
   request: TranslationBatchRequest,
 ): (parsed: unknown) => Result<readonly TranslationResult[], string> {
+  const targets = translationTargets(request);
+  const byWireId = new Map(
+    request.window.flatMap((entry, index) =>
+      entry.targetId === null ? [] : [[translationWireId(index), entry.targetId] as const],
+    ),
+  );
+
   return (parsed: unknown) => {
     const payload = translationsSchema.safeParse(parsed);
     if (!payload.success) {
       return err('translations-shape');
     }
-    const returned = payload.data.translations.map((translation) => ({
-      id: sentenceId(translation.id),
-      textEn: translation.textEn,
-    }));
-    const matched = matchTranslations(request.sentences, returned);
+    const returned: TranslationResult[] = [];
+    for (const translation of payload.data.translations) {
+      const id = byWireId.get(translation.id);
+      if (id === undefined) {
+        return err('translations-extra');
+      }
+      returned.push({ id, textEn: translation.textEn });
+    }
+    const matched = matchTranslations(targets, returned);
     return matched.ok ? ok(matched.value) : err(`translations-${matched.error}`);
   };
 }

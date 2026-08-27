@@ -2,9 +2,10 @@ import type { StoryGenerationRequest, StorySegmentPlan } from '../../../domain/a
 import {
   PROTOCOL_LAYER,
   STORY_POLICY_LAYER,
+  asConfig,
   asData,
   assemble,
-  jsonDataBlock,
+  jsonConfigBlock,
   vocabularyInventory,
   type AssembledPrompt,
 } from './prompt-layers';
@@ -17,7 +18,11 @@ const TASK_LAYER = [
   '- Make the beats form one coherent beginning, development, and ending faithful to the premise.',
   '- Keep each beat concrete enough to guide its segment without scripting individual sentences.',
   '- The Japanese title follows the supplied vocabulary, grammar, and register constraints. English beat descriptions are planning data and are not subject to the Japanese allowlist.',
-  'Output semantics: `titleJa` is the final Japanese title; `segments` contains `{ index, sentenceCount, beatEn }`.',
+  // The Japanese-output layer is deliberately absent here, because the beats
+  // are English by design. The one Japanese string this task produces still
+  // needs the guard, so it is stated for that field alone.
+  '- Write `titleJa` as natural Japanese only: no romaji, no furigana, no translation, and no parenthetical gloss.',
+  'Output semantics: `titleJa` is the final Japanese title; `segments` contains `{ index, sentenceCount, beatEn }`. A beat is one or two plain English sentences.',
 ] as const;
 
 const JSON_CONTRACT =
@@ -29,11 +34,11 @@ export function buildBlueprintPrompt(
 ): AssembledPrompt {
   const system = assemble([PROTOCOL_LAYER, STORY_POLICY_LAYER, TASK_LAYER.join('\n')]);
   const user = assemble([
-    jsonDataBlock('grammar profile', {
+    jsonConfigBlock('grammar profile', {
       guidance: request.grammarGuidance,
       register: request.registerPreference,
     }),
-    jsonDataBlock(
+    jsonConfigBlock(
       'vocabulary inventory',
       vocabularyInventory(
         request.allowedVocabulary,
@@ -41,15 +46,14 @@ export function buildBlueprintPrompt(
         request.structuralBaseline,
       ),
     ),
-    jsonDataBlock('required segment plan', segments),
-    jsonDataBlock('story requirements', {
-      form: request.form,
-      totalSentenceCount: request.sentenceRange.min,
+    jsonConfigBlock('required segment plan', segments),
+    jsonConfigBlock('story requirements', {
+      sentenceCount: { min: request.sentenceRange.min, max: request.sentenceRange.max },
     }),
     asData('premise', request.premise),
     request.specialInstructions === undefined
       ? ''
-      : asData('learner style instructions', request.specialInstructions),
+      : asConfig('learner style instructions', request.specialInstructions),
   ]);
   return { system, user, jsonContract: JSON_CONTRACT };
 }

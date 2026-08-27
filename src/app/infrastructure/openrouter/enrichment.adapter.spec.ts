@@ -29,10 +29,12 @@ const GRAMMAR_REQUEST: GrammarReviewRequest = {
 };
 
 const TRANSLATION_REQUEST: TranslationBatchRequest = {
-  sentences: [
-    { id: S0, textJa: 'ねこがいます。' },
-    { id: S1, textJa: 'ねこはねます。' },
+  window: [
+    { targetId: S0, textJa: 'ねこがいます。' },
+    { targetId: S1, textJa: 'ねこはねます。' },
   ],
+  titleJa: 'ねこの一日',
+  registerPreference: 'polite',
   promptVersion: 'translation/1',
 };
 
@@ -50,8 +52,7 @@ describe('OpenRouterEnricher grammar review', () => {
     expect(result.value.findings[0]).toMatchObject({
       sentenceId: 's0',
       inProfile: true,
-      startUtf16: 0,
-      endUtf16: 3,
+      spanJa: 'ねこが',
     });
     expect(result.value.findings[1]).toMatchObject({ sentenceId: 's1', inProfile: false });
     expect(context.server.callCount).toBe(1);
@@ -98,6 +99,51 @@ describe('OpenRouterEnricher translation', () => {
       { id: S1, textEn: 'The cat sleeps.' },
     ]);
     expect(context.server.callCount).toBe(1);
+  });
+
+  it('sends ordinals and context in one window, and restores the caller ids', async () => {
+    const context = harness({ content: 'translations-full' });
+    const contextual: TranslationBatchRequest = {
+      window: [
+        { targetId: null, textJa: 'まえの文。', textEn: 'The sentence before.' },
+        ...TRANSLATION_REQUEST.window,
+      ],
+      titleJa: 'ねこの一日',
+      registerPreference: 'polite',
+      promptVersion: 'translation/1',
+    };
+
+    await context.text.translate(contextual, NATIVE);
+
+    const messages = context.server.requests[0].body['messages'] as readonly {
+      content: string;
+    }[];
+    const user = messages[1].content;
+    // No generated ids on the wire, and each sentence appears exactly once.
+    expect(user).not.toContain('s0');
+    expect(user).toContain('"targetIds":["1","2"]');
+    expect(user).toContain('"readingTitleJa":"ねこの一日"');
+    expect(user).toContain('"register":"polite"');
+    expect(user).toContain('"textEn":"The sentence before."');
+    expect(user.match(/ねこがいます。/gu)).toHaveLength(1);
+  });
+
+  it('rejects an answer for a context entry the batch did not ask about', async () => {
+    const context = harness({ content: 'translations-full', recoveryContent: 'translations-full' });
+    // Entry 0 is context, so ids "0" and "1" name one context entry and one
+    // target — an extra translation, not a complete batch.
+    const shifted: TranslationBatchRequest = {
+      window: [{ targetId: null, textJa: 'まえの文。' }, ...TRANSLATION_REQUEST.window],
+      promptVersion: 'translation/1',
+    };
+
+    const result = await context.text.translate(shifted, NATIVE);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe('malformed-response');
   });
 
   it('treats a duplicate id as malformed, spending at most one recovery', async () => {

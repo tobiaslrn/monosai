@@ -31,9 +31,10 @@ describe('buildRepairPrompt', () => {
     const request: StoryRepairRequest = {
       original: ORIGINAL,
       candidate: CANDIDATE,
-      unknownSpans: [{ sentenceIndex: null, surface: '図書館', reason: 'is not allowed.' }],
+      unknownSpans: [{ sentenceIndex: null, surface: '図書館' }],
       structureIssues: [],
       attempt: 1,
+      previouslyAttempted: [],
       promptVersion: 'repair/1',
     };
 
@@ -47,11 +48,12 @@ describe('buildRepairPrompt', () => {
     const request: StoryRepairRequest = {
       original: { ...ORIGINAL, specialInstructions: 'Keep it playful.' },
       candidate: CANDIDATE,
-      unknownSpans: [{ sentenceIndex: 2, surface: '図書館', reason: 'is not allowed.' }],
+      unknownSpans: [{ sentenceIndex: 2, surface: '図書館' }],
       structureIssues: [
         { code: 'sentence-count-out-of-range', severity: 'repairable', message: 'too short' },
       ],
       attempt: 2,
+      previouslyAttempted: ['図書館'],
       promptVersion: 'repair/1',
     };
 

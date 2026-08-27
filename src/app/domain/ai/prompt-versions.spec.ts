@@ -23,13 +23,13 @@ describe('PROMPT_VERSIONS', () => {
     }
   });
 
-  it('invalidates every enrichment and generation prompt changed by version two', () => {
+  it('invalidates every enrichment and generation prompt changed by version three', () => {
     expect(PROMPT_VERSIONS).toEqual({
-      story: 'story/2',
-      repair: 'repair/2',
-      'exception-review': 'exception-review/2',
-      grammar: 'grammar/2',
-      translation: 'translation/2',
+      story: 'story/3',
+      repair: 'repair/3',
+      'exception-review': 'exception-review/3',
+      grammar: 'grammar/3',
+      translation: 'translation/3',
     });
   });
 });

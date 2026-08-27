@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
-import { MAX_TRANSLATION_BATCH } from '../../domain/ai/translation-request';
+import { MAX_TRANSLATION_BATCH, translationTargets } from '../../domain/ai/translation-request';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { fixedClock } from '../../domain/shared/clock';
 import { paragraphId, readingId, sentenceId, type SentenceId } from '../../domain/shared/ids';
@@ -62,6 +62,83 @@ describe('TranslationService', () => {
     service = TestBed.inject(TranslationService);
   });
 
+  it('carries a neighbour and its finished English into the next batch', async () => {
+    const list = sentences(MAX_TRANSLATION_BATCH + 2);
+    provider.translateWith = (request) =>
+      ok(
+        translationTargets(request).map((sentence) => ({
+          id: sentence.id,
+          textEn: `EN ${sentence.textJa}`,
+        })),
+      );
+
+    await service.run(
+      list,
+      READING_ID,
+      keysFor(list),
+      'vendor/model',
+      'translation/1',
+      { modelId: 'vendor/model', structuredOutput: 'native-schema' },
+      new AbortController().signal,
+      { titleJa: 'ねこの一日', registerPreference: 'polite' },
+    );
+
+    const second = provider.translationRequests[1];
+    const carried = second.window[0];
+    // The last sentence of the previous batch travels as context, with the
+    // English it was just given, so names stay consistent across the boundary.
+    expect(carried.targetId).toBeNull();
+    expect(carried.textJa).toBe(`文${String(MAX_TRANSLATION_BATCH - 1)}。`);
+    expect(carried.textEn).toBe(`EN 文${String(MAX_TRANSLATION_BATCH - 1)}。`);
+    expect(second.titleJa).toBe('ねこの一日');
+    expect(second.registerPreference).toBe('polite');
+    expect(translationTargets(second)).toHaveLength(2);
+  });
+
+  it('carries an established proper-name rendering across non-adjacent batches', async () => {
+    const list = sentences(MAX_TRANSLATION_BATCH + 2);
+    list[0] = { ...list[0], japaneseText: '優希は家を出た。' };
+    list[MAX_TRANSLATION_BATCH] = {
+      ...list[MAX_TRANSLATION_BATCH],
+      japaneseText: '夜に優希は帰った。',
+    };
+    provider.translateWith = (request) =>
+      ok(
+        translationTargets(request).map((sentence) => ({
+          id: sentence.id,
+          textEn:
+            sentence.textJa === '優希は家を出た。'
+              ? 'Yuki left home.'
+              : sentence.textJa.includes('優希')
+                ? 'Yuki returned at night.'
+                : `EN ${sentence.textJa}`,
+        })),
+      );
+
+    await service.run(
+      list,
+      READING_ID,
+      keysFor(list),
+      'vendor/model',
+      'translation/1',
+      { modelId: 'vendor/model', structuredOutput: 'native-schema' },
+      new AbortController().signal,
+      {
+        premiseJa: '優希の一日。',
+        consistencyTermsJa: ['優希'],
+      },
+    );
+
+    expect(provider.translationRequests[1].premiseJa).toBe('優希の一日。');
+    expect(provider.translationRequests[1].establishedRenderings).toEqual([
+      {
+        surfaceJa: '優希',
+        exampleJa: '優希は家を出た。',
+        exampleEn: 'Yuki left home.',
+      },
+    ]);
+  });
+
   it('translates every sentence in one batch when the story is small', async () => {
     const list = sentences(3);
     provider.translationQueue.push(
@@ -81,15 +158,12 @@ describe('TranslationService', () => {
     expect(outcome.records).toHaveLength(3);
     expect(outcome.failures).toHaveLength(0);
     expect(provider.generationCalls.translate).toBe(1);
-    expect(provider.translationRequests[0].sentences).toEqual([
-      { id: list[0].id, textJa: '文0。', contextAfterJa: '文1。' },
-      {
-        id: list[1].id,
-        textJa: '文1。',
-        contextBeforeJa: '文0。',
-        contextAfterJa: '文2。',
-      },
-      { id: list[2].id, textJa: '文2。', contextBeforeJa: '文1。' },
+    // One ordered window, each sentence once, rather than a before/after pair
+    // per sentence repeating most of the batch two more times.
+    expect(provider.translationRequests[0].window).toEqual([
+      { targetId: list[0].id, textJa: '文0。' },
+      { targetId: list[1].id, textJa: '文1。' },
+      { targetId: list[2].id, textJa: '文2。' },
     ]);
     expect(outcome.records[0]).toMatchObject({
       sentenceId: list[0].id,
