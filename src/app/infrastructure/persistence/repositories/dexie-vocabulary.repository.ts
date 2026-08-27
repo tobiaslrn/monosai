@@ -16,6 +16,8 @@ import { parseRecord, parseRecords } from '../record-validation';
 import { ROW_VERSION } from '../schemas/common.schema';
 import { SETTINGS_KEYS, appSettingsSchema } from '../schemas/settings.schema';
 import {
+  vocabularySourceCacheRowSchema,
+  vocabularySourceRowSchema,
   vocabularyItemRowSchema,
   vocabularyProvenanceRowSchema,
   vocabularySnapshotRowSchema,
@@ -29,6 +31,11 @@ import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage
  * The vocabulary table is a current-state cache, not a history log. A refresh
  * replaces its one snapshot and matcher inputs inside one transaction, so a
  * failed or cancelled refresh can never change what the reader sees.
+ *
+ * The same transaction upserts the sources and source caches the snapshot was
+ * built from. They are the snapshot's inputs, so committing them separately
+ * would let a storage failure leave a source stored without the vocabulary that
+ * justifies it.
  */
 export class DexieVocabularyRepository implements VocabularyRepository {
   constructor(private readonly db: MonosaiDatabase) {}
@@ -55,6 +62,31 @@ export class DexieVocabularyRepository implements VocabularyRepository {
         }
       }
 
+      // Rows are validated before the transaction opens, so an unusable source
+      // or cache fails the commit without aborting a write already under way.
+      const sourceRows = commit.sources.map((source) => {
+        const row = parseRecord(
+          vocabularySourceRowSchema,
+          { ...source, v: ROW_VERSION },
+          `vocabularySources:${source.id}`,
+        );
+        if (!row.ok) {
+          throw new StorageRuleViolation(row.error);
+        }
+        return row.value;
+      });
+      const cacheRows = commit.caches.map((cache) => {
+        const row = parseRecord(
+          vocabularySourceCacheRowSchema,
+          { ...cache, v: ROW_VERSION },
+          `vocabularySourceCaches:${cache.sourceId}`,
+        );
+        if (!row.ok) {
+          throw new StorageRuleViolation(row.error);
+        }
+        return row.value;
+      });
+
       let replacement = commit.snapshot;
       await this.db.transaction(
         'rw',
@@ -62,12 +94,20 @@ export class DexieVocabularyRepository implements VocabularyRepository {
           this.db.vocabularySnapshots,
           this.db.vocabularyItems,
           this.db.vocabularyProvenance,
+          this.db.vocabularySources,
+          this.db.vocabularySourceCaches,
           this.db.settings,
           this.db.readings,
           this.db.frozenValidations,
           this.db.generationProvenance,
         ],
         async () => {
+          if (sourceRows.length > 0) {
+            await this.db.vocabularySources.bulkPut(sourceRows);
+          }
+          if (cacheRows.length > 0) {
+            await this.db.vocabularySourceCaches.bulkPut(cacheRows);
+          }
           const current = await this.readAppSettingsWithinTransaction();
           const id = current.activeSnapshotId ?? commit.snapshot.id;
           replacement = id === commit.snapshot.id ? commit.snapshot : { ...commit.snapshot, id };

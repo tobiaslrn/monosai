@@ -2079,3 +2079,32 @@ throughout.
 - **`e2e/enrichment.spec.ts` scenario 11 fails on both viewports**,
   pre-existing and unrelated to this milestone (see Checkpoint evidence
   above); flagged as a separate task.
+
+## Android Anki package sharing
+
+### Delivered
+
+- The installed Android Chrome PWA declares a multipart file share target for
+  `.apkg` and `.colpkg`, ZIP MIME types, and AnkiDroid's generic binary MIME.
+- `monosai-sw.js` handles only that POST before delegating all other requests to
+  Angular's worker. It validates one file and the 512 MB package limit, keeps a
+  single short-lived Cache Storage inbox entry, never logs package metadata,
+  and hands success or a typed failure to Vocabulary inside the deployed base
+  path.
+- File-picker and shared packages use one page-scoped import store. It filters
+  empty scaffold decks by card ownership, groups subdecks under their root,
+  infers only unambiguous mappings, replaces an exact-name package source, and
+  keeps retry bytes only for the active flow.
+- Source upsert, replacement cache, combined snapshot, items, provenance, and
+  activation now share one Dexie transaction. No schema version changed because
+  stored row shapes and meanings are unchanged.
+
+### Verification and open compatibility
+
+- Unit coverage includes planning, cancellation, retries, provider disposal,
+  one-time inbox claims, route-marker cleanup, and successful/rolled-back atomic
+  persistence. Ordinary E2E covers manual exact-deck replacement while keeping
+  unrelated sources. The production PWA suite posts a real multipart form
+  through the worker, imports and re-imports offline, and checks inbox cleanup.
+- Real-device AnkiDroid export and Android share-sheet verification remains open
+  in [compatibility-matrix.md](compatibility-matrix.md).

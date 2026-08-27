@@ -17,7 +17,11 @@ import {
 } from '../schemas/vocabulary.schema';
 import { runStorage } from './storage-operation';
 
-/** Source mappings are few, so enablement is filtered in memory rather than indexed. */
+/**
+ * Source mappings are few, so enablement is filtered in memory rather than
+ * indexed. Caches are read here but written by the vocabulary commit, which
+ * replaces them in the same transaction as the snapshot they produced.
+ */
 export class DexieSourceMappingRepository implements VocabularySourceRepository {
   constructor(private readonly db: MonosaiDatabase) {}
 
@@ -104,14 +108,6 @@ export class DexieSourceMappingRepository implements VocabularySourceRepository 
     const rows = loaded.value.filter((row): row is VocabularySourceCacheRow => row !== undefined);
     const parsed = parseRecords(vocabularySourceCacheRowSchema, rows, 'vocabularySourceCaches');
     return parsed.ok ? ok(parsed.value.map(toCache)) : parsed;
-  }
-
-  replaceCaches(caches: readonly VocabularySourceCache[]): Promise<Result<void, StorageError>> {
-    return runStorage('vocabularySourceCaches.replace', async () => {
-      await this.db.vocabularySourceCaches.bulkPut(
-        caches.map((cache) => ({ ...cache, v: ROW_VERSION })),
-      );
-    });
   }
 }
 

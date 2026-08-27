@@ -122,6 +122,14 @@ worth naming here because they are easy to misdiagnose as one of the above.
   (manifest, service worker, HTTPS) and has not already been installed or
   dismissed too many times recently. Check DevTools → Application → Manifest
   for a specific reason, or that the app is not already installed.
+- **Monosai is missing from AnkiDroid's share sheet.** File sharing is supported
+  only by the installed Android Chrome PWA. Open Monosai online, allow Chrome to
+  finish updating it, then reinstall the PWA if the manifest registration is
+  still stale. Sharing from desktop or an unsupported browser uses the file
+  picker instead.
+- **A shared package is rejected before it opens.** Share exactly one `.apkg` or
+  `.colpkg` smaller than 512 MB. If Android reports low storage, free device
+  space and share it again; the previous vocabulary remains current.
 - **A reading opens blank while offline.** Only readings opened at least once
   while online are guaranteed to be cached by the service worker's shell —
   the reading's own data is in IndexedDB regardless, but assets like the

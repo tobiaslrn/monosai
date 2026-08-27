@@ -13,6 +13,8 @@ export const DECK_SEPARATOR = '::';
 export interface CollectionDeck {
   readonly id: number;
   readonly name: string;
+  /** True when cards sit in this deck itself, ignoring its subdecks. */
+  readonly hasCards: boolean;
 }
 
 export interface CollectionNoteType {
@@ -104,7 +106,7 @@ function readLegacyCatalog(database: CollectionDatabase): {
   for (const [id, value] of Object.entries(parseJsonObject(text(rows[0][0])))) {
     const deck = value as { name?: unknown };
     if (typeof deck.name === 'string') {
-      decks.push({ id: Number(id), name: normalizeDeckName(deck.name) });
+      decks.push({ id: Number(id), name: normalizeDeckName(deck.name), hasCards: false });
     }
   }
 
@@ -131,9 +133,11 @@ function readNormalizedCatalog(database: CollectionDatabase): {
   decks: CollectionDeck[];
   noteTypes: CollectionNoteType[];
 } {
-  const decks = database
-    .query('select id, name from decks')
-    .map((row) => ({ id: integer(row[0]), name: normalizeDeckName(text(row[1])) }));
+  const decks = database.query('select id, name from decks').map((row) => ({
+    id: integer(row[0]),
+    name: normalizeDeckName(text(row[1])),
+    hasCards: false,
+  }));
 
   const fieldsByNoteType = new Map<number, { ord: number; name: string }[]>();
   for (const row of database.query('select ntid, ord, name from fields')) {
@@ -224,10 +228,24 @@ export function openCollectionReader(
     database.query('select count(*) from cards where reps > 0')[0]?.[0] ?? 0,
   );
 
+  // Which decks actually hold cards, so an export's empty scaffolding — the
+  // default deck a collection always carries, or a parent that only groups
+  // subdecks — is not offered as something to import. A card studied through a
+  // filtered deck still belongs to its home deck, exactly as during extraction.
+  const deckIdsWithCards = new Set<number>(
+    database
+      .query('select distinct case when odid != 0 then odid else did end from cards')
+      .map((row) => integer(row[0])),
+  );
+  const decks = catalog.decks.map((deck) => ({
+    ...deck,
+    hasCards: deckIdsWithCards.has(deck.id),
+  }));
+
   return ok({
     schemaVersion,
     layout,
-    decks: catalog.decks,
+    decks,
     noteTypes: catalog.noteTypes,
     hasAnyReviewEvidence: reviewedCards > 0,
 
@@ -236,7 +254,7 @@ export function openCollectionReader(
       if (noteType === undefined) {
         return [];
       }
-      const deckIds = scopedDeckIds(catalog.decks, selection.deckName, selection.deckScope);
+      const deckIds = scopedDeckIds(decks, selection.deckName, selection.deckScope);
       if (deckIds.length === 0) {
         return [];
       }

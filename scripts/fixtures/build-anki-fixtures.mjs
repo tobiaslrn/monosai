@@ -19,6 +19,7 @@ import { zstdCompressSync } from 'node:zlib';
 import {
   CONTRACT_COLLECTION,
   FILTERED_DECK_COLLECTION,
+  NESTED_DECK_COLLECTION,
   NO_REVIEW_EVIDENCE_COLLECTION,
 } from './anki-collection.mjs';
 import {
@@ -88,6 +89,7 @@ const FIXTURES = {
   'contract-schema18-zstd.colpkg': () => modernPackage(CONTRACT_COLLECTION),
   'no-review-evidence.apkg': () => modernPackage(NO_REVIEW_EVIDENCE_COLLECTION),
   'filtered-deck.apkg': () => modernPackage(FILTERED_DECK_COLLECTION),
+  'nested-decks.apkg': () => modernPackage(NESTED_DECK_COLLECTION),
 
   'missing-reps-column.apkg': () =>
     writeZip([

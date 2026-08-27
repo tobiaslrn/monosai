@@ -9,6 +9,7 @@ import {
   ANKI_PROVIDER_FACTORY,
   PACKAGE_PROVIDER_FACTORY,
 } from '../../application/shared/anki-tokens';
+import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
@@ -20,6 +21,11 @@ import { VocabularyPageComponent } from './vocabulary-page.component';
   template: `<mn-vocabulary-page />`,
 })
 class HostComponent {}
+
+const PACKAGE_FILE = {
+  fileName: 'core-japanese.apkg',
+  bytes: () => Promise.resolve(new ArrayBuffer(0)),
+};
 
 describe('VocabularyPageComponent', () => {
   let provider: FakeAnkiProvider;
@@ -43,6 +49,8 @@ describe('VocabularyPageComponent', () => {
      * different one; driving that would leave the rendered page untouched.
      */
     readonly refresh: VocabularyRefreshStore;
+    /** The page's own import store, for the same reason. */
+    readonly packageImport: PackageImportStore;
   }
 
   async function settle(fixture: ComponentFixture<HostComponent>): Promise<void> {
@@ -59,6 +67,7 @@ describe('VocabularyPageComponent', () => {
       fixture,
       element: fixture.nativeElement as HTMLElement,
       refresh: page.injector.get(VocabularyRefreshStore),
+      packageImport: page.injector.get(PackageImportStore),
     };
   }
 
@@ -178,6 +187,50 @@ describe('VocabularyPageComponent', () => {
     expect(alert?.textContent).toContain('still current');
     expect(alert?.textContent).toContain('package');
     expect(alert?.textContent).toContain('anki/origin-not-allowed');
+  });
+
+  it('asks what to import when a package leaves the note type open', async () => {
+    const { element, fixture, packageImport } = await render();
+
+    await packageImport.start(PACKAGE_FILE);
+    await settle(fixture);
+
+    const selection = element.querySelector('[data-testid="package-import-selection"]');
+    expect(selection).not.toBeNull();
+    expect(selection?.querySelector('h3')?.getAttribute('tabindex')).toBe('-1');
+    expect(element.querySelector('[data-testid="package-import-note-type"]')).not.toBeNull();
+    expect(text(element, '[data-testid="current-snapshot"]')).toContain('No words yet');
+
+    element.querySelector<HTMLButtonElement>('[data-testid="package-import-confirm"]')?.click();
+    await vi.waitFor(async () => {
+      await settle(fixture);
+      expect(text(element, '[data-testid="package-import-complete"]')).toContain('Core Japanese');
+    });
+    expect(text(element, '[data-testid="current-snapshot"]')).toContain('unique expressions');
+  });
+
+  it('keeps the vocabulary and offers no retry when a package cannot be read', async () => {
+    const { element, fixture, packageImport } = await render();
+    // The page's factory hands back whatever this variable holds, so the next
+    // provider it asks for is the one that cannot open the file.
+    provider = new FakeAnkiProvider(CONTRACT_COLLECTION, {
+      kind: 'package',
+      probeError: {
+        domain: 'anki',
+        code: 'package-unreadable',
+        message: 'This file could not be read as an Anki package.',
+      },
+    });
+
+    await packageImport.start(PACKAGE_FILE);
+    await settle(fixture);
+
+    const failure = element.querySelector('[data-testid="package-import-failed"]');
+    expect(failure?.getAttribute('role')).toBe('alert');
+    expect(failure?.textContent).toContain('could not be read');
+    expect(failure?.textContent).toContain('unchanged');
+    expect(failure?.textContent).toContain('anki/package-unreadable');
+    expect(element.querySelector('[data-testid="package-import-retry"]')).toBeNull();
   });
 
   it('shows an empty current vocabulary state before any refresh', async () => {
