@@ -31,10 +31,12 @@ class StubPlaybackStore {
   readonly nextIsAvailable = signal(true);
   readonly selectionIsAvailable = signal(true);
   readonly failureSignal = signal<PlaybackFailure | null>(null);
+  readonly stepModeSignal = signal(false);
 
   readonly calls: string[] = [];
 
   readonly status = this.statusSignal.asReadonly();
+  readonly stepMode = this.stepModeSignal.asReadonly();
   readonly failure = this.failureSignal.asReadonly();
   readonly sentenceCount = computed(() => this.total());
   readonly availableCount = computed(() => this.ready());
@@ -54,6 +56,12 @@ class StubPlaybackStore {
   playFrom = (id: SentenceId): Promise<void> => this.record(`playFrom:${id}`);
   next = (): Promise<void> => this.record('next');
   previous = (): Promise<void> => this.record('previous');
+  continueReading = (): Promise<void> => this.record('continueReading');
+
+  setStepMode(enabled: boolean): void {
+    this.calls.push(`setStepMode:${String(enabled)}`);
+    this.stepModeSignal.set(enabled);
+  }
 
   isAvailable(id: SentenceId | null): boolean {
     return id !== null && this.selectionIsAvailable();
@@ -478,6 +486,88 @@ describe('ReadingPlayerComponent', () => {
       expect(control(element, 'Play')).toBeNull();
       expect(control(element, 'Pause')).toBeNull();
       expect(control(element, STOP_LABEL)?.disabled).toBe(false);
+    });
+  });
+
+  describe('one sentence at a time', () => {
+    const TOGGLE_LABEL = 'One sentence at a time';
+
+    function toggle(element: HTMLElement): HTMLButtonElement | undefined {
+      return [...element.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
+        button.textContent.includes(TOGGLE_LABEL),
+      );
+    }
+
+    it('offers the mode before there is anything to play, and never moves', () => {
+      store.total.set(6);
+      const fixture = render();
+      const element = fixture.nativeElement as HTMLElement;
+
+      // Persistent rather than conditional: a control that appears when the
+      // first clip lands changes the docked card's height and reflows the
+      // reading under it.
+      expect(toggle(element)?.getAttribute('aria-pressed')).toBe('false');
+
+      store.ready.set(6);
+      store.statusSignal.set('playing');
+      store.current.set(sentenceId('s1'));
+      fixture.detectChanges();
+
+      expect(toggle(element)?.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('turns the mode on and says that it is on', () => {
+      store.total.set(6);
+      store.ready.set(6);
+      const fixture = render();
+      const element = fixture.nativeElement as HTMLElement;
+
+      toggle(element)?.click();
+      fixture.detectChanges();
+
+      expect(store.calls).toEqual(['setStepMode:true']);
+      expect(toggle(element)?.getAttribute('aria-pressed')).toBe('true');
+
+      toggle(element)?.click();
+      fixture.detectChanges();
+
+      expect(store.calls).toEqual(['setStepMode:true', 'setStepMode:false']);
+      expect(toggle(element)?.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    /**
+     * Held at a seam, the cursor genuinely is on the sentence just heard, so
+     * the position line is left alone and the button carries what the next
+     * press does.
+     */
+    it('names the next sentence on Play while it is held at a seam', () => {
+      store.total.set(6);
+      store.ready.set(6);
+      store.position.set(2);
+      store.current.set(sentenceId('s2'));
+      store.stepModeSignal.set(true);
+      store.statusSignal.set('stepped');
+
+      const element = render().nativeElement as HTMLElement;
+
+      expect(element.querySelector('.position')?.textContent).toContain('Sentence 2 of 6');
+      expect(control(element, 'Next sentence')?.disabled).toBe(false);
+      expect(control(element, STOP_LABEL)?.disabled).toBe(false);
+    });
+
+    it('reads on rather than resuming when that Play is pressed', () => {
+      store.total.set(6);
+      store.ready.set(6);
+      store.position.set(2);
+      store.current.set(sentenceId('s2'));
+      store.statusSignal.set('stepped');
+
+      const element = render().nativeElement as HTMLElement;
+      control(element, 'Next sentence')?.click();
+
+      // Not `resume`: nothing was interrupted, and resuming a session that is
+      // not paused does nothing at all.
+      expect(store.calls).toEqual(['continueReading']);
     });
   });
 

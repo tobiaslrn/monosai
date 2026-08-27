@@ -18,8 +18,14 @@ import { MEDIA_SESSION } from './media-session';
  * `ended` is a session that reached the last sentence, or one whose wait was
  * let go. It keeps its cursor, so a finished reading is distinguishable from
  * one that was never started and the last sentence can still be replayed.
+ *
+ * `stepped` is a live session that has finished a sentence and is waiting to be
+ * told to go on. Only one-sentence-at-a-time reaches it. It is not `paused` —
+ * nothing was interrupted — and it is not `ended`, because the reading has not
+ * finished: it is the seam the learner asked the reading to stop at.
  */
-export type PlaybackStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'waiting' | 'ended';
+export type PlaybackStatus =
+  'idle' | 'loading' | 'playing' | 'paused' | 'waiting' | 'stepped' | 'ended';
 
 /**
  * How far into a sentence Previous stops meaning "the sentence before".
@@ -124,6 +130,15 @@ export class AudioPlaybackStore {
    * generation. Null whenever nothing is waiting.
    */
   private readonly pendingSignal = signal<SentenceId | null>(null);
+  /**
+   * Whether the reading stops at every sentence seam until told to go on.
+   *
+   * A study posture rather than a setting: the learner wants to hear a
+   * sentence, read or translate it, and only then hear the next one. It is kept
+   * here rather than persisted, so it survives navigation within the session
+   * and costs no migration.
+   */
+  private readonly stepModeSignal = signal(false);
 
   /** Generation counter, so a clip loaded for a superseded call never starts. */
   private loadToken = 0;
@@ -148,6 +163,7 @@ export class AudioPlaybackStore {
   readonly failure = this.failureSignal.asReadonly();
   readonly explicitNavigation = this.navigationSignal.asReadonly();
   readonly pendingSentenceId = this.pendingSignal.asReadonly();
+  readonly stepMode = this.stepModeSignal.asReadonly();
   readonly reading = this.readingSignal.asReadonly();
 
   readonly isActive = computed(() => this.statusSignal() !== 'idle');
@@ -223,7 +239,9 @@ export class AudioPlaybackStore {
     });
     this.mediaSession.setHandlers({
       play: () => {
-        void this.resume();
+        // A session held at a seam has nothing to resume, and a headset Play
+        // there means the same as the transport's: read on.
+        void (this.statusSignal() === 'stepped' ? this.continueReading() : this.resume());
       },
       pause: () => {
         this.pause();
@@ -346,6 +364,17 @@ export class AudioPlaybackStore {
    * refusing to start there would make audio the learner has already paid for
    * unreachable from the transport.
    */
+  /**
+   * Turns one-sentence-at-a-time on or off.
+   *
+   * Takes effect at the next seam. A session already held at one is left there
+   * rather than read on from, because turning the mode off is not a request to
+   * hear anything — continuing is still a press.
+   */
+  setStepMode(enabled: boolean): void {
+    this.stepModeSignal.set(enabled);
+  }
+
   play(): Promise<void> {
     const available = this.availableSignal();
     const first = this.refsSignal().find((ref) => available.has(ref.id));
@@ -445,6 +474,38 @@ export class AudioPlaybackStore {
 
   next(): Promise<void> {
     return this.step(1);
+  }
+
+  /**
+   * Reads on from a session held at a seam by one-sentence-at-a-time.
+   *
+   * Next with one difference: at the frontier it waits instead of doing
+   * nothing. Next means "take me to a sentence that exists", so refusing at the
+   * frontier is right for a headset press; continuing means "carry on with the
+   * reading", and the reading carries on as soon as the clip is made. Named
+   * rather than a flag on `next`, so the call site says which of the two it is.
+   */
+  async continueReading(): Promise<void> {
+    const current = this.currentSignal();
+    if (current === null) {
+      return;
+    }
+    const target = this.availableIndexFrom(1);
+    if (target !== -1) {
+      await this.step(1);
+      return;
+    }
+    const refs = this.refsSignal();
+    const after = refs.findIndex((ref) => ref.id === current) + 1;
+    if (after >= refs.length) {
+      // The last sentence. Nothing is coming, and the reading is over.
+      return;
+    }
+    this.navigationSignal.update((count) => count + 1);
+    this.single = false;
+    this.pendingSignal.set(refs[after].id);
+    this.statusSignal.set('waiting');
+    this.mediaSession.setPlaybackState('paused');
   }
 
   /**
@@ -604,6 +665,14 @@ export class AudioPlaybackStore {
     const target = refs.findIndex((ref) => ref.id === current) + 1;
     if (target >= refs.length) {
       this.finish();
+      return;
+    }
+    if (this.stepModeSignal()) {
+      // The seam the learner asked for. The cursor stays on the sentence just
+      // heard, nothing is loaded, and the session waits to be told to go on —
+      // which is `continueReading`, from the transport or the headset.
+      this.statusSignal.set('stepped');
+      this.mediaSession.setPlaybackState('paused');
       return;
     }
     const next = refs[target];
