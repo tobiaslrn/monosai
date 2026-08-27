@@ -1,4 +1,4 @@
-import { aiError, type AiError } from '../../domain/ai/ai-error';
+import type { AiError } from '../../domain/ai/ai-error';
 import type { ModelCapabilities, ModelCatalog } from '../../domain/ai/model-catalog';
 import { ok, type Result } from '../../domain/shared/result';
 import type { OpenRouterClient } from './openrouter-client';
