@@ -81,6 +81,48 @@ CI's blocking gates; when you add a gate to one, add it to the other.
 - CI runs coverage, smoke E2E, and PWA checks on pull requests; pushes to `main`
   use the full browser lane.
 
+## Git history
+
+Use one shared, predictable message style for human and agent work.
+
+Regular commits use Conventional Commits:
+
+```text
+<type>(<scope>): <imperative summary>
+```
+
+- Allowed types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`,
+  `ci`, `chore`, and `revert`.
+- Use a short domain scope when it adds meaning, such as `vocabulary`, `reader`,
+  `anki`, `pwa`, or `persistence`; omit it for genuinely cross-cutting work.
+- Write the summary in lowercase imperative form, without a trailing period,
+  and keep the subject at 72 characters or fewer.
+- Describe the user-visible or architectural outcome, not the files changed or
+  the fact that an agent performed the work.
+- Add a body only when the motivation, trade-off, migration, or verification is
+  not obvious. Separate it with a blank line and wrap prose near 100 characters.
+- Mark breaking changes with `!` and a `BREAKING CHANGE:` footer.
+
+Examples:
+
+```text
+feat(vocabulary): import Anki packages from Android sharing
+fix(pwa): preserve shared packages during offline handoff
+refactor(persistence): commit vocabulary inputs atomically
+```
+
+When a merge commit is required, use:
+
+```text
+merge(<scope>): <imperative integration summary>
+```
+
+Use the same scope and summary rules as regular commits. Name the capability
+being integrated rather than the source branch, worktree, tool, or pull-request
+number. Example: `merge(vocabulary): integrate Android Anki package sharing`.
+Prefer a fast-forward or squash when the requested workflow permits it; do not
+create an empty merge commit solely to record that branches met.
+
 ## Working method
 
 1. Inspect the relevant code and specifications.
