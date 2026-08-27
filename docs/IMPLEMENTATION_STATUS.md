@@ -1979,6 +1979,66 @@ records the decisions; it supersedes ADR 0028's toggle and control subsections.
   a real seek needs a slider contract rather than a `progressbar` with a click
   handler.
 
+## One sentence at a time
+
+A beginner listening to a reading wants to hear one sentence, read or translate
+it, and only then hear the next. The player read on by itself, so the workflow
+was pressing Pause at every seam — the press ADR 0037 spent its effort making
+reliable rather than unnecessary. No ADR: nothing documented changed its
+meaning, and the mode is built out of the transport that was already there.
+
+### Delivered
+
+- **A `stepped` status.** A live session that has finished a sentence and is
+  waiting to be told to go on. Not `paused` — nothing was interrupted — and not
+  `ended`, because the reading has not finished. `advanceAfterEnd()` enters it
+  instead of loading, after the last-sentence check, so reaching the end of a
+  reading still means what it always did.
+- **`setStepMode` / `stepMode` on `AudioPlaybackStore`**, held in the root store
+  only. It is a study posture rather than a setting: it survives navigation
+  within the session, resets on reload, and costs no migration.
+- **`continueReading()`**, which is Next with one difference: at the frontier it
+  waits instead of doing nothing. Next means "take me to a sentence that
+  exists", which is right for a headset press; continuing means "carry on", and
+  the reading carries on as soon as the clip is stored. It counts as explicit
+  navigation, so the reader takes the learner back to the sentence being read.
+  The Media Session play handler routes to it while `stepped`, since a session
+  held at a seam has nothing to resume.
+- **A persistent toggle** in the player, `aria-pressed`, in its own row under
+  the track — persistent because a stable card height is worth keeping, and its
+  own row because the transport is already four controls and a status line at
+  412px. While `stepped` the Play control is named **Next sentence** and the
+  position line is left alone: the cursor genuinely is on the sentence just
+  heard.
+- **Back at a seam needs no special case.** The elapsed position sits at the end
+  of the finished clip, past `REPLAY_WINDOW_SECONDS`, so Back replays the
+  sentence just heard, which is what a learner at a seam means by it.
+- The reader's release of an orphaned wait now watches the wait as well as the
+  job. Continuing can start a wait *after* a run has stopped, and a release that
+  only fired on the job's own transition would leave that one waiting for
+  something already called off.
+
+### Tested
+
+- `audio-playback.store.spec.ts` covers holding at the seam without loading,
+  continuing to the next sentence, continuing across a hole, continuing at the
+  frontier and reading on when the clip arrives, the last sentence still ending
+  the reading, Back replaying at a seam, and reading on once the mode is off.
+- `reading-player.component.spec.ts` covers the toggle's pressed state, that it
+  neither appears nor disappears, the Play label while `stepped`, and that the
+  press continues rather than resuming.
+- `e2e/audio.spec.ts` covers turning the mode on over a fully generated reading,
+  holding at sentence 1 while every later clip exists, and continuing to
+  sentence 2.
+
+### Notes
+
+- If the player ever becomes a scheduled Web Audio stream, step mode is "do not
+  schedule the next buffer". The decision stays in the store, not the player.
+- `docs/spec/ux-ui-specification.md` section 6a still describes a transport with
+  no Stop and a Play gated on sentence one. Both were superseded by ADR 0037 and
+  are unrelated to this change.
+
 ## Milestone 10 — Release hardening
 
 ### Delivered

@@ -35,6 +35,9 @@ const BACK_LABEL = 'Restart this sentence, or go back to the one before';
 /** The transport stop, which is not the generation rail Stop beside it. */
 const STOP_LABEL = 'Stop reading';
 
+/** The study posture that makes the reading stop at every sentence seam. */
+const STEP_MODE_LABEL = 'One sentence at a time';
+
 function sentencePopover(page: Page): Locator {
   return page.locator('mn-sentence-popover');
 }
@@ -597,6 +600,36 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // one is under way restarts it instead, which the unit tests pin down.
     await audioPlayer(page).getByRole('button', { name: BACK_LABEL }).click();
     await expect(audioPlayer(page).getByText('Sentence 1 of 4')).toBeVisible({ timeout: 15_000 });
+  });
+
+  /**
+   * The reading stops at the seam and stays there: the learner hears one
+   * sentence, reads it, and asks for the next one. Without the mode this same
+   * reading runs to the end on a single press.
+   */
+  test('stops at every sentence while one sentence at a time is on @smoke', async ({ page }) => {
+    await prepareReading(page);
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page);
+
+    const stepToggle = audioPlayer(page).getByRole('button', { name: STEP_MODE_LABEL });
+    await stepToggle.click();
+    await expect(stepToggle).toHaveAttribute('aria-pressed', 'true');
+
+    await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
+
+    const continueButton = audioPlayer(page).getByRole('button', {
+      name: 'Next sentence',
+      exact: true,
+    });
+    await expect(continueButton).toBeEnabled({ timeout: 30_000 });
+    // Every later sentence has a clip, so only the mode is holding it here.
+    await expect(audioPlayer(page).getByText('Sentence 1 of 4')).toBeVisible();
+
+    await continueButton.click();
+
+    await expect(audioPlayer(page).getByText('Sentence 2 of 4')).toBeVisible({ timeout: 15_000 });
   });
 
   test('deletes this reading audio and regenerates every sentence from scratch @mobile @smoke', async ({

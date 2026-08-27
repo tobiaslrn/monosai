@@ -122,6 +122,25 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
       </div>
 
       <!--
+        Always rendered rather than shown while a session is live: a stable
+        card height is worth keeping, and the mode is chosen before pressing
+        Play at least as often as during a reading. It is a row of its own
+        because the transport is already four controls and a status line at
+        412px, and a fifth icon there would be neither reachable nor readable.
+      -->
+      <div class="modes">
+        <button
+          type="button"
+          class="quiet"
+          [class.on]="store.stepMode()"
+          [attr.aria-pressed]="store.stepMode()"
+          (click)="toggleStepMode()"
+        >
+          One sentence at a time
+        </button>
+      </div>
+
+      <!--
         Start from where the learner is rather than from the top. Offered
         only when a sentence was open when the player was opened and that
         sentence has a clip, because "this sentence" needs somewhere to mean.
@@ -312,6 +331,14 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
       font-size: var(--text-sm);
     }
 
+    /*
+     * Left-aligned and full width, so the toggle keeps its own line and the
+     * card does not change height when the buttons around it come and go.
+     */
+    .modes {
+      display: flex;
+    }
+
     .quiet {
       min-height: var(--touch-target);
       padding-inline: var(--space-2);
@@ -322,6 +349,12 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
       font-size: var(--text-sm);
       text-decoration: underline;
       cursor: pointer;
+    }
+
+    /* The pressed state of a toggle, since underlined text alone cannot say it. */
+    .quiet.on {
+      color: var(--action-primary);
+      font-weight: 600;
     }
 
     .mn-error {
@@ -379,6 +412,11 @@ export class ReadingPlayerComponent {
     switch (this.store.status()) {
       case 'paused':
         return 'Resume';
+      case 'stepped':
+        // The one press whose meaning the position line cannot carry: the
+        // cursor genuinely is on the sentence just heard, so the button is
+        // where "and now the next one" has to be said.
+        return 'Next sentence';
       case 'waiting':
         return 'Waiting for the next sentence';
       case 'ended':
@@ -398,7 +436,7 @@ export class ReadingPlayerComponent {
    */
   protected readonly canPressPlay = computed(() => {
     const status = this.store.status();
-    if (status === 'paused') {
+    if (status === 'paused' || status === 'stepped') {
       return true;
     }
     if (status === 'loading' || status === 'waiting') {
@@ -529,7 +567,15 @@ export class ReadingPlayerComponent {
     }
   });
 
+  protected toggleStepMode(): void {
+    this.store.setStepMode(!this.store.stepMode());
+  }
+
   protected play(): void {
+    if (this.store.status() === 'stepped') {
+      void this.store.continueReading();
+      return;
+    }
     if (this.store.status() === 'paused') {
       // Read on from here: a sentence started from the popover is a single
       // sentence, and resuming it from the reading transport means the reading.
