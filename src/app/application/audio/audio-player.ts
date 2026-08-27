@@ -1,5 +1,18 @@
 import { DOCUMENT, InjectionToken, inject } from '@angular/core';
 
+/** How a clip is loaded: playing at once, or held at its start. */
+export interface PlayOptions {
+  /**
+   * Loads the clip without starting it.
+   *
+   * A Pause pressed while the next sentence was still being read from storage
+   * used to be dropped, and the sentence then started anyway. Honouring it
+   * means the clip has to arrive already paused rather than being played and
+   * silenced a frame later.
+   */
+  readonly startPaused?: boolean;
+}
+
 /**
  * The one sound-producing object in the reader.
  *
@@ -17,7 +30,7 @@ import { DOCUMENT, InjectionToken, inject } from '@angular/core';
  */
 export interface AudioPlayer {
   /** Loads a clip and starts it. Revokes whatever URL was loaded before. */
-  play(clip: Blob): Promise<void>;
+  play(clip: Blob, options?: PlayOptions): Promise<void>;
   pause(): void;
   resume(): Promise<void>;
   /** Stops, unloads, and revokes the current object URL. */
@@ -47,6 +60,14 @@ export interface AudioPlayer {
 export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer {
   const element = new view.Audio();
   let objectUrl: string | null = null;
+  /**
+   * Whether a clip is loaded at all.
+   *
+   * `stop()` unloads the element, and unloading is itself something an engine
+   * may report as an error. Reporting that as an undecodable clip would post a
+   * failure banner about a sentence the learner had just stopped on purpose.
+   */
+  let loaded = false;
 
   const release = (): void => {
     if (objectUrl !== null) {
@@ -56,10 +77,15 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
   };
 
   return {
-    async play(clip: Blob): Promise<void> {
+    async play(clip: Blob, options?: PlayOptions): Promise<void> {
       release();
       objectUrl = view.URL.createObjectURL(clip);
       element.src = objectUrl;
+      loaded = true;
+      if (options?.startPaused === true) {
+        element.load();
+        return;
+      }
       await element.play();
     },
     pause(): void {
@@ -76,16 +102,25 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       await element.play();
     },
     stop(): void {
+      loaded = false;
       element.pause();
       element.removeAttribute('src');
       element.load();
       release();
     },
     onEnded(handler: () => void): void {
-      element.addEventListener('ended', handler);
+      element.addEventListener('ended', () => {
+        if (loaded) {
+          handler();
+        }
+      });
     },
     onError(handler: () => void): void {
-      element.addEventListener('error', handler);
+      element.addEventListener('error', () => {
+        if (loaded) {
+          handler();
+        }
+      });
     },
   };
 }

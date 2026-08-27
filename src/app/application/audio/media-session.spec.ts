@@ -8,7 +8,10 @@ interface RecordedSession {
 }
 
 /** A `navigator.mediaSession` that records rather than reaches the lock screen. */
-function fakeView(): { view: Window & typeof globalThis; session: RecordedSession } {
+function fakeView(baseUri?: string): {
+  view: Window & typeof globalThis;
+  session: RecordedSession;
+} {
   const session: RecordedSession = {
     metadata: null,
     playbackState: 'none',
@@ -37,6 +40,7 @@ function fakeView(): { view: Window & typeof globalThis; session: RecordedSessio
     MediaMetadata: class {
       constructor(readonly init: unknown) {}
     },
+    document: baseUri === undefined ? undefined : { baseURI: baseUri },
   } as unknown as Window & typeof globalThis;
   return { view, session };
 }
@@ -99,8 +103,13 @@ describe('createMediaSession', () => {
     expect(session.playbackState).toBe('playing');
   });
 
-  /** A stopped reading leaves no lock screen behind. */
-  it('drops metadata and every handler when cleared', () => {
+  /**
+   * A stopped reading leaves no lock screen behind — but the handlers stay.
+   * Nulling them meant that after the first stop, every notification for the
+   * rest of the page's life had dead Play, Pause, Stop, Next, and Previous
+   * buttons, even though the metadata was republished correctly.
+   */
+  it('drops the metadata when cleared, and keeps the transport answerable', () => {
     const { view, session } = fakeView();
     const adapter = createMediaSession(view);
     adapter.setHandlers(HANDLERS);
@@ -111,7 +120,49 @@ describe('createMediaSession', () => {
 
     expect(session.metadata).toBeNull();
     expect(session.playbackState).toBe('none');
-    expect([...session.handlers.values()].every((handler) => handler === null)).toBe(true);
+    expect([...session.handlers.values()].every((handler) => handler !== null)).toBe(true);
+  });
+
+  /** A browser may drop handlers with a session it considers over. */
+  it('re-asserts the handlers on every publish', () => {
+    const { view, session } = fakeView();
+    const adapter = createMediaSession(view);
+    adapter.setHandlers(HANDLERS);
+    session.handlers.clear();
+
+    adapter.setMetadata({ title: 'Sentence 2 of 9', artist: '第一章', album: 'Monosai' });
+
+    expect([...session.handlers.keys()].sort()).toEqual([
+      'nexttrack',
+      'pause',
+      'play',
+      'previoustrack',
+      'stop',
+    ]);
+  });
+
+  /**
+   * Without artwork Chrome falls back to the site favicon and a reading in the
+   * notification shade looks like a stray browser tab. Resolved against the
+   * document base, because the build bakes `<base href="/monosai/">`.
+   */
+  it('publishes artwork resolved against the document base', () => {
+    const { view, session } = fakeView('https://example.test/monosai/');
+    const adapter = createMediaSession(view);
+
+    adapter.setMetadata({ title: 'Sentence 1 of 9', artist: '第一章', album: 'Monosai' });
+
+    expect(session.metadata).toMatchObject({
+      init: {
+        artwork: [
+          {
+            src: 'https://example.test/monosai/icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+        ],
+      },
+    });
   });
 
   it('does nothing at all, and throws nothing, without the API', () => {

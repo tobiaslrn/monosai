@@ -32,6 +32,9 @@ const CONCURRENCY = 4;
  */
 const BACK_LABEL = 'Restart this sentence, or go back to the one before';
 
+/** The transport stop, which is not the generation rail Stop beside it. */
+const STOP_LABEL = 'Stop reading';
+
 function sentencePopover(page: Page): Locator {
   return page.locator('mn-sentence-popover');
 }
@@ -198,7 +201,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // until the learner presses play.
     await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeVisible();
     await expect(audioPlayer(page).getByRole('button', { name: BACK_LABEL })).toBeDisabled();
-    await expect(audioPlayer(page).getByRole('button', { name: 'Next sentence' })).toBeDisabled();
+    await expect(
+      audioPlayer(page).getByRole('button', { name: 'Next sentence with audio' }),
+    ).toBeDisabled();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
   });
 
@@ -213,7 +218,10 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     expect(callCount(calls), 'opening the player is local').toBe(beforeOpen);
     await expect(audioPlayer(page).getByRole('button', { name: 'Generate audio' })).toBeVisible();
-    await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toHaveCount(0);
+    // The transport row is reserved rather than conditional, so the docked card
+    // does not change height under the reading when the first clip lands. With
+    // nothing stored there is nothing to press.
+    await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeDisabled();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
     await expect(audioButton(page)).toHaveAttribute('aria-expanded', 'true');
     await expect(audioButton(page)).toHaveAttribute('aria-controls', 'reading-audio-player');
@@ -469,7 +477,14 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(await storedClipCount(page)).toBe(LONG_SENTENCE_COUNT);
   });
 
-  test('plays the reading on request and stops through the header toggle', async ({ page }) => {
+  /**
+   * Hiding the card to read the text underneath is not "stop reading to me".
+   * Closing used to be the only stop there was, so it silenced the reading;
+   * the transport now has a Stop of its own, and that is the one that stops.
+   */
+  test('plays the reading on request and keeps playing behind a closed player', async ({
+    page,
+  }) => {
     await prepareReading(page);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
@@ -483,11 +498,17 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await audioButton(page).click();
 
     await expect(audioPlayer(page)).toHaveCount(0);
+    await expect(audioButton(page)).toHaveAttribute('aria-label', /^Audio, (playing|finished)/);
+
+    await openAudioPlayer(page);
+    await audioPlayer(page).getByRole('button', { name: STOP_LABEL }).click();
+
     await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
     await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, ready');
+    await expect(audioPlayer(page).getByRole('button', { name: STOP_LABEL })).toBeDisabled();
   });
 
-  test('closing while paused clears the playback cursor', async ({ page }) => {
+  test('keeps a paused session across closing and reopening the player', async ({ page }) => {
     await prepareReading(page);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
@@ -497,19 +518,65 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
     await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
     await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, paused');
-    await expect(audioPlayer(page).getByRole('button', { name: 'Resume' })).toBeVisible();
 
     await audioButton(page).click();
-
     await expect(audioPlayer(page)).toHaveCount(0);
-    await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
-    await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, ready');
+    await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, paused');
 
     await openAudioPlayer(page);
+    await expect(audioPlayer(page).getByRole('button', { name: 'Resume' })).toBeVisible();
+
+    // The transport Stop is what ends a session, and it clears the cursor.
+    await audioPlayer(page).getByRole('button', { name: STOP_LABEL }).click();
+
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
+    await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, ready');
     await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeVisible();
     await expect(audioPlayer(page).getByRole('button', { name: 'Resume' })).toHaveCount(0);
     await expect(audioPlayer(page).getByRole('button', { name: BACK_LABEL })).toBeDisabled();
-    await expect(audioPlayer(page).getByRole('button', { name: 'Next sentence' })).toBeDisabled();
+  });
+
+  /**
+   * Back at position one used to call stop: the session was torn down, the
+   * cursor cleared, and the header reverted to "Audio, ready" — at the one
+   * position where its own label promises to restart the sentence.
+   */
+  test('restarts the first sentence rather than ending the session @smoke', async ({ page }) => {
+    await prepareReading(page);
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page);
+
+    await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
+    await expect(audioPlayer(page).getByText('Sentence 1 of 4')).toBeVisible({ timeout: 15_000 });
+    await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
+
+    await audioPlayer(page).getByRole('button', { name: BACK_LABEL }).click();
+
+    await expect(audioPlayer(page).getByText('Sentence 1 of 4')).toBeVisible();
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1);
+    await expect(audioButton(page)).not.toHaveAttribute('aria-label', 'Audio, ready');
+  });
+
+  /**
+   * Reaching the end used to read as a reset: the bar dropped to zero, the
+   * highlight vanished, and Back went dead, so a reading that had just been
+   * read aloud looked exactly like one that had never been started.
+   */
+  test('says a reading finished rather than resetting the player', async ({ page }) => {
+    await prepareReading(page);
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page);
+
+    await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
+
+    await expect(audioPlayer(page).getByText('Finished')).toBeVisible({ timeout: 30_000 });
+    await expect(audioPlayer(page).getByRole('button', { name: BACK_LABEL })).toBeEnabled();
+    await expect(audioPlayer(page).getByRole('button', { name: 'Play again' })).toBeEnabled();
+    await expect(
+      audioPlayer(page).getByRole('progressbar', { name: 'Position in this reading' }),
+    ).toHaveAttribute('aria-valuenow', '100');
   });
 
   test('navigates to the next and previous sentence without wrapping', async ({ page }) => {
@@ -522,7 +589,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
     await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
 
-    await audioPlayer(page).getByRole('button', { name: 'Next sentence' }).click();
+    await audioPlayer(page).getByRole('button', { name: 'Next sentence with audio' }).click();
     await expect(audioPlayer(page).getByText('Sentence 2 of 4')).toBeVisible({ timeout: 15_000 });
     await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
 
