@@ -1831,8 +1831,9 @@ that stops or fails leaves everything it produced playable.
   reported rather than the abort it caused, so a failed run is never shown as
   one the learner stopped. Clips that had already arrived are kept.
 - `AudioPlaybackStore` gained a `waiting` status, `pendingSentenceId`,
-  `pendingPosition`, `availableCount`, `hasPlayableAudio`, `canPlayFromStart`,
-  `canGoNext`, `canGoPrevious`, and `isAvailable`. Starting is gated on the
+  `pendingPosition`, `availableCount`, `hasPlayableAudio`, `canPlayFromStart`
+  *(removed again by ADR 0037)*, `canGoNext`, `canGoPrevious`, and
+  `isAvailable`. Starting is gated on the
   sentence being started from, not on the set. Reaching the frontier keeps the
   cursor on the sentence just heard and waits; the metadata refresh the reader
   already ran on every job progress change is what lets it read on.
@@ -1875,6 +1876,108 @@ that stops or fails leaves everything it produced playable.
 - No migration, settings field, or cache-key change. `AssetJob` records stay
   compatible; `completedSentenceIds` may now be stored out of order, and order
   is still derived from `orderedSentenceIds`.
+
+## Audio transport recovery, navigation, and one track
+
+Behavioural testing of the shipped player against a real build found transport
+states that could not be left and states reported as something other than what
+they were. [ADR 0037](decisions/0037-audio-transport-recovery-and-one-track.md)
+records the decisions; it supersedes ADR 0028's toggle and control subsections.
+
+### Delivered
+
+- **No dead ends.** `step()` can no longer stop: off the start it replays the
+  current sentence, off the end it does nothing. Reaching the last sentence
+  enters a new `ended` status that keeps the cursor, so a finished reading is
+  distinguishable from one that was never started and its last sentence can be
+  replayed. `abandonWaiting()` releases a wait for a clip a failed or cancelled
+  run will never produce, reporting a `not-generated` failure that names the
+  sentence; the reader calls it from the job's progress, because playback does
+  not watch generation.
+- **A Stop in the transport**, live whenever a session is active. Closing the
+  player through the header no longer stops playback: hiding the card to read
+  the text underneath is not "stop reading to me". Leaving the reader still
+  stops.
+- **No flicker at the seam.** `load()` takes `keepStatus`, set for the automatic
+  advance and for reading on after a wait, so the transport never renders a
+  disabled Play between two sentences of one advance. A Pause pressed during a
+  load is honoured: `AudioPlayer.play` takes `startPaused`, and the clip arrives
+  already paused rather than being started and silenced.
+- **Navigation follows the audio.** Next and Back move to the nearest sentence
+  in that direction that has a clip, so a hole left by ADR 0035's per-sentence
+  failures is no longer a wall. Play starts at the first sentence that has one;
+  `canPlayFromStart` is gone and `hasPlayableAudio` is the gate.
+- **One track.** A single `progressbar` carries a quiet generation fill behind
+  the accent playback fill, both over `sentenceCount`. The generation fill is
+  `availableCount / sentenceCount` rather than the job's percentage, so a retry
+  covering two missing sentences is not drawn as half the reading. The transport
+  row and the track are always rendered, disabled when there is nothing to play,
+  so the docked card stops changing height — and reflowing the reading beneath
+  it — as clips land and rails switch.
+- **Honest reporting.** `hasAudioModel` resolves through
+  `AudioConfigurationService`, the readiness generation actually gates on, so a
+  tested voice with no saved preset is no longer offered "Set up audio model"
+  beside a working Generate. The playback failure banner has its own Dismiss,
+  wired to the previously uncalled `acknowledgeFailure`. A provider failure in
+  the reader states what failed instead of the settings panel's "try the test
+  again". The position line never renders empty. A refused `resume()` stays
+  paused instead of reporting a decode failure and destroying the session.
+- **Media Session correctness.** Handlers are held by the adapter and
+  re-asserted on every publish, and `clear()` drops only the metadata —
+  registering once and nulling on stop left every later notification with dead
+  buttons. Metadata gained artwork from `icons/icon-512.png` resolved against
+  `document.baseURI`, and the artist string is truncated, because an import
+  saved without a title has its whole body as its title.
+- **The reader's effects no longer run unboundedly.** An Angular effect tracks
+  the signals read inside the calls its body makes, and `refreshSummaries()`,
+  `prepare()`, `open()`, and `aids.load()` all read state they then rewrite — so
+  each was its own trigger. Measured on a real build, one eight-sentence
+  generation ran `prepare()` around **14,000 times in twenty seconds**. Every
+  store call in `ReaderPageComponent`'s effects is now made inside
+  `untracked()`. The loop was invisible before because every iteration wrote a
+  result; it became a visible stall the moment `prepare()` gained its
+  latest-wins token, since no read survived long enough to be written.
+- `prepare()` is latest-wins by token, and a storage failure now clears the
+  availability set rather than leaving a transport built on state it failed to
+  refresh. `playSentence()` checks availability the way `playFrom` does instead
+  of tearing the session down. `createAudioPlayer` ignores `ended` and `error`
+  once the element is unloaded, so a clean stop cannot post a decode banner.
+
+### Tested
+
+- `audio-playback.store.spec.ts` covers Back restarting the first sentence,
+  Next doing nothing at the last, the `ended` state and replaying into it,
+  releasing an orphaned wait, no `loading` across an automatic advance, a Pause
+  honoured during a load, stepping across a hole in both directions, starting at
+  the first sentence that has a clip, a refused resume staying paused, reading
+  on after resuming a single sentence from the transport, and `playSentence`
+  naming a missing clip without stopping.
+- `media-session.spec.ts` covers handlers surviving `clear()`, re-assertion on
+  publish, and artwork resolved against the document base.
+- `audio-player.spec.ts` covers a clip loaded already paused and events ignored
+  after unload.
+- `reading-player.component.spec.ts` covers the reserved transport row, the
+  single track and its generation fill, the live Stop while waiting, the
+  finished state, Play offered whenever any sentence has a clip, and dismissing
+  a playback failure.
+- `e2e/audio.spec.ts` covers Back on sentence one keeping the session, a reading
+  reporting "Finished" with a full bar, playback surviving a closed player, and
+  the transport Stop ending it.
+
+### Notes
+
+- None of this makes an Android media notification appear. Chrome raises one
+  only for media longer than roughly five seconds and each sentence is a
+  separate `src`, so a notification would need one continuous stream per
+  reading — a `AudioPlayer` rewrite over Web Audio with a silent anchor element.
+  Not attempted here, and it has no automated coverage either way.
+- `prepare()` still does a pair of full re-reads per call. The race and the loop
+  are closed; the per-call cost is not. `untracked()` around a store call in a
+  reader effect is now load-bearing: adding one without it reintroduces the
+  loop, and nothing on screen says so.
+- The track is still not seekable. Next-to-next-available removed the urgency;
+  a real seek needs a slider contract rather than a `progressbar` with a click
+  handler.
 
 ## Milestone 10 — Release hardening
 
