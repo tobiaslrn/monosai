@@ -93,8 +93,9 @@ Regular commits use Conventional Commits:
 
 - Allowed types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`,
   `ci`, `chore`, and `revert`.
-- Use a short domain scope when it adds meaning, such as `vocabulary`, `reader`,
-  `anki`, `pwa`, or `persistence`; omit it for genuinely cross-cutting work.
+- A scope is required for every commit. Use a short domain scope such as
+  `vocabulary`, `reader`, `anki`, `pwa`, or `persistence`; use `repo` for
+  genuinely cross-cutting repository work. Never omit the parentheses.
 - Write the summary in lowercase imperative form, without a trailing period,
   and keep the subject at 72 characters or fewer.
 - Describe the user-visible or architectural outcome, not the files changed or
