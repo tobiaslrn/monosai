@@ -156,16 +156,17 @@ describe('DexieSourceMappingRepository', () => {
     expect(listed.ok && listed.value[0]).not.toHaveProperty('deckName');
   });
 
-  it('stores complete source caches and deletes them with their source', async () => {
+  it('reads complete source caches and deletes them with their source', async () => {
     await repository.save(mapping());
-    await repository.replaceCaches([
-      {
-        sourceId: FIRST,
-        refreshedAt: 10,
-        entries: [{ rawValue: '猫', sourceRecordId: '1' }],
-        warnings: [],
-      },
-    ]);
+    // Caches are written by the vocabulary commit, in the same transaction as
+    // the snapshot they produced, so this spec seeds the row it reads back.
+    await db.vocabularySourceCaches.put({
+      v: ROW_VERSION,
+      sourceId: FIRST,
+      refreshedAt: 10,
+      entries: [{ rawValue: '猫', sourceRecordId: '1' }],
+      warnings: [],
+    });
 
     expect(await repository.readCaches([FIRST])).toEqual({
       ok: true,

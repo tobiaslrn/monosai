@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fixedClock } from '../../../domain/shared/clock';
-import { snapshotId, vocabularyItemId, vocabularySourceId } from '../../../domain/shared/ids';
+import {
+  snapshotId,
+  vocabularyItemId,
+  vocabularySourceId,
+  type VocabularySourceId,
+} from '../../../domain/shared/ids';
+import type { VocabularySource } from '../../../domain/vocabulary/vocabulary-source';
 import { createTestDatabase, destroyTestDatabase } from '../../../../testing/test-database';
 import {
   generatedStoryFixture,
@@ -11,6 +17,24 @@ import type { MonosaiDatabase } from '../monosai-db';
 import { ROW_VERSION } from '../schemas/common.schema';
 import { DexieSettingsRepository } from './dexie-settings.repository';
 import { DexieVocabularyRepository } from './dexie-vocabulary.repository';
+
+function packageSourceFixture(id: VocabularySourceId): VocabularySource {
+  return {
+    id,
+    kind: 'anki-package',
+    label: 'Anki · Core Japanese · Expression',
+    providerKind: 'package',
+    deckName: 'Core Japanese',
+    deckScope: 'deck-and-subdecks',
+    noteTypeName: 'Basic',
+    expressionFieldName: 'Expression',
+    enabled: true,
+    createdAt: 1_700_000_000_000,
+    updatedAt: 1_700_000_000_000,
+    lastSyncedAt: 1_700_000_000_000,
+    automaticSync: false,
+  };
+}
 
 describe('DexieVocabularyRepository', () => {
   let db: MonosaiDatabase;
@@ -54,6 +78,56 @@ describe('DexieVocabularyRepository', () => {
     const active = await repository.getActiveSnapshot();
     expect(active.ok && active.value?.id).toBe(first.snapshot.id);
     expect(await db.vocabularySnapshots.count()).toBe(1);
+  });
+
+  it('stores the sources and caches the snapshot was built from', async () => {
+    const commit = snapshotFixture(20);
+    const sourceId = commit.provenance[0].sourceId;
+
+    const committed = await repository.commitSnapshot({
+      ...commit,
+      sources: [packageSourceFixture(sourceId)],
+      caches: [
+        { sourceId, refreshedAt: 1_700_000_000_000, entries: [{ rawValue: '猫' }], warnings: [] },
+      ],
+    });
+
+    expect(committed.ok).toBe(true);
+    expect(await db.vocabularySources.get(sourceId)).toMatchObject({ deckName: 'Core Japanese' });
+    expect(await db.vocabularySourceCaches.get(sourceId)).toMatchObject({
+      refreshedAt: 1_700_000_000_000,
+    });
+  });
+
+  it('stores neither source nor cache when the commit is rejected', async () => {
+    const commit = snapshotFixture(21);
+    const sourceId = commit.provenance[0].sourceId;
+
+    const failed = await repository.commitSnapshot({
+      ...commit,
+      snapshot: { ...commit.snapshot, uniqueEntryCount: commit.items.length + 1 },
+      sources: [packageSourceFixture(sourceId)],
+      caches: [{ sourceId, refreshedAt: 1, entries: [], warnings: [] }],
+    });
+
+    expect(failed.ok).toBe(false);
+    expect(await db.vocabularySources.count()).toBe(0);
+    expect(await db.vocabularySourceCaches.count()).toBe(0);
+  });
+
+  it('rejects a commit whose source cannot be stored, before writing anything', async () => {
+    const commit = snapshotFixture(22);
+    const sourceId = commit.provenance[0].sourceId;
+
+    const failed = await repository.commitSnapshot({
+      ...commit,
+      sources: [{ ...packageSourceFixture(sourceId), deckName: 42 } as unknown as VocabularySource],
+      caches: [],
+    });
+
+    expect(failed.ok).toBe(false);
+    expect(await db.vocabularySnapshots.count()).toBe(0);
+    expect(await db.vocabularySources.count()).toBe(0);
   });
 
   it('rejects provenance that points outside the committed snapshot', async () => {

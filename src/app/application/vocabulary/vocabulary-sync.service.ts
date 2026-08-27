@@ -7,6 +7,7 @@ import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
 import { parseTextList } from '../../domain/vocabulary/text-list-parser';
 import type {
   TextListVocabularySource,
+  VocabularySource,
   VocabularySourceCache,
 } from '../../domain/vocabulary/vocabulary-source';
 import type { SnapshotCommit } from '../../domain/vocabulary/vocabulary-repository';
@@ -18,9 +19,22 @@ import { SnapshotBuilder, type AnalysisProgress } from './snapshot-builder';
 
 export type VocabularySyncFailure = LanguageError | StorageError;
 
+/**
+ * What one prepared vocabulary is built from.
+ *
+ * Sources given here are not stored yet: a package import needs its mapping to
+ * take part in the snapshot before the learner has committed to keeping it, and
+ * nothing may be written until the whole commit succeeds.
+ */
+export interface PrepareInput {
+  /** Caches replacing whatever is stored for those sources. */
+  readonly caches?: readonly VocabularySourceCache[];
+  /** Sources to add or replace, applied over the stored list in memory. */
+  readonly sources?: readonly VocabularySource[];
+}
+
 export interface PreparedVocabularySync {
   readonly commit: SnapshotCommit;
-  readonly replacementCaches: readonly VocabularySourceCache[];
   /** True when the merged canonical expression set differs from the active snapshot. */
   readonly vocabularyChanged: boolean;
 }
@@ -36,10 +50,12 @@ export class VocabularySyncService {
   private readonly classification = inject(VocabularyClassificationService);
 
   async prepare(
-    replacementCaches: readonly VocabularySourceCache[] = [],
+    input: PrepareInput = {},
     onProgress?: (progress: AnalysisProgress) => void,
     signal?: AbortSignal,
   ): Promise<Result<PreparedVocabularySync, VocabularySyncFailure>> {
+    const replacementCaches = input.caches ?? [];
+    const pendingSources = input.sources ?? [];
     const ready = await this.language.initialize();
     if (!ready) {
       return err(
@@ -52,7 +68,7 @@ export class VocabularySyncService {
     if (!listed.ok) {
       return listed;
     }
-    const enabled = listed.value.filter((source) => source.enabled);
+    const enabled = upsert(listed.value, pendingSources).filter((source) => source.enabled);
     const cached = await this.sources.readCaches(enabled.map((source) => source.id));
     if (!cached.ok) {
       return cached;
@@ -101,24 +117,23 @@ export class VocabularySyncService {
       return err(built.error);
     }
     return ok({
-      commit: built.value.commit,
-      replacementCaches,
+      commit: { ...built.value.content, sources: pendingSources, caches: replacementCaches },
       vocabularyChanged: !sameExpressionHashes(
         currentExpressionHashes,
-        built.value.commit.items.map((item) => item.expressionHash),
+        built.value.content.items.map((item) => item.expressionHash),
       ),
     });
   }
 
+  /**
+   * Writes the prepared vocabulary and everything it was built from.
+   *
+   * One repository call, so one transaction: sources, caches, snapshot, items,
+   * provenance, and activation either all land or none do.
+   */
   async commit(
     prepared: PreparedVocabularySync,
   ): Promise<Result<VocabularySnapshot, VocabularySyncFailure>> {
-    if (prepared.replacementCaches.length > 0) {
-      const cached = await this.sources.replaceCaches(prepared.replacementCaches);
-      if (!cached.ok) {
-        return cached;
-      }
-    }
     const committed = await this.vocabulary.commitSnapshot(prepared.commit);
     if (!committed.ok) {
       return committed;
@@ -141,7 +156,7 @@ export class VocabularySyncService {
       })),
       warnings: [],
     };
-    const prepared = await this.prepare([cache]);
+    const prepared = await this.prepare({ caches: [cache] });
     return prepared.ok ? this.commit(prepared.value) : prepared;
   }
 
@@ -150,6 +165,20 @@ export class VocabularySyncService {
     const prepared = await this.prepare();
     return prepared.ok ? this.commit(prepared.value) : prepared;
   }
+}
+
+/** Stored sources with the pending ones applied over them, order preserved. */
+function upsert(
+  stored: readonly VocabularySource[],
+  pending: readonly VocabularySource[],
+): readonly VocabularySource[] {
+  if (pending.length === 0) {
+    return stored;
+  }
+  const byId = new Map(pending.map((source) => [source.id, source]));
+  const merged = stored.map((source) => byId.get(source.id) ?? source);
+  const storedIds = new Set(stored.map((source) => source.id));
+  return [...merged, ...pending.filter((source) => !storedIds.has(source.id))];
 }
 
 function sameExpressionHashes(left: readonly string[], right: readonly string[]): boolean {

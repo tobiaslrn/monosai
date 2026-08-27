@@ -162,7 +162,7 @@ describe('PackageWorkerHost', () => {
   });
 
   describe('discovery', () => {
-    it('lists decks and note types with their fields', async () => {
+    it('lists only decks holding cards, with their note types and fields', async () => {
       const harness = createPackageHarness();
       await open(harness, 'contract-schema18-zstd.apkg');
       const response = await send(harness, 'd-1', { operation: 'discover', payload: {} });
@@ -171,18 +171,49 @@ describe('PackageWorkerHost', () => {
       if (!response.outcome.ok) return;
       const catalog = response.outcome.result.value as ResultFor<'discover'>;
 
+      // `Default` and `Unused` hold no cards: an export carries them, but
+      // neither can produce vocabulary, so neither is offered.
       expect(catalog.decks.map((deck) => deck.name).sort()).toEqual([
         'Core Japanese',
         'Core Japanese::Verbs',
-        'Default',
-        'Unused',
       ]);
       expect(catalog.decks.find((deck) => deck.name === 'Core Japanese')?.hasChildren).toBe(true);
-      expect(catalog.decks.find((deck) => deck.name === 'Unused')?.hasChildren).toBe(false);
+      expect(catalog.decks.find((deck) => deck.name === 'Core Japanese::Verbs')?.hasChildren).toBe(
+        false,
+      );
       expect(catalog.noteTypes.find((type) => type.name === 'Basic')?.fieldNames).toEqual([
         'Expression',
         'Meaning',
       ]);
+    });
+
+    it('keeps a parent deck whose cards all sit in its subdecks', async () => {
+      const harness = createPackageHarness();
+      await open(harness, 'nested-decks.apkg');
+      const response = await send(harness, 'd-1', { operation: 'discover', payload: {} });
+
+      expect(response.outcome.ok).toBe(true);
+      if (!response.outcome.ok) return;
+      const catalog = response.outcome.result.value as ResultFor<'discover'>;
+
+      expect(catalog.decks.map((deck) => deck.name).sort()).toEqual([
+        'Japanese',
+        'Japanese::Nouns',
+        'Japanese::Verbs',
+      ]);
+      expect(catalog.decks.find((deck) => deck.name === 'Japanese')?.hasChildren).toBe(true);
+    });
+
+    it('offers the home deck rather than the filtered deck a card was studied in', async () => {
+      const harness = createPackageHarness();
+      await open(harness, 'filtered-deck.apkg');
+      const response = await send(harness, 'd-1', { operation: 'discover', payload: {} });
+
+      expect(response.outcome.ok).toBe(true);
+      if (!response.outcome.ok) return;
+      const catalog = response.outcome.result.value as ResultFor<'discover'>;
+
+      expect(catalog.decks.map((deck) => deck.name)).toEqual(['Core Japanese']);
     });
 
     it('reads the same catalog out of the legacy JSON layout', async () => {

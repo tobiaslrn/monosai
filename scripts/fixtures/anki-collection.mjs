@@ -101,3 +101,30 @@ export const FILTERED_DECK_COLLECTION = {
     },
   ],
 };
+
+/**
+ * A shared parent deck whose own cards are all in its subdecks.
+ *
+ * AnkiDroid exports a deck with everything below it, and a learner who keeps
+ * "Japanese" as a container studies only in its children. The parent still has
+ * to be offered — and offered with its subdecks included — while the default
+ * deck the collection always carries must not be.
+ */
+export const NESTED_DECK_COLLECTION = {
+  deckNames: ['Default', 'Japanese', 'Japanese::Nouns', 'Japanese::Verbs'],
+  noteTypes: [{ name: 'Basic', fieldNames: ['Expression', 'Meaning'] }],
+  notes: [
+    {
+      id: 'n-nested-neko',
+      noteTypeName: 'Basic',
+      fieldValues: ['ねこ', 'cat'],
+      cards: [{ deckName: 'Japanese::Nouns', reps: 4, lapses: 1, factor: 2300 }],
+    },
+    {
+      id: 'n-nested-taberu',
+      noteTypeName: 'Basic',
+      fieldValues: ['食べる', 'to eat'],
+      cards: [{ deckName: 'Japanese::Verbs', reps: 2, lapses: 0, factor: 2100 }],
+    },
+  ],
+};

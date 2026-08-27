@@ -108,9 +108,21 @@ export async function readSnapshots(
   );
 }
 
-/** Adds a package source and waits for its vocabulary to be applied. */
+/**
+ * Imports a package and waits for its vocabulary to be applied.
+ *
+ * The contract fixture carries two note types, so Monosai cannot tell which one
+ * holds the words and asks: confirming the chooser is part of importing it.
+ */
 export async function connectPackage(page: Page, fixture: string): Promise<void> {
   await choosePackage(page, fixture);
+  const confirm = page.getByTestId('package-import-confirm');
+  const complete = page.getByTestId('package-import-complete');
+  await expect(confirm.or(complete)).toBeVisible({ timeout: 60_000 });
+  if (await confirm.isVisible()) {
+    await confirm.click();
+  }
+  await expect(complete).toBeVisible({ timeout: 60_000 });
   await expect(page.getByTestId('current-snapshot')).toContainText('unique expressions', {
     timeout: 60_000,
   });

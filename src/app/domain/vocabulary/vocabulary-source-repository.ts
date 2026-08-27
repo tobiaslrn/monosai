@@ -14,5 +14,4 @@ export interface VocabularySourceRepository {
   readCaches(
     sourceIds: readonly VocabularySourceId[],
   ): Promise<Result<readonly VocabularySourceCache[], StorageError>>;
-  replaceCaches(caches: readonly VocabularySourceCache[]): Promise<Result<void, StorageError>>;
 }
