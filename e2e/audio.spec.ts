@@ -32,8 +32,22 @@ const CONCURRENCY = 4;
  */
 const BACK_LABEL = 'Restart this sentence, or go back to the one before';
 
-/** The transport stop, which is not the generation rail Stop beside it. */
+/** The transport stop, which is not the generation rail's Stop beside it. */
 const STOP_LABEL = 'Stop reading';
+
+/**
+ * How much of the reading has audio, read off the track.
+ *
+ * A run in progress prints no count any more — the quiet fill behind the
+ * playback position is the whole report — so a test that needs to be sure a run
+ * has produced something reads the bar rather than a sentence about it.
+ */
+async function generatedPercent(page: Page): Promise<number> {
+  const width = await audioPlayer(page)
+    .locator('[role="progressbar"] .fill.generated')
+    .evaluate((fill) => (fill as HTMLElement).style.inlineSize);
+  return Number.parseFloat(width) || 0;
+}
 
 function sentencePopover(page: Page): Locator {
   return page.locator('mn-sentence-popover');
@@ -244,7 +258,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await prepareReading(page, TEXT, { audioDelayMs: 2_000 });
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expect(audioPlayer(page).getByRole('button', { name: 'Stop', exact: true })).toBeVisible({
+    await expect(
+      audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }),
+    ).toBeVisible({
       timeout: 15_000,
     });
 
@@ -254,9 +270,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await openAudioPlayer(page);
     await expect(
-      audioPlayer(page).getByRole('button', { name: 'Stop', exact: true }),
+      audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }),
     ).toBeVisible();
-    await audioPlayer(page).getByRole('button', { name: 'Stop', exact: true }).click();
+    await audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }).click();
     await expect(audioPlayer(page).getByText(/Stopped/)).toBeVisible({ timeout: 15_000 });
   });
 
@@ -383,7 +399,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     // The run is still going: its Stop is on screen beside the transport.
     await expect(
-      audioPlayer(page).getByRole('button', { name: 'Stop', exact: true }),
+      audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }),
     ).toBeVisible();
     expect(await storedClipCount(page)).toBeLessThan(LONG_SENTENCE_COUNT);
 
@@ -404,7 +420,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await openAudioPlayer(page);
     await audioPlayer(page).getByRole('button', { name: 'Generate audio' }).click();
     await expect(
-      audioPlayer(page).getByRole('button', { name: 'Stop', exact: true }),
+      audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }),
     ).toBeVisible();
 
     // Closing the player does not cancel the run, so the selection can be made
@@ -448,12 +464,8 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await page.getByRole('button', { name: 'Generate audio' }).click();
     // Stopped between the batches rather than at the start, so what is asserted
     // is that finished clips survive rather than that none were made.
-    await expect(
-      audioPlayer(page)
-        .getByText(/[1-9]\d* of 8 sentences ready/)
-        .first(),
-    ).toBeVisible({ timeout: 60_000 });
-    await audioPlayer(page).getByRole('button', { name: 'Stop', exact: true }).click();
+    await expect.poll(() => generatedPercent(page), { timeout: 60_000 }).toBeGreaterThan(0);
+    await audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }).click();
     await expect(audioPlayer(page).getByText(/Stopped with \d+ of 8 sentences ready/)).toBeVisible({
       timeout: 60_000,
     });
