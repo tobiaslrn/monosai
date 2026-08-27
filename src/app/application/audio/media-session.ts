@@ -31,7 +31,7 @@ export interface MediaSessionAdapter {
   setHandlers(handlers: MediaSessionHandlers): void;
   setMetadata(metadata: MediaSessionMetadata): void;
   setPlaybackState(state: 'none' | 'playing' | 'paused'): void;
-  /** Drops metadata and handlers, so a stopped reading leaves no lock screen. */
+  /** Drops the metadata, so a stopped reading leaves no lock screen behind. */
   clear(): void;
 }
 
@@ -44,28 +44,72 @@ export const NO_MEDIA_SESSION: MediaSessionAdapter = {
   clear: () => undefined,
 };
 
+/**
+ * The notification's icon, resolved against the document base.
+ *
+ * Without it Chrome falls back to the site favicon and a reading in the
+ * notification shade looks like a stray browser tab. Resolved rather than
+ * hard-coded because the build bakes `<base href="/monosai/">`, so a root-
+ * relative path would point outside the deployment.
+ */
+function artworkFor(view: Window & typeof globalThis): readonly MediaImage[] {
+  const baseUri = (view.document as Document | undefined)?.baseURI;
+  if (typeof baseUri !== 'string') {
+    return [];
+  }
+  try {
+    return [
+      { src: new URL('icons/icon-512.png', baseUri).href, sizes: '512x512', type: 'image/png' },
+    ];
+  } catch {
+    return [];
+  }
+}
+
 export function createMediaSession(view: (Window & typeof globalThis) | null): MediaSessionAdapter {
   const session = view?.navigator.mediaSession;
   const MetadataConstructor = view?.MediaMetadata;
-  if (session === undefined || MetadataConstructor === undefined) {
+  if (view === null || session === undefined || MetadataConstructor === undefined) {
     return NO_MEDIA_SESSION;
   }
 
+  const artwork = artworkFor(view);
+  /**
+   * Kept so every publish can re-register them.
+   *
+   * The handlers used to be registered once and nulled by `clear()`, which
+   * meant the first stop left every later notification with dead buttons for
+   * the rest of the page's life.
+   */
+  let handlers: MediaSessionHandlers | null = null;
+
+  const applyHandlers = (): void => {
+    if (handlers === null) {
+      return;
+    }
+    session.setActionHandler('play', handlers.play);
+    session.setActionHandler('pause', handlers.pause);
+    session.setActionHandler('stop', handlers.stop);
+    session.setActionHandler('nexttrack', handlers.next);
+    session.setActionHandler('previoustrack', handlers.previous);
+  };
+
   return {
     supported: true,
-    setHandlers(handlers: MediaSessionHandlers): void {
-      session.setActionHandler('play', handlers.play);
-      session.setActionHandler('pause', handlers.pause);
-      session.setActionHandler('stop', handlers.stop);
-      session.setActionHandler('nexttrack', handlers.next);
-      session.setActionHandler('previoustrack', handlers.previous);
+    setHandlers(next: MediaSessionHandlers): void {
+      handlers = next;
+      applyHandlers();
     },
     setMetadata(metadata: MediaSessionMetadata): void {
       session.metadata = new MetadataConstructor({
         title: metadata.title,
         artist: metadata.artist,
         album: metadata.album,
+        artwork: [...artwork],
       });
+      // A browser may drop handlers along with a session it considers over, so
+      // every publish re-asserts them rather than trusting the one at startup.
+      applyHandlers();
     },
     setPlaybackState(state: 'none' | 'playing' | 'paused'): void {
       session.playbackState = state;
@@ -73,9 +117,9 @@ export function createMediaSession(view: (Window & typeof globalThis) | null): M
     clear(): void {
       session.metadata = null;
       session.playbackState = 'none';
-      for (const action of ['play', 'pause', 'stop', 'nexttrack', 'previoustrack'] as const) {
-        session.setActionHandler(action, null);
-      }
+      // The handlers deliberately survive: the same store is still the thing
+      // that would answer the next notification, and nulling them here is what
+      // left restarted playback with a lock screen that could not be pressed.
     },
   };
 }

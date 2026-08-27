@@ -29,7 +29,6 @@ class StubPlaybackStore {
   readonly pending = signal(0);
   readonly current = signal<SentenceId | null>(null);
   readonly nextIsAvailable = signal(true);
-  readonly startIsAvailable = signal(true);
   readonly selectionIsAvailable = signal(true);
   readonly failureSignal = signal<PlaybackFailure | null>(null);
 
@@ -41,7 +40,6 @@ class StubPlaybackStore {
   readonly availableCount = computed(() => this.ready());
   readonly missingCount = computed(() => this.total() - this.ready());
   readonly hasPlayableAudio = computed(() => this.ready() > 0);
-  readonly canPlayFromStart = computed(() => this.ready() > 0 && this.startIsAvailable());
   readonly canPlayWholeReading = computed(() => this.total() > 0 && this.missingCount() === 0);
   readonly currentPosition = computed(() => this.position());
   readonly pendingPosition = computed(() => this.pending());
@@ -51,7 +49,8 @@ class StubPlaybackStore {
   readonly canGoPrevious = computed(() => this.current() !== null);
 
   play = (): Promise<void> => this.record('play');
-  resume = (): Promise<void> => this.record('resume');
+  resume = (continueReading = false): Promise<void> =>
+    this.record(continueReading ? 'resume:reading' : 'resume');
   playFrom = (id: SentenceId): Promise<void> => this.record(`playFrom:${id}`);
   next = (): Promise<void> => this.record('next');
   previous = (): Promise<void> => this.record('previous');
@@ -66,6 +65,10 @@ class StubPlaybackStore {
 
   stop(): void {
     this.calls.push('stop');
+  }
+
+  acknowledgeFailure(): void {
+    this.calls.push('acknowledgeFailure');
   }
 
   private record(call: string): Promise<void> {
@@ -111,6 +114,8 @@ describe('ReadingPlayerComponent', () => {
 
   /** Back names both of the things it does, because its icon can name neither. */
   const BACK_LABEL = 'Restart this sentence, or go back to the one before';
+  const NEXT_LABEL = 'Next sentence with audio';
+  const STOP_LABEL = 'Stop reading';
   const WAITING_LABEL = 'Waiting for the next sentence';
 
   function control(element: HTMLElement, label: string): HTMLButtonElement | null {
@@ -131,8 +136,12 @@ describe('ReadingPlayerComponent', () => {
 
       expect(element.textContent).toContain('13 sentences');
       expect(element.textContent).toContain('Generate audio');
-      // Nothing about playing, because there is nothing to play.
-      expect(control(element, 'Play')).toBeNull();
+      // The transport row is reserved rather than conditional, so the docked
+      // card does not change height — and reflow the reading beneath it — the
+      // moment the first clip lands. There is nothing to press yet.
+      expect(control(element, 'Play')?.disabled).toBe(true);
+      expect(control(element, NEXT_LABEL)?.disabled).toBe(true);
+      expect(control(element, STOP_LABEL)?.disabled).toBe(true);
     });
 
     it('generates only when the learner asks, and never on open', () => {
@@ -176,11 +185,10 @@ describe('ReadingPlayerComponent', () => {
       const element = fixture.nativeElement as HTMLElement;
 
       expect(element.textContent).toContain('3 of 13 sentences ready');
-      expect(
-        element
-          .querySelector('[role="progressbar"][aria-label="Preparing audio for this reading"]')
-          ?.getAttribute('aria-valuenow'),
-      ).toBe('23');
+      // One track, not two identical accent bars stacked. The generated fill is
+      // measured over the reading rather than over the job, so a retry covering
+      // two missing sentences never renders as half of the reading.
+      expect(element.querySelectorAll('[role="progressbar"]')).toHaveLength(1);
     });
 
     /**
@@ -201,7 +209,9 @@ describe('ReadingPlayerComponent', () => {
 
       expect(control(element, 'Play')?.disabled).toBe(false);
       expect(element.textContent).toContain('4 of 13 sentences ready');
-      expect(control(element, 'Stop')).toBeNull();
+      expect(
+        element.querySelector('[role="progressbar"] .fill.generated')?.getAttribute('style'),
+      ).toContain('31%');
       expect([...element.querySelectorAll('button')].map((button) => button.textContent)).toContain(
         'Stop',
       );
@@ -323,8 +333,9 @@ describe('ReadingPlayerComponent', () => {
       expect(element.textContent).not.toContain('Generate audio');
       expect(control(element, BACK_LABEL)).not.toBeNull();
       expect(control(element, 'Pause')).toBeNull();
-      expect(control(element, 'Next sentence')).not.toBeNull();
-      expect(control(element, 'Stop')).toBeNull();
+      expect(control(element, NEXT_LABEL)).not.toBeNull();
+      // A Stop that is not "hide the player", disabled until there is a session.
+      expect(control(element, STOP_LABEL)?.disabled).toBe(true);
     });
 
     /**
@@ -340,8 +351,10 @@ describe('ReadingPlayerComponent', () => {
       expect(element.textContent).toContain('4 of 6 sentences have audio');
       expect(element.textContent).toContain('Generate audio');
       // The rail already says how much there is; the position line does not
-      // repeat it while nothing is playing.
+      // repeat it while nothing is playing. It says something, though: an empty
+      // live region beside a row of controls reads as a label that failed.
       expect(element.textContent).not.toContain('sentences ready');
+      expect(element.querySelector('.position')?.textContent).toContain('Not playing');
     });
 
     it('plays on the learner pressing play, and never on its own', () => {
@@ -369,15 +382,17 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
       control(element, 'Resume')?.click();
 
-      expect(store.calls).toEqual(['pause', 'resume']);
+      // Resuming from the transport means reading on, not finishing the one
+      // sentence a popover started.
+      expect(store.calls).toEqual(['pause', 'resume:reading']);
     });
 
     it('leaves previous and next disabled until a sentence is active', () => {
       const element = render().nativeElement as HTMLElement;
 
-      expect(control(element, 'Next sentence')?.disabled).toBe(true);
+      expect(control(element, NEXT_LABEL)?.disabled).toBe(true);
       expect(control(element, BACK_LABEL)?.disabled).toBe(true);
-      expect(control(element, 'Stop')).toBeNull();
+      expect(control(element, STOP_LABEL)?.disabled).toBe(true);
     });
 
     it('steps once something is playing', () => {
@@ -385,21 +400,22 @@ describe('ReadingPlayerComponent', () => {
       store.current.set(sentenceId('s2'));
       const element = render().nativeElement as HTMLElement;
 
-      control(element, 'Next sentence')?.click();
+      control(element, NEXT_LABEL)?.click();
       control(element, BACK_LABEL)?.click();
+      control(element, STOP_LABEL)?.click();
 
-      expect(store.calls).toEqual(['next', 'previous']);
+      expect(store.calls).toEqual(['next', 'previous', 'stop']);
     });
 
     /** Manual Next is a jump, and a jump needs somewhere to land. */
-    it('disables Next while the sentence after this one has no clip', () => {
+    it('disables Next while no later sentence has a clip', () => {
       store.statusSignal.set('playing');
       store.current.set(sentenceId('s2'));
       store.nextIsAvailable.set(false);
 
       const element = render().nativeElement as HTMLElement;
 
-      expect(control(element, 'Next sentence')?.disabled).toBe(true);
+      expect(control(element, NEXT_LABEL)?.disabled).toBe(true);
       // Back still works, because its first meaning is replaying this sentence.
       expect(control(element, BACK_LABEL)?.disabled).toBe(false);
     });
@@ -450,13 +466,44 @@ describe('ReadingPlayerComponent', () => {
       );
     });
 
-    /** The session has already started; there is nothing to press. */
-    it('leaves nothing to press while it waits', () => {
+    /**
+     * The session has already started, so there is nothing to play — but there
+     * is always something to press. A run that failed left the frontier waiting
+     * for a clip that was never coming, with every transport control dead.
+     */
+    it('leaves a live Stop while it waits', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(control(element, WAITING_LABEL)?.disabled).toBe(true);
       expect(control(element, 'Play')).toBeNull();
       expect(control(element, 'Pause')).toBeNull();
+      expect(control(element, STOP_LABEL)?.disabled).toBe(false);
+    });
+  });
+
+  /**
+   * Reaching the end is not a reset. Snapping back to "N sentences ready" made
+   * a reading that had just been read aloud indistinguishable from one that had
+   * never been started, and put the last sentence out of reach.
+   */
+  describe('a reading that finished', () => {
+    beforeEach(() => {
+      store.total.set(6);
+      store.ready.set(6);
+      store.position.set(6);
+      store.current.set(sentenceId('s6'));
+      store.statusSignal.set('ended');
+    });
+
+    it('says so, keeps the bar full, and can replay the last sentence', () => {
+      const element = render().nativeElement as HTMLElement;
+
+      expect(element.querySelector('.position')?.textContent).toContain('Finished');
+      expect(element.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe(
+        '100',
+      );
+      expect(control(element, BACK_LABEL)?.disabled).toBe(false);
+      expect(control(element, 'Play again')?.disabled).toBe(false);
     });
   });
 
@@ -464,14 +511,19 @@ describe('ReadingPlayerComponent', () => {
    * Clips arrive out of order, so a reading can have audio without having the
    * audio Play from the beginning would need.
    */
-  it('disables Play while sentence one has no clip', () => {
+  /**
+   * Clips arrive out of order, so a reading can have audio without having the
+   * audio that starting from sentence one would need. Refusing to play at all
+   * left the learner with no way into audio they had already paid for; the
+   * store starts at the first sentence that does have a clip instead.
+   */
+  it('offers Play whenever any sentence has a clip', () => {
     store.total.set(6);
     store.ready.set(2);
-    store.startIsAvailable.set(false);
 
     const element = render().nativeElement as HTMLElement;
 
-    expect(control(element, 'Play')?.disabled).toBe(true);
+    expect(control(element, 'Play')?.disabled).toBe(false);
   });
 
   describe('failures name the sentence, not the reading', () => {
@@ -497,6 +549,30 @@ describe('ReadingPlayerComponent', () => {
 
       expect(element.querySelector('[role="alert"]')?.textContent).toContain(
         'The audio for sentence 5 could not be played',
+      );
+    });
+
+    /**
+     * The banner used to be cleared only by a successful play, so a failure
+     * about a sentence the learner had moved on from stayed on screen until the
+     * player was destroyed.
+     */
+    it('can be dismissed', () => {
+      store.failureSignal.set({ kind: 'decode-failed', position: 5 });
+      const fixture = render();
+
+      press(fixture.nativeElement as HTMLElement, 'Dismiss');
+
+      expect(store.calls).toEqual(['acknowledgeFailure']);
+    });
+
+    it('names a sentence the run never got to', () => {
+      store.failureSignal.set({ kind: 'not-generated', position: 4 });
+
+      const element = render().nativeElement as HTMLElement;
+
+      expect(element.querySelector('[role="alert"]')?.textContent).toContain(
+        'Sentence 4 has not been generated yet',
       );
     });
 

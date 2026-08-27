@@ -140,7 +140,7 @@ describe('createAudioPlayer', () => {
     expect(revokeObjectURL).not.toHaveBeenCalled();
   });
 
-  it('forwards ended and error events to registered handlers', () => {
+  it('forwards ended and error events to registered handlers', async () => {
     const element = new FakeAudioElement();
     const { view } = fakeView(element);
     const player = createAudioPlayer(view);
@@ -149,10 +149,50 @@ describe('createAudioPlayer', () => {
 
     player.onEnded(ended);
     player.onError(error);
+    await player.play(new Blob(['clip']));
     element.fire('ended');
     element.fire('error');
 
     expect(ended).toHaveBeenCalledTimes(1);
     expect(error).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * `stop()` unloads the element, and unloading is itself something an engine
+   * may report as an error. Forwarding that would post a failure banner naming
+   * the sentence the learner had just stopped on purpose.
+   */
+  it('reports nothing once the element has been unloaded', async () => {
+    const element = new FakeAudioElement();
+    const { view } = fakeView(element);
+    const player = createAudioPlayer(view);
+    const ended = vi.fn();
+    const error = vi.fn();
+    player.onEnded(ended);
+    player.onError(error);
+    await player.play(new Blob(['clip']));
+
+    player.stop();
+    element.fire('ended');
+    element.fire('error');
+
+    expect(ended).not.toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  /** A clip loaded already paused is the only way a Pause during a load can be honoured. */
+  it('loads a clip without starting it when it is asked for paused', async () => {
+    const element = new FakeAudioElement();
+    const { view } = fakeView(element);
+    const player = createAudioPlayer(view);
+
+    await player.play(new Blob(['clip']), { startPaused: true });
+
+    expect(element.src).toBe('blob:one');
+    expect(element.played).toBe(0);
+
+    await player.resume();
+
+    expect(element.played).toBe(1);
   });
 });
