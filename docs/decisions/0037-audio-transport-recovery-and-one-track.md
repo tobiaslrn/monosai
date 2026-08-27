@@ -117,6 +117,13 @@ The transport row and the track are always rendered, disabled when there is
 nothing to play, so the docked card does not change height as the first clip
 lands or a run ends.
 
+A run in progress prints **no count**. The generation fill is the entire report:
+"4 of 30 sentences ready" underneath the bar said in words what the bar had
+already said, on a card that sits over the reading the learner is trying to
+read. Only a run that *stopped* still has a line, because "stopped with 4 of 30"
+is a fact the track cannot carry. The rail's control is named **Stop
+generating**, since the transport beside it now has a Stop of its own.
+
 ### Honest reporting
 
 - `hasAudioModel` in the reader resolves through `AudioConfigurationService`,
