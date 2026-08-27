@@ -2085,7 +2085,8 @@ throughout.
 ### Delivered
 
 - The installed Android Chrome PWA declares a multipart file share target for
-  `.apkg` and `.colpkg`, ZIP MIME types, and AnkiDroid's generic binary MIME.
+  `.apkg` and `.colpkg`, AnkiDroid's `application/apkg`, known Anki package MIME
+  variants, ZIP MIME types, and generic binary MIME.
 - `monosai-sw.js` handles only that POST before delegating all other requests to
   Angular's worker. It validates one file and the 512 MB package limit, keeps a
   single short-lived Cache Storage inbox entry, never logs package metadata,
