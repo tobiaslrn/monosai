@@ -1,38 +1,47 @@
-import type { Model } from '@openrouter/sdk/models';
 import { describe, expect, it } from 'vitest';
-import { FakeCredentialRepository } from '../../../testing/ai-fakes';
+import type { z } from 'zod';
+import { aiError, type AiError } from '../../domain/ai/ai-error';
+import { err, ok, type Result } from '../../domain/shared/result';
+import type { OpenRouterRequestContext } from './openrouter-client';
 import { OpenRouterModelCatalog } from './model-catalog.adapter';
 
 const MODEL = {
   id: 'google/gemini-test',
   name: 'Gemini Test',
-  contextLength: 32_768,
+  context_length: 32_768,
   architecture: {
-    inputModalities: ['text'],
-    outputModalities: ['text'],
-    modality: 'text->text',
+    input_modalities: ['text'],
+    output_modalities: ['text'],
   },
-  supportedParameters: ['reasoning', 'structured_outputs'],
-  supportedVoices: ['Kore', 'Puck'],
+  supported_parameters: ['reasoning', 'structured_outputs'],
+  supported_voices: ['Kore', 'Puck'],
   reasoning: {
-    supportedEfforts: ['high', 'low'],
-    defaultEffort: 'low',
-    defaultEnabled: true,
+    supported_efforts: ['high', null, 'low'],
+    default_effort: 'low',
+    default_enabled: true,
     mandatory: false,
-    supportsMaxTokens: true,
+    supports_max_tokens: true,
   },
-} as Model;
+} as const;
+
+class FakeOpenRouterClient {
+  request: OpenRouterRequestContext | null = null;
+
+  constructor(private readonly outcome: Result<unknown, AiError>) {}
+
+  getJson<T>(request: OpenRouterRequestContext, schema: z.ZodType<T>): Promise<Result<T, AiError>> {
+    this.request = request;
+    if (!this.outcome.ok) {
+      return Promise.resolve(err(this.outcome.error));
+    }
+    return Promise.resolve(ok(schema.parse(this.outcome.value)));
+  }
+}
 
 describe('OpenRouterModelCatalog', () => {
   it('maps a listing into the provider-independent capability shape', async () => {
-    const catalog = new OpenRouterModelCatalog(
-      new FakeCredentialRepository(),
-      () => true,
-      (_key, output) => {
-        expect(output).toBe('text');
-        return Promise.resolve([MODEL]);
-      },
-    );
+    const client = new FakeOpenRouterClient(ok({ data: [MODEL] }));
+    const catalog = new OpenRouterModelCatalog(client);
 
     const result = await catalog.list('text');
 
@@ -43,72 +52,51 @@ describe('OpenRouterModelCatalog', () => {
     expect(result.value).toHaveLength(1);
     expect(result.value[0]).toMatchObject({
       modelId: MODEL.id,
+      name: MODEL.name,
+      contextLength: MODEL.context_length,
+      inputModalities: ['text'],
+      outputModalities: ['text'],
+      supportedParameters: ['reasoning', 'structured_outputs'],
       supportedVoices: ['Kore', 'Puck'],
-      reasoning: { supportedEfforts: ['high', 'low'], defaultEffort: 'low' },
+      reasoning: {
+        supportedEfforts: ['high', 'low'],
+        defaultEffort: 'low',
+        defaultEnabled: true,
+        mandatory: false,
+        supportsMaxTokens: true,
+      },
     });
   });
 
-  it('asks for the modality that was requested', async () => {
-    let asked: string | null = null;
-    const catalog = new OpenRouterModelCatalog(
-      new FakeCredentialRepository(),
-      () => true,
-      (_key, output) => {
-        asked = output;
-        return Promise.resolve([]);
-      },
-    );
+  it('asks for the requested modality with the model-discovery task', async () => {
+    const client = new FakeOpenRouterClient(ok({ data: [] }));
+    const catalog = new OpenRouterModelCatalog(client);
 
     await catalog.list('speech');
 
-    expect(asked).toBe('speech');
+    expect(client.request?.path).toBe('/models?output_modalities=speech&limit=1000');
+    expect(client.request?.task).toBe('model-discovery');
   });
 
-  it('reports being offline without invoking the SDK', async () => {
-    let called = false;
-    const catalog = new OpenRouterModelCatalog(
-      new FakeCredentialRepository(),
-      () => false,
-      () => {
-        called = true;
-        return Promise.resolve([MODEL]);
-      },
-    );
-
-    const result = await catalog.list('text');
-
-    expect(result.ok).toBe(false);
-    expect(!result.ok && result.error.code).toBe('offline');
-    expect(called).toBe(false);
-  });
-
-  it('names a rejected key rather than an unavailable provider', async () => {
-    const catalog = new OpenRouterModelCatalog(
-      new FakeCredentialRepository(),
-      () => true,
-      () => {
-        throw Object.assign(new Error('Unauthorized'), { statusCode: 401 });
-      },
-    );
-
-    const result = await catalog.list('text');
-
-    expect(!result.ok && result.error.code).toBe('authentication');
-  });
-
-  it('reports a cancelled listing as cancelled', async () => {
+  it('forwards cancellation to the shared client', async () => {
+    const client = new FakeOpenRouterClient(ok({ data: [] }));
+    const catalog = new OpenRouterModelCatalog(client);
     const controller = new AbortController();
-    const catalog = new OpenRouterModelCatalog(
-      new FakeCredentialRepository(),
-      () => true,
-      () => {
-        controller.abort();
-        throw new Error('aborted');
-      },
-    );
 
-    const result = await catalog.list('text', controller.signal);
+    await catalog.list('text', controller.signal);
 
-    expect(!result.ok && result.error.code).toBe('cancelled');
+    expect(client.request?.signal).toBe(controller.signal);
   });
+
+  it.each(['offline', 'authentication', 'cancelled'] as const)(
+    'preserves a shared-client %s failure',
+    async (code) => {
+      const failure = aiError(code, 'model-discovery', `Test ${code} failure.`);
+      const catalog = new OpenRouterModelCatalog(new FakeOpenRouterClient(err(failure)));
+
+      const result = await catalog.list('text');
+
+      expect(result).toEqual(err(failure));
+    },
+  );
 });

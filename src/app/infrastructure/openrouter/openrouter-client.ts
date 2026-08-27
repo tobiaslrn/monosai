@@ -123,7 +123,13 @@ export class OpenRouterClient {
     request: OpenRouterRequestContext,
     schema: z.ZodType<T>,
   ): Promise<Result<T, AiError>> {
-    const raw = await this.send(request, 'GET', undefined, 'application/json', MAX_JSON_RESPONSE_BYTES);
+    const raw = await this.send(
+      request,
+      'GET',
+      undefined,
+      'application/json',
+      MAX_JSON_RESPONSE_BYTES,
+    );
     return this.parseJson(raw, request, schema);
   }
 
