@@ -327,7 +327,7 @@ to each other.
 
 | Band | Content |
 | --- | --- |
-| Transport | Back / play, pause, or resume / next, with the position beside it, a position bar, and **Start from this sentence** when the selected sentence has a clip |
+| Transport | Back / play, pause, or resume / next, with the position beside it, a position bar, a **One sentence at a time** toggle, and **Start from this sentence** when the selected sentence has a clip |
 | Rail — being generated | Progress bar, "4 of 13 sentences ready", **Stop** |
 | Rail — stopped or failed | "Stopped with 4 of 13 sentences ready.", the failure, **Try again**, **Dismiss** |
 | Rail — nothing prepared or partly prepared | The sentence count, or "4 of 13 sentences have audio", and **Generate audio** |
@@ -339,6 +339,7 @@ to each other.
 - Back replays the sentence being read from its start, and steps to the sentence before only when pressed within the first moment of one. The reason to reach for it is that a sentence went past too fast, and jumping straight back meant the sentence actually wanted could only be reached by going back and then forward again. Its accessible name says both things it does.
 - Back and Next stay disabled until playback has an active sentence and do not wrap at either boundary. Next is also disabled while the sentence after this one has no clip yet, because a jump needs somewhere to land; Back stays available, because replaying this sentence never depends on a neighbour. Play is disabled while sentence one has no clip.
 - The transport has no Stop button: closing through the header Audio toggle is the stop/reset action. The rail keeps its own **Stop**, which aborts the requests in flight and stops no sound.
+- **One sentence at a time** is a toggle in its own row under the track, present whether or not anything is playing and exposing `aria-pressed`. While it is on, the reading stops at every sentence seam and waits to be told to go on: the cursor stays on the sentence just heard, the position line is unchanged, and the play control is named **Next sentence**. Continuing skips a sentence with no clip, waits at the frontier and reads on when the clip arrives, and Back at a seam replays the sentence just heard. The last sentence still finishes the reading. The mode lasts for the session and is not saved.
 - Per-sentence audio is generated and played from the sentence popover. No play control is printed on the reading surface itself, so pressing a sentence still costs nothing.
 - Audio never autoplays. Preparing a clip never plays it, a clip arriving never plays it, and playing is always a second, explicit action. Reading on after a wait continues a session the learner started.
 - Once any clip exists (or generation is active), the header's **Reading actions** dropdown includes **Delete audio**. It opens a confirmation dialog; confirmation stops playback and generation, deletes only this reading's clips and audio jobs, resets its audio summary, and leaves a fresh **Generate audio** action. A compact status beneath the header reports success or storage failure.

@@ -641,6 +641,8 @@ export class ReaderPageComponent {
         return 'Audio, paused';
       case 'waiting':
         return 'Audio, waiting for the next sentence';
+      case 'stepped':
+        return 'Audio, ready for the next sentence';
       case 'ended':
         return 'Audio, finished';
       default:
@@ -774,9 +776,17 @@ export class ReaderPageComponent {
       // about to store. Once the run has failed or been cancelled that clip is
       // never coming, and only the reader knows: the playback store has no
       // business watching a generation job, so the release is made from here.
+      //
+      // The wait itself is watched, not only the job: one sentence at a time
+      // can start a wait *after* the run has stopped, and a release that only
+      // fired on the job's own transition would leave that one waiting for
+      // something that had already been called off.
       const kind = this.audioJob.progress().kind;
-      if (kind === 'failed' || kind === 'cancelled') {
-        this.playback.abandonWaiting();
+      const waiting = this.playback.status() === 'waiting';
+      if (waiting && (kind === 'failed' || kind === 'cancelled')) {
+        untracked(() => {
+          this.playback.abandonWaiting();
+        });
       }
     });
 
