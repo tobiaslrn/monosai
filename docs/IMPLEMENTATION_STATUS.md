@@ -1913,10 +1913,14 @@ records the decisions; it supersedes ADR 0028's toggle and control subsections.
   covering two missing sentences is not drawn as half the reading. The transport
   row and the track are always rendered, disabled when there is nothing to play,
   so the docked card stops changing height — and reflowing the reading beneath
-  it — as clips land and rails switch. A run in progress prints no count at all:
-  the fill is the report, and a line saying "4 of 30 sentences ready" underneath
-  it was the same fact twice. A run that stopped keeps its line, because
-  "stopped with 4 of 30" is not something the track can say.
+  it — as clips land and rails switch. A run in progress adds nothing to the card
+  at all: the fill is the report and it breathes while requests are open, so a
+  line saying "4 of 30 sentences ready" underneath it was the same fact twice.
+  Stopping a run moved to the reader menu beside Delete audio, where the
+  equivalent translation action already lives. A run that stopped keeps its
+  line, because "stopped with 4 of 30" is not something the track can say.
+  Everything the card can add now shares one band behind one divider, so the
+  player is two rows — 93px on a phone — whenever it has nothing to add.
 - **Honest reporting.** `hasAudioModel` resolves through
   `AudioConfigurationService`, the readiness generation actually gates on, so a
   tested voice with no saved preset is no longer offered "Set up audio model"
