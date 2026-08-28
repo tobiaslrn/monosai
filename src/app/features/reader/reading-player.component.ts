@@ -20,9 +20,9 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
  *
  * Transport and generation are shown **together** rather than one instead of
  * the other (ADR 0034). Once any clip exists the transport is the primary thing
- * in the card, and the run that is still filling in the rest is a quiet rail
- * beneath it. Showing only the run would hide audio the learner has already
- * paid for and can already listen to.
+ * in the card, and the run that is still filling in the rest reports itself
+ * through the track alone. Showing only the run would hide audio the learner
+ * has already paid for and can already listen to.
  *
  * The transport row and the track are **always rendered**, disabled while there
  * is nothing to play. The player is docked to the bottom edge and publishes its
@@ -120,6 +120,25 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
       >
         <span class="fill generated" [style.inline-size.%]="generatedPercent()"></span>
         <span class="fill played" [style.inline-size.%]="percent()"></span>
+      </div>
+
+      <!--
+Always rendered rather than shown while a session is live: a stable
+        card height is worth keeping, and the mode is chosen before pressing
+        Play at least as often as during a reading. It is a row of its own
+        because the transport is already four controls and a status line at
+        412px, and a fifth icon there would be neither reachable nor readable.
+      -->
+      <div class="modes">
+        <button
+          type="button"
+          class="mode"
+          [class.on]="store.stepMode()"
+          [attr.aria-pressed]="store.stepMode()"
+          (click)="toggleStepMode()"
+        >
+          One sentence at a time
+        </button>
       </div>
 
       <!--
@@ -335,6 +354,32 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
       font-size: var(--text-sm);
     }
 
+    /*
+     * Left-aligned and full width, so the toggle keeps its own line and the
+     * card does not change height when the buttons around it come and go.
+     */
+    .modes {
+      display: flex;
+    }
+
+    .mode {
+      min-height: var(--touch-target);
+      padding-inline: var(--space-2);
+      border: 0;
+      background: none;
+      color: var(--text-primary);
+      font: inherit;
+      font-size: var(--text-sm);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    /* The pressed state of a toggle, since underlined text alone cannot say it. */
+    .mode.on {
+      color: var(--action-primary);
+      font-weight: 600;
+    }
+
     .mn-error {
       flex: 1;
       margin: 0;
@@ -405,6 +450,11 @@ export class ReadingPlayerComponent {
     switch (this.store.status()) {
       case 'paused':
         return 'Resume';
+      case 'stepped':
+        // The one press whose meaning the position line cannot carry: the
+        // cursor genuinely is on the sentence just heard, so the button is
+        // where "and now the next one" has to be said.
+        return 'Next sentence';
       case 'waiting':
         return 'Waiting for the next sentence';
       case 'ended':
@@ -424,7 +474,7 @@ export class ReadingPlayerComponent {
    */
   protected readonly canPressPlay = computed(() => {
     const status = this.store.status();
-    if (status === 'paused') {
+    if (status === 'paused' || status === 'stepped') {
       return true;
     }
     if (status === 'loading' || status === 'waiting') {
@@ -556,7 +606,15 @@ export class ReadingPlayerComponent {
     }
   });
 
+  protected toggleStepMode(): void {
+    this.store.setStepMode(!this.store.stepMode());
+  }
+
   protected play(): void {
+    if (this.store.status() === 'stepped') {
+      void this.store.continueReading();
+      return;
+    }
     if (this.store.status() === 'paused') {
       // Read on from here: a sentence started from the popover is a single
       // sentence, and resuming it from the reading transport means the reading.

@@ -732,6 +732,137 @@ describe('AudioPlaybackStore', () => {
     });
   });
 
+  /**
+   * The learner hears a sentence, reads or translates it, and only then asks
+   * for the next one. The session stays alive at the seam rather than ending
+   * there, which is what separates this from the popover's one-shot play.
+   */
+  describe('one sentence at a time', () => {
+    it('holds at the seam and loads nothing until it is told to go on', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.store.setStepMode(true);
+      await bed.store.play();
+
+      bed.player.finishClip();
+      await settle();
+
+      expect(bed.store.status()).toBe('stepped');
+      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+      expect(bed.player.played).toHaveLength(1);
+    });
+
+    it('plays the next sentence when it is told to', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.store.setStepMode(true);
+      await bed.store.play();
+      bed.player.finishClip();
+      await settle();
+
+      await bed.store.continueReading();
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.player.played).toHaveLength(2);
+    });
+
+    /** A hole is not a wall here either: continuing lands on what was made. */
+    it('continues across a sentence with no clip', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClipsAt(bed, [0, 2]);
+      await bed.store.prepare(bed.reading);
+      bed.store.setStepMode(true);
+      await bed.store.play();
+      bed.player.finishClip();
+      await settle();
+      expect(bed.store.status()).toBe('stepped');
+
+      await bed.store.continueReading();
+
+      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+    });
+
+    /**
+     * Where continuing differs from Next: Next means "take me to a sentence
+     * that exists" and does nothing at the frontier, and continuing means
+     * "carry on", which the reading does as soon as the clip is stored.
+     */
+    it('waits at the frontier and reads on when the clip arrives', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed, 1);
+      await bed.store.prepare(bed.reading);
+      bed.store.setStepMode(true);
+      await bed.store.play();
+      bed.player.finishClip();
+      await settle();
+      expect(bed.store.status()).toBe('stepped');
+
+      await bed.store.continueReading();
+
+      expect(bed.store.status()).toBe('waiting');
+      expect(bed.store.pendingSentenceId()).toBe(sentences[1].id);
+      expect(bed.player.played).toHaveLength(1);
+
+      await storeClips(bed, 2);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+    });
+
+    it('still ends the reading at the last sentence', async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.store.setStepMode(true);
+      await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1].id);
+
+      bed.player.finishClip();
+      await settle();
+
+      expect(bed.store.status()).toBe('ended');
+      expect(bed.store.pendingSentenceId()).toBeNull();
+    });
+
+    /**
+     * No special case: the elapsed position sits at the end of the clip that
+     * just finished, which is past the replay window, so Back means what it
+     * always means there.
+     */
+    it('replays the sentence just heard when Back is pressed at a seam', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.store.setStepMode(true);
+      await bed.store.play();
+      bed.player.position = 3;
+      bed.player.finishClip();
+      await settle();
+
+      await bed.store.previous();
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+      expect(bed.player.restarts).toBe(1);
+    });
+
+    it('reads on without stopping once the mode is turned off', async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.store.setStepMode(true);
+      bed.store.setStepMode(false);
+      await bed.store.play();
+
+      bed.player.finishClip();
+      await settle();
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.player.played).toHaveLength(2);
+    });
+  });
+
   describe('every stop trigger', () => {
     beforeEach(async () => {
       await storeClips(bed);
