@@ -5,7 +5,7 @@ import type { ReadingId, SentenceId } from '../../domain/shared/ids';
 import { AudioConfigurationService } from '../enrichment/audio-configuration.service';
 import { EnrichmentKeysService } from '../enrichment/enrichment-keys.service';
 import { ENRICHMENT_REPOSITORY, READING_REPOSITORY } from '../shared/repository-tokens';
-import { AUDIO_PLAYER } from './audio-player';
+import { AUDIO_PLAYER, type AudioSequenceClip, type AudioTimeline } from './audio-player';
 import { MEDIA_SESSION } from './media-session';
 
 /**
@@ -170,6 +170,8 @@ export class AudioPlaybackStore {
    * rather than in either caller.
    */
   private single = false;
+  /** Sentence boundaries of the native whole-reading resource, when one is loaded. */
+  private timeline: AudioTimeline | null = null;
 
   readonly status = this.statusSignal.asReadonly();
   readonly currentSentenceId = this.currentSignal.asReadonly();
@@ -252,6 +254,9 @@ export class AudioPlaybackStore {
     this.player.onError(() => {
       this.stopWithFailure({ kind: 'decode-failed', position: this.currentPosition() });
     });
+    this.player.onTimeUpdate(() => {
+      this.followSequencePosition();
+    });
     this.mediaSession.setHandlers({
       play: () => {
         // A session held at a seam has nothing to resume, and a headset Play
@@ -269,6 +274,9 @@ export class AudioPlaybackStore {
       },
       previous: () => {
         void this.previous();
+      },
+      seekTo: (seconds) => {
+        this.seekSequenceTime(seconds);
       },
     });
   }
@@ -422,6 +430,14 @@ export class AudioPlaybackStore {
     }
     const target = refs[index].id;
     if (this.isActive()) {
+      if (this.timeline !== null) {
+        this.navigationSignal.update((count) => count + 1);
+        this.currentSignal.set(target);
+        this.player.seek(this.timeline.starts[index] ?? 0);
+        this.publishMediaMetadata(index);
+        this.publishMediaPosition();
+        return;
+      }
       await this.startAt(target);
       return;
     }
@@ -480,6 +496,7 @@ export class AudioPlaybackStore {
     }
     this.statusSignal.set('paused');
     this.mediaSession.setPlaybackState('paused');
+    this.publishMediaPosition();
   }
 
   /**
@@ -510,6 +527,7 @@ export class AudioPlaybackStore {
     }
     this.statusSignal.set('playing');
     this.mediaSession.setPlaybackState('playing');
+    this.publishMediaPosition();
   }
 
   /** The learner Stop. Leaves the cursor cleared and the lock screen empty. */
@@ -519,6 +537,7 @@ export class AudioPlaybackStore {
     this.loading = false;
     this.pauseRequested = false;
     this.pendingSignal.set(null);
+    this.timeline = null;
     this.player.stop();
     this.statusSignal.set('idle');
     this.currentSignal.set(null);
@@ -575,7 +594,8 @@ export class AudioPlaybackStore {
     if (this.currentSignal() === null) {
       return Promise.resolve();
     }
-    if (this.player.elapsed() > REPLAY_WINDOW_SECONDS) {
+    const currentStart = this.timeline?.starts[Math.max(this.currentPosition() - 1, 0)] ?? 0;
+    if (this.player.elapsed() - currentStart > REPLAY_WINDOW_SECONDS) {
       return this.replayCurrent();
     }
     return this.step(-1);
@@ -662,6 +682,10 @@ export class AudioPlaybackStore {
     this.navigationSignal.update((count) => count + 1);
     this.single = false;
     this.pendingSignal.set(null);
+    if (this.canUseSequence()) {
+      await this.loadSequence(sentenceId);
+      return;
+    }
     await this.load(sentenceId);
   }
 
@@ -670,13 +694,20 @@ export class AudioPlaybackStore {
     this.navigationSignal.update((count) => count + 1);
     this.pendingSignal.set(null);
     try {
-      await this.player.restart();
+      if (this.timeline !== null) {
+        const index = this.currentPosition() - 1;
+        this.player.seek(this.timeline.starts[Math.max(index, 0)] ?? 0);
+        await this.player.resume();
+      } else {
+        await this.player.restart();
+      }
     } catch {
       this.stopWithFailure({ kind: 'decode-failed', position: this.currentPosition() });
       return;
     }
     this.statusSignal.set('playing');
     this.mediaSession.setPlaybackState('playing');
+    this.publishMediaPosition();
   }
 
   /**
@@ -702,6 +733,23 @@ export class AudioPlaybackStore {
     this.navigationSignal.update((count) => count + 1);
     this.single = false;
     this.pendingSignal.set(null);
+    if (this.timeline !== null) {
+      const targetRef = this.refsSignal()[target];
+      this.currentSignal.set(targetRef.id);
+      this.player.seek(this.timeline.starts[target] ?? 0);
+      try {
+        await this.player.resume();
+      } catch {
+        this.statusSignal.set('paused');
+        this.mediaSession.setPlaybackState('paused');
+        return;
+      }
+      this.statusSignal.set('playing');
+      this.publishMediaMetadata(target);
+      this.mediaSession.setPlaybackState('playing');
+      this.publishMediaPosition();
+      return;
+    }
     await this.load(this.refsSignal()[target].id);
   }
 
@@ -710,6 +758,10 @@ export class AudioPlaybackStore {
     const refs = this.refsSignal();
     const current = this.currentSignal();
     if (current === null) {
+      return;
+    }
+    if (this.timeline !== null) {
+      this.finish();
       return;
     }
     if (this.single) {
@@ -758,6 +810,79 @@ export class AudioPlaybackStore {
     this.pendingSignal.set(null);
     this.statusSignal.set('ended');
     this.mediaSession.setPlaybackState('paused');
+    this.publishMediaPosition();
+  }
+
+  private canUseSequence(): boolean {
+    return this.modeSignal() === 'continuous' && this.canPlayWholeReading();
+  }
+
+  /** Loads every current clip into one native resource before playback starts. */
+  private async loadSequence(sentenceId: SentenceId): Promise<void> {
+    const token = (this.loadToken += 1);
+    const refs = this.refsSignal();
+    const startIndex = refs.findIndex((ref) => ref.id === sentenceId);
+    if (startIndex === -1) {
+      return;
+    }
+    this.loading = true;
+    this.statusSignal.set('loading');
+    const byKey = new Map<string, AudioSequenceClip>();
+    const clips: AudioSequenceClip[] = [];
+    for (const ref of refs) {
+      const cacheKey = this.cacheKeysSignal().get(ref.id);
+      if (cacheKey === undefined) {
+        await this.load(sentenceId);
+        return;
+      }
+      let clip = byKey.get(cacheKey);
+      if (clip === undefined) {
+        const loaded = await this.enrichment.getAudioByCacheKey(cacheKey);
+        if (token !== this.loadToken) {
+          return;
+        }
+        if (!loaded.ok) {
+          this.loading = false;
+          this.stopWithFailure({ kind: 'storage', message: loaded.error.message });
+          return;
+        }
+        if (loaded.value === null) {
+          await this.load(sentenceId);
+          return;
+        }
+        if (loaded.value.mimeType !== 'audio/mpeg' && loaded.value.mimeType !== 'audio/wav') {
+          await this.load(sentenceId);
+          return;
+        }
+        clip = { blob: loaded.value.blob, mimeType: loaded.value.mimeType };
+        byKey.set(cacheKey, clip);
+      }
+      clips.push(clip);
+    }
+
+    const startPaused = this.pauseRequested;
+    try {
+      const timeline = await this.player.playSequence(clips, { startIndex, startPaused });
+      if (token !== this.loadToken) {
+        return;
+      }
+      this.timeline = timeline;
+    } catch {
+      if (token === this.loadToken) {
+        // Browsers without MPEG MediaSource retain the established foreground path.
+        this.loading = false;
+        await this.load(sentenceId);
+      }
+      return;
+    }
+    this.loading = false;
+    this.pauseRequested = false;
+    this.currentSignal.set(sentenceId);
+    this.statusSignal.set(startPaused ? 'paused' : 'playing');
+    this.failureSignal.set(null);
+    this.publishMediaMetadata(startIndex);
+    this.mediaSession.setPlaybackState(startPaused ? 'paused' : 'playing');
+    this.publishMediaPosition();
   }
 
   /**
@@ -776,6 +901,7 @@ export class AudioPlaybackStore {
       return;
     }
 
+    this.timeline = null;
     this.loading = true;
     if (options?.keepStatus !== true) {
       this.statusSignal.set('loading');
@@ -816,12 +942,64 @@ export class AudioPlaybackStore {
     this.currentSignal.set(sentenceId);
     this.statusSignal.set(startPaused ? 'paused' : 'playing');
     this.failureSignal.set(null);
-    this.mediaSession.setMetadata({
-      title: `Sentence ${String(position)} of ${String(this.refsSignal().length)}`,
-      artist: mediaArtist(this.readingSignal()?.title ?? ''),
-      album: 'Monosai',
-    });
+    this.publishMediaMetadata(position - 1);
     this.mediaSession.setPlaybackState(startPaused ? 'paused' : 'playing');
+  }
+
+  private followSequencePosition(): void {
+    const timeline = this.timeline;
+    if (timeline === null) {
+      return;
+    }
+    const elapsed = this.player.elapsed();
+    let index = 0;
+    for (let candidate = 1; candidate < timeline.starts.length; candidate += 1) {
+      if (timeline.starts[candidate] > elapsed) {
+        break;
+      }
+      index = candidate;
+    }
+    const ref = this.refsSignal()[index];
+    if (ref.id !== this.currentSignal()) {
+      if (this.modeSignal() === 'sentence') {
+        this.player.pause();
+        this.statusSignal.set('stepped');
+        this.mediaSession.setPlaybackState('paused');
+        this.player.seek(timeline.starts[index]);
+      }
+      this.currentSignal.set(ref.id);
+      this.publishMediaMetadata(index);
+    }
+    this.publishMediaPosition();
+  }
+
+  private seekSequenceTime(seconds: number): void {
+    if (this.timeline === null) {
+      return;
+    }
+    this.player.seek(seconds);
+    this.followSequencePosition();
+  }
+
+  private publishMediaMetadata(index: number): void {
+    const readingTitle = mediaArtist(this.readingSignal()?.title ?? '');
+    this.mediaSession.setMetadata({
+      title: readingTitle === '' ? 'Japanese reading' : readingTitle,
+      artist: 'Monosai',
+      album: `Sentence ${String(index + 1)} of ${String(this.refsSignal().length)}`,
+    });
+  }
+
+  private publishMediaPosition(): void {
+    if (this.timeline === null || this.timeline.duration <= 0) {
+      this.mediaSession.setPositionState(null);
+      return;
+    }
+    this.mediaSession.setPositionState({
+      duration: this.timeline.duration,
+      playbackRate: 1,
+      position: Math.min(Math.max(this.player.elapsed(), 0), this.timeline.duration),
+    });
   }
 
   /**

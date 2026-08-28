@@ -5,6 +5,7 @@ interface RecordedSession {
   metadata: unknown;
   playbackState: string;
   readonly handlers: Map<string, unknown>;
+  positionState: unknown;
 }
 
 /** A `navigator.mediaSession` that records rather than reaches the lock screen. */
@@ -16,6 +17,7 @@ function fakeView(baseUri?: string): {
     metadata: null,
     playbackState: 'none',
     handlers: new Map(),
+    positionState: null,
   };
   const view = {
     navigator: {
@@ -35,6 +37,9 @@ function fakeView(baseUri?: string): {
         setActionHandler: (action: string, handler: unknown) => {
           session.handlers.set(action, handler);
         },
+        setPositionState: (state?: unknown) => {
+          session.positionState = state ?? null;
+        },
       },
     },
     MediaMetadata: class {
@@ -51,6 +56,7 @@ const HANDLERS = {
   stop: vi.fn(),
   next: vi.fn(),
   previous: vi.fn(),
+  seekTo: vi.fn(),
 };
 
 describe('createMediaSession', () => {
@@ -86,6 +92,7 @@ describe('createMediaSession', () => {
       'pause',
       'play',
       'previoustrack',
+      'seekto',
       'stop',
     ]);
   });
@@ -101,6 +108,29 @@ describe('createMediaSession', () => {
       init: { title: 'Sentence 3 of 9', artist: '第一章', album: 'Monosai' },
     });
     expect(session.playbackState).toBe('playing');
+  });
+
+  it('publishes and clears a seekable position', () => {
+    const { view, session } = fakeView();
+    const adapter = createMediaSession(view);
+
+    adapter.setPositionState({ duration: 90, playbackRate: 1, position: 12 });
+    expect(session.positionState).toEqual({ duration: 90, playbackRate: 1, position: 12 });
+
+    adapter.setPositionState(null);
+    expect(session.positionState).toBeNull();
+  });
+
+  it('routes an Android seek request to the reading timeline', () => {
+    const { view, session } = fakeView();
+    const seekTo = vi.fn();
+    const adapter = createMediaSession(view);
+    adapter.setHandlers({ ...HANDLERS, seekTo });
+
+    const handler = session.handlers.get('seekto') as (details: MediaSessionActionDetails) => void;
+    handler({ action: 'seekto', seekTime: 27 });
+
+    expect(seekTo).toHaveBeenCalledWith(27);
   });
 
   /**
@@ -137,6 +167,7 @@ describe('createMediaSession', () => {
       'pause',
       'play',
       'previoustrack',
+      'seekto',
       'stop',
     ]);
   });
@@ -170,6 +201,7 @@ describe('createMediaSession', () => {
       NO_MEDIA_SESSION.setHandlers(HANDLERS);
       NO_MEDIA_SESSION.setMetadata({ title: 't', artist: 'a', album: 'Monosai' });
       NO_MEDIA_SESSION.setPlaybackState('playing');
+      NO_MEDIA_SESSION.setPositionState({ duration: 10, playbackRate: 1, position: 2 });
       NO_MEDIA_SESSION.clear();
     }).not.toThrow();
     expect(NO_MEDIA_SESSION.supported).toBe(false);

@@ -7,6 +7,7 @@ export interface MediaSessionHandlers {
   readonly stop: () => void;
   readonly next: () => void;
   readonly previous: () => void;
+  readonly seekTo: (seconds: number) => void;
 }
 
 export interface MediaSessionMetadata {
@@ -31,6 +32,7 @@ export interface MediaSessionAdapter {
   setHandlers(handlers: MediaSessionHandlers): void;
   setMetadata(metadata: MediaSessionMetadata): void;
   setPlaybackState(state: 'none' | 'playing' | 'paused'): void;
+  setPositionState(state: MediaPositionState | null): void;
   /** Drops the metadata, so a stopped reading leaves no lock screen behind. */
   clear(): void;
 }
@@ -41,6 +43,7 @@ export const NO_MEDIA_SESSION: MediaSessionAdapter = {
   setHandlers: () => undefined,
   setMetadata: () => undefined,
   setPlaybackState: () => undefined,
+  setPositionState: () => undefined,
   clear: () => undefined,
 };
 
@@ -87,11 +90,23 @@ export function createMediaSession(view: (Window & typeof globalThis) | null): M
     if (handlers === null) {
       return;
     }
-    session.setActionHandler('play', handlers.play);
-    session.setActionHandler('pause', handlers.pause);
-    session.setActionHandler('stop', handlers.stop);
-    session.setActionHandler('nexttrack', handlers.next);
-    session.setActionHandler('previoustrack', handlers.previous);
+    const register = (action: MediaSessionAction, handler: MediaSessionActionHandler): void => {
+      try {
+        session.setActionHandler(action, handler);
+      } catch {
+        // Chrome versions and Android surfaces expose different subsets.
+      }
+    };
+    register('play', handlers.play);
+    register('pause', handlers.pause);
+    register('stop', handlers.stop);
+    register('nexttrack', handlers.next);
+    register('previoustrack', handlers.previous);
+    register('seekto', (details) => {
+      if (details.seekTime !== undefined) {
+        handlers?.seekTo(details.seekTime);
+      }
+    });
   };
 
   return {
@@ -114,9 +129,25 @@ export function createMediaSession(view: (Window & typeof globalThis) | null): M
     setPlaybackState(state: 'none' | 'playing' | 'paused'): void {
       session.playbackState = state;
     },
+    setPositionState(state: MediaPositionState | null): void {
+      try {
+        if (state === null) {
+          session.setPositionState();
+        } else {
+          session.setPositionState(state);
+        }
+      } catch {
+        // Position state is optional even when metadata is supported.
+      }
+    },
     clear(): void {
       session.metadata = null;
       session.playbackState = 'none';
+      try {
+        session.setPositionState();
+      } catch {
+        // Optional on older Android Chrome versions.
+      }
       // The handlers deliberately survive: the same store is still the thing
       // that would answer the next notification, and nulling them here is what
       // left restarted playback with a lock screen that could not be pressed.
