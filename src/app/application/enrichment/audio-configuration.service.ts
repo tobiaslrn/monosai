@@ -70,6 +70,7 @@ export class AudioConfigurationService {
       modelId: selected.modelId,
       voiceId: selected.voiceId,
       speed: selected.speed,
+      speedSupported: selected.speedSupported ?? false,
       speechInstructions: selected.speechInstructions ?? 'unsupported',
       optionsFingerprint,
       configFingerprint: audioConfigFingerprint(

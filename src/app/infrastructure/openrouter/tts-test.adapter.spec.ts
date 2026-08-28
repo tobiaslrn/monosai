@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { openRouterHarness, type HarnessOptions } from '../../../testing/ai-fakes';
+import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import { FAKE_OPENROUTER } from '../../../testing/openrouter-server';
 import { TTS_TEST_PHRASE } from './tts-test.adapter';
 
+/** Speed only, the shape an OpenAI-compatible catalog entry usually declares. */
 const CONFIG = {
   modelId: FAKE_OPENROUTER.ttsModel,
   voiceId: FAKE_OPENROUTER.voice,
   speed: 1.25,
+  attempt: declaredSpeechCapabilities(FAKE_OPENROUTER.ttsModel, ['speed']),
 };
 
 function run(options: HarnessOptions = {}): ReturnType<typeof openRouterHarness> {
@@ -49,23 +52,51 @@ describe('OpenRouterTtsTester', () => {
     expect(harness.server.requests[1]?.body['speed']).toBeUndefined();
   });
 
-  it('verifies advertised speech instructions and reports rejection fallback', async () => {
+  it('tries exactly the channels the catalog declared', async () => {
+    const harness = run();
+
+    const result = await harness.tts.testConfiguration(CONFIG);
+
+    // `speed` was declared and `instructions` was not, so the declaration alone
+    // decides what the request costs.
+    expect(result.ok && result.value.speechInstructionsApplied).toBe(false);
+    expect(harness.server.callCount).toBe(1);
+    expect(harness.server.requests[0]?.body['instructions']).toBeUndefined();
+    expect(harness.server.requests[0]?.body['speed']).toBe(1.25);
+  });
+
+  it('measures a declared direction channel and reports its rejection', async () => {
+    const declared = declaredSpeechCapabilities(FAKE_OPENROUTER.ttsModel, [
+      'speed',
+      'instructions',
+    ]);
+
     const supported = run();
-    const accepted = await supported.tts.testConfiguration({
-      ...CONFIG,
-      speechInstructions: 'supported',
-    });
+    const accepted = await supported.tts.testConfiguration({ ...CONFIG, attempt: declared });
     expect(accepted.ok && accepted.value.speechInstructionsApplied).toBe(true);
     expect(supported.server.requests[0]?.body['instructions']).toBeDefined();
 
+    // A wrong declaration is corrected by the provider's own refusal, not by
+    // trusting the catalog, and costs one extra request.
     const rejected = run({ supportsInstructions: false });
-    const fallback = await rejected.tts.testConfiguration({
-      ...CONFIG,
-      speechInstructions: 'supported',
-    });
+    const fallback = await rejected.tts.testConfiguration({ ...CONFIG, attempt: declared });
     expect(fallback.ok && fallback.value.speechInstructionsApplied).toBe(false);
     expect(rejected.server.callCount).toBe(2);
     expect(rejected.server.requests[1]?.body['instructions']).toBeUndefined();
+  });
+
+  it('spends at most three requests when both declared channels are refused', async () => {
+    const harness = run({ supportsSpeed: false, supportsInstructions: false });
+
+    const result = await harness.tts.testConfiguration({
+      ...CONFIG,
+      attempt: declaredSpeechCapabilities(FAKE_OPENROUTER.ttsModel, ['speed', 'instructions']),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.value.speedApplied).toBe(false);
+    expect(result.ok && result.value.speechInstructionsApplied).toBe(false);
+    expect(harness.server.callCount).toBe(3);
   });
 
   it('supports Gemini TTS without claiming its ignored speed setting was applied', async () => {
@@ -75,6 +106,9 @@ describe('OpenRouterTtsTester', () => {
     const result = await harness.tts.testConfiguration({
       ...CONFIG,
       modelId: geminiModel,
+      // The catalog lists `speed` for Gemini; the override outranks it, and the
+      // prompt is the only direction channel it has.
+      attempt: declaredSpeechCapabilities(geminiModel, ['speed']),
     });
 
     expect(result.ok).toBe(true);
@@ -86,6 +120,8 @@ describe('OpenRouterTtsTester', () => {
     expect(harness.server.callCount).toBe(1);
     expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
     expect(harness.server.requests[0]?.body['response_format']).toBe('pcm');
+    expect(result.value.speechInstructionsApplied).toBe(true);
+    expect(String(harness.server.requests[0]?.body['input']).endsWith(TTS_TEST_PHRASE)).toBe(true);
   });
 
   it('rejects an unknown voice as a capability failure', async () => {

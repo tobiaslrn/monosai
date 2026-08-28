@@ -1,4 +1,5 @@
 import type { Dexie, Transaction } from 'dexie';
+import { supportsTtsSpeed } from '../../domain/ai/tts-configuration';
 
 interface SchemaVersion {
   readonly version: number;
@@ -53,6 +54,7 @@ const V4_STORES: Readonly<Record<string, string | null>> = {
 
 const V5_STORES = V4_STORES;
 const V6_STORES = V5_STORES;
+const V7_STORES = V6_STORES;
 
 export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   {
@@ -189,6 +191,33 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
       await settings.put(ttsRow);
     },
   },
+  {
+    version: 7,
+    stores: V7_STORES,
+    /**
+     * Adds the measured `speedSupported` field beside `speechInstructions`.
+     *
+     * Purely additive: the seeded value is what the code already assumed for
+     * that model, so no row loses anything and nothing is reset. The real value
+     * is written by the next configuration test, which every stored row is due
+     * for anyway because `TTS_TEST_VERSION` moved with this release.
+     */
+    upgrade: async (transaction) => {
+      const settings = transaction.table('settings');
+      const ttsRow = (await settings.get('tts')) as Record<string, unknown> | undefined;
+      if (ttsRow === undefined) {
+        return;
+      }
+      const value = requireRecord(ttsRow['value'], 'voice model settings');
+      value['speedSupported'] = seededSpeedSupport(value['modelId']);
+      const presets = Array.isArray(value['presets']) ? value['presets'] : [];
+      value['presets'] = presets.map((entry) => {
+        const preset = requireRecord(entry, 'voice model preset');
+        return { ...preset, speedSupported: seededSpeedSupport(preset['modelId']) };
+      });
+      await settings.put(ttsRow);
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].version;
@@ -201,6 +230,10 @@ export function applySchema(db: Dexie): void {
       version.upgrade(entry.upgrade);
     }
   }
+}
+
+function seededSpeedSupport(modelId: unknown): boolean {
+  return typeof modelId === 'string' && modelId !== '' && supportsTtsSpeed(modelId);
 }
 
 function requireRecord(value: unknown, label: string): Record<string, unknown> {

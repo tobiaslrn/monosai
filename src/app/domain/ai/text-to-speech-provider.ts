@@ -13,6 +13,14 @@ export interface TtsRequest extends SpeechContext {
   readonly speed: number;
   /** The container asked for. MP3 is what the audio cache stores. */
   readonly responseFormat: 'mp3';
+  /**
+   * What the configuration test measured, not what a catalog claims.
+   *
+   * Synthesis reads only stored findings so it stays a single provider call
+   * with no lookup of its own; a model whose declaration was wrong was already
+   * corrected when it was tested.
+   */
+  readonly speedSupported: boolean;
   readonly speechInstructions?: SpeechInstructionsSupport;
 }
 
@@ -26,6 +34,7 @@ export interface AudioPayload {
    * setting took effect (ADR 0018).
    */
   readonly speedApplied: boolean;
+  /** The direction was carried, not necessarily obeyed. */
   readonly speechInstructionsApplied?: boolean;
 }
 

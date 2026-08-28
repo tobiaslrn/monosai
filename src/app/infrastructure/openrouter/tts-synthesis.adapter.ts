@@ -1,29 +1,27 @@
 import type { AiError } from '../../domain/ai/ai-error';
 import type { AudioPayload, TtsRequest } from '../../domain/ai/text-to-speech-provider';
-import { buildSpeechInstructions } from '../../domain/ai/speech-instructions';
-import {
-  isGeminiTtsModel,
-  resolveTtsVoice,
-  supportsTtsSpeed,
-} from '../../domain/ai/tts-configuration';
+import { isGeminiTtsModel, resolveTtsVoice } from '../../domain/ai/tts-configuration';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { AudioDecoder } from './audio-decode';
 import { verifyAudio } from './audio-verification';
 import type { AudioResponse, OpenRouterClient } from './openrouter-client';
 import { AUDIO_REQUEST_TIMEOUT_MS, AUDIO_SPEECH_PATH } from './openrouter-endpoints';
 import { geminiPcmToWav } from './pcm-audio';
+import { buildSpeechRequestBody } from './speech-request';
 
 const TASK = 'tts-synthesis';
 
 /**
  * Synthesizes one sentence.
  *
- * The same request shape, the same speed fallback, and the same verification as
- * the configuration test, because a clip produced here has to be exactly what
- * that test proved the provider can produce. At most two requests are made per
- * sentence — the configured one, and one without `speed` if the provider
- * refuses that parameter (ADR 0018) — and a refused speed is reported through
- * `speedApplied` rather than pretended.
+ * The same request shape, the same capability fallback, and the same
+ * verification as the configuration test, because a clip produced here has to
+ * be exactly what that test proved the provider can produce. Both bodies come
+ * out of `buildSpeechRequestBody`, so the two can no longer drift (ADR 0018).
+ *
+ * Which channels are asked for comes from what the test measured and the
+ * settings stored, never from the model catalog: synthesis has to work with no
+ * network beyond the provider itself.
  *
  * Retry, timeouts, size limits, and error mapping belong to the client and are
  * not repeated here.
@@ -36,29 +34,15 @@ export class OpenRouterTtsSynthesizer {
 
   async synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
     const resolved = { ...input, voiceId: resolveTtsVoice(input.modelId, input.voiceId) };
-    let speed = supportsTtsSpeed(resolved.modelId) ? resolved.speed : undefined;
+    let speed = resolved.speedSupported ? resolved.speed : undefined;
     let instructed = resolved.speechInstructions === 'supported';
 
     // One retry per optional capability. A provider that advertised either
     // parameter but rejects it degrades to exact-text synthesis, never failure.
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      // Rebuilt each attempt, so a refused `speed` also stops the instruction
-      // text referring to a speed that is no longer being requested.
-      const instructions = instructed
-        ? buildSpeechInstructions({
-            beforeJa: resolved.beforeJa,
-            afterJa: resolved.afterJa,
-            ...(speed === undefined ? {} : { speed }),
-          })
-        : undefined;
-      const response = await this.request(resolved, speed, instructions, signal);
+      const response = await this.request(resolved, speed, instructed, signal);
       if (response.ok) {
-        return this.verify(
-          response.value,
-          resolved,
-          speed !== undefined,
-          instructions !== undefined,
-        );
+        return this.verify(response.value, resolved, speed !== undefined, instructed);
       }
       const refused = response.error.detail?.capability;
       if (response.error.code !== 'capability-unsupported') {
@@ -80,7 +64,7 @@ export class OpenRouterTtsSynthesizer {
   private request(
     input: TtsRequest,
     speed: number | undefined,
-    instructions: string | undefined,
+    instructed: boolean,
     signal: AbortSignal,
   ): Promise<Result<AudioResponse, AiError>> {
     return this.client.postAudio({
@@ -90,14 +74,23 @@ export class OpenRouterTtsSynthesizer {
       voiceId: input.voiceId,
       timeoutMs: AUDIO_REQUEST_TIMEOUT_MS,
       signal,
-      body: {
-        model: input.modelId,
-        voice: input.voiceId,
-        input: input.text,
-        response_format: isGeminiTtsModel(input.modelId) ? 'pcm' : input.responseFormat,
-        ...(speed === undefined ? {} : { speed }),
-        ...(instructions === undefined ? {} : { instructions }),
-      },
+      // The direction always names the requested pace, because for a model with
+      // no numeric `speed` — and for one that refused it — the prompt is the
+      // only channel the setting can reach.
+      body: buildSpeechRequestBody({
+        modelId: input.modelId,
+        voiceId: input.voiceId,
+        text: input.text,
+        responseFormat: input.responseFormat,
+        speed,
+        instruction: instructed
+          ? {
+              ...(input.beforeJa === undefined ? {} : { beforeJa: input.beforeJa }),
+              ...(input.afterJa === undefined ? {} : { afterJa: input.afterJa }),
+              speed: input.speed,
+            }
+          : undefined,
+      }),
     });
   }
 
@@ -105,6 +98,11 @@ export class OpenRouterTtsSynthesizer {
     response: AudioResponse,
     input: TtsRequest,
     speedApplied: boolean,
+    /**
+     * The direction was carried, not necessarily obeyed: for Gemini it sat in
+     * the prompt, elsewhere the field was not refused. Both are statements
+     * about the request.
+     */
     speechInstructionsApplied: boolean,
   ): Promise<Result<AudioPayload, AiError>> {
     const normalized = isGeminiTtsModel(input.modelId) ? geminiPcmToWav(response) : response;

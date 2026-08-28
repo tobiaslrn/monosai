@@ -9,6 +9,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 
 @Component({
@@ -286,6 +287,12 @@ export class ModelPickerComponent {
   readonly loading = input(false);
   readonly failure = input<string | null>(null);
   readonly disabled = input(false);
+  /**
+   * Whether these are speech models, so the meta line can name how each one
+   * takes its pace. Marking, never gating: a model with no direction channel is
+   * still a fine cheap voice, and a catalog entry can change.
+   */
+  readonly speech = input(false);
   readonly opened = output<void>();
   readonly modelSelected = output<ModelCapabilities>();
   readonly favoriteToggled = output<string>();
@@ -346,6 +353,17 @@ export class ModelPickerComponent {
       ? `${Math.round(model.contextLength / 1_000)}k context`
       : '';
     const reasoning = model.reasoning ? 'reasoning' : '';
-    return [model.modelId, context, reasoning].filter(Boolean).join(' · ');
+    return [model.modelId, context, reasoning, this.pace(model)].filter(Boolean).join(' · ');
+  }
+
+  private pace(model: ModelCapabilities): string {
+    if (!this.speech()) {
+      return '';
+    }
+    return {
+      native: 'speed',
+      prompted: 'pronunciation',
+      fixed: 'fixed pace',
+    }[declaredSpeechCapabilities(model.modelId, model.supportedParameters).pace];
   }
 }

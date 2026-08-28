@@ -55,6 +55,17 @@ describe('ttsFingerprint', () => {
   it('changes when the key generation changes', () => {
     expect(ttsFingerprint(hasher, 5, TTS)).not.toBe(ttsFingerprint(hasher, 4, TTS));
   });
+
+  it('ignores what the test measured, so a finding cannot invalidate its own test', () => {
+    const base = ttsFingerprint(hasher, 4, TTS);
+
+    // `speedSupported` and `speechInstructions` are stored beside the
+    // configuration, not folded into it: this fingerprint answers whether the
+    // stored test still describes the configuration, and nothing else.
+    const measured = { ...TTS, speedSupported: false, speechInstructions: 'supported' };
+
+    expect(ttsFingerprint(hasher, 4, measured)).toBe(base);
+  });
 });
 
 describe('text and TTS readiness independence', () => {

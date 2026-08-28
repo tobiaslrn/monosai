@@ -175,6 +175,7 @@ async function configure(): Promise<PlaybackBed> {
     modelId: 'vendor/tts',
     voiceId: 'voice-a',
     speed: 1,
+    speedSupported: true,
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
     activePresetId: null,

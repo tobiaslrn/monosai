@@ -19,6 +19,29 @@ describe('speech instructions', () => {
     expect(instructions).not.toContain('speed');
   });
 
+  it('asks for the delivery a beginner can follow', () => {
+    const instructions = buildSpeechInstructions();
+
+    expect(instructions).toContain('distinct word boundaries');
+    expect(instructions).toContain('Pause briefly at natural phrase boundaries');
+    expect(instructions).toContain('keep standard pitch accent and rhythm intact');
+  });
+
+  it('keeps the prefix form compact and free of quotable context', () => {
+    const prefix = buildSpeechInstructions(
+      { speed: 0.7, beforeJa: '雨が強くなりました。', afterJa: '次の文。' },
+      'prefix',
+    );
+
+    // The prefix rides inside the spoken input, so every extra line is another
+    // chance for the model to read something out.
+    expect(prefix).toContain('at a speed of 0.7× normal');
+    expect(prefix).toContain('Never read this direction aloud.');
+    expect(prefix).not.toContain('雨');
+    expect(prefix).not.toContain('context only');
+    expect(prefix.split('\n')).toHaveLength(6);
+  });
+
   it('names the speed only when a speed is actually being requested', () => {
     expect(buildSpeechInstructions({ speed: 0.8 })).toContain('at a speed of 0.8× normal');
   });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { openRouterHarness, type HarnessOptions } from '../../../testing/ai-fakes';
+import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import { FAKE_OPENROUTER } from '../../../testing/openrouter-server';
 
 const SENTENCE = 'ねこがすきです。';
@@ -10,6 +11,7 @@ const REQUEST = {
   voiceId: FAKE_OPENROUTER.voice,
   speed: 1.25,
   responseFormat: 'mp3',
+  speedSupported: true,
 } as const;
 
 function run(options: HarnessOptions = {}): ReturnType<typeof openRouterHarness> {
@@ -109,7 +111,7 @@ describe('OpenRouterTtsSynthesizer', () => {
     const harness = run({ knownTtsModels: [modelId] });
 
     const result = await harness.tts.synthesize(
-      { ...REQUEST, modelId },
+      { ...REQUEST, modelId, speedSupported: false },
       new AbortController().signal,
     );
 
@@ -122,6 +124,48 @@ describe('OpenRouterTtsSynthesizer', () => {
     expect(harness.server.callCount).toBe(1);
     expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
     expect(harness.server.requests[0]?.body['response_format']).toBe('pcm');
+  });
+
+  it('carries the direction inside the Gemini prompt, ahead of the sentence', async () => {
+    const modelId = 'google/gemini-3.1-flash-tts-preview';
+    const harness = run({ knownTtsModels: [modelId] });
+
+    const result = await harness.tts.synthesize(
+      {
+        ...REQUEST,
+        modelId,
+        speedSupported: false,
+        speechInstructions: 'supported',
+        beforeJa: '雨が強くなりました。',
+      },
+      new AbortController().signal,
+    );
+
+    expect(result.ok && result.value.speechInstructionsApplied).toBe(true);
+    const body = harness.server.requests[0].body;
+    // Gemini has no instructions field, so the direction is a prefix — and the
+    // sentence still has to be the last thing in the prompt.
+    expect(body['instructions']).toBeUndefined();
+    expect(String(body['input'])).toContain('1.25× normal');
+    expect(String(body['input']).endsWith(SENTENCE)).toBe(true);
+    // The compact prefix form quotes no neighbour, so nothing extra can be read
+    // aloud.
+    expect(body['input']).not.toContain('雨');
+    expect(body['speed']).toBeUndefined();
+  });
+
+  it('states the requested pace in the direction when the model has no speed parameter', async () => {
+    const harness = run();
+
+    const result = await harness.tts.synthesize(
+      { ...REQUEST, speedSupported: false, speechInstructions: 'supported' },
+      new AbortController().signal,
+    );
+
+    expect(result.ok && result.value.speedApplied).toBe(false);
+    expect(harness.server.callCount).toBe(1);
+    expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
+    expect(String(harness.server.requests[0]?.body['instructions'])).toContain('1.25× normal');
   });
 
   it('rejects audio in a format the cache cannot store', async () => {
@@ -235,6 +279,7 @@ describe('OpenRouterTtsSynthesizer', () => {
         modelId: REQUEST.modelId,
         voiceId: REQUEST.voiceId,
         speed: REQUEST.speed,
+        attempt: declaredSpeechCapabilities(REQUEST.modelId, []),
       });
       const synthesized = await run(options).tts.synthesize(REQUEST, new AbortController().signal);
 
