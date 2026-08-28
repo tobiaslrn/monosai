@@ -55,6 +55,7 @@ The concrete tokenizer and open grammar dataset are implementation-time dependen
 | --- | --- |
 | [Product requirements](product-requirements.md) | Users, use cases, scope, behavior, failure policy, product acceptance |
 | [UX/UI specification](ux-ui-specification.md) | Navigation, screens, interactions, responsive behavior, visual system, accessibility |
+| [Design system](design-system.md) | Design language: structure, controls, colour, units, motion, voice, and state. Holds rules and intent, never values |
 | [System architecture](system-architecture.md) | Modules, dependency rules, runtime topology, workers, offline/PWA behavior, security boundaries |
 | [Domain and data model](domain-and-data-model.md) | Canonical types, persistence schema, identity, immutability, caching, migrations |
 | [Anki and language processing](anki-and-language-processing.md) | Provider adapters, package import, current vocabulary, parsing, dictionary, furigana, validation |
