@@ -5,7 +5,8 @@ Status: Accepted
 
 Supersedes the **One track** subsection of
 [ADR 0037](0037-audio-transport-recovery-and-one-track.md) in its presentation,
-and keeps every behaviour that subsection established.
+and the transport **Stop** that ADR added under *The session never dead-ends*.
+Every other behaviour that ADR established is kept.
 
 ## Context
 
@@ -32,7 +33,7 @@ sentence in the reading was already drawn on screen.
 
 ### Two rows, and no prose
 
-The player is a track and one row of controls. Nothing is printed: the position,
+The player is one row of controls over a track. Nothing is printed: the position,
 the coverage, what a stopped run managed, and why playback stopped are said by
 the state of a control and by its tooltip.
 
@@ -42,14 +43,30 @@ into one announcement — the position first, then whatever the card would have
 said beneath the controls — with playback failures repeated in a hidden
 `role="alert"`. The wording is the contract; printing it was not.
 
-### Every slot is always there
+### One line, ranged left, over the track
 
-Seven slots in three groups: `[mode][stop]`, `[back][primary][next]`,
-`[start from this sentence][context]`. A slot with nothing to do is held open
-and empty rather than collapsed, so the row never re-flows under a thumb that is
-reaching for it and the card is one fixed height in every state. It no longer
-needs a bounded height or internal scrolling, because nothing inside it can
-grow.
+Six slots on one line above the track, ranged to the leading edge:
+`[back][primary][next]`, then `[mode]`, then
+`[start from this sentence][context]`. The transport comes first because it is
+where a thumb already is on a docked card, and the two contextual slots close
+the line, where an empty one is simply where the line stops. The track
+underneath spans the full width it is measuring. A slot with nothing to do is
+held open rather than collapsed, so the line never re-flows under a thumb
+reaching for it and the card is one fixed height in every state. It no
+longer needs a bounded height or internal scrolling, because nothing inside it
+can grow.
+
+### No Stop
+
+A media player has none, and this one no longer does either. A session ends by
+being paused, and a paused session keeps its cursor, its highlight and its place
+on the track — which is what a learner who stopped listening mid-reading wants
+when they come back to it, rather than a reading reset to the top.
+
+ADR 0037 added Stop because `waiting` had no live control at all. It has one:
+Back's first meaning is replaying the sentence just heard, which leaves the wait
+and starts playing again. Closing the player has not silenced anything since
+ADR 0037 either, so the reason the control was introduced no longer holds.
 
 ### The centre is the primary verb
 

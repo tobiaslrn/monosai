@@ -2063,11 +2063,17 @@ supersedes ADR 0037's presentation while keeping its behaviour.
   state of a control and its tooltip. Nothing is taken from a screen reader: the
   strings are unchanged and live in a hidden `role="status"` region, joined into
   one announcement, with playback failures repeated in a hidden `role="alert"`.
-- **Seven slots that never move**: `[mode][stop]`, `[back][primary][next]`,
-  `[start from this sentence][context]`. An inapplicable slot is held open and
-  empty rather than collapsed, so the card is one height in every state. It no
-  longer needs a bounded height or internal scrolling, because nothing in it can
-  grow, and the reading's bottom clearance is a constant.
+- **Six slots that never move**, on one line over the track and ranged to the
+  leading edge: `[back][primary][next]`, then `[mode]`, then
+  `[start from this sentence][context]`. An inapplicable slot is held open rather
+  than collapsed, so the card is one height in every state. It
+  no longer needs a bounded height or internal scrolling, because nothing in it
+  can grow, and the reading's bottom clearance is a constant.
+- **No Stop.** A session ends by being paused, and a paused session keeps its
+  cursor, its highlight and its place on the track. ADR 0037 introduced the
+  control because `waiting` had nothing live in it; Back leaves a wait by
+  replaying the sentence just heard, and closing the player has not silenced
+  anything since that same ADR.
 - **The centre is the primary verb.** It is **Generate audio** when the reading
   has no audio at all, and play, pause, resume, read on or play again once it
   has. A learner opening the player for a reading with no audio wants the audio,
