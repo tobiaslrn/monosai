@@ -141,6 +141,13 @@ export interface TtsSettings {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speed: number;
+  /**
+   * Whether the configuration test saw the speed parameter honoured.
+   *
+   * Measured, never assumed: with `speechInstructions`, this is the pair the
+   * synthesis path reads to decide which channels the pace may travel through.
+   */
+  readonly speedSupported: boolean;
   readonly speechInstructions?: SpeechInstructionsSupport;
   readonly lastTestFingerprint: string | null;
   readonly lastTestedAt: number | null;
@@ -155,6 +162,7 @@ export interface TtsPreset {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speed: number;
+  readonly speedSupported?: boolean;
   readonly speechInstructions?: SpeechInstructionsSupport;
   readonly lastTestFingerprint?: string | null;
   readonly lastTestedAt?: number | null;
@@ -164,6 +172,7 @@ export const DEFAULT_TTS_SETTINGS: TtsSettings = {
   modelId: '',
   voiceId: '',
   speed: 1,
+  speedSupported: false,
   speechInstructions: 'unsupported',
   lastTestFingerprint: null,
   lastTestedAt: null,

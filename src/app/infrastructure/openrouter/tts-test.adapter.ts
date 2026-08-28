@@ -1,17 +1,14 @@
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { TtsConfig, TtsTest } from '../../domain/ai/model-test';
-import { buildSpeechInstructions } from '../../domain/ai/speech-instructions';
-import {
-  isGeminiTtsModel,
-  resolveTtsVoice,
-  supportsTtsSpeed,
-} from '../../domain/ai/tts-configuration';
+import type { SpeechContext } from '../../domain/ai/speech-instructions';
+import { isGeminiTtsModel, resolveTtsVoice } from '../../domain/ai/tts-configuration';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { AudioDecoder } from './audio-decode';
 import { verifyAudio } from './audio-verification';
 import type { AudioResponse, OpenRouterClient } from './openrouter-client';
 import { AUDIO_REQUEST_TIMEOUT_MS, AUDIO_SPEECH_PATH } from './openrouter-endpoints';
 import { geminiPcmToWav } from './pcm-audio';
+import { buildSpeechRequestBody } from './speech-request';
 
 const TASK = 'tts-test';
 
@@ -32,9 +29,13 @@ const REQUESTED_FORMAT = 'mp3';
  *
  * Failure here says nothing about the text model: the two configurations are
  * tested, stored, and reported separately, and TTS never blocks reading or
- * generation. At most two requests are made — the configured one, and one
- * without `speed` if the provider refuses that parameter — so an unsupported
- * option is reported rather than silently pretended.
+ * generation.
+ *
+ * The catalog leads and this test confirms: `config.attempt` says which
+ * optional channels to try, and a provider refusal corrects a wrong
+ * declaration. At most three requests are made — the declared one, and one
+ * fewer channel per refusal — so an unsupported option is measured rather than
+ * silently pretended.
  *
  * What counts as storable audio lives in `audio-verification.ts`, shared with
  * synthesis, so a passing test can never accept a clip synthesis would refuse.
@@ -62,26 +63,27 @@ export class OpenRouterTtsTester {
       );
     }
 
-    let speed = supportsTtsSpeed(modelId) ? config.speed : undefined;
-    let instructions =
-      config.speechInstructions === 'supported' ? buildSpeechInstructions() : undefined;
+    let speed = config.attempt.speed ? config.speed : undefined;
+    let instructed = config.attempt.instructions;
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const response = await this.synthesize(modelId, voiceId, speed, instructions, signal);
+      const response = await this.synthesize(
+        modelId,
+        voiceId,
+        speed,
+        // The test phrase has no neighbours, so the direction carries only the
+        // pace — the one channel a model without numeric `speed` has.
+        instructed ? { speed: config.speed } : undefined,
+        signal,
+      );
       if (response.ok) {
-        return this.verify(
-          response.value,
-          modelId,
-          voiceId,
-          speed !== undefined,
-          instructions !== undefined,
-        );
+        return this.verify(response.value, modelId, voiceId, speed !== undefined, instructed);
       }
       const refused = response.error.detail?.capability;
       if (response.error.code !== 'capability-unsupported') {
         return err(response.error);
       }
-      if (refused === 'instructions' && instructions !== undefined) {
-        instructions = undefined;
+      if (refused === 'instructions' && instructed) {
+        instructed = false;
         continue;
       }
       if (refused === 'speed' && speed !== undefined) {
@@ -97,7 +99,7 @@ export class OpenRouterTtsTester {
     modelId: string,
     voiceId: string,
     speed: number | undefined,
-    instructions: string | undefined,
+    instruction: SpeechContext | undefined,
     signal?: AbortSignal,
   ): Promise<Result<AudioResponse, AiError>> {
     return this.client.postAudio({
@@ -107,14 +109,14 @@ export class OpenRouterTtsTester {
       voiceId,
       timeoutMs: AUDIO_REQUEST_TIMEOUT_MS,
       ...(signal === undefined ? {} : { signal }),
-      body: {
-        model: modelId,
-        voice: voiceId,
-        input: TTS_TEST_PHRASE,
-        response_format: isGeminiTtsModel(modelId) ? 'pcm' : REQUESTED_FORMAT,
-        ...(speed === undefined ? {} : { speed }),
-        ...(instructions === undefined ? {} : { instructions }),
-      },
+      body: buildSpeechRequestBody({
+        modelId,
+        voiceId,
+        text: TTS_TEST_PHRASE,
+        responseFormat: REQUESTED_FORMAT,
+        speed,
+        instruction,
+      }),
     });
   }
 
@@ -123,6 +125,11 @@ export class OpenRouterTtsTester {
     modelId: string,
     voiceId: string,
     speedApplied: boolean,
+    /**
+     * The honesty boundary: this says the direction was carried and the request
+     * came back, not that the model obeyed it. For Gemini it means the prefix
+     * was in the prompt; elsewhere it means the field was not refused.
+     */
     speechInstructionsApplied: boolean,
   ): Promise<Result<TtsTest, AiError>> {
     const normalized = isGeminiTtsModel(modelId) ? geminiPcmToWav(response) : response;

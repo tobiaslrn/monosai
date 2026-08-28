@@ -208,6 +208,92 @@ describe('database schema', () => {
       await Dexie.delete(name);
     }
   });
+
+  it('adds measured speed support to every stored voice row during the v7 upgrade', async () => {
+    const name = `monosai-v6-tts-${Date.now()}`;
+    const legacy = new Dexie(name);
+    const v6 = SCHEMA_VERSIONS.find((entry) => entry.version === 6);
+    if (v6 === undefined) {
+      throw new Error('The immutable v6 schema is missing.');
+    }
+    legacy.version(6).stores(v6.stores);
+
+    try {
+      await legacy.open();
+      await legacy.table('settings').put({
+        key: 'tts',
+        v: 1,
+        value: {
+          modelId: 'vendor/voice',
+          voiceId: 'sakura',
+          speed: 1.25,
+          speechInstructions: 'unsupported',
+          lastTestFingerprint: 'stored-fingerprint',
+          lastTestedAt: 1_700_000_000_000,
+          activePresetId: 'voice-1',
+          favoriteModelIds: ['vendor/voice'],
+          presets: [
+            {
+              id: 'voice-1',
+              name: 'Voice',
+              modelId: 'vendor/voice',
+              voiceId: 'sakura',
+              speed: 1.25,
+              speechInstructions: 'unsupported',
+              lastTestFingerprint: 'stored-fingerprint',
+              lastTestedAt: 1_700_000_000_000,
+            },
+            {
+              id: 'gemini-1',
+              name: 'Gemini',
+              modelId: 'google/gemini-3.1-flash-tts-preview',
+              voiceId: 'Kore',
+              speed: 1,
+              speechInstructions: 'unsupported',
+              lastTestFingerprint: null,
+              lastTestedAt: null,
+            },
+          ],
+        },
+      });
+      legacy.close();
+
+      const upgraded = new MonosaiDatabase(name);
+      await upgraded.open();
+      const row = (await upgraded.settings.get('tts')) as
+        { readonly value?: Record<string, unknown> } | undefined;
+
+      // Purely additive: the seeded value is what the code already assumed, and
+      // no stored field is touched. The real value arrives with the re-test
+      // that the bumped TTS_TEST_VERSION already forces.
+      expect(row?.value).toMatchObject({
+        modelId: 'vendor/voice',
+        voiceId: 'sakura',
+        speed: 1.25,
+        speedSupported: true,
+        speechInstructions: 'unsupported',
+        lastTestFingerprint: 'stored-fingerprint',
+        lastTestedAt: 1_700_000_000_000,
+        activePresetId: 'voice-1',
+        favoriteModelIds: ['vendor/voice'],
+      });
+      expect(row?.value?.['presets']).toEqual([
+        expect.objectContaining({
+          id: 'voice-1',
+          name: 'Voice',
+          speed: 1.25,
+          speedSupported: true,
+          lastTestFingerprint: 'stored-fingerprint',
+        }),
+        // Gemini ignores the parameter, so its seed says so from the start.
+        expect.objectContaining({ id: 'gemini-1', speedSupported: false }),
+      ]);
+      upgraded.close();
+    } finally {
+      legacy.close();
+      await Dexie.delete(name);
+    }
+  });
 });
 
 describe('storage failure handling', () => {

@@ -94,6 +94,17 @@ describe('audioOptionsFingerprint', () => {
       }),
     ).not.toBe(base);
   });
+
+  /**
+   * The regression guard for not bumping `SPEECH_INSTRUCTION_VERSION` when the
+   * instruction text was rewritten. No stored clip was ever produced with an
+   * instruction, so the version describes nothing — but it sits unconditionally
+   * in this fingerprint, and a bump would discard every paid clip. If this
+   * golden value ever has to change, every existing clip is being thrown away.
+   */
+  it('keeps the key of an existing, uninstructed clip bit-identical', () => {
+    expect(audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speed: 1 })).toBe('0c184c8f');
+  });
 });
 
 describe('audioCacheKey', () => {

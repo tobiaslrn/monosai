@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import type { AiErrorCode } from '../app/domain/ai/ai-error';
 import type { GrammarReviewRequest } from '../app/domain/ai/grammar-review-request';
+import { declaredSpeechCapabilities } from '../app/domain/ai/speech-capabilities';
 import { sentenceRangeForCount, type StoryGenerationRequest } from '../app/domain/ai/story-request';
 import type { TextGenerationProvider } from '../app/domain/ai/text-generation-provider';
 import { sentenceId, snapshotId } from '../app/domain/shared/ids';
@@ -257,6 +258,7 @@ export function runTtsProviderContract(create: TtsProviderFactory): void {
     modelId: FAKE_OPENROUTER.ttsModel,
     voiceId: FAKE_OPENROUTER.voice,
     speed: 1,
+    attempt: declaredSpeechCapabilities(FAKE_OPENROUTER.ttsModel, []),
   };
 
   it('accepts a model and voice that produce decodable audio', async () => {

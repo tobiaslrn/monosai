@@ -14,6 +14,8 @@ export interface AudioSynthesisConfig {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speed: number;
+  /** Measured by the configuration test, so synthesis needs no catalog. */
+  readonly speedSupported: boolean;
   readonly speechInstructions: SpeechInstructionsSupport;
   readonly optionsFingerprint: string;
 }
@@ -85,6 +87,7 @@ export class AudioSynthesisService {
         voiceId: config.voiceId,
         speed: config.speed,
         responseFormat: RESPONSE_FORMAT,
+        speedSupported: config.speedSupported,
         speechInstructions: config.speechInstructions,
         ...(context.beforeJa === undefined ? {} : { beforeJa: context.beforeJa }),
         ...(context.afterJa === undefined ? {} : { afterJa: context.afterJa }),

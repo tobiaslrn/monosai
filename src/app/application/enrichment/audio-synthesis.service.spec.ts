@@ -57,6 +57,7 @@ async function configure(): Promise<SynthesisBed> {
     modelId: 'vendor/tts',
     voiceId: 'voice-a',
     speed: 1,
+    speedSupported: true,
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
     activePresetId: null,
@@ -189,6 +190,7 @@ describe('AudioSynthesisService', () => {
         voiceId: 'voice-a',
         speed: 0.75,
         responseFormat: 'mp3',
+        speedSupported: true,
         speechInstructions: 'unsupported',
       },
     ]);

@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
 import { ttsFingerprint } from '../../domain/ai/configuration-fingerprint';
 import { readinessOf, type ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
+import { declaredSpeechCapabilities, type PaceControl } from '../../domain/ai/speech-capabilities';
 import { resolveTtsVoice } from '../../domain/ai/tts-configuration';
 import {
   DEFAULT_TTS_SETTINGS,
@@ -50,6 +51,7 @@ export class TtsStore {
   private readonly testFailureSignal = signal<AiError | null>(null);
   private readonly storageFailureSignal = signal<StorageError | null>(null);
   private readonly speedAppliedSignal = signal<boolean | null>(null);
+  private readonly instructionsAppliedSignal = signal<boolean | null>(null);
   private readonly sampleSignal = signal<Blob | null>(null);
 
   private controller: AbortController | null = null;
@@ -61,10 +63,24 @@ export class TtsStore {
   readonly storageFailure = this.storageFailureSignal.asReadonly();
   /** False when the provider ignored the requested speed, so the UI can say so. */
   readonly speedApplied = this.speedAppliedSignal.asReadonly();
+  /** False when the provider refused the delivery direction the test tried. */
+  readonly speechInstructionsApplied = this.instructionsAppliedSignal.asReadonly();
   /** The verified clip, played only on an explicit action. */
   readonly sample = this.sampleSignal.asReadonly();
 
   readonly lastTestedAt = computed(() => this.settingsSignal().lastTestedAt);
+  /**
+   * Which channel the saved speed actually travels through.
+   *
+   * Read from what the last test measured, not from a catalog, so it survives a
+   * reload and an offline session. Monosai never slows a clip locally, so
+   * `fixed` means the setting genuinely cannot reach this model.
+   */
+  readonly paceSource = computed<PaceControl>(() => {
+    const settings = this.settingsSignal();
+    if (settings.speedSupported) return 'native';
+    return settings.speechInstructions === 'supported' ? 'prompted' : 'fixed';
+  });
   readonly presets = computed(() => this.settingsSignal().presets);
   readonly favoriteModelIds = computed(() => this.settingsSignal().favoriteModelIds ?? []);
   readonly activePresetId = computed(() => this.settingsSignal().activePresetId);
@@ -116,6 +132,7 @@ export class TtsStore {
     const current = this.settingsSignal();
     const registered: TtsPreset = {
       ...preset,
+      speedSupported: preset.speedSupported ?? false,
       speechInstructions: preset.speechInstructions ?? 'unsupported',
       lastTestFingerprint: preset.lastTestFingerprint ?? null,
       lastTestedAt: preset.lastTestedAt ?? null,
@@ -130,6 +147,7 @@ export class TtsStore {
             modelId: preset.modelId,
             voiceId: preset.voiceId,
             speed: preset.speed,
+            speedSupported: registered.speedSupported ?? false,
             speechInstructions: registered.speechInstructions ?? 'unsupported',
             lastTestFingerprint: registered.lastTestFingerprint ?? null,
             lastTestedAt: registered.lastTestedAt ?? null,
@@ -164,6 +182,7 @@ export class TtsStore {
       modelId: preset.modelId,
       voiceId: preset.voiceId,
       speed: preset.speed,
+      speedSupported: preset.speedSupported ?? false,
       speechInstructions: preset.speechInstructions ?? 'unsupported',
       lastTestFingerprint: preset.lastTestFingerprint ?? null,
       lastTestedAt: preset.lastTestedAt ?? null,
@@ -207,6 +226,7 @@ export class TtsStore {
             modelId: '',
             voiceId: '',
             speed: DEFAULT_TTS_SETTINGS.speed,
+            speedSupported: DEFAULT_TTS_SETTINGS.speedSupported,
             speechInstructions: DEFAULT_TTS_SETTINGS.speechInstructions,
             lastTestFingerprint: null,
             lastTestedAt: null,
@@ -226,6 +246,7 @@ export class TtsStore {
     this.testFailureSignal.set(null);
     this.storageFailureSignal.set(null);
     this.speedAppliedSignal.set(null);
+    this.instructionsAppliedSignal.set(null);
     this.sampleSignal.set(null);
     return true;
   }
@@ -307,14 +328,23 @@ export class TtsStore {
     this.storageFailureSignal.set(null);
     this.testFailureSignal.set(null);
     this.speedAppliedSignal.set(null);
+    this.instructionsAppliedSignal.set(null);
     this.sampleSignal.set(null);
     return true;
   }
 
-  async test(): Promise<void> {
+  /**
+   * Tries what the model declares it accepts and stores what it honoured.
+   *
+   * `supportedParameters` comes from the provider catalog, which is fetched
+   * lazily and may not be in hand yet; an empty list therefore means "not
+   * known", and both channels are attempted so the provider's own refusal — not
+   * a missing fetch — is what narrows them.
+   */
+  async test(supportedParameters: readonly string[] = []): Promise<void> {
     const presetId = this.settingsSignal().activePresetId;
     if (presetId !== null) {
-      await this.testPreset(presetId);
+      await this.testPreset(presetId, supportedParameters);
       return;
     }
     // The controller exists before the first await so that cancelling while the
@@ -346,7 +376,7 @@ export class TtsStore {
         modelId: settings.modelId,
         voiceId: settings.voiceId,
         speed: settings.speed,
-        speechInstructions: settings.speechInstructions ?? 'unsupported',
+        attempt: declaredSpeechCapabilities(settings.modelId, supportedParameters),
       },
       controller.signal,
     );
@@ -363,12 +393,15 @@ export class TtsStore {
     }
 
     this.speedAppliedSignal.set(result.value.speedApplied);
+    this.instructionsAppliedSignal.set(result.value.speechInstructionsApplied);
     this.sampleSignal.set(result.value.sample);
-    const speechInstructions = result.value.speechInstructionsApplied ? 'supported' : 'unsupported';
-    const testedSettings = { ...settings, speechInstructions } as const;
+    // What the provider honoured, written beside the configuration it was
+    // measured for. The fingerprint covers the configuration alone, so storing
+    // a finding here cannot make the test that produced it look stale.
     const saved = await this.repository.updateTtsSettings({
-      speechInstructions,
-      lastTestFingerprint: this.fingerprintFor(testedSettings),
+      speedSupported: result.value.speedApplied,
+      speechInstructions: result.value.speechInstructionsApplied ? 'supported' : 'unsupported',
+      lastTestFingerprint: this.fingerprintFor(settings),
       lastTestedAt: this.clock.now(),
     });
     if (saved.ok) {
@@ -379,7 +412,7 @@ export class TtsStore {
     }
   }
 
-  async testPreset(id: string): Promise<void> {
+  async testPreset(id: string, supportedParameters: readonly string[] = []): Promise<void> {
     const preset = this.settingsSignal().presets.find((item) => item.id === id);
     if (preset === undefined) {
       return;
@@ -395,7 +428,7 @@ export class TtsStore {
         modelId: preset.modelId,
         voiceId: preset.voiceId,
         speed: preset.speed,
-        speechInstructions: preset.speechInstructions ?? 'unsupported',
+        attempt: declaredSpeechCapabilities(preset.modelId, supportedParameters),
       },
       controller.signal,
     );
@@ -411,9 +444,10 @@ export class TtsStore {
       return;
     }
 
+    const speedSupported = result.value.speedApplied;
     const speechInstructions = result.value.speechInstructionsApplied ? 'supported' : 'unsupported';
-    const testedPreset = { ...preset, speechInstructions } as const;
-    const fingerprint = this.fingerprintFor(testedPreset);
+    const testedPreset = { ...preset, speedSupported, speechInstructions } as const;
+    const fingerprint = this.fingerprintFor(preset);
     const testedAt = this.clock.now();
     const presets = this.settingsSignal().presets.map((item) =>
       item.id === id
@@ -430,6 +464,7 @@ export class TtsStore {
             modelId: preset.modelId,
             voiceId: preset.voiceId,
             speed: preset.speed,
+            speedSupported,
             speechInstructions,
             lastTestFingerprint: fingerprint,
             lastTestedAt: testedAt,
@@ -439,6 +474,7 @@ export class TtsStore {
     if (saved.ok) {
       this.settingsSignal.set(saved.value);
       this.speedAppliedSignal.set(result.value.speedApplied);
+      this.instructionsAppliedSignal.set(result.value.speechInstructionsApplied);
       this.sampleSignal.set(result.value.sample);
       this.storageFailureSignal.set(null);
     } else {
@@ -457,16 +493,11 @@ export class TtsStore {
     this.actionSignal.set('idle');
   }
 
-  private fingerprintFor(
-    settings: Pick<TtsSettings, 'modelId' | 'voiceId' | 'speed'> & {
-      readonly speechInstructions?: NonNullable<TtsSettings['speechInstructions']>;
-    },
-  ): string {
+  private fingerprintFor(settings: Pick<TtsSettings, 'modelId' | 'voiceId' | 'speed'>): string {
     return ttsFingerprint(this.hasher, this.credential.keyGeneration(), {
       modelId: settings.modelId,
       voiceId: settings.voiceId,
       speed: settings.speed,
-      speechInstructions: settings.speechInstructions ?? 'unsupported',
     });
   }
 

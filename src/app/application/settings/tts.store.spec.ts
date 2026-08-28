@@ -152,6 +152,35 @@ describe('TtsStore', () => {
     expect(store.speedApplied()).toBe(false);
   });
 
+  it('persists both measured capabilities and stays ready under the stored test', async () => {
+    provider.result = ok(ttsTest(false, true));
+    const store = await ready();
+    store.setDraft(CONFIGURED);
+
+    await store.test();
+
+    // The findings are stored beside the configuration, and the fingerprint
+    // covers the configuration alone — so recording what the test learned
+    // cannot make that same test look stale.
+    expect(settings.tts).toMatchObject({
+      speedSupported: false,
+      speechInstructions: 'supported',
+    });
+    expect(store.speechInstructionsApplied()).toBe(true);
+    expect(store.paceSource()).toBe('prompted');
+    expect(store.readiness()).toBe('ready');
+  });
+
+  it('names the model as the pace source when the speed parameter was honoured', async () => {
+    const store = await ready();
+    store.setDraft(CONFIGURED);
+
+    await store.test();
+
+    expect(settings.tts).toMatchObject({ speedSupported: true });
+    expect(store.paceSource()).toBe('native');
+  });
+
   it('goes stale when the voice or the speed changes', async () => {
     const store = await ready();
     store.setDraft(CONFIGURED);

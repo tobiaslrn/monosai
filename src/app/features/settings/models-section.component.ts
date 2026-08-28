@@ -286,6 +286,7 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
             class="picker"
             data-testid="audio-model-picker"
             label="speech models"
+            [speech]="true"
             [models]="speechModels()"
             [favoriteIds]="tts.favoriteModelIds()"
             [selectedId]="tts.settings().modelId"
@@ -339,6 +340,12 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
               />
             </label>
           </div>
+
+          <!-- Speed is only ever produced by the model, so the surface says
+               which channel carried it rather than implying it took effect. -->
+          @if (paceNote(); as note) {
+            <p class="hint" data-testid="audio-pace-note">{{ note }}</p>
+          }
 
           <!-- The preview is heard, not operated: it starts itself and leaves no player behind. -->
           @if (sampleUrl(); as url) {
@@ -494,6 +501,10 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
       color: var(--text-secondary);
       font-size: 12px;
     }
+    .hint {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
     .status {
       flex: none;
       color: var(--text-secondary);
@@ -593,6 +604,21 @@ export class ModelsSectionComponent {
       this.tts.presets().find((preset) => preset.id === this.tts.settings().activePresetId)?.name ??
       null,
   );
+  /**
+   * Where the saved speed comes from, once a test has measured it.
+   *
+   * Nothing is said before then: an untested configuration has no finding to
+   * report, and a guess here would be exactly the pretence the test exists to
+   * avoid.
+   */
+  protected readonly paceNote = computed(() => {
+    if (this.tts.settings().modelId === '' || this.tts.readiness() !== 'ready') {
+      return null;
+    }
+    return this.tts.paceSource() === 'fixed'
+      ? 'This model cannot change speaking speed.'
+      : 'Speaking speed is produced by the model.';
+  });
   /** The branches open on their own once a learner has set one. */
   protected readonly hasOverrides = computed(
     () => this.text.grammarPresetId() != null || this.text.translationPresetId() != null,
@@ -732,6 +758,10 @@ export class ModelsSectionComponent {
     this.tts.setDraft({ modelId: model.modelId, voiceId: model.supportedVoices[0] ?? '' });
     await this.tts.save();
   }
+  /** What the catalog says the configured model accepts, empty when unknown. */
+  private speechParameters(): readonly string[] {
+    return this.selectedSpeechModel()?.supportedParameters ?? [];
+  }
   protected setVoice(event: Event): void {
     this.tts.setDraft({ voiceId: (event.target as HTMLInputElement).value });
     void this.tts.save();
@@ -741,7 +771,7 @@ export class ModelsSectionComponent {
     void this.tts.save();
   }
   protected testAudio(): void {
-    void this.tts.test();
+    void this.tts.test(this.speechParameters());
   }
   protected playSample(): void {
     void this.sampleAudio()
