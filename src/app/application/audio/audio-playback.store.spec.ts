@@ -1034,6 +1034,80 @@ describe('AudioPlaybackStore', () => {
     });
   });
 
+  describe('the mode cycle', () => {
+    it('moves through every posture and back to the first', () => {
+      expect(bed.store.mode()).toBe('continuous');
+      expect(bed.store.stepMode()).toBe(false);
+
+      bed.store.cycleMode();
+
+      expect(bed.store.mode()).toBe('sentence');
+      expect(bed.store.stepMode()).toBe(true);
+
+      // Wrapping rather than stopping at the end: the control is pressed to
+      // move on, and the posture after the last one is the first one again.
+      bed.store.cycleMode();
+
+      expect(bed.store.mode()).toBe('continuous');
+    });
+  });
+
+  describe('seeking along the track', () => {
+    it('jumps a live session to the sentence it was dropped on', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      await bed.store.play();
+
+      await bed.store.seekTo(3);
+
+      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+      expect(bed.store.status()).toBe('playing');
+    });
+
+    /**
+     * Aiming is not playing. Dragging the track of a reading that is not being
+     * read says where to start, and starting is still the press of Play.
+     */
+    it('only moves the cursor while nothing is playing', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+
+      await bed.store.seekTo(2);
+
+      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.player.played).toHaveLength(0);
+    });
+
+    /** A hole is somewhere the drag passes over, not somewhere it lands. */
+    it('snaps to the nearest sentence that has a clip', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClipsAt(bed, [0, 3]);
+      await bed.store.prepare(bed.reading);
+
+      await bed.store.seekTo(3);
+
+      expect(bed.store.currentSentenceId()).toBe(sentences[3].id);
+    });
+
+    it('clamps a position outside the reading, and does nothing without audio', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.prepare(bed.reading);
+
+      await bed.store.seekTo(99);
+
+      expect(bed.store.currentSentenceId()).toBeNull();
+
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      await bed.store.seekTo(99);
+
+      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1].id);
+    });
+  });
+
   describe('failures that are not the clip', () => {
     beforeEach(async () => {
       await storeClips(bed);
