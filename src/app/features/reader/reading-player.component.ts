@@ -6,7 +6,7 @@ import type { SentenceId } from '../../domain/shared/ids';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
 
-/** What the generation rail beneath the transport is saying, if anything. */
+/** What the card has to say about generation beneath the transport, if anything. */
 export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
 
 /**
@@ -549,8 +549,8 @@ export class ReadingPlayerComponent {
    * What the rail says about a run that has stopped.
    *
    * Only a stopped run has anything to say. A run in progress is reported by
-   * the track's generation fill and by the Stop beside it; a count in words
-   * underneath repeated what the bar already showed.
+   * the track's generation fill alone; a count in words underneath repeated
+   * what the bar already showed.
    */
   protected readonly jobLine = computed(() => {
     const progress = this.progress();

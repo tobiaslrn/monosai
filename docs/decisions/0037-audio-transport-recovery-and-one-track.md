@@ -129,8 +129,10 @@ taller than the controls in it.
 Only a run that *stopped* still has anything to say, because "stopped with 4 of
 30" is a fact the track cannot carry. Everything the card might add — the offer
 to generate, a stopped run, Start from this sentence, a playback failure — now
-shares **one** band behind one divider, so the player is two rows whenever it
-has nothing to add.
+shares **one** band behind one divider, so a player with nothing to add is the
+transport, the track, and the mode toggle and nothing else. Measured at 149px on
+a 412px viewport, unchanged from the moment a run starts through finishing it
+and playing the result.
 
 ### Honest reporting
 
