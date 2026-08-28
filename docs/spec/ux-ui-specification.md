@@ -304,12 +304,13 @@ or Escape handler. Opening captures the selected sentence for **Start from this
 sentence**, but loads nothing, requests nothing, and plays nothing. It does not
 close sentence or word popovers.
 
-Pressing the same header button while the player is open calls playback Stop,
-clears the active sentence and cursor, hides the player, and clears the captured
-selection. It does not cancel an in-progress generation job; generation progress
-and errors remain available when the player is opened again. Outside clicks and
-Escape do nothing to the player, while the existing sentence and word popover
-dismissal rules remain unchanged.
+Pressing the same header button while the player is open hides the card and
+clears the captured selection. It does not stop playback — hiding the card to
+read the text underneath is not "stop reading to me" — and it does not cancel an
+in-progress generation job; the session, its progress and its errors are all
+there again when the player is reopened, and the header button keeps naming the
+live state meanwhile. Outside clicks and Escape do nothing to the player, while
+the existing sentence and word popover dismissal rules remain unchanged.
 
 The player is a compact, rounded, elevated card fixed above the viewport bottom
 and centered at desktop widths, and a full-width bar docked to the bottom edge
@@ -320,8 +321,8 @@ CDK popover backdrop, so the Audio toggle and player remain reachable alongside
 a sentence or word popover.
 
 The player owns every audio state there is (ADR 0025, ADR 0028, ADR 0034,
-ADR 0037, and ADR 0038). It is **two rows and no prose**: a track that can be
-dragged, and one row of controls. Every slot in that row is always rendered, so
+ADR 0037, and ADR 0038). It is **two rows and no prose**: one row of controls
+over a track that can be dragged. Every slot in that row is always rendered, so
 the card is one height and one set of positions whatever the state, and a clip
 landing or a run ending never reflows the reading beneath it.
 
@@ -335,8 +336,14 @@ job line and every failure is unchanged, and the live region carries all of it.
 
 | Row | Content |
 | --- | --- |
+| Controls | `[back][primary][next]` `[mode]` `[start from this sentence][context]`, ranged to the leading edge |
 | Track | One slider: generation coverage behind playback position, dragged to move through the reading |
-| Controls | `[mode][stop]` · `[back][primary][next]` · `[start from this sentence][context]` |
+
+The controls sit above the track and are ranged left rather than centred: the
+transport first, where a thumb already is on a docked card, then the mode, then
+the two contextual slots. An empty slot is held open, and at the end of the line
+an empty one is simply where the line stops. The track underneath spans the full
+width it is measuring.
 
 The centre of the transport is whatever the **primary verb** is: **Generate
 audio** when the reading has no audio at all, and play, pause, resume, read on
@@ -362,7 +369,7 @@ became:
 - A job that fails before it resolves what to send reports no position, rather than deriving a nonsensical one from empty counts.
 - Back replays the sentence being read from its start, and steps to the sentence before only when pressed within the first moment of one. The reason to reach for it is that a sentence went past too fast, and jumping straight back meant the sentence actually wanted could only be reached by going back and then forward again. Its accessible name says both things it does.
 - Back and Next follow the audio rather than the index: they move to the nearest sentence in that direction that *has* a clip, so a hole left by a failed sentence is not a wall, and neither wraps at a boundary. Back at the first sentence restarts it rather than ending the session. Play starts at the first sentence with a clip rather than requiring sentence one, because clips arrive out of order and requiring the first left a learner with no way into audio already paid for.
-- The transport has its own **Stop**, live whenever a session is. Closing the player used to be the only way to end one, so looking at the text underneath silenced the reading, and a session waiting at the frontier for a clip a stopped run will never produce had no live control at all.
+- There is **no Stop**. A media player has none: a session ends by being paused, and a paused session keeps its cursor, its highlight and its place on the track, which is what a learner who stopped listening mid-reading wants when they come back to it. A session waiting at the frontier is still not a dead end — Back's first meaning is replaying the sentence just heard, which leaves the wait — and closing the player never silenced anything anyway.
 - **One sentence at a time** is a mode, and the mode control is pressed to move through the postures a reading can be read in — `continuous` and `sentence` today, wrapping at the end, with repeating a single sentence still to come. It is the leftmost control, present whether or not anything is playing, lit when it is on, and exposes `aria-pressed` while there are two postures to choose between. While it is on, the reading stops at every sentence seam and waits to be told to go on: the cursor stays on the sentence just heard, the position line is unchanged, and the play control is named **Next sentence**. Continuing skips a sentence with no clip, waits at the frontier and reads on when the clip arrives, and Back at a seam replays the sentence just heard. The last sentence still finishes the reading. The mode lasts for the session and is not saved.
 - Per-sentence audio is generated and played from the sentence popover. No play control is printed on the reading surface itself, so pressing a sentence still costs nothing.
 - Audio never autoplays. Preparing a clip never plays it, a clip arriving never plays it, and playing is always a second, explicit action. Reading on after a wait continues a session the learner started.

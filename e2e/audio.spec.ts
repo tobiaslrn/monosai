@@ -32,9 +32,6 @@ const CONCURRENCY = 4;
  */
 const BACK_LABEL = 'Restart this sentence, or go back to the one before';
 
-/** The transport stop, which is not the generation rail's Stop beside it. */
-const STOP_LABEL = 'Stop reading';
-
 /** The study posture that makes the reading stop at every sentence seam. */
 const STEP_MODE_LABEL = 'One sentence at a time';
 
@@ -541,12 +538,12 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(audioPlayer(page)).toHaveCount(0);
     await expect(audioButton(page)).toHaveAttribute('aria-label', /^Audio, (playing|finished)/);
 
+    // Reopening lands back on the live session rather than on a fresh player.
     await openAudioPlayer(page);
-    await audioPlayer(page).getByRole('button', { name: STOP_LABEL }).click();
+    await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
 
-    await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
-    await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, ready');
-    await expect(audioPlayer(page).getByRole('button', { name: STOP_LABEL })).toBeDisabled();
+    await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, paused');
+    await expect(audioPlayer(page).getByRole('button', { name: 'Resume' })).toBeVisible();
   });
 
   test('keeps a paused session across closing and reopening the player', async ({ page }) => {
@@ -567,14 +564,10 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await openAudioPlayer(page);
     await expect(audioPlayer(page).getByRole('button', { name: 'Resume' })).toBeVisible();
 
-    // The transport Stop is what ends a session, and it clears the cursor.
-    await audioPlayer(page).getByRole('button', { name: STOP_LABEL }).click();
-
-    await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
-    await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, ready');
-    await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeVisible();
-    await expect(audioPlayer(page).getByRole('button', { name: 'Resume' })).toHaveCount(0);
-    await expect(audioPlayer(page).getByRole('button', { name: BACK_LABEL })).toBeDisabled();
+    // The cursor is kept, and the sentence stays marked: a paused session is a
+    // session, and there is no control that throws one away any more.
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1);
+    await expect(audioPlayer(page).getByRole('button', { name: BACK_LABEL })).toBeEnabled();
   });
 
   /**

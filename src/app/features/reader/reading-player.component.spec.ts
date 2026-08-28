@@ -127,7 +127,6 @@ describe('ReadingPlayerComponent', () => {
   /** Back names both of the things it does, because its icon can name neither. */
   const BACK_LABEL = 'Restart this sentence, or go back to the one before';
   const NEXT_LABEL = 'Next sentence with audio';
-  const STOP_LABEL = 'Stop reading';
   const WAITING_LABEL = 'Waiting for the next sentence';
   const MODE_LABEL = 'One sentence at a time';
 
@@ -165,7 +164,7 @@ describe('ReadingPlayerComponent', () => {
       // docked card does not change height — and reflow the reading beneath it
       // — the moment the first clip lands.
       expect(control(element, NEXT_LABEL)?.disabled).toBe(true);
-      expect(control(element, STOP_LABEL)?.disabled).toBe(true);
+      expect(control(element, BACK_LABEL)?.disabled).toBe(true);
       expect(scrubber(element)?.disabled).toBe(true);
     });
 
@@ -399,8 +398,6 @@ describe('ReadingPlayerComponent', () => {
       expect(control(element, BACK_LABEL)).not.toBeNull();
       expect(control(element, 'Pause')).toBeNull();
       expect(control(element, NEXT_LABEL)).not.toBeNull();
-      // A Stop that is not "hide the player", disabled until there is a session.
-      expect(control(element, STOP_LABEL)?.disabled).toBe(true);
     });
 
     /**
@@ -454,7 +451,6 @@ describe('ReadingPlayerComponent', () => {
 
       expect(control(element, NEXT_LABEL)?.disabled).toBe(true);
       expect(control(element, BACK_LABEL)?.disabled).toBe(true);
-      expect(control(element, STOP_LABEL)?.disabled).toBe(true);
     });
 
     it('steps once something is playing', () => {
@@ -464,9 +460,8 @@ describe('ReadingPlayerComponent', () => {
 
       control(element, NEXT_LABEL)?.click();
       control(element, BACK_LABEL)?.click();
-      control(element, STOP_LABEL)?.click();
 
-      expect(store.calls).toEqual(['next', 'previous', 'stop']);
+      expect(store.calls).toEqual(['next', 'previous']);
     });
 
     /** Manual Next is a jump, and a jump needs somewhere to land. */
@@ -577,16 +572,17 @@ describe('ReadingPlayerComponent', () => {
 
     /**
      * The session has already started, so there is nothing to play — but there
-     * is always something to press. A run that failed left the frontier waiting
-     * for a clip that was never coming, with every transport control dead.
+     * is still somewhere to go. A run that failed left the frontier waiting for
+     * a clip that was never coming, and Back is the way out of it: its first
+     * meaning is replaying the sentence just heard.
      */
-    it('leaves a live Stop while it waits', () => {
+    it('names what it is doing, and leaves a live way out', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(control(element, WAITING_LABEL)?.disabled).toBe(true);
       expect(control(element, 'Play')).toBeNull();
       expect(control(element, 'Pause')).toBeNull();
-      expect(control(element, STOP_LABEL)?.disabled).toBe(false);
+      expect(control(element, BACK_LABEL)?.disabled).toBe(false);
     });
   });
 
@@ -647,7 +643,7 @@ describe('ReadingPlayerComponent', () => {
 
       expect(said(element)).toContain('Sentence 2 of 6');
       expect(control(element, 'Next sentence')?.disabled).toBe(false);
-      expect(control(element, STOP_LABEL)?.disabled).toBe(false);
+      expect(control(element, BACK_LABEL)?.disabled).toBe(false);
     });
 
     it('reads on rather than resuming when that Play is pressed', () => {

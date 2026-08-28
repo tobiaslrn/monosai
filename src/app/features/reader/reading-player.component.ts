@@ -48,8 +48,8 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
  * learner had no way to find out the application could read to them at all. The
  * header audio button is always there, and this is what it opens.
  *
- * It is **two rows and no prose**: a track that can be dragged, and one row of
- * controls. Everything the card used to print — the position, how much has been
+ * It is **two rows and no prose**: one row of controls over a track that can be
+ * dragged. Everything the card used to print — the position, how much has been
  * generated, what a stopped run managed, why playback stopped — is said by the
  * state of a control or by a hidden live region, never by a paragraph. A player
  * that floats over the reading has no room to be a form, and a learner reading
@@ -97,6 +97,163 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       }
 
       <!--
+        Every control on one line above the track, ranged to the leading edge:
+        the transport first, where a thumb already is on a docked card, then the
+        mode, then the two contextual slots. An unused slot is held open, and at
+        the end of the line an empty one is simply where the line stops.
+      -->
+      <div class="controls">
+        <!--
+          Back replays the sentence being read before it steps to the one
+          before it, because the reason to reach for it is that the sentence
+          went past too fast. The name says so, since the icon cannot.
+        -->
+        <button
+          type="button"
+          class="slot"
+          aria-label="Restart this sentence, or go back to the one before"
+          title="Restart this sentence, or go back to the one before"
+          [disabled]="!store.canGoPrevious()"
+          (click)="previous()"
+        >
+          <mn-icon name="skip-back" [size]="20" />
+        </button>
+
+        <!--
+          The centre is whatever the primary verb is right now. A reading with
+          no audio at all has nothing to play, so the button that would be a
+          dead Play is the one that makes the audio instead.
+        -->
+        @switch (centreAction()) {
+          @case ('generate') {
+            <button
+              type="button"
+              class="primary"
+              aria-label="Generate audio"
+              title="Generate audio"
+              (click)="generate.emit()"
+            >
+              <mn-icon name="generate" [size]="24" />
+            </button>
+          }
+          @case ('pause') {
+            <button
+              type="button"
+              class="primary"
+              aria-label="Pause"
+              title="Pause"
+              (click)="store.pause()"
+            >
+              <mn-icon name="pause" [size]="24" />
+            </button>
+          }
+          @default {
+            <button
+              type="button"
+              class="primary"
+              [attr.aria-label]="playLabel()"
+              [title]="playLabel()"
+              [disabled]="!canPressPlay()"
+              (click)="play()"
+            >
+              <mn-icon name="play" [size]="24" />
+            </button>
+          }
+        }
+
+        <button
+          type="button"
+          class="slot"
+          aria-label="Next sentence with audio"
+          title="Next sentence with audio"
+          [disabled]="!store.canGoNext()"
+          (click)="next()"
+        >
+          <mn-icon name="skip-forward" [size]="20" />
+        </button>
+
+        <!--
+          The mode control, in the idiom every media player uses for one: the
+          same glyph always, lit when it is on. It closes the line, past the
+          transport, because it is a posture for the reading rather than a
+          control of the session running now.
+        -->
+        <button
+          type="button"
+          class="slot mode"
+          [class.on]="store.stepMode()"
+          [attr.aria-pressed]="store.stepMode()"
+          title="One sentence at a time"
+          aria-label="One sentence at a time"
+          (click)="cycleMode()"
+        >
+          <mn-icon name="step" [size]="20" />
+        </button>
+
+        <!--
+          Start from where the learner is rather than from the top. Offered
+          only when a sentence was open when the player was opened and that
+          sentence has a clip, because "this sentence" needs somewhere to mean.
+          Its slot is held open when it is not, so nothing beside it moves.
+        -->
+        @if (canStartFromSelection()) {
+          <button
+            type="button"
+            class="slot"
+            aria-label="Start from this sentence"
+            title="Start from this sentence"
+            (click)="playFromSelection()"
+          >
+            <mn-icon name="sentence-start" [size]="20" />
+          </button>
+        } @else {
+          <span class="slot" aria-hidden="true"></span>
+        }
+
+        @if (auxAction(); as aux) {
+          @if (aux.kind === 'settings') {
+            <a
+              [class]="'slot tone-' + aux.tone"
+              routerLink="/settings"
+              [attr.aria-label]="aux.label"
+              [title]="aux.title"
+            >
+              <mn-icon [name]="aux.icon" [size]="20" />
+            </a>
+          } @else {
+            <button
+              type="button"
+              [class]="'slot tone-' + aux.tone"
+              [attr.aria-label]="aux.label"
+              [title]="aux.title"
+              (click)="pressAux(aux)"
+            >
+              @if (aux.kind === 'cancel') {
+                <!--
+                  The run, drawn where the control that stops it is. A count in
+                  words underneath said what the ring and the track already say.
+                -->
+                <svg class="ring" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
+                  <circle class="ring-track" cx="22" cy="22" [attr.r]="ringRadius" />
+                  <circle
+                    class="ring-fill"
+                    cx="22"
+                    cy="22"
+                    [attr.r]="ringRadius"
+                    [attr.stroke-dasharray]="ringCircumference"
+                    [attr.stroke-dashoffset]="ringOffset()"
+                  />
+                </svg>
+              }
+              <mn-icon [name]="aux.icon" [size]="aux.kind === 'cancel' ? 14 : 20" />
+            </button>
+          }
+        } @else {
+          <span class="slot" aria-hidden="true"></span>
+        }
+      </div>
+
+      <!--
         One track carrying both numbers, and the only way to move through the
         reading by hand: what has been generated behind how far playback has
         reached, with a range on top of it so the reading can be aimed at rather
@@ -120,187 +277,13 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           (change)="onScrubCommit($event)"
         />
       </div>
-
-      <div class="controls">
-        <div class="side">
-          <!--
-            The mode control, in the idiom every media player uses for one:
-            the same glyph always, lit when it is on. It is here rather than in
-            a row of its own because a row that held one text button was a
-            third of the height of a card that floats over the reading.
-          -->
-          <button
-            type="button"
-            class="slot mode"
-            [class.on]="store.stepMode()"
-            [attr.aria-pressed]="store.stepMode()"
-            title="One sentence at a time"
-            aria-label="One sentence at a time"
-            (click)="cycleMode()"
-          >
-            <mn-icon name="step" [size]="20" />
-          </button>
-
-          <!--
-            A stop that is not "hide the player". Closing the card used to be the
-            only way to end a session, so looking at the text underneath silenced
-            the reading; and a session waiting at the frontier for a clip that a
-            failed run will never produce had no live control at all.
-          -->
-          <button
-            type="button"
-            class="slot"
-            aria-label="Stop reading"
-            title="Stop reading"
-            [disabled]="!store.isActive()"
-            (click)="store.stop()"
-          >
-            <mn-icon name="stop" [size]="18" />
-          </button>
-        </div>
-
-        <div class="centre">
-          <!--
-            Back replays the sentence being read before it steps to the one
-            before it, because the reason to reach for it is that the sentence
-            went past too fast. The name says so, since the icon cannot.
-          -->
-          <button
-            type="button"
-            class="slot"
-            aria-label="Restart this sentence, or go back to the one before"
-            title="Restart this sentence, or go back to the one before"
-            [disabled]="!store.canGoPrevious()"
-            (click)="previous()"
-          >
-            <mn-icon name="skip-back" [size]="20" />
-          </button>
-
-          <!--
-            The centre is whatever the primary verb is right now. A reading with
-            no audio at all has nothing to play, so the button that would be a
-            dead Play is the one that makes the audio instead.
-          -->
-          @switch (centreAction()) {
-            @case ('generate') {
-              <button
-                type="button"
-                class="primary"
-                aria-label="Generate audio"
-                title="Generate audio"
-                (click)="generate.emit()"
-              >
-                <mn-icon name="generate" [size]="24" />
-              </button>
-            }
-            @case ('pause') {
-              <button
-                type="button"
-                class="primary"
-                aria-label="Pause"
-                title="Pause"
-                (click)="store.pause()"
-              >
-                <mn-icon name="pause" [size]="24" />
-              </button>
-            }
-            @default {
-              <button
-                type="button"
-                class="primary"
-                [attr.aria-label]="playLabel()"
-                [title]="playLabel()"
-                [disabled]="!canPressPlay()"
-                (click)="play()"
-              >
-                <mn-icon name="play" [size]="24" />
-              </button>
-            }
-          }
-
-          <button
-            type="button"
-            class="slot"
-            aria-label="Next sentence with audio"
-            title="Next sentence with audio"
-            [disabled]="!store.canGoNext()"
-            (click)="next()"
-          >
-            <mn-icon name="skip-forward" [size]="20" />
-          </button>
-        </div>
-
-        <div class="side end">
-          <!--
-            Start from where the learner is rather than from the top. Offered
-            only when a sentence was open when the player was opened and that
-            sentence has a clip, because "this sentence" needs somewhere to mean.
-            Its slot is held open when it is not, so nothing beside it moves.
-          -->
-          @if (canStartFromSelection()) {
-            <button
-              type="button"
-              class="slot"
-              aria-label="Start from this sentence"
-              title="Start from this sentence"
-              (click)="playFromSelection()"
-            >
-              <mn-icon name="sentence-start" [size]="20" />
-            </button>
-          } @else {
-            <span class="slot" aria-hidden="true"></span>
-          }
-
-          @if (auxAction(); as aux) {
-            @if (aux.kind === 'settings') {
-              <a
-                [class]="'slot tone-' + aux.tone"
-                routerLink="/settings"
-                [attr.aria-label]="aux.label"
-                [title]="aux.title"
-              >
-                <mn-icon [name]="aux.icon" [size]="20" />
-              </a>
-            } @else {
-              <button
-                type="button"
-                [class]="'slot tone-' + aux.tone"
-                [attr.aria-label]="aux.label"
-                [title]="aux.title"
-                (click)="pressAux(aux)"
-              >
-                @if (aux.kind === 'cancel') {
-                  <!--
-                    The run, drawn where the control that stops it is. A count in
-                    words underneath said what the ring and the track already say.
-                  -->
-                  <svg class="ring" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
-                    <circle class="ring-track" cx="22" cy="22" [attr.r]="ringRadius" />
-                    <circle
-                      class="ring-fill"
-                      cx="22"
-                      cy="22"
-                      [attr.r]="ringRadius"
-                      [attr.stroke-dasharray]="ringCircumference"
-                      [attr.stroke-dashoffset]="ringOffset()"
-                    />
-                  </svg>
-                }
-                <mn-icon [name]="aux.icon" [size]="aux.kind === 'cancel' ? 14 : 20" />
-              </button>
-            }
-          } @else {
-            <span class="slot" aria-hidden="true"></span>
-          }
-        </div>
-      </div>
     </div>
   `,
   styles: `
     .player {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: var(--space-1);
       min-width: 0;
     }
 
@@ -440,31 +423,15 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     }
 
     /*
-     * Three groups, so the transport stays optically centred whatever the two
-     * contextual slots are doing. The sides are equal and fixed, and an empty
-     * slot is held open rather than collapsed.
+     * One line, ranged to the leading edge. An empty slot is held open rather
+     * than collapsed, so the line is one width in every state and nothing under
+     * a thumb reaching for it ever moves.
      */
     .controls {
       display: flex;
-      gap: var(--space-2);
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .side {
-      display: flex;
-      flex: none;
       gap: var(--space-1);
       align-items: center;
-    }
-
-    .centre {
-      display: flex;
-      flex: 1;
-      gap: var(--space-1);
-      align-items: center;
-      justify-content: center;
-      min-width: 0;
+      justify-content: flex-start;
     }
 
     /* Everything that is not the primary verb: no chrome until it is touched. */
@@ -505,6 +472,15 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
     .tone-danger {
       color: var(--status-danger);
+    }
+
+    /*
+     * The mode belongs to neither of its neighbours: the transport on one side
+     * is the session running now, and the contextual slot on the other is the
+     * audio being made. It keeps its own air on both sides.
+     */
+    .mode {
+      margin-inline: var(--space-2);
     }
 
     /* The pressed state of the mode, since one glyph on its own cannot say it. */
