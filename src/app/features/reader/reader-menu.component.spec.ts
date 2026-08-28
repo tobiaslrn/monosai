@@ -34,6 +34,7 @@ function reading(completed: number, total: number, audioCompleted = 0): Reading 
     [audioRunning]="audioRunning()"
     (translateAll)="translateAlls = translateAlls + 1"
     (cancelled)="cancels = cancels + 1"
+    (cancelAudioRequested)="audioCancels = audioCancels + 1"
     (deleteAudioRequested)="audioDeletes = audioDeletes + 1"
     (deleteRequested)="deletes = deletes + 1"
   />`,
@@ -44,6 +45,7 @@ class HostComponent {
   readonly audioRunning = signal(false);
   translateAlls = 0;
   cancels = 0;
+  audioCancels = 0;
   audioDeletes = 0;
   deletes = 0;
 }
@@ -141,6 +143,24 @@ describe('ReaderMenuComponent', () => {
     fixture.componentInstance.audioRunning.set(true);
     fixture.detectChanges();
     expect(element.textContent).toContain('Delete audio');
+  });
+
+  /**
+   * Stopping a run is a reading-level audio action, so it sits with the other
+   * one rather than in the player. A permanent row in a card that floats over
+   * the reading is a poor home for something pressed once a run, if ever.
+   */
+  it('offers to stop a run only while one is going', () => {
+    const { fixture, element, dismissals } = render();
+
+    expect(element.textContent).not.toContain('Stop generating audio');
+
+    fixture.componentInstance.audioRunning.set(true);
+    fixture.detectChanges();
+    press(element, 'Stop generating audio');
+
+    expect(fixture.componentInstance.audioCancels).toBe(1);
+    expect(dismissals).toHaveLength(1);
   });
 
   it('asks for deletion rather than performing it', () => {

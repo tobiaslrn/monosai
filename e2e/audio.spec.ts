@@ -114,6 +114,18 @@ async function openReaderMenu(page: Page): Promise<void> {
   await expect(page.getByRole('menu', { name: 'Reading actions' })).toBeVisible();
 }
 
+/**
+ * Stops a run from where that action lives.
+ *
+ * Not in the player: it is a reading-level audio action beside Delete audio,
+ * and a permanent row for it made a card that floats over the reading taller
+ * than the controls in it.
+ */
+async function stopGenerating(page: Page): Promise<void> {
+  await openReaderMenu(page);
+  await page.getByRole('menuitem', { name: 'Stop generating audio' }).click();
+}
+
 /** The sentence popover's own audio action, which is a label and nothing else. */
 function sentenceAudioAction(page: Page, label: string): Locator {
   return sentencePopover(page).getByRole('button', { name: label, exact: true });
@@ -258,9 +270,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await prepareReading(page, TEXT, { audioDelayMs: 2_000 });
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expect(
-      audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }),
-    ).toBeVisible({
+    await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, being generated', {
       timeout: 15_000,
     });
 
@@ -269,10 +279,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, being generated');
 
     await openAudioPlayer(page);
-    await expect(
-      audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }),
-    ).toBeVisible();
-    await audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }).click();
+    await stopGenerating(page);
     await expect(audioPlayer(page).getByText(/Stopped/)).toBeVisible({ timeout: 15_000 });
   });
 
@@ -397,10 +404,10 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await page.getByRole('button', { name: 'Generate audio' }).click();
     await expectAudioPlayable(page);
 
-    // The run is still going: its Stop is on screen beside the transport.
-    await expect(
-      audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }),
-    ).toBeVisible();
+    // The run is still going, and the track is the only thing that says so: a
+    // prefix has audio and the rest of the reading does not.
+    expect(await generatedPercent(page)).toBeGreaterThan(0);
+    expect(await generatedPercent(page)).toBeLessThan(100);
     expect(await storedClipCount(page)).toBeLessThan(LONG_SENTENCE_COUNT);
 
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
@@ -419,9 +426,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await openAudioPlayer(page);
     await audioPlayer(page).getByRole('button', { name: 'Generate audio' }).click();
-    await expect(
-      audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }),
-    ).toBeVisible();
+    await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, being generated', {
+      timeout: 15_000,
+    });
 
     // Closing the player does not cancel the run, so the selection can be made
     // and captured while the first batch is still being prepared. The popover
@@ -465,7 +472,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // Stopped between the batches rather than at the start, so what is asserted
     // is that finished clips survive rather than that none were made.
     await expect.poll(() => generatedPercent(page), { timeout: 60_000 }).toBeGreaterThan(0);
-    await audioPlayer(page).getByRole('button', { name: 'Stop generating', exact: true }).click();
+    await stopGenerating(page);
     await expect(audioPlayer(page).getByText(/Stopped with \d+ of 8 sentences ready/)).toBeVisible({
       timeout: 60_000,
     });

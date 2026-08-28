@@ -63,6 +63,12 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
           </button>
         }
 
+        @if (audioRunning()) {
+          <button type="button" role="menuitem" (click)="choose(cancelAudioRequested)">
+            Stop generating audio
+          </button>
+        }
+
         @if (hasAudio()) {
           <button
             type="button"
@@ -147,6 +153,14 @@ export class ReaderMenuComponent {
 
   readonly translateAll = output<void>();
   readonly cancelled = output<void>();
+  /**
+   * Stopping a run, beside the other reading-level audio actions.
+   *
+   * Not in the player. The player is a transport, and a permanent row holding
+   * one rarely pressed link made a card that sits over the reading taller than
+   * the controls in it. The track's own fill says a run is going.
+   */
+  readonly cancelAudioRequested = output<void>();
   readonly deleteAudioRequested = output<void>();
   readonly deleteRequested = output<void>();
 

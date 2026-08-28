@@ -158,6 +158,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                   [audioRunning]="audioJob.isRunning()"
                   (translateAll)="startWholeReadingTranslation()"
                   (cancelled)="translationJob.cancel()"
+                  (cancelAudioRequested)="audioJob.cancel()"
                   (deleteAudioRequested)="confirmClearReadingAudio()"
                   (deleteRequested)="confirmDelete()"
                 />
@@ -258,7 +259,6 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           [selectedSentenceId]="audioPlayerSentenceId()"
           [modelConfigured]="hasAudioModel()"
           (generate)="startWholeReadingAudio()"
-          (cancelGeneration)="audioJob.cancel()"
           (retryGeneration)="retryWholeReadingAudio()"
           (dismissJob)="audioJob.acknowledge()"
         />

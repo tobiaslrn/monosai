@@ -84,7 +84,6 @@ class StubPlaybackStore {
     [progress]="progress()"
     [selectedSentenceId]="selected()"
     (generate)="emitted.push('generate')"
-    (cancelGeneration)="emitted.push('cancel')"
     (retryGeneration)="emitted.push('retry')"
     (dismissJob)="emitted.push('dismiss')"
   />`,
@@ -191,6 +190,7 @@ describe('ReadingPlayerComponent', () => {
       // No count in words — it said again what the bar was already saying.
       expect(element.querySelectorAll('[role="progressbar"]')).toHaveLength(1);
       expect(element.textContent).not.toContain('sentences ready');
+      expect(element.textContent).not.toContain('Stop');
       expect(
         element.querySelector('[role="progressbar"] .fill.generated')?.getAttribute('style'),
       ).toContain('23%');
@@ -198,10 +198,11 @@ describe('ReadingPlayerComponent', () => {
 
     /**
      * The point of the four-way queue: what has already arrived is playable
-     * while the rest is still being made, so the transport is present *and* the
-     * run reports itself, rather than one replacing the other.
+     * while the rest is still being made. The run itself adds nothing to the
+     * card — the track's fill is the report, and stopping a run lives in the
+     * reader menu — so a playable prefix leaves the player at two rows.
      */
-    it('shows the transport and the run together once a prefix exists', () => {
+    it('shows the transport, and adds nothing else, once a prefix exists', () => {
       store.total.set(13);
       store.ready.set(4);
       const fixture = render();
@@ -216,19 +217,30 @@ describe('ReadingPlayerComponent', () => {
       expect(
         element.querySelector('[role="progressbar"] .fill.generated')?.getAttribute('style'),
       ).toContain('31%');
-      expect(
-        [...element.querySelectorAll('button')].map((button) => button.textContent.trim()),
-      ).toContain('Stop generating');
+      expect(element.querySelector('.context')).toBeNull();
     });
 
-    it('stops on request', () => {
+    /** The bar is what says a run is still going, so it has to say it. */
+    it('marks the track while a run is in flight, and only then', () => {
+      store.total.set(13);
+      store.ready.set(4);
       const fixture = render();
-      fixture.componentInstance.progress.set({ kind: 'preparing' });
+      fixture.componentInstance.progress.set({
+        kind: 'running',
+        counts: { total: 13, requested: 13, completed: 4, failed: 0 },
+      });
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(element.querySelector('.bar')?.classList.contains('is-generating')).toBe(true);
+
+      fixture.componentInstance.progress.set({
+        kind: 'complete',
+        counts: { total: 13, requested: 13, completed: 13, failed: 0 },
+      });
       fixture.detectChanges();
 
-      press(fixture.nativeElement as HTMLElement, 'Stop generating');
-
-      expect(fixture.componentInstance.emitted).toEqual(['cancel']);
+      expect(element.querySelector('.bar')?.classList.contains('is-generating')).toBe(false);
     });
   });
 

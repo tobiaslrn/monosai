@@ -110,6 +110,7 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
 
       <div
         class="bar"
+        [class.is-generating]="isGenerating()"
         role="progressbar"
         aria-label="Position in this reading"
         [attr.aria-valuenow]="percent()"
@@ -122,75 +123,73 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
       </div>
 
       <!--
-        Start from where the learner is rather than from the top. Offered
-        only when a sentence was open when the player was opened and that
-        sentence has a clip, because "this sentence" needs somewhere to mean.
+        One contextual block, or none. Everything the card might have to say
+        beneath the controls shares a single divider and a single padded band,
+        so the player is two rows whenever it has nothing to add — which,
+        while a run is going, is always: the track's quiet fill is the report,
+        and stopping the run lives in the reader menu beside Delete audio.
       -->
-      @if (canStartFromSelection()) {
-        <button type="button" class="quiet" (click)="playFromSelection()">
-          Start from this sentence
-        </button>
-      }
-
-      @switch (rail()) {
-        @case ('running') {
-          <!--
-            No count. The track's quiet fill is already saying how much of the
-            reading has audio, and saying it again in words beneath it is one
-            more thing to read on a card that sits over the reading.
-          -->
-          <div class="rail beneath">
-            <div class="row end">
-              <button type="button" class="quiet" (click)="cancelGeneration.emit()">
-                Stop generating
-              </button>
-            </div>
-          </div>
-        }
-
-        @case ('stopped') {
-          <div class="rail beneath">
-            <p class="line" role="status">{{ jobLine() }}</p>
-            @if (jobFailure(); as failure) {
-              <p class="mn-error" role="alert">{{ failure }}</p>
+      @if (hasContext()) {
+        <div class="context">
+          @switch (rail()) {
+            @case ('offer') {
+              <p class="line">{{ offerLabel() }}</p>
+              <div class="row">
+                <button
+                  type="button"
+                  class="mn-button mn-button--primary"
+                  (click)="generate.emit()"
+                >
+                  Generate audio
+                </button>
+                @if (!modelConfigured()) {
+                  <a class="mn-button" routerLink="/settings">Set up audio model</a>
+                }
+              </div>
             }
-            <div class="row">
-              <button type="button" class="mn-button" (click)="retryGeneration.emit()">
-                Try again
-              </button>
-              <button type="button" class="quiet" (click)="dismissJob.emit()">Dismiss</button>
-            </div>
-          </div>
-        }
 
-        @case ('offer') {
-          <div class="rail beneath">
-            <p class="line">{{ offerLabel() }}</p>
-            <div class="row">
-              <button type="button" class="mn-button mn-button--primary" (click)="generate.emit()">
-                Generate audio
-              </button>
-              @if (!modelConfigured()) {
-                <a class="mn-button" routerLink="/settings">Set up audio model</a>
+            @case ('stopped') {
+              <p class="line" role="status">{{ jobLine() }}</p>
+              @if (jobFailure(); as failure) {
+                <p class="mn-error" role="alert">{{ failure }}</p>
               }
-            </div>
-          </div>
-        }
+              <div class="row">
+                <button type="button" class="mn-button" (click)="retryGeneration.emit()">
+                  Try again
+                </button>
+                <button type="button" class="mn-button" (click)="dismissJob.emit()">Dismiss</button>
+              </div>
+            }
 
-        @case ('none') {
-          <!-- Every sentence has a clip and no run is reporting: nothing to say. -->
-        }
-      }
+            @default {
+              <!-- Running or complete: the track says it, and says it quietly. -->
+            }
+          }
 
-      @if (failureMessage(); as message) {
-        <div class="row">
-          <p class="mn-error" role="alert">{{ message }}</p>
           <!--
-            A playback failure used to be cleared only by a successful play, so
-            a banner about a sentence the learner had moved on from stayed on
-            screen until the player was destroyed.
+            Start from where the learner is rather than from the top. Offered
+            only when a sentence was open when the player was opened and that
+            sentence has a clip, because "this sentence" needs somewhere to mean.
           -->
-          <button type="button" class="quiet" (click)="store.acknowledgeFailure()">Dismiss</button>
+          @if (canStartFromSelection()) {
+            <button type="button" class="mn-button" (click)="playFromSelection()">
+              Start from this sentence
+            </button>
+          }
+
+          @if (failureMessage(); as message) {
+            <p class="mn-error" role="alert">{{ message }}</p>
+            <div class="row">
+              <!--
+                A playback failure used to be cleared only by a successful play,
+                so a banner about a sentence the learner had moved on from
+                stayed on screen until the player was destroyed.
+              -->
+              <button type="button" class="mn-button" (click)="store.acknowledgeFailure()">
+                Dismiss
+              </button>
+            </div>
+          }
         </div>
       }
     </div>
@@ -260,30 +259,24 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
     }
 
     /*
-     * Generation sits under the transport as a quieter band, so a run that is
-     * still filling in the reading is visible without competing with the
-     * controls the learner is actually using.
+     * Anything the card has to add sits in one band under the controls, behind
+     * one divider. Separate blocks each with their own rule stacked into a
+     * card that looked like a stack of unrelated notices.
      */
-    .rail {
+    .context {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: var(--space-3);
       min-width: 0;
-    }
-
-    .rail.beneath {
       padding-block-start: var(--space-3);
       border-block-start: 1px solid var(--border-subtle);
     }
 
     .row {
       display: flex;
-      gap: var(--space-3);
+      flex-wrap: wrap;
+      gap: var(--space-2);
       align-items: center;
-    }
-
-    .row.end {
-      justify-content: flex-end;
     }
 
     /*
@@ -299,6 +292,26 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
       background: var(--surface-sunken);
     }
 
+    /*
+     * The only thing that says a run is still going. A count in words under the
+     * bar repeated what the bar was already showing, so the bar breathes
+     * instead — visible when looked at, invisible when read past.
+     */
+    .bar.is-generating .fill.generated {
+      animation: generating 1.8s ease-in-out infinite;
+    }
+
+    @keyframes generating {
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
     .fill {
       position: absolute;
       inset-block: 0;
@@ -308,7 +321,7 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
     }
 
     .fill.generated {
-      background: var(--border-subtle);
+      background: var(--border-strong);
     }
 
     .fill.played {
@@ -322,18 +335,6 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
       font-size: var(--text-sm);
     }
 
-    .quiet {
-      min-height: var(--touch-target);
-      padding-inline: var(--space-2);
-      border: 0;
-      background: none;
-      color: var(--text-primary);
-      font: inherit;
-      font-size: var(--text-sm);
-      text-decoration: underline;
-      cursor: pointer;
-    }
-
     .mn-error {
       flex: 1;
       margin: 0;
@@ -344,6 +345,10 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
       .fill,
       .play {
         transition: none;
+      }
+
+      .bar.is-generating .fill.generated {
+        animation: none;
       }
     }
   `,
@@ -358,7 +363,6 @@ export class ReadingPlayerComponent {
   readonly modelConfigured = input<boolean>(false);
 
   readonly generate = output<void>();
-  readonly cancelGeneration = output<void>();
   readonly retryGeneration = output<void>();
   readonly dismissJob = output<void>();
 
@@ -384,6 +388,18 @@ export class ReadingPlayerComponent {
   });
 
   protected readonly isPlaying = computed(() => this.store.status() === 'playing');
+
+  /** Whether a run is filling in the rest, which only the track reports. */
+  protected readonly isGenerating = computed(() => this.rail() === 'running');
+
+  /** Whether there is anything at all to put beneath the controls. */
+  protected readonly hasContext = computed(
+    () =>
+      this.rail() === 'offer' ||
+      this.rail() === 'stopped' ||
+      this.canStartFromSelection() ||
+      this.failureMessage() !== null,
+  );
 
   protected readonly playLabel = computed(() => {
     switch (this.store.status()) {
