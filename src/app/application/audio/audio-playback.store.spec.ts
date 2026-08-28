@@ -16,7 +16,14 @@ import { importedReadingFixture, uuid } from '../../../testing/persistence-fixtu
 import { createTestDatabase, destroyTestDatabase } from '../../../testing/test-database';
 import { ENRICHMENT_REPOSITORY, HASHER, READING_REPOSITORY } from '../shared/repository-tokens';
 import { TtsStore } from '../settings/tts.store';
-import { AUDIO_PLAYER, type AudioPlayer, type PlayOptions } from './audio-player';
+import {
+  AUDIO_PLAYER,
+  type AudioPlayer,
+  type AudioSequenceClip,
+  type AudioTimeline,
+  type PlayOptions,
+  type SequencePlayOptions,
+} from './audio-player';
 import { AudioPlaybackStore } from './audio-playback.store';
 import { MEDIA_SESSION, NO_MEDIA_SESSION } from './media-session';
 
@@ -45,6 +52,9 @@ class FakeAudioPlayer implements AudioPlayer {
   failNextPlay = false;
   /** Set to make the next `resume` reject, standing in for the autoplay policy. */
   failNextResume = false;
+  sequenceSupported = false;
+  readonly sequences: AudioSequenceClip[][] = [];
+  private trackDuration = 0;
 
   private ended: (() => void) | null = null;
 
@@ -56,6 +66,23 @@ class FakeAudioPlayer implements AudioPlayer {
     this.played.push(clip);
     this.startedPaused.push(options?.startPaused === true);
     return Promise.resolve();
+  }
+
+  playSequence(
+    clips: readonly AudioSequenceClip[],
+    options?: SequencePlayOptions,
+  ): Promise<AudioTimeline> {
+    if (!this.sequenceSupported) {
+      return Promise.reject(new Error('sequence unsupported'));
+    }
+    this.sequences.push([...clips]);
+    this.position = options?.startIndex ?? 0;
+    this.trackDuration = clips.length;
+    this.startedPaused.push(options?.startPaused === true);
+    return Promise.resolve({
+      starts: clips.map((_, index) => index),
+      duration: clips.length,
+    });
   }
 
   pause(): void {
@@ -75,6 +102,14 @@ class FakeAudioPlayer implements AudioPlayer {
     return this.position;
   }
 
+  duration(): number {
+    return this.trackDuration;
+  }
+
+  seek(seconds: number): void {
+    this.position = seconds;
+  }
+
   restart(): Promise<void> {
     this.restarts += 1;
     this.position = 0;
@@ -91,6 +126,17 @@ class FakeAudioPlayer implements AudioPlayer {
 
   onError(): void {
     // The decode failure this spec exercises arrives as a rejected `play`.
+  }
+
+  private timeUpdate: (() => void) | null = null;
+
+  onTimeUpdate(handler: () => void): void {
+    this.timeUpdate = handler;
+  }
+
+  moveTo(seconds: number): void {
+    this.position = seconds;
+    this.timeUpdate?.();
   }
 
   /** Ends the clip that is loaded, as the element's `ended` event would. */
@@ -1105,6 +1151,56 @@ describe('AudioPlaybackStore', () => {
       await bed.store.seekTo(99);
 
       expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1].id);
+    });
+  });
+
+  describe('continuous background track', () => {
+    it('loads a complete reading once and follows its native sentence boundaries', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+
+      await bed.store.play();
+
+      expect(bed.player.sequences).toHaveLength(1);
+      expect(bed.player.sequences[0]).toHaveLength(SENTENCE_COUNT);
+      expect(bed.player.played).toEqual([]);
+      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+
+      bed.player.moveTo(2.2);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+
+      await bed.store.next();
+      expect(bed.player.position).toBe(3);
+      expect(bed.store.currentSentenceId()).toBe(sentences[3].id);
+
+      await bed.store.previous();
+      expect(bed.player.position).toBe(2);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+    });
+
+    it('keeps partial readings on the progressive sentence path', async () => {
+      await storeClips(bed, SENTENCE_COUNT - 1);
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+
+      await bed.store.play();
+
+      expect(bed.player.sequences).toEqual([]);
+      expect(bed.player.played).toHaveLength(1);
+    });
+
+    it('keeps one-sentence mode on the sentence path even with a complete set', async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+      bed.store.setStepMode(true);
+
+      await bed.store.play();
+
+      expect(bed.player.sequences).toEqual([]);
+      expect(bed.player.played).toHaveLength(1);
     });
   });
 

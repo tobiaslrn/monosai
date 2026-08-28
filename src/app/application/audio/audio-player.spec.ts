@@ -1,15 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createAudioPlayer } from './audio-player';
+import { combineWaveClips, createAudioPlayer } from './audio-player';
 
 /** A minimal stand-in for `HTMLAudioElement`, just enough for the player port. */
 class FakeAudioElement {
   src = '';
   currentTime = 0;
+  duration = 0;
   played = 0;
   paused = false;
   loaded = 0;
   removedAttribute: string | null = null;
-  private readonly listeners = new Map<string, () => void>();
+  onLoad: (() => void) | null = null;
+  private readonly listeners = new Map<string, Set<EventListenerOrEventListenerObject>>();
 
   play(): Promise<void> {
     this.played += 1;
@@ -23,18 +25,31 @@ class FakeAudioElement {
 
   load(): void {
     this.loaded += 1;
+    this.onLoad?.();
   }
 
   removeAttribute(name: string): void {
     this.removedAttribute = name;
   }
 
-  addEventListener(type: string, handler: () => void): void {
-    this.listeners.set(type, handler);
+  addEventListener(type: string, handler: EventListenerOrEventListenerObject): void {
+    const listeners = this.listeners.get(type) ?? new Set();
+    listeners.add(handler);
+    this.listeners.set(type, listeners);
+  }
+
+  removeEventListener(type: string, handler: EventListenerOrEventListenerObject): void {
+    this.listeners.get(type)?.delete(handler);
   }
 
   fire(type: string): void {
-    this.listeners.get(type)?.();
+    for (const listener of this.listeners.get(type) ?? []) {
+      if (typeof listener === 'function') {
+        listener(new Event(type));
+      } else {
+        listener.handleEvent(new Event(type));
+      }
+    }
   }
 }
 
@@ -54,7 +69,133 @@ function fakeView(element: FakeAudioElement): {
   return { view, createObjectURL, revokeObjectURL };
 }
 
+function wave(samples: readonly number[], sampleRate = 2): Blob {
+  const output = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(output);
+  const write = (offset: number, value: string): void => {
+    for (let index = 0; index < value.length; index += 1) {
+      view.setUint8(offset + index, value.charCodeAt(index));
+    }
+  };
+  write(0, 'RIFF');
+  view.setUint32(4, output.byteLength - 8, true);
+  write(8, 'WAVE');
+  write(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  write(36, 'data');
+  view.setUint32(40, samples.length * 2, true);
+  samples.forEach((sample, index) => {
+    view.setInt16(44 + index * 2, sample, true);
+  });
+  return new Blob([output], { type: 'audio/wav' });
+}
+
+class FakeSourceBuffer extends EventTarget {
+  mode: AppendMode = 'segments';
+  private end = 0;
+  readonly buffered = {
+    get length() {
+      return 1;
+    },
+    start: () => 0,
+    end: () => this.end,
+  } as TimeRanges;
+
+  appendBuffer(): void {
+    this.end += 1;
+    queueMicrotask(() => this.dispatchEvent(new Event('updateend')));
+  }
+}
+
+class FakeMediaSource extends EventTarget {
+  static isTypeSupported(type: string): boolean {
+    return type === 'audio/mpeg';
+  }
+
+  readonly sourceBuffer = new FakeSourceBuffer();
+  readyState: ReadyState = 'open';
+  ended = false;
+
+  addSourceBuffer(): SourceBuffer {
+    return this.sourceBuffer as unknown as SourceBuffer;
+  }
+
+  endOfStream(): void {
+    this.ended = true;
+    this.readyState = 'ended';
+  }
+}
+
 describe('createAudioPlayer', () => {
+  it('combines compatible WAV clips and records exact sentence boundaries', async () => {
+    const combined = await combineWaveClips([wave([1, 2]), wave([3, 4, 5, 6])]);
+
+    expect(combined.timeline).toEqual({ starts: [0, 1], duration: 3 });
+    expect(combined.blob.type).toBe('audio/wav');
+    const bytes = new DataView(await combined.blob.arrayBuffer());
+    expect(bytes.getUint32(4, true)).toBe(48);
+    expect(bytes.getUint32(40, true)).toBe(12);
+  });
+
+  it('rejects a WAV sequence whose sample formats differ', async () => {
+    await expect(combineWaveClips([wave([1, 2], 2), wave([3, 4], 4)])).rejects.toThrow(
+      'different formats',
+    );
+  });
+
+  it('appends MP3 sentences as one MediaSource timeline before playing', async () => {
+    const element = new FakeAudioElement();
+    const fake = fakeView(element);
+    (fake.view as unknown as { MediaSource: typeof MediaSource }).MediaSource =
+      FakeMediaSource as unknown as typeof MediaSource;
+    element.onLoad = () => {
+      queueMicrotask(() => {
+        const source = fake.createObjectURL.mock.calls[0]?.[0] as FakeMediaSource;
+        source.dispatchEvent(new Event('sourceopen'));
+      });
+    };
+    const player = createAudioPlayer(fake.view);
+
+    const timeline = await player.playSequence([
+      { blob: new Blob(['one']), mimeType: 'audio/mpeg' },
+      { blob: new Blob(['two']), mimeType: 'audio/mpeg' },
+      { blob: new Blob(['three']), mimeType: 'audio/mpeg' },
+    ]);
+
+    expect(timeline).toEqual({ starts: [0, 1, 2], duration: 3 });
+    expect(element.played).toBe(1);
+    expect(fake.createObjectURL).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not let a slow sequence replace a newer clip', async () => {
+    const element = new FakeAudioElement();
+    const fake = fakeView(element);
+    const player = createAudioPlayer(fake.view);
+    const delayed = wave([1, 2]);
+    const bytes = await delayed.arrayBuffer();
+    const deferred: { resolve?: (value: ArrayBuffer) => void } = {};
+    vi.spyOn(delayed, 'arrayBuffer').mockImplementation(
+      () =>
+        new Promise<ArrayBuffer>((resolve) => {
+          deferred.resolve = resolve;
+        }),
+    );
+
+    const sequence = player.playSequence([{ blob: delayed, mimeType: 'audio/wav' }]);
+    await player.play(new Blob(['newer']));
+    deferred.resolve?.(bytes);
+
+    await expect(sequence).rejects.toThrow('superseded');
+    expect(fake.createObjectURL).toHaveBeenCalledTimes(1);
+    expect(element.played).toBe(1);
+  });
+
   it('reports how far into the loaded clip playback has reached', async () => {
     const element = new FakeAudioElement();
     const player = createAudioPlayer(fakeView(element).view);
