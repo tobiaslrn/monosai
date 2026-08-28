@@ -313,40 +313,57 @@ dismissal rules remain unchanged.
 
 The player is a compact, rounded, elevated card fixed above the viewport bottom
 and centered at desktop widths, and a full-width bar docked to the bottom edge
-below 600px, clearing `env(safe-area-inset-bottom)`.
-Its height is bounded with internal overflow for long generation or failure copy,
-and an open player adds bottom clearance to the reading. The sticky reader header
-and the player sit above the CDK popover backdrop, so the Audio toggle and player
-remain reachable alongside a sentence or word popover.
+below 600px, clearing `env(safe-area-inset-bottom)`. Its height is fixed and it
+never scrolls, because nothing inside it can grow; an open player adds bottom
+clearance to the reading. The sticky reader header and the player sit above the
+CDK popover backdrop, so the Audio toggle and player remain reachable alongside
+a sentence or word popover.
 
-The player owns every audio state there is (ADR 0025, ADR 0028, ADR 0034, and
-ADR 0037). It is one card of three permanent rows and one optional band. The
-permanent rows are always rendered, disabled when there is nothing to play, so
-the docked card does not change height — and does not reflow the reading beneath
-it — as clips land or a run ends.
+The player owns every audio state there is (ADR 0025, ADR 0028, ADR 0034,
+ADR 0037, and ADR 0038). It is **two rows and no prose**: a track that can be
+dragged, and one row of controls. Every slot in that row is always rendered, so
+the card is one height and one set of positions whatever the state, and a clip
+landing or a run ending never reflows the reading beneath it.
+
+**The player prints nothing.** The position, how much of the reading has audio,
+what a stopped run managed, and why playback stopped are all said by the state
+of a control and by a `.mn-visually-hidden` live region — never by a paragraph.
+A card that floats over a reading has no room to be a form, and a learner
+reading Japanese does not want an English status report in the corner of their
+eye. Nothing is lost to a screen reader: the wording of the position line, the
+job line and every failure is unchanged, and the live region carries all of it.
 
 | Row | Content |
 | --- | --- |
-| Transport | Back / play, pause, resume, or read on / next / stop, with the position beside it |
-| Track | One progress bar: generation coverage behind playback position |
-| Mode | The **One sentence at a time** toggle |
-| Context — nothing prepared or partly prepared | The sentence count, or "4 of 13 sentences have audio", and **Generate audio** |
-| Context — stopped or failed | "Stopped with 4 of 13 sentences ready.", the failure, **Try again**, **Dismiss** |
-| Context — a sentence was selected | **Start from this sentence** |
-| Context — playback failed | What stopped the reading, and **Dismiss** |
+| Track | One slider: generation coverage behind playback position, dragged to move through the reading |
+| Controls | `[mode][stop]` · `[back][primary][next]` · `[start from this sentence][context]` |
+
+The centre of the transport is whatever the **primary verb** is: **Generate
+audio** when the reading has no audio at all, and play, pause, resume, read on
+or play again once it has. The one contextual slot is what the band of buttons
+became:
+
+| State | Control |
+| --- | --- |
+| A run is going | **Stop generating audio**, with the coverage drawn as a ring around it |
+| Idle with a partial set | **Generate audio**, the count in its tooltip |
+| A run stopped or failed | **Try again**, what happened in its tooltip |
+| Playback failed | **Dismiss**, what stopped the reading in its tooltip |
+| No audio model | **Set up audio model**, linking to settings |
+| Nothing to add | Empty, and its space kept |
 
 - There is **one** track, not one per thing being measured. Playback position and generation coverage share the reading as their denominator, so they compose the way a buffered bar does in any media player: a quiet fill for what has audio, the accent fill for how far playback has reached. The generation fill is what fraction of the *reading* has audio and never the running job's own percentage, so a retry covering the two sentences a run missed is not drawn as half the reading.
-- A run in progress adds **nothing** to the card. The generation fill is the whole report, and it breathes while requests are open; a line saying "4 of 13 sentences ready" beneath the bar said in words what the bar had already said. Stopping a run is **Stop generating audio** in the reader's overflow menu, beside **Delete audio** and matching **Stop translating**: it is a reading-level audio action pressed at most once a run, and a permanent row for it made a card that floats over the reading taller than the controls in it.
-- Everything the card can still add shares **one** band behind one divider, so a player with nothing to add is the three rows and nothing else.
+- A run in progress adds **no words** to the card. The generation fill breathes while requests are open and the ring around the contextual control fills as clips land; a line saying "4 of 13 sentences ready" said what both were already saying. A run can be stopped from that control as well as from **Stop generating audio** in the reader's overflow menu, which stays beside **Delete audio** and matches **Stop translating**.
+- The **track is a slider** over the sentences of the reading, so a reading can be aimed at rather than only stepped through. It snaps sentence to sentence, and a position with no clip snaps to the nearest one that has, so a hole is somewhere the drag passes over. Releasing it in a live session jumps there and keeps reading; releasing it while nothing is playing only moves the cursor, because starting a reading is still the press of Play. It is disabled until something has audio.
 
 - The transport appears as soon as any sentence has a clip under the current voice, not when every sentence does. A reading whose set is partial is played as far as it goes and waits for the rest (ADR 0034).
-- The position line reads "Sentence 4 of 13" while playing, "13 sentences ready" while idle with nothing else on the card saying so, "Not playing" when the band beneath is already carrying that count, "Waiting for sentence 5 of 13" at the frontier, and "Finished" at the end of a reading. While waiting, the play control is disabled and named for what it is doing: the session has already started and there is nothing to press. A finished reading is not a reset — the cursor stays on the last sentence, the track stays full, and the play control is named **Play again**.
+- The announcement reads "Sentence 4 of 13" while playing, "13 sentences ready" while idle with the whole reading prepared, "Not playing" while there is still something to prepare, "Waiting for sentence 5 of 13" at the frontier, and "Finished" at the end of a reading, followed by whatever the contextual control is about. While waiting, the play control is disabled and named for what it is doing: the session has already started and there is nothing to press. A finished reading is not a reset — the cursor stays on the last sentence, the track stays full, and the play control is named **Play again**.
 - Generation reports how many sentences are ready rather than which one it is at, because four requests are open at once and there is no single sentence the run has reached.
 - A job that fails before it resolves what to send reports no position, rather than deriving a nonsensical one from empty counts.
 - Back replays the sentence being read from its start, and steps to the sentence before only when pressed within the first moment of one. The reason to reach for it is that a sentence went past too fast, and jumping straight back meant the sentence actually wanted could only be reached by going back and then forward again. Its accessible name says both things it does.
 - Back and Next follow the audio rather than the index: they move to the nearest sentence in that direction that *has* a clip, so a hole left by a failed sentence is not a wall, and neither wraps at a boundary. Back at the first sentence restarts it rather than ending the session. Play starts at the first sentence with a clip rather than requiring sentence one, because clips arrive out of order and requiring the first left a learner with no way into audio already paid for.
 - The transport has its own **Stop**, live whenever a session is. Closing the player used to be the only way to end one, so looking at the text underneath silenced the reading, and a session waiting at the frontier for a clip a stopped run will never produce had no live control at all.
-- **One sentence at a time** is a toggle in its own row under the track, present whether or not anything is playing and exposing `aria-pressed`. While it is on, the reading stops at every sentence seam and waits to be told to go on: the cursor stays on the sentence just heard, the position line is unchanged, and the play control is named **Next sentence**. Continuing skips a sentence with no clip, waits at the frontier and reads on when the clip arrives, and Back at a seam replays the sentence just heard. The last sentence still finishes the reading. The mode lasts for the session and is not saved.
+- **One sentence at a time** is a mode, and the mode control is pressed to move through the postures a reading can be read in — `continuous` and `sentence` today, wrapping at the end, with repeating a single sentence still to come. It is the leftmost control, present whether or not anything is playing, lit when it is on, and exposes `aria-pressed` while there are two postures to choose between. While it is on, the reading stops at every sentence seam and waits to be told to go on: the cursor stays on the sentence just heard, the position line is unchanged, and the play control is named **Next sentence**. Continuing skips a sentence with no clip, waits at the frontier and reads on when the clip arrives, and Back at a seam replays the sentence just heard. The last sentence still finishes the reading. The mode lasts for the session and is not saved.
 - Per-sentence audio is generated and played from the sentence popover. No play control is printed on the reading surface itself, so pressing a sentence still costs nothing.
 - Audio never autoplays. Preparing a clip never plays it, a clip arriving never plays it, and playing is always a second, explicit action. Reading on after a wait continues a session the learner started.
 - Once any clip exists (or generation is active), the header's **Reading actions** dropdown includes **Delete audio**. It opens a confirmation dialog; confirmation stops playback and generation, deletes only this reading's clips and audio jobs, resets its audio summary, and leaves a fresh **Generate audio** action. A compact status beneath the header reports success or storage failure.

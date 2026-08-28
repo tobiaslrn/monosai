@@ -47,7 +47,7 @@ const STEP_MODE_LABEL = 'One sentence at a time';
  */
 async function generatedPercent(page: Page): Promise<number> {
   const width = await audioPlayer(page)
-    .locator('[role="progressbar"] .fill.generated')
+    .locator('.track .fill.generated')
     .evaluate((fill) => (fill as HTMLElement).style.inlineSize);
   return Number.parseFloat(width) || 0;
 }
@@ -59,6 +59,17 @@ function sentencePopover(page: Page): Locator {
 /** The fixed player is independent from the reader's CDK popovers. */
 function audioPlayer(page: Page): Locator {
   return page.getByRole('region', { name: 'Reading audio' });
+}
+
+/**
+ * What the player says, which is no longer what it prints.
+ *
+ * The card is two rows of controls and no prose: the position, the run and
+ * every failure live in a hidden live region, so this is where the wording is
+ * asserted.
+ */
+function playerStatus(page: Page): Locator {
+  return audioPlayer(page).locator('[role="status"]');
 }
 
 function audioButton(page: Page): Locator {
@@ -85,9 +96,12 @@ async function expectAudioPlayable(page: Page): Promise<void> {
  * remainder disappearing.
  */
 async function expectAudioComplete(page: Page, total = SENTENCE_COUNT): Promise<void> {
-  await expect(
-    audioPlayer(page).getByText(`${String(total)} sentences ready`, { exact: true }),
-  ).toBeVisible({ timeout: 60_000 });
+  // The whole of what the player says, not a fragment of it: "Stopped with 2 of
+  // 8 sentences ready." contains "8 sentences ready" too, and matching that
+  // called a run that had failed a run that had finished.
+  await expect(playerStatus(page)).toHaveText(`${String(total)} sentences ready`, {
+    timeout: 60_000,
+  });
   await expect(audioPlayer(page).getByRole('button', { name: 'Generate audio' })).toHaveCount(0);
 }
 
@@ -246,11 +260,13 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await openAudioPlayer(page);
 
     expect(callCount(calls), 'opening the player is local').toBe(beforeOpen);
+    // A reading with no audio has nothing to play, so the button in the middle
+    // is the one that makes it. The rest of the transport is reserved rather
+    // than conditional, so the docked card does not change height under the
+    // reading when the first clip lands.
     await expect(audioPlayer(page).getByRole('button', { name: 'Generate audio' })).toBeVisible();
-    // The transport row is reserved rather than conditional, so the docked card
-    // does not change height under the reading when the first clip lands. With
-    // nothing stored there is nothing to press.
-    await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeDisabled();
+    await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toHaveCount(0);
+    await expect(audioPlayer(page).getByRole('button', { name: BACK_LABEL })).toBeDisabled();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
     await expect(audioButton(page)).toHaveAttribute('aria-expanded', 'true');
     await expect(audioButton(page)).toHaveAttribute('aria-controls', 'reading-audio-player');
@@ -283,7 +299,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await openAudioPlayer(page);
     await stopGenerating(page);
-    await expect(audioPlayer(page).getByText(/Stopped/)).toBeVisible({ timeout: 15_000 });
+    await expect(playerStatus(page)).toContainText(/Stopped/, { timeout: 15_000 });
   });
 
   test('stays fixed at the bottom without horizontal overflow or dismissal @mobile', async ({
@@ -300,7 +316,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     });
 
     expect(style.position).toBe('fixed');
-    expect(style.overflowY).toBe('auto');
+    // Nothing inside can grow any more — the card is two rows of controls and
+    // no prose — so it never scrolls and never needs a bounded height.
+    expect(style.overflowY).toBe('visible');
     expect(initialBox).not.toBeNull();
     expect(initialBox?.x).toBeGreaterThanOrEqual(0);
     expect((initialBox?.x ?? 0) + (initialBox?.width ?? 0)).toBeLessThanOrEqual(
@@ -351,7 +369,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expect(audioPlayer(page).getByText(/Stopped with \d+ of 8 sentences ready/)).toBeVisible({
+    await expect(playerStatus(page)).toContainText(/Stopped with \d+ of 8 sentences ready/, {
       timeout: 60_000,
     });
 
@@ -447,19 +465,20 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(startHere).toBeVisible({ timeout: 60_000 });
 
     await startHere.click();
-    await expect(audioPlayer(page).getByText(`Sentence ${String(CONCURRENCY)} of 8`)).toBeVisible({
+    await expect(playerStatus(page)).toContainText(`Sentence ${String(CONCURRENCY)} of 8`, {
       timeout: 15_000,
     });
 
     // Playback catches generation and says so rather than stopping.
-    await expect(
-      audioPlayer(page).getByText(`Waiting for sentence ${String(CONCURRENCY + 1)} of 8`),
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(playerStatus(page)).toContainText(
+      `Waiting for sentence ${String(CONCURRENCY + 1)} of 8`,
+      { timeout: 30_000 },
+    );
 
     // And reads on by itself once the clip it was waiting for is stored.
-    await expect(
-      audioPlayer(page).getByText(`Sentence ${String(CONCURRENCY + 1)} of 8`),
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(playerStatus(page)).toContainText(`Sentence ${String(CONCURRENCY + 1)} of 8`, {
+      timeout: 30_000,
+    });
   });
 
   test('keeps completed clips when a run is stopped, and finishes them after a reload', async ({
@@ -476,7 +495,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // is that finished clips survive rather than that none were made.
     await expect.poll(() => generatedPercent(page), { timeout: 60_000 }).toBeGreaterThan(0);
     await stopGenerating(page);
-    await expect(audioPlayer(page).getByText(/Stopped with \d+ of 8 sentences ready/)).toBeVisible({
+    await expect(playerStatus(page)).toContainText(/Stopped with \d+ of 8 sentences ready/, {
       timeout: 60_000,
     });
 
@@ -515,7 +534,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
 
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
-    await expect(audioPlayer(page).getByText(/Sentence \d+ of 4/)).toBeVisible();
+    await expect(playerStatus(page)).toContainText(/Sentence \d+ of 4/);
 
     await audioButton(page).click();
 
@@ -570,12 +589,12 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expectAudioComplete(page);
 
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
-    await expect(audioPlayer(page).getByText('Sentence 1 of 4')).toBeVisible({ timeout: 15_000 });
+    await expect(playerStatus(page)).toContainText('Sentence 1 of 4', { timeout: 15_000 });
     await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
 
     await audioPlayer(page).getByRole('button', { name: BACK_LABEL }).click();
 
-    await expect(audioPlayer(page).getByText('Sentence 1 of 4')).toBeVisible();
+    await expect(playerStatus(page)).toContainText('Sentence 1 of 4');
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1);
     await expect(audioButton(page)).not.toHaveAttribute('aria-label', 'Audio, ready');
   });
@@ -593,12 +612,14 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
 
-    await expect(audioPlayer(page).getByText('Finished')).toBeVisible({ timeout: 30_000 });
+    await expect(playerStatus(page)).toContainText('Finished', { timeout: 30_000 });
     await expect(audioPlayer(page).getByRole('button', { name: BACK_LABEL })).toBeEnabled();
     await expect(audioPlayer(page).getByRole('button', { name: 'Play again' })).toBeEnabled();
+    // The track is a slider now: the thumb rests on the last sentence rather
+    // than snapping back to the start of a reading that has just been read.
     await expect(
-      audioPlayer(page).getByRole('progressbar', { name: 'Position in this reading' }),
-    ).toHaveAttribute('aria-valuenow', '100');
+      audioPlayer(page).getByRole('slider', { name: 'Position in this reading' }),
+    ).toHaveValue(String(SENTENCE_COUNT));
   });
 
   test('navigates to the next and previous sentence without wrapping', async ({ page }) => {
@@ -612,13 +633,13 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
 
     await audioPlayer(page).getByRole('button', { name: 'Next sentence with audio' }).click();
-    await expect(audioPlayer(page).getByText('Sentence 2 of 4')).toBeVisible({ timeout: 15_000 });
+    await expect(playerStatus(page)).toContainText('Sentence 2 of 4', { timeout: 15_000 });
     await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
 
     // At the start of a sentence Back means the sentence before; a press once
     // one is under way restarts it instead, which the unit tests pin down.
     await audioPlayer(page).getByRole('button', { name: BACK_LABEL }).click();
-    await expect(audioPlayer(page).getByText('Sentence 1 of 4')).toBeVisible({ timeout: 15_000 });
+    await expect(playerStatus(page)).toContainText('Sentence 1 of 4', { timeout: 15_000 });
   });
 
   /**
@@ -644,11 +665,11 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     });
     await expect(continueButton).toBeEnabled({ timeout: 30_000 });
     // Every later sentence has a clip, so only the mode is holding it here.
-    await expect(audioPlayer(page).getByText('Sentence 1 of 4')).toBeVisible();
+    await expect(playerStatus(page)).toContainText('Sentence 1 of 4');
 
     await continueButton.click();
 
-    await expect(audioPlayer(page).getByText('Sentence 2 of 4')).toBeVisible({ timeout: 15_000 });
+    await expect(playerStatus(page)).toContainText('Sentence 2 of 4', { timeout: 15_000 });
   });
 
   test('deletes this reading audio and regenerates every sentence from scratch @mobile @smoke', async ({

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   AudioPlaybackStore,
   type PlaybackFailure,
+  type PlaybackMode,
   type PlaybackStatus,
 } from '../../application/audio/audio-playback.store';
 import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
@@ -31,12 +32,13 @@ class StubPlaybackStore {
   readonly nextIsAvailable = signal(true);
   readonly selectionIsAvailable = signal(true);
   readonly failureSignal = signal<PlaybackFailure | null>(null);
-  readonly stepModeSignal = signal(false);
+  readonly modeSignal = signal<PlaybackMode>('continuous');
 
   readonly calls: string[] = [];
 
   readonly status = this.statusSignal.asReadonly();
-  readonly stepMode = this.stepModeSignal.asReadonly();
+  readonly mode = this.modeSignal.asReadonly();
+  readonly stepMode = computed(() => this.modeSignal() === 'sentence');
   readonly failure = this.failureSignal.asReadonly();
   readonly sentenceCount = computed(() => this.total());
   readonly availableCount = computed(() => this.ready());
@@ -57,10 +59,11 @@ class StubPlaybackStore {
   next = (): Promise<void> => this.record('next');
   previous = (): Promise<void> => this.record('previous');
   continueReading = (): Promise<void> => this.record('continueReading');
+  seekTo = (position: number): Promise<void> => this.record(`seekTo:${String(position)}`);
 
-  setStepMode(enabled: boolean): void {
-    this.calls.push(`setStepMode:${String(enabled)}`);
-    this.stepModeSignal.set(enabled);
+  cycleMode(): void {
+    this.calls.push('cycleMode');
+    this.modeSignal.update((mode) => (mode === 'continuous' ? 'sentence' : 'continuous'));
   }
 
   isAvailable(id: SentenceId | null): boolean {
@@ -91,14 +94,16 @@ class StubPlaybackStore {
   template: `<mn-reading-player
     [progress]="progress()"
     [selectedSentenceId]="selected()"
+    [modelConfigured]="modelConfigured()"
     (generate)="emitted.push('generate')"
     (retryGeneration)="emitted.push('retry')"
-    (dismissJob)="emitted.push('dismiss')"
+    (cancelGeneration)="emitted.push('cancel')"
   />`,
 })
 class HostComponent {
   readonly progress = signal<AudioJobProgress>({ kind: 'idle' });
   readonly selected = signal<SentenceId | null>(null);
+  readonly modelConfigured = signal(true);
   readonly emitted: string[] = [];
 }
 
@@ -124,31 +129,44 @@ describe('ReadingPlayerComponent', () => {
   const NEXT_LABEL = 'Next sentence with audio';
   const STOP_LABEL = 'Stop reading';
   const WAITING_LABEL = 'Waiting for the next sentence';
+  const MODE_LABEL = 'One sentence at a time';
 
   function control(element: HTMLElement, label: string): HTMLButtonElement | null {
     return element.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
   }
 
-  function press(element: HTMLElement, text: string): void {
-    [...element.querySelectorAll<HTMLButtonElement>('button')]
-      .find((button) => button.textContent.includes(text))
-      ?.click();
+  /**
+   * What the player says out loud.
+   *
+   * The card prints nothing: every string it used to render lives in a hidden
+   * live region, so this is where the wording is asserted.
+   */
+  function said(element: HTMLElement): string {
+    return element.querySelector('[role="status"]')?.textContent ?? '';
+  }
+
+  function scrubber(element: HTMLElement): HTMLInputElement | null {
+    return element.querySelector<HTMLInputElement>('input.scrub');
   }
 
   describe('with no audio yet', () => {
-    it('offers to generate it, and says how many sentences that is', () => {
+    it('is a generate button where the play button would be', () => {
       store.total.set(13);
 
       const element = render().nativeElement as HTMLElement;
 
-      expect(element.textContent).toContain('13 sentences');
-      expect(element.textContent).toContain('Generate audio');
-      // The transport row is reserved rather than conditional, so the docked
-      // card does not change height — and reflow the reading beneath it — the
-      // moment the first clip lands. There is nothing to press yet.
-      expect(control(element, 'Play')?.disabled).toBe(true);
+      // The learner opening a player for a reading with no audio wants the
+      // audio, not a dead transport, so the primary control is the one that
+      // makes it — in the same place and the same shape as Play.
+      expect(control(element, 'Generate audio')?.disabled).toBe(false);
+      expect(control(element, 'Play')).toBeNull();
+      expect(said(element)).toContain('13 sentences');
+      // The rest of the transport is reserved rather than conditional, so the
+      // docked card does not change height — and reflow the reading beneath it
+      // — the moment the first clip lands.
       expect(control(element, NEXT_LABEL)?.disabled).toBe(true);
       expect(control(element, STOP_LABEL)?.disabled).toBe(true);
+      expect(scrubber(element)?.disabled).toBe(true);
     });
 
     it('generates only when the learner asks, and never on open', () => {
@@ -157,103 +175,106 @@ describe('ReadingPlayerComponent', () => {
 
       expect(fixture.componentInstance.emitted).toEqual([]);
 
-      press(fixture.nativeElement as HTMLElement, 'Generate audio');
+      control(fixture.nativeElement as HTMLElement, 'Generate audio')?.click();
 
       expect(fixture.componentInstance.emitted).toEqual(['generate']);
     });
 
-    it('uses the internal router for audio setup', () => {
+    /** Nothing can be generated without a voice, so the offer is the setup. */
+    it('points at settings, and offers no generation, without a model', () => {
       store.total.set(2);
-      const element = render().nativeElement as HTMLElement;
-      const link = [...element.querySelectorAll<HTMLAnchorElement>('a')].find((anchor) =>
-        anchor.textContent.includes('Set up audio model'),
-      );
+      const fixture = render();
+      fixture.componentInstance.modelConfigured.set(false);
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+      const link = element.querySelector<HTMLAnchorElement>('a[aria-label="Set up audio model"]');
 
       expect(link?.getAttribute('href')).toBe('/settings');
+      expect(control(element, 'Generate audio')).toBeNull();
     });
 
     it('renders no action when the reading has no sentences', () => {
       const element = render().nativeElement as HTMLElement;
 
-      expect(element.textContent).not.toContain('Generate audio');
+      expect(control(element, 'Generate audio')).toBeNull();
       expect(element.querySelector('a')).toBeNull();
     });
   });
 
   describe('while it is being generated', () => {
-    it('reports the run through the track alone, with no count in words', () => {
+    function running(completed: number): AudioJobProgress {
+      return { kind: 'running', counts: { total: 13, requested: 13, completed, failed: 0 } };
+    }
+
+    it('reports the run through the track and the control that stops it', () => {
       store.total.set(13);
       store.ready.set(3);
       const fixture = render();
-      fixture.componentInstance.progress.set({
-        kind: 'running',
-        counts: { total: 13, requested: 13, completed: 3, failed: 0 },
-      });
+      fixture.componentInstance.progress.set(running(3));
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
-      // The track is the whole report: one fill for how much of the reading has
+      // The track is the report: one fill for how much of the reading has
       // audio, measured over the reading rather than over the job, so a retry
       // covering two missing sentences never renders as half of the reading.
-      // No count in words — it said again what the bar was already saying.
-      expect(element.querySelectorAll('[role="progressbar"]')).toHaveLength(1);
-      expect(element.textContent).not.toContain('sentences ready');
-      expect(element.textContent).not.toContain('Stop');
-      expect(
-        element.querySelector('[role="progressbar"] .fill.generated')?.getAttribute('style'),
-      ).toContain('23%');
+      expect(element.querySelector('.fill.generated')?.getAttribute('style')).toContain('23%');
+      expect(element.querySelector('.track')?.classList.contains('is-generating')).toBe(true);
+      expect(control(element, 'Stop generating audio')).not.toBeNull();
+      expect(control(element, 'Generate audio')).toBeNull();
+    });
+
+    it('stops the run from the ring around it', () => {
+      store.total.set(13);
+      store.ready.set(3);
+      const fixture = render();
+      fixture.componentInstance.progress.set(running(3));
+      fixture.detectChanges();
+
+      control(fixture.nativeElement as HTMLElement, 'Stop generating audio')?.click();
+
+      expect(fixture.componentInstance.emitted).toEqual(['cancel']);
     });
 
     /**
      * The point of the four-way queue: what has already arrived is playable
-     * while the rest is still being made. The run itself adds nothing to the
-     * card — the track's fill is the report, and stopping a run lives in the
-     * reader menu — so a playable prefix leaves the player at two rows.
+     * while the rest is still being made.
      */
-    it('shows the transport, and adds nothing else, once a prefix exists', () => {
+    it('plays the prefix while the rest is still being made', () => {
       store.total.set(13);
       store.ready.set(4);
       const fixture = render();
-      fixture.componentInstance.progress.set({
-        kind: 'running',
-        counts: { total: 13, requested: 13, completed: 4, failed: 0 },
-      });
+      fixture.componentInstance.progress.set(running(4));
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
       expect(control(element, 'Play')?.disabled).toBe(false);
-      expect(
-        element.querySelector('[role="progressbar"] .fill.generated')?.getAttribute('style'),
-      ).toContain('31%');
-      expect(element.querySelector('.context')).toBeNull();
+      expect(element.querySelector('.fill.generated')?.getAttribute('style')).toContain('31%');
     });
 
-    /** The bar is what says a run is still going, so it has to say it. */
+    /** The bar is what says a run is still going, so it has to stop saying it. */
     it('marks the track while a run is in flight, and only then', () => {
       store.total.set(13);
       store.ready.set(4);
       const fixture = render();
-      fixture.componentInstance.progress.set({
-        kind: 'running',
-        counts: { total: 13, requested: 13, completed: 4, failed: 0 },
-      });
+      fixture.componentInstance.progress.set(running(4));
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
-      expect(element.querySelector('.bar')?.classList.contains('is-generating')).toBe(true);
+      expect(element.querySelector('.track')?.classList.contains('is-generating')).toBe(true);
 
+      store.ready.set(13);
       fixture.componentInstance.progress.set({
         kind: 'complete',
         counts: { total: 13, requested: 13, completed: 13, failed: 0 },
       });
       fixture.detectChanges();
 
-      expect(element.querySelector('.bar')?.classList.contains('is-generating')).toBe(false);
+      expect(element.querySelector('.track')?.classList.contains('is-generating')).toBe(false);
     });
   });
 
   describe('when generation stopped', () => {
-    it('names what is ready, what failed, and both ways out', () => {
+    it('says what is ready and what failed, and offers the run again', () => {
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'failed',
@@ -266,12 +287,14 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
-      expect(element.textContent).toContain('Stopped with 4 of 13 sentences ready');
-      expect(element.querySelector('[role="alert"]')).not.toBeNull();
+      expect(said(element)).toContain('Stopped with 4 of 13 sentences ready');
+      const retry = control(element, 'Try again');
+      // The whole of what went wrong, for a pointer that rests on it: a card
+      // that floats over the reading has no room for a paragraph.
+      expect(retry?.title).toContain('Stopped with 4 of 13 sentences ready');
+      retry?.click();
 
-      press(element, 'Try again');
-      press(element, 'Dismiss');
-      expect(fixture.componentInstance.emitted).toEqual(['retry', 'dismiss']);
+      expect(fixture.componentInstance.emitted).toEqual(['retry']);
     });
 
     /** The prefix that did arrive stays playable while the remainder is offered. */
@@ -291,7 +314,27 @@ describe('ReadingPlayerComponent', () => {
       const element = fixture.nativeElement as HTMLElement;
 
       expect(control(element, 'Play')?.disabled).toBe(false);
-      expect(element.textContent).toContain('Try again');
+      expect(control(element, 'Try again')).not.toBeNull();
+    });
+
+    /**
+     * A run can stop after its last outstanding sentence lands. There is
+     * nothing left to retry then, and a red control offering to do it again is
+     * a report of a problem the learner does not have.
+     */
+    it('says nothing about a run that stopped with the reading complete', () => {
+      store.total.set(4);
+      store.ready.set(4);
+      const fixture = render();
+      fixture.componentInstance.progress.set({
+        kind: 'cancelled',
+        counts: { total: 4, requested: 4, completed: 4, failed: 0 },
+      });
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(control(element, 'Try again')).toBeNull();
+      expect(control(element, 'Generate audio')).toBeNull();
     });
 
     it('reports a storage failure in the layer that refused', () => {
@@ -303,9 +346,7 @@ describe('ReadingPlayerComponent', () => {
       });
       fixture.detectChanges();
 
-      expect(
-        (fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent,
-      ).toContain('Saving failed: No room left.');
+      expect(said(fixture.nativeElement as HTMLElement)).toContain('Saving failed: No room left.');
     });
 
     /**
@@ -325,8 +366,8 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
-      expect(element.textContent).toContain('Audio could not be prepared.');
-      expect(element.textContent).not.toContain('of 0');
+      expect(said(element)).toContain('Audio could not be prepared.');
+      expect(said(element)).not.toContain('of 0');
     });
 
     it('says what is ready after a cancellation', () => {
@@ -337,7 +378,7 @@ describe('ReadingPlayerComponent', () => {
       });
       fixture.detectChanges();
 
-      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      expect(said(fixture.nativeElement as HTMLElement)).toContain(
         'Stopped with 4 of 13 sentences ready',
       );
     });
@@ -349,12 +390,12 @@ describe('ReadingPlayerComponent', () => {
       store.ready.set(6);
     });
 
-    it('shows the transport and the position, and nothing left to prepare', () => {
+    it('shows the transport, and nothing left to prepare', () => {
       const element = render().nativeElement as HTMLElement;
 
-      expect(element.textContent).toContain('6 sentences ready');
+      expect(said(element)).toContain('6 sentences ready');
       expect(control(element, 'Play')).not.toBeNull();
-      expect(element.textContent).not.toContain('Generate audio');
+      expect(control(element, 'Generate audio')).toBeNull();
       expect(control(element, BACK_LABEL)).not.toBeNull();
       expect(control(element, 'Pause')).toBeNull();
       expect(control(element, NEXT_LABEL)).not.toBeNull();
@@ -364,7 +405,8 @@ describe('ReadingPlayerComponent', () => {
 
     /**
      * A partial set is playable and still incomplete, so the player says both:
-     * the transport for what exists, and the offer for what does not.
+     * the transport for what exists, and the one contextual control for what
+     * does not.
      */
     it('offers the remainder beside the transport when the set is partial', () => {
       store.ready.set(4);
@@ -372,13 +414,9 @@ describe('ReadingPlayerComponent', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(control(element, 'Play')?.disabled).toBe(false);
-      expect(element.textContent).toContain('4 of 6 sentences have audio');
-      expect(element.textContent).toContain('Generate audio');
-      // The rail already says how much there is; the position line does not
-      // repeat it while nothing is playing. It says something, though: an empty
-      // live region beside a row of controls reads as a label that failed.
-      expect(element.textContent).not.toContain('sentences ready');
-      expect(element.querySelector('.position')?.textContent).toContain('Not playing');
+      expect(control(element, 'Generate audio')?.title).toContain('4 of 6 sentences have audio');
+      expect(said(element)).toContain('Not playing');
+      expect(said(element)).not.toContain('sentences ready');
     });
 
     it('plays on the learner pressing play, and never on its own', () => {
@@ -398,7 +436,7 @@ describe('ReadingPlayerComponent', () => {
       const fixture = render();
       const element = fixture.nativeElement as HTMLElement;
 
-      expect(element.textContent).toContain('Sentence 2 of 6');
+      expect(said(element)).toContain('Sentence 2 of 6');
       control(element, 'Pause')?.click();
       expect(store.calls).toEqual(['pause']);
 
@@ -449,7 +487,7 @@ describe('ReadingPlayerComponent', () => {
       fixture.componentInstance.selected.set(sentenceId('s3'));
       fixture.detectChanges();
 
-      press(fixture.nativeElement as HTMLElement, 'Start from this sentence');
+      control(fixture.nativeElement as HTMLElement, 'Start from this sentence')?.click();
 
       expect(store.calls).toEqual(['playFrom:s3']);
     });
@@ -457,7 +495,7 @@ describe('ReadingPlayerComponent', () => {
     it('offers no start-from-here when no sentence is open', () => {
       const element = render().nativeElement as HTMLElement;
 
-      expect(element.textContent).not.toContain('Start from this sentence');
+      expect(control(element, 'Start from this sentence')).toBeNull();
     });
 
     it('offers no start-from-here when the open sentence has no clip yet', () => {
@@ -466,9 +504,58 @@ describe('ReadingPlayerComponent', () => {
       fixture.componentInstance.selected.set(sentenceId('s3'));
       fixture.detectChanges();
 
-      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
-        'Start from this sentence',
-      );
+      expect(control(fixture.nativeElement as HTMLElement, 'Start from this sentence')).toBeNull();
+    });
+  });
+
+  /**
+   * The track is how a reading is aimed at rather than stepped through: holes
+   * and all, one drag reaches any sentence that has a clip.
+   */
+  describe('dragging the track', () => {
+    beforeEach(() => {
+      store.total.set(6);
+      store.ready.set(6);
+    });
+
+    it('is a slider over the sentences of the reading', () => {
+      const element = render().nativeElement as HTMLElement;
+      const scrub = scrubber(element);
+
+      expect(scrub?.getAttribute('max')).toBe('6');
+      expect(scrub?.getAttribute('aria-label')).toBe('Position in this reading');
+      expect(scrub?.getAttribute('aria-valuetext')).toBe('Not started, 6 of 6 with audio');
+    });
+
+    it('seeks where it is released, and not before', () => {
+      const fixture = render();
+      const scrub = scrubber(fixture.nativeElement as HTMLElement);
+      if (scrub === null) {
+        throw new Error('The track has no slider.');
+      }
+
+      scrub.value = '3';
+      scrub.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      // The fill follows the thumb while it is dragged, so the track reads as
+      // one movement rather than snapping back until the drag is let go.
+      expect(store.calls).toEqual([]);
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('.fill.played')?.getAttribute('style'),
+      ).toContain('50%');
+
+      scrub.dispatchEvent(new Event('change'));
+
+      expect(store.calls).toEqual(['seekTo:3']);
+    });
+
+    it('cannot be dragged before anything has audio', () => {
+      store.ready.set(0);
+
+      const element = render().nativeElement as HTMLElement;
+
+      expect(scrubber(element)?.disabled).toBe(true);
     });
   });
 
@@ -485,9 +572,7 @@ describe('ReadingPlayerComponent', () => {
     it('says which sentence it is waiting for', () => {
       const element = render().nativeElement as HTMLElement;
 
-      expect(element.querySelector('[role="status"]')?.textContent).toContain(
-        'Waiting for sentence 5 of 6',
-      );
+      expect(said(element)).toContain('Waiting for sentence 5 of 6');
     });
 
     /**
@@ -506,14 +591,6 @@ describe('ReadingPlayerComponent', () => {
   });
 
   describe('one sentence at a time', () => {
-    const TOGGLE_LABEL = 'One sentence at a time';
-
-    function toggle(element: HTMLElement): HTMLButtonElement | undefined {
-      return [...element.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
-        button.textContent.includes(TOGGLE_LABEL),
-      );
-    }
-
     it('offers the mode before there is anything to play, and never moves', () => {
       store.total.set(6);
       const fixture = render();
@@ -522,51 +599,53 @@ describe('ReadingPlayerComponent', () => {
       // Persistent rather than conditional: a control that appears when the
       // first clip lands changes the docked card's height and reflows the
       // reading under it.
-      expect(toggle(element)?.getAttribute('aria-pressed')).toBe('false');
+      expect(control(element, MODE_LABEL)?.getAttribute('aria-pressed')).toBe('false');
 
       store.ready.set(6);
       store.statusSignal.set('playing');
       store.current.set(sentenceId('s1'));
       fixture.detectChanges();
 
-      expect(toggle(element)?.getAttribute('aria-pressed')).toBe('false');
+      expect(control(element, MODE_LABEL)?.getAttribute('aria-pressed')).toBe('false');
     });
 
-    it('turns the mode on and says that it is on', () => {
+    /** One control, pressed to move through the postures a reading can take. */
+    it('cycles the mode on and off again', () => {
       store.total.set(6);
       store.ready.set(6);
       const fixture = render();
       const element = fixture.nativeElement as HTMLElement;
 
-      toggle(element)?.click();
+      control(element, MODE_LABEL)?.click();
       fixture.detectChanges();
 
-      expect(store.calls).toEqual(['setStepMode:true']);
-      expect(toggle(element)?.getAttribute('aria-pressed')).toBe('true');
+      expect(store.calls).toEqual(['cycleMode']);
+      expect(control(element, MODE_LABEL)?.getAttribute('aria-pressed')).toBe('true');
+      expect(control(element, MODE_LABEL)?.classList.contains('on')).toBe(true);
 
-      toggle(element)?.click();
+      control(element, MODE_LABEL)?.click();
       fixture.detectChanges();
 
-      expect(store.calls).toEqual(['setStepMode:true', 'setStepMode:false']);
-      expect(toggle(element)?.getAttribute('aria-pressed')).toBe('false');
+      expect(store.calls).toEqual(['cycleMode', 'cycleMode']);
+      expect(control(element, MODE_LABEL)?.getAttribute('aria-pressed')).toBe('false');
     });
 
     /**
      * Held at a seam, the cursor genuinely is on the sentence just heard, so
-     * the position line is left alone and the button carries what the next
-     * press does.
+     * the position is left alone and the button carries what the next press
+     * does.
      */
     it('names the next sentence on Play while it is held at a seam', () => {
       store.total.set(6);
       store.ready.set(6);
       store.position.set(2);
       store.current.set(sentenceId('s2'));
-      store.stepModeSignal.set(true);
+      store.modeSignal.set('sentence');
       store.statusSignal.set('stepped');
 
       const element = render().nativeElement as HTMLElement;
 
-      expect(element.querySelector('.position')?.textContent).toContain('Sentence 2 of 6');
+      expect(said(element)).toContain('Sentence 2 of 6');
       expect(control(element, 'Next sentence')?.disabled).toBe(false);
       expect(control(element, STOP_LABEL)?.disabled).toBe(false);
     });
@@ -601,22 +680,17 @@ describe('ReadingPlayerComponent', () => {
       store.statusSignal.set('ended');
     });
 
-    it('says so, keeps the bar full, and can replay the last sentence', () => {
+    it('says so, keeps the track full, and can replay the last sentence', () => {
       const element = render().nativeElement as HTMLElement;
 
-      expect(element.querySelector('.position')?.textContent).toContain('Finished');
-      expect(element.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe(
-        '100',
-      );
+      expect(said(element)).toContain('Finished');
+      expect(element.querySelector('.fill.played')?.getAttribute('style')).toContain('100%');
+      expect(scrubber(element)?.value).toBe('6');
       expect(control(element, BACK_LABEL)?.disabled).toBe(false);
       expect(control(element, 'Play again')?.disabled).toBe(false);
     });
   });
 
-  /**
-   * Clips arrive out of order, so a reading can have audio without having the
-   * audio Play from the beginning would need.
-   */
   /**
    * Clips arrive out of order, so a reading can have audio without having the
    * audio that starting from sentence one would need. Refusing to play at all
@@ -659,15 +733,18 @@ describe('ReadingPlayerComponent', () => {
     });
 
     /**
-     * The banner used to be cleared only by a successful play, so a failure
-     * about a sentence the learner had moved on from stayed on screen until the
-     * player was destroyed.
+     * The failure used to be cleared only by a successful play, so a report
+     * about a sentence the learner had moved on from stayed until the player
+     * was destroyed. It is now one press, on the control that carries it.
      */
-    it('can be dismissed', () => {
+    it('can be dismissed, and says what it is about while it is there', () => {
       store.failureSignal.set({ kind: 'decode-failed', position: 5 });
       const fixture = render();
+      const dismiss = control(fixture.nativeElement as HTMLElement, 'Dismiss');
 
-      press(fixture.nativeElement as HTMLElement, 'Dismiss');
+      expect(dismiss?.title).toContain('The audio for sentence 5 could not be played');
+
+      dismiss?.click();
 
       expect(store.calls).toEqual(['acknowledgeFailure']);
     });

@@ -1,13 +1,43 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
 import type { SentenceId } from '../../domain/shared/ids';
+import type { IconName } from '../../shared-ui/icon/icon-set';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
 
-/** What the card has to say about generation beneath the transport, if anything. */
+/** What the card has to say about generation, if anything. */
 export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
+
+/**
+ * The one contextual control, and what it is at this moment.
+ *
+ * Everything the card used to say in a band of prose and buttons — prepare
+ * this, stop that, this failed — is one slot in the control row whose icon,
+ * name and tint say which of them it currently is.
+ */
+export interface AuxAction {
+  readonly kind: 'cancel' | 'generate' | 'dismiss' | 'settings';
+  readonly icon: IconName;
+  /** The accessible name, and the whole of what the button says out loud. */
+  readonly label: string;
+  /** The long version, for a pointer that rests on it. */
+  readonly title: string;
+  readonly tone: 'accent' | 'danger' | 'secondary';
+}
+
+/** Geometry of the ring drawn around the aux button while a run is going. */
+const RING_RADIUS = 19;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 /**
  * Everything to do with a reading audio, in one player.
@@ -18,17 +48,25 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
  * learner had no way to find out the application could read to them at all. The
  * header audio button is always there, and this is what it opens.
  *
+ * It is **two rows and no prose**: a track that can be dragged, and one row of
+ * controls. Everything the card used to print — the position, how much has been
+ * generated, what a stopped run managed, why playback stopped — is said by the
+ * state of a control or by a hidden live region, never by a paragraph. A player
+ * that floats over the reading has no room to be a form, and a learner reading
+ * Japanese does not want an English status report in their peripheral vision.
+ *
+ * Nothing is removed for a screen reader: the position line, the job line and
+ * every failure are announced exactly as before, through `.mn-visually-hidden`
+ * live regions and the accessible names of the icons.
+ *
  * Transport and generation are shown **together** rather than one instead of
  * the other (ADR 0034). Once any clip exists the transport is the primary thing
  * in the card, and the run that is still filling in the rest reports itself
- * through the track alone. Showing only the run would hide audio the learner
- * has already paid for and can already listen to.
+ * through the track and the ring around the aux button.
  *
- * The transport row and the track are **always rendered**, disabled while there
- * is nothing to play. The player is docked to the bottom edge and publishes its
- * height, so every block that appeared or disappeared mid-run reflowed the
- * reading underneath it — measured at four different heights during a single
- * generation.
+ * Every slot is **always rendered**, so the card is one fixed height and one
+ * fixed set of positions. It is docked to the bottom edge and publishes its
+ * height, so anything that came and went reflowed the reading underneath it.
  *
  * There is **one** track, not two. Playback position and generation coverage
  * are measured over the same denominator, so they compose the way a buffered
@@ -47,276 +85,275 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
   imports: [IconComponent, RouterLink],
   template: `
     <div class="player">
-      <div class="transport">
-        <!--
-          Back replays the sentence being read before it steps to the one
-          before it, because the reason to reach for it is that the sentence
-          went past too fast. The name says so, since the icon cannot.
-        -->
-        <button
-          type="button"
-          class="mn-icon-button step"
-          aria-label="Restart this sentence, or go back to the one before"
-          [disabled]="!store.canGoPrevious()"
-          (click)="previous()"
-        >
-          <mn-icon name="skip-back" [size]="20" />
-        </button>
+      <!--
+        What the card used to print. The position line keeps its live region and
+        its wording; the contextual line follows it in the same announcement, so
+        a screen reader hears one sentence about where the reading is rather
+        than two regions competing at every seam.
+      -->
+      <p class="mn-visually-hidden" role="status">{{ announcement() }}</p>
+      @if (failureMessage(); as message) {
+        <p class="mn-visually-hidden" role="alert">{{ message }}</p>
+      }
 
-        @if (isPlaying()) {
-          <button type="button" class="play" aria-label="Pause" (click)="store.pause()">
-            <mn-icon name="pause" [size]="24" />
-          </button>
-        } @else {
-          <button
-            type="button"
-            class="play"
-            [attr.aria-label]="playLabel()"
-            [disabled]="!canPressPlay()"
-            (click)="play()"
-          >
-            <mn-icon name="play" [size]="24" />
-          </button>
-        }
-
-        <button
-          type="button"
-          class="mn-icon-button step"
-          aria-label="Next sentence with audio"
-          [disabled]="!store.canGoNext()"
-          (click)="next()"
-        >
-          <mn-icon name="skip-forward" [size]="20" />
-        </button>
-
-        <!--
-          A stop that is not "hide the player". Closing the card used to be the
-          only way to end a session, so looking at the text underneath silenced
-          the reading; and a session waiting at the frontier for a clip that a
-          failed run will never produce had no live control at all.
-        -->
-        <button
-          type="button"
-          class="mn-icon-button step"
-          aria-label="Stop reading"
-          [disabled]="!store.isActive()"
-          (click)="store.stop()"
-        >
-          <mn-icon name="stop" [size]="18" />
-        </button>
-
-        <p class="position" role="status">{{ positionLabel() }}</p>
-      </div>
-
-      <div
-        class="bar"
-        [class.is-generating]="isGenerating()"
-        role="progressbar"
-        aria-label="Position in this reading"
-        [attr.aria-valuenow]="percent()"
-        [attr.aria-valuetext]="trackLabel()"
-        aria-valuemin="0"
-        aria-valuemax="100"
-      >
+      <!--
+        One track carrying both numbers, and the only way to move through the
+        reading by hand: what has been generated behind how far playback has
+        reached, with a range on top of it so the reading can be aimed at rather
+        than stepped through.
+      -->
+      <div class="track" [class.is-generating]="isGenerating()">
+        <span class="rail"></span>
         <span class="fill generated" [style.inline-size.%]="generatedPercent()"></span>
         <span class="fill played" [style.inline-size.%]="percent()"></span>
+        <input
+          class="scrub"
+          type="range"
+          min="0"
+          [max]="maxPosition()"
+          step="1"
+          [value]="positionValue()"
+          [disabled]="!store.hasPlayableAudio()"
+          aria-label="Position in this reading"
+          [attr.aria-valuetext]="trackLabel()"
+          (input)="onScrubInput($event)"
+          (change)="onScrubCommit($event)"
+        />
       </div>
 
-      <!--
-Always rendered rather than shown while a session is live: a stable
-        card height is worth keeping, and the mode is chosen before pressing
-        Play at least as often as during a reading. It is a row of its own
-        because the transport is already four controls and a status line at
-        412px, and a fifth icon there would be neither reachable nor readable.
-      -->
-      <div class="modes">
-        <button
-          type="button"
-          class="mode"
-          [class.on]="store.stepMode()"
-          [attr.aria-pressed]="store.stepMode()"
-          (click)="toggleStepMode()"
-        >
-          One sentence at a time
-        </button>
-      </div>
+      <div class="controls">
+        <div class="side">
+          <!--
+            The mode control, in the idiom every media player uses for one:
+            the same glyph always, lit when it is on. It is here rather than in
+            a row of its own because a row that held one text button was a
+            third of the height of a card that floats over the reading.
+          -->
+          <button
+            type="button"
+            class="slot mode"
+            [class.on]="store.stepMode()"
+            [attr.aria-pressed]="store.stepMode()"
+            title="One sentence at a time"
+            aria-label="One sentence at a time"
+            (click)="cycleMode()"
+          >
+            <mn-icon name="step" [size]="20" />
+          </button>
 
-      <!--
-        One contextual block, or none. Everything the card might have to say
-        beneath the controls shares a single divider and a single padded band,
-        so the player is two rows whenever it has nothing to add — which,
-        while a run is going, is always: the track's quiet fill is the report,
-        and stopping the run lives in the reader menu beside Delete audio.
-      -->
-      @if (hasContext()) {
-        <div class="context">
-          @switch (rail()) {
-            @case ('offer') {
-              <p class="line">{{ offerLabel() }}</p>
-              <div class="row">
-                <button
-                  type="button"
-                  class="mn-button mn-button--primary"
-                  (click)="generate.emit()"
-                >
-                  Generate audio
-                </button>
-                @if (!modelConfigured()) {
-                  <a class="mn-button" routerLink="/settings">Set up audio model</a>
-                }
-              </div>
+          <!--
+            A stop that is not "hide the player". Closing the card used to be the
+            only way to end a session, so looking at the text underneath silenced
+            the reading; and a session waiting at the frontier for a clip that a
+            failed run will never produce had no live control at all.
+          -->
+          <button
+            type="button"
+            class="slot"
+            aria-label="Stop reading"
+            title="Stop reading"
+            [disabled]="!store.isActive()"
+            (click)="store.stop()"
+          >
+            <mn-icon name="stop" [size]="18" />
+          </button>
+        </div>
+
+        <div class="centre">
+          <!--
+            Back replays the sentence being read before it steps to the one
+            before it, because the reason to reach for it is that the sentence
+            went past too fast. The name says so, since the icon cannot.
+          -->
+          <button
+            type="button"
+            class="slot"
+            aria-label="Restart this sentence, or go back to the one before"
+            title="Restart this sentence, or go back to the one before"
+            [disabled]="!store.canGoPrevious()"
+            (click)="previous()"
+          >
+            <mn-icon name="skip-back" [size]="20" />
+          </button>
+
+          <!--
+            The centre is whatever the primary verb is right now. A reading with
+            no audio at all has nothing to play, so the button that would be a
+            dead Play is the one that makes the audio instead.
+          -->
+          @switch (centreAction()) {
+            @case ('generate') {
+              <button
+                type="button"
+                class="primary"
+                aria-label="Generate audio"
+                title="Generate audio"
+                (click)="generate.emit()"
+              >
+                <mn-icon name="generate" [size]="24" />
+              </button>
             }
-
-            @case ('stopped') {
-              <p class="line" role="status">{{ jobLine() }}</p>
-              @if (jobFailure(); as failure) {
-                <p class="mn-error" role="alert">{{ failure }}</p>
-              }
-              <div class="row">
-                <button type="button" class="mn-button" (click)="retryGeneration.emit()">
-                  Try again
-                </button>
-                <button type="button" class="mn-button" (click)="dismissJob.emit()">Dismiss</button>
-              </div>
+            @case ('pause') {
+              <button
+                type="button"
+                class="primary"
+                aria-label="Pause"
+                title="Pause"
+                (click)="store.pause()"
+              >
+                <mn-icon name="pause" [size]="24" />
+              </button>
             }
-
             @default {
-              <!-- Running or complete: the track says it, and says it quietly. -->
+              <button
+                type="button"
+                class="primary"
+                [attr.aria-label]="playLabel()"
+                [title]="playLabel()"
+                [disabled]="!canPressPlay()"
+                (click)="play()"
+              >
+                <mn-icon name="play" [size]="24" />
+              </button>
             }
           }
 
+          <button
+            type="button"
+            class="slot"
+            aria-label="Next sentence with audio"
+            title="Next sentence with audio"
+            [disabled]="!store.canGoNext()"
+            (click)="next()"
+          >
+            <mn-icon name="skip-forward" [size]="20" />
+          </button>
+        </div>
+
+        <div class="side end">
           <!--
             Start from where the learner is rather than from the top. Offered
             only when a sentence was open when the player was opened and that
             sentence has a clip, because "this sentence" needs somewhere to mean.
+            Its slot is held open when it is not, so nothing beside it moves.
           -->
           @if (canStartFromSelection()) {
-            <button type="button" class="mn-button" (click)="playFromSelection()">
-              Start from this sentence
+            <button
+              type="button"
+              class="slot"
+              aria-label="Start from this sentence"
+              title="Start from this sentence"
+              (click)="playFromSelection()"
+            >
+              <mn-icon name="sentence-start" [size]="20" />
             </button>
+          } @else {
+            <span class="slot" aria-hidden="true"></span>
           }
 
-          @if (failureMessage(); as message) {
-            <p class="mn-error" role="alert">{{ message }}</p>
-            <div class="row">
-              <!--
-                A playback failure used to be cleared only by a successful play,
-                so a banner about a sentence the learner had moved on from
-                stayed on screen until the player was destroyed.
-              -->
-              <button type="button" class="mn-button" (click)="store.acknowledgeFailure()">
-                Dismiss
+          @if (auxAction(); as aux) {
+            @if (aux.kind === 'settings') {
+              <a
+                [class]="'slot tone-' + aux.tone"
+                routerLink="/settings"
+                [attr.aria-label]="aux.label"
+                [title]="aux.title"
+              >
+                <mn-icon [name]="aux.icon" [size]="20" />
+              </a>
+            } @else {
+              <button
+                type="button"
+                [class]="'slot tone-' + aux.tone"
+                [attr.aria-label]="aux.label"
+                [title]="aux.title"
+                (click)="pressAux(aux)"
+              >
+                @if (aux.kind === 'cancel') {
+                  <!--
+                    The run, drawn where the control that stops it is. A count in
+                    words underneath said what the ring and the track already say.
+                  -->
+                  <svg class="ring" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
+                    <circle class="ring-track" cx="22" cy="22" [attr.r]="ringRadius" />
+                    <circle
+                      class="ring-fill"
+                      cx="22"
+                      cy="22"
+                      [attr.r]="ringRadius"
+                      [attr.stroke-dasharray]="ringCircumference"
+                      [attr.stroke-dashoffset]="ringOffset()"
+                    />
+                  </svg>
+                }
+                <mn-icon [name]="aux.icon" [size]="aux.kind === 'cancel' ? 14 : 20" />
               </button>
-            </div>
+            }
+          } @else {
+            <span class="slot" aria-hidden="true"></span>
           }
         </div>
-      }
+      </div>
     </div>
   `,
   styles: `
     .player {
       display: flex;
       flex-direction: column;
-      gap: var(--space-3);
+      gap: var(--space-2);
       min-width: 0;
     }
 
     /*
-     * The transport reads left to right as one row: the controls, then where in
-     * the reading they are acting. Centring it left the position line on a row
-     * of its own and made a compact bar twice as tall as it needs.
+     * The track is a hairline with a hit area around it: 4px of paint is not
+     * something a thumb can catch, and a 44px bar in a card that floats over
+     * the reading is half the card.
      */
-    .transport {
-      display: flex;
-      gap: var(--space-2);
-      align-items: center;
-    }
-
-    .step {
-      width: var(--touch-target);
-      height: var(--touch-target);
-    }
-
-    /* Play is the one control that is pressed repeatedly, so it is the big one. */
-    .play {
-      display: inline-flex;
-      flex: none;
-      align-items: center;
-      justify-content: center;
-      width: 3.25rem;
-      height: 3.25rem;
-      padding: 0;
-      border: 0;
-      border-radius: var(--radius-pill);
-      background: var(--action-primary);
-      color: var(--text-on-action);
-      cursor: pointer;
-      transition:
-        background-color var(--motion-fast) ease-out,
-        transform var(--motion-fast) ease-out;
-    }
-
-    .play:hover:not(:disabled) {
-      background: var(--action-primary-hover);
-    }
-
-    .play:active:not(:disabled) {
-      transform: scale(0.96);
-    }
-
-    .play:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
-    }
-
-    .position {
-      flex: 1;
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      text-align: end;
-    }
-
-    /*
-     * Anything the card has to add sits in one band under the controls, behind
-     * one divider. Separate blocks each with their own rule stacked into a
-     * card that looked like a stack of unrelated notices.
-     */
-    .context {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      min-width: 0;
-      padding-block-start: var(--space-3);
-      border-block-start: 1px solid var(--border-subtle);
-    }
-
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      align-items: center;
-    }
-
-    /*
-     * One track carrying both numbers: what has been generated behind what has
-     * been played, the way a buffered bar reads. Two identical accent bars
-     * stacked said nothing about which was which.
-     */
-    .bar {
+    .track {
       position: relative;
+      display: flex;
+      align-items: center;
+      block-size: 20px;
+    }
+
+    .rail,
+    .fill {
+      position: absolute;
+      inset-block-start: 50%;
+      inset-inline-start: 0;
       block-size: 4px;
-      overflow: hidden;
       border-radius: var(--radius-pill);
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .rail {
+      inline-size: 100%;
       background: var(--surface-sunken);
     }
 
+    .fill {
+      transition: inline-size var(--motion-medium) ease-out;
+    }
+
     /*
-     * The only thing that says a run is still going. A count in words under the
-     * bar repeated what the bar was already showing, so the bar breathes
-     * instead — visible when looked at, invisible when read past.
+     * Mixed back towards the rail rather than painted in the border colour it
+     * used to be: at full strength it read as a filled progress bar, so a
+     * prepared reading that had never been played looked finished.
      */
-    .bar.is-generating .fill.generated {
+    .fill.generated {
+      background: color-mix(in srgb, var(--border-strong) 50%, var(--surface-sunken));
+    }
+
+    .fill.played {
+      background: var(--action-primary);
+    }
+
+    /*
+     * The only thing that says a run is still going, together with the ring on
+     * the button that stops it: visible when looked at, invisible when read past.
+     */
+    .track.is-generating .fill.generated {
       animation: generating 1.8s ease-in-out infinite;
     }
 
@@ -331,68 +368,229 @@ Always rendered rather than shown while a session is live: a stable
       }
     }
 
-    .fill {
-      position: absolute;
-      inset-block: 0;
-      inset-inline-start: 0;
-      display: block;
-      transition: inline-size var(--motion-medium) ease-out;
-    }
-
-    .fill.generated {
-      background: var(--border-strong);
-    }
-
-    .fill.played {
-      background: var(--action-primary);
-    }
-
-    .line {
-      flex: 1;
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
     /*
-     * Left-aligned and full width, so the toggle keeps its own line and the
-     * card does not change height when the buttons around it come and go.
+     * A native range, so dragging, tapping and the arrow keys are the browser's
+     * job rather than ours. It is transparent: the fills underneath are the
+     * track, and only the thumb is painted.
      */
-    .modes {
-      display: flex;
-    }
-
-    .mode {
-      min-height: var(--touch-target);
-      padding-inline: var(--space-2);
-      border: 0;
+    .scrub {
+      position: relative;
+      z-index: 1;
+      inline-size: 100%;
+      min-block-size: 0;
+      block-size: 20px;
+      margin: 0;
+      padding: 0;
+      appearance: none;
       background: none;
-      color: var(--text-primary);
-      font: inherit;
-      font-size: var(--text-sm);
-      text-decoration: underline;
       cursor: pointer;
     }
 
-    /* The pressed state of a toggle, since underlined text alone cannot say it. */
-    .mode.on {
-      color: var(--action-primary);
-      font-weight: 600;
+    .scrub:disabled {
+      cursor: default;
     }
 
-    .mn-error {
-      flex: 1;
-      margin: 0;
-      color: var(--status-danger);
-      font-size: var(--text-sm);
+    .scrub::-webkit-slider-runnable-track {
+      block-size: 20px;
+      background: none;
     }
+
+    .scrub::-moz-range-track {
+      block-size: 20px;
+      background: none;
+    }
+
+    /*
+     * The thumb appears when the track is being used and not before, the way a
+     * media scrubber does: at rest the bar is a reading of where the reading is,
+     * and a permanent handle on a 4px line reads as a defect.
+     */
+    .scrub::-webkit-slider-thumb {
+      inline-size: 12px;
+      block-size: 12px;
+      margin-block-start: 4px;
+      border: 0;
+      border-radius: var(--radius-pill);
+      background: var(--text-primary);
+      opacity: 0;
+      appearance: none;
+      transition: opacity var(--motion-fast) ease-out;
+    }
+
+    .scrub::-moz-range-thumb {
+      inline-size: 12px;
+      block-size: 12px;
+      border: 0;
+      border-radius: var(--radius-pill);
+      background: var(--text-primary);
+      opacity: 0;
+      transition: opacity var(--motion-fast) ease-out;
+    }
+
+    .track:hover .scrub:not(:disabled)::-webkit-slider-thumb,
+    .scrub:focus-visible::-webkit-slider-thumb,
+    .scrub:active::-webkit-slider-thumb {
+      opacity: 1;
+    }
+
+    .track:hover .scrub:not(:disabled)::-moz-range-thumb,
+    .scrub:focus-visible::-moz-range-thumb,
+    .scrub:active::-moz-range-thumb {
+      opacity: 1;
+    }
+
+    /*
+     * Three groups, so the transport stays optically centred whatever the two
+     * contextual slots are doing. The sides are equal and fixed, and an empty
+     * slot is held open rather than collapsed.
+     */
+    .controls {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .side {
+      display: flex;
+      flex: none;
+      gap: var(--space-1);
+      align-items: center;
+    }
+
+    .centre {
+      display: flex;
+      flex: 1;
+      gap: var(--space-1);
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    /* Everything that is not the primary verb: no chrome until it is touched. */
+    .slot {
+      position: relative;
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      inline-size: var(--touch-target);
+      block-size: var(--touch-target);
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-pill);
+      background: none;
+      color: var(--text-secondary);
+      text-decoration: none;
+      cursor: pointer;
+      transition:
+        color var(--motion-fast) ease-out,
+        background-color var(--motion-fast) ease-out;
+    }
+
+    button.slot:hover:not(:disabled),
+    a.slot:hover {
+      background: var(--surface-sunken);
+      color: var(--text-primary);
+    }
+
+    .slot:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .tone-accent {
+      color: var(--action-primary);
+    }
+
+    .tone-danger {
+      color: var(--status-danger);
+    }
+
+    /* The pressed state of the mode, since one glyph on its own cannot say it. */
+    .mode.on {
+      color: var(--action-primary);
+    }
+
+    .mode.on::after {
+      position: absolute;
+      inset-block-end: 6px;
+      inline-size: 4px;
+      block-size: 4px;
+      border-radius: var(--radius-pill);
+      background: currentcolor;
+      content: '';
+    }
+
+    /* Play is the one control that is pressed repeatedly, so it is the big one. */
+    .primary {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      inline-size: 3.25rem;
+      block-size: 3.25rem;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-pill);
+      background: var(--action-primary);
+      color: var(--text-on-action);
+      cursor: pointer;
+      transition:
+        background-color var(--motion-fast) ease-out,
+        transform var(--motion-fast) ease-out;
+    }
+
+    .primary:hover:not(:disabled) {
+      background: var(--action-primary-hover);
+    }
+
+    .primary:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
+    .primary:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    /* The run, drawn around the control that stops it. */
+    .ring {
+      position: absolute;
+      inset: 0;
+      inline-size: 100%;
+      block-size: 100%;
+      transform: rotate(-90deg);
+      pointer-events: none;
+    }
+
+    .ring-track,
+    .ring-fill {
+      fill: none;
+      stroke-width: 2;
+    }
+
+    .ring-track {
+      stroke: var(--surface-sunken);
+    }
+
+    .ring-fill {
+      stroke: currentcolor;
+      stroke-linecap: round;
+      transition: stroke-dashoffset var(--motion-medium) ease-out;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .fill,
-      .play {
+      .primary,
+      .slot,
+      .ring-fill,
+      .scrub::-webkit-slider-thumb,
+      .scrub::-moz-range-thumb {
         transition: none;
       }
 
-      .bar.is-generating .fill.generated {
+      .track.is-generating .fill.generated {
         animation: none;
       }
     }
@@ -409,7 +607,18 @@ export class ReadingPlayerComponent {
 
   readonly generate = output<void>();
   readonly retryGeneration = output<void>();
-  readonly dismissJob = output<void>();
+  readonly cancelGeneration = output<void>();
+
+  protected readonly ringRadius = RING_RADIUS;
+  protected readonly ringCircumference = RING_CIRCUMFERENCE;
+
+  /**
+   * Where the thumb is while it is being dragged, rather than where playback is.
+   *
+   * A drag that let the store keep writing the value would fight the pointer at
+   * every sentence boundary the reading crossed underneath it.
+   */
+  private readonly scrubbing = signal<number | null>(null);
 
   /**
    * What the rail says, resolved from the job first and the set second.
@@ -423,10 +632,15 @@ export class ReadingPlayerComponent {
     if (progress.kind === 'preparing' || progress.kind === 'running') {
       return 'running';
     }
+    if (this.store.canPlayWholeReading()) {
+      // A run that stopped but left the reading complete has nothing to retry,
+      // so it has nothing to say: the whole set is there and playable.
+      return 'none';
+    }
     if (progress.kind === 'failed' || progress.kind === 'cancelled') {
       return 'stopped';
     }
-    if (this.store.sentenceCount() === 0 || this.store.canPlayWholeReading()) {
+    if (this.store.sentenceCount() === 0) {
       return 'none';
     }
     return 'offer';
@@ -434,17 +648,87 @@ export class ReadingPlayerComponent {
 
   protected readonly isPlaying = computed(() => this.store.status() === 'playing');
 
-  /** Whether a run is filling in the rest, which only the track reports. */
+  /** Whether a run is filling in the rest, which only the track and ring report. */
   protected readonly isGenerating = computed(() => this.rail() === 'running');
 
-  /** Whether there is anything at all to put beneath the controls. */
-  protected readonly hasContext = computed(
-    () =>
-      this.rail() === 'offer' ||
-      this.rail() === 'stopped' ||
-      this.canStartFromSelection() ||
-      this.failureMessage() !== null,
-  );
+  /**
+   * What the big button in the middle is.
+   *
+   * A reading with nothing to play has no use for a Play button, and the thing
+   * a learner opening that player wants is the audio itself — so the primary
+   * control is the one that makes it, in the same place and the same shape.
+   */
+  protected readonly centreAction = computed<'generate' | 'play' | 'pause'>(() => {
+    if (this.isPlaying()) {
+      return 'pause';
+    }
+    if (
+      this.store.sentenceCount() > 0 &&
+      !this.store.hasPlayableAudio() &&
+      !this.isGenerating() &&
+      this.modelConfigured()
+    ) {
+      return 'generate';
+    }
+    return 'play';
+  });
+
+  /**
+   * The one contextual control, in priority order.
+   *
+   * A failure is acknowledged before anything else is offered, because it is
+   * the only state the card cannot leave on its own. A run being stopped or
+   * retried comes next, and preparing what is missing last.
+   */
+  protected readonly auxAction = computed<AuxAction | null>(() => {
+    if (this.isGenerating()) {
+      return {
+        kind: 'cancel',
+        icon: 'stop',
+        label: 'Stop generating audio',
+        title: 'Stop generating audio',
+        tone: 'accent',
+      };
+    }
+    const playbackFailure = this.failureMessage();
+    if (playbackFailure !== null) {
+      return {
+        kind: 'dismiss',
+        icon: 'close',
+        label: 'Dismiss',
+        title: playbackFailure,
+        tone: 'danger',
+      };
+    }
+    if (this.rail() === 'stopped') {
+      return {
+        kind: 'dismiss',
+        icon: 'retry',
+        label: 'Try again',
+        title: [this.jobLine(), this.jobFailure() ?? ''].filter((part) => part !== '').join(' '),
+        tone: 'danger',
+      };
+    }
+    if (!this.modelConfigured()) {
+      return {
+        kind: 'settings',
+        icon: 'settings',
+        label: 'Set up audio model',
+        title: 'Set up audio model',
+        tone: 'secondary',
+      };
+    }
+    if (this.rail() === 'offer' && this.store.hasPlayableAudio()) {
+      return {
+        kind: 'generate',
+        icon: 'generate',
+        label: 'Generate audio',
+        title: `Generate audio — ${this.offerLabel()}`,
+        tone: 'accent',
+      };
+    }
+    return null;
+  });
 
   protected readonly playLabel = computed(() => {
     switch (this.store.status()) {
@@ -483,9 +767,17 @@ export class ReadingPlayerComponent {
     return this.store.hasPlayableAudio();
   });
 
+  /** The track's denominator, kept at least one so the range stays valid. */
+  protected readonly maxPosition = computed(() => Math.max(this.store.sentenceCount(), 1));
+
+  /** Where the thumb is: the drag if there is one, playback otherwise. */
+  protected readonly positionValue = computed(
+    () => this.scrubbing() ?? this.store.currentPosition(),
+  );
+
   protected readonly percent = computed(() => {
     const total = this.store.sentenceCount();
-    return total === 0 ? 0 : Math.round((this.store.currentPosition() / total) * 100);
+    return total === 0 ? 0 : Math.round((this.positionValue() / total) * 100);
   });
 
   /**
@@ -500,10 +792,15 @@ export class ReadingPlayerComponent {
     return total === 0 ? 0 : Math.round((this.store.availableCount() / total) * 100);
   });
 
+  /** The ring around the cancel button, drawn from the same coverage figure. */
+  protected readonly ringOffset = computed(
+    () => RING_CIRCUMFERENCE * (1 - this.generatedPercent() / 100),
+  );
+
   protected readonly trackLabel = computed(() => {
     const total = this.store.sentenceCount();
     const ready = this.store.availableCount();
-    const position = this.store.currentPosition();
+    const position = this.positionValue();
     const where = position > 0 ? `Sentence ${String(position)} of ${String(total)}` : 'Not started';
     return `${where}, ${String(ready)} of ${String(total)} with audio`;
   });
@@ -523,15 +820,10 @@ export class ReadingPlayerComponent {
     if (position > 0) {
       return `Sentence ${String(position)} of ${String(total)}`;
     }
-    // Nothing is playing, so the line has no position to report. It says how
-    // much there is to play only when the rail beneath is not already saying
-    // it: printing the same count twice in one small card reads as a bug. It
-    // never goes blank, because an empty live region beside a row of controls
-    // reads as a label that failed to load.
     return this.rail() === 'none' ? `${String(total)} sentences ready` : 'Not playing';
   });
 
-  /** What is still missing, when the rail is offering to prepare it. */
+  /** What is still missing, when there is an offer to prepare it. */
   protected readonly offerLabel = computed(() => {
     const total = this.store.sentenceCount();
     const ready = this.store.availableCount();
@@ -546,11 +838,10 @@ export class ReadingPlayerComponent {
   );
 
   /**
-   * What the rail says about a run that has stopped.
+   * What a run that has stopped has to report.
    *
    * Only a stopped run has anything to say. A run in progress is reported by
-   * the track's generation fill alone; a count in words underneath repeated
-   * what the bar already showed.
+   * the track and the ring alone; a count in words repeated what they showed.
    */
   protected readonly jobLine = computed(() => {
     const progress = this.progress();
@@ -584,7 +875,7 @@ export class ReadingPlayerComponent {
     }
     // What went wrong, not what to do about it: the primary action in the
     // shared table is written for the settings test panel, and there is no test
-    // in the reader. Try again is the button right underneath this line.
+    // in the reader. Try again is the control right beside this.
     const copy = aiErrorCopy(progress.error.error);
     return `${copy.heading} while ${aiTaskCopy(progress.error.error.task)}. ${copy.whatFailed}`;
   });
@@ -606,8 +897,71 @@ export class ReadingPlayerComponent {
     }
   });
 
-  protected toggleStepMode(): void {
-    this.store.setStepMode(!this.store.stepMode());
+  /**
+   * Everything the card used to print, in one announcement.
+   *
+   * The position first, because it is what changes and what a learner listening
+   * with a screen reader is following; then whatever the card would have said
+   * beneath the controls, so nothing that was readable has become unsayable.
+   */
+  protected readonly announcement = computed(() => {
+    const parts = [this.positionLabel()];
+    const failure = this.failureMessage();
+    if (failure !== null) {
+      parts.push(failure);
+    }
+    const job = this.jobLine();
+    if (job !== '') {
+      parts.push(job);
+    }
+    const jobFailure = this.jobFailure();
+    if (jobFailure !== null) {
+      parts.push(jobFailure);
+    }
+    if (this.rail() === 'offer') {
+      parts.push(`${this.offerLabel()} — audio can be generated.`);
+    }
+    if (this.isGenerating()) {
+      parts.push(`Generating audio, ${String(this.generatedPercent())}% of the reading ready.`);
+    }
+    return parts.join(' ');
+  });
+
+  protected cycleMode(): void {
+    this.store.cycleMode();
+  }
+
+  protected pressAux(aux: AuxAction): void {
+    switch (aux.kind) {
+      case 'cancel':
+        this.cancelGeneration.emit();
+        return;
+      case 'generate':
+        this.generate.emit();
+        return;
+      case 'dismiss':
+        // One press clears whatever was reported and starts the work again:
+        // a separate Dismiss button existed only to put the card back the way
+        // pressing Try again already puts it.
+        if (this.failureMessage() !== null) {
+          this.store.acknowledgeFailure();
+          return;
+        }
+        this.retryGeneration.emit();
+        return;
+      case 'settings':
+        return;
+    }
+  }
+
+  protected onScrubInput(event: Event): void {
+    this.scrubbing.set(Number((event.target as HTMLInputElement).value));
+  }
+
+  protected onScrubCommit(event: Event): void {
+    const position = Number((event.target as HTMLInputElement).value);
+    this.scrubbing.set(null);
+    void this.store.seekTo(position);
   }
 
   protected play(): void {

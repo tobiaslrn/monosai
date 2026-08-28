@@ -13,15 +13,18 @@ import {
   LucideInfo,
   LucideLanguages,
   LucideLibrary,
+  LucideListStart,
   LucideMenu,
   LucideMerge,
   LucidePause,
   LucidePlay,
   LucidePlus,
+  LucideRotateCcw,
   LucideScissors,
   LucideSkipBack,
   LucideSkipForward,
   LucideSquare,
+  LucideStepForward,
   LucideSearch,
   LucideSettings,
   LucideSlidersHorizontal,
@@ -68,6 +71,9 @@ export const ICON_SET = {
   stop: LucideSquare,
   'skip-forward': LucideSkipForward,
   'skip-back': LucideSkipBack,
+  step: LucideStepForward,
+  retry: LucideRotateCcw,
+  'sentence-start': LucideListStart,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICON_SET;

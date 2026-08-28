@@ -260,7 +260,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           [modelConfigured]="hasAudioModel()"
           (generate)="startWholeReadingAudio()"
           (retryGeneration)="retryWholeReadingAudio()"
-          (dismissJob)="audioJob.acknowledge()"
+          (cancelGeneration)="audioJob.cancel()"
         />
       </div>
     }
@@ -326,12 +326,11 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
 
     /*
      * Clearance for the floating player, so the last line of a reading is never
-     * parked permanently underneath it. Sized for the player's ordinary height
-     * rather than its bounded maximum: at the maximum it reserved a third of a
-     * phone screen of blank page under every reading.
+     * parked permanently underneath it. The player is two rows and one fixed
+     * height now, so this is that height rather than a guess at an average.
      */
     .reader.has-audio-player {
-      padding-bottom: calc(11rem + var(--space-4) + env(safe-area-inset-bottom));
+      padding-bottom: calc(7rem + var(--space-4) + env(safe-area-inset-bottom));
     }
 
     /*
@@ -422,10 +421,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       left: 50%;
       box-sizing: border-box;
       width: min(34rem, calc(100vw - 2 * var(--space-4)));
-      max-height: min(20rem, calc(100dvh - 2 * var(--space-4) - env(safe-area-inset-bottom)));
-      padding: var(--space-4);
-      overflow-y: auto;
-      overscroll-behavior: contain;
+      padding: var(--space-3) var(--space-4);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-card);
       background: var(--surface-panel);
@@ -445,7 +441,6 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
         bottom: 0;
         left: 0;
         width: 100%;
-        max-height: 60dvh;
         padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
         border-inline: 0;
         border-block-end: 0;

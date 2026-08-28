@@ -2044,9 +2044,70 @@ meaning, and the mode is built out of the transport that was already there.
 
 - If the player ever becomes a scheduled Web Audio stream, step mode is "do not
   schedule the next buffer". The decision stays in the store, not the player.
-- `docs/spec/ux-ui-specification.md` section 6a still describes a transport with
-  no Stop and a Play gated on sentence one. Both were superseded by ADR 0037 and
-  are unrelated to this change.
+- `docs/spec/ux-ui-specification.md` section 6a was rewritten with the player
+  redesign below, and now matches the shipped transport.
+
+## A player that says nothing and shows its state
+
+The card ADR 0037 left was correct and legible, and read as a form: every
+capability spelled out as a labelled button, the mode an underlined text toggle
+in a row of its own, and an English position line beside a reading the learner
+is trying to read in Japanese.
+[ADR 0038](decisions/0038-minimal-audio-player.md) records the decisions; it
+supersedes ADR 0037's presentation while keeping its behaviour.
+
+### Delivered
+
+- **Two rows and no prose.** A track and one row of controls. The position, the
+  coverage, what a stopped run managed and why playback stopped are said by the
+  state of a control and its tooltip. Nothing is taken from a screen reader: the
+  strings are unchanged and live in a hidden `role="status"` region, joined into
+  one announcement, with playback failures repeated in a hidden `role="alert"`.
+- **Seven slots that never move**: `[mode][stop]`, `[back][primary][next]`,
+  `[start from this sentence][context]`. An inapplicable slot is held open and
+  empty rather than collapsed, so the card is one height in every state. It no
+  longer needs a bounded height or internal scrolling, because nothing in it can
+  grow, and the reading's bottom clearance is a constant.
+- **The centre is the primary verb.** It is **Generate audio** when the reading
+  has no audio at all, and play, pause, resume, read on or play again once it
+  has. A learner opening the player for a reading with no audio wants the audio,
+  not a dead Play with the real action underneath it.
+- **One contextual control** where the band was: **Stop generating audio** with
+  the coverage as a ring around it while a run is going, **Generate audio** for a
+  partial set, **Try again** after a run stopped, **Dismiss** for a playback
+  failure, **Set up audio model** with no model configured, and empty otherwise.
+  A run can now be stopped from the player as well as from the reader menu. The
+  separate **Dismiss** for a stopped run is gone — **Try again** already put the
+  card back the way it did — and a run that stopped with the reading complete
+  reports nothing at all.
+- **The track is a slider.** A native range over the sentences of the reading, so
+  drag, tap, touch and the arrow keys are the browser's behaviour. It snaps
+  sentence to sentence, and a position with no clip snaps to the nearest one that
+  has. `AudioPlaybackStore.seekTo()` jumps a live session and keeps reading;
+  while nothing is playing it only moves the cursor, so no-autoplay is untouched.
+- **The mode is a cycle.** `stepMode` became `PlaybackMode` and the ordered
+  `PLAYBACK_MODES`, cycled by one control in the media-player idiom — the same
+  glyph, lit with a dot when it is on. Two postures today, so it keeps
+  `aria-pressed` and the name **One sentence at a time**; repeating a single
+  sentence is one entry away.
+
+### Tested
+
+- `audio-playback.store.spec.ts` covers the mode cycle wrapping, seeking a live
+  session, seeking only moving the cursor while nothing plays, snapping to the
+  nearest clip across a hole, and clamping a position past the end.
+- `reading-player.component.spec.ts` covers the generate-in-the-centre state, the
+  contextual slot in each of its states, the hidden announcement carrying every
+  string the card used to print, the mode cycle, and seeking on release only.
+- `e2e/audio.spec.ts` asserts the hidden status region rather than visible copy,
+  and the track as a `slider`. The accessible names were kept deliberately, so
+  the rest of both suites survived unchanged.
+
+### Notes
+
+- Matching a fragment of the announcement is not enough: "Stopped with 2 of 8
+  sentences ready." contains "8 sentences ready", so the end-to-end helper that
+  waits for a finished run asserts the whole of what the player says.
 
 ## Milestone 10 — Release hardening
 

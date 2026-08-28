@@ -38,6 +38,19 @@ export type PlaybackStatus =
 export const REPLAY_WINDOW_SECONDS = 1.5;
 
 /**
+ * How a reading is read: straight through, or a sentence at a time.
+ *
+ * A cycle rather than a flag because the player presents it the way a media
+ * player presents repeat — one control, pressed to move to the next posture.
+ * There is one more posture to come (repeating a single sentence), and modelling
+ * it as an ordered list now means adding it is one entry rather than a redesign.
+ */
+export type PlaybackMode = 'continuous' | 'sentence';
+
+/** The order the mode control cycles through, wrapping at the end. */
+export const PLAYBACK_MODES: readonly PlaybackMode[] = ['continuous', 'sentence'];
+
+/**
  * How much of a reading title the lock screen is given.
  *
  * An import saved without an explicit title has its body text as its title, so
@@ -131,14 +144,14 @@ export class AudioPlaybackStore {
    */
   private readonly pendingSignal = signal<SentenceId | null>(null);
   /**
-   * Whether the reading stops at every sentence seam until told to go on.
+   * How the reading is read, of the postures in `PLAYBACK_MODES`.
    *
    * A study posture rather than a setting: the learner wants to hear a
    * sentence, read or translate it, and only then hear the next one. It is kept
    * here rather than persisted, so it survives navigation within the session
    * and costs no migration.
    */
-  private readonly stepModeSignal = signal(false);
+  private readonly modeSignal = signal<PlaybackMode>('continuous');
 
   /** Generation counter, so a clip loaded for a superseded call never starts. */
   private loadToken = 0;
@@ -163,7 +176,9 @@ export class AudioPlaybackStore {
   readonly failure = this.failureSignal.asReadonly();
   readonly explicitNavigation = this.navigationSignal.asReadonly();
   readonly pendingSentenceId = this.pendingSignal.asReadonly();
-  readonly stepMode = this.stepModeSignal.asReadonly();
+  readonly mode = this.modeSignal.asReadonly();
+  /** The one mode with behaviour behind it, named for what it does at a seam. */
+  readonly stepMode = computed(() => this.modeSignal() === 'sentence');
   readonly reading = this.readingSignal.asReadonly();
 
   readonly isActive = computed(() => this.statusSignal() !== 'idle');
@@ -372,7 +387,46 @@ export class AudioPlaybackStore {
    * hear anything — continuing is still a press.
    */
   setStepMode(enabled: boolean): void {
-    this.stepModeSignal.set(enabled);
+    this.modeSignal.set(enabled ? 'sentence' : 'continuous');
+  }
+
+  /** Moves to the next posture in `PLAYBACK_MODES`, wrapping at the end. */
+  cycleMode(): void {
+    this.modeSignal.update((mode) => {
+      const next = PLAYBACK_MODES.indexOf(mode) + 1;
+      return PLAYBACK_MODES[next % PLAYBACK_MODES.length];
+    });
+  }
+
+  /**
+   * Moves the cursor to a position on the track, snapping to audio that exists.
+   *
+   * Positions are sentences, so the scrubber is discrete: there is nothing
+   * between sentence 4 and sentence 5 to land on. A position with no clip snaps
+   * to the nearest one that has, so a hole left by a failed sentence is a place
+   * the drag passes over rather than a dead spot.
+   *
+   * A live session jumps and keeps reading; an idle one only moves its cursor.
+   * Scrubbing is an explicit act, but it is an act of *aiming*, and starting a
+   * reading that was not playing is still the press of Play.
+   */
+  async seekTo(position: number): Promise<void> {
+    const refs = this.refsSignal();
+    if (refs.length === 0) {
+      return;
+    }
+    const clamped = Math.min(Math.max(Math.round(position), 1), refs.length);
+    const index = this.nearestAvailableIndex(clamped - 1);
+    if (index === -1) {
+      return;
+    }
+    const target = refs[index].id;
+    if (this.isActive()) {
+      await this.startAt(target);
+      return;
+    }
+    this.navigationSignal.update((count) => count + 1);
+    this.currentSignal.set(target);
   }
 
   play(): Promise<void> {
@@ -667,7 +721,7 @@ export class AudioPlaybackStore {
       this.finish();
       return;
     }
-    if (this.stepModeSignal()) {
+    if (this.stepMode()) {
       // The seam the learner asked for. The cursor stays on the sentence just
       // heard, nothing is loaded, and the session waits to be told to go on —
       // which is `continueReading`, from the transport or the headset.
@@ -777,6 +831,29 @@ export class AudioPlaybackStore {
    * and a hole must not be a wall: every later sentence that was made is still
    * something the learner paid for and should be able to reach.
    */
+  /**
+   * The sentence with a clip closest to one index, searching both ways.
+   *
+   * Ties go backwards, because a scrub that lands in a hole is aiming at the
+   * text around it and the sentence before the gap is the one that leads into
+   * what the learner pointed at.
+   */
+  private nearestAvailableIndex(index: number): number {
+    const refs = this.refsSignal();
+    const available = this.availableSignal();
+    for (let distance = 0; distance < refs.length; distance += 1) {
+      const before = index - distance;
+      if (before >= 0 && available.has(refs[before].id)) {
+        return before;
+      }
+      const after = index + distance;
+      if (after < refs.length && available.has(refs[after].id)) {
+        return after;
+      }
+    }
+    return -1;
+  }
+
   private availableIndexFrom(direction: 1 | -1): number {
     const current = this.currentSignal();
     if (current === null) {
