@@ -126,7 +126,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       [class.has-audio-player]="audioPlayerOpen()"
       [style.--reader-scale]="textScale()"
     >
-      <header class="bar">
+      <header #readerBar class="bar">
         <div class="bar-row">
           <a class="mn-icon-button" routerLink="/library" aria-label="Back to library">
             <mn-icon name="back" />
@@ -326,11 +326,14 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
 
     /*
      * Clearance for the floating player, so the last line of a reading is never
-     * parked permanently underneath it. The player is two rows and one fixed
-     * height now, so this is that height rather than a guess at an average.
+     * parked permanently underneath it. Its published height rather than an
+     * estimate of it, with a fallback for the frame before the first
+     * measurement lands.
      */
     .reader.has-audio-player {
-      padding-bottom: calc(7rem + var(--space-4) + env(safe-area-inset-bottom));
+      padding-bottom: calc(
+        var(--mn-docked-player-height, 7rem) + var(--space-4) + env(safe-area-inset-bottom)
+      );
     }
 
     /*
@@ -488,6 +491,7 @@ export class ReaderPageComponent {
 
   private readonly content = viewChild<ElementRef<HTMLElement>>('content');
   private readonly audioPlayerShell = viewChild<ElementRef<HTMLElement>>('audioPlayerShell');
+  private readonly readerBar = viewChild<ElementRef<HTMLElement>>('readerBar');
   private readonly wordPopover = viewChild.required<TemplateRef<unknown>>('wordPopover');
   private readonly wordPreview = viewChild.required<TemplateRef<unknown>>('wordPreview');
   private readonly sentencePopover = viewChild.required<TemplateRef<unknown>>('sentencePopover');
@@ -1266,12 +1270,38 @@ export class ReaderPageComponent {
   }
 
   /**
+   * What is left of the viewport once the reader's own furniture is subtracted.
+   *
+   * The sticky header and the docked player are both opaque and both fixed, so
+   * the part of the window a sentence can actually be read in is the band
+   * between them. Measured rather than assumed: the header grows with a long
+   * title on a narrow screen, and the player is docked flush on a phone and
+   * floating clear of the edge on a desktop.
+   */
+  private readableBand(): { readonly top: number; readonly bottom: number } {
+    const bar = this.readerBar()?.nativeElement.getBoundingClientRect();
+    const player = this.audioPlayerOpenSignal()
+      ? this.audioPlayerShell()?.nativeElement.getBoundingClientRect()
+      : undefined;
+    return {
+      top: Math.max(0, bar?.bottom ?? 0),
+      bottom: Math.min(window.innerHeight, player?.top ?? window.innerHeight),
+    };
+  }
+
+  /**
    * Brings the sentence being read into view, and only if it is not already.
    *
    * Scrolling a sentence that is already on screen would jerk the page on every
    * advance, which is exactly the behaviour that makes a follow-along player
    * unusable. A sentence outside the mounted window has no element yet and is
    * simply left alone.
+   *
+   * "On screen" is the band between the header and the player, not the window.
+   * Measured against the window, a sentence sitting behind the docked player
+   * counted as visible and was never scrolled to — so following a reading
+   * downwards stopped at the first sentence to reach the player and left the
+   * learner watching a sentence they could not see.
    */
   private revealSentence(sentenceId: SentenceId): void {
     const element = document.querySelector<HTMLElement>(
@@ -1281,7 +1311,8 @@ export class ReaderPageComponent {
       return;
     }
     const box = element.getBoundingClientRect();
-    if (box.top >= 0 && box.bottom <= window.innerHeight) {
+    const band = this.readableBand();
+    if (box.top >= band.top && box.bottom <= band.bottom) {
       return;
     }
     this.scrollingProgrammatically = true;

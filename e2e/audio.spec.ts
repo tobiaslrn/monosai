@@ -615,6 +615,79 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     ).toHaveValue(String(SENTENCE_COUNT));
   });
 
+  /**
+   * Following a reading means keeping the sentence being read where it can be
+   * read. Measured against the window rather than against what is left of it, a
+   * sentence sitting behind the docked player counted as on screen, so following
+   * downwards stopped at the first sentence to reach the player and left the
+   * learner listening to something they could not see.
+   */
+  test('keeps the sentence being read clear of the header and the player @smoke', async ({
+    page,
+  }) => {
+    // Short enough to prepare quickly, in a window short enough to scroll.
+    await page.setViewportSize({ width: 900, height: 420 });
+    await prepareReading(page, TEXT.repeat(6));
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page, SENTENCE_COUNT * 6);
+
+    // Into the middle of the reading, so there is document on both sides of the
+    // cursor to scroll through. Dragging the track of a session that is not
+    // playing moves the cursor and stays silent, which is all this needs.
+    const track = audioPlayer(page).getByRole('slider', { name: 'Position in this reading' });
+    await track.fill(String(SENTENCE_COUNT * 3));
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
+
+    // Park the sentence Next is about to move to inside the window but behind
+    // the player, which is the one position the window test called visible.
+    const parked = await page.evaluate(() => {
+      const sentences = [...document.querySelectorAll('[data-sentence-id]')];
+      const playing = document.querySelector('.sentence.is-playing');
+      if (playing === null) {
+        return null;
+      }
+      const target = sentences.at(sentences.indexOf(playing) + 1);
+      if (target === undefined) {
+        return null;
+      }
+      window.scrollBy({
+        top: target.getBoundingClientRect().bottom - window.innerHeight + 8,
+        behavior: 'instant',
+      });
+      const box = target.getBoundingClientRect();
+      const player = document.querySelector('.audio-player-shell');
+      return {
+        insideTheWindow: box.top >= 0 && box.bottom <= window.innerHeight,
+        behindThePlayer: box.bottom > (player?.getBoundingClientRect().top ?? Infinity),
+      };
+    });
+    // The bug needs both to hold, so the test says so rather than passing on a
+    // sentence that was never parked anywhere interesting.
+    expect(parked).toEqual({ insideTheWindow: true, behindThePlayer: true });
+
+    await audioPlayer(page).getByRole('button', { name: 'Next sentence with audio' }).click();
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const sentence = document.querySelector('.sentence.is-playing');
+          const header = document.querySelector('.reader .bar');
+          const player = document.querySelector('.audio-player-shell');
+          if (sentence === null) {
+            return null;
+          }
+          const box = sentence.getBoundingClientRect();
+          const top = header?.getBoundingClientRect().bottom ?? 0;
+          const bottom = player?.getBoundingClientRect().top ?? window.innerHeight;
+          // A pixel of tolerance: a smooth scroll settles on fractional offsets.
+          return box.top >= top - 1 && box.bottom <= bottom + 1;
+        }),
+      )
+      .toBe(true);
+  });
+
   test('navigates to the next and previous sentence without wrapping', async ({ page }) => {
     await prepareReading(page);
     await openAudioPlayer(page);
