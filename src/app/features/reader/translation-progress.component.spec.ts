@@ -3,11 +3,15 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import type { TranslationJobProgress } from '../../application/enrichment/translation-job.store';
 import { aiError } from '../../domain/ai/ai-error';
+import { readingId } from '../../domain/shared/ids';
 import { TranslationProgressComponent } from './translation-progress.component';
 
 function counts(completed: number, requested: number) {
   return { total: requested, requested, completed, failed: 0 };
 }
+
+/** The reading every progress under test belongs to. */
+const READING = readingId('00000000-0000-4000-8000-000000000001');
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,14 +45,15 @@ describe('TranslationProgressComponent', () => {
   });
 
   it('reports how far a run has got', () => {
-    const element = render({ kind: 'running', counts: counts(2, 8) }).nativeElement as HTMLElement;
+    const element = render({ kind: 'running', readingId: READING, counts: counts(2, 8) })
+      .nativeElement as HTMLElement;
 
     expect(element.textContent).toContain('Translating 3 of 8…');
     expect(element.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('25');
   });
 
   it('offers a stop while it is running, and no retry', () => {
-    const fixture = render({ kind: 'running', counts: counts(2, 8) });
+    const fixture = render({ kind: 'running', readingId: READING, counts: counts(2, 8) });
     const element = fixture.nativeElement as HTMLElement;
 
     [...element.querySelectorAll<HTMLButtonElement>('button')]
@@ -60,7 +65,7 @@ describe('TranslationProgressComponent', () => {
   });
 
   it('promises that a stopped run kept what it already stored', () => {
-    const element = render({ kind: 'cancelled', counts: counts(3, 8) })
+    const element = render({ kind: 'cancelled', readingId: READING, counts: counts(3, 8) })
       .nativeElement as HTMLElement;
 
     expect(element.textContent).toContain('Sentences already translated were kept.');
@@ -70,6 +75,7 @@ describe('TranslationProgressComponent', () => {
   it('reports a failure in Monosai wording and keeps the retry', () => {
     const fixture = render({
       kind: 'failed',
+      readingId: READING,
       counts: counts(3, 8),
       error: { source: 'provider', error: aiError('rate-limited', 'translation', 'raw text') },
     });
@@ -85,19 +91,32 @@ describe('TranslationProgressComponent', () => {
   });
 
   it('offers no retry for a finished run', () => {
-    const element = render({ kind: 'complete', counts: counts(8, 8) }).nativeElement as HTMLElement;
+    const element = render({ kind: 'complete', readingId: READING, counts: counts(8, 8) })
+      .nativeElement as HTMLElement;
 
     expect(element.textContent).toContain('Translation finished.');
     expect(element.textContent).not.toContain('Retry the rest');
   });
 
   it('can be dismissed, so the reader returns to the text', () => {
-    const fixture = render({ kind: 'complete', counts: counts(8, 8) });
+    const fixture = render({ kind: 'complete', readingId: READING, counts: counts(8, 8) });
 
     [...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent.includes('Dismiss'))
       ?.click();
 
     expect(fixture.componentInstance.dismissals).toBe(1);
+  });
+  it('offers no dismiss while a run is still going, because it could not work', () => {
+    const element = render({ kind: 'running', readingId: READING, counts: counts(2, 8) })
+      .nativeElement as HTMLElement;
+
+    expect(element.textContent).not.toContain('Dismiss');
+  });
+
+  it('takes none of the screen once its reading is deleted', () => {
+    const element = render({ kind: 'deleted', readingId: READING }).nativeElement as HTMLElement;
+
+    expect(element.querySelector('.job')).toBeNull();
   });
 });

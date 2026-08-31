@@ -33,8 +33,9 @@ const SENTENCE_COUNT = 12;
 const TEST_HASHER: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
 
 /** Twelve sentences, so a run has to plan two bounded batches rather than one. */
-function longReading(): ImportedReadingDraft {
+function longReading(seed = 1): ImportedReadingDraft {
   return importedReadingFixture({
+    seed,
     paragraphTexts: [
       Array.from({ length: 7 }, (_value, index) => `文${String(index)}です。`),
       Array.from({ length: 5 }, (_value, index) => `段落${String(index)}です。`),
@@ -50,6 +51,8 @@ interface JobTestBed {
   readonly jobs: DexieJobRepository;
   readonly enrichment: DexieEnrichmentRepository;
   readonly draft: ImportedReadingDraft;
+  /** A second reading, so cross-reading isolation can be asserted directly. */
+  readonly other: ImportedReadingDraft;
   readonly settings: WritableSignal<TextModelSettings>;
 }
 
@@ -62,7 +65,9 @@ async function configure(): Promise<JobTestBed> {
   const jobs = new DexieJobRepository(db, clock);
   const provider = new StubTextProvider(ok(modelTest()));
   const draft = longReading();
+  const other = longReading(2);
   await readings.saveImportedReading(draft);
+  await readings.saveImportedReading(other);
 
   const settings = signal<TextModelSettings>({
     modelId: 'vendor/text-model',
@@ -115,6 +120,7 @@ async function configure(): Promise<JobTestBed> {
     jobs,
     enrichment,
     draft,
+    other,
     settings,
   };
 }
@@ -211,7 +217,7 @@ describe('TranslationJobStore', () => {
 
   it('keeps stored translations when cancelled and issues no further requests', async () => {
     bed.provider.beforeAnswer = () => {
-      bed.store.cancel();
+      bed.store.cancel(bed.draft.reading.id);
     };
 
     await bed.store.start(bed.draft.reading.id);
@@ -231,7 +237,7 @@ describe('TranslationJobStore', () => {
       answered += 1;
       if (answered === 1) {
         queueMicrotask(() => {
-          bed.store.cancel();
+          bed.store.cancel(bed.draft.reading.id);
         });
       }
     };
@@ -258,7 +264,7 @@ describe('TranslationJobStore', () => {
 
   it('starts a new job instead of resuming one whose configuration changed', async () => {
     bed.provider.beforeAnswer = () => {
-      bed.store.cancel();
+      bed.store.cancel(bed.draft.reading.id);
     };
     await bed.store.start(bed.draft.reading.id);
     const first = await bed.db.assetJobs.toArray();
@@ -284,6 +290,103 @@ describe('TranslationJobStore', () => {
 
     expect(bed.provider.generationCalls.translate).toBe(0);
     expect(bed.store.progress().kind).toBe('idle');
+  });
+
+  it('publishes progress under its own reading and reports idle for any other', async () => {
+    await bed.store.start(bed.draft.reading.id);
+
+    const mine = bed.store.progressFor(bed.draft.reading.id);
+    expect(mine.kind).toBe('complete');
+    expect(mine.kind !== 'idle' && mine.readingId).toBe(bed.draft.reading.id);
+    expect(bed.store.progressFor(bed.other.reading.id).kind).toBe('idle');
+    expect(bed.store.isRunningFor(bed.other.reading.id)).toBe(false);
+  });
+
+  it('reports a live run only to the reading it belongs to', async () => {
+    const seen: { mine: boolean; other: boolean } = { mine: false, other: false };
+    bed.provider.beforeAnswer = () => {
+      seen.mine = bed.store.isRunningFor(bed.draft.reading.id);
+      seen.other = bed.store.isRunningFor(bed.other.reading.id);
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(seen).toEqual({ mine: true, other: false });
+  });
+
+  it('ignores a stop pressed on a different reading', async () => {
+    bed.provider.beforeAnswer = () => {
+      bed.store.cancel(bed.other.reading.id);
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    // The run finished both batches: another reading's Stop reached nothing.
+    expect(bed.provider.generationCalls.translate).toBe(2);
+    expect(bed.store.progress().kind).toBe('complete');
+  });
+
+  it('ignores a dismiss pressed on a different reading', async () => {
+    await bed.store.start(bed.draft.reading.id);
+
+    bed.store.acknowledge(bed.other.reading.id);
+
+    expect(bed.store.progress().kind).toBe('complete');
+    bed.store.acknowledge(bed.draft.reading.id);
+    expect(bed.store.progress().kind).toBe('idle');
+  });
+
+  it('refuses to dismiss a run that is still scheduling batches', async () => {
+    bed.provider.beforeAnswer = () => {
+      bed.store.acknowledge(bed.draft.reading.id);
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(bed.store.progress().kind).toBe('complete');
+  });
+
+  it('finalizes its run when its reading is deleted, and says nothing to other readings', async () => {
+    // Deleted once the first batch has been answered, so the run has stored
+    // work to preserve and a second batch it must not ask for.
+    const deletions: Promise<void>[] = [];
+    bed.provider.beforeAnswer = () => {
+      queueMicrotask(() => {
+        if (deletions.length === 0) {
+          deletions.push(bed.store.readingDeleted(bed.draft.reading.id));
+        }
+      });
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+    await Promise.all(deletions);
+
+    // Cancelled at the first batch, so nothing was requested for a reading
+    // that is about to stop existing.
+    expect(bed.provider.generationCalls.translate).toBe(1);
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('deleted');
+    expect(bed.store.progressFor(bed.other.reading.id).kind).toBe('idle');
+    expect(bed.store.isRunningFor(bed.draft.reading.id)).toBe(false);
+
+    // Translations already paid for survive the delete of everything else.
+    const stored = await bed.enrichment.listTranslations(bed.draft.reading.id);
+    expect(stored.ok && stored.value).toHaveLength(MAX_TRANSLATION_BATCH);
+  });
+
+  it('leaves a run alone when a different reading is deleted', async () => {
+    const deletions: Promise<void>[] = [];
+    bed.provider.beforeAnswer = () => {
+      if (deletions.length === 0) {
+        deletions.push(bed.store.readingDeleted(bed.other.reading.id));
+      }
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+    await Promise.all(deletions);
+
+    expect(bed.provider.generationCalls.translate).toBe(2);
+    expect(bed.store.progress().kind).toBe('complete');
   });
 
   it('refuses to run without a tested text model, without touching the provider', async () => {

@@ -32,7 +32,7 @@ import { ViewportService } from '../../core/platform/viewport.service';
 import { describeDeletion } from '../../domain/reading/deletion-plan';
 import type { Reading } from '../../domain/reading/reading';
 import { findingsCoveringToken, sentenceWideFindings } from '../../domain/enrichment/finding-spans';
-import { readingId, type SentenceId } from '../../domain/shared/ids';
+import { readingId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
 import { presentStatus } from '../../domain/reading/token-presentation';
 import { clampTextScale } from '../../domain/settings/settings';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
@@ -141,7 +141,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
               <button
                 type="button"
                 class="mn-icon-button audio-button"
-                [class.is-busy]="audioJob.isRunning()"
+                [class.is-busy]="audioRunning()"
                 [class.is-playing]="playback.isActive()"
                 [attr.aria-expanded]="audioPlayerOpen()"
                 aria-controls="reading-audio-player"
@@ -153,11 +153,11 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
               @if (store.reading(); as reading) {
                 <mn-reader-menu
                   [reading]="reading"
-                  [isRunning]="translationJob.progress().kind === 'running'"
-                  [audioRunning]="audioJob.isRunning()"
+                  [isRunning]="translationRunning()"
+                  [audioRunning]="audioRunning()"
                   (translateAll)="startWholeReadingTranslation()"
-                  (cancelled)="translationJob.cancel()"
-                  (cancelAudioRequested)="audioJob.cancel()"
+                  (cancelled)="cancelTranslationJob()"
+                  (cancelAudioRequested)="cancelAudioJob()"
                   (deleteAudioRequested)="confirmClearReadingAudio()"
                   (deleteRequested)="confirmDelete()"
                 />
@@ -172,10 +172,10 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
         -->
         @if (store.status() === 'ready') {
           <mn-translation-progress
-            [progress]="translationJob.progress()"
-            (cancelled)="translationJob.cancel()"
+            [progress]="translationProgress()"
+            (cancelled)="cancelTranslationJob()"
             (retried)="retryWholeReadingTranslation()"
-            (dismissed)="translationJob.acknowledge()"
+            (dismissed)="dismissTranslationJob()"
           />
           @if (readingAudioMaintenance.state() === 'cleared') {
             <p class="audio-maintenance-message mn-hint" role="status">
@@ -198,12 +198,12 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           aria-label="Reading audio"
         >
           <mn-reading-player
-            [progress]="audioJob.progress()"
+            [progress]="audioProgress()"
             [selectedSentenceId]="audioPlayerSentenceId()"
             [modelConfigured]="hasAudioModel()"
             (generate)="startWholeReadingAudio()"
             (retryGeneration)="retryWholeReadingAudio()"
-            (cancelGeneration)="audioJob.cancel()"
+            (cancelGeneration)="cancelAudioJob()"
           />
         </div>
       }
@@ -506,6 +506,21 @@ export class ReaderPageComponent {
   protected readonly selectedSentenceId = this.selectedSentenceIdSignal.asReadonly();
 
   protected readonly preferences = this.settings.readerPreferences;
+  private readonly currentReadingId = computed(() => readingId(this.id()));
+  protected readonly translationProgress = computed(() =>
+    this.translationJob.progressFor(this.currentReadingId()),
+  );
+  protected readonly audioProgress = computed(() =>
+    this.audioJob.progressFor(this.currentReadingId()),
+  );
+  protected readonly translationRunning = computed(() => {
+    const kind = this.translationProgress().kind;
+    return kind === 'preparing' || kind === 'running';
+  });
+  protected readonly audioRunning = computed(() => {
+    const kind = this.audioProgress().kind;
+    return kind === 'preparing' || kind === 'running';
+  });
 
   /** Clamped here too: a stored row is external data like any other. */
   protected readonly textScale = computed(() => clampTextScale(this.preferences().textScale));
@@ -657,7 +672,7 @@ export class ReaderPageComponent {
       default:
         break;
     }
-    if (this.audioJob.isRunning()) {
+    if (this.audioRunning()) {
       return 'Audio, being generated';
     }
     return this.playback.hasPlayableAudio() ? 'Audio, ready' : 'Audio';
@@ -712,7 +727,7 @@ export class ReaderPageComponent {
       // effect its own trigger and it never stops running.
       untracked(() => {
         this.closeReaderSurfaces();
-        void this.store.open(nextReadingId);
+        void this.openReading(nextReadingId);
       });
     });
 
@@ -744,7 +759,7 @@ export class ReaderPageComponent {
       // tells the reader to re-read them. Re-reading the reading row also
       // refreshes the summaries the menu counts, and that in turn re-runs the
       // aid load above for the mounted window.
-      if (this.translationJob.progress().kind !== 'idle') {
+      if (this.translationProgress().kind !== 'idle') {
         // `refreshSummaries` reads the reading row it is about to replace, and
         // replaces it with a fresh object. Tracked, that re-ran this effect,
         // which refreshed again — an unbounded loop of reads behind a screen
@@ -762,7 +777,7 @@ export class ReaderPageComponent {
       // what lets a session waiting at the frontier read on, since the clip it
       // is waiting for becomes available here (ADR 0034).
       const reading = this.store.reading();
-      this.audioJob.progress();
+      this.audioProgress();
       this.tts.settings();
       if (reading !== null) {
         untracked(() => {
@@ -773,7 +788,7 @@ export class ReaderPageComponent {
 
     effect(() => {
       // The audio job writes rows the menu counts, exactly as translation does.
-      if (this.audioJob.progress().kind !== 'idle') {
+      if (this.audioProgress().kind !== 'idle') {
         untracked(() => {
           void this.store.refreshSummaries();
         });
@@ -790,7 +805,7 @@ export class ReaderPageComponent {
       // can start a wait *after* the run has stopped, and a release that only
       // fired on the job's own transition would leave that one waiting for
       // something that had already been called off.
-      const kind = this.audioJob.progress().kind;
+      const kind = this.audioProgress().kind;
       const waiting = this.playback.status() === 'waiting';
       if (waiting && (kind === 'failed' || kind === 'cancelled')) {
         untracked(() => {
@@ -857,21 +872,37 @@ export class ReaderPageComponent {
   }
 
   protected reload(): void {
-    void this.store.open(readingId(this.id()));
+    void this.openReading(this.currentReadingId());
+  }
+
+  private async openReading(id: ReadingId): Promise<void> {
+    await this.store.open(id);
+    if (this.currentReadingId() !== id || this.store.status() !== 'ready') {
+      return;
+    }
+    await Promise.all([this.translationJob.resume(id), this.audioJob.resume(id)]);
   }
 
   /**
    * Translates everything in the reading that has no current translation.
    *
-   * The only whole-reading request in the reader, and it starts here and
-   * nowhere else. Opening a reading resumes nothing on its own.
+   * The only new whole-reading request in the reader. Opening a reading only
+   * resumes a persisted unfinished job that already belongs to it.
    */
   protected startWholeReadingTranslation(): void {
-    void this.translationJob.start(readingId(this.id()));
+    void this.translationJob.start(this.currentReadingId());
   }
 
   protected retryWholeReadingTranslation(): void {
-    void this.translationJob.retry(readingId(this.id()));
+    void this.translationJob.retry(this.currentReadingId());
+  }
+
+  protected cancelTranslationJob(): void {
+    this.translationJob.cancel(this.currentReadingId());
+  }
+
+  protected dismissTranslationJob(): void {
+    this.translationJob.acknowledge(this.currentReadingId());
   }
 
   /**
@@ -880,12 +911,16 @@ export class ReaderPageComponent {
    */
   protected startWholeReadingAudio(): void {
     this.readingAudioMaintenance.acknowledge();
-    void this.audioJob.start(readingId(this.id()));
+    void this.audioJob.start(this.currentReadingId());
   }
 
   protected retryWholeReadingAudio(): void {
     this.readingAudioMaintenance.acknowledge();
-    void this.audioJob.retry(readingId(this.id()));
+    void this.audioJob.retry(this.currentReadingId());
+  }
+
+  protected cancelAudioJob(): void {
+    this.audioJob.cancel(this.currentReadingId());
   }
 
   /** Confirms the destructive reading-level action selected from the More menu. */
@@ -911,7 +946,7 @@ export class ReaderPageComponent {
   /** Deletes only this reading's clips and jobs, then refreshes every local view. */
   private async clearReadingAudioFromStorage(reading: Reading): Promise<void> {
     await this.readingAudioMaintenance.clear(reading);
-    this.audioJob.acknowledge();
+    this.audioJob.acknowledge(reading.id);
     await this.store.refreshSummaries();
   }
 
@@ -1274,7 +1309,10 @@ export class ReaderPageComponent {
     if (reading === null) {
       return;
     }
-    const plan = describeDeletion(reading);
+    const plan = describeDeletion(reading, {
+      translationRunning: this.translationJob.isRunningFor(reading.id),
+      audioRunning: this.audioJob.isRunningFor(reading.id),
+    });
     const confirmed = await openConfirmDialog(this.dialog, {
       title: `Delete ${plan.title}?`,
       message: 'This cannot be undone. It permanently removes:',
@@ -1284,7 +1322,16 @@ export class ReaderPageComponent {
       cancelLabel: 'Keep it',
       tone: 'danger',
     });
-    if (confirmed && (await this.library.delete(reading.id))) {
+    if (!confirmed) {
+      return;
+    }
+    // Before the rows go: a job still writing to them would fail against
+    // storage and report that failure on whatever reading is opened next.
+    await Promise.all([
+      this.translationJob.readingDeleted(reading.id),
+      this.audioJob.readingDeleted(reading.id),
+    ]);
+    if (await this.library.delete(reading.id)) {
       // Before navigating: a deleted reading must not go on being read aloud.
       this.playback.readingDeleted(reading.id);
       await this.router.navigate(['/library']);

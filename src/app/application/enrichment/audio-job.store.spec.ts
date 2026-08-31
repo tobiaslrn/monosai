@@ -36,8 +36,9 @@ const SENTENCE_COUNT = 6;
 const TEST_HASHER: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
 
 /** Six sentences across two paragraphs, so reading order spans a boundary. */
-function reading(): ImportedReadingDraft {
+function reading(seed = 1): ImportedReadingDraft {
   return importedReadingFixture({
+    seed,
     paragraphTexts: [
       ['文0です。', '文1です。', '文2です。'],
       ['文3です。', '文4です。', '文5です。'],
@@ -52,6 +53,8 @@ interface AudioJobBed {
   readonly readings: DexieReadingRepository;
   readonly enrichment: DexieEnrichmentRepository;
   readonly draft: ImportedReadingDraft;
+  /** A second reading, so cross-reading isolation can be asserted directly. */
+  readonly other: ImportedReadingDraft;
   readonly settings: WritableSignal<TtsSettings>;
   readonly readiness: WritableSignal<'ready' | 'not-configured' | 'stale-test'>;
 }
@@ -65,7 +68,9 @@ async function configure(): Promise<AudioJobBed> {
   const jobs = new DexieJobRepository(db, clock);
   const provider = new StubTtsProvider(ok(ttsTest()));
   const draft = reading();
+  const other = reading(2);
   await readings.saveImportedReading(draft);
+  await readings.saveImportedReading(other);
 
   const settings = signal<TtsSettings>({
     modelId: 'vendor/tts',
@@ -110,6 +115,7 @@ async function configure(): Promise<AudioJobBed> {
     readings,
     enrichment,
     draft,
+    other,
     settings,
     readiness,
   };
@@ -404,7 +410,7 @@ describe('AudioJobStore', () => {
     bed.provider.synthesizeWith = async () => {
       calls += 1;
       if (calls === AUDIO_GENERATION_CONCURRENCY) {
-        bed.store.cancel();
+        bed.store.cancel(bed.draft.reading.id);
       }
       await hold();
       return ok(audioPayload());
@@ -440,7 +446,7 @@ describe('AudioJobStore', () => {
       await hold(1);
     }
     let settled = false;
-    const cancellation = bed.store.cancelAndWait().then(() => {
+    const cancellation = bed.store.cancelAndWait(bed.draft.reading.id).then(() => {
       settled = true;
     });
     await hold(1);
@@ -460,7 +466,7 @@ describe('AudioJobStore', () => {
    */
   it('reports a request aborted by cancelling as a stop, not a failure', async () => {
     bed.provider.synthesizeWith = () => {
-      bed.store.cancel();
+      bed.store.cancel(bed.draft.reading.id);
       // What the client returns for a request whose signal was aborted.
       return err(aiError('cancelled', 'tts-synthesis', 'The request was cancelled.'));
     };
@@ -484,7 +490,7 @@ describe('AudioJobStore', () => {
     bed.provider.synthesizeWith = () => {
       calls += 1;
       if (calls === 3) {
-        bed.store.cancel();
+        bed.store.cancel(bed.draft.reading.id);
       }
       return ok(audioPayload());
     };
@@ -512,7 +518,7 @@ describe('AudioJobStore', () => {
    */
   it('does not resume a job the learner stopped', async () => {
     bed.provider.synthesizeWith = () => {
-      bed.store.cancel();
+      bed.store.cancel(bed.draft.reading.id);
       return ok(audioPayload());
     };
     await bed.store.start(bed.draft.reading.id);
@@ -541,7 +547,7 @@ describe('AudioJobStore', () => {
     bed.provider.synthesizeWith = () => {
       calls += 1;
       if (calls === 2) {
-        bed.store.cancel();
+        bed.store.cancel(bed.draft.reading.id);
       }
       return ok(audioPayload());
     };
@@ -580,11 +586,104 @@ describe('AudioJobStore', () => {
   });
 
   it('returns a settled report to rest, and refuses to dismiss a running one', async () => {
+    let dismissedWhileRunning: string | null = null;
+    bed.provider.synthesizeWith = () => {
+      bed.store.acknowledge(bed.draft.reading.id);
+      dismissedWhileRunning ??= bed.store.progress().kind;
+      return ok(audioPayload());
+    };
+
     await bed.store.start(bed.draft.reading.id);
+
+    expect(dismissedWhileRunning).toBe('running');
     expect(bed.store.progress().kind).toBe('complete');
 
-    bed.store.acknowledge();
+    bed.store.acknowledge(bed.draft.reading.id);
     expect(bed.store.progress().kind).toBe('idle');
+  });
+
+  it('publishes progress under its own reading and reports idle for any other', async () => {
+    await bed.store.start(bed.draft.reading.id);
+
+    const mine = bed.store.progressFor(bed.draft.reading.id);
+    expect(mine.kind).toBe('complete');
+    expect(mine.kind !== 'idle' && mine.readingId).toBe(bed.draft.reading.id);
+    expect(bed.store.progressFor(bed.other.reading.id).kind).toBe('idle');
+    expect(bed.store.isRunningFor(bed.other.reading.id)).toBe(false);
+  });
+
+  it('reports a live run only to the reading it belongs to', async () => {
+    const seen: { mine: boolean; other: boolean } = { mine: false, other: false };
+    bed.provider.synthesizeWith = () => {
+      seen.mine ||= bed.store.isRunningFor(bed.draft.reading.id);
+      seen.other ||= bed.store.isRunningFor(bed.other.reading.id);
+      return ok(audioPayload());
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(seen).toEqual({ mine: true, other: false });
+  });
+
+  it('ignores a stop pressed on a different reading', async () => {
+    bed.provider.synthesizeWith = () => {
+      bed.store.cancel(bed.other.reading.id);
+      return ok(audioPayload());
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(bed.provider.synthesized).toHaveLength(SENTENCE_COUNT);
+    expect(bed.store.progress().kind).toBe('complete');
+  });
+
+  it('ignores a dismiss pressed on a different reading', async () => {
+    await bed.store.start(bed.draft.reading.id);
+
+    bed.store.acknowledge(bed.other.reading.id);
+
+    expect(bed.store.progress().kind).toBe('complete');
+  });
+
+  it('finalizes its run when its reading is deleted, and says nothing to other readings', async () => {
+    const deletions: Promise<void>[] = [];
+    let calls = 0;
+    bed.provider.synthesizeWith = async () => {
+      calls += 1;
+      if (calls === AUDIO_GENERATION_CONCURRENCY) {
+        if (deletions.length === 0) {
+          deletions.push(bed.store.readingDeleted(bed.draft.reading.id));
+        }
+      }
+      await hold();
+      return ok(audioPayload());
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+    await Promise.all(deletions);
+
+    // Nothing was scheduled after the delete, so a reading about to stop
+    // existing costs nothing more.
+    expect(bed.provider.synthesized).toHaveLength(AUDIO_GENERATION_CONCURRENCY);
+    expect(bed.store.progress().kind).toBe('deleted');
+    expect(bed.store.progressFor(bed.other.reading.id).kind).toBe('idle');
+    expect(bed.store.isRunningFor(bed.draft.reading.id)).toBe(false);
+  });
+
+  it('leaves a run alone when a different reading is deleted', async () => {
+    const deletions: Promise<void>[] = [];
+    bed.provider.synthesizeWith = () => {
+      if (deletions.length === 0) {
+        deletions.push(bed.store.readingDeleted(bed.other.reading.id));
+      }
+      return ok(audioPayload());
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+    await Promise.all(deletions);
+
+    expect(bed.provider.synthesized).toHaveLength(SENTENCE_COUNT);
+    expect(bed.store.progress().kind).toBe('complete');
   });
 
   it('does not start a second run while one is going', async () => {

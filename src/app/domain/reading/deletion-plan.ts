@@ -38,6 +38,16 @@ export interface DeletionPlan {
   readonly isPermanent: true;
 }
 
+export interface ReadingJobActivity {
+  readonly translationRunning: boolean;
+  readonly audioRunning: boolean;
+}
+
+const NO_JOB_ACTIVITY: ReadingJobActivity = {
+  translationRunning: false,
+  audioRunning: false,
+};
+
 function plural(count: number, singular: string): string {
   return `${count.toLocaleString('en')} ${count === 1 ? singular : `${singular}s`}`;
 }
@@ -48,8 +58,18 @@ function plural(count: number, singular: string): string {
  * Only aids that actually exist are listed: promising to delete audio a reading
  * never had would misdescribe the action.
  */
-export function describeDeletion(reading: Reading): DeletionPlan {
+export function describeDeletion(
+  reading: Reading,
+  activity: ReadingJobActivity = NO_JOB_ACTIVITY,
+): DeletionPlan {
   const removes = [`The text and ${plural(reading.sentenceCount, 'sentence')}`];
+
+  if (activity.translationRunning) {
+    removes.push('The translation currently in progress');
+  }
+  if (activity.audioRunning) {
+    removes.push('The audio generation currently in progress');
+  }
 
   if (reading.translationSummary.completed > 0) {
     removes.push(plural(reading.translationSummary.completed, 'saved translation'));

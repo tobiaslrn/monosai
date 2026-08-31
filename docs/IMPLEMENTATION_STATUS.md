@@ -1169,6 +1169,32 @@ batch that came back before the cancel landed. A translation is an aid whose
 value does not depend on the rest of the reading, and discarding results the
 learner already paid for would be a worse answer to "stop" than keeping them.
 
+#### A job belongs to one reading
+
+Both job stores are root singletons that run one job at a time, so every
+non-idle progress variant carries the `readingId` it belongs to and every
+reader-facing read goes through `progressFor(readingId)` / `isRunningFor(...)`,
+which report `idle` for any other reading. That one fact filters the progress
+row, the header's busy state, the reader menu's item swap, and the Stop it would
+otherwise have misdirected — a learner cannot see, stop, retry, or dismiss a run
+belonging to a reading they are not looking at. `cancel`, `acknowledge`, and
+`readingDeleted` take the reading id and ignore a call from any other, so the
+controls are inert rather than dangerous.
+
+Deleting a reading is a terminal state of its own. `confirmDelete` — in the
+reader and in the library alike — names a run in progress among what deleting
+removes, awaits `readingDeleted` on both stores before the rows go, and lands in
+a `deleted` progress that renders as nothing. Without it the orphaned run wrote
+to rows that no longer existed and reported the storage failure on whatever
+reading was opened next.
+
+`resume` is called when the reader opens a reading, which is what it was written
+for: a run interrupted by a reload or a closed tab is continued rather than left
+as an active row nothing will ever pick up. It does nothing when the reading has
+no unfinished job, so opening a reading still issues no request, and a job the
+learner cancelled is not resumed — stopping was an instruction, and Retry is the
+way back.
+
 #### The library card and the saved panel tell the truth
 
 `reading-summary-labels.ts` holds an exhaustive switch over all four
@@ -1192,6 +1218,7 @@ reported as notes.
 | Historic-model rows do not inflate current completeness | `dexie-enrichment.repository.spec.ts`                                                                                                                                                          |
 | An inconsistent draft writes zero rows                  | `integrity.ts` refuses a mismatched `sourceContentHash` or an inconsistent summary; the repository spec asserts zero rows                                                                       |
 | No request on reader open                               | The job's `resume` does nothing when a reading has no unfinished job                                                                                                                           |
+| A job is shown and stoppable only on its own reading    | Both job store specs cover a second reading for progress, stop, dismiss, and deletion; `e2e/enrichment.spec.ts` scenario 12b navigates and deletes across two readings                          |
 
 ### Verification
 

@@ -25,7 +25,7 @@ export class ReadingAudioMaintenanceStore {
     }
     this.stateSignal.set('clearing');
     this.errorSignal.set(null);
-    await this.jobs.cancelAndWait();
+    await this.jobs.cancelAndWait(reading.id);
     this.playback.readingAudioCleared(reading.id);
     const cleared = await this.maintenance.clearReadingAudio(reading.id);
     if (!cleared.ok) {

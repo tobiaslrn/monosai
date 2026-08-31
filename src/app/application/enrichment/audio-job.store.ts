@@ -32,12 +32,14 @@ export interface AudioJobCounts {
 
 export type AudioJobProgress =
   | { readonly kind: 'idle' }
-  | { readonly kind: 'preparing' }
-  | { readonly kind: 'running'; readonly counts: AudioJobCounts }
-  | { readonly kind: 'complete'; readonly counts: AudioJobCounts }
-  | { readonly kind: 'cancelled'; readonly counts: AudioJobCounts }
+  | { readonly kind: 'preparing'; readonly readingId: ReadingId }
+  | { readonly kind: 'running'; readonly readingId: ReadingId; readonly counts: AudioJobCounts }
+  | { readonly kind: 'complete'; readonly readingId: ReadingId; readonly counts: AudioJobCounts }
+  | { readonly kind: 'cancelled'; readonly readingId: ReadingId; readonly counts: AudioJobCounts }
+  | { readonly kind: 'deleted'; readonly readingId: ReadingId }
   | {
       readonly kind: 'failed';
+      readonly readingId: ReadingId;
       readonly counts: AudioJobCounts;
       readonly error: AudioJobError;
     };
@@ -164,6 +166,16 @@ export class AudioJobStore {
     return kind === 'preparing' || kind === 'running';
   });
 
+  progressFor(readingId: ReadingId): AudioJobProgress {
+    const progress = this.progressSignal();
+    return progress.kind !== 'idle' && progress.readingId === readingId ? progress : IDLE;
+  }
+
+  isRunningFor(readingId: ReadingId): boolean {
+    const kind = this.progressFor(readingId).kind;
+    return kind === 'preparing' || kind === 'running';
+  }
+
   constructor() {
     effect(() => {
       this.busyRegistry.setBusy('audio-job', this.isRunning() ? 'an audio job is running' : null);
@@ -199,7 +211,7 @@ export class AudioJobStore {
     const controller = new AbortController();
     this.controller = controller;
     this.logger.info('job.started', { kind: 'audio' });
-    this.progressSignal.set({ kind: 'preparing' });
+    this.progressSignal.set({ kind: 'preparing', readingId });
 
     const prepared = await this.prepare(readingId);
     if (prepared === null) {
@@ -218,11 +230,13 @@ export class AudioJobStore {
     }
     const existing = await this.jobs.findActive(readingId, 'prepare-audio');
     if (!existing.ok) {
-      this.failStorage(existing.error, emptyCounts());
+      this.failStorage(readingId, existing.error, emptyCounts());
       return;
     }
     if (existing.value === null) {
-      this.progressSignal.set(IDLE);
+      if (this.progressFor(readingId).kind !== 'idle') {
+        this.progressSignal.set(IDLE);
+      }
       return;
     }
     await this.start(readingId);
@@ -245,21 +259,33 @@ export class AudioJobStore {
    * and stopping the one that is spending money must not silence the one that
    * is not.
    */
-  cancel(): void {
+  cancel(readingId: ReadingId): void {
+    if (!this.owns(readingId)) {
+      return;
+    }
     this.controller?.abort();
     this.controller = null;
     const progress = this.progressSignal();
     if (progress.kind === 'preparing') {
-      this.progressSignal.set({ kind: 'cancelled', counts: emptyCounts() });
+      this.progressSignal.set({ kind: 'cancelled', readingId, counts: emptyCounts() });
     } else if (progress.kind === 'running') {
-      this.progressSignal.set({ kind: 'cancelled', counts: progress.counts });
+      this.progressSignal.set({ kind: 'cancelled', readingId, counts: progress.counts });
     }
   }
 
   /** Cancels and waits until no in-flight result can still be stored. */
-  async cancelAndWait(): Promise<void> {
-    this.cancel();
+  async cancelAndWait(readingId: ReadingId): Promise<void> {
+    this.cancel(readingId);
     await this.activeRun;
+  }
+
+  /** Finalizes a reading's run before its persisted rows are removed. */
+  async readingDeleted(readingId: ReadingId): Promise<void> {
+    if (!this.owns(readingId)) {
+      return;
+    }
+    await this.cancelAndWait(readingId);
+    this.progressSignal.set({ kind: 'deleted', readingId });
   }
 
   /**
@@ -269,10 +295,15 @@ export class AudioJobStore {
    * dismissing the report of a run that is still scheduling requests would hide
    * work that is still spending them.
    */
-  acknowledge(): void {
-    if (!this.isRunning()) {
+  acknowledge(readingId: ReadingId): void {
+    if (this.owns(readingId) && !this.isRunningFor(readingId)) {
       this.progressSignal.set(IDLE);
     }
+  }
+
+  private owns(readingId: ReadingId): boolean {
+    const progress = this.progressSignal();
+    return progress.kind !== 'idle' && progress.readingId === readingId;
   }
 
   /**
@@ -288,13 +319,13 @@ export class AudioJobStore {
   ): Promise<{ readonly context: JobContext; readonly job: AssetJob } | null> {
     const config = this.audioConfig.resolve('tts-synthesis');
     if (!config.ok) {
-      this.failProvider(config.error, emptyCounts());
+      this.failProvider(readingId, config.error, emptyCounts());
       return null;
     }
 
     const refs = await this.readings.listSentenceRefs(readingId);
     if (!refs.ok) {
-      this.failStorage(refs.error, emptyCounts());
+      this.failStorage(readingId, refs.error, emptyCounts());
       return null;
     }
 
@@ -314,7 +345,7 @@ export class AudioJobStore {
 
     const active = await this.jobs.findActive(readingId, 'prepare-audio');
     if (!active.ok) {
-      this.failStorage(active.error, emptyCounts());
+      this.failStorage(readingId, active.error, emptyCounts());
       return null;
     }
 
@@ -329,7 +360,7 @@ export class AudioJobStore {
     if (active.value !== null) {
       const closed = await this.jobs.setState(active.value.id, 'cancelled');
       if (!closed.ok) {
-        this.failStorage(closed.error, emptyCounts());
+        this.failStorage(readingId, closed.error, emptyCounts());
         return null;
       }
     }
@@ -348,7 +379,7 @@ export class AudioJobStore {
     const completed = job.orderedSentenceIds.filter((id) => !outstanding.has(id));
     const updated = await this.jobs.reconcile(job.id, completed);
     if (!updated.ok) {
-      this.failStorage(updated.error, emptyCounts());
+      this.failStorage(context.readingId, updated.error, emptyCounts());
       return null;
     }
     return updated.value;
@@ -373,7 +404,7 @@ export class AudioJobStore {
       updatedAt: now,
     });
     if (!created.ok) {
-      this.failStorage(created.error, emptyCounts());
+      this.failStorage(context.readingId, created.error, emptyCounts());
       return null;
     }
     return created.value;
@@ -382,7 +413,7 @@ export class AudioJobStore {
   private async missingSentenceIds(context: JobContext): Promise<readonly SentenceId[] | null> {
     const missing = await this.audio.missingSentenceIds(context.readingId, context.cacheKeys);
     if (!missing.ok) {
-      this.failStorage(missing.error, emptyCounts());
+      this.failStorage(context.readingId, missing.error, emptyCounts());
       return null;
     }
     return missing.value;
@@ -418,25 +449,25 @@ export class AudioJobStore {
 
     if (outstanding.length === 0) {
       this.controller = null;
-      this.progressSignal.set({ kind: 'complete', counts });
+      this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
       return;
     }
 
     const loaded = await this.readings.loadSentences(context.orderedSentenceIds);
     if (!loaded.ok) {
-      this.failStorage(loaded.error, counts);
+      this.failStorage(context.readingId, loaded.error, counts);
       return;
     }
 
     if (job.state !== 'running') {
       const started = await this.jobs.setState(job.id, 'running');
       if (!started.ok) {
-        this.failStorage(started.error, counts);
+        this.failStorage(context.readingId, started.error, counts);
         return;
       }
     }
 
-    this.progressSignal.set({ kind: 'running', counts });
+    this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
 
     const outstandingSet = new Set(outstanding);
     const allSentences = orderedByReading(loaded.value);
@@ -482,7 +513,7 @@ export class AudioJobStore {
       outcome.firstSentenceFailure ??= { error };
       failed = recorded.value.failedItems.length;
       counts = { ...counts, failed };
-      this.progressSignal.set({ kind: 'running', counts });
+      this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
       return true;
     };
 
@@ -548,7 +579,7 @@ export class AudioJobStore {
         }
         completed += 1;
         counts = { ...counts, completed };
-        this.progressSignal.set({ kind: 'running', counts });
+        this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
       }
     };
 
@@ -561,7 +592,7 @@ export class AudioJobStore {
     const failure = outcome.failure;
     if (failure !== null) {
       if (failure.source === 'storage') {
-        this.failStorage(failure.error, counts);
+        this.failStorage(context.readingId, failure.error, counts);
         return;
       }
       await this.stopAtFailure(job, failure.sentenceId, failure.error, counts);
@@ -575,15 +606,15 @@ export class AudioJobStore {
     if (outcome.firstSentenceFailure !== null) {
       const marked = await this.jobs.setState(job.id, 'failed');
       if (!marked.ok) {
-        this.failStorage(marked.error, counts);
+        this.failStorage(context.readingId, marked.error, counts);
         return;
       }
-      this.failProvider(outcome.firstSentenceFailure.error, counts);
+      this.failProvider(context.readingId, outcome.firstSentenceFailure.error, counts);
       return;
     }
 
     this.controller = null;
-    this.progressSignal.set({ kind: 'complete', counts });
+    this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
     this.logger.info('job.succeeded', { kind: 'audio', count: counts.completed });
   }
 
@@ -599,28 +630,33 @@ export class AudioJobStore {
       failedAt: this.clock.now(),
     });
     if (!recorded.ok) {
-      this.failStorage(recorded.error, counts);
+      this.failStorage(job.readingId, recorded.error, counts);
       return;
     }
     const withFailure = { ...counts, failed: recorded.value.failedItems.length };
     const marked = await this.jobs.setState(job.id, 'failed');
     if (!marked.ok) {
-      this.failStorage(marked.error, withFailure);
+      this.failStorage(job.readingId, marked.error, withFailure);
       return;
     }
-    this.failProvider(error, withFailure);
+    this.failProvider(job.readingId, error, withFailure);
   }
 
   private async markCancelled(job: AssetJob, counts: AudioJobCounts): Promise<void> {
     this.controller = null;
     await this.jobs.setState(job.id, 'cancelled');
-    this.progressSignal.set({ kind: 'cancelled', counts });
+    this.progressSignal.set({ kind: 'cancelled', readingId: job.readingId, counts });
     this.logger.info('job.cancelled', { kind: 'audio', count: counts.completed });
   }
 
-  private failProvider(error: AiError, counts: AudioJobCounts): void {
+  private failProvider(readingId: ReadingId, error: AiError, counts: AudioJobCounts): void {
     this.controller = null;
-    this.progressSignal.set({ kind: 'failed', counts, error: { source: 'provider', error } });
+    this.progressSignal.set({
+      kind: 'failed',
+      readingId,
+      counts,
+      error: { source: 'provider', error },
+    });
     this.logger.error('job.failed', {
       kind: 'audio',
       errorDomain: error.domain,
@@ -628,9 +664,14 @@ export class AudioJobStore {
     });
   }
 
-  private failStorage(error: StorageError, counts: AudioJobCounts): void {
+  private failStorage(readingId: ReadingId, error: StorageError, counts: AudioJobCounts): void {
     this.controller = null;
-    this.progressSignal.set({ kind: 'failed', counts, error: { source: 'storage', error } });
+    this.progressSignal.set({
+      kind: 'failed',
+      readingId,
+      counts,
+      error: { source: 'storage', error },
+    });
     this.logger.error('job.failed', {
       kind: 'audio',
       errorDomain: error.domain,

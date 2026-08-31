@@ -330,3 +330,69 @@ test.describe('scenario 12 — whole-reading translation', () => {
     await expect(progress(page).locator('.job')).toHaveCount(0);
   });
 });
+
+/**
+ * End-to-end scenario 12b: a whole-reading job belongs to the reading that
+ * started it. Opening another reading must not show it, offer to stop it, or
+ * inherit its report, and deleting the reading it belongs to must not leave
+ * anything behind on the reading that is open.
+ */
+test.describe('scenario 12b — a job belongs to one reading', () => {
+  test.use({ storageState: TEXT_MODEL_READY_STATE });
+
+  function progress(page: Page): Locator {
+    return page.locator('mn-translation-progress');
+  }
+
+  async function openReadingActions(page: Page): Promise<void> {
+    await page.getByRole('button', { name: 'Reading actions' }).click();
+  }
+
+  async function openFromLibrary(page: Page, title: string): Promise<void> {
+    await page.goto('./#/library');
+    await page.getByRole('link', { name: title }).click();
+    await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
+  }
+
+  test('shows and stops a run only on its own reading, and deletes it cleanly @smoke', async ({
+    page,
+  }) => {
+    // The first batch never answers, so the job stays live for the whole test.
+    const calls = await stubOpenRouter(page, { generation: { translations: ['hang'] } });
+    await importReading(page, LONG_TEXT, 'Long reading');
+    await importReading(page, SAMPLE_TEXT, 'Short reading');
+
+    await openFromLibrary(page, 'Long reading');
+    await openReadingActions(page);
+    await page.getByRole('menuitem', { name: 'Translate reading' }).click();
+    await expect(progress(page).getByRole('button', { name: 'Stop' })).toBeVisible();
+
+    // The other reading is a bystander: no row, no Stop, and a menu that still
+    // offers to translate the reading actually on screen.
+    await openFromLibrary(page, 'Short reading');
+    await expect(progress(page).locator('.job')).toHaveCount(0);
+    await expect(progress(page).getByRole('button', { name: 'Stop' })).toHaveCount(0);
+    await openReadingActions(page);
+    await expect(page.getByRole('menuitem', { name: 'Translate reading' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Stop translating' })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+
+    // Deleting the reading the job belongs to says so before it happens.
+    const before = callCount(calls);
+    await page.goto('./#/library');
+    await page.getByRole('button', { name: 'Actions for Long reading' }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
+    await expect(page.locator('mn-confirm-dialog')).toContainText(
+      'The translation currently in progress',
+    );
+    await page.getByRole('button', { name: 'Delete permanently' }).click();
+    await expect(page.getByRole('link', { name: 'Long reading' })).toHaveCount(0);
+
+    // And the bystander is still a bystander: no report, no alert, and no
+    // further work sent for a reading that no longer exists.
+    await openFromLibrary(page, 'Short reading');
+    await expect(progress(page).locator('.job')).toHaveCount(0);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    expect(callCount(calls), 'a deleted reading sends no further work').toBe(before);
+  });
+});
