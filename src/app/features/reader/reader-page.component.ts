@@ -13,7 +13,6 @@ import {
   viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { DomPortal, DomPortalOutlet } from '@angular/cdk/portal';
 import { Router, RouterLink } from '@angular/router';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { AudioConfigurationService } from '../../application/enrichment/audio-configuration.service';
@@ -190,7 +189,26 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
         }
       </header>
 
-      <main class="content" #content>
+      @if (audioPlayerOpen() && store.status() === 'ready') {
+        <div
+          #audioPlayerShell
+          id="reading-audio-player"
+          class="audio-player-shell"
+          role="region"
+          aria-label="Reading audio"
+        >
+          <mn-reading-player
+            [progress]="audioJob.progress()"
+            [selectedSentenceId]="audioPlayerSentenceId()"
+            [modelConfigured]="hasAudioModel()"
+            (generate)="startWholeReadingAudio()"
+            (retryGeneration)="retryWholeReadingAudio()"
+            (cancelGeneration)="audioJob.cancel()"
+          />
+        </div>
+      }
+
+      <div class="content" #content>
         @switch (store.status()) {
           @case ('loading') {
             <p class="mn-hint" role="status">Opening…</p>
@@ -243,27 +261,8 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
             }
           }
         }
-      </main>
-    </div>
-
-    @if (audioPlayerOpen() && store.status() === 'ready') {
-      <div
-        #audioPlayerShell
-        id="reading-audio-player"
-        class="audio-player-shell"
-        role="region"
-        aria-label="Reading audio"
-      >
-        <mn-reading-player
-          [progress]="audioJob.progress()"
-          [selectedSentenceId]="audioPlayerSentenceId()"
-          [modelConfigured]="hasAudioModel()"
-          (generate)="startWholeReadingAudio()"
-          (retryGeneration)="retryWholeReadingAudio()"
-          (cancelGeneration)="audioJob.cancel()"
-        />
       </div>
-    }
+    </div>
 
     <ng-template #sentencePopover>
       <mn-reader-popover label="Sentence details" (closed)="popover.close()">
@@ -443,7 +442,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
      * none to spare, and left the controls hovering over the text they are
      * about; docked, the reading ends where the player begins.
      */
-    @media (max-width: 600px) {
+    @media (max-width: 959px) {
       .audio-player-shell {
         right: 0;
         bottom: 0;
@@ -491,8 +490,6 @@ export class ReaderPageComponent {
   private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
   private readonly viewContainerRef = inject(ViewContainerRef);
-  private readonly audioPlayerOutlet = new DomPortalOutlet(document.body);
-  private audioPlayerPortal: DomPortal<HTMLElement> | null = null;
 
   private readonly content = viewChild<ElementRef<HTMLElement>>('content');
   private readonly audioPlayerShell = viewChild<ElementRef<HTMLElement>>('audioPlayerShell');
@@ -822,13 +819,15 @@ export class ReaderPageComponent {
       if (!this.audioPlayerOpenSignal()) {
         return;
       }
-      // The conditional wrapper is rendered in this view, then moved into the
-      // body after the CDK overlay container. That keeps the regular fixed
-      // surface above a reader popover pane without making the player an
-      // overlay or changing the popover service's ownership.
+      // The conditional wrapper is rendered immediately after the header, so
+      // its fixed visual position does not leave it after every token in the
+      // keyboard order. It still publishes its measured height for sheets.
       this.audioPlayerShell();
       queueMicrotask(() => {
-        this.attachAudioPlayerShell();
+        const shell = this.audioPlayerShell()?.nativeElement;
+        if (this.audioPlayerOpenSignal() && shell !== undefined) {
+          this.trackPlayerHeight(shell);
+        }
       });
     });
 
@@ -849,9 +848,6 @@ export class ReaderPageComponent {
       this.releaseSheetClearance();
       this.popover.close();
       this.releasePlayerHeight();
-      if (this.audioPlayerOutlet.hasAttached()) {
-        this.audioPlayerOutlet.detach();
-      }
       window.removeEventListener('scroll', suppressFollow);
       window.removeEventListener('wheel', suppressFollow);
       window.removeEventListener('touchmove', suppressFollow);
@@ -932,10 +928,6 @@ export class ReaderPageComponent {
       return;
     }
     if (this.audioPlayerOpenSignal()) {
-      if (this.audioPlayerOutlet.hasAttached()) {
-        this.audioPlayerOutlet.detach();
-      }
-      this.audioPlayerPortal = null;
       this.releasePlayerHeight();
       // Deliberately not a stop. Hiding the card to read the text underneath is
       // not "stop reading to me", and the transport has its own Stop now; the
@@ -954,29 +946,11 @@ export class ReaderPageComponent {
     this.endPreview();
     this.releaseSheetClearance();
     this.popover.close();
-    if (this.audioPlayerOutlet.hasAttached()) {
-      this.audioPlayerOutlet.detach();
-    }
-    this.audioPlayerPortal = null;
     this.releasePlayerHeight();
     this.playback.stop();
     this.audioPlayerSentenceIdSignal.set(null);
     this.audioPlayerOpenSignal.set(false);
     this.selectedSentenceIdSignal.set(null);
-  }
-
-  private attachAudioPlayerShell(): void {
-    const shell = this.audioPlayerShell()?.nativeElement;
-    if (
-      !this.audioPlayerOpenSignal() ||
-      shell === undefined ||
-      this.audioPlayerOutlet.hasAttached()
-    ) {
-      return;
-    }
-    this.audioPlayerPortal = new DomPortal(shell);
-    this.audioPlayerOutlet.attach(this.audioPlayerPortal);
-    this.trackPlayerHeight(shell);
   }
 
   /**

@@ -95,8 +95,8 @@ export interface TokenActivation {
      * line falling apart. The margin is on the atomic wrapper so a normal line
      * break cannot strand half a bunsetsu on the previous line.
      */
-    .sentence.is-spaced .bunsetsu-group:not(:first-child) {
-      margin-inline-start: 0.5em;
+    .sentence.is-spaced .bunsetsu-group:not(:last-child) {
+      margin-inline-end: 0.5em;
       max-inline-size: calc(100% - 0.5em);
     }
 

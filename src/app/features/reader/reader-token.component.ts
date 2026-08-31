@@ -206,20 +206,13 @@ export interface TokenActivationSource {
      * legible, which would trade one failure for a worse one.
      */
     rt {
-      font-size: 0.47em;
+      font-size: 0.55em;
       letter-spacing: -0.02em;
       /* Ruby remains announced, but copied Japanese contains only its base. */
       user-select: none;
       /* Ruby must not be dragged into the underline of its own token. */
       text-decoration: none;
-    }
-
-    /*
-     * The annotation is not part of the word's target: a press on it is a press
-     * on the line, and belongs to the sentence.
-     */
-    rt {
-      cursor: text;
+      cursor: default;
     }
   `,
 })

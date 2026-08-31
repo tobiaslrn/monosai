@@ -136,7 +136,9 @@ export class PopoverService {
     const sheet = modal && options.mobileSheet !== false && this.viewport.isMobile();
     const overlayRef = createOverlayRef(this.injector, {
       positionStrategy: sheet
-        ? createGlobalPositionStrategy(this.injector).bottom('0').left('0')
+        ? createGlobalPositionStrategy(this.injector)
+            .bottom('var(--mn-docked-player-height, 0px)')
+            .left('0')
         : createFlexibleConnectedPositionStrategy(this.injector, options.origin)
             .withFlexibleDimensions(false)
             .withPush(true)

@@ -41,7 +41,8 @@ import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.componen
     .main {
       min-width: 0;
       padding: var(--space-5) var(--space-4);
-      overflow-x: hidden;
+      /* Clip stray paint without turning this sticky ancestor into a scrollport. */
+      overflow-x: clip;
     }
 
     .main:focus {

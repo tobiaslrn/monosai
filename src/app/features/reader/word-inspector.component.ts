@@ -322,6 +322,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
     .glosses {
       margin: 0;
       padding-inline-start: var(--space-5);
+      list-style: decimal;
     }
 
     .glosses > li + li {

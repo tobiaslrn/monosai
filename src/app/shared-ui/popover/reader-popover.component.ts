@@ -98,13 +98,13 @@ const DISMISS_DISTANCE_PX = 80;
     :host(.is-sheet) .popover {
       width: 100vw;
       max-width: 100%;
-      max-height: calc(80dvh - var(--mn-docked-player-height, 0px));
+      max-height: calc(60dvh - var(--mn-docked-player-height, 0px));
       /*
        * The reader's audio player docks to the same edge, and publishes its
-       * height on the document root so a sheet can land on top of it rather
-       * than under it. Zero whenever nothing else is docked.
+       * height on the document root. The global pane uses that value as its
+       * bottom position, while this card subtracts it from the shared height
+       * budget. Both resolve to zero whenever nothing else is docked.
        */
-      margin-block-end: var(--mn-docked-player-height, 0px);
       padding: 0 var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
       overflow: hidden auto;
       border-inline: 0;
