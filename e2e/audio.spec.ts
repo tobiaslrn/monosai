@@ -626,8 +626,10 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     page,
   }) => {
     // Short enough to prepare quickly, in a window short enough to scroll.
+    // Separate paragraphs rather than one run of text: the reading has to be
+    // taller than the window for parking a sentence to mean anything.
     await page.setViewportSize({ width: 900, height: 420 });
-    await prepareReading(page, TEXT.repeat(6));
+    await prepareReading(page, Array.from({ length: 6 }, () => TEXT).join('\n\n'));
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
     await expectAudioComplete(page, SENTENCE_COUNT * 6);
@@ -651,15 +653,21 @@ test.describe('scenario 13 — audio preparation and playback', () => {
       if (target === undefined) {
         return null;
       }
+      const player = document.querySelector('.audio-player-shell');
+      if (player === null) {
+        return null;
+      }
+      // Parked against the player's own top edge rather than the window's,
+      // because that edge is where the two disagree and it moves with the
+      // breakpoint the player docks at.
       window.scrollBy({
-        top: target.getBoundingClientRect().bottom - window.innerHeight + 8,
+        top: target.getBoundingClientRect().bottom - player.getBoundingClientRect().top - 8,
         behavior: 'instant',
       });
       const box = target.getBoundingClientRect();
-      const player = document.querySelector('.audio-player-shell');
       return {
         insideTheWindow: box.top >= 0 && box.bottom <= window.innerHeight,
-        behindThePlayer: box.bottom > (player?.getBoundingClientRect().top ?? Infinity),
+        behindThePlayer: box.bottom > player.getBoundingClientRect().top,
       };
     });
     // The bug needs both to hold, so the test says so rather than passing on a

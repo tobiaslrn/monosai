@@ -281,6 +281,11 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     );
 
     await expect(page.getByRole('main')).toHaveCount(1);
+    // The reading has to be laid out before it is tall enough to scroll, and
+    // the header is only sticky against a page that actually scrolls.
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight))
+      .toBeGreaterThan(500);
     await page.evaluate(() => {
       window.scrollTo(0, 500);
     });
@@ -519,34 +524,46 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     page,
     isMobile,
   }) => {
-    const text = Array.from({ length: 40 }, (_, index) => `第${String(index + 1)}文を読む。`).join(
+    // Short enough that the reader mounts the whole reading at once. Extending
+    // a mount window scrolls, a scroll closes the card, and virtualization is
+    // not what this test is about.
+    const text = Array.from({ length: 14 }, (_, index) => `第${String(index + 1)}文を読む。`).join(
       '\n\n',
     );
     await page.goto('./#/add');
     await pasteAndContinue(page, text);
     await saveAndOpenReader(page);
 
-    const sentenceIndex = isMobile ? 0 : 12;
-    const sentence = page.locator('.sentence').nth(sentenceIndex);
+    const sentenceIndex = isMobile ? 0 : 8;
+    // Held by identity rather than by position: the reader mounts a moving
+    // window of paragraphs, so an nth index names a different sentence before
+    // and after a scroll, and this test is about one particular sentence.
+    const nth = page.locator('.sentence').nth(sentenceIndex);
+    await expect(nth).toBeAttached();
+    const subjectId = await nth.getAttribute('data-sentence-id');
+    const sentence = page.locator(`[data-sentence-id="${String(subjectId)}"]`);
     if (isMobile) {
       await openSentence(page, sentenceIndex);
     } else {
+      await expect(page.locator('.sentence')).toHaveCount(14);
       await sentence.scrollIntoViewIfNeeded();
-      await sentence.evaluate((element) => {
-        const top = element.getBoundingClientRect().top;
-        window.scrollBy({ top: top - window.innerHeight * 0.4 });
-      });
-      await page.evaluate(
-        () =>
-          new Promise<void>((resolve) => {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                resolve();
-              });
-            });
+      // Corrected until it settles rather than scrolled once: mounting more of
+      // the reading moves everything below it, so a single scroll computed
+      // before the window grew leaves the sentence somewhere else entirely.
+      await expect
+        .poll(() =>
+          sentence.evaluate((element) => {
+            const target = window.innerHeight * 0.4;
+            const top = element.getBoundingClientRect().top;
+            if (Math.abs(top - target) > 2) {
+              window.scrollBy({ top: top - target });
+              return false;
+            }
+            return true;
           }),
-      );
-      await sentence.locator('.token.is-plain').click();
+        )
+        .toBe(true);
+      await sentence.locator('.token.is-plain').first().click();
       await expect(page.locator('mn-sentence-popover')).toBeVisible();
     }
 
@@ -562,18 +579,17 @@ test.describe('scenario 1 — paste, save, inspect', () => {
           }),
       );
     }
-    const placement = await page.evaluate((index) => {
+    const placement = await page.evaluate((id) => {
       const card = document.querySelector<HTMLElement>('[role="dialog"]')!.getBoundingClientRect();
-      const subject = document
-        .querySelectorAll<HTMLElement>('.sentence')
-        .item(index)
+      const box = document
+        .querySelector<HTMLElement>(`[data-sentence-id="${id}"]`)!
         .getBoundingClientRect();
       return {
         card: { top: card.top, right: card.right, bottom: card.bottom, left: card.left },
-        subject: { top: subject.top, bottom: subject.bottom },
+        subject: { top: box.top, bottom: box.bottom },
         viewport: { width: window.innerWidth, height: window.innerHeight },
       };
-    }, sentenceIndex);
+    }, String(subjectId));
 
     expect(placement.card.left).toBeGreaterThanOrEqual(0);
     expect(placement.card.right).toBeLessThanOrEqual(placement.viewport.width);
@@ -846,6 +862,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     const audio = page.getByRole('button', { name: /^Audio$/ });
     await audio.click();
     const player = page.getByRole('region', { name: 'Reading audio' });
+    // The region is rendered by a conditional block, so the order it is in is
+    // only a fact about the document once it is in the document.
+    await expect(player).toBeVisible();
     expect(
       await page.evaluate(() => {
         const playerElement = document.querySelector('[aria-label="Reading audio"]');
