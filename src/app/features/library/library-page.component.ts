@@ -12,6 +12,8 @@ import {
 import { Dialog } from '@angular/cdk/dialog';
 import { RouterLink } from '@angular/router';
 import { LibraryStore } from '../../application/reading/library.store';
+import { AudioJobStore } from '../../application/enrichment/audio-job.store';
+import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { describeDeletion } from '../../domain/reading/deletion-plan';
 import type { LibraryFilter, Reading } from '../../domain/reading/reading';
@@ -368,6 +370,8 @@ export class LibraryPageComponent {
   private readonly dialog = inject(Dialog);
   private readonly popover = inject(PopoverService);
   private readonly viewContainerRef = inject(ViewContainerRef);
+  private readonly translationJob = inject(TranslationJobStore);
+  private readonly audioJob = inject(AudioJobStore);
 
   private readonly newReading = viewChild<ElementRef<HTMLElement>>('newReading');
   private readonly newReadingMenu = viewChild.required<TemplateRef<unknown>>('newReadingMenu');
@@ -432,9 +436,16 @@ export class LibraryPageComponent {
   /**
    * Deletion states exactly what disappears and what survives before it is
    * permanent, because there is no backup and no undo.
+   *
+   * A job running for this reading is named in the confirmation and finalized
+   * before the rows it writes to are removed, so nothing survives the delete
+   * looking for them.
    */
   protected async confirmDelete(reading: Reading): Promise<void> {
-    const plan = describeDeletion(reading);
+    const plan = describeDeletion(reading, {
+      translationRunning: this.translationJob.isRunningFor(reading.id),
+      audioRunning: this.audioJob.isRunningFor(reading.id),
+    });
     const confirmed = await openConfirmDialog(this.dialog, {
       title: `Delete ${plan.title}?`,
       message: 'This cannot be undone. It permanently removes:',
@@ -445,6 +456,10 @@ export class LibraryPageComponent {
       tone: 'danger',
     });
     if (confirmed) {
+      await Promise.all([
+        this.translationJob.readingDeleted(reading.id),
+        this.audioJob.readingDeleted(reading.id),
+      ]);
       await this.store.delete(reading.id);
     }
   }

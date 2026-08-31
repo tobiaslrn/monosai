@@ -10,9 +10,12 @@ import {
 } from '../../application/audio/audio-playback.store';
 import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
 import { aiError } from '../../domain/ai/ai-error';
-import { sentenceId, type SentenceId } from '../../domain/shared/ids';
+import { readingId, sentenceId, type SentenceId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
 import { ReadingPlayerComponent } from './reading-player.component';
+
+/** The reading every progress under test belongs to. */
+const READING = readingId('00000000-0000-4000-8000-000000000001');
 
 /**
  * The playback store's surface, as the player reads it.
@@ -202,7 +205,11 @@ describe('ReadingPlayerComponent', () => {
 
   describe('while it is being generated', () => {
     function running(completed: number): AudioJobProgress {
-      return { kind: 'running', counts: { total: 13, requested: 13, completed, failed: 0 } };
+      return {
+        kind: 'running',
+        readingId: READING,
+        counts: { total: 13, requested: 13, completed, failed: 0 },
+      };
     }
 
     it('reports the run through the track and the control that stops it', () => {
@@ -264,6 +271,7 @@ describe('ReadingPlayerComponent', () => {
       store.ready.set(13);
       fixture.componentInstance.progress.set({
         kind: 'complete',
+        readingId: READING,
         counts: { total: 13, requested: 13, completed: 13, failed: 0 },
       });
       fixture.detectChanges();
@@ -277,6 +285,7 @@ describe('ReadingPlayerComponent', () => {
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'failed',
+        readingId: READING,
         counts: { total: 13, requested: 13, completed: 4, failed: 1 },
         error: {
           source: 'provider',
@@ -303,6 +312,7 @@ describe('ReadingPlayerComponent', () => {
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'failed',
+        readingId: READING,
         counts: { total: 13, requested: 13, completed: 4, failed: 1 },
         error: {
           source: 'provider',
@@ -327,6 +337,7 @@ describe('ReadingPlayerComponent', () => {
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'cancelled',
+        readingId: READING,
         counts: { total: 4, requested: 4, completed: 4, failed: 0 },
       });
       fixture.detectChanges();
@@ -340,6 +351,7 @@ describe('ReadingPlayerComponent', () => {
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'failed',
+        readingId: READING,
         counts: { total: 4, requested: 4, completed: 1, failed: 1 },
         error: { source: 'storage', error: storageError('unavailable', 'No room left.') },
       });
@@ -356,6 +368,7 @@ describe('ReadingPlayerComponent', () => {
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'failed',
+        readingId: READING,
         counts: { total: 10, requested: 0, completed: 0, failed: 0 },
         error: {
           source: 'provider',
@@ -373,6 +386,7 @@ describe('ReadingPlayerComponent', () => {
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'cancelled',
+        readingId: READING,
         counts: { total: 13, requested: 13, completed: 4, failed: 0 },
       });
       fixture.detectChanges();

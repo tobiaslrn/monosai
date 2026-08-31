@@ -34,7 +34,9 @@ import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy'
           } @else if (canRetry()) {
             <button type="button" class="quiet" (click)="retried.emit()">Retry the rest</button>
           }
-          <button type="button" class="quiet" (click)="dismissed.emit()">Dismiss</button>
+          @if (!isRunning()) {
+            <button type="button" class="quiet" (click)="dismissed.emit()">Dismiss</button>
+          }
         </div>
 
         @if (failure(); as failure) {
@@ -110,7 +112,10 @@ export class TranslationProgressComponent {
   readonly retried = output<void>();
   readonly dismissed = output<void>();
 
-  protected readonly visible = computed(() => this.progress().kind !== 'idle');
+  protected readonly visible = computed(() => {
+    const kind = this.progress().kind;
+    return kind !== 'idle' && kind !== 'deleted';
+  });
 
   protected readonly isRunning = computed(() => {
     const kind = this.progress().kind;
@@ -128,7 +133,7 @@ export class TranslationProgressComponent {
 
   protected readonly percent = computed(() => {
     const progress = this.progress();
-    if (progress.kind === 'idle' || progress.kind === 'preparing') {
+    if (progress.kind === 'idle' || progress.kind === 'preparing' || progress.kind === 'deleted') {
       return 0;
     }
     const { completed, requested } = progress.counts;
@@ -146,6 +151,8 @@ export class TranslationProgressComponent {
         return `Translating ${String(progress.counts.completed + 1)} of ${String(progress.counts.requested)}…`;
       case 'complete':
         return 'Translation finished.';
+      case 'deleted':
+        return '';
       case 'cancelled':
         return 'Stopped. Sentences already translated were kept.';
       case 'failed':

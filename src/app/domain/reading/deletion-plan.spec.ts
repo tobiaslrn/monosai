@@ -63,6 +63,17 @@ describe('describeDeletion', () => {
     expect(plan.removes).toContain('1 saved audio clip');
   });
 
+  it('names a job that is running, so the learner knows what deleting stops', () => {
+    const plan = describeDeletion(reading(), { translationRunning: true, audioRunning: true });
+    expect(plan.removes).toContain('The translation currently in progress');
+    expect(plan.removes).toContain('The audio generation currently in progress');
+  });
+
+  it('says nothing about jobs when none is running', () => {
+    const plan = describeDeletion(reading(), { translationRunning: false, audioRunning: false });
+    expect(plan.removes.join(' ')).not.toContain('in progress');
+  });
+
   it('states that vocabulary and settings survive', () => {
     const plan = describeDeletion(reading());
     expect(plan.preserves.join(' ')).toContain('vocabulary');

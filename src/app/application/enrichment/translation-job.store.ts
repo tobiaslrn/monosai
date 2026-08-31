@@ -36,12 +36,26 @@ export interface TranslationJobCounts {
 
 export type TranslationJobProgress =
   | { readonly kind: 'idle' }
-  | { readonly kind: 'preparing' }
-  | { readonly kind: 'running'; readonly counts: TranslationJobCounts }
-  | { readonly kind: 'complete'; readonly counts: TranslationJobCounts }
-  | { readonly kind: 'cancelled'; readonly counts: TranslationJobCounts }
+  | { readonly kind: 'preparing'; readonly readingId: ReadingId }
+  | {
+      readonly kind: 'running';
+      readonly readingId: ReadingId;
+      readonly counts: TranslationJobCounts;
+    }
+  | {
+      readonly kind: 'complete';
+      readonly readingId: ReadingId;
+      readonly counts: TranslationJobCounts;
+    }
+  | {
+      readonly kind: 'cancelled';
+      readonly readingId: ReadingId;
+      readonly counts: TranslationJobCounts;
+    }
+  | { readonly kind: 'deleted'; readonly readingId: ReadingId }
   | {
       readonly kind: 'failed';
+      readonly readingId: ReadingId;
       readonly counts: TranslationJobCounts;
       readonly error: TranslationJobError;
     };
@@ -93,6 +107,8 @@ export class TranslationJobStore {
 
   private readonly progressSignal = signal<TranslationJobProgress>(IDLE);
   private controller: AbortController | null = null;
+  /** The full prepare/process lifetime, so deletion can join it before removing rows. */
+  private activeRun: Promise<void> | null = null;
 
   readonly progress = this.progressSignal.asReadonly();
 
@@ -100,6 +116,16 @@ export class TranslationJobStore {
     const kind = this.progressSignal().kind;
     return kind === 'preparing' || kind === 'running';
   });
+
+  progressFor(readingId: ReadingId): TranslationJobProgress {
+    const progress = this.progressSignal();
+    return progress.kind !== 'idle' && progress.readingId === readingId ? progress : IDLE;
+  }
+
+  isRunningFor(readingId: ReadingId): boolean {
+    const kind = this.progressFor(readingId).kind;
+    return kind === 'preparing' || kind === 'running';
+  }
 
   constructor() {
     effect(() => {
@@ -118,15 +144,29 @@ export class TranslationJobStore {
    * action twice continues one job rather than racing two.
    */
   async start(readingId: ReadingId): Promise<void> {
-    if (this.isRunning()) {
+    const activeRun = this.activeRun;
+    if (activeRun !== null) {
+      await activeRun;
       return;
     }
+    const run = this.run(readingId);
+    this.activeRun = run;
+    try {
+      await run;
+    } finally {
+      if (this.activeRun === run) {
+        this.activeRun = null;
+      }
+    }
+  }
+
+  private async run(readingId: ReadingId): Promise<void> {
     // The controller exists before the first await so that cancelling while
     // configuration is still being read stops the run rather than being ignored.
     const controller = new AbortController();
     this.controller = controller;
     this.logger.info('job.started', { kind: 'translation' });
-    this.progressSignal.set({ kind: 'preparing' });
+    this.progressSignal.set({ kind: 'preparing', readingId });
 
     const prepared = await this.prepare(readingId);
     if (prepared === null) {
@@ -145,11 +185,13 @@ export class TranslationJobStore {
     }
     const existing = await this.jobs.findActive(readingId, 'translate-reading');
     if (!existing.ok) {
-      this.failStorage(existing.error, emptyCounts());
+      this.failStorage(readingId, existing.error, emptyCounts());
       return;
     }
     if (existing.value === null) {
-      this.progressSignal.set(IDLE);
+      if (this.progressFor(readingId).kind !== 'idle') {
+        this.progressSignal.set(IDLE);
+      }
       return;
     }
     await this.start(readingId);
@@ -167,15 +209,33 @@ export class TranslationJobStore {
    * not depend on the rest of the reading, and discarding results the learner
    * already paid for would be a worse answer to "stop" than keeping them.
    */
-  cancel(): void {
+  cancel(readingId: ReadingId): void {
+    if (!this.owns(readingId)) {
+      return;
+    }
     this.controller?.abort();
     this.controller = null;
     const progress = this.progressSignal();
     if (progress.kind === 'preparing') {
-      this.progressSignal.set({ kind: 'cancelled', counts: emptyCounts() });
+      this.progressSignal.set({ kind: 'cancelled', readingId, counts: emptyCounts() });
     } else if (progress.kind === 'running') {
-      this.progressSignal.set({ kind: 'cancelled', counts: progress.counts });
+      this.progressSignal.set({ kind: 'cancelled', readingId, counts: progress.counts });
     }
+  }
+
+  /** Cancels this reading's run and waits until no in-flight result can still be stored. */
+  async cancelAndWait(readingId: ReadingId): Promise<void> {
+    this.cancel(readingId);
+    await this.activeRun;
+  }
+
+  /** Finalizes a reading's run before its persisted rows are removed. */
+  async readingDeleted(readingId: ReadingId): Promise<void> {
+    if (!this.owns(readingId)) {
+      return;
+    }
+    await this.cancelAndWait(readingId);
+    this.progressSignal.set({ kind: 'deleted', readingId });
   }
 
   /**
@@ -185,10 +245,15 @@ export class TranslationJobStore {
    * dismissing the report of a run that is still scheduling batches would hide
    * work that is still spending requests.
    */
-  acknowledge(): void {
-    if (!this.isRunning()) {
+  acknowledge(readingId: ReadingId): void {
+    if (this.owns(readingId) && !this.isRunningFor(readingId)) {
       this.progressSignal.set(IDLE);
     }
+  }
+
+  private owns(readingId: ReadingId): boolean {
+    const progress = this.progressSignal();
+    return progress.kind !== 'idle' && progress.readingId === readingId;
   }
 
   /**
@@ -206,6 +271,7 @@ export class TranslationJobStore {
     const structuredOutput = settings.structuredOutput;
     if (settings.modelId === '' || structuredOutput === null) {
       this.failProvider(
+        readingId,
         aiError(
           'capability-unsupported',
           'translation',
@@ -219,7 +285,7 @@ export class TranslationJobStore {
 
     const refs = await this.readings.listSentenceRefs(readingId);
     if (!refs.ok) {
-      this.failStorage(refs.error, emptyCounts());
+      this.failStorage(readingId, refs.error, emptyCounts());
       return null;
     }
 
@@ -246,7 +312,7 @@ export class TranslationJobStore {
 
     const active = await this.jobs.findActive(readingId, 'translate-reading');
     if (!active.ok) {
-      this.failStorage(active.error, emptyCounts());
+      this.failStorage(readingId, active.error, emptyCounts());
       return null;
     }
 
@@ -258,7 +324,7 @@ export class TranslationJobStore {
     if (active.value !== null) {
       const closed = await this.jobs.setState(active.value.id, 'cancelled');
       if (!closed.ok) {
-        this.failStorage(closed.error, emptyCounts());
+        this.failStorage(readingId, closed.error, emptyCounts());
         return null;
       }
     }
@@ -277,7 +343,7 @@ export class TranslationJobStore {
     const completed = job.orderedSentenceIds.filter((id) => !outstanding.has(id));
     const updated = await this.jobs.reconcile(job.id, completed);
     if (!updated.ok) {
-      this.failStorage(updated.error, emptyCounts());
+      this.failStorage(context.readingId, updated.error, emptyCounts());
       return null;
     }
     return updated.value;
@@ -302,7 +368,7 @@ export class TranslationJobStore {
       updatedAt: now,
     });
     if (!created.ok) {
-      this.failStorage(created.error, emptyCounts());
+      this.failStorage(context.readingId, created.error, emptyCounts());
       return null;
     }
     return created.value;
@@ -311,7 +377,7 @@ export class TranslationJobStore {
   private async missingSentenceIds(context: JobContext): Promise<readonly SentenceId[] | null> {
     const missing = await this.translation.missingSentenceIds(context.readingId, context.cacheKeys);
     if (!missing.ok) {
-      this.failStorage(missing.error, emptyCounts());
+      this.failStorage(context.readingId, missing.error, emptyCounts());
       return null;
     }
     return missing.value;
@@ -336,26 +402,26 @@ export class TranslationJobStore {
 
     if (outstanding.length === 0) {
       this.controller = null;
-      this.progressSignal.set({ kind: 'complete', counts });
+      this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
       this.logger.info('job.succeeded', { kind: 'translation', count: counts.completed });
       return;
     }
 
     const loaded = await this.readings.loadSentences(outstanding);
     if (!loaded.ok) {
-      this.failStorage(loaded.error, counts);
+      this.failStorage(context.readingId, loaded.error, counts);
       return;
     }
 
     if (job.state !== 'running') {
       const started = await this.jobs.setState(job.id, 'running');
       if (!started.ok) {
-        this.failStorage(started.error, counts);
+        this.failStorage(context.readingId, started.error, counts);
         return;
       }
     }
 
-    this.progressSignal.set({ kind: 'running', counts });
+    this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
 
     for (const batch of planBatches(loaded.value, MAX_TRANSLATION_BATCH)) {
       if (isAborted(signal)) {
@@ -380,16 +446,16 @@ export class TranslationJobStore {
       for (const record of outcome.records) {
         const stored = await this.translation.store(record, context.cacheKeys);
         if (!stored.ok) {
-          this.failStorage(stored.error, counts);
+          this.failStorage(context.readingId, stored.error, counts);
           return;
         }
         const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
         if (!advanced.ok) {
-          this.failStorage(advanced.error, counts);
+          this.failStorage(context.readingId, advanced.error, counts);
           return;
         }
         counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
-        this.progressSignal.set({ kind: 'running', counts });
+        this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
       }
 
       if (isAborted(signal)) {
@@ -410,16 +476,16 @@ export class TranslationJobStore {
         counts = { ...counts, failed: recorded.failedItems.length };
         const marked = await this.jobs.setState(job.id, 'failed');
         if (!marked.ok) {
-          this.failStorage(marked.error, counts);
+          this.failStorage(context.readingId, marked.error, counts);
           return;
         }
-        this.failProvider(error, counts);
+        this.failProvider(context.readingId, error, counts);
         return;
       }
     }
 
     this.controller = null;
-    this.progressSignal.set({ kind: 'complete', counts });
+    this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
     this.logger.info('job.succeeded', { kind: 'translation', count: counts.completed });
   }
 
@@ -437,7 +503,7 @@ export class TranslationJobStore {
         failedAt,
       });
       if (!recorded.ok) {
-        this.failStorage(recorded.error, emptyCounts());
+        this.failStorage(job.readingId, recorded.error, emptyCounts());
         return null;
       }
       latest = recorded.value;
@@ -448,13 +514,18 @@ export class TranslationJobStore {
   private async markCancelled(job: AssetJob, counts: TranslationJobCounts): Promise<void> {
     this.controller = null;
     await this.jobs.setState(job.id, 'cancelled');
-    this.progressSignal.set({ kind: 'cancelled', counts });
+    this.progressSignal.set({ kind: 'cancelled', readingId: job.readingId, counts });
     this.logger.info('job.cancelled', { kind: 'translation', count: counts.completed });
   }
 
-  private failProvider(error: AiError, counts: TranslationJobCounts): void {
+  private failProvider(readingId: ReadingId, error: AiError, counts: TranslationJobCounts): void {
     this.controller = null;
-    this.progressSignal.set({ kind: 'failed', counts, error: { source: 'provider', error } });
+    this.progressSignal.set({
+      kind: 'failed',
+      readingId,
+      counts,
+      error: { source: 'provider', error },
+    });
     this.logger.error('job.failed', {
       kind: 'translation',
       errorDomain: error.domain,
@@ -462,9 +533,18 @@ export class TranslationJobStore {
     });
   }
 
-  private failStorage(error: StorageError, counts: TranslationJobCounts): void {
+  private failStorage(
+    readingId: ReadingId,
+    error: StorageError,
+    counts: TranslationJobCounts,
+  ): void {
     this.controller = null;
-    this.progressSignal.set({ kind: 'failed', counts, error: { source: 'storage', error } });
+    this.progressSignal.set({
+      kind: 'failed',
+      readingId,
+      counts,
+      error: { source: 'storage', error },
+    });
     this.logger.error('job.failed', {
       kind: 'translation',
       errorDomain: error.domain,

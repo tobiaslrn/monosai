@@ -605,6 +605,9 @@ export class ReadingPlayerComponent {
    */
   protected readonly rail = computed<GenerationRail>(() => {
     const progress = this.progress();
+    if (progress.kind === 'deleted') {
+      return 'none';
+    }
     if (progress.kind === 'preparing' || progress.kind === 'running') {
       return 'running';
     }
@@ -824,6 +827,7 @@ export class ReadingPlayerComponent {
     switch (progress.kind) {
       case 'idle':
       case 'complete':
+      case 'deleted':
       case 'preparing':
       case 'running':
         return '';

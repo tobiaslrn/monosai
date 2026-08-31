@@ -1,9 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { AudioJobStore } from '../../application/enrichment/audio-job.store';
+import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { LibraryStore } from '../../application/reading/library.store';
 import { CLOCK, READING_REPOSITORY } from '../../application/shared/repository-tokens';
 import type { Reading } from '../../domain/reading/reading';
+import type { ReadingId } from '../../domain/shared/ids';
 import { fixedClock } from '../../domain/shared/clock';
 import { readingId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
@@ -45,19 +48,45 @@ function reading(
       };
 }
 
+/**
+ * Only what the page asks a job store: whether this reading has a run, and the
+ * chance to finalize it before deletion. The real stores reach the database and
+ * the providers, which deleting from the library has no business starting.
+ */
+class FakeJobStore {
+  running: ReadingId | null = null;
+  readonly finalized: ReadingId[] = [];
+
+  isRunningFor(readingId: ReadingId): boolean {
+    return this.running === readingId;
+  }
+
+  readingDeleted(readingId: ReadingId): Promise<void> {
+    this.finalized.push(readingId);
+    this.running = null;
+    return Promise.resolve();
+  }
+}
+
 describe('LibraryPageComponent', () => {
   let repository: FakeReadingRepository;
   let media: FakeMediaMatcher;
+  let translationJob: FakeJobStore;
+  let audioJob: FakeJobStore;
 
   beforeEach(() => {
     media = installFakeMatchMedia(1280);
     repository = new FakeReadingRepository();
+    translationJob = new FakeJobStore();
+    audioJob = new FakeJobStore();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         LibraryStore,
         { provide: CLOCK, useValue: fixedClock(1_700_000_000_000) },
         { provide: READING_REPOSITORY, useValue: repository },
+        { provide: TranslationJobStore, useValue: translationJob },
+        { provide: AudioJobStore, useValue: audioJob },
       ],
     });
   });
@@ -259,6 +288,50 @@ describe('LibraryPageComponent', () => {
     expect(element(fixture).querySelector('[aria-live="polite"]')?.textContent).toContain(
       'was deleted',
     );
+  });
+
+  it('names a running job in the confirmation and finalizes it before deleting', async () => {
+    repository.readings = [reading('a', 'imported', 1_000)];
+    translationJob.running = readingId('a');
+    const fixture = await render();
+
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    fixture.detectChanges();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    await settle(fixture);
+
+    const dialog = document.querySelector('mn-confirm-dialog');
+    expect(dialog?.textContent).toContain('The translation currently in progress');
+
+    [...document.querySelectorAll<HTMLButtonElement>('mn-confirm-dialog button')]
+      .find((button) => button.textContent.includes('Delete permanently'))
+      ?.click();
+    await settle(fixture);
+
+    // Both stores hear about it, so neither is left writing to rows that
+    // deleting the reading is about to remove.
+    expect(translationJob.finalized).toEqual([readingId('a')]);
+    expect(audioJob.finalized).toEqual([readingId('a')]);
+    expect(repository.deleted).toEqual([readingId('a')]);
+  });
+
+  it('leaves a running job alone when the confirmation is declined', async () => {
+    repository.readings = [reading('a', 'imported', 1_000)];
+    audioJob.running = readingId('a');
+    const fixture = await render();
+
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    fixture.detectChanges();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    await settle(fixture);
+
+    [...document.querySelectorAll<HTMLButtonElement>('mn-confirm-dialog button')]
+      .find((button) => button.textContent.includes('Keep it'))
+      ?.click();
+    await settle(fixture);
+
+    expect(audioJob.finalized).toEqual([]);
+    expect(repository.deleted).toEqual([]);
   });
 
   it('keeps the reading when the confirmation is declined', async () => {
