@@ -204,6 +204,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
             (generate)="startWholeReadingAudio()"
             (retryGeneration)="retryWholeReadingAudio()"
             (cancelGeneration)="cancelAudioJob()"
+            (dismissGeneration)="dismissAudioJob()"
           />
         </div>
       }
@@ -921,6 +922,11 @@ export class ReaderPageComponent {
 
   protected cancelAudioJob(): void {
     this.audioJob.cancel(this.currentReadingId());
+  }
+
+  /** Puts a settled audio report away without asking for the work again. */
+  protected dismissAudioJob(): void {
+    this.audioJob.acknowledge(this.currentReadingId());
   }
 
   /** Confirms the destructive reading-level action selected from the More menu. */

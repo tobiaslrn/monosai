@@ -92,6 +92,15 @@ export interface StubOptions {
    */
   readonly audioSequence?: readonly AudioOutcome[];
   /**
+   * How a request for one particular sentence answers, overriding both of the
+   * above when it returns an outcome.
+   *
+   * A sentence that fails *permanently* is not a position in a sequence: the
+   * run carries on past it and every later attempt asks for it again, so the
+   * refusal has to follow the sentence rather than the request number.
+   */
+  readonly audioByText?: (text: string) => AudioOutcome | null;
+  /**
    * How long each synthesis response is held before it is fulfilled.
    *
    * Preparing a whole reading against an instant stub finishes before a click
@@ -345,7 +354,11 @@ export async function stubOpenRouter(
     }
 
     if (url.includes('/audio/speech')) {
-      const audio = nextOf(options.audioSequence, audioRequests) ??
+      const spoken = (route.request().postDataJSON() as { input?: unknown }).input;
+      const forThisSentence =
+        typeof spoken === 'string' ? options.audioByText?.(spoken) : undefined;
+      const audio = forThisSentence ??
+        nextOf(options.audioSequence, audioRequests) ??
         options.audio ?? { kind: 'valid' };
       audioRequests += 1;
       inFlightAudio += 1;
