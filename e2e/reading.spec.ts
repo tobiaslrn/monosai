@@ -81,8 +81,7 @@ async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
       throw new Error(`expected at least two bunsetsu groups, found ${groups.length}`);
     }
     const secondWidth = groups[1].getBoundingClientRect().width;
-    const spacing = Number.parseFloat(getComputedStyle(groups[1]).marginInlineStart) || 0;
-    const width = Math.ceil(secondWidth + spacing + 4);
+    const width = Math.ceil(secondWidth + 4);
     element.style.width = `${String(width)}px`;
     element.style.maxWidth = 'none';
     return width;
@@ -107,7 +106,9 @@ async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
       tops: groupRects.map((rect) => Math.round(rect.top)),
       secondTokenTops,
       paragraphRight: paragraphRect.right,
+      paragraphLeft: paragraphRect.left,
       groupRights: groupRects.map((rect) => rect.right),
+      groupLefts: groupRects.map((rect) => rect.left),
       documentOverflow: document.documentElement.scrollWidth - window.innerWidth,
     };
   });
@@ -115,6 +116,7 @@ async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
   expect(layout.text, label).toEqual(['名前が', 'あります。']);
   expect(layout.tops[1], label).toBeGreaterThan(layout.tops[0]);
   expect(new Set(layout.secondTokenTops), label).toEqual(new Set([layout.secondTokenTops[0]]));
+  expect(layout.groupLefts[1], label).toBeCloseTo(layout.paragraphLeft, 0);
   expect(
     layout.groupRights.every((right) => right <= layout.paragraphRight + 1),
     label,
@@ -240,7 +242,14 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
     await expect(page.locator('.sentence[lang="ja"]').first()).toBeVisible();
     // Ruby is whole-token and only where a reading adds information.
-    await expect(page.locator('ruby', { hasText: '猫' }).first().locator('rt')).toHaveText('ねこ');
+    const ruby = page.locator('ruby', { hasText: '猫' }).first();
+    const furigana = ruby.locator('rt');
+    await expect(furigana).toHaveText('ねこ');
+    const sizes = await ruby.evaluate((element) => ({
+      base: Number.parseFloat(getComputedStyle(element).fontSize),
+      annotation: Number.parseFloat(getComputedStyle(element.querySelector('rt')!).fontSize),
+    }));
+    expect(sizes.annotation / sizes.base).toBeGreaterThanOrEqual(0.54);
   });
 
   test('wraps fitting bunsetsu atomically without horizontal overflow @mobile', async ({
@@ -260,6 +269,37 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
     await setReaderAids(page, { furigana: false, spacing: false });
     await assertBunsetsuWrap(page, '320px with furigana and spacing off');
+  });
+
+  test('keeps one main landmark, a sticky header, and no horizontal overflow @mobile @smoke', async ({
+    page,
+  }) => {
+    await importReading(
+      page,
+      Array.from({ length: 18 }, () => SAMPLE_TEXT).join(PARAGRAPH_BREAK),
+      'A long reading with a header that stays available',
+    );
+
+    await expect(page.getByRole('main')).toHaveCount(1);
+    await page.evaluate(() => {
+      window.scrollTo(0, 500);
+    });
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+    await expect
+      .poll(() => page.locator('.bar').evaluate((element) => element.getBoundingClientRect().top))
+      .toBeCloseTo(0, 0);
+
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 412, height: 915 },
+      { width: 915, height: 412 },
+      { width: 360, height: 740 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
+        .toBeLessThanOrEqual(1);
+    }
   });
 
   test('inspecting a word shows local details with no request leaving the origin @smoke', async ({
@@ -288,6 +328,14 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(wordDetails(page).locator('.dictionary-form')).toHaveText('猫');
     await expect(wordDetails(page).locator('.part-of-speech')).toHaveText('noun');
     await expect(wordDetails(page).locator('.form-line')).toHaveCount(0);
+    await expect
+      .poll(() =>
+        wordDetails(page)
+          .locator('.glosses')
+          .first()
+          .evaluate((element) => getComputedStyle(element).listStyleType),
+      )
+      .toBe('decimal');
     // The sentence is not repeated here: the learner is looking at it.
     await expect(wordDetails(page)).not.toContainText('In this sentence');
     expect(external).toEqual([]);
@@ -762,6 +810,61 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     const viewport = page.viewportSize();
     const card = await page.locator('.mn-popover-pane .popover').boundingBox();
     expect((card?.y ?? 0) + (card?.height ?? 0)).toBeCloseTo(viewport?.height ?? 0, 0);
+  });
+
+  test('docks the player and sheet without overlap while preserving reading context @mobile', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'only docked surfaces share the viewport bottom');
+    await page.setViewportSize({ width: 915, height: 412 });
+    await importReading(page, SAMPLE_TEXT, 'Landscape overlays');
+
+    await page.getByRole('button', { name: /^Audio$/ }).click();
+    await openWordDetails(page, '猫');
+
+    const player = page.getByRole('region', { name: 'Reading audio' });
+    const sheet = page.locator('.mn-popover-pane .popover');
+    await expect
+      .poll(async () => {
+        const playerBox = await player.boundingBox();
+        const sheetBox = await sheet.boundingBox();
+        return (
+          (sheetBox?.y ?? 0) + (sheetBox?.height ?? 0) - (playerBox?.y ?? Number.NEGATIVE_INFINITY)
+        );
+      })
+      .toBeLessThanOrEqual(1);
+
+    const viewport = page.viewportSize();
+    const sheetBox = await sheet.boundingBox();
+    expect(sheetBox?.y ?? 0).toBeGreaterThanOrEqual((viewport?.height ?? 0) * 0.4 - 1);
+  });
+
+  test('places an open player before the reading in keyboard order', async ({ page }) => {
+    await importReading(page, SAMPLE_TEXT, 'Keyboard audio');
+
+    const audio = page.getByRole('button', { name: /^Audio$/ });
+    await audio.click();
+    const player = page.getByRole('region', { name: 'Reading audio' });
+    expect(
+      await page.evaluate(() => {
+        const playerElement = document.querySelector('[aria-label="Reading audio"]');
+        const firstToken = document.querySelector('button.token');
+        return (
+          playerElement !== null &&
+          firstToken !== null &&
+          (playerElement.compareDocumentPosition(firstToken) & Node.DOCUMENT_POSITION_FOLLOWING) !==
+            0
+        );
+      }),
+    ).toBe(true);
+
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Reading actions' })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect
+      .poll(() => player.evaluate((element) => element.contains(document.activeElement)))
+      .toBe(true);
   });
 
   test('sentence details dock as a sheet on a phone, above the text they explain @mobile', async ({

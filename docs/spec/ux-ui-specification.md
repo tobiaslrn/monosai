@@ -175,9 +175,9 @@ sentence translated is laid out exactly like one with none.
 
 - Sticky header with Back, truncated title, Aids, Audio, and overflow — the same controls as desktop, at the same touch target. Below 480px, Aids keeps its accessible name and touch target but drops its visible label so the title and all four controls fit without horizontal scrolling.
 - Full-width reading with 16px gutters.
-- Sentence and word details dock to the bottom edge as a sheet below the desktop breakpoint (ADR 0031). A sheet is full width, bounded to 80% of the viewport, scrolls internally, clears the safe-area inset, and carries a grab handle that is also a **Close** button and can be flicked down to dismiss. Focus returns to the word when dismissed.
+- Sentence and word details dock to the bottom edge as a sheet below the desktop breakpoint (ADR 0031). A sheet is full width, scrolls internally, clears the safe-area inset, and carries a grab handle that is also a **Close** button and can be flicked down to dismiss. The sheet and any docked player together occupy at most 60% of the viewport, preserving the reading and its sticky header above them. Focus returns to the word when dismissed.
 - The reading keeps scrolling while a sheet is open: a sheet is fixed to an edge rather than to the line it explains, so reading on with a translation open is possible. A press outside that travels is a scroll and leaves the sheet alone; a tap outside dismisses it.
-- The audio player docks to the bottom edge on a phone as a full-width bar above the safe-area inset, and is a compact centred card at wider widths. A sheet opened while the player is docked sits above it rather than under it.
+- The audio player docks to the bottom edge below the same desktop breakpoint as sheets, as a full-width bar above the safe-area inset, and is a compact centred card at wider widths. A sheet opened while the player is docked sits above it rather than under it.
 
 ### Text and token interaction
 
@@ -327,7 +327,7 @@ the existing sentence and word popover dismissal rules remain unchanged.
 
 The player is a compact, rounded, elevated card fixed above the viewport bottom
 and centered at desktop widths, and a full-width bar docked to the bottom edge
-below 600px, clearing `env(safe-area-inset-bottom)`. Its height is fixed and it
+below the desktop breakpoint, clearing `env(safe-area-inset-bottom)`. Its height is fixed and it
 never scrolls, because nothing inside it can grow; an open player adds bottom
 clearance to the reading. The sticky reader header and the player sit above the
 CDK popover backdrop, so the Audio toggle and player remain reachable alongside
