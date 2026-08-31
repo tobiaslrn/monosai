@@ -34,6 +34,8 @@ export interface TokenActivation {
   readonly word: WordGroup;
   /** The token's own button, which the word popover is anchored to. */
   readonly origin: HTMLElement;
+  /** Native click count, so a double-click stays one open lookup. */
+  readonly clickCount?: number;
 }
 
 /**
@@ -60,6 +62,7 @@ export interface TokenActivation {
       [class.is-selected]="selected()"
       [class.is-playing]="playing()"
       [attr.data-sentence-id]="entry().sentence.id"
+      tabindex="-1"
     >
       @for (group of groups(); track group.span.startTokenIndex) {
         <span class="bunsetsu-group">

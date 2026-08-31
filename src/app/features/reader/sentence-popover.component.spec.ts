@@ -1,7 +1,8 @@
+import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import { aiError } from '../../domain/ai/ai-error';
 import type {
@@ -75,6 +76,7 @@ function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
   imports: [SentencePopoverComponent],
   template: `<mn-sentence-popover
     [aids]="aids()"
+    [sentenceText]="sentenceText()"
     [canAnalyze]="canAnalyze()"
     [translationModelConfigured]="translationModelConfigured()"
     [grammarModelConfigured]="grammarModelConfigured()"
@@ -87,6 +89,7 @@ function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
 })
 class HostComponent {
   readonly aids = signal<SentenceAids>(NO_AIDS);
+  readonly sentenceText = signal('猫が寝た。');
   readonly canAnalyze = signal(true);
   readonly translationModelConfigured = signal(true);
   readonly grammarModelConfigured = signal(true);
@@ -161,6 +164,47 @@ describe('SentencePopoverComponent', () => {
     const fixture = render();
 
     expect(fixture.componentInstance.requests).toBe(0);
+  });
+
+  it('copies the immutable Japanese sentence and reports success on the action', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    const documentRef = TestBed.inject(DOCUMENT);
+    Object.defineProperty(documentRef.defaultView?.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const fixture = render();
+    const rendered = host(fixture);
+
+    [...rendered.querySelectorAll('button')]
+      .find((button) => button.textContent.trim() === 'Copy')
+      ?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(writeText).toHaveBeenCalledWith('猫が寝た。');
+    expect(rendered.textContent).toContain('Copied');
+    expect(rendered.querySelector('[role="status"]')?.textContent).toContain('Sentence copied.');
+  });
+
+  it('keeps copy failures local and offers ordinary selection as recovery', async () => {
+    const documentRef = TestBed.inject(DOCUMENT);
+    Object.defineProperty(documentRef.defaultView?.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error('private platform detail')) },
+    });
+    const fixture = render();
+    const rendered = host(fixture);
+
+    [...rendered.querySelectorAll('button')]
+      .find((button) => button.textContent.trim() === 'Copy')
+      ?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const alert = rendered.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('select it in the reader and copy it instead');
+    expect(alert?.textContent).not.toContain('private platform detail');
   });
 
   it('reports a run in flight without offering a second one', () => {

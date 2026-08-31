@@ -62,6 +62,8 @@ export class ParagraphGesturesDirective {
   private pressTimer: ReturnType<typeof setTimeout> | null = null;
   private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private pressOrigin: { x: number; y: number } | null = null;
+  private mousePressOrigin: { x: number; y: number } | null = null;
+  private mouseDragged = false;
   private armedSwallow: ((event: Event) => void) | null = null;
   private swallowTimer: ReturnType<typeof setTimeout> | null = null;
   /**
@@ -95,6 +97,14 @@ export class ParagraphGesturesDirective {
     if (this.lastPointerType !== 'mouse') {
       return;
     }
+    const followedDrag = this.mouseDragged;
+    this.mouseDragged = false;
+    // Text selection normally makes the guard below sufficient. Keep the
+    // geometric check as well: even if the browser collapses or fails to form
+    // the selection, releasing a drag is never a sentence activation.
+    if (followedDrag && event.detail > 0) {
+      return;
+    }
     // A press that produced a text selection was a reader copying a line, and
     // a click reported at the origin was synthesized rather than aimed — for
     // assistive technology the word buttons are the route in.
@@ -111,6 +121,8 @@ export class ParagraphGesturesDirective {
     this.disarmSwallow();
     this.lastPointerType = event.pointerType;
     if (event.pointerType === 'mouse') {
+      this.mousePressOrigin = { x: event.clientX, y: event.clientY };
+      this.mouseDragged = false;
       return;
     }
     this.cancelPress();
@@ -139,21 +151,33 @@ export class ParagraphGesturesDirective {
 
   @HostListener('pointermove', ['$event'])
   protected onPointerMove(event: PointerEvent): void {
+    const mouseOrigin = this.mousePressOrigin;
+    if (event.pointerType === 'mouse' && mouseOrigin !== null) {
+      this.mouseDragged ||= movedBeyondTolerance(mouseOrigin, event);
+      return;
+    }
     const origin = this.pressOrigin;
     if (origin === null) {
       return;
     }
-    const moved =
-      Math.abs(event.clientX - origin.x) > MOVE_TOLERANCE_PX ||
-      Math.abs(event.clientY - origin.y) > MOVE_TOLERANCE_PX;
-    if (moved) {
+    if (movedBeyondTolerance(origin, event)) {
       this.cancelPress();
     }
   }
 
-  @HostListener('pointerup')
+  @HostListener('pointerup', ['$event'])
+  protected onPointerUp(event: PointerEvent): void {
+    if (event.pointerType === 'mouse') {
+      this.mousePressOrigin = null;
+      return;
+    }
+    this.cancelPress();
+  }
+
   @HostListener('pointercancel')
-  protected onPointerEnd(): void {
+  protected onPointerCancel(): void {
+    this.mousePressOrigin = null;
+    this.mouseDragged = false;
     this.cancelPress();
   }
 
@@ -244,6 +268,13 @@ export class ParagraphGesturesDirective {
       this.armedSwallow = null;
     }
   }
+}
+
+function movedBeyondTolerance(origin: { x: number; y: number }, event: PointerEvent): boolean {
+  return (
+    Math.abs(event.clientX - origin.x) > MOVE_TOLERANCE_PX ||
+    Math.abs(event.clientY - origin.y) > MOVE_TOLERANCE_PX
+  );
 }
 
 function hasTextSelection(): boolean {

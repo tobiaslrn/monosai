@@ -206,6 +206,10 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         @if (nextAction(); as action) {
           <p class="next-action">{{ action }}</p>
         }
+
+        <button type="button" class="mn-button sentence-route" (click)="sentenceActions.emit()">
+          Sentence actions
+        </button>
       </div>
     }
   `,
@@ -406,6 +410,10 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       font-size: var(--text-sm);
     }
 
+    .sentence-route {
+      align-self: flex-start;
+    }
+
     .mn-error {
       margin: 0;
       color: var(--status-danger);
@@ -429,6 +437,8 @@ export class WordInspectorComponent {
   readonly grammar = input<WordGrammarState>(NO_WORD_GRAMMAR);
 
   readonly closed = output<void>();
+  /** Opens the request-spending actions for this word's sentence. */
+  readonly sentenceActions = output<void>();
 
   /** Whether this word has stored grammar findings to show. */
   protected readonly hasNotes = computed(() => {

@@ -188,6 +188,8 @@ sentence translated is laid out exactly like one with none.
 - On a coarse pointer the word button carries vertical padding that reaches into the leading, bringing a word up to a usable touch target without moving a glyph. It is applied by media query rather than by the current pointer, because a hit area that changes during a gesture breaks that gesture's own click (ADR 0032).
 - A press is about the whole word, never the morpheme under the pointer: あり and ます are one word, so pressing either opens あります, tints both, and looks up ある. Particles stay words of their own, because a particle is worth inspecting.
 - Desktop: hover/focus gives a concise preview; click/Enter/Space pins full details.
+- Double-clicking a word has the same result as a single click: one pinned word
+  lookup. Its second click never toggles the lookup closed.
 - Android: tap a word to open full details. A tap that is not on a word does nothing to the reading and dismisses whatever is open, so a word tap and putting a sheet away never conflict.
 - A word is always one press away, whatever is open: a press on a word dismisses nothing and keeps its click, so tapping the next word moves to it and tapping the open word puts it away (ADR 0032). The same is true of a long press on the open sentence.
 - The word or line a sheet is about stays visible above it: when a sheet opens on a phone the reading scrolls only as far as the sheet requires, including as the sheet grows to fit its content.
@@ -205,7 +207,10 @@ sentence translated is laid out exactly like one with none.
 - The selected sentence is tinted, so an anchored card is not orphaned from the sentence it is about. The open sentence and the open word share one tint colour, because only one of the two is ever open (ADR 0032).
 - Hovering a sentence or a word tints it neutrally, and only its colour changes: nothing on the page may move under the pointer. Hover styling is keyed off the last pointer device rather than a hover media query, so a tap never leaves a hover behind on a phone or a touchscreen laptop.
 - On touch the sentence under a resting finger is tinted after a short delay rather than on the first frame, so a tap and the start of a scroll leave the page alone.
-- The word popover does not offer a route to the sentence; sentence selection remains a pointer or touch interaction on the reading surface.
+- The word popover ends with **Sentence actions**. It is the keyboard and switch
+  route to the sentence surface: focus a word, open its local lookup with
+  Enter or Space, then open Translate, Grammar, Audio, and Copy from there.
+  Pointer and touch users keep the direct sentence gestures.
 
 ### Initial aid state
 
@@ -213,10 +218,12 @@ Global aids start on: furigana, token spacing, warning markers, and an unscaled
 text size. There is no preference for showing translations or grammar, because
 neither is ever laid out on the page.
 
-Opening a sentence or a word requests nothing. Where an aid does not exist, the
-sentence popover shows an explicit action, as a label and nothing else:
-**Translate**, **Grammar**, **Audio** (**Play** once a clip exists, and
-**… again** after a failure).
+Opening a sentence or a word requests nothing. The sentence popover always
+offers **Copy**, which writes the immutable Japanese source rather than the
+rendered ruby or marker labels and reports success or failure beside the action.
+Where an aid does not exist, it also shows an explicit action, as a label and
+nothing else: **Translate**, **Grammar**, **Audio** (**Play** once a clip exists,
+and **… again** after a failure).
 
 Nothing is written under those buttons. That an AI action sends the sentence to
 the learner's own model is a property of the application, stated once in
@@ -253,10 +260,16 @@ warnings the page marks are said in words:
    note saying a form is already known is what buried the Japanese.
 
 The actions are one tray at the foot of the card, ruled off from the notes above
-them: three equal-width controls, each an icon and a label, so on a phone they
-split the width rather than stacking into three full-width bars. **Play** — the
-one action that spends nothing, because the clip already exists — is the filled
-one.
+them: equal-width controls arranged two per row, each an icon and a label, so
+their names remain visible without stacking into full-width bars. **Play** — the
+one action that spends nothing and changes playback, because the clip already
+exists — is the filled one. Copy stays quiet and local.
+
+An anchored sentence card prefers the side of the pressed line that leaves its
+nearby reading context visible, flipping when that side does not fit. A docked
+sheet remains at the viewport bottom and keeps its sentence above it. On every
+dismissal, focus returns to the token that opened the keyboard route or to the
+sentence that received the pointer gesture.
 
 Both sections are ruled in their marker's own colour, so a learner who pressed
 the sentence because something was underlined finds out what without hunting for

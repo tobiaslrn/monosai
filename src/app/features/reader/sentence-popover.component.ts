@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
@@ -103,43 +112,54 @@ export interface UnknownWord {
       }
 
       <!--
-        Every action that spends a request, as a tray of three: an icon, a
-        label, and nothing else. What an AI action sends is said once, in
-        Settings, rather than under each button that could trigger one.
+        The sentence's actions as one tray: an icon, a label, and nothing else.
+        What an AI action sends is said once, in Settings, rather than under
+        each button that could trigger one. Copy is local and always available.
 
         A tray rather than a row of ordinary buttons because these are the only
         controls in the popover and they share one shape: on a phone they split
         the width evenly and reach the touch target without stretching into
-        three full-width bars.
+        full-width bars.
       -->
-      @if (hasActions()) {
-        <div class="actions">
-          @if (translateOffer(); as offer) {
-            <button type="button" class="action" (click)="translate.emit()">
-              <mn-icon name="translate" [size]="18" />
-              <span>{{ offer }}</span>
-            </button>
-          }
+      <div class="actions">
+        <button type="button" class="action" (click)="copySentence()">
+          <mn-icon [name]="copyStatus() === 'copied' ? 'check' : 'copy'" [size]="18" />
+          <span>{{ copyStatus() === 'copied' ? 'Copied' : 'Copy' }}</span>
+        </button>
 
-          @if (grammarOffer(); as offer) {
-            <button type="button" class="action" (click)="analyzeGrammar.emit()">
-              <mn-icon name="grammar" [size]="18" />
-              <span>{{ offer }}</span>
-            </button>
-          }
+        @if (translateOffer(); as offer) {
+          <button type="button" class="action" (click)="translate.emit()">
+            <mn-icon name="translate" [size]="18" />
+            <span>{{ offer }}</span>
+          </button>
+        }
 
-          @if (audioOffer(); as offer) {
-            <button
-              type="button"
-              class="action"
-              [class.is-primary]="offer === 'Play'"
-              (click)="audioAction()"
-            >
-              <mn-icon [name]="offer === 'Play' ? 'play' : 'audio'" [size]="18" />
-              <span>{{ offer }}</span>
-            </button>
-          }
-        </div>
+        @if (grammarOffer(); as offer) {
+          <button type="button" class="action" (click)="analyzeGrammar.emit()">
+            <mn-icon name="grammar" [size]="18" />
+            <span>{{ offer }}</span>
+          </button>
+        }
+
+        @if (audioOffer(); as offer) {
+          <button
+            type="button"
+            class="action"
+            [class.is-primary]="offer === 'Play'"
+            (click)="audioAction()"
+          >
+            <mn-icon [name]="offer === 'Play' ? 'play' : 'audio'" [size]="18" />
+            <span>{{ offer }}</span>
+          </button>
+        }
+      </div>
+
+      @if (copyStatus() === 'copied') {
+        <p class="mn-visually-hidden" role="status" aria-live="polite">Sentence copied.</p>
+      } @else if (copyStatus() === 'failed') {
+        <p class="mn-error" role="alert">
+          Copy failed. The sentence is unchanged; select it in the reader and copy it instead.
+        </p>
       }
     </div>
   `,
@@ -179,7 +199,8 @@ export interface UnknownWord {
      * card rather than three loose buttons among the notes.
      */
     .actions {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--space-2);
       align-self: stretch;
       padding-top: var(--space-3);
@@ -188,7 +209,6 @@ export interface UnknownWord {
 
     .action {
       display: flex;
-      flex: 1 1 0;
       gap: var(--space-2);
       align-items: center;
       justify-content: center;
@@ -309,7 +329,11 @@ export interface UnknownWord {
   `,
 })
 export class SentencePopoverComponent {
+  private readonly documentRef = inject(DOCUMENT);
+
   readonly aids = input.required<SentenceAids>();
+  /** The immutable Japanese source, copied without any rendered annotations. */
+  readonly sentenceText = input.required<string>();
   /**
    * Imported readings only. A generated story was reviewed against the profile
    * captured with it, and re-analysing one would judge frozen text by a profile
@@ -328,14 +352,9 @@ export class SentencePopoverComponent {
   /** Synthesizes this one sentence. Never plays it: producing is not hearing. */
   readonly generateAudio = output<void>();
   readonly playAudio = output<void>();
+  protected readonly copyStatus = signal<'idle' | 'copied' | 'failed'>('idle');
 
   protected readonly isRunning = computed(() => this.aids().translationAction.state === 'running');
-
-  /** Whether the tray has anything in it, so an empty one is never ruled off. */
-  protected readonly hasActions = computed(
-    () =>
-      this.translateOffer() !== null || this.grammarOffer() !== null || this.audioOffer() !== null,
-  );
 
   /** Null once a translation is stored: the English above it is the answer. */
   protected readonly translateOffer = computed(() => {
@@ -425,5 +444,19 @@ export class SentencePopoverComponent {
       return;
     }
     this.playAudio.emit();
+  }
+
+  protected async copySentence(): Promise<void> {
+    const clipboard = this.documentRef.defaultView?.navigator.clipboard;
+    if (clipboard === undefined) {
+      this.copyStatus.set('failed');
+      return;
+    }
+    try {
+      await clipboard.writeText(this.sentenceText());
+      this.copyStatus.set('copied');
+    } catch {
+      this.copyStatus.set('failed');
+    }
   }
 }

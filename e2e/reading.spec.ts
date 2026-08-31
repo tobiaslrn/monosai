@@ -398,6 +398,147 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(token).toBeFocused();
   });
 
+  test('keyboard reaches sentence actions and every exit restores its token @smoke', async ({
+    context,
+    page,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    const token = page.getByRole('button', { name: new RegExp('猫') }).first();
+    const openFromKeyboard = async (): Promise<void> => {
+      await token.focus();
+      await token.press('Enter');
+      const route = wordDetails(page).getByRole('button', { name: 'Sentence actions' });
+      await route.focus();
+      await route.press('Enter');
+      await expect(page.locator('mn-sentence-popover')).toBeVisible();
+    };
+
+    await openFromKeyboard();
+    const sentenceDetails = page.getByRole('dialog', { name: 'Sentence details' });
+    for (const action of ['Copy', 'Translate', 'Grammar', 'Audio']) {
+      await expect(
+        sentenceDetails.getByRole('button', { name: action, exact: true }),
+      ).toBeVisible();
+    }
+    await expectNoSeriousAccessibilityViolations(page);
+
+    const copy = page.getByRole('button', { name: 'Copy', exact: true });
+    await copy.focus();
+    await copy.press('Enter');
+    await expect(page.getByRole('button', { name: 'Copied', exact: true })).toBeFocused();
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('mn-sentence-popover')).not.toBeAttached();
+    await expect(token).toBeFocused();
+
+    await openFromKeyboard();
+    await page.locator('.bar h1').click();
+    await expect(page.locator('mn-sentence-popover')).not.toBeAttached();
+    await expect(token).toBeFocused();
+  });
+
+  test('a pointer-opened sentence returns focus to the sentence on Escape', async ({ page }) => {
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    const sentence = page.locator('.sentence').first();
+    await openSentence(page);
+    await page.keyboard.press('Escape');
+
+    await expect(page.locator('mn-sentence-popover')).not.toBeAttached();
+    await expect(sentence).toBeFocused();
+  });
+
+  test('double-clicking a word leaves one lookup open @smoke', async ({ page }) => {
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    const token = page.getByRole('button', { name: new RegExp('猫') }).first();
+    await token.dblclick();
+
+    await expect(wordDetails(page)).toBeVisible();
+    await expect(page.locator('.mn-popover-pane')).toHaveCount(1);
+    await expect(wordDetails(page).locator('.surface')).toHaveText('猫である');
+  });
+
+  test('sentence details clear their context and stay in the viewport @mobile', async ({
+    page,
+    isMobile,
+  }) => {
+    const text = Array.from({ length: 40 }, (_, index) => `第${String(index + 1)}文を読む。`).join(
+      '\n\n',
+    );
+    await page.goto('./#/add');
+    await pasteAndContinue(page, text);
+    await saveAndOpenReader(page);
+
+    const sentenceIndex = isMobile ? 0 : 12;
+    const sentence = page.locator('.sentence').nth(sentenceIndex);
+    if (isMobile) {
+      await openSentence(page, sentenceIndex);
+    } else {
+      await sentence.scrollIntoViewIfNeeded();
+      await sentence.evaluate((element) => {
+        const top = element.getBoundingClientRect().top;
+        window.scrollBy({ top: top - window.innerHeight * 0.4 });
+      });
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                resolve();
+              });
+            });
+          }),
+      );
+      await sentence.locator('.token.is-plain').click();
+      await expect(page.locator('mn-sentence-popover')).toBeVisible();
+    }
+
+    if (isMobile) {
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                resolve();
+              });
+            });
+          }),
+      );
+    }
+    const placement = await page.evaluate((index) => {
+      const card = document.querySelector<HTMLElement>('[role="dialog"]')!.getBoundingClientRect();
+      const subject = document
+        .querySelectorAll<HTMLElement>('.sentence')
+        .item(index)
+        .getBoundingClientRect();
+      return {
+        card: { top: card.top, right: card.right, bottom: card.bottom, left: card.left },
+        subject: { top: subject.top, bottom: subject.bottom },
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+      };
+    }, sentenceIndex);
+
+    expect(placement.card.left).toBeGreaterThanOrEqual(0);
+    expect(placement.card.right).toBeLessThanOrEqual(placement.viewport.width);
+    expect(placement.card.top).toBeGreaterThanOrEqual(0);
+    expect(placement.card.bottom).toBeLessThanOrEqual(placement.viewport.height);
+    if (isMobile) {
+      expect(placement.subject.bottom).toBeLessThanOrEqual(placement.card.top);
+    } else {
+      expect(placement.card.bottom).toBeLessThanOrEqual(placement.subject.top);
+    }
+    await expectNoSeriousAccessibilityViolations(page);
+  });
+
   /**
    * With no Anki vocabulary set up there is nothing to mark, and the reader
    * says so by marking nothing. It used to print a notice above every reading
@@ -447,6 +588,49 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     // offer, never a request made on the reader's behalf.
     await expect(page.locator('mn-sentence-popover')).toBeVisible();
     expect(external).toEqual([]);
+  });
+
+  test('dragging from a word selects clean Japanese and opens nothing @smoke', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'touch deliberately reserves long press for sentence details');
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    const paragraph = page.locator('mn-reader-paragraph .paragraph').first();
+    const start = await paragraph.locator('button.token').first().boundingBox();
+    const end = await paragraph.locator('.token.is-plain').last().boundingBox();
+    if (start === null || end === null) {
+      throw new Error('reader text did not produce selectable bounds');
+    }
+    await page.mouse.move(start.x + 1, start.y + start.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(end.x + end.width - 1, end.y + end.height / 2, { steps: 12 });
+    await page.mouse.up();
+
+    const selected = await page.evaluate(() => window.getSelection()?.toString() ?? '');
+    expect(selected.replace(/\s+/g, '')).toBe('吾輩は猫である。名前はまだ無い。');
+    await expect(page.locator('.mn-popover-pane')).toHaveCount(0);
+  });
+
+  test('the sentence Copy action writes only its Japanese source @smoke', async ({
+    context,
+    page,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    await openSentence(page);
+    await page.getByRole('button', { name: 'Copy', exact: true }).click();
+
+    await expect(page.getByRole('button', { name: 'Copied', exact: true })).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe('吾輩は猫である。');
   });
 
   test('a tap dismisses what is open instead of opening the next sentence @mobile', async ({

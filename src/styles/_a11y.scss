@@ -8,6 +8,8 @@
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+  /* Hidden announcements describe the UI; they are not part of copied content. */
+  user-select: none;
 }
 
 .mn-skip-link {

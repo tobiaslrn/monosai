@@ -14,6 +14,8 @@ import type { TokenStatusAssignment } from '../../domain/reading/validation';
 export interface TokenActivationSource {
   readonly token: Token;
   readonly origin: HTMLElement;
+  /** Native click count; absent for hover/focus previews. */
+  readonly clickCount?: number;
 }
 
 /**
@@ -97,6 +99,8 @@ export interface TokenActivationSource {
       line-height: 1.15;
       text-align: inherit;
       cursor: pointer;
+      /* A mouse drag may begin on a word just as it can on punctuation. */
+      user-select: text;
       /* The platform's own grey flash would fight the tint below. */
       -webkit-tap-highlight-color: transparent;
       transition: background-color var(--motion-fast) ease-out;
@@ -204,6 +208,8 @@ export interface TokenActivationSource {
     rt {
       font-size: 0.47em;
       letter-spacing: -0.02em;
+      /* Ruby remains announced, but copied Japanese contains only its base. */
+      user-select: none;
       /* Ruby must not be dragged into the underline of its own token. */
       text-decoration: none;
     }
@@ -239,7 +245,19 @@ export class ReaderTokenComponent {
     // The sentence around this token opens its menu on any click that reaches
     // it, so a word click must stop here or it would open both.
     event.stopPropagation();
-    this.activated.emit({ token: this.token(), origin: event.currentTarget as HTMLElement });
+    // Browsers may follow a completed drag with a click on its origin. The
+    // selection is the learner's action; opening word details would replace it.
+    if (event.detail > 0 && hasTextSelection()) {
+      event.preventDefault();
+      return;
+    }
+    this.activated.emit({
+      token: this.token(),
+      origin: event.currentTarget as HTMLElement,
+      // Chromium increments detail across rapid taps too. Touch owns a
+      // different contract: a second tap on the open word puts it away.
+      clickCount: this.pointerModality.isTouch() ? 1 : event.detail,
+    });
   }
 
   /**
@@ -278,4 +296,9 @@ export class ReaderTokenComponent {
   protected readonly statusLabel = computed(() =>
     this.marked() ? (this.presentation()?.label ?? null) : null,
   );
+}
+
+function hasTextSelection(): boolean {
+  const selection = window.getSelection();
+  return selection !== null && !selection.isCollapsed;
 }
