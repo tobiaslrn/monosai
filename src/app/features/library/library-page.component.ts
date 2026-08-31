@@ -12,6 +12,7 @@ import {
 import { Dialog } from '@angular/cdk/dialog';
 import { RouterLink } from '@angular/router';
 import { LibraryStore } from '../../application/reading/library.store';
+import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
@@ -372,6 +373,7 @@ export class LibraryPageComponent {
   private readonly viewContainerRef = inject(ViewContainerRef);
   private readonly translationJob = inject(TranslationJobStore);
   private readonly audioJob = inject(AudioJobStore);
+  private readonly playback = inject(AudioPlaybackStore);
 
   private readonly newReading = viewChild<ElementRef<HTMLElement>>('newReading');
   private readonly newReadingMenu = viewChild.required<TemplateRef<unknown>>('newReadingMenu');
@@ -460,6 +462,11 @@ export class LibraryPageComponent {
         this.translationJob.readingDeleted(reading.id),
         this.audioJob.readingDeleted(reading.id),
       ]);
+      // The same call the reader makes before it navigates. Playback ends with
+      // the reader now, so there is rarely a sound to stop from here — but the
+      // store still holds this reading's refs and clip set, and a deleted
+      // reading must not be what the next Play is pointed at.
+      this.playback.readingDeleted(reading.id);
       await this.store.delete(reading.id);
     }
   }

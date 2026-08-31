@@ -840,7 +840,46 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(await storedClipCount(page)).toBe(SENTENCE_COUNT);
   });
 
-  test('deleting saved audio stops playback and empties the summaries', async ({ page }) => {
+  /**
+   * The widest destructive action in the application asks first, and asks in
+   * the same words as the narrower per-reading one beside it. It used to delete
+   * every clip of every reading on one click, from a plain button sitting next
+   * to a harmless one.
+   */
+  test('confirms before deleting every readings audio, and keeps it on cancel @smoke', async ({
+    page,
+  }) => {
+    await prepareReading(page);
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page);
+
+    await page.goto('./#/settings');
+    await page.getByRole('button', { name: 'Delete saved audio' }).click();
+
+    const dialog = page.getByRole('alertdialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('every reading on this device');
+    // Cancelling is the safe outcome, and it is where focus starts.
+    await expect(dialog.getByRole('button', { name: 'Keep it' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    expect(await storedClipCount(page), 'cancelling deletes nothing').toBe(SENTENCE_COUNT);
+
+    await page.getByRole('button', { name: 'Delete saved audio' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete saved audio' }).click();
+    await expect(page.getByText(/Saved audio deleted/)).toBeVisible();
+
+    expect(await storedClipCount(page)).toBe(0);
+    expect(await countOwnedRows(page).then((rows) => rows['readings'] ?? 0)).toBe(1);
+  });
+
+  /**
+   * Playback belongs to the reading being read. It used to outlive the route,
+   * and the Library has no transport, no banner and no pause — so a learner who
+   * pressed Back was left with narration and no off switch anywhere.
+   */
+  test('ends the reading session when the reader is left @smoke', async ({ page }) => {
     await prepareReading(page);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
@@ -848,11 +887,61 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
 
-    await page.goto('./#/settings');
-    await page.getByRole('button', { name: 'Delete saved audio' }).click();
-    await expect(page.getByText(/Saved audio deleted/)).toBeVisible();
+    await page.getByRole('link', { name: 'Back to library' }).first().click();
+    await expect(page).toHaveURL(/#\/library/);
 
-    expect(await storedClipCount(page)).toBe(0);
+    // Nothing on the Library refers to playback, which is exactly why nothing
+    // may still be playing behind it.
+    await expect(
+      page.getByRole('button', { name: /audio|play|pause|stop/i }),
+      'the library offers no playback control',
+    ).toHaveCount(0);
+
+    // Reopening the reading finds a session that ended rather than one paused
+    // somewhere in the middle: the cursor is cleared and the clips are all
+    // still there.
+    await page.goBack();
+    await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
+    await openAudioPlayer(page);
+    await expect(playerStatus(page)).toHaveText(`${String(SENTENCE_COUNT)} sentences ready`);
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
+    expect(await storedClipCount(page)).toBe(SENTENCE_COUNT);
+  });
+
+  /**
+   * Leaving the reading is not the same as leaving the application. A reading
+   * being read aloud carries on while the document is in the background, which
+   * is what ADR 0039's continuous resource and the media notification are for.
+   *
+   * A real background cannot be produced by browser automation — headless
+   * Chromium reports every page as visible — so the document is told it is
+   * hidden and the event is raised. What that proves is the half this policy
+   * could regress: nothing in the application stops a session because the
+   * document went away, and only leaving the reader does.
+   */
+  test('keeps reading aloud while the document is in the background', async ({ page }) => {
+    await prepareReading(page, LONG_TEXT);
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page, LONG_SENTENCE_COUNT);
+    await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    // The reading moves on by itself: either it has reached a later sentence or
+    // it has reached the end. Both are a session that never stopped.
+    await expect
+      .poll(async () => (await playerStatus(page).textContent()) ?? '', { timeout: 30_000 })
+      .toMatch(/Sentence [2-8] of 8|Finished/);
+    await expect(audioPlayer(page).getByRole('button', { name: /Pause|Play again/ })).toBeVisible();
   });
 
   test('deleting the reading stops playback', async ({ page }) => {

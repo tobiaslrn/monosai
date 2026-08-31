@@ -298,15 +298,24 @@ selected sentence, while Play, Resume, Previous, Next, and Start from this
 sentence are separate explicit playback actions. No request, load, or sound may
 start because the player was opened or because generation completed.
 
-Closing through that header toggle calls playback Stop, clears the active
-sentence and cursor, and hides the surface. It does not cancel a running
-`prepare-audio` job; its progress and failure remain persisted in the job store.
-Generation Stop is its mirror: it aborts the requests in flight and stops no
-sound. Stop on reading deletion, audio-cache clearing,
-configuration-incompatible missing clip, decode failure, or the header-toggle
-close. Never autoplay on reader open, when a clip is stored, or after generation
-completes; continuing after a `waiting` state belongs to a session the learner
-had already started.
+Closing through that header toggle hides the card and clears the captured
+sentence, and silences nothing (ADR 0037): hiding a card to read the text under
+it is not "stop reading to me", and the header toggle keeps saying that a
+reading is playing. It does not cancel a running `prepare-audio` job either; its
+progress and failure remain persisted in the job store. Generation Stop is the
+mirror of that: it aborts the requests in flight and stops no sound.
+
+A session ends when the reader is left (ADR 0041). The reader carries the only
+transport in the application, so playback that outlived the route was a sound
+with no control anywhere; leaving it stops playback, clears the cursor, and
+empties the media session. Being backgrounded is not leaving — a hidden
+document, a locked screen, or another application in front stops nothing, which
+is what the continuous media resource and the media notification are for. Stop
+also on reading deletion from either the reader or the library, audio-cache
+clearing, a configuration-incompatible missing clip, and decode failure. Never
+autoplay on reader open, when a clip is stored, or after generation completes;
+continuing after a `waiting` state belongs to a session the learner had already
+started.
 
 ## 12. Retry and backoff policy
 
