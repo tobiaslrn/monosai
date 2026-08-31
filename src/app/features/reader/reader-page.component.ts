@@ -860,6 +860,13 @@ export class ReaderPageComponent {
     window.addEventListener('touchmove', suppressFollow, { passive: true });
 
     inject(DestroyRef).onDestroy(() => {
+      // Leaving the reading ends the session that was reading it aloud. The
+      // player is the only surface with a transport, and it lives here, so
+      // playback that outlived this route was a sound with no control anywhere
+      // in the application (ADR 0041). Being backgrounded is a different thing
+      // and stops nothing: the reader is still open, and the media notification
+      // is the control there.
+      this.playback.stop();
       this.endPreview();
       this.releaseSheetClearance();
       this.popover.close();

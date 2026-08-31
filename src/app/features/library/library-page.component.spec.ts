@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { LibraryStore } from '../../application/reading/library.store';
@@ -68,17 +69,32 @@ class FakeJobStore {
   }
 }
 
+/**
+ * Only what the page asks of playback: stop reading a reading it is deleting.
+ * The real store owns an audio element and reaches the database, neither of
+ * which a library deletion has any business touching.
+ */
+class FakePlaybackStore {
+  readonly stopped: ReadingId[] = [];
+
+  readingDeleted(readingId: ReadingId): void {
+    this.stopped.push(readingId);
+  }
+}
+
 describe('LibraryPageComponent', () => {
   let repository: FakeReadingRepository;
   let media: FakeMediaMatcher;
   let translationJob: FakeJobStore;
   let audioJob: FakeJobStore;
+  let playback: FakePlaybackStore;
 
   beforeEach(() => {
     media = installFakeMatchMedia(1280);
     repository = new FakeReadingRepository();
     translationJob = new FakeJobStore();
     audioJob = new FakeJobStore();
+    playback = new FakePlaybackStore();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -87,6 +103,7 @@ describe('LibraryPageComponent', () => {
         { provide: READING_REPOSITORY, useValue: repository },
         { provide: TranslationJobStore, useValue: translationJob },
         { provide: AudioJobStore, useValue: audioJob },
+        { provide: AudioPlaybackStore, useValue: playback },
       ],
     });
   });
@@ -288,6 +305,28 @@ describe('LibraryPageComponent', () => {
     expect(element(fixture).querySelector('[aria-live="polite"]')?.textContent).toContain(
       'was deleted',
     );
+    // The reader's delete path has always done this; this one never did, and a
+    // reading deleted from here went on being read aloud from a store still
+    // holding its clips.
+    expect(playback.stopped).toEqual([readingId('a')]);
+  });
+
+  it('leaves playback alone when the confirmation is declined', async () => {
+    repository.readings = [reading('a', 'imported', 1_000)];
+    const fixture = await render();
+
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    fixture.detectChanges();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    await settle(fixture);
+
+    const keep = [...document.querySelectorAll<HTMLButtonElement>('mn-confirm-dialog button')].find(
+      (button) => button.textContent.includes('Keep it'),
+    );
+    keep?.click();
+    await settle(fixture);
+
+    expect(playback.stopped).toEqual([]);
   });
 
   it('names a running job in the confirmation and finalizes it before deleting', async () => {

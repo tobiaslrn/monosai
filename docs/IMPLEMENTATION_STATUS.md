@@ -1227,6 +1227,36 @@ range input can raise `input` and `change` in one task, so the value binding
 only ever sees the position the drag ended on, finds it unchanged, and left the
 thumb at a sentence the position line was not reporting.
 
+#### A reading session ends with the reader
+
+[ADR 0041](decisions/0041-playback-ends-with-the-reader.md) settles the lifetime
+three earlier decisions left open. `ReaderPageComponent`'s teardown calls
+`playback.stop()`, so leaving the route that carries the only transport ends the
+session rather than leaving a sound the learner cannot reach: the Library has no
+player, no banner, and no control whose accessible name mentions audio, and
+pressing Back used to leave Japanese narration running with no off switch
+anywhere in the application.
+
+The policy is about the route and never about visibility. A hidden document, a
+locked screen, or another application in front stops nothing — the reader is
+still open, and the media notification is the control there, which is what
+[ADR 0039](decisions/0039-continuous-android-audio.md)'s continuous resource was
+built for. Closing the player through the header toggle still silences nothing
+either; only leaving the reading does.
+
+Deleting a reading now stops its playback from the Library as well as from the
+reader. `AudioPlaybackStore.readingDeleted` had exactly one caller, so a reading
+deleted from the Library card menu went on being read aloud out of a store still
+holding its clips — and, having just been deleted, could not be opened to stop
+it.
+
+Settings' **Delete saved audio** asks first. It is the widest destructive action
+on that screen above the danger zone — every clip of every reading on the device
+— and it ran on one unguarded click, next to the harmless button that asks the
+browser to keep data, while the *narrower* per-reading deletion in the reader had
+always opened a confirmation. It now opens the same one, naming the scope and
+what survives, with cancelling focused and Escape keeping it.
+
 #### The library card and the saved panel tell the truth
 
 `reading-summary-labels.ts` holds an exhaustive switch over all four

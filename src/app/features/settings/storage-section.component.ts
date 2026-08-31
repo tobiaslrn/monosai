@@ -6,8 +6,10 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { Dialog } from '@angular/cdk/dialog';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { StorageStore } from '../../application/settings/storage.store';
+import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) {
@@ -68,8 +70,9 @@ function formatBytes(bytes: number | null): string {
         </button>
       </div>
       <p class="mn-hint">
-        Deleting saved audio leaves readings, translations, and grammar results in place. Playback
-        stops first if necessary. You can generate the audio again later.
+        Deleting saved audio removes every clip of every reading on this device, and stops anything
+        playing. Readings, translations, and grammar results stay in place, and you can generate the
+        audio again later.
       </p>
       <p aria-live="polite" class="mn-hint">
         @if (storage.audioCleared()) {
@@ -181,6 +184,7 @@ function formatBytes(bytes: number | null): string {
 })
 export class StorageSectionComponent {
   private readonly document = inject(DOCUMENT);
+  private readonly dialog = inject(Dialog);
   private readonly playback = inject(AudioPlaybackStore);
   protected readonly storage = inject(StorageStore);
   protected readonly resetStage = signal<'idle' | 'confirming'>('idle');
@@ -204,15 +208,37 @@ export class StorageSectionComponent {
   }
 
   /**
-   * Clears the audio cache, having first stopped anything playing from it.
+   * Clears the audio cache, having confirmed the scope and then stopped
+   * anything playing from it.
    *
-   * The order matters and is the point: reporting an empty cache while a clip
-   * out of it is still audible would be a report the learner can hear is false.
+   * Confirmed because this is the widest destructive action on the screen above
+   * the danger zone: it deletes every clip of every reading on the device, and
+   * it sat one button away from asking the browser to keep data — where the
+   * *narrower* per-reading deletion in the reader has asked all along.
+   *
+   * The stop order matters and is the point: reporting an empty cache while a
+   * clip out of it is still audible would be a report the learner can hear is
+   * false.
    */
-  protected clearAudio(): void {
+  protected async clearAudio(): Promise<void> {
+    const confirmed = await openConfirmDialog(this.dialog, {
+      title: 'Delete saved audio for every reading?',
+      message: 'This cannot be undone. It permanently removes:',
+      details: [
+        'Every generated audio clip, for every reading on this device',
+        'Anything playing right now, which stops',
+      ],
+      footnote: 'Readings, translations, grammar results, and settings are not affected.',
+      confirmLabel: 'Delete saved audio',
+      cancelLabel: 'Keep it',
+      tone: 'danger',
+    });
+    if (!confirmed) {
+      return;
+    }
     this.stoppedPlayback.set(this.playback.isActive());
     this.playback.audioCacheCleared();
-    void this.storage.clearAudioCache();
+    await this.storage.clearAudioCache();
   }
 
   protected beginReset(): void {
