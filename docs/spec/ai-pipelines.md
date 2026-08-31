@@ -282,8 +282,9 @@ Build the cache key from content, TTS model, voice, response format, speed, spee
 5. Claim sentences through a fixed four-worker priority queue ordered by position in the reading, so the beginning of the reading is always the part that exists first and progress stays predictable. A sentence whose returned bytes fail audio validation returns to the queue at its original priority for one bounded queue-level retry. Transient transport failures keep the provider's existing maximum of two retries and are not retried again by the queue. The concurrency and retry limits are internal and are not settings.
 6. Store and verify each clip immediately, and count completions in the job rather than reading them back, because they arrive out of order.
 7. After the queue or provider retry budget is exhausted, record a sentence-local invalid-audio, malformed-response, or transient failure and continue preparing the remaining sentences. Finish with the precise failed count and expose **Try again** for only the missing clips. Configuration-wide failures such as authentication, model, capability, context, offline, cancellation, or unknown errors stop scheduling and abort requests still in flight.
-8. On cancellation, abort the active requests and retain successful clips. Cancelling generation stops no sound.
-9. Report progress as how many sentences are ready, not as a single sentence the run is at.
+8. Bound that retry as well. A settled failure states whether running it again could plausibly produce a clip, and says no once two consecutive runs for that reading and configuration have stored none: one fruitless run can be an outage that has passed, two in a row are a sentence this configuration cannot read. Any run that stores a clip clears the count, a changed configuration starts its own, and a run the learner stopped never counts against it. Where the answer is no, offer dismissal rather than a retry and say that repeated attempts produced nothing and that another voice or model may work.
+9. On cancellation, abort the active requests and retain successful clips. Cancelling generation stops no sound.
+10. Report progress as how many sentences are ready, not as a single sentence the run is at. A settled run reports the reading's ready-over-total — the figure the track is drawing — and states separately, as an attempt, how much of what it set out to read it covered.
 
 ### Playback
 
@@ -314,6 +315,7 @@ had already started.
 - Automatic transient retry for 429/5xx/network interruption: maximum two with capped exponential backoff and jitter, only when the request is idempotent and not cancelled.
 - Authentication, invalid model, unsupported capability, content/schema errors, and quota/storage errors are not automatically retried.
 - `Retry` from UI starts a new bounded attempt and records the latest error without exposing raw provider content.
+- Whole-reading audio withdraws that offer after two consecutive attempts that stored no clip, because each one costs a request per missing sentence to reproduce the same answer.
 
 Avoid multiplying limits: a content repair request may have transport retries, but no code path may exceed two distinct repaired story candidates after the original.
 

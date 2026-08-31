@@ -62,7 +62,17 @@ class StubPlaybackStore {
   next = (): Promise<void> => this.record('next');
   previous = (): Promise<void> => this.record('previous');
   continueReading = (): Promise<void> => this.record('continueReading');
-  seekTo = (position: number): Promise<void> => this.record(`seekTo:${String(position)}`);
+  /**
+   * Where a drop lands, when the real store would not land on the sentence it
+   * was dropped on: a position with no clip snaps to the nearest one that has,
+   * and a reading with nothing playable moves nothing at all.
+   */
+  seekLandsAt: number | null = null;
+
+  seekTo = (position: number): Promise<void> => {
+    this.position.set(this.seekLandsAt ?? position);
+    return this.record(`seekTo:${String(position)}`);
+  };
 
   cycleMode(): void {
     this.calls.push('cycleMode');
@@ -101,6 +111,7 @@ class StubPlaybackStore {
     (generate)="emitted.push('generate')"
     (retryGeneration)="emitted.push('retry')"
     (cancelGeneration)="emitted.push('cancel')"
+    (dismissGeneration)="emitted.push('dismiss')"
   />`,
 })
 class HostComponent {
@@ -282,6 +293,8 @@ describe('ReadingPlayerComponent', () => {
 
   describe('when generation stopped', () => {
     it('says what is ready and what failed, and offers the run again', () => {
+      store.total.set(13);
+      store.ready.set(4);
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'failed',
@@ -291,6 +304,7 @@ describe('ReadingPlayerComponent', () => {
           source: 'provider',
           error: aiError('rate-limited', 'tts-synthesis', 'Too many requests.'),
         },
+        canRetry: true,
       });
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
@@ -303,6 +317,67 @@ describe('ReadingPlayerComponent', () => {
       retry?.click();
 
       expect(fixture.componentInstance.emitted).toEqual(['retry']);
+    });
+
+    /**
+     * 17.2: the count beside the track has to be measuring the same thing the
+     * track is. A run that covered none of the four sentences it asked for
+     * reported "0 of 4 sentences ready" next to a bar drawn a third full.
+     */
+    it('counts the reading as the track does, and the attempt as an attempt', () => {
+      store.total.set(6);
+      store.ready.set(2);
+      const fixture = render();
+      fixture.componentInstance.progress.set({
+        kind: 'failed',
+        readingId: READING,
+        counts: { total: 6, requested: 4, completed: 0, failed: 4 },
+        error: {
+          source: 'provider',
+          error: aiError('provider-unavailable', 'tts-synthesis', 'Unavailable.'),
+        },
+        canRetry: true,
+      });
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(said(element)).toContain('Stopped with 2 of 6 sentences ready.');
+      expect(said(element)).toContain('This attempt covered 0 of the 4 sentences');
+      expect(scrubber(element)?.getAttribute('aria-valuetext')).toContain('2 of 6 with audio');
+    });
+
+    /**
+     * 17.1: three presses of Try again on a reading with a dead sentence spent
+     * twelve requests each and changed nothing. Once the store reports that
+     * running it again cannot work, the control that spends them is gone and
+     * the report says why.
+     */
+    it('stops offering a retry that has been shown not to work', () => {
+      store.total.set(6);
+      store.ready.set(2);
+      const fixture = render();
+      fixture.componentInstance.progress.set({
+        kind: 'failed',
+        readingId: READING,
+        counts: { total: 6, requested: 4, completed: 0, failed: 4 },
+        error: {
+          source: 'provider',
+          error: aiError('provider-unavailable', 'tts-synthesis', 'Unavailable.'),
+        },
+        canRetry: false,
+      });
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(control(element, 'Try again')).toBeNull();
+      expect(said(element)).toContain('Trying again produced nothing');
+      // The card cannot leave a settled failure on its own, so what is left is
+      // the press that puts the report away.
+      const dismiss = control(element, 'Dismiss');
+      expect(dismiss).not.toBeNull();
+      dismiss?.click();
+
+      expect(fixture.componentInstance.emitted).toEqual(['dismiss']);
     });
 
     /** The prefix that did arrive stays playable while the remainder is offered. */
@@ -318,6 +393,7 @@ describe('ReadingPlayerComponent', () => {
           source: 'provider',
           error: aiError('rate-limited', 'tts-synthesis', 'Too many requests.'),
         },
+        canRetry: true,
       });
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
@@ -354,6 +430,7 @@ describe('ReadingPlayerComponent', () => {
         readingId: READING,
         counts: { total: 4, requested: 4, completed: 1, failed: 1 },
         error: { source: 'storage', error: storageError('unavailable', 'No room left.') },
+        canRetry: true,
       });
       fixture.detectChanges();
 
@@ -374,6 +451,7 @@ describe('ReadingPlayerComponent', () => {
           source: 'provider',
           error: aiError('capability-unsupported', 'tts-synthesis', 'No voice.'),
         },
+        canRetry: true,
       });
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
@@ -383,6 +461,8 @@ describe('ReadingPlayerComponent', () => {
     });
 
     it('says what is ready after a cancellation', () => {
+      store.total.set(13);
+      store.ready.set(4);
       const fixture = render();
       fixture.componentInstance.progress.set({
         kind: 'cancelled',
@@ -557,6 +637,59 @@ describe('ReadingPlayerComponent', () => {
       scrub.dispatchEvent(new Event('change'));
 
       expect(store.calls).toEqual(['seekTo:3']);
+    });
+
+    /**
+     * 17.3: a drop on a sentence with no clip left the thumb at 5 while the
+     * position line said 6. Playback snapping to the nearest clip is right;
+     * leaving the thumb somewhere else is what made the card disagree with
+     * itself. A range input can raise both events in one task, which is the
+     * case the value binding alone could not correct.
+     */
+    it('lands the thumb where playback landed, not where it was dropped', async () => {
+      store.ready.set(4);
+      // Rendered at the sentence the drop will snap back to, which is the case
+      // the value binding cannot correct on its own: what it last wrote and
+      // what it would write next are the same number.
+      store.position.set(6);
+      store.current.set(sentenceId('s6'));
+      store.seekLandsAt = 6;
+      const fixture = render();
+      const scrub = scrubber(fixture.nativeElement as HTMLElement);
+      if (scrub === null) {
+        throw new Error('The track has no slider.');
+      }
+
+      scrub.value = '5';
+      scrub.dispatchEvent(new Event('input'));
+      scrub.dispatchEvent(new Event('change'));
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(store.calls).toEqual(['seekTo:5']);
+      expect(scrub.value).toBe('6');
+      expect(said(fixture.nativeElement as HTMLElement)).toContain('Sentence 6 of 6');
+      expect(scrub.getAttribute('aria-valuetext')).toBe('Sentence 6 of 6, 4 of 6 with audio');
+    });
+
+    /** A reading with nothing playable moves nothing, thumb included. */
+    it('leaves the thumb where it was when the drop reaches nothing', async () => {
+      store.ready.set(1);
+      store.position.set(1);
+      store.seekLandsAt = 1;
+      const fixture = render();
+      const scrub = scrubber(fixture.nativeElement as HTMLElement);
+      if (scrub === null) {
+        throw new Error('The track has no slider.');
+      }
+
+      scrub.value = '4';
+      scrub.dispatchEvent(new Event('input'));
+      scrub.dispatchEvent(new Event('change'));
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(scrub.value).toBe('1');
     });
 
     it('cannot be dragged before anything has audio', () => {

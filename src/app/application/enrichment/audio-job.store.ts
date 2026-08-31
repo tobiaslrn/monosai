@@ -42,6 +42,14 @@ export type AudioJobProgress =
       readonly readingId: ReadingId;
       readonly counts: AudioJobCounts;
       readonly error: AudioJobError;
+      /**
+       * Whether running the same request again could plausibly produce a clip.
+       *
+       * False once repeated attempts have produced nothing: a retry that cannot
+       * work still spends a request per sentence, and offering it is how a
+       * learner discovers the same answer at the same price several times over.
+       */
+      readonly canRetry: boolean;
     };
 
 const IDLE: AudioJobProgress = { kind: 'idle' };
@@ -63,6 +71,16 @@ export const AUDIO_GENERATION_CONCURRENCY = 4;
  * inside the provider; retrying those again here would multiply that limit.
  */
 export const AUDIO_SENTENCE_RETRY_LIMIT = 1;
+
+/**
+ * How many consecutive runs may end without a new clip before Try again stops
+ * being offered.
+ *
+ * Two, so a passing outage costs one more attempt and no more: a second run
+ * that also produced nothing is evidence that this reading has sentences this
+ * configuration cannot read, not that the network was briefly away.
+ */
+export const AUDIO_FRUITLESS_RUN_LIMIT = 2;
 
 /** Reads the flag through a call, so an earlier check never narrows a later one. */
 function isAborted(signal: AbortSignal): boolean {
@@ -115,6 +133,12 @@ class AudioPriorityQueue {
   }
 }
 
+/** Runs for one reading that stored nothing, and the voice they were made for. */
+interface FruitlessRuns {
+  readonly runs: number;
+  readonly configFingerprint: string;
+}
+
 /** Everything one run needs, captured once so no setting can change mid-flight. */
 interface JobContext {
   readonly readingId: ReadingId;
@@ -141,6 +165,12 @@ interface JobContext {
  * configuration-wide failures still stop the run immediately so a bad key or
  * model cannot spend one request per sentence. **Try again** remains the
  * visible attempt for the missing clips.
+ *
+ * That retry is itself bounded. A sentence this voice cannot read fails the
+ * same way every run, so a settled failure reports whether running it again
+ * could plausibly produce anything: after `AUDIO_FRUITLESS_RUN_LIMIT` runs that
+ * stored no clip, it says no, and the reader stops offering a retry whose only
+ * result is another request per missing sentence.
  */
 @Injectable({ providedIn: 'root' })
 export class AudioJobStore {
@@ -155,6 +185,16 @@ export class AudioJobStore {
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly progressSignal = signal<AudioJobProgress>(IDLE);
+  /**
+   * Consecutive runs that stored no clip, per reading and configuration.
+   *
+   * Per reading rather than one counter, so a learner moving between two
+   * readings does not clear the evidence that one of them cannot be finished;
+   * and per configuration, because a different voice is a different question
+   * and deserves its own attempts. An entry lives as long as the session and is
+   * dropped as soon as a run produces something or the reading goes.
+   */
+  private readonly fruitlessRuns = new Map<ReadingId, FruitlessRuns>();
   private controller: AbortController | null = null;
   /** The full prepare/process lifetime, so destructive maintenance can join it. */
   private activeRun: Promise<void> | null = null;
@@ -230,7 +270,7 @@ export class AudioJobStore {
     }
     const existing = await this.jobs.findActive(readingId, 'prepare-audio');
     if (!existing.ok) {
-      this.failStorage(readingId, existing.error, emptyCounts());
+      this.failStorage(readingId, existing.error, emptyCounts(), true);
       return;
     }
     if (existing.value === null) {
@@ -281,6 +321,9 @@ export class AudioJobStore {
 
   /** Finalizes a reading's run before its persisted rows are removed. */
   async readingDeleted(readingId: ReadingId): Promise<void> {
+    // Whatever this reading could not be read aloud goes with it, whether or
+    // not it is the reading whose run is currently published.
+    this.fruitlessRuns.delete(readingId);
     if (!this.owns(readingId)) {
       return;
     }
@@ -319,13 +362,13 @@ export class AudioJobStore {
   ): Promise<{ readonly context: JobContext; readonly job: AssetJob } | null> {
     const config = this.audioConfig.resolve('tts-synthesis');
     if (!config.ok) {
-      this.failProvider(readingId, config.error, emptyCounts());
+      this.failProvider(readingId, config.error, emptyCounts(), true);
       return null;
     }
 
     const refs = await this.readings.listSentenceRefs(readingId);
     if (!refs.ok) {
-      this.failStorage(readingId, refs.error, emptyCounts());
+      this.failStorage(readingId, refs.error, emptyCounts(), true);
       return null;
     }
 
@@ -345,7 +388,7 @@ export class AudioJobStore {
 
     const active = await this.jobs.findActive(readingId, 'prepare-audio');
     if (!active.ok) {
-      this.failStorage(readingId, active.error, emptyCounts());
+      this.failStorage(readingId, active.error, emptyCounts(), true);
       return null;
     }
 
@@ -360,7 +403,7 @@ export class AudioJobStore {
     if (active.value !== null) {
       const closed = await this.jobs.setState(active.value.id, 'cancelled');
       if (!closed.ok) {
-        this.failStorage(readingId, closed.error, emptyCounts());
+        this.failStorage(readingId, closed.error, emptyCounts(), true);
         return null;
       }
     }
@@ -379,7 +422,7 @@ export class AudioJobStore {
     const completed = job.orderedSentenceIds.filter((id) => !outstanding.has(id));
     const updated = await this.jobs.reconcile(job.id, completed);
     if (!updated.ok) {
-      this.failStorage(context.readingId, updated.error, emptyCounts());
+      this.failStorage(context.readingId, updated.error, emptyCounts(), true);
       return null;
     }
     return updated.value;
@@ -404,7 +447,7 @@ export class AudioJobStore {
       updatedAt: now,
     });
     if (!created.ok) {
-      this.failStorage(context.readingId, created.error, emptyCounts());
+      this.failStorage(context.readingId, created.error, emptyCounts(), true);
       return null;
     }
     return created.value;
@@ -413,7 +456,7 @@ export class AudioJobStore {
   private async missingSentenceIds(context: JobContext): Promise<readonly SentenceId[] | null> {
     const missing = await this.audio.missingSentenceIds(context.readingId, context.cacheKeys);
     if (!missing.ok) {
-      this.failStorage(context.readingId, missing.error, emptyCounts());
+      this.failStorage(context.readingId, missing.error, emptyCounts(), true);
       return null;
     }
     return missing.value;
@@ -455,14 +498,14 @@ export class AudioJobStore {
 
     const loaded = await this.readings.loadSentences(context.orderedSentenceIds);
     if (!loaded.ok) {
-      this.failStorage(context.readingId, loaded.error, counts);
+      this.failStorage(context.readingId, loaded.error, counts, true);
       return;
     }
 
     if (job.state !== 'running') {
       const started = await this.jobs.setState(job.id, 'running');
       if (!started.ok) {
-        this.failStorage(context.readingId, started.error, counts);
+        this.failStorage(context.readingId, started.error, counts, true);
         return;
       }
     }
@@ -476,6 +519,10 @@ export class AudioJobStore {
     );
 
     let completed = counts.completed;
+    // What *this* run stored, as against everything the job has ever covered.
+    // Whether Try again can still do anything is a question about the run, and
+    // `completed` carries an earlier run's clips into a run that stored none.
+    let added = 0;
     let failed = counts.failed;
     // A holder rather than a `let`, so the flag a worker sets is still visible
     // to the checker after the queue has been awaited.
@@ -578,6 +625,7 @@ export class AudioJobStore {
           return;
         }
         completed += 1;
+        added += 1;
         counts = { ...counts, completed };
         this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
       }
@@ -592,28 +640,39 @@ export class AudioJobStore {
     const failure = outcome.failure;
     if (failure !== null) {
       if (failure.source === 'storage') {
-        this.failStorage(context.readingId, failure.error, counts);
+        this.failStorage(
+          context.readingId,
+          failure.error,
+          counts,
+          this.noteRunOutcome(context.readingId, context.config.configFingerprint, added),
+        );
         return;
       }
-      await this.stopAtFailure(job, failure.sentenceId, failure.error, counts);
+      await this.stopAtFailure(job, failure.sentenceId, failure.error, counts, added);
       return;
     }
     if (isAborted(signal)) {
-      await this.markCancelled(job, counts);
+      await this.markCancelled(job, counts, added);
       return;
     }
 
     if (outcome.firstSentenceFailure !== null) {
+      const canRetry = this.noteRunOutcome(
+        context.readingId,
+        context.config.configFingerprint,
+        added,
+      );
       const marked = await this.jobs.setState(job.id, 'failed');
       if (!marked.ok) {
-        this.failStorage(context.readingId, marked.error, counts);
+        this.failStorage(context.readingId, marked.error, counts, canRetry);
         return;
       }
-      this.failProvider(context.readingId, outcome.firstSentenceFailure.error, counts);
+      this.failProvider(context.readingId, outcome.firstSentenceFailure.error, counts, canRetry);
       return;
     }
 
     this.controller = null;
+    this.fruitlessRuns.delete(context.readingId);
     this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
     this.logger.info('job.succeeded', { kind: 'audio', count: counts.completed });
   }
@@ -623,39 +682,77 @@ export class AudioJobStore {
     sentenceId: SentenceId,
     error: AiError,
     counts: AudioJobCounts,
+    added: number,
   ): Promise<void> {
+    const canRetry = this.noteRunOutcome(job.readingId, job.configFingerprint, added);
     const recorded = await this.jobs.recordFailure(job.id, {
       sentenceId,
       errorCode: error.code,
       failedAt: this.clock.now(),
     });
     if (!recorded.ok) {
-      this.failStorage(job.readingId, recorded.error, counts);
+      this.failStorage(job.readingId, recorded.error, counts, canRetry);
       return;
     }
     const withFailure = { ...counts, failed: recorded.value.failedItems.length };
     const marked = await this.jobs.setState(job.id, 'failed');
     if (!marked.ok) {
-      this.failStorage(job.readingId, marked.error, withFailure);
+      this.failStorage(job.readingId, marked.error, withFailure, canRetry);
       return;
     }
-    this.failProvider(job.readingId, error, withFailure);
+    this.failProvider(job.readingId, error, withFailure, canRetry);
   }
 
-  private async markCancelled(job: AssetJob, counts: AudioJobCounts): Promise<void> {
+  /**
+   * A run the learner stopped, which is not evidence of anything.
+   *
+   * Stopping early is a choice rather than a refusal, so it never counts
+   * towards the fruitless streak — but clips it did produce still clear one,
+   * because a configuration that produced something is working.
+   */
+  private async markCancelled(job: AssetJob, counts: AudioJobCounts, added: number): Promise<void> {
     this.controller = null;
+    if (added > 0) {
+      this.fruitlessRuns.delete(job.readingId);
+    }
     await this.jobs.setState(job.id, 'cancelled');
     this.progressSignal.set({ kind: 'cancelled', readingId: job.readingId, counts });
     this.logger.info('job.cancelled', { kind: 'audio', count: counts.completed });
   }
 
-  private failProvider(readingId: ReadingId, error: AiError, counts: AudioJobCounts): void {
+  /**
+   * Records what a settled run produced, and answers whether offering to run it
+   * again is honest.
+   *
+   * A run that stored nothing new is one piece of evidence — a passing outage
+   * looks exactly the same — so it takes `AUDIO_FRUITLESS_RUN_LIMIT` of them in
+   * a row before the offer is withdrawn. Anything stored clears the count: work
+   * is being done, whatever else failed.
+   */
+  private noteRunOutcome(readingId: ReadingId, configFingerprint: string, added: number): boolean {
+    if (added > 0) {
+      this.fruitlessRuns.delete(readingId);
+      return true;
+    }
+    const recorded = this.fruitlessRuns.get(readingId);
+    const runs = (recorded?.configFingerprint === configFingerprint ? recorded.runs : 0) + 1;
+    this.fruitlessRuns.set(readingId, { runs, configFingerprint });
+    return runs < AUDIO_FRUITLESS_RUN_LIMIT;
+  }
+
+  private failProvider(
+    readingId: ReadingId,
+    error: AiError,
+    counts: AudioJobCounts,
+    canRetry: boolean,
+  ): void {
     this.controller = null;
     this.progressSignal.set({
       kind: 'failed',
       readingId,
       counts,
       error: { source: 'provider', error },
+      canRetry,
     });
     this.logger.error('job.failed', {
       kind: 'audio',
@@ -664,13 +761,19 @@ export class AudioJobStore {
     });
   }
 
-  private failStorage(readingId: ReadingId, error: StorageError, counts: AudioJobCounts): void {
+  private failStorage(
+    readingId: ReadingId,
+    error: StorageError,
+    counts: AudioJobCounts,
+    canRetry: boolean,
+  ): void {
     this.controller = null;
     this.progressSignal.set({
       kind: 'failed',
       readingId,
       counts,
       error: { source: 'storage', error },
+      canRetry,
     });
     this.logger.error('job.failed', {
       kind: 'audio',

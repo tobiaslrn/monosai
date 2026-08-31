@@ -1195,6 +1195,38 @@ no unfinished job, so opening a reading still issues no request, and a job the
 learner cancelled is not resumed — stopping was an instruction, and Retry is the
 way back.
 
+#### A retry that cannot work is not offered
+
+A sentence this voice cannot read fails the same way every run, so the audio
+job's settled failure carries `canRetry`. It is false once
+`AUDIO_FRUITLESS_RUN_LIMIT` consecutive runs for that reading and that
+configuration have stored no clip: the first failure could be an outage that has
+passed, the second one in a row is evidence. Any run that stores something
+clears the count, a changed voice starts its own, and a run the learner stopped
+is a choice rather than evidence and never counts against it.
+
+The player reads that flag rather than the error. While it is true the
+contextual control is **Try again**; once it is false the control is
+**Dismiss** — which puts the report away through `acknowledge` without asking
+for the work again — and the announcement says that trying again produced
+nothing and that another voice or model may read those sentences. Before this,
+three presses of Try again on a reading with one dead sentence spent a request
+per missing sentence each time and reported the identical failure, with nothing
+anywhere saying the sentence had failed repeatedly.
+
+The counts beside it now measure one thing each. What a stopped run says is
+ready is the *reading's* ready-over-total, read from the playback store — the
+same pair the track and the ring are drawing — and what the run itself managed
+is said as an attempt: "This attempt covered 0 of the 4 sentences it set out to
+read." The old line phrased the run's own numerator absolutely, so "0 of 4
+sentences ready" sat beside a bar drawn a third full.
+
+Dropping the track's thumb on a sentence with no clip snaps playback to the
+nearest one that has, and the thumb is then written to where playback landed. A
+range input can raise `input` and `change` in one task, so the value binding
+only ever sees the position the drag ended on, finds it unchanged, and left the
+thumb at a sentence the position line was not reporting.
+
 #### The library card and the saved panel tell the truth
 
 `reading-summary-labels.ts` holds an exhaustive switch over all four

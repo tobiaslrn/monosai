@@ -25,6 +25,7 @@ import {
 } from '../shared/repository-tokens';
 import { TtsStore } from '../settings/tts.store';
 import {
+  AUDIO_FRUITLESS_RUN_LIMIT,
   AUDIO_GENERATION_CONCURRENCY,
   AUDIO_SENTENCE_RETRY_LIMIT,
   AudioJobStore,
@@ -403,6 +404,114 @@ describe('AudioJobStore', () => {
     expect(bed.provider.synthesized.length - beforeRetry).toBe(SENTENCE_COUNT - stored);
     expect(bed.store.progress().kind).toBe('complete');
     expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT);
+  });
+
+  /**
+   * A sentence this voice will never read is one sentence, not the rest of the
+   * reading: the run carries on past it and reports the gap at the end.
+   */
+  it('reads every later sentence past one that cannot be read at all', async () => {
+    const deadText = japaneseInOrder(bed.draft)[1];
+    bed.provider.synthesizeWith = async (request) => {
+      await hold();
+      return request.text === deadText
+        ? err(aiError('provider-unavailable', 'tts-synthesis', 'Unavailable.'))
+        : ok(audioPayload());
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(new Set(bed.provider.synthesized.map((request) => request.text))).toEqual(
+      new Set(japaneseInOrder(bed.draft)),
+    );
+    expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT - 1);
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('failed');
+    if (progress.kind === 'failed') {
+      expect(progress.counts).toMatchObject({ completed: SENTENCE_COUNT - 1, failed: 1 });
+      // The first failure is not evidence: an outage that has passed looks
+      // exactly like a sentence that will never be read.
+      expect(progress.canRetry).toBe(true);
+    }
+  });
+
+  /**
+   * Three presses of Try again on a reading with a dead sentence used to spend
+   * a request per missing sentence every time and change nothing. Each attempt
+   * still asks only for what is missing, and the offer is withdrawn once two
+   * runs in a row have produced nothing.
+   */
+  it('stops offering a retry once repeated attempts produce nothing', async () => {
+    const deadText = japaneseInOrder(bed.draft)[1];
+    bed.provider.synthesizeWith = async (request) => {
+      await hold();
+      return request.text === deadText
+        ? err(aiError('provider-unavailable', 'tts-synthesis', 'Unavailable.'))
+        : ok(audioPayload());
+    };
+    await bed.store.start(bed.draft.reading.id);
+    const afterFirstRun = bed.provider.synthesized.length;
+
+    await bed.store.retry(bed.draft.reading.id);
+
+    expect(
+      bed.provider.synthesized.length - afterFirstRun,
+      'a retry asks only for the clip that is still missing',
+    ).toBe(1);
+    const afterFirstRetry = bed.store.progress();
+    expect(afterFirstRetry.kind === 'failed' && afterFirstRetry.canRetry).toBe(true);
+
+    await bed.store.retry(bed.draft.reading.id);
+
+    const afterSecondRetry = bed.store.progress();
+    expect(afterSecondRetry.kind === 'failed' && afterSecondRetry.canRetry).toBe(false);
+    expect(bed.provider.synthesized.length - afterFirstRun).toBe(AUDIO_FRUITLESS_RUN_LIMIT);
+    expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT - 1);
+  });
+
+  /** A run that stored something is a working configuration, whatever failed. */
+  it('offers the retry again once a run has produced a clip', async () => {
+    const [, firstDead, , secondDead] = japaneseInOrder(bed.draft);
+    let refused = new Set([firstDead, secondDead]);
+    bed.provider.synthesizeWith = async (request) => {
+      await hold();
+      return refused.has(request.text)
+        ? err(aiError('provider-unavailable', 'tts-synthesis', 'Unavailable.'))
+        : ok(audioPayload());
+    };
+    await bed.store.start(bed.draft.reading.id);
+    await bed.store.retry(bed.draft.reading.id);
+    const fruitless = bed.store.progress();
+    expect(fruitless.kind === 'failed' && fruitless.canRetry).toBe(true);
+
+    // One of the two starts working, so this attempt stores a clip. The next
+    // failure is then the first of its own streak rather than the last of the
+    // one before it, and Try again is offered again.
+    refused = new Set([secondDead]);
+    await bed.store.retry(bed.draft.reading.id);
+    expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT - 1);
+    await bed.store.retry(bed.draft.reading.id);
+
+    const afterRecovery = bed.store.progress();
+    expect(afterRecovery.kind === 'failed' && afterRecovery.canRetry).toBe(true);
+  });
+
+  /** A different voice is a different question, and gets its own attempts. */
+  it('gives a changed voice its own attempts before withdrawing the retry', async () => {
+    bed.provider.synthesizeWith = async () => {
+      await hold();
+      return err(aiError('provider-unavailable', 'tts-synthesis', 'Unavailable.'));
+    };
+    await bed.store.start(bed.draft.reading.id);
+    await bed.store.retry(bed.draft.reading.id);
+    const exhausted = bed.store.progress();
+    expect(exhausted.kind === 'failed' && exhausted.canRetry).toBe(false);
+
+    bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
+    await bed.store.retry(bed.draft.reading.id);
+
+    const underNewVoice = bed.store.progress();
+    expect(underNewVoice.kind === 'failed' && underNewVoice.canRetry).toBe(true);
   });
 
   it('keeps completed clips when the run is cancelled', async () => {

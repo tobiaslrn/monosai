@@ -9,7 +9,10 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
-import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
+import type {
+  AudioJobCounts,
+  AudioJobProgress,
+} from '../../application/enrichment/audio-job.store';
 import type { SentenceId } from '../../domain/shared/ids';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
@@ -26,7 +29,7 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
  * name and tint say which of them it currently is.
  */
 export interface AuxAction {
-  readonly kind: 'cancel' | 'generate' | 'dismiss' | 'settings';
+  readonly kind: 'cancel' | 'generate' | 'retry' | 'dismiss' | 'settings';
   readonly icon: IconName;
   /** The accessible name, and the whole of what the button says out loud. */
   readonly label: string;
@@ -584,6 +587,8 @@ export class ReadingPlayerComponent {
   readonly generate = output<void>();
   readonly retryGeneration = output<void>();
   readonly cancelGeneration = output<void>();
+  /** Returns a settled report to rest without asking for the work again. */
+  readonly dismissGeneration = output<void>();
 
   protected readonly ringRadius = RING_RADIUS;
   protected readonly ringCircumference = RING_CIRCUMFERENCE;
@@ -680,13 +685,17 @@ export class ReadingPlayerComponent {
       };
     }
     if (this.rail() === 'stopped') {
-      return {
-        kind: 'dismiss',
-        icon: 'retry',
-        label: 'Try again',
-        title: [this.jobLine(), this.jobFailure() ?? ''].filter((part) => part !== '').join(' '),
-        tone: 'danger',
-      };
+      const title = [this.jobLine(), this.jobFailure() ?? '']
+        .filter((part) => part !== '')
+        .join(' ');
+      // A retry that has been shown not to work is not offered. What is left to
+      // do with the report is put it away, so that is what the button says: the
+      // card cannot leave a settled failure on its own, and a control that
+      // spends a request per missing sentence to reproduce the same answer is
+      // not the way out of it.
+      return this.canRetryGeneration()
+        ? { kind: 'retry', icon: 'retry', label: 'Try again', title, tone: 'danger' }
+        : { kind: 'dismiss', icon: 'close', label: 'Dismiss', title, tone: 'danger' };
     }
     if (!this.modelConfigured()) {
       return {
@@ -834,15 +843,44 @@ export class ReadingPlayerComponent {
       case 'cancelled':
         return progress.counts.requested === 0
           ? 'Stopped.'
-          : `Stopped with ${String(progress.counts.completed)} of ${String(progress.counts.requested)} sentences ready.`;
-      case 'failed':
+          : `${this.readyLine()} ${this.attemptLine(progress.counts)}`;
+      case 'failed': {
         // A job that failed before it resolved what to send has no position to
         // report; claiming one produced "sentence 1 of 0".
         if (progress.counts.requested === 0) {
           return 'Audio could not be prepared.';
         }
-        return `Stopped with ${String(progress.counts.completed)} of ${String(progress.counts.requested)} sentences ready.`;
+        const exhausted = progress.canRetry
+          ? ''
+          : ' Trying again produced nothing, so it is no longer offered: a different voice or model may read these sentences.';
+        return `${this.readyLine()} ${this.attemptLine(progress.counts)}${exhausted}`;
+      }
     }
+  });
+
+  /**
+   * What the *reading* has, which is what the track beside this is drawing.
+   *
+   * Deliberately not the run's own numerator over the run's own denominator:
+   * "0 of 4 ready" beside a bar drawn a third full read as "nothing is ready"
+   * when a third of the reading was, and the two figures were measuring
+   * different things under one form of words.
+   */
+  private readonly readyLine = computed(() => {
+    const total = this.store.sentenceCount();
+    return `Stopped with ${String(this.store.availableCount())} of ${String(total)} sentences ready.`;
+  });
+
+  /** What this attempt did, said as an attempt rather than as the reading. */
+  private attemptLine(counts: AudioJobCounts): string {
+    const missing = counts.requested;
+    return `This attempt covered ${String(counts.completed)} of the ${String(missing)} ${missing === 1 ? 'sentence' : 'sentences'} it set out to read.`;
+  }
+
+  /** Whether the settled report on screen still has a retry worth offering. */
+  private readonly canRetryGeneration = computed(() => {
+    const progress = this.progress();
+    return progress.kind !== 'failed' || progress.canRetry;
   });
 
   protected readonly jobFailure = computed(() => {
@@ -919,15 +957,20 @@ export class ReadingPlayerComponent {
       case 'generate':
         this.generate.emit();
         return;
-      case 'dismiss':
-        // One press clears whatever was reported and starts the work again:
-        // a separate Dismiss button existed only to put the card back the way
+      case 'retry':
+        // One press clears what was reported and starts the work again: a
+        // separate Dismiss button existed only to put the card back the way
         // pressing Try again already puts it.
+        this.retryGeneration.emit();
+        return;
+      case 'dismiss':
+        // Whichever of the two settled reports is showing. Playback's is the
+        // one offered first, so it is the one this clears first.
         if (this.failureMessage() !== null) {
           this.store.acknowledgeFailure();
           return;
         }
-        this.retryGeneration.emit();
+        this.dismissGeneration.emit();
         return;
       case 'settings':
         return;
@@ -938,10 +981,25 @@ export class ReadingPlayerComponent {
     this.scrubbing.set(Number((event.target as HTMLInputElement).value));
   }
 
-  protected onScrubCommit(event: Event): void {
-    const position = Number((event.target as HTMLInputElement).value);
+  /**
+   * Lands the thumb where playback actually went.
+   *
+   * A drop on a sentence with no clip snaps to the nearest one that has, and a
+   * drop that finds nothing playable at all moves nothing — so where the thumb
+   * was released is not where the reading is either way. The element is written
+   * rather than left to the value binding, because a range input can raise
+   * `input` and `change` in one task: the binding then only ever sees the
+   * position the drag ended on, finds it unchanged, and leaves the thumb
+   * sitting at a sentence the position line is not reporting.
+   */
+  protected async onScrubCommit(event: Event): Promise<void> {
+    const track = event.target as HTMLInputElement;
+    const position = Number(track.value);
     this.scrubbing.set(null);
-    void this.store.seekTo(position);
+    await this.store.seekTo(position);
+    if (this.scrubbing() === null) {
+      track.value = String(this.store.currentPosition());
+    }
   }
 
   protected play(): void {

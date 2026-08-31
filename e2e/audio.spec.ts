@@ -404,6 +404,73 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(await storedClipCount(page)).toBe(LONG_SENTENCE_COUNT);
   });
 
+  /**
+   * One sentence that will never be read used to end the run where it was met:
+   * the sentences after it were never attempted, and Try again spent a request
+   * per missing sentence to reproduce the same answer for as long as it was
+   * pressed. The run now carries on past the hole and reports it, and the offer
+   * to run it again is withdrawn once attempts have stopped producing clips.
+   */
+  test('carries on past a sentence it cannot read, and withdraws a dead retry', async ({
+    page,
+  }) => {
+    // 503 rather than 402: an outage is retried by the transport and then
+    // recorded as a failure of that sentence, where a refusal the client reads
+    // as configuration-wide would correctly stop the whole run.
+    const calls = await prepareReading(page, LONG_TEXT, {
+      audioByText: (text) =>
+        text.includes('第2の') ? { kind: 'status', status: 503, message: 'Unavailable' } : null,
+    });
+    const afterSetup = synthesisCount(calls);
+    const player = audioPlayer(page);
+
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+
+    // Seven of eight, which is the whole point: the five sentences after the
+    // dead one were read rather than abandoned with it.
+    await expect(playerStatus(page)).toContainText(
+      `Stopped with ${String(LONG_SENTENCE_COUNT - 1)} of ${String(LONG_SENTENCE_COUNT)} sentences ready`,
+      { timeout: 60_000 },
+    );
+    expect(await storedClipCount(page)).toBe(LONG_SENTENCE_COUNT - 1);
+    const afterFirstRun = synthesisCount(calls);
+
+    // One more attempt is offered, because an outage that has passed looks
+    // exactly like this. It asks only for the sentence that is missing.
+    const stopping = player.getByRole('button', { name: 'Stop generating audio' });
+    await player.getByRole('button', { name: 'Try again' }).click();
+    await expect(stopping).toBeVisible({ timeout: 30_000 });
+    await expect(stopping).toHaveCount(0, { timeout: 60_000 });
+    const spentOnRetry = synthesisCount(calls) - afterFirstRun;
+    expect(spentOnRetry, 'a retry asks only for what is still missing').toBeLessThan(
+      LONG_SENTENCE_COUNT,
+    );
+    expect(spentOnRetry, 'the missing sentence was asked for again').toBeGreaterThan(0);
+
+    // The second attempt that produces nothing takes the offer away, and says
+    // why rather than leaving the learner to discover it a press at a time.
+    await player.getByRole('button', { name: 'Try again' }).click();
+    await expect(stopping).toBeVisible({ timeout: 30_000 });
+    await expect(stopping).toHaveCount(0, { timeout: 60_000 });
+    await expect(player.getByRole('button', { name: 'Dismiss' })).toBeVisible();
+    await expect(player.getByRole('button', { name: 'Try again' })).toHaveCount(0);
+    await expect(playerStatus(page)).toContainText('Trying again produced nothing');
+
+    const afterSecondRetry = synthesisCount(calls);
+    await page.waitForTimeout(500);
+    expect(synthesisCount(calls), 'nothing is spent once the retry is withdrawn').toBe(
+      afterSecondRetry,
+    );
+
+    // What did arrive is still playable, and putting the report away leaves the
+    // player with the transport rather than the failure.
+    await player.getByRole('button', { name: 'Dismiss' }).click();
+    await expect(player.getByRole('button', { name: 'Dismiss' })).toHaveCount(0);
+    await expect(player.getByRole('button', { name: 'Play' })).toBeEnabled();
+    expect(synthesisCount(calls) - afterSetup).toBeGreaterThan(0);
+  });
+
   test('never opens more than four synthesis requests at once', async ({ page }) => {
     const calls = await prepareReading(page, LONG_TEXT, { audioDelayMs: 300 });
 
