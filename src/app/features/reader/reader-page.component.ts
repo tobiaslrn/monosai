@@ -269,6 +269,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       <mn-reader-popover label="Sentence details" (closed)="popover.close()">
         <mn-sentence-popover
           [aids]="selectedSentenceAids()"
+          [sentenceText]="selectedSentenceText()"
           [canAnalyze]="canAnalyzeGrammar()"
           [translationModelConfigured]="hasTranslationModel()"
           [grammarModelConfigured]="hasGrammarModel()"
@@ -287,7 +288,11 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
 
     <ng-template #wordPopover>
       <mn-reader-popover label="Word details" (closed)="popover.close()">
-        <mn-word-inspector [grammar]="wordGrammar()" (closed)="closeInspector()" />
+        <mn-word-inspector
+          [grammar]="wordGrammar()"
+          (sentenceActions)="openInspectedSentence()"
+          (closed)="closeInspector()"
+        />
       </mn-reader-popover>
     </ng-template>
   `,
@@ -499,6 +504,7 @@ export class ReaderPageComponent {
   private readonly bottomSentinel = viewChild<ElementRef<HTMLElement>>('bottomSentinel');
 
   private readonly selectedSentenceIdSignal = signal<SentenceId | null>(null);
+  private inspectedActivation: TokenActivation | null = null;
   /** The open sentence, tinted so its anchored details stay related to it. */
   protected readonly selectedSentenceId = this.selectedSentenceIdSignal.asReadonly();
 
@@ -546,6 +552,13 @@ export class ReaderPageComponent {
   protected readonly selectedSentenceAids = computed(() => {
     const sentenceId = this.selectedSentenceIdSignal();
     return sentenceId === null ? NO_AIDS : (this.aids.aids().get(sentenceId) ?? NO_AIDS);
+  });
+
+  protected readonly selectedSentenceText = computed(() => {
+    const sentenceId = this.selectedSentenceIdSignal();
+    return sentenceId === null
+      ? ''
+      : (this.sentencesById().get(sentenceId)?.sentence.japaneseText ?? '');
   });
 
   /**
@@ -1011,12 +1024,16 @@ export class ReaderPageComponent {
       return;
     }
     this.endPreview();
-    this.openSentence(sentence.sentence.id, { x: selection.x, y: selection.y });
+    this.openSentence(
+      sentence.sentence.id,
+      this.sentenceElement(sentence.sentence.id) ?? { x: selection.x, y: selection.y },
+    );
   }
 
   private openSentence(
     sentenceId: SentenceId,
     origin: { x: number; y: number } | HTMLElement,
+    returnFocusTo?: HTMLElement | null,
   ): void {
     // For the same reason as a word: the closing surface clears the selection,
     // so whatever is open goes first and the new sentence is set after it.
@@ -1026,7 +1043,9 @@ export class ReaderPageComponent {
       origin,
       template: this.sentencePopover(),
       viewContainerRef: this.viewContainerRef,
+      returnFocusTo: returnFocusTo ?? this.sentenceElement(sentenceId),
       closeOnScroll: true,
+      preferredVerticalPlacement: this.sentencePlacement(origin),
       // A press on a word is about that word, whatever is open at the time.
       retargetSelector: WORD_TARGET,
       onClosed: () => {
@@ -1099,6 +1118,11 @@ export class ReaderPageComponent {
       open.sentence.id === activation.sentence.sentence.id &&
       open.token.id === activation.token.id
     ) {
+      if ((activation.clickCount ?? 1) > 1) {
+        // The first click opened the lookup; the rest of the double-click
+        // belongs to that same intent and must not toggle it closed again.
+        return;
+      }
       // Pressing the open word again puts it away. Reopening it would replay
       // the sheet's entrance over the same word and leave a reader who meant
       // to dismiss it exactly where they started.
@@ -1109,6 +1133,7 @@ export class ReaderPageComponent {
     // Before the new word is set, because closing the surface over the old one
     // clears the selection, and a close that ran afterwards would clear this.
     this.popover.close();
+    this.inspectedActivation = activation;
     void this.inspector.inspect({
       token: activation.token,
       word: activation.word,
@@ -1127,10 +1152,33 @@ export class ReaderPageComponent {
       retargetSelector: WORD_TARGET,
       onClosed: () => {
         this.releaseSheetClearance();
+        this.inspectedActivation = null;
         this.inspector.close();
       },
     });
     this.keepClearOfSheet(activation.origin);
+  }
+
+  /** Keyboard route from a focused word to every action on its sentence. */
+  protected openInspectedSentence(): void {
+    const activation = this.inspectedActivation;
+    if (activation === null) {
+      return;
+    }
+    this.openSentence(
+      activation.sentence.sentence.id,
+      this.sentenceElement(activation.sentence.sentence.id) ?? activation.origin,
+      activation.origin,
+    );
+  }
+
+  private sentenceElement(sentenceId: SentenceId): HTMLElement | null {
+    return document.querySelector<HTMLElement>(`[data-sentence-id="${CSS.escape(sentenceId)}"]`);
+  }
+
+  private sentencePlacement(origin: { x: number; y: number } | HTMLElement): 'above' | 'below' {
+    const y = origin instanceof HTMLElement ? origin.getBoundingClientRect().top : origin.y;
+    return y < window.innerHeight / 2 ? 'above' : 'below';
   }
 
   /**

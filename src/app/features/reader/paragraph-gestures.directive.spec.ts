@@ -114,6 +114,28 @@ describe('ParagraphGesturesDirective', () => {
     expect(selections()).toHaveLength(0);
   });
 
+  it('treats a mouse drag as selection even if the browser reports no range', () => {
+    vi.spyOn(window, 'getSelection').mockReturnValue({ isCollapsed: true } as Selection);
+
+    pointerDown('mouse', 20, 110);
+    paragraph().dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerType: 'mouse',
+        clientX: 120,
+        clientY: 150,
+      }),
+    );
+    paragraph().dispatchEvent(
+      new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse' }),
+    );
+    paragraph().dispatchEvent(
+      new MouseEvent('click', { bubbles: true, clientX: 120, clientY: 150, detail: 1 }),
+    );
+
+    expect(selections()).toHaveLength(0);
+  });
+
   it('ignores a tap, which on touch is how the reader dismisses and scrolls on', () => {
     // The gesture that used to select. Answering it with a popover meant every
     // attempt to put one away opened the next one.

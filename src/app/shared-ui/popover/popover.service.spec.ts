@@ -134,6 +134,8 @@ describe('PopoverService', () => {
 
   it('closes on a click away', () => {
     const fixture = render();
+    const anchor = fixture.componentInstance.anchor().nativeElement;
+    anchor.focus();
     fixture.componentInstance.open();
     fixture.detectChanges();
 
@@ -142,6 +144,7 @@ describe('PopoverService', () => {
 
     expect(pane()).toBeNull();
     expect(fixture.componentInstance.closedCount).toBe(1);
+    expect(document.activeElement).toBe(anchor);
   });
 
   /**

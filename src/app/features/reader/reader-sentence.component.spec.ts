@@ -272,6 +272,16 @@ describe('ReaderSentenceComponent', () => {
     expect(element.querySelector('.sentence')?.getAttribute('data-sentence-id')).toBe(SENTENCE_ID);
   });
 
+  it('is a programmatic focus target without becoming another tab stop', () => {
+    const sentence = (render().nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '.sentence',
+    );
+
+    expect(sentence?.tabIndex).toBe(-1);
+    sentence?.focus();
+    expect(document.activeElement).toBe(sentence);
+  });
+
   it('tints the open sentence, so a docked sheet is not orphaned from it', () => {
     const fixture = render();
     expect(

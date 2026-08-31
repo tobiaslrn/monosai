@@ -58,6 +58,8 @@ export interface PopoverOptions {
    * past it, so scrolling is taken as "done with this".
    */
   readonly closeOnScroll?: boolean;
+  /** Which side of an anchored origin gets first choice when both fit. */
+  readonly preferredVerticalPlacement?: 'above' | 'below';
 }
 
 export interface PopoverRef {
@@ -96,11 +98,18 @@ function panelClasses(modal: boolean, sheet: boolean): string[] {
 /** How far an outside press may travel and still count as a tap, not a scroll. */
 const OUTSIDE_TAP_TOLERANCE_PX = 10;
 
-const POSITIONS: readonly ConnectedPosition[] = [
+const BELOW_FIRST_POSITIONS: readonly ConnectedPosition[] = [
   { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 8 },
   { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -8 },
   { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
   { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -8 },
+];
+
+const ABOVE_FIRST_POSITIONS: readonly ConnectedPosition[] = [
+  { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -8 },
+  { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 8 },
+  { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -8 },
+  { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
 ];
 
 /**
@@ -132,7 +141,11 @@ export class PopoverService {
             .withFlexibleDimensions(false)
             .withPush(true)
             .withViewportMargin(8)
-            .withPositions([...POSITIONS]),
+            .withPositions(
+              options.preferredVerticalPlacement === 'above'
+                ? [...ABOVE_FIRST_POSITIONS]
+                : [...BELOW_FIRST_POSITIONS],
+            ),
       // Nothing is blocked or repositioned by scrolling. A docked sheet is
       // fixed to an edge rather than to a line, so the reading is free to move
       // behind it — which is what makes it possible to read on with a

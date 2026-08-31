@@ -103,10 +103,14 @@ function entryWith(count: number) {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [WordInspectorComponent],
-  template: `<mn-word-inspector [grammar]="grammar()" />`,
+  template: `<mn-word-inspector
+    [grammar]="grammar()"
+    (sentenceActions)="sentenceActionRequests += 1"
+  />`,
 })
 class HostComponent {
   readonly grammar = signal<WordGrammarState>(NO_WORD_GRAMMAR);
+  sentenceActionRequests = 0;
 }
 
 describe('WordInspectorComponent', () => {
@@ -239,10 +243,16 @@ describe('WordInspectorComponent', () => {
     expect(element.textContent).not.toContain('Nothing here is outside your grammar profile.');
   });
 
-  it('does not show a route to the sentence in the word header', async () => {
-    const element = (await render()).nativeElement as HTMLElement;
-    expect(element.querySelector('.sentence-route')).toBeNull();
-    expect(element.textContent).not.toContain('Open this sentence');
+  it('offers a native keyboard route to the sentence actions', async () => {
+    const fixture = await render();
+    const element = fixture.nativeElement as HTMLElement;
+    const route = element.querySelector<HTMLButtonElement>('.sentence-route');
+
+    expect(route?.tagName).toBe('BUTTON');
+    expect(route?.textContent).toContain('Sentence actions');
+    route?.click();
+
+    expect(fixture.componentInstance.sentenceActionRequests).toBe(1);
   });
 
   /**

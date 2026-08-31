@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import { PointerModalityService } from '../../core/platform/pointer-modality.service';
@@ -46,6 +46,10 @@ class HostComponent {
 }
 
 describe('ReaderTokenComponent', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   function render() {
     const fixture = TestBed.createComponent(HostComponent);
     fixture.detectChanges();
@@ -84,6 +88,26 @@ describe('ReaderTokenComponent', () => {
     expect(fixture.componentInstance.activations).toHaveLength(1);
   });
 
+  it('reports the native click count so a double-click remains one lookup', () => {
+    const fixture = render();
+    const button = (fixture.nativeElement as HTMLElement).querySelector('button');
+
+    button?.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+    button?.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 2 }));
+
+    expect(fixture.componentInstance.activations.map((item) => item.clickCount)).toEqual([1, 2]);
+  });
+
+  it('leaves a mouse selection alone instead of opening word details', () => {
+    vi.spyOn(window, 'getSelection').mockReturnValue({ isCollapsed: false } as Selection);
+    const fixture = render();
+    const button = (fixture.nativeElement as HTMLElement).querySelector('button');
+
+    button?.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+
+    expect(fixture.componentInstance.activations).toHaveLength(0);
+  });
+
   /**
    * The hover preview belongs to a mouse and a keyboard. A tap both focuses a
    * word and synthesizes a pointer entering it, so on a phone every tap used
@@ -115,6 +139,7 @@ describe('ReaderTokenComponent', () => {
     // The tap itself still opens the word.
     button?.click();
     expect(fixture.componentInstance.activations).toHaveLength(1);
+    expect(fixture.componentInstance.activations[0].clickCount).toBe(1);
   });
 
   it('renders ruby only for a reading that adds information', () => {
