@@ -3,6 +3,7 @@ import {
   ExceptionPolicyStore,
   MAX_POLICY_LENGTH,
 } from '../../application/settings/exception-policy.store';
+import { formatCount, formatCountOf } from '../../domain/shared/locale';
 
 /**
  * The single global exception policy.
@@ -23,7 +24,9 @@ import {
           rows="3"
           data-testid="policy-input"
           placeholder="Names or words the story may use outside your vocabulary"
-          [attr.aria-describedby]="policy.isTooLong() ? 'mn-policy-error' : 'mn-policy-count'"
+          [attr.aria-describedby]="
+            policy.isTooLong() ? 'mn-policy-count mn-policy-error' : 'mn-policy-count'
+          "
           [value]="policy.draft()"
           (input)="onInput($event)"
         ></textarea>
@@ -32,7 +35,7 @@ import {
 
       @if (policy.isTooLong()) {
         <p id="mn-policy-error" role="alert" class="warning">
-          Shorten the policy to {{ maxLength }} characters or fewer before saving.
+          Remove {{ overLimitLabel() }} to continue.
         </p>
       }
 
@@ -75,10 +78,13 @@ import {
 })
 export class ExceptionPolicyFieldComponent {
   protected readonly policy = inject(ExceptionPolicyStore);
-  protected readonly maxLength = MAX_POLICY_LENGTH;
 
   protected readonly countLabel = computed(
-    () => `${String(this.policy.draft().length)} of ${String(MAX_POLICY_LENGTH)} characters`,
+    () =>
+      `${formatCount(this.policy.draft().length)} of ${formatCount(MAX_POLICY_LENGTH)} characters`,
+  );
+  protected readonly overLimitLabel = computed(() =>
+    formatCountOf(this.policy.draft().length - MAX_POLICY_LENGTH, 'character'),
   );
 
   constructor() {

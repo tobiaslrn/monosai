@@ -70,6 +70,27 @@ test.describe('vocabulary', () => {
     await expectNoSeriousAccessibilityViolations(page);
   });
 
+  test('counts pasted entries grammatically and offers one exit @mobile', async ({ page }) => {
+    await openVocabulary(page);
+    await openAddSource(page);
+    await page.getByTestId('add-text-source').click();
+
+    const editor = page.getByTestId('text-source-editor');
+    await expect(editor.getByText('0 non-empty entries')).toBeVisible();
+    await expect(editor.getByRole('button', { name: 'Cancel' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0);
+
+    const content = page.getByTestId('text-source-content');
+    await content.fill('猫');
+    await expect(editor.getByText('1 non-empty entry')).toBeVisible();
+    await content.fill('猫\n猫\n\n犬');
+    await expect(
+      editor.getByText(
+        '3 non-empty entries · 1 exact duplicate will be merged · 1 blank line ignored',
+      ),
+    ).toBeVisible();
+  });
+
   test('dismisses the add-source menu without triggering another action', async ({ page }) => {
     await openVocabulary(page);
     const toggle = page.getByTestId('add-source');

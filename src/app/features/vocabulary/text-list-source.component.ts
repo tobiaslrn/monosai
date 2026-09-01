@@ -13,6 +13,7 @@ import { SourceMappingStore } from '../../application/vocabulary/source-mapping.
 import { VocabularySyncService } from '../../application/vocabulary/vocabulary-sync.service';
 import { parseTextList } from '../../domain/vocabulary/text-list-parser';
 import type { TextListVocabularySource } from '../../domain/vocabulary/vocabulary-source';
+import { textListPreviewLabel } from './text-list-preview';
 
 /** Focused editor shared by the add-source flow and existing source rows. */
 @Component({
@@ -41,13 +42,7 @@ import type { TextListVocabularySource } from '../../domain/vocabulary/vocabular
         ></textarea>
       </label>
       <p class="preview" aria-live="polite">
-        {{ preview().entries.length }} non-empty entries
-        @if (preview().duplicateLines > 0) {
-          · {{ preview().duplicateLines }} exact duplicates will be merged
-        }
-        @if (preview().ignoredBlankLines > 0) {
-          · {{ preview().ignoredBlankLines }} blank lines ignored
-        }
+        {{ previewLabel() }}
       </p>
       @if (editorError(); as error) {
         <p class="error" role="alert">{{ error }}</p>
@@ -119,6 +114,7 @@ export class TextListSourceComponent {
   protected readonly saving = signal(false);
   protected readonly editorError = signal<string | null>(null);
   protected readonly preview = computed(() => parseTextList(this.content()));
+  protected readonly previewLabel = computed(() => textListPreviewLabel(this.preview()));
 
   constructor() {
     effect(() => {

@@ -107,12 +107,14 @@ export function checkStoryStructure(
   }
 
   if (candidate.sentences.length < range.min || candidate.sentences.length > range.max) {
+    const requirement =
+      range.min === range.max
+        ? `exactly ${String(range.min)}`
+        : `between ${String(range.min)} and ${String(range.max)}`;
     issues.push({
       code: 'sentence-count-out-of-range',
       severity: 'repairable',
-      message: `The story has ${String(candidate.sentences.length)} sentences; it needs between ${String(
-        range.min,
-      )} and ${String(range.max)}.`,
+      message: `The story has ${String(candidate.sentences.length)} sentences; it needs ${requirement}.`,
     });
   }
 

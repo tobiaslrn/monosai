@@ -93,6 +93,12 @@ describe('checkStoryStructure', () => {
     expect(hasFormatFailure(issues)).toBe(false);
   });
 
+  it('states an equal sentence bound as an exact requirement', () => {
+    const issues = checkStoryStructure(candidate(['一。', '二。']), { min: 15, max: 15 });
+
+    expect(issues[0].message).toBe('The story has 2 sentences; it needs exactly 15.');
+  });
+
   it('stops after reporting that there are no sentences at all', () => {
     const issues = checkStoryStructure(candidate([]), MICRO);
 

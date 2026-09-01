@@ -7,7 +7,8 @@ export interface ParsedTextList {
 
 /** Parses one literal vocabulary expression per line. */
 export function parseTextList(content: string): ParsedTextList {
-  const lines = content.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
+  const normalized = content.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  const lines = normalized.length === 0 ? [] : normalized.split('\n');
   const entries: string[] = [];
   const seen = new Set<string>();
   let ignoredBlankLines = 0;

@@ -80,8 +80,7 @@ import { ExceptionPolicyFieldComponent } from './exception-policy-field.componen
       }
 
       @if (state().kind === 'invalid-draft') {
-        <section class="mn-panel" aria-labelledby="mn-generate-draft-heading">
-          <h2 id="mn-generate-draft-heading" class="mn-visually-hidden">Unsaved draft</h2>
+        <section class="mn-panel">
           <mn-invalid-draft
             [draft]="invalidDraft()!"
             (tryAgain)="retry()"
@@ -90,10 +89,9 @@ import { ExceptionPolicyFieldComponent } from './exception-policy-field.componen
           />
         </section>
       } @else if (savedReading(); as reading) {
-        <section class="result-screen" aria-labelledby="mn-generate-saved-heading">
+        <section class="result-screen" aria-label="Saved story details">
           <div class="ready-mark" aria-hidden="true">✓</div>
           <p class="eyebrow">Saved to your library</p>
-          <h2 id="mn-generate-saved-heading">Your story is ready</h2>
           <p class="story-title" lang="ja" data-testid="saved-title">{{ reading.title }}</p>
           <ul class="summaries" data-testid="saved-summaries">
             <li>{{ translationSummaryLabel() }}</li>
@@ -228,7 +226,7 @@ export class GeneratePageComponent implements OnDestroy {
       case 'cancelled':
         return 'Generation stopped';
       case 'invalid-draft':
-        return 'Unsaved story';
+        return 'Story draft';
       case 'failed':
         return 'Story generation failed';
       default:
