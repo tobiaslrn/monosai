@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import type {
   InvalidDraft,
   InvalidDraftSentence,
@@ -143,9 +144,13 @@ function mark(textJa: string, surfaces: readonly string[]): MarkedLine {
 
     <p class="mn-hint">
       If this keeps happening, an easier
-      <a routerLink="/grammar">grammar preset</a>
+      <a routerLink="/grammar" [queryParams]="{ from: 'generate' }" [state]="generateOriginState"
+        >grammar preset</a
+      >
       or more reviewed
-      <a routerLink="/vocabulary">vocabulary</a>
+      <a routerLink="/vocabulary" [queryParams]="{ from: 'generate' }" [state]="generateOriginState"
+        >vocabulary</a
+      >
       usually helps more than trying again.
     </p>
   `,
@@ -204,6 +209,7 @@ function mark(textJa: string, surfaces: readonly string[]): MarkedLine {
   `,
 })
 export class InvalidDraftComponent {
+  protected readonly generateOriginState = navigationOriginState('/generate');
   readonly draft = input.required<InvalidDraft>();
 
   protected readonly title = computed(() =>

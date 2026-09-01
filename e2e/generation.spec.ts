@@ -51,7 +51,14 @@ test.describe('generate prerequisites', () => {
 
     await page.locator('[data-check="text-model"]').getByRole('link').click();
     await expect(page).toHaveURL(/#\/settings/);
-    await page.goBack();
+    await page.getByRole('button', { name: 'Back to story' }).click();
+
+    await expect(page.getByTestId('premise')).toHaveValue(PREMISE);
+    await expect(page.getByTestId('story-length')).toHaveValue('2');
+
+    await page.locator('[data-check="vocabulary"]').getByRole('link').click();
+    await expect(page).toHaveURL(/#\/vocabulary\?from=generate$/);
+    await page.getByRole('button', { name: 'Back to story' }).click();
 
     await expect(page.getByTestId('premise')).toHaveValue(PREMISE);
     await expect(page.getByTestId('story-length')).toHaveValue('2');
@@ -176,6 +183,10 @@ test.describe('generating a story', () => {
     const marked = page.locator('.is-warning-vocabulary');
     await expect(marked.first()).toBeVisible({ timeout: 60_000 });
     await expect(marked.first()).toContainText('図書館');
+
+    await page.getByRole('link', { name: 'Back to library' }).click();
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+    await expect(page).not.toHaveURL(/#\/generate/);
   });
 
   test('shows an invalid draft and leaves the library empty @smoke', async ({ page }) => {

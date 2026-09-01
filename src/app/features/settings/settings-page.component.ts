@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { AppSectionComponent } from './app-section.component';
 import { AppearanceSectionComponent } from './appearance-section.component';
@@ -21,7 +21,7 @@ import { StorageSectionComponent } from './storage-section.component';
   ],
   template: `
     <div class="mn-page">
-      <mn-page-header heading="Settings" backTo="/library" backLabel="Back to library" />
+      <mn-page-header heading="Settings" [backTo]="backTarget()" [backLabel]="backLabel()" />
 
       <section class="mn-panel setup-panel" aria-labelledby="mn-setup-heading">
         <h2 id="mn-setup-heading">Your setup</h2>
@@ -53,4 +53,12 @@ import { StorageSectionComponent } from './storage-section.component';
     }
   `,
 })
-export class SettingsPageComponent {}
+export class SettingsPageComponent {
+  readonly from = input<string | undefined>();
+  protected readonly backTarget = computed(() =>
+    this.from() === 'generate' ? '/generate' : '/library',
+  );
+  protected readonly backLabel = computed(() =>
+    this.from() === 'generate' ? 'Back to story' : 'Back to library',
+  );
+}

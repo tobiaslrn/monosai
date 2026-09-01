@@ -23,10 +23,22 @@ test.describe('application shell', () => {
 
     await page.getByRole('link', { name: /Vocabulary/ }).click();
     await expect(page.getByRole('heading', { name: 'Vocabulary', level: 1 })).toBeVisible();
-    await page.getByRole('link', { name: 'Back to settings' }).click();
+    await page.getByRole('button', { name: 'Back to settings' }).click();
 
     await page.getByRole('link', { name: /Grammar/ }).click();
     await expect(page.getByRole('heading', { name: 'Grammar', level: 1 })).toBeVisible();
+    await page.getByRole('button', { name: 'Back to settings' }).click();
+    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+  });
+
+  test('uses safe internal fallbacks for direct learning-data links', async ({ page }) => {
+    await page.goto('./#/vocabulary');
+    await page.getByRole('link', { name: 'Back to settings' }).click();
+    await expect(page).toHaveURL(/#\/settings$/);
+
+    await page.goto('./#/grammar?from=generate');
+    await page.getByRole('link', { name: 'Back to story' }).click();
+    await expect(page).toHaveURL(/#\/generate$/);
   });
 
   test('shows build diagnostics without user content', async ({ page }) => {

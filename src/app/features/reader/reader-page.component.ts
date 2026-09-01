@@ -29,6 +29,7 @@ import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import { LibraryStore } from '../../application/reading/library.store';
 import { ViewportService } from '../../core/platform/viewport.service';
+import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { describeDeletion } from '../../domain/reading/deletion-plan';
 import {
   DEFAULT_PARAGRAPH_HEIGHT_PX,
@@ -133,7 +134,12 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     >
       <header #readerBar class="bar">
         <div class="bar-row">
-          <a class="mn-icon-button" routerLink="/library" aria-label="Back to library">
+          <a
+            class="mn-icon-button"
+            routerLink="/library"
+            aria-label="Back to library"
+            (click)="backToLibrary($event)"
+          >
             <mn-icon name="back" />
           </a>
           <h1>{{ readerHeading() }}</h1>
@@ -505,6 +511,7 @@ export class ReaderPageComponent {
   protected readonly popover = inject(PopoverService);
   private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
+  private readonly navigation = inject(NavigationHistoryService);
   private readonly viewContainerRef = inject(ViewContainerRef);
 
   private readonly content = viewChild<ElementRef<HTMLElement>>('content');
@@ -1420,8 +1427,13 @@ export class ReaderPageComponent {
     if (await this.library.delete(reading.id)) {
       // Before navigating: a deleted reading must not go on being read aloud.
       this.playback.readingDeleted(reading.id);
-      await this.router.navigate(['/library']);
+      await this.router.navigate(['/library'], { replaceUrl: true });
     }
+  }
+
+  protected backToLibrary(event: Event): void {
+    event.preventDefault();
+    void this.navigation.backOrNavigate('/library');
   }
 
   /**

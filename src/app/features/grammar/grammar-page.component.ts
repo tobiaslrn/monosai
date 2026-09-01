@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
@@ -21,7 +21,7 @@ const STALE_NOTICE = 'Existing grammar analyses are now out of date.';
   ],
   template: `
     <div class="mn-page">
-      <mn-page-header heading="Grammar" backTo="/settings" backLabel="Back to settings" />
+      <mn-page-header heading="Grammar" [backTo]="backTarget()" [backLabel]="backLabel()" />
 
       <p class="mn-hint">
         Monosai uses this to pitch generated stories and to judge what is new to you in imported
@@ -80,8 +80,15 @@ const STALE_NOTICE = 'Existing grammar analyses are now out of date.';
   `,
 })
 export class GrammarPageComponent {
+  readonly from = input<string | undefined>();
   protected readonly profile = inject(GrammarProfileStore);
   protected readonly language = inject(LanguageStore);
+  protected readonly backTarget = computed(() =>
+    this.from() === 'generate' ? '/generate' : '/settings',
+  );
+  protected readonly backLabel = computed(() =>
+    this.from() === 'generate' ? 'Back to story' : 'Back to settings',
+  );
 
   /**
    * One line naming what was saved.

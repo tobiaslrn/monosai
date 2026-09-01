@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
 /**
@@ -16,11 +17,11 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
   imports: [RouterLink, IconComponent],
   template: `
     <div class="choices">
-      <a routerLink="/add" (click)="chosen.emit()">
+      <a routerLink="/add" [state]="libraryOriginState" (click)="chosen.emit()">
         <mn-icon name="add" [size]="20" />
         <span>Paste text</span>
       </a>
-      <a routerLink="/generate" (click)="chosen.emit()">
+      <a routerLink="/generate" [state]="libraryOriginState" (click)="chosen.emit()">
         <mn-icon name="generate" [size]="20" />
         <span>Write with AI</span>
       </a>
@@ -49,6 +50,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
   `,
 })
 export class NewReadingMenuComponent {
+  protected readonly libraryOriginState = navigationOriginState('/library');
   /** Emitted so the surface holding this menu can close itself. */
   readonly chosen = output<void>();
 }

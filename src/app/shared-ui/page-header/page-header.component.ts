@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../icon/icon.component';
 
 /**
@@ -17,9 +18,20 @@ import { IconComponent } from '../icon/icon.component';
   template: `
     <header class="head">
       @if (backTo(); as target) {
-        <a class="mn-icon-button" [routerLink]="target" [attr.aria-label]="backLabel()">
-          <mn-icon name="back" />
-        </a>
+        @if (usesHistoryBack()) {
+          <button
+            type="button"
+            class="mn-icon-button"
+            [attr.aria-label]="backLabel()"
+            (click)="goBack(target)"
+          >
+            <mn-icon name="back" />
+          </button>
+        } @else {
+          <a class="mn-icon-button" [routerLink]="target" [attr.aria-label]="backLabel()">
+            <mn-icon name="back" />
+          </a>
+        }
       }
       <h1>{{ heading() }}</h1>
       <div class="trailing">
@@ -65,8 +77,17 @@ import { IconComponent } from '../icon/icon.component';
   `,
 })
 export class PageHeaderComponent {
+  private readonly navigation = inject(NavigationHistoryService);
   readonly heading = input.required<string>();
   /** Omitted only by the Library, which is where every other page goes back to. */
   readonly backTo = input<string | null>(null);
   readonly backLabel = input('Back');
+  protected readonly usesHistoryBack = computed(() => {
+    const target = this.backTo();
+    return target !== null && this.navigation.canPopTo(target);
+  });
+
+  protected goBack(fallback: string): void {
+    void this.navigation.backOrNavigate(fallback);
+  }
 }

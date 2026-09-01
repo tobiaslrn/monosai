@@ -30,7 +30,7 @@ import { SnapshotHistoryComponent } from './snapshot-history.component';
   ],
   template: `
     <div class="mn-page">
-      <mn-page-header heading="Vocabulary" backTo="/settings" backLabel="Back to settings" />
+      <mn-page-header heading="Vocabulary" [backTo]="backTarget()" [backLabel]="backLabel()" />
 
       <p
         class="mn-visually-hidden"
@@ -156,6 +156,14 @@ export class VocabularyPageComponent {
    */
   readonly shared = input<string | undefined>();
   readonly reason = input<string | undefined>();
+  readonly from = input<string | undefined>();
+
+  protected readonly backTarget = computed(() =>
+    this.from() === 'generate' ? '/generate' : '/settings',
+  );
+  protected readonly backLabel = computed(() =>
+    this.from() === 'generate' ? 'Back to story' : 'Back to settings',
+  );
 
   protected readonly state = this.refresh.state;
 

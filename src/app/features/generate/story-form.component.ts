@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import {
   STORY_LENGTH_RELIABILITY_WARNING_SENTENCES,
@@ -138,11 +139,19 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
 
         <div class="generation-sources" data-testid="form-sources">
           <p class="setting-section-title">Uses</p>
-          <a routerLink="/vocabulary">
+          <a
+            routerLink="/vocabulary"
+            [queryParams]="{ from: 'generate' }"
+            [state]="generateOriginState"
+          >
             <span>Vocabulary</span>
             <strong>{{ snapshotSummary() }}</strong>
           </a>
-          <a routerLink="/grammar">
+          <a
+            routerLink="/grammar"
+            [queryParams]="{ from: 'generate' }"
+            [state]="generateOriginState"
+          >
             <span>Grammar</span>
             <strong>{{ presetName() }}</strong>
           </a>
@@ -434,6 +443,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
   `,
 })
 export class StoryFormComponent {
+  protected readonly generateOriginState = navigationOriginState('/generate');
   protected readonly draft = inject(GenerationDraftStore);
 
   readonly canGenerate = input.required<boolean>();

@@ -31,12 +31,27 @@ listing six equal destinations (ADR 0025).
 There is no application-wide navigation at any viewport: no sidebar, no bottom
 bar, no More sheet. The application frame is a skip link and the main landmark.
 
-Every page carries its own way back, in a shared page header: a back link on
+Every page carries its own way back, in a shared page header: a back control on
 the left, the page title, and any trailing control the page owns.
 
-- Library → Settings (a gear in the trailing slot). The Library is the root, so it has no back link.
+- Library → Settings (a gear in the trailing slot). The Library is the root, so it has no back control.
 - Reader, Add text, Generate, Settings → Library.
-- Vocabulary, Grammar → Settings.
+- Vocabulary, Grammar → Settings, or → Generate when they were opened from a
+  generation prerequisite, so a learner sent away to fix something returns to
+  the story they were writing rather than to a screen they never visited.
+
+Back agrees with the browser's own Back. A page reached by an in-app link
+carries the page it was opened from, and its back control then returns through
+history — restoring Library scroll position and a half-filled Generate form
+instead of rebuilding the page from scratch. A page opened by a direct or
+deep link carries no such origin, so its back control is an ordinary link to
+the destination above, which is always safe. The control is a link when it
+navigates and a button when it returns through history; it looks the same
+either way.
+
+Transient routes are replaced rather than pushed, so Back never lands on an
+empty import form whose text was already saved, on a reading that was just
+deleted, or on a generator that would restart the run whose result is open.
 
 Adding a reading is one primary **New reading** button on the Library, which
 opens a chooser with **Paste text** and **Write with AI**. Generating is a
