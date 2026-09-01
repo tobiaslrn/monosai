@@ -34,6 +34,8 @@ class StubPlaybackStore {
   readonly current = signal<SentenceId | null>(null);
   readonly nextIsAvailable = signal(true);
   readonly selectionIsAvailable = signal(true);
+  /** Stored clips this reading has that the current audio settings cannot see. */
+  readonly otherSettings = signal(false);
   readonly failureSignal = signal<PlaybackFailure | null>(null);
   readonly modeSignal = signal<PlaybackMode>('continuous');
 
@@ -47,6 +49,7 @@ class StubPlaybackStore {
   readonly availableCount = computed(() => this.ready());
   readonly missingCount = computed(() => this.total() - this.ready());
   readonly hasPlayableAudio = computed(() => this.ready() > 0);
+  readonly hasAudioInOtherSettings = this.otherSettings.asReadonly();
   readonly canPlayWholeReading = computed(() => this.total() > 0 && this.missingCount() === 0);
   readonly currentPosition = computed(() => this.position());
   readonly pendingPosition = computed(() => this.pending());
@@ -193,8 +196,12 @@ describe('ReadingPlayerComponent', () => {
       expect(fixture.componentInstance.emitted).toEqual(['generate']);
     });
 
-    /** Nothing can be generated without a voice, so the offer is the setup. */
-    it('points at settings, and offers no generation, without a model', () => {
+    /**
+     * Nothing can be generated without a voice, so the offer is the setup — and
+     * it is the centre control, saying so in words, because a first run is
+     * exactly the state no icon can explain and a dead Play misreports.
+     */
+    it('makes setup the primary control, and offers no generation, without a model', () => {
       store.total.set(2);
       const fixture = render();
       fixture.componentInstance.modelConfigured.set(false);
@@ -203,7 +210,50 @@ describe('ReadingPlayerComponent', () => {
       const link = element.querySelector<HTMLAnchorElement>('a[aria-label="Set up audio model"]');
 
       expect(link?.getAttribute('href')).toBe('/settings');
+      expect(link?.className).toContain('primary');
+      expect(link?.textContent).toContain('Set up audio');
       expect(control(element, 'Generate audio')).toBeNull();
+      expect(control(element, 'Play')).toBeNull();
+      // One screen offers the same link once: the aux slot no longer repeats it.
+      expect(element.querySelectorAll('a[aria-label="Set up audio model"]')).toHaveLength(1);
+    });
+
+    /**
+     * Clips are keyed by the settings that made them, so a changed voice takes
+     * coverage to zero without deleting a row. Saying nothing there is the
+     * difference between "your audio is in the other voice" and "your audio is
+     * gone", and only one of them is true.
+     */
+    it('says that the audio it cannot see was made in other settings', () => {
+      store.total.set(5);
+      store.otherSettings.set(true);
+      const fixture = render();
+      fixture.componentInstance.modelConfigured.set(false);
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+      const notice = element.querySelector<HTMLElement>('[data-testid="player-voice-mismatch"]');
+
+      expect(notice?.textContent).toContain('other audio settings');
+      expect(notice?.querySelector('a')?.getAttribute('href')).toBe('/settings');
+      expect(said(element)).toContain('It is still stored');
+    });
+
+    /** A reading that simply has no clips anywhere has nothing to explain. */
+    it('prints nothing when there is no audio in any settings', () => {
+      store.total.set(5);
+      const element = render().nativeElement as HTMLElement;
+
+      expect(element.querySelector('[data-testid="player-voice-mismatch"]')).toBeNull();
+    });
+
+    /** Something playable accounts for itself through the transport and the bar. */
+    it('stops explaining once a clip in the current settings can be played', () => {
+      store.total.set(5);
+      store.ready.set(2);
+      store.otherSettings.set(true);
+      const element = render().nativeElement as HTMLElement;
+
+      expect(element.querySelector('[data-testid="player-voice-mismatch"]')).toBeNull();
     });
 
     it('renders no action when the reading has no sentences', () => {

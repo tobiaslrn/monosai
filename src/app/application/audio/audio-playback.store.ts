@@ -126,6 +126,16 @@ export class AudioPlaybackStore {
   private readonly cacheKeysSignal = signal<ReadonlyMap<SentenceId, string>>(new Map());
   /** Sentences with a stored clip under the current key. Metadata only. */
   private readonly availableSignal = signal<ReadonlySet<SentenceId>>(new Set());
+  /**
+   * Whether this reading has stored clips that the current settings cannot see.
+   *
+   * Clips are keyed by the configuration that produced them, so changing the
+   * voice, model or speed hides every clip made under the previous one without
+   * deleting a single row (ADR 0042). Coverage then falls to zero, which reads
+   * as loss unless a surface can say what actually happened — so the same read
+   * that counts what is available also counts what is stored and unreachable.
+   */
+  private readonly otherSettingsSignal = signal(false);
   private readonly statusSignal = signal<PlaybackStatus>('idle');
   private readonly currentSignal = signal<SentenceId | null>(null);
   private readonly failureSignal = signal<PlaybackFailure | null>(null);
@@ -213,6 +223,9 @@ export class AudioPlaybackStore {
    * unable to play audio they have already paid for.
    */
   readonly hasPlayableAudio = computed(() => this.availableCount() > 0);
+
+  /** Stored clips exist for this reading, made with audio settings no longer in use. */
+  readonly hasAudioInOtherSettings = this.otherSettingsSignal.asReadonly();
 
   /**
    * Whether the reading is complete under the current voice.
@@ -307,6 +320,7 @@ export class AudioPlaybackStore {
     }
     if (!refs.ok) {
       this.failureSignal.set({ kind: 'storage', message: refs.error.message });
+      this.otherSettingsSignal.set(false);
       // Availability could not be refreshed, so nothing is claimed to be
       // playable: offering a transport built on a set this call has just failed
       // to read would be offering controls that cannot be honoured.
@@ -321,9 +335,16 @@ export class AudioPlaybackStore {
     const config = this.audioConfig.resolve('tts-synthesis');
     if (!config.ok) {
       // No tested voice means no current key, so nothing counts as available
-      // and the gate stays shut — which is exactly what it should report.
+      // and the gate stays shut — which is exactly what it should report. What
+      // is stored is still read, because a reading whose clips have just become
+      // unreachable is exactly the case that must not look like deletion.
       this.cacheKeysSignal.set(new Map());
       this.availableSignal.set(new Set());
+      const orphaned = await this.enrichment.listAudioSummaries(reading.id);
+      if (token !== this.prepareToken) {
+        return;
+      }
+      this.otherSettingsSignal.set(orphaned.ok && orphaned.value.length > 0);
       return;
     }
     const cacheKeys = this.keys.audioKeys(
@@ -342,6 +363,7 @@ export class AudioPlaybackStore {
     if (!summaries.ok) {
       this.failureSignal.set({ kind: 'storage', message: summaries.error.message });
       this.availableSignal.set(new Set());
+      this.otherSettingsSignal.set(false);
       return;
     }
     // Matched by key rather than by the row own `sentenceId`: the audio table
@@ -349,6 +371,8 @@ export class AudioPlaybackStore {
     // clip and one row. Comparing per row would leave the second of them
     // permanently uncovered and the gate permanently shut.
     const stored = new Set(summaries.value.map((summary) => summary.cacheKey));
+    const current = new Set(cacheKeys.values());
+    this.otherSettingsSignal.set(summaries.value.some((summary) => !current.has(summary.cacheKey)));
     const available = new Set<SentenceId>();
     for (const ref of ordered) {
       const cacheKey = cacheKeys.get(ref.id);
@@ -635,6 +659,7 @@ export class AudioPlaybackStore {
     this.readingSignal.set(null);
     this.refsSignal.set([]);
     this.availableSignal.set(new Set());
+    this.otherSettingsSignal.set(false);
   }
 
   /**
@@ -646,6 +671,7 @@ export class AudioPlaybackStore {
   audioCacheCleared(): void {
     this.stop();
     this.availableSignal.set(new Set());
+    this.otherSettingsSignal.set(false);
     this.failureSignal.set(null);
   }
 
