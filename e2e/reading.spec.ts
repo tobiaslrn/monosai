@@ -526,9 +526,8 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     page,
     isMobile,
   }) => {
-    // Short enough that the reader mounts the whole reading at once. Extending
-    // a mount window scrolls, a scroll closes the card, and virtualization is
-    // not what this test is about.
+    // Long enough that the subject sentence sits below the fold, so the card
+    // has to be placed above it rather than below.
     const text = Array.from({ length: 14 }, (_, index) => `第${String(index + 1)}文を読む。`).join(
       '\n\n',
     );
@@ -536,19 +535,28 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await pasteAndContinue(page, text);
     await saveAndOpenReader(page);
 
-    const sentenceIndex = isMobile ? 0 : 8;
-    // Held by identity rather than by position: the reader mounts a moving
-    // window of paragraphs, so an nth index names a different sentence before
-    // and after a scroll, and this test is about one particular sentence.
-    const nth = page.locator('.sentence').nth(sentenceIndex);
-    await expect(nth).toBeAttached();
-    const subjectId = await nth.getAttribute('data-sentence-id');
-    const sentence = page.locator(`[data-sentence-id="${String(subjectId)}"]`);
+    const paragraphPosition = isMobile ? 0 : 8;
+    // Held by document position rather than by an nth index: the reader mounts
+    // a moving window of paragraphs, so an index names a different sentence
+    // before and after a scroll, and this test is about one particular
+    // sentence.
+    const sentence = page.locator(`[data-paragraph-position="${String(paragraphPosition)}"]`);
     if (isMobile) {
-      await openSentence(page, sentenceIndex);
+      await openSentence(page, paragraphPosition);
     } else {
-      await expect(page.locator('.sentence')).toHaveCount(14);
-      await sentence.scrollIntoViewIfNeeded();
+      // The subject starts outside the mounted window, so scroll towards it
+      // until the reader has mounted that part of the reading.
+      await expect
+        .poll(async () => {
+          if ((await sentence.count()) > 0) {
+            return true;
+          }
+          await page.evaluate(() => {
+            window.scrollBy({ top: window.innerHeight / 2 });
+          });
+          return false;
+        })
+        .toBe(true);
       // Corrected until it settles rather than scrolled once: mounting more of
       // the reading moves everything below it, so a single scroll computed
       // before the window grew leaves the sentence somewhere else entirely.
@@ -568,6 +576,8 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       await sentence.locator('.token.is-plain').first().click();
       await expect(page.locator('mn-sentence-popover')).toBeVisible();
     }
+
+    const subjectId = await sentence.locator('.sentence').first().getAttribute('data-sentence-id');
 
     if (isMobile) {
       await page.evaluate(
