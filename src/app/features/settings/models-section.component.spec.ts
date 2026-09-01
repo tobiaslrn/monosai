@@ -1,4 +1,5 @@
-import { TestBed } from '@angular/core/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -25,10 +26,12 @@ import {
   SETTINGS_REPOSITORY,
 } from '../../application/shared/repository-tokens';
 import { aiError } from '../../domain/ai/ai-error';
+import type { SpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import type { ModelCapabilities, ModelCatalog } from '../../domain/ai/model-catalog';
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import { ok, type Result } from '../../domain/shared/result';
+import { ModelPickerComponent } from './model-picker.component';
 import { ModelsSectionComponent } from './models-section.component';
 
 const HASH: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
@@ -89,6 +92,7 @@ describe('ModelsSectionComponent audio readiness', () => {
     element: HTMLElement;
     tts: TtsStore;
     detect: () => void;
+    fixture: ComponentFixture<ModelsSectionComponent>;
   }> {
     const credential = TestBed.inject(CredentialStore);
     await credential.load();
@@ -103,6 +107,7 @@ describe('ModelsSectionComponent audio readiness', () => {
       detect: () => {
         fixture.detectChanges();
       },
+      fixture,
     };
   }
 
@@ -263,5 +268,186 @@ describe('ModelsSectionComponent audio readiness', () => {
 
     expect(settings.tts.speed).toBe(1.25);
     expect(readiness(element)).toBe('Settings changed');
+  });
+  /**
+   * The readiness states above are reached by writing to the store. A learner
+   * reaches them by operating the panel, and the handlers between the two are
+   * where a control can be wired to nothing and still look right on screen.
+   */
+  describe('driven through its own controls', () => {
+    /** The audio node's picker, which reports a choice rather than making it. */
+    function audioPicker(fixture: ComponentFixture<ModelsSectionComponent>): ModelPickerComponent {
+      const pickers = fixture.debugElement.queryAll(By.directive(ModelPickerComponent));
+      const audio = pickers.find(
+        (picker) =>
+          (picker.nativeElement as HTMLElement).getAttribute('data-testid') ===
+          'audio-model-picker',
+      );
+      if (audio === undefined) {
+        throw new Error('the audio panel rendered no model picker');
+      }
+      return audio.componentInstance as ModelPickerComponent;
+    }
+
+    /** Drains the store's persist-then-call chain, which no control awaits. */
+    async function settled(): Promise<void> {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    }
+
+    function voiceControl(element: HTMLElement): HTMLSelectElement {
+      const control = element.querySelector<HTMLSelectElement>(
+        'select[aria-labelledby="mn-voice-label"]',
+      );
+      if (control === null) {
+        throw new Error('the audio panel rendered no voice control');
+      }
+      return control;
+    }
+
+    it('saves the picked model with its first voice, and leaves it untested', async () => {
+      await connect();
+      const { element, tts, detect, fixture } = await render();
+
+      audioPicker(fixture).modelSelected.emit(SPEECH_MODEL);
+      await Promise.resolve();
+      await Promise.resolve();
+      detect();
+
+      expect(tts.settings().modelId).toBe(FAKE_OPENROUTER.ttsModel);
+      // The first supported voice, so the model is usable without a second choice.
+      expect(tts.settings().voiceId).toBe(FAKE_OPENROUTER.voice);
+      expect(settings.tts.modelId).toBe(FAKE_OPENROUTER.ttsModel);
+      expect(readiness(element)).toBe('Not tested');
+    });
+
+    it('saves a voice chosen from the model list', async () => {
+      await connect();
+      const { element, tts, detect } = await render();
+      tts.setDraft(CONFIGURED);
+      await tts.test();
+      detect();
+
+      const voice = voiceControl(element);
+      voice.value = 'kaede';
+      voice.dispatchEvent(new Event('change'));
+      await Promise.resolve();
+      await Promise.resolve();
+      detect();
+
+      expect(settings.tts.voiceId).toBe('kaede');
+      // A changed voice does not delete the clips it can no longer reach.
+      expect(readiness(element)).toBe('Settings changed');
+      expect(note(element)).toContain('kept');
+    });
+
+    it('offers the same readiness word to the text panel, and retests from it', async () => {
+      await connect();
+      // A stored text model nothing has tested: the state the panel exists to
+      // name, and the one a learner lands in after choosing a model offline.
+      settings.textModel = { ...settings.textModel, modelId: 'private/text' };
+      const { element, detect } = await render();
+
+      const retest = element.querySelector<HTMLButtonElement>('[data-testid="test-text-model"]');
+      expect(retest).not.toBeNull();
+      expect(retest?.textContent.trim()).toBe('Test now');
+
+      retest?.click();
+      await settled();
+      detect();
+
+      // Whatever the provider answers, the label never stays on the invitation.
+      expect(element.querySelector('[data-testid="test-text-model"]')?.textContent.trim()).not.toBe(
+        'Test now',
+      );
+    });
+
+    it('takes a typed voice when the catalogue does not know the model', async () => {
+      await connect();
+      const { element, tts, detect } = await render();
+
+      // A model the catalogue cannot describe still has to be configurable:
+      // the catalogue is fetched lazily and may never answer.
+      tts.setDraft({ modelId: 'private/speech', voiceId: 'nova' });
+      await tts.save();
+      detect();
+
+      expect(element.querySelector('select[aria-labelledby="mn-voice-label"]')).toBeNull();
+      const typed = element.querySelector<HTMLInputElement>(
+        'input[aria-labelledby="mn-voice-label"]',
+      );
+      expect(typed).not.toBeNull();
+      expect(typed?.value).toBe('nova');
+
+      if (typed !== null) {
+        typed.value = 'shimmer';
+        typed.dispatchEvent(new Event('change'));
+      }
+      await settled();
+      detect();
+
+      expect(settings.tts.voiceId).toBe('shimmer');
+    });
+
+    it('previews from the button, with the parameters the catalogue reports', async () => {
+      await connect();
+      const { element, tts, detect } = await render();
+      tts.setDraft(CONFIGURED);
+      await tts.save();
+      detect();
+      let attempted: SpeechCapabilities | undefined;
+      const passing = provider.testConfiguration.bind(provider);
+      provider.testConfiguration = (config, signal) => {
+        attempted = config.attempt;
+        return passing(config, signal);
+      };
+
+      element.querySelector<HTMLButtonElement>('[data-testid="test-tts"]')?.click();
+      // The button starts the test without awaiting it, so the panel only
+      // catches up once the store has persisted the draft and heard back.
+      await settled();
+      detect();
+
+      // The catalogue declares speed for this model, so the preview attempts it.
+      expect(attempted?.speed).toBe(true);
+      expect(readiness(element)).toBe('Ready');
+    });
+
+    it('plays the sample clip once the element can play it', async () => {
+      await connect();
+      const { element, tts, detect } = await render();
+      tts.setDraft(CONFIGURED);
+      await tts.test();
+      detect();
+
+      let played = 0;
+      HTMLMediaElement.prototype.play = (): Promise<void> => {
+        played += 1;
+        return Promise.resolve();
+      };
+      const sample = element.querySelector('audio');
+      expect(sample).not.toBeNull();
+      sample?.dispatchEvent(new Event('canplay'));
+
+      expect(played).toBe(1);
+    });
+
+    it('does not let a refused sample reject into the console', async () => {
+      await connect();
+      const { element, tts, detect } = await render();
+      tts.setDraft(CONFIGURED);
+      await tts.test();
+      detect();
+
+      HTMLMediaElement.prototype.play = (): Promise<void> =>
+        Promise.reject(new Error('autoplay refused'));
+      element.querySelector('audio')?.dispatchEvent(new Event('canplay'));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // A browser that refuses autoplay leaves the panel exactly as it was.
+      expect(readiness(element)).toBe('Ready');
+    });
   });
 });
