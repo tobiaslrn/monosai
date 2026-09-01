@@ -131,7 +131,7 @@ export class AudioPlaybackStore {
    *
    * Clips are keyed by the configuration that produced them, so changing the
    * voice, model or speed hides every clip made under the previous one without
-   * deleting a single row (ADR 0042). Coverage then falls to zero, which reads
+   * deleting a single row (ADR 0043). Coverage then falls to zero, which reads
    * as loss unless a surface can say what actually happened — so the same read
    * that counts what is available also counts what is stored and unreachable.
    */

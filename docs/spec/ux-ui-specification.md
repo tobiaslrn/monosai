@@ -353,7 +353,7 @@ landing or a run ending never reflows the reading beneath it.
 reading has audio, what a stopped run managed, and why playback stopped are all
 said by the state of a control and by a `.mn-visually-hidden` live region —
 never by a paragraph. The exception is audio the current settings cannot see:
-clips are keyed by the configuration that produced them (ADR 0042), so changing
+clips are keyed by the configuration that produced them (ADR 0043), so changing
 a voice takes coverage from full to empty without deleting anything, and a bar
 that empties in silence reads as audio that has been lost and has to be paid for
 twice. That one state prints one line — that the reading's audio was saved in

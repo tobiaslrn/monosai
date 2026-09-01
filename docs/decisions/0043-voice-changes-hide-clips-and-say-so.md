@@ -1,4 +1,4 @@
-# 0042 — Changing the voice hides clips, and both screens say so
+# 0043 — Changing the voice hides clips, and both screens say so
 
 Date: 2026-09-01
 Status: Accepted
