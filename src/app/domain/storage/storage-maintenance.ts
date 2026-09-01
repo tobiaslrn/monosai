@@ -5,8 +5,10 @@ import type { StorageError } from './storage-error';
 
 /** Storage durability, usage reporting, and destructive maintenance actions. */
 export interface StorageMaintenance {
-  getPersistenceStatus(): Promise<PersistenceStatus>;
-  requestPersistence(): Promise<PersistenceStatus>;
+  /** Reading the status can itself fail; a browser may refuse to estimate. */
+  getPersistenceStatus(): Promise<Result<PersistenceStatus, StorageError>>;
+  /** Asks for durable storage. The browser may grant, decline, or fail. */
+  requestPersistence(): Promise<Result<PersistenceStatus, StorageError>>;
   /** Deletes audio blobs and audio jobs only. */
   clearAudioCache(): Promise<Result<void, StorageError>>;
   /** Deletes audio blobs and audio jobs owned by one reading only. */

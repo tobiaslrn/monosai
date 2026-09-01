@@ -375,9 +375,10 @@ describe('BrowserStorageMaintenance', () => {
   it('reports unknown persistence when the browser exposes no storage manager', async () => {
     const status = await maintenance.getPersistenceStatus();
 
-    expect(status.persisted).toBe(false);
-    expect(status.canRequest).toBe(false);
-    expect(status.usageBytes).toBeNull();
+    expect(status.ok && status.value.supported).toBe(false);
+    expect(status.ok && status.value.persisted).toBe(false);
+    expect(status.ok && status.value.canRequest).toBe(false);
+    expect(status.ok && status.value.usageBytes).toBeNull();
   });
 
   it('reports persistence status from the storage manager', async () => {
@@ -395,9 +396,10 @@ describe('BrowserStorageMaintenance', () => {
       undefined,
     ).getPersistenceStatus();
 
-    expect(status.canRequest).toBe(true);
-    expect(status.usageBytes).toBe(1024);
-    expect(status.quotaBytes).toBe(4096);
+    expect(status.ok && status.value.supported).toBe(true);
+    expect(status.ok && status.value.canRequest).toBe(true);
+    expect(status.ok && status.value.usageBytes).toBe(1024);
+    expect(status.ok && status.value.quotaBytes).toBe(4096);
   });
 
   it('clears audio blobs and audio jobs while keeping readings and translations', async () => {
@@ -524,17 +526,21 @@ describe('BrowserStorageMaintenance', () => {
     ).requestPersistence();
 
     expect(persist).toHaveBeenCalledTimes(1);
-    expect(status.persisted).toBe(true);
+    expect(status.ok && status.value.persisted).toBe(true);
   });
 
   it('skips the persist call when the browser exposes no storage manager', async () => {
     const status = await maintenance.requestPersistence();
 
     expect(status).toEqual({
-      persisted: false,
-      canRequest: false,
-      usageBytes: null,
-      quotaBytes: null,
+      ok: true,
+      value: {
+        supported: false,
+        persisted: false,
+        canRequest: false,
+        usageBytes: null,
+        quotaBytes: null,
+      },
     });
   });
 

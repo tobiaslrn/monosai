@@ -2437,3 +2437,44 @@ throughout.
   through the worker, imports and re-imports offline, and checks inbox cleanup.
 - Real-device AnkiDroid export and Android share-sheet verification remains open
   in [compatibility-matrix.md](compatibility-matrix.md).
+
+## Semantics, persistence, locale, and cross-tab polish
+
+### Delivered
+
+- Add text is one form again. The `role="tabpanel"` left over from a stepper
+  that no longer exists is gone, so a screen reader no longer announces "tab
+  panel" over a plain textarea with no tablist and no tab anywhere on the page.
+- One locale policy, written into [the design system](spec/design-system.md) §8
+  and implemented once in `src/app/domain/shared/locale.ts`: numbers and dates
+  are both formatted in `en`, explicitly, and no call site passes no locale.
+  Library cards now read `3,118 characters` like the import counter, and the
+  vocabulary snapshot list reads `Aug 31, 2026, 5:26 PM` instead of whatever
+  convention the browser carries.
+- Storage protection reports granted, declined, not available, could not be
+  completed, and not yet read as five distinct sentences in a polite live
+  region. `StorageMaintenance` now returns typed results for both the status
+  read and the request, so a thrown failure is reported rather than escaping as
+  an unhandled rejection, and the retryable request stays enabled.
+- Tabs tell each other about deleted readings over a `BroadcastChannel`, with a
+  `storage`-event fallback and an inert implementation where neither exists
+  ([ADR 0042](decisions/0042-cross-tab-reading-mutations.md)). A second tab's
+  Library drops the row and says so; a second tab sitting in the reader is
+  returned to the Library with the same message.
+- A malformed reading id is no longer described as a deleted reading. The
+  reader route carries a `canMatch` guard for a well-formed id, and anything
+  else falls through to a screen that says the address is not one Monosai
+  issues, claims no deletion, and keeps the address the learner typed.
+- No stored row changed shape, so no Dexie schema version was added.
+
+### Verification
+
+- Unit and TestBed coverage for the locale formatters, the reading-link
+  classifier and its route guard, the cross-tab channel including transport
+  selection, message validation, and unsubscription, both halves of the
+  cross-tab reaction, the six persistence states, the absent tab semantics, and
+  the library card's count.
+- `e2e/cross-tab.spec.ts` drives two pages in one context: a deletion in the
+  first is reflected in the second's reader and in its Library without a
+  reload. The same file scans Add text with axe and asserts the malformed and
+  the missing link screens say different, accurate things.

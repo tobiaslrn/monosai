@@ -1,8 +1,10 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import type { LibraryFilter, Reading } from '../../domain/reading/reading';
 import type { ReadingId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
+import { formatCount } from '../../domain/shared/locale';
 import { CLOCK, READING_REPOSITORY } from '../shared/repository-tokens';
+import { ReadingMutationsService } from './reading-mutations.service';
 
 /** Readings per library page. Pages are read newest first. */
 export const LIBRARY_PAGE_SIZE = 12;
@@ -20,6 +22,7 @@ export type LibraryStatus = 'idle' | 'loading' | 'ready' | 'failed';
 export class LibraryStore {
   private readonly readings = inject(READING_REPOSITORY);
   private readonly clock = inject(CLOCK);
+  private readonly mutations = inject(ReadingMutationsService);
 
   private readonly itemsSignal = signal<readonly Reading[]>([]);
   private readonly filterSignal = signal<LibraryFilter>('all');
@@ -47,6 +50,25 @@ export class LibraryStore {
   readonly hasNoReadings = computed(
     () => this.statusSignal() === 'ready' && this.totalSignal() === 0,
   );
+
+  constructor() {
+    // Another tab's deletion changes what this one is showing, so the shelf is
+    // re-read rather than left describing rows that are gone. Reloading only
+    // when the reading was actually on this page keeps a busy second tab from
+    // re-querying for readings it never listed.
+    const unsubscribe = this.mutations.onDeletedElsewhere((mutation) => {
+      const listed = this.itemsSignal().find((reading) => reading.id === mutation.id);
+      if (listed === undefined) {
+        return;
+      }
+      // This tab's own copy of the title is preferred over the one that came
+      // across the channel: it is the text the learner is looking at.
+      void this.load().then(() => {
+        this.announce(`${listed.title} was deleted in another tab.`);
+      });
+    });
+    inject(DestroyRef).onDestroy(unsubscribe);
+  }
 
   async load(): Promise<void> {
     this.statusSignal.set('loading');
@@ -80,7 +102,7 @@ export class LibraryStore {
     this.filterSignal.set(filter);
     await this.load();
     this.announce(
-      `${String(this.itemsSignal().length)} readings shown${this.hasMoreSignal() ? ', more available' : ''}.`,
+      `${formatCount(this.itemsSignal().length)} readings shown${this.hasMoreSignal() ? ', more available' : ''}.`,
     );
   }
 
@@ -113,7 +135,7 @@ export class LibraryStore {
 
   /** Deletes a reading and reloads the current page. */
   async delete(id: ReadingId): Promise<boolean> {
-    const title = this.itemsSignal().find((reading) => reading.id === id)?.title ?? 'The reading';
+    const title = await this.titleOf(id);
     const deleted = await this.readings.deleteReading(id);
     if (!deleted.ok) {
       this.errorSignal.set(deleted.error);
@@ -121,8 +143,35 @@ export class LibraryStore {
       return false;
     }
     await this.load();
+    this.mutations.publishDeleted(id, title);
     this.announce(`${title} was deleted.`);
     return true;
+  }
+
+  /**
+   * Announces something that happened to the shelf from outside it.
+   *
+   * The shelf owns the only live region on the Library, so a change made
+   * somewhere else — another tab, another route — says itself here.
+   */
+  noteExternalChange(message: string): void {
+    this.announce(message);
+  }
+
+  /**
+   * The reading's title for use in a message about it.
+   *
+   * Read from the loaded page first; a reading deleted from the reader may
+   * never have been listed in this tab, and "The reading was deleted" is the
+   * last resort rather than the usual answer.
+   */
+  private async titleOf(id: ReadingId): Promise<string> {
+    const listed = this.itemsSignal().find((reading) => reading.id === id);
+    if (listed !== undefined) {
+      return listed.title;
+    }
+    const stored = await this.readings.getReading(id);
+    return stored.ok && stored.value !== null ? stored.value.title : 'The reading';
   }
 
   /** Records that a reading was opened. */

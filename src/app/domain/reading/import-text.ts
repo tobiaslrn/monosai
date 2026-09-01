@@ -6,6 +6,8 @@
  * browser, a worker, or a file.
  */
 
+import { formatCount, formatCountOf } from '../shared/locale';
+
 /**
  * Upper bound on imported text, counted in Unicode code points rather than
  * UTF-16 code units so a limit stated to the learner in "characters" is not
@@ -91,7 +93,7 @@ export function validateImportText(text: string): ImportTextOutcome {
       ok: false,
       error: rejection(
         'too-long',
-        `That text is ${characterCount.toLocaleString('en')} characters. The limit is ${MAXIMUM_IMPORT_CHARACTERS.toLocaleString('en')}.`,
+        `That text is ${formatCountOf(characterCount, 'character')}. The limit is ${formatCount(MAXIMUM_IMPORT_CHARACTERS)}.`,
         characterCount,
       ),
     };

@@ -1,6 +1,4 @@
 import Dexie from 'dexie';
-import type { Logger } from '../../application/shared/diagnostics';
-import { safeErrorTypeOf } from '../../domain/shared/errors';
 import { ok, type Result } from '../../domain/shared/result';
 import type { ReadingId } from '../../domain/shared/ids';
 import {
@@ -10,62 +8,69 @@ import {
 import type { StorageMaintenance } from '../../domain/storage/storage-maintenance';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { DATABASE_NAME, type MonosaiDatabase } from './monosai-db';
-import { runStorage } from './repositories/storage-operation';
+import {
+  runStorage,
+  runStorageWithRules,
+  StorageRuleViolation,
+} from './repositories/storage-operation';
 
 /**
  * Storage durability and destructive maintenance.
  *
  * Persistence is requested only from an explicit user action; the browser may
  * still decline, which is reported rather than retried silently.
+ *
+ * Every method reports through `runStorage`, which is also what logs the
+ * operation, so failures here are typed rather than thrown at the caller.
  */
 export class BrowserStorageMaintenance implements StorageMaintenance {
   constructor(
     private readonly db: MonosaiDatabase,
     private readonly navigatorRef: Navigator | undefined,
     private readonly caches: CacheStorage | undefined,
-    private readonly logger?: Logger,
   ) {}
 
-  async getPersistenceStatus(): Promise<PersistenceStatus> {
-    try {
+  getPersistenceStatus(): Promise<Result<PersistenceStatus, StorageError>> {
+    return runStorage('storage.status', async () => {
       const storage = this.navigatorRef?.storage;
       if (!storage) {
         return UNKNOWN_PERSISTENCE;
       }
 
+      const supported = typeof storage.persist === 'function';
       const persisted = await storage.persisted();
       const estimate = await storage.estimate();
       return {
+        supported,
         persisted,
-        canRequest: typeof storage.persist === 'function' && !persisted,
+        canRequest: supported && !persisted,
         usageBytes: estimate.usage ?? null,
         quotaBytes: estimate.quota ?? null,
       };
-    } catch (thrown) {
-      this.logger?.error('storage.operation.failed', {
-        operation: 'storage.status',
-        errorCode: 'status-failed',
-        errorType: safeErrorTypeOf(thrown),
-      });
-      throw thrown;
-    }
+    });
   }
 
-  async requestPersistence(): Promise<PersistenceStatus> {
-    try {
+  /**
+   * Asks the browser to keep Monosai data.
+   *
+   * The answer is whatever the status says afterwards: `persist()` resolving
+   * is not a grant, and a browser that declines resolves `false` without
+   * throwing. Both are reported rather than retried, and a thrown failure is
+   * reported too — pressing a button that reports nothing is the same as a
+   * button that does nothing.
+   */
+  requestPersistence(): Promise<Result<PersistenceStatus, StorageError>> {
+    return runStorageWithRules('storage.persist', async () => {
       const storage = this.navigatorRef?.storage;
       if (typeof storage?.persist === 'function') {
         await storage.persist();
       }
-    } catch (thrown) {
-      this.logger?.error('storage.operation.failed', {
-        operation: 'storage.persist',
-        errorCode: 'persist-failed',
-        errorType: safeErrorTypeOf(thrown),
-      });
-      throw thrown;
-    }
-    return this.getPersistenceStatus();
+      const status = await this.getPersistenceStatus();
+      if (!status.ok) {
+        throw new StorageRuleViolation(status.error);
+      }
+      return status.value;
+    });
   }
 
   /** Deletes audio blobs and audio jobs only; readings and text stay intact. */
