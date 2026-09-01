@@ -336,6 +336,7 @@ type AiError =
   | { kind: 'timeout'; task: AiTask }
   | { kind: 'cancelled'; task: AiTask }
   | { kind: 'authentication' }
+  | { kind: 'credit-exhausted' }
   | { kind: 'model-not-found'; modelId: string }
   | { kind: 'capability-unsupported'; capability: string }
   | { kind: 'rate-limited'; retryAfterMs?: number }
@@ -345,6 +346,10 @@ type AiError =
   | { kind: 'audio-invalid'; issueCode: string }
   | { kind: 'unknown'; task: AiTask; correlationId: string };
 ```
+
+`credit-exhausted` is separate from `authentication` because their recoveries
+are unrelated: a rejected key is replaced, an empty balance is topped up, and
+saving the key again cannot help the second. See ADR 0018.
 
 Do not include raw response bodies in production errors. UI copy distinguishes OpenRouter/provider failure, local validation failure, grammar warning, and missing configuration.
 

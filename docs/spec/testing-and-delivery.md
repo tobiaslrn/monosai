@@ -178,7 +178,8 @@ Record hand-authored mock responses for:
 - repaired story introducing a different unknown;
 - grammar complete/unavailable/invalid offsets;
 - full/partial/mismatched translations;
-- authentication, model, rate limit, timeout, 5xx, and offline errors;
+- authentication, exhausted credit, model, rate limit, timeout, 5xx, and offline
+  errors, each with the next step its surface can actually offer;
 - valid MP3, wrong MIME, empty body, oversized body, and undecodable audio.
 
 Tests assert maximum call counts so retry combinations cannot cause runaway requests.

@@ -31,14 +31,20 @@ Anki and storage failures.
 provider-reported numbers. There is no field a response body could be assigned
 to, because a field that could hold provider content eventually would.
 
-### 402 is reported as an authentication failure
+### 402 has its own variant (revised 2026-09-01)
 
-OpenRouter answers a credit-exhausted account with 402, and the specified
-failure model has no variant for it. It is mapped to `authentication`, with the
-status kept in `detail`, because it sends the learner to exactly the same place
-as a rejected key — their OpenRouter account — and the copy names both causes.
-Inventing a thirteenth variant outside the specification would have been the
-larger deviation.
+OpenRouter answers a credit-exhausted account with 402. It was originally mapped
+to `authentication`, on the grounds that both send the learner to their
+OpenRouter account and the copy named both causes.
+
+That was wrong in practice. The one action an `authentication` failure asks for
+is checking the key and saving it again, which a working key does not need and
+an empty balance is not fixed by; the reader surfaces that dropped the "or no
+remaining credit" half of the wording left no trace of the real cause at all.
+402 is now mapped to `credit-exhausted`, the thirteenth variant, whose next step
+is adding credit. The specified failure model is amended to match rather than
+the mapping bent to fit it: a variant is justified exactly when its recovery
+differs, and this one's does.
 
 ### Ports declare only what is implemented
 

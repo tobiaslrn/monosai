@@ -54,6 +54,7 @@ describe('AiErrorCode', () => {
         case 'offline':
         case 'cancelled':
         case 'authentication':
+        case 'credit-exhausted':
         case 'model-not-found':
         case 'capability-unsupported':
         case 'malformed-response':
@@ -72,7 +73,12 @@ describe('AiErrorCode', () => {
   });
 
   it('never retries a failure the learner has to fix', () => {
-    for (const code of ['authentication', 'model-not-found', 'capability-unsupported'] as const) {
+    for (const code of [
+      'authentication',
+      'credit-exhausted',
+      'model-not-found',
+      'capability-unsupported',
+    ] as const) {
       expect(isAutomaticallyRetryable(aiError(code, 'text-model-test', 'x'))).toBe(false);
     }
   });

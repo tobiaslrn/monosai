@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import type { TranslationJobProgress } from '../../application/enrichment/translation-job.store';
-import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
+import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
 
 /**
  * The whole-reading job, while it is happening and no longer.
@@ -168,7 +168,8 @@ export class TranslationProgressComponent {
     if (progress.error.source === 'storage') {
       return `Saving failed: ${progress.error.error.message}`;
     }
-    const copy = aiErrorCopy(progress.error.error);
-    return `${copy.heading} while ${aiTaskCopy(progress.error.error.task)}. ${copy.primaryAction}`;
+    // The reader surface: Try again sits beside this row, and no settings test
+    // is involved in translating a reading.
+    return aiFailureMessage(progress.error.error, 'reader');
   });
 }

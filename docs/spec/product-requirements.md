@@ -196,7 +196,7 @@ Progress is based on stable paragraph and sentence IDs, not only scroll offset. 
 Errors must use distinct typed categories and user language:
 
 - Offline/unreachable network.
-- OpenRouter authentication, insufficient access, rate limit, provider unavailable, invalid model, malformed response, or unsupported task capability.
+- OpenRouter authentication, exhausted account credit, insufficient access, rate limit, provider unavailable, invalid model, malformed response, or unsupported task capability.
 - TTS model/voice incompatibility.
 - Anki application/bridge not running, connection timeout, permission or origin denial, unsupported API action, malformed response, or query failure.
 - Package unreadable, unsupported format/schema/compression, missing collection database, missing scheduling evidence, or resource/safety limit exceeded.

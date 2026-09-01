@@ -320,6 +320,33 @@ describe('ReadingPlayerComponent', () => {
     });
 
     /**
+     * 11.2/24.1: the player, the sentence popover, and the whole-reading
+     * translation row classify a failure identically and then offer the next
+     * step that belongs to their own surface.
+     */
+    it('reports the failure in the same words as the rest of the reader', () => {
+      const fixture = render();
+      fixture.componentInstance.progress.set({
+        kind: 'failed',
+        readingId: READING,
+        counts: { total: 4, requested: 4, completed: 0, failed: 1 },
+        error: {
+          source: 'provider',
+          error: aiError('credit-exhausted', 'tts-synthesis', 'Payment Required'),
+        },
+        canRetry: true,
+      });
+      fixture.detectChanges();
+      const spoken = said(fixture.nativeElement as HTMLElement);
+
+      expect(spoken).toContain(
+        'This OpenRouter account is out of credit while reading this sentence aloud.',
+      );
+      expect(spoken).toContain('Add credit on openrouter.ai, then try again.');
+      expect(spoken.toLowerCase()).not.toContain('run the test');
+    });
+
+    /**
      * 17.2: the count beside the track has to be measuring the same thing the
      * track is. A run that covered none of the four sentences it asked for
      * reported "0 of 4 sentences ready" next to a bar drawn a third full.
