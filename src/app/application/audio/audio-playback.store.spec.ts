@@ -312,6 +312,54 @@ describe('AudioPlaybackStore', () => {
     });
   });
 
+  /**
+   * Clips are keyed by the configuration that produced them (ADR 0042), so
+   * changing the voice hides every clip made with the previous one without
+   * deleting a row. Coverage falling from full to empty is then indistinguishable
+   * from deletion unless the store can say that the clips are still there.
+   */
+  describe('audio saved in other settings', () => {
+    it('reports stored clips the current voice cannot see', async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      expect(bed.store.hasAudioInOtherSettings()).toBe(false);
+
+      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.availableCount()).toBe(0);
+      expect(bed.store.hasAudioInOtherSettings()).toBe(true);
+    });
+
+    it('reports them when the configuration is not testable at all', async () => {
+      await storeClips(bed);
+      bed.readiness.set('stale-test');
+
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.availableCount()).toBe(0);
+      expect(bed.store.hasAudioInOtherSettings()).toBe(true);
+    });
+
+    it('reports nothing for a reading that has no clips anywhere', async () => {
+      bed.readiness.set('stale-test');
+
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.hasAudioInOtherSettings()).toBe(false);
+    });
+
+    it('forgets them once the clips are actually deleted', async () => {
+      await storeClips(bed);
+      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
+      await bed.store.prepare(bed.reading);
+
+      bed.store.readingAudioCleared(bed.reading.id);
+
+      expect(bed.store.hasAudioInOtherSettings()).toBe(false);
+    });
+  });
+
   describe('starting against a partial set', () => {
     /**
      * The change ADR 0034 makes: a reading with one clip missing at the end is

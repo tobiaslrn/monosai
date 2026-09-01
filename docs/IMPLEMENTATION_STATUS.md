@@ -1257,6 +1257,49 @@ browser to keep data, while the *narrower* per-reading deletion in the reader ha
 always opened a confirmation. It now opens the same one, naming the scope and
 what survives, with cancelling focused and Escape keeping it.
 
+#### Audio settings say where they stand, and where the clips went
+
+[ADR 0042](decisions/0042-voice-changes-hide-clips-and-say-so.md) settles what a
+configuration change does to audio already paid for: nothing is deleted, and
+both screens that used to go quiet now speak.
+
+The Audio panel renders readiness beside the Preview, in the place the Text
+panel already renders its own. `ModelsSectionComponent.audioStatus` resolves one
+value out of three signals — the running test, a stopped one, and readiness — so
+a learner can tell **no model**, **not tested**, **playing**, **stopped**,
+**ready**, **failed**, and **settings changed** apart. Before this the Audio
+head was hard-wired to the Preview button, so a learner who chose a speech model
+and never pressed it had everything looking configured and audio that could not
+be generated, with no screen anywhere saying which step was missing.
+
+`TtsStore.cancelTest` is wired to a **Stop** that replaces the Preview while one
+is running, and records that the learner stopped it. Stopping is reported as
+stopped rather than as a failure — it proves nothing either way, so the
+configuration stays untested — and the method is no longer dead code sitting
+beside a preview that sat on "Playing…" for the full sixty-second request
+timeout with nothing to press.
+
+Speaking speed is now `mn-speed-field`, the same contract as the token budget
+field: the box keeps what is being typed, an empty or out-of-range value stays
+on screen as an error, and only a value inside 0.5–2 is ever committed. Clearing
+the field used to store **0.5** — the minimum, not the default — which left a
+learner with permanent half-speed narration, a retired model test, and every
+clip made at the old speed out of reach. `TtsStore` refuses a speed that is not
+a number at all rather than falling back to any value of its own.
+
+In the reader, `AudioPlaybackStore.hasAudioInOtherSettings` is read from the same
+local pass that counts what is available: clips stored for this reading that no
+current cache key can reach. While it is true and nothing is playable, the player
+prints its one line — that the audio was saved in other audio settings — with a
+link to Settings, and the live region carries the longer version, including that
+it is still stored. A reading whose coverage fell from 100% to 0% because a voice
+changed no longer reads as audio that has been lost.
+
+The centre of the transport is the **setup** when no speech model is ready: a
+labelled link to Settings in the place and shape Play would have had, instead of
+a disabled Play beside an icon-only gear that reads as "options". The aux slot no
+longer repeats that link, so one screen offers it once.
+
 #### The library card and the saved panel tell the truth
 
 `reading-summary-labels.ts` holds an exhaustive switch over all four
