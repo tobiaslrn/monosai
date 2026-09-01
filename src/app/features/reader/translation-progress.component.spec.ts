@@ -81,7 +81,12 @@ describe('TranslationProgressComponent', () => {
     });
     const element = fixture.nativeElement as HTMLElement;
 
-    expect(element.querySelector('[role="alert"]')?.textContent).not.toContain('raw text');
+    const alert = element.querySelector('[role="alert"]')?.textContent ?? '';
+
+    expect(alert).not.toContain('raw text');
+    // Retry the rest is the control beside this row; there is no test here.
+    expect(alert).toContain('Wait a moment, then try again.');
+    expect(alert.toLowerCase()).not.toContain('test');
     expect(element.textContent).toContain('Nothing already translated was lost.');
 
     [...element.querySelectorAll<HTMLButtonElement>('button')]

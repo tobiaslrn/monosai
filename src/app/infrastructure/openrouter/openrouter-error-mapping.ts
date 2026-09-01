@@ -91,8 +91,9 @@ function detailOf(context: RequestContext, extra: AiErrorDetail): AiErrorDetail 
  * Turns an HTTP status into the variant whose recovery text is actually
  * actionable.
  *
- * The distinctions matter: a 401 means the key, a 404 means the model ID, a 400
- * means the request shape this model cannot honour, and a 5xx means waiting.
+ * The distinctions matter: a 401 means the key, a 402 means the balance, a 404
+ * means the model ID, a 400 means the request shape this model cannot honour,
+ * and a 5xx means waiting.
  * Collapsing them into one "request failed" would make the settings screen
  * useless.
  */
@@ -112,10 +113,10 @@ export function mapHttpStatus(
     });
   }
   if (status === 402) {
-    // Insufficient credit is an account-access problem the learner fixes in the
-    // same place a rejected key is fixed, and the failure model has no separate
-    // variant for it. See ADR 0018.
-    return aiError('authentication', task, 'The provider refused the request for account access.', {
+    // Credit exhaustion has its own variant because its only remedy is adding
+    // credit: telling the learner to re-check a key that is working sends them
+    // to the one place that cannot help. See ADR 0018.
+    return aiError('credit-exhausted', task, 'The account has no remaining credit.', {
       cause: 'HTTP 402',
       detail: detailOf(context, { status }),
     });

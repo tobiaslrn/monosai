@@ -16,7 +16,7 @@ import type {
 import type { SentenceId } from '../../domain/shared/ids';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
+import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
 
 /** What the card has to say about generation, if anything. */
 export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
@@ -891,11 +891,9 @@ export class ReadingPlayerComponent {
     if (progress.error.source === 'storage') {
       return `Saving failed: ${progress.error.error.message}`;
     }
-    // What went wrong, not what to do about it: the primary action in the
-    // shared table is written for the settings test panel, and there is no test
-    // in the reader. Try again is the control right beside this.
-    const copy = aiErrorCopy(progress.error.error);
-    return `${copy.heading} while ${aiTaskCopy(progress.error.error.task)}. ${copy.whatFailed}`;
+    // The reader surface, because the settings table's action names a test this
+    // screen does not have. Try again is the control right beside this.
+    return aiFailureMessage(progress.error.error, 'reader');
   });
 
   protected readonly failureMessage = computed(() => {

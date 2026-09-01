@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AiErrorCode } from '../../domain/ai/ai-error';
+import { ALL_AI_TASKS } from '../../domain/ai/ai-task';
 import { capabilityFrom, mapHttpStatus, parseRetryAfterMs } from './openrouter-error-mapping';
 import type { ProviderErrorEnvelope } from './openrouter-response.schema';
 
@@ -17,12 +18,51 @@ describe('mapHttpStatus', () => {
   it('maps each status class to its own recovery lane', () => {
     expect(codeFor(401)).toBe('authentication');
     expect(codeFor(403)).toBe('authentication');
-    expect(codeFor(402)).toBe('authentication');
+    expect(codeFor(402)).toBe('credit-exhausted');
     expect(codeFor(404)).toBe('model-not-found');
     expect(codeFor(413)).toBe('context-budget-exceeded');
     expect(codeFor(429)).toBe('rate-limited');
     expect(codeFor(500)).toBe('provider-unavailable');
     expect(codeFor(503)).toBe('provider-unavailable');
+  });
+
+  /**
+   * Every status the provider can answer with, against every task that can
+   * provoke one. The classification is a property of the status alone: a 402
+   * during a settings test and a 402 mid-sentence are the same failure, and the
+   * copy tables are what make the two read differently.
+   */
+  const STATUS_LANES: readonly { readonly status: number; readonly code: AiErrorCode }[] = [
+    { status: 401, code: 'authentication' },
+    { status: 402, code: 'credit-exhausted' },
+    { status: 403, code: 'authentication' },
+    { status: 404, code: 'model-not-found' },
+    { status: 413, code: 'context-budget-exceeded' },
+    { status: 429, code: 'rate-limited' },
+    { status: 500, code: 'provider-unavailable' },
+    { status: 502, code: 'provider-unavailable' },
+    { status: 503, code: 'provider-unavailable' },
+    { status: 302, code: 'unknown' },
+  ];
+
+  it.each(STATUS_LANES)('maps HTTP $status the same way for every task', ({ status, code }) => {
+    for (const task of ALL_AI_TASKS) {
+      const error = mapHttpStatus(
+        status,
+        { task, modelId: 'vendor/model' },
+        null,
+        undefined,
+        'cid',
+      );
+
+      expect(error.code, `${String(status)} during ${task}`).toBe(code);
+      expect(error.task).toBe(task);
+      expect(error.detail?.status).toBe(status);
+    }
+  });
+
+  it('separates an empty balance from a rejected key', () => {
+    expect(codeFor(402)).not.toBe(codeFor(401));
   });
 
   it('reads a missing model out of a 400 that names one', () => {

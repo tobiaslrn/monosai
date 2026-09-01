@@ -5,16 +5,21 @@ import type { AiTask } from './ai-task';
  * Every failure an AI provider request can report.
  *
  * The variants are the ones named in the AI specification and the UI must
- * preserve every distinction they make: "your key is wrong", "that model does
- * not exist", and "the provider is having a bad day" need three different next
- * actions, and collapsing them would leave the learner guessing which of their
- * settings to change.
+ * preserve every distinction they make: "your key is wrong", "your account is
+ * out of credit", "that model does not exist", and "the provider is having a
+ * bad day" need four different next actions, and collapsing them would leave
+ * the learner guessing which of their settings to change.
+ *
+ * `credit-exhausted` is separate from `authentication` because the two have
+ * nothing in common but the account: a rejected key is fixed by saving a
+ * different key, and an empty balance cannot be fixed by saving anything.
  */
 export type AiErrorCode =
   | 'offline'
   | 'timeout'
   | 'cancelled'
   | 'authentication'
+  | 'credit-exhausted'
   | 'model-not-found'
   | 'capability-unsupported'
   | 'rate-limited'
@@ -35,6 +40,7 @@ export const ALL_AI_ERROR_CODES: readonly AiErrorCode[] = [
   'timeout',
   'cancelled',
   'authentication',
+  'credit-exhausted',
   'model-not-found',
   'capability-unsupported',
   'rate-limited',

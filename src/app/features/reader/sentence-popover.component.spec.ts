@@ -237,6 +237,54 @@ describe('SentencePopoverComponent', () => {
     );
   });
 
+  /**
+   * 11.2/24.1: the shared table's settings wording used to reach this popover,
+   * which told the learner to run a test this screen does not have.
+   */
+  it('offers the retry beside it rather than a settings test', () => {
+    const rendered = host(
+      render(
+        aidsWith({
+          translationAction: {
+            state: 'failed',
+            error: {
+              source: 'provider',
+              error: aiError('rate-limited', 'translation', 'raw provider text'),
+            },
+          },
+        }),
+      ),
+    );
+    const alert = rendered.querySelector('[role="alert"]')?.textContent ?? '';
+
+    expect(alert).toContain('while translating this sentence');
+    expect(alert).toContain('Wait a moment, then try again.');
+    expect(alert.toLowerCase()).not.toContain('test');
+    expect(translateButton(rendered)).toBeDefined();
+  });
+
+  it('sends an exhausted account to add credit, not back to a working key', () => {
+    const rendered = host(
+      render(
+        aidsWith({
+          translationAction: {
+            state: 'failed',
+            error: {
+              source: 'provider',
+              error: aiError('credit-exhausted', 'translation', 'Payment Required'),
+            },
+          },
+        }),
+      ),
+    );
+    const alert = rendered.querySelector('[role="alert"]')?.textContent ?? '';
+
+    expect(alert).toContain('out of credit');
+    expect(alert).toContain('Add credit on openrouter.ai');
+    expect(alert.toLowerCase()).not.toContain('save it again');
+    expect(translateButton(rendered)?.textContent).toContain('Translate again');
+  });
+
   it('offers Settings when translation has no configured model', () => {
     const fixture = render(
       aidsWith({

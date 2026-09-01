@@ -312,6 +312,11 @@ An empty surface offers its primary action and explains what would fill it. An
 error surface states what failed, what is unaffected, and the one action worth
 taking — retry only where retrying could plausibly succeed unchanged.
 
+The same failure is classified identically wherever it appears, and the action
+is the one **this** surface can offer. A message that names a control the screen
+does not have — the settings test, quoted mid-reading — is a broken action, not
+a wording preference.
+
 ## 10. Accessibility floor
 
 These are not aspirations; a change that breaks one of them is a regression.

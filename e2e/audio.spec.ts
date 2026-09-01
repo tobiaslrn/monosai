@@ -369,6 +369,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(playerStatus(page)).toContainText(/Stopped with \d+ of 8 sentences ready/, {
       timeout: 60_000,
     });
+    // 11.2: whatever the provider refused with, the player reports it in the
+    // reader's own terms. There is no model test on this screen to run again.
+    await expect(playerStatus(page)).not.toContainText(/\btests?\b/i);
 
     // The clips already produced are kept: they cost money and are exactly as
     // playable individually as they were. Nothing beyond the first batch was

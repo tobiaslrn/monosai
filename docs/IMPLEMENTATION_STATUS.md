@@ -832,9 +832,9 @@ cleared the instant its value is handed to the repository, and a shared
 `mn-configuration-status` renders readiness and failure recovery without either
 section being able to show the other's state.
 
-`ai-error-copy.ts` gives all twelve failure variants their own heading, what
-failed, what did not fail, primary action, and escape path, plus a copyable
-technical code. Diagnostics now also reports the provider protocol and the
+`ai-error-copy.ts` gives every failure variant its own heading, what failed,
+what did not fail, a next action per surface, and an escape path, plus a
+copyable technical code. Diagnostics now also reports the provider protocol and the
 internal prompt versions.
 
 ### Verified
@@ -869,10 +869,10 @@ internal prompt versions.
   The path is a constant and the request is built in one adapter; an
   incompatible provider fails at configuration time with
   `capability-unsupported` rather than mid-reading. See ADR 0018.
-- **402 is reported as an authentication failure.** OpenRouter uses it for an
-  exhausted account and the specified failure model has no variant for it; it
-  sends the learner to the same place a rejected key does, and the copy names
-  both causes.
+- **402 was reported as an authentication failure.** OpenRouter uses it for an
+  exhausted account and the specified failure model had no variant for it. This
+  assumption was withdrawn on 2026-09-01: 402 now maps to `credit-exhausted`.
+  See "Provider failure language" below.
 - The compatibility probe asks for a two-field JSON object. It is deliberately
   the smallest task that still proves exact structured output, so a failure is
   attributable to formatting rather than to task difficulty.
@@ -2437,3 +2437,43 @@ throughout.
   through the worker, imports and re-imports offline, and checks inbox cleanup.
 - Real-device AnkiDroid export and Android share-sheet verification remains open
   in [compatibility-matrix.md](compatibility-matrix.md).
+
+## Provider failure language
+
+### Delivered
+
+- One classification, three surfaces. `aiFailureMessage(error, surface)` in
+  `shared-ui/ai-error/ai-error-copy.ts` composes what failed, the task it
+  interrupted, and the next step that belongs to the surface reporting it.
+  `AiErrorCopy` now carries `primaryAction` for the settings panel, whose
+  control is Test, and `retryAction` for surfaces where the interrupted task has
+  its own retry beside the message.
+- The sentence popover, the whole-reading translation row, and the audio player
+  all report failures through that one function on the `reader` surface. The
+  popovers used to render `primaryAction` and tell a learner to "run the test
+  again" for a test that exists only in Settings; the player rendered
+  `whatFailed` and offered no next step at all.
+- `cancelled` no longer reads "Test cancelled", because the same variant is
+  reported mid-reading.
+- HTTP 402 maps to a new `credit-exhausted` variant instead of
+  `authentication`. Its copy names the exhausted balance and asks for credit to
+  be added; `authentication` is now purely about a rejected key. Neither variant
+  is automatically retried, and 402 remains a configuration-wide failure that
+  stops a whole-reading job rather than a per-sentence one.
+- 401, 429, 500, 503, offline, timeout, and cancellation keep the distinct
+  handling they had. No provider response body, API key, or reading content
+  enters an error, a message, or diagnostics.
+
+### Verified
+
+- Table-driven unit tests over every status the mapper classifies against every
+  `AiTask`, and over every `AiErrorCode` x `AiTask` x surface for the composed
+  message: each names the failure, names the interrupted task, ends with the
+  surface's own next step, and never repeats provider wording. No reader action
+  contains the word "test".
+- Component tests for the sentence popover, the translation progress row, and
+  the player assert the rendered copy and that the retry control beside it
+  survives, including a 402 that must not send the learner back to a working
+  key.
+- Full Vitest suite green (1,998 tests, 170 files). Playwright was not run in
+  this worktree; the E2E lane runs after integration.
