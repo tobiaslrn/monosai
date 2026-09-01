@@ -23,11 +23,7 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
         lang="ja"
         required
         [attr.aria-invalid]="store.rejection() !== null || isOverLimit() ? 'true' : null"
-        [attr.aria-describedby]="
-          isOverLimit()
-            ? 'mn-import-count mn-import-limit-hint mn-import-advisories'
-            : 'mn-import-count mn-import-advisories'
-        "
+        [attr.aria-describedby]="descriptionIds()"
         [value]="store.rawText()"
         (input)="onPaste($event)"
       ></textarea>
@@ -119,6 +115,16 @@ export class TextInputStepComponent {
     () =>
       `Remove ${formatCountOf(this.store.characterCount() - this.limit, 'character')} to continue.`,
   );
+  protected readonly descriptionIds = computed(() => {
+    const ids = ['mn-import-count'];
+    if (this.isOverLimit()) {
+      ids.push('mn-import-limit-hint');
+    }
+    if (this.store.advisories().length > 0) {
+      ids.push('mn-import-advisories');
+    }
+    return ids.join(' ');
+  });
 
   protected isOverLimit(): boolean {
     return this.store.characterCount() > MAXIMUM_IMPORT_CHARACTERS;

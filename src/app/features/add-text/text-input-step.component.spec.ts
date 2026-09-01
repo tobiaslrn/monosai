@@ -27,6 +27,10 @@ class FakeImportStore {
     return null;
   }
 
+  advisories(): readonly [] {
+    return [];
+  }
+
   setPastedText(value: string): void {
     this.text = value;
   }
