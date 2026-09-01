@@ -58,6 +58,23 @@ describe('DexieReadingRepository', () => {
       expect(stored.ok && stored.value?.title).toBe(draft.reading.title);
     });
 
+    it('finds every imported reading with the same source hash', async () => {
+      const first = importedReadingFixture();
+      const second = importedReadingFixture({ seed: 42 });
+      await repository.saveImportedReading(first);
+      await repository.saveImportedReading({
+        ...second,
+        reading: { ...second.reading, sourceTextHash: first.reading.sourceTextHash },
+      });
+
+      const matches = await repository.listImportedBySourceHash(first.reading.sourceTextHash);
+
+      expect(matches.ok && matches.value.map((reading) => reading.id)).toEqual([
+        first.reading.id,
+        second.reading.id,
+      ]);
+    });
+
     it('rejects duplicate sentence positions before writing anything', async () => {
       const draft = importedReadingFixture();
       const broken = {

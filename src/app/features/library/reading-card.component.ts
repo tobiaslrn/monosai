@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Reading } from '../../domain/reading/reading';
-import { formatCountOf } from '../../domain/shared/locale';
+import { formatCountOf, formatDateTime } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
 /** One compact library row, with only the metadata useful before opening it. */
@@ -31,6 +31,8 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
           </h3>
           <p class="meta">
             <span>{{ characterLabel() }}</span>
+            <span class="separator" aria-hidden="true">·</span>
+            <span>{{ createdLabel() }}</span>
             @if (hasAudio()) {
               <span class="separator" aria-hidden="true">·</span>
               <span class="audio-available">
@@ -217,6 +219,7 @@ export class ReadingCardComponent {
   protected readonly characterLabel = computed(() =>
     formatCountOf(this.reading().characterCount, 'character'),
   );
+  protected readonly createdLabel = computed(() => formatDateTime(this.reading().createdAt));
   protected readonly hasAudio = computed(() => this.reading().audioSummary.completed > 0);
 
   protected onMenuToggle(event: Event): void {

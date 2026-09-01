@@ -57,6 +57,12 @@ export class TextImportService {
   private readonly hasher = inject(HASHER);
   private readonly ids = inject(ID_GENERATOR);
 
+  findDuplicates(sourceText: string): Promise<Result<readonly ImportedReading[], StorageError>> {
+    return this.readings.listImportedBySourceHash(
+      hashCanonical(this.hasher, 'reading-source', sourceText),
+    );
+  }
+
   /**
    * Waits for the background asset preparation that startup began.
    *

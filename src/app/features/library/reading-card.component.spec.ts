@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Reading } from '../../domain/reading/reading';
 import { readingId } from '../../domain/shared/ids';
+import { formatDateTime } from '../../domain/shared/locale';
 import { ReadingCardComponent } from './reading-card.component';
 
 function reading(characterCount: number): Reading {
@@ -53,5 +54,9 @@ describe('ReadingCardComponent character count', () => {
 
   it('needs no separator below a thousand', () => {
     expect(metaOf(940)).toContain('940 characters');
+  });
+
+  it('shows creation time so otherwise identical rows can be distinguished', () => {
+    expect(metaOf(940)).toContain(formatDateTime(1_700_000_000_000));
   });
 });

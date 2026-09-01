@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { segmentParagraph, splitIntoParagraphs } from './segmentation';
+import { MAXIMUM_SENTENCE_CHARACTERS, segmentParagraph, splitIntoParagraphs } from './segmentation';
 
 function texts(paragraph: string): readonly string[] {
   return segmentParagraph(paragraph).map((segment) => segment.text);
@@ -90,6 +90,22 @@ describe('segmentParagraph', () => {
   it('keeps surrogate pairs intact', () => {
     const segments = segmentParagraph('😀。😀。');
     expect(segments.map((segment) => segment.text)).toEqual(['😀。', '😀。']);
+  });
+
+  it('bounds an unpunctuated sentence while preserving every character', () => {
+    const paragraph = '猫'.repeat(MAXIMUM_SENTENCE_CHARACTERS * 2 + 5);
+    const segments = segmentParagraph(paragraph);
+    expect(segments.map((segment) => Array.from(segment.text).length)).toEqual([
+      MAXIMUM_SENTENCE_CHARACTERS,
+      MAXIMUM_SENTENCE_CHARACTERS,
+      5,
+    ]);
+    expect(segments.map((segment) => segment.text).join('')).toBe(paragraph);
+  });
+
+  it('uses a nearby Japanese comma as the bounded split', () => {
+    const paragraph = `${'猫'.repeat(MAXIMUM_SENTENCE_CHARACTERS)}、犬`;
+    expect(texts(paragraph)).toEqual([`${'猫'.repeat(MAXIMUM_SENTENCE_CHARACTERS)}、`, '犬']);
   });
 });
 

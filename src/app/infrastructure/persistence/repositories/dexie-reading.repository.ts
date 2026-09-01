@@ -89,6 +89,36 @@ export class DexieReadingRepository implements ReadingRepository {
     });
   }
 
+  listImportedBySourceHash(
+    sourceTextHash: string,
+  ): Promise<Result<readonly ImportedReading[], StorageError>> {
+    return this.loadImportedBySourceHash(sourceTextHash);
+  }
+
+  private async loadImportedBySourceHash(
+    sourceTextHash: string,
+  ): Promise<Result<readonly ImportedReading[], StorageError>> {
+    const loaded = await runStorage('readings.listImportedBySourceHash', async () =>
+      this.db.readings
+        .filter(
+          (candidate) =>
+            candidate.kind === 'imported' && candidate.sourceTextHash === sourceTextHash,
+        )
+        .toArray(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const parsed = parseRecords(readingRowSchema, loaded.value, 'readings');
+    return parsed.ok
+      ? ok(
+          parsed.value
+            .map(toReading)
+            .filter((reading): reading is ImportedReading => reading.kind === 'imported'),
+        )
+      : parsed;
+  }
+
   /**
    * Writes an accepted story, its text, its frozen validation, and its
    * provenance in one transaction.

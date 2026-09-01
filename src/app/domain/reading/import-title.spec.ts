@@ -7,8 +7,16 @@ import {
 } from './import-title';
 
 describe('titleFromPastedText', () => {
-  it('uses the first non-empty line', () => {
+  it('uses the first meaningful line', () => {
     expect(titleFromPastedText('\n\n  第一章  \n猫が寝た。')).toBe('第一章');
+  });
+
+  it('uses the first sentence rather than a whole prose line', () => {
+    expect(titleFromPastedText('吾輩は猫である。名前はまだ無い。')).toBe('吾輩は猫である。');
+  });
+
+  it('skips invisible and punctuation-only lines', () => {
+    expect(titleFromPastedText('\u200b\u200c\n。。。\n猫が走る。')).toBe('猫が走る。');
   });
 
   it('falls back when the text is only whitespace', () => {
@@ -32,5 +40,9 @@ describe('resolveTitle', () => {
 
   it('never resolves to an empty title', () => {
     expect(resolveTitle('', '')).toBe(FALLBACK_READING_TITLE);
+  });
+
+  it('falls back from an invisible or punctuation-only entered title', () => {
+    expect(resolveTitle('\u200b。。。', '猫が寝た。')).toBe('猫が寝た。');
   });
 });

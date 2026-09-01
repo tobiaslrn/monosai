@@ -168,6 +168,16 @@ export class FakeReadingRepository implements ReadingRepository {
   failListWith: StorageError | null = null;
   failGraphWith: StorageError | null = null;
 
+  listImportedBySourceHash(
+    sourceTextHash: string,
+  ): Promise<Result<readonly ImportedReading[], StorageError>> {
+    const matches = this.readings.filter(
+      (reading): reading is ImportedReading =>
+        reading.kind === 'imported' && reading.sourceTextHash === sourceTextHash,
+    );
+    return Promise.resolve(ok(matches));
+  }
+
   /** Adds one built reading and every row it owns. */
   add(rows: FakeReadingRows): FakeReadingRows {
     this.readings.push(rows.reading);

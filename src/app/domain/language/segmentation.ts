@@ -13,6 +13,9 @@ const JAPANESE_TERMINATORS = new Set(['。', '！', '？', '．']);
 /** ASCII marks also appear inside abbreviations, so they need a following break. */
 const ASCII_TERMINATORS = new Set(['.', '!', '?']);
 const INLINE_SPACES = new Set([' ', '\u3000', '\t']);
+const SOFT_BREAKS = new Set(['、', '，', ',', '；', ';', '：', ':', ' ', '\u3000', '\t']);
+/** Prevent one missing full stop from creating an unbounded sentence-scoped operation. */
+export const MAXIMUM_SENTENCE_CHARACTERS = 240;
 
 export interface SentenceSegment {
   readonly startUtf16: number;
@@ -78,24 +81,42 @@ export function segmentParagraph(text: string): readonly SentenceSegment[] {
   let depth = 0;
   let start = 0;
   let index = 0;
+  let charactersSinceStart = 0;
 
   const emit = (end: number): void => {
     if (end > start) {
       segments.push({ startUtf16: start, endUtf16: end, text: text.slice(start, end) });
     }
     start = end;
+    charactersSinceStart = 0;
   };
 
   while (index < text.length) {
     const character = characterAt(text, index);
     if (OPENERS.has(character)) {
       depth += 1;
+      charactersSinceStart += 1;
       index += character.length;
       continue;
     }
     if (CLOSERS.has(character)) {
       depth = Math.max(0, depth - 1);
+      charactersSinceStart += 1;
       index += character.length;
+      continue;
+    }
+    if (
+      depth === 0 &&
+      charactersSinceStart >= MAXIMUM_SENTENCE_CHARACTERS &&
+      SOFT_BREAKS.has(character)
+    ) {
+      const end = index + character.length;
+      emit(end);
+      index = end;
+      continue;
+    }
+    if (charactersSinceStart >= MAXIMUM_SENTENCE_CHARACTERS) {
+      emit(index);
       continue;
     }
     if (depth === 0 && character === '\n') {
@@ -112,6 +133,7 @@ export function segmentParagraph(text: string): readonly SentenceSegment[] {
       index = end;
       continue;
     }
+    charactersSinceStart += 1;
     index += character.length;
   }
 
