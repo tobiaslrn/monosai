@@ -164,6 +164,23 @@ export class ReaderStore {
     this.loadingMoreSignal.set(false);
   }
 
+  /** Loads a bounded window around a position selected through virtual space. */
+  async moveTo(anchorPosition: number): Promise<void> {
+    const reading = this.readingSignal();
+    if (reading === null || this.loadingMoreSignal()) {
+      return;
+    }
+    const next = windowAround(anchorPosition, this.totalParagraphsSignal());
+    const current = this.windowSignal();
+    if (next.first === current.first && next.count === current.count) {
+      return;
+    }
+
+    this.loadingMoreSignal.set(true);
+    await this.loadWindow(reading.id, next);
+    this.loadingMoreSignal.set(false);
+  }
+
   /** Releases the reading. */
   close(): void {
     this.readingSignal.set(null);

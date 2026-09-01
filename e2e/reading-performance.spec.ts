@@ -45,9 +45,15 @@ test.describe('reader performance at the 50,000-character budget', () => {
     // past the window, is not.
     await expect(paragraphAtPosition(page, 0)).toBeVisible();
     await expect(paragraphAtPosition(page, 199)).not.toBeAttached();
+
+    const dimensions = await page.evaluate(() => ({
+      documentHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
+    }));
+    expect(dimensions.documentHeight).toBeGreaterThan(dimensions.viewportHeight * 20);
   });
 
-  test('extends the window while scrolling and keeps it moving rather than growing without limit', async ({
+  test('preserves scroll distance and reaches the final paragraph directly with End', async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -55,32 +61,63 @@ test.describe('reader performance at the 50,000-character budget', () => {
     await pasteAndContinue(page, FIXTURE.text);
     await saveAndOpenReader(page);
 
-    // Scroll to the current document end, then wait for the observer-triggered
-    // load to advance the mounted range before scrolling again. Waiting on the
-    // range itself keeps the test independent of CI scheduling and layout
-    // speed while still exercising the real IntersectionObserver wiring.
+    const initialHeight = await page.evaluate(() => document.documentElement.scrollHeight);
     let furthestMounted = await furthestMountedParagraph(page);
-    while (furthestMounted < FIXTURE.paragraphCount - 1) {
-      const beforeScroll = furthestMounted;
+    let previousScrollY = await page.evaluate(() => window.scrollY);
+    for (let gesture = 0; gesture < 8; gesture += 1) {
       await page.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight);
+        window.scrollBy(0, 300);
       });
-      await expect
-        .poll(() => furthestMountedParagraph(page), {
-          message: `mounted paragraph window should advance beyond ${String(beforeScroll)}`,
-        })
-        .toBeGreaterThan(beforeScroll);
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(previousScrollY);
+      const nextScrollY = await page.evaluate(() => window.scrollY);
+      expect(nextScrollY - previousScrollY).toBeGreaterThan(200);
+      previousScrollY = nextScrollY;
 
-      furthestMounted = await furthestMountedParagraph(page);
+      const nextFurthest = await furthestMountedParagraph(page);
+      expect(nextFurthest).toBeGreaterThanOrEqual(furthestMounted);
+      furthestMounted = nextFurthest;
       expect(await paragraphLocator(page).count()).toBeLessThanOrEqual(MAXIMUM_MOUNTED_PARAGRAPHS);
     }
 
-    // Having scrolled through the whole reading, the last paragraph was
-    // reached and paragraph 0 is gone: the window moved forward instead of
-    // growing without limit.
-    expect(furthestMounted).toBe(FIXTURE.paragraphCount - 1);
+    const beforePageDown = await page.evaluate(() => window.scrollY);
+    await page.keyboard.press('PageDown');
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(beforePageDown);
+
+    await page.keyboard.press('End');
     await expect(paragraphAtPosition(page, FIXTURE.paragraphCount - 1)).toBeVisible();
     await expect(paragraphAtPosition(page, 0)).not.toBeAttached();
+    expect(await paragraphLocator(page).count()).toBeLessThanOrEqual(MAXIMUM_MOUNTED_PARAGRAPHS);
+
+    const finalHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+    expect(finalHeight).toBeGreaterThan(initialHeight * 0.9);
+    expect(finalHeight).toBeLessThan(initialHeight * 1.1);
+  });
+
+  test('keeps virtual space usable at large text in Android portrait and landscape @mobile', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.goto('./#/add');
+    await pasteAndContinue(page, FIXTURE.text);
+    await saveAndOpenReader(page);
+
+    await page.getByRole('button', { name: 'Aids' }).click();
+    await page.getByRole('group', { name: 'Reading aids' }).getByLabel('Text size').fill('2.5');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('End');
+    await expect(paragraphAtPosition(page, FIXTURE.paragraphCount - 1)).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
+
+    await page.setViewportSize({ width: 851, height: 393 });
+    await page.keyboard.press('Home');
+    await expect(paragraphAtPosition(page, 0)).toBeVisible();
+    await page.keyboard.press('End');
+    await expect(paragraphAtPosition(page, FIXTURE.paragraphCount - 1)).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
     expect(await paragraphLocator(page).count()).toBeLessThanOrEqual(MAXIMUM_MOUNTED_PARAGRAPHS);
   });
 });
