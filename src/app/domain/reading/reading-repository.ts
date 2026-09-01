@@ -67,6 +67,10 @@ export interface ParagraphWindow {
  */
 export interface ReadingRepository {
   saveImportedReading(draft: ImportedReadingDraft): Promise<Result<ImportedReading, StorageError>>;
+  /** Finds an existing imported reading before duplicate text is analysed again. */
+  listImportedBySourceHash(
+    sourceTextHash: string,
+  ): Promise<Result<readonly ImportedReading[], StorageError>>;
   /**
    * Writes an accepted story and its evidence in one transaction.
    *

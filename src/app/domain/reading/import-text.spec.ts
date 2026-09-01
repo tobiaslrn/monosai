@@ -4,6 +4,7 @@ import {
   MAXIMUM_IMPORT_CHARACTERS,
   normalizeImportedText,
   validateImportText,
+  importAdvisories,
 } from './import-text';
 
 describe('normalizeImportedText', () => {
@@ -11,14 +12,38 @@ describe('normalizeImportedText', () => {
     expect(normalizeImportedText('一\r\n二\r三\n四')).toBe('一\n二\n三\n四');
   });
 
-  it('strips a leading byte-order mark but keeps one that appears later', () => {
+  it('strips byte-order marks and other invisible format characters', () => {
     expect(normalizeImportedText('﻿猫')).toBe('猫');
-    expect(normalizeImportedText('猫﻿')).toBe('猫﻿');
+    expect(normalizeImportedText('猫﻿\u200b犬')).toBe('猫犬');
+  });
+
+  it('strips controls while preserving tabs and normalized newlines', () => {
+    expect(normalizeImportedText('猫\u0000\t犬\u0007\r\n鳥')).toBe('猫\t犬\n鳥');
   });
 
   it('changes nothing else about the text', () => {
     const text = '　全角スペースと  空白　を保つ。';
     expect(normalizeImportedText(text)).toBe(text);
+  });
+});
+
+describe('importAdvisories', () => {
+  it('warns when meaningful text has no Japanese script', () => {
+    expect(importAdvisories('Hello world.').map((advisory) => advisory.code)).toEqual([
+      'little-japanese',
+    ]);
+  });
+
+  it('allows legitimate mixed Japanese text without that warning', () => {
+    expect(importAdvisories('CSSで猫を描く。').map((advisory) => advisory.code)).not.toContain(
+      'little-japanese',
+    );
+  });
+
+  it('warns that an extreme unpunctuated run will be divided', () => {
+    expect(importAdvisories('猫'.repeat(241)).map((advisory) => advisory.code)).toContain(
+      'long-unpunctuated',
+    );
   });
 });
 

@@ -15,6 +15,16 @@ import { formatCount, formatCountOf } from '../shared/locale';
  */
 export const MAXIMUM_IMPORT_CHARACTERS = 50_000;
 
+/** Long enough to make sentence-scoped aids unreliable, while allowing prose and lyrics. */
+export const MAXIMUM_UNPUNCTUATED_CHARACTERS = 240;
+
+export type ImportAdvisoryCode = 'little-japanese' | 'long-unpunctuated';
+
+export interface ImportAdvisory {
+  readonly code: ImportAdvisoryCode;
+  readonly message: string;
+}
+
 export type ImportRejectionCode =
   /** Nothing but whitespace, so there is no reading to build. */
   | 'empty'
@@ -43,8 +53,12 @@ function rejection(
  * slices, never rewrites, so stored Japanese always matches what was imported.
  */
 export function normalizeImportedText(text: string): string {
-  const withoutBom = text.startsWith('﻿') ? text.slice(1) : text;
-  return withoutBom.replace(/\r\n?/g, '\n');
+  return text
+    .normalize('NFC')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\p{Cf}\p{Cc}]/gu, (character) =>
+      character === '\n' || character === '\t' ? character : '',
+    );
 }
 
 /** Counts Unicode code points, which is what the stated limit means. */
@@ -63,7 +77,44 @@ export function countCharacters(text: string): number {
 
 /** True when the text contains something other than whitespace. */
 export function hasVisibleText(text: string): boolean {
-  return text.trim().length > 0;
+  return /[\p{L}\p{N}]/u.test(text);
+}
+
+/** True for the scripts that provide a useful Japanese-reading signal. */
+export function containsJapanese(text: string): boolean {
+  return /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text);
+}
+
+function longestUnpunctuatedRun(text: string): number {
+  let longest = 0;
+  for (const run of text.split(/[。！？．.!?\n]/u)) {
+    longest = Math.max(longest, countCharacters(run));
+  }
+  return longest;
+}
+
+/** Non-blocking guidance shown before local analysis begins. */
+export function importAdvisories(text: string): readonly ImportAdvisory[] {
+  if (!hasVisibleText(text)) {
+    return [];
+  }
+
+  const advisories: ImportAdvisory[] = [];
+  if (!containsJapanese(text)) {
+    advisories.push({
+      code: 'little-japanese',
+      message:
+        'This text does not appear to contain Japanese. Check that you pasted the intended text before adding it.',
+    });
+  }
+  if (longestUnpunctuatedRun(text) > MAXIMUM_UNPUNCTUATED_CHARACTERS) {
+    advisories.push({
+      code: 'long-unpunctuated',
+      message:
+        'A long passage has no sentence-ending punctuation. It will be divided into shorter reading sections.',
+    });
+  }
+  return advisories;
 }
 
 export interface ValidatedImportText {

@@ -8,11 +8,13 @@ import {
 import {
   normalizeImportedText,
   countCharacters,
+  importAdvisories,
   validateImportText,
   type ImportRejection,
 } from '../../domain/reading/import-text';
 import { resolveTitle, titleFromPastedText } from '../../domain/reading/import-title';
 import type { ImportSource } from '../../domain/reading/reading';
+import type { ImportedReading } from '../../domain/reading/reading';
 import type { ReadingId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
@@ -51,6 +53,7 @@ export class ImportStore {
   private readonly storageFailureSignal = signal<StorageError | null>(null);
   private readonly announcementSignal = signal('');
   private readonly savedIdSignal = signal<ReadingId | null>(null);
+  private readonly duplicatesSignal = signal<readonly ImportedReading[]>([]);
 
   readonly busy = this.busySignal.asReadonly();
   readonly rawText = this.rawTextSignal.asReadonly();
@@ -62,8 +65,10 @@ export class ImportStore {
   readonly storageFailure = this.storageFailureSignal.asReadonly();
   readonly announcement = this.announcementSignal.asReadonly();
   readonly savedReadingId = this.savedIdSignal.asReadonly();
+  readonly duplicates = this.duplicatesSignal.asReadonly();
 
   readonly characterCount = computed(() => countCharacters(this.rawTextSignal()));
+  readonly advisories = computed(() => importAdvisories(this.rawTextSignal()));
   readonly isBusy = computed(() => this.busySignal().kind !== 'idle');
 
   /** What the title field is prefilled with when the learner has not typed one. */
@@ -107,6 +112,7 @@ export class ImportStore {
     this.rawTextSignal.set(normalizeImportedText(text));
     this.sourceSignal.set('paste');
     this.rejectionSignal.set(null);
+    this.duplicatesSignal.set([]);
   }
 
   setTitle(title: string): void {
@@ -127,6 +133,20 @@ export class ImportStore {
     this.rejectionSignal.set(null);
     this.languageFailureSignal.set(null);
     this.storageFailureSignal.set(null);
+
+    if (this.duplicatesSignal().length === 0) {
+      const duplicates = await this.imports.findDuplicates(validated.value.text);
+      if (!duplicates.ok) {
+        this.storageFailureSignal.set(duplicates.error);
+        this.announce('Existing readings could not be checked. Nothing was saved.');
+        return null;
+      }
+      if (duplicates.value.length > 0) {
+        this.duplicatesSignal.set(duplicates.value);
+        this.announce('This text is already in the library.');
+        return null;
+      }
+    }
 
     this.busySignal.set({ kind: 'preparing-language' });
     const ready = await this.imports.ensureLanguageReady();
@@ -164,7 +184,7 @@ export class ImportStore {
     this.busySignal.set({ kind: 'saving' });
     const saved = await this.imports.save({
       draft,
-      title: this.resolvedTitle(),
+      title: this.titleForSave(),
       sourceText: this.rawTextSignal(),
       importSource: this.sourceSignal(),
     });
@@ -191,6 +211,7 @@ export class ImportStore {
     this.languageFailureSignal.set(null);
     this.storageFailureSignal.set(null);
     this.savedIdSignal.set(null);
+    this.duplicatesSignal.set([]);
     this.announcementSignal.set('');
   }
 
@@ -230,5 +251,11 @@ export class ImportStore {
 
   private announce(message: string): void {
     this.announcementSignal.set(message);
+  }
+
+  private titleForSave(): string {
+    const title = this.resolvedTitle();
+    const copyNumber = this.duplicatesSignal().length + 1;
+    return copyNumber > 1 ? resolveTitle(`${title} (copy ${String(copyNumber)})`, title) : title;
   }
 }

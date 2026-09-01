@@ -19,12 +19,28 @@ function truncate(text: string, limit: number): string {
   return characters.length <= limit ? text : `${characters.slice(0, limit - 1).join('')}…`;
 }
 
-/** Uses the first non-empty line of pasted text, truncated for display. */
+function meaningful(text: string): boolean {
+  return /[\p{L}\p{N}]/u.test(text);
+}
+
+function firstSentence(text: string): string {
+  const match = /[。！？．.!?]/u.exec(text);
+  return match === null ? text : text.slice(0, match.index + match[0].length);
+}
+
+function normalizeTitle(text: string): string {
+  return text
+    .normalize('NFC')
+    .replace(/[\p{Cf}\p{Cc}]/gu, '')
+    .trim();
+}
+
+/** Uses the first meaningful sentence of pasted text, truncated for display. */
 export function titleFromPastedText(text: string): string {
   for (const line of text.split('\n')) {
     const trimmed = line.trim();
-    if (trimmed.length > 0) {
-      return truncate(trimmed, MAXIMUM_DERIVED_TITLE_LENGTH);
+    if (meaningful(trimmed)) {
+      return truncate(firstSentence(trimmed).trim(), MAXIMUM_DERIVED_TITLE_LENGTH);
     }
   }
   return FALLBACK_READING_TITLE;
@@ -35,9 +51,10 @@ export function titleFromPastedText(text: string): string {
  * derived suggestion rather than saving a reading with no name.
  */
 export function resolveTitle(entered: string, derived: string): string {
-  const trimmed = entered.trim();
-  if (trimmed.length === 0) {
-    return derived.trim().length === 0 ? FALLBACK_READING_TITLE : derived;
+  const trimmed = normalizeTitle(entered);
+  if (!meaningful(trimmed)) {
+    const normalizedDerived = normalizeTitle(derived);
+    return meaningful(normalizedDerived) ? normalizedDerived : FALLBACK_READING_TITLE;
   }
   return truncate(trimmed, MAXIMUM_TITLE_LENGTH);
 }

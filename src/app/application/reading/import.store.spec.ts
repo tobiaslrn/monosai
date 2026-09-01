@@ -17,6 +17,11 @@ class FakeTextImportService {
   analysisFailure: ReturnType<typeof languageError> | null = null;
   saved: SaveImportRequest | null = null;
   saveFailure: StorageError | null = null;
+  duplicates: ImportedReading[] = [];
+
+  findDuplicates(): Promise<Result<readonly ImportedReading[], StorageError>> {
+    return Promise.resolve(ok(this.duplicates));
+  }
 
   ensureLanguageReady(): Promise<Result<void, ReturnType<typeof languageError>>> {
     return Promise.resolve(
@@ -120,14 +125,37 @@ describe('ImportStore', () => {
       expect(store.rawText()).toBe('猫。\n犬。');
     });
 
-    it('derives the title from the first non-empty line', () => {
+    it('derives the title from the first meaningful sentence', () => {
       store.setPastedText('\n第一章\n猫が寝た。');
       expect(store.derivedTitle()).toBe('第一章');
       expect(store.resolvedTitle()).toBe('第一章');
     });
+
+    it('normalizes format and control characters before validation', () => {
+      store.setPastedText('\u200b猫\u0000犬。');
+      expect(store.rawText()).toBe('猫犬。');
+      expect(store.derivedTitle()).toBe('猫犬。');
+    });
+
+    it('warns about text without a Japanese-script signal', () => {
+      store.setPastedText('Hello world.');
+      expect(store.advisories().map((advisory) => advisory.code)).toContain('little-japanese');
+    });
   });
 
   describe('direct import', () => {
+    it('requires an explicit second action and gives a duplicate a distinct title', async () => {
+      imports.duplicates = [{ id: 'existing', title: '猫が寝た。' } as unknown as ImportedReading];
+      store.setPastedText('猫が寝た。');
+
+      expect(await store.save()).toBeNull();
+      expect(store.duplicates()).toHaveLength(1);
+      expect(imports.saved).toBeNull();
+
+      expect(await store.save()).toBe('reading-1');
+      expect(imports.saved?.title).toBe('猫が寝た。 (copy 2)');
+    });
+
     it('segments, analyzes, saves, and preserves blank-line paragraphs in one action', async () => {
       store.setPastedText('猫が寝た。犬も寝た。\n\n鳥は飛んだ。');
       store.setTitle('わたしの章');

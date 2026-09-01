@@ -24,7 +24,9 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
         required
         [attr.aria-invalid]="store.rejection() !== null || isOverLimit() ? 'true' : null"
         [attr.aria-describedby]="
-          isOverLimit() ? 'mn-import-count mn-import-limit-hint' : 'mn-import-count'
+          isOverLimit()
+            ? 'mn-import-count mn-import-limit-hint mn-import-advisories'
+            : 'mn-import-count mn-import-advisories'
         "
         [value]="store.rawText()"
         (input)="onPaste($event)"
@@ -34,6 +36,13 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
       </p>
       @if (isOverLimit()) {
         <p id="mn-import-limit-hint" class="limit-hint" role="alert">{{ overLimitMessage() }}</p>
+      }
+      @if (store.advisories().length > 0) {
+        <div id="mn-import-advisories" class="advisories" role="status">
+          @for (advisory of store.advisories(); track advisory.code) {
+            <p>{{ advisory.message }}</p>
+          }
+        </div>
       }
     </div>
 
@@ -83,6 +92,17 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
       margin: calc(var(--space-1) * -1) 0 0;
       color: var(--status-danger);
       font-size: var(--text-sm);
+    }
+
+    .advisories {
+      display: grid;
+      gap: var(--space-1);
+      color: var(--status-warning);
+      font-size: var(--text-sm);
+    }
+
+    .advisories p {
+      margin: 0;
     }
 
     .mn-error {

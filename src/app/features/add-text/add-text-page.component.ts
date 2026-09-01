@@ -50,6 +50,16 @@ import { TextInputStepComponent } from './text-input-step.component';
           </div>
         }
 
+        @if (store.duplicates().length > 0) {
+          <div class="duplicate" role="alert">
+            <p>
+              <strong>This text is already in your library.</strong>
+              Adding it again will save a separate copy named “{{ store.resolvedTitle() }} (copy
+              {{ store.duplicates().length + 1 }})”.
+            </p>
+          </div>
+        }
+
         <div class="actions">
           <button
             type="button"
@@ -57,7 +67,7 @@ import { TextInputStepComponent } from './text-input-step.component';
             [disabled]="!store.canSave()"
             (click)="save()"
           >
-            Add reading
+            {{ store.duplicates().length > 0 ? 'Add another copy' : 'Add reading' }}
           </button>
         </div>
       </section>
@@ -114,6 +124,17 @@ import { TextInputStepComponent } from './text-input-step.component';
     }
 
     .mn-error p {
+      margin: 0;
+    }
+
+    .duplicate {
+      padding: var(--space-3);
+      border: 1px solid var(--status-warning);
+      border-radius: var(--radius-control);
+      background: var(--status-warning-soft);
+    }
+
+    .duplicate p {
       margin: 0;
     }
   `,
