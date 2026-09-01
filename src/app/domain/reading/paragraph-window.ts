@@ -19,6 +19,9 @@ export const WINDOW_STEP = 3;
  */
 export const MAXIMUM_MOUNTED_PARAGRAPHS = 15;
 
+/** Conservative first layout before any paragraph has been measured. */
+export const DEFAULT_PARAGRAPH_HEIGHT_PX = 320;
+
 export interface ParagraphWindowState {
   /** Position of the first mounted paragraph. */
   readonly first: number;
@@ -27,12 +30,65 @@ export interface ParagraphWindowState {
 
 export type WindowDirection = 'backward' | 'forward';
 
+export interface ParagraphSpacers {
+  readonly before: number;
+  readonly after: number;
+}
+
 export function windowEnd(window: ParagraphWindowState): number {
   return window.first + window.count;
 }
 
 export function windowContains(window: ParagraphWindowState, position: number): boolean {
   return position >= window.first && position < windowEnd(window);
+}
+
+function paragraphHeight(
+  position: number,
+  estimatedHeight: number,
+  measuredHeights: ReadonlyMap<number, number>,
+): number {
+  return measuredHeights.get(position) ?? estimatedHeight;
+}
+
+/** Space occupied by paragraphs outside the mounted range. */
+export function paragraphSpacers(
+  window: ParagraphWindowState,
+  totalParagraphs: number,
+  estimatedHeight = DEFAULT_PARAGRAPH_HEIGHT_PX,
+  measuredHeights: ReadonlyMap<number, number> = new Map(),
+): ParagraphSpacers {
+  let before = 0;
+  for (let position = 0; position < window.first; position += 1) {
+    before += paragraphHeight(position, estimatedHeight, measuredHeights);
+  }
+
+  let after = 0;
+  for (let position = windowEnd(window); position < totalParagraphs; position += 1) {
+    after += paragraphHeight(position, estimatedHeight, measuredHeights);
+  }
+  return { before, after };
+}
+
+/** Paragraph represented by a vertical offset in the virtual document. */
+export function paragraphAtOffset(
+  offset: number,
+  totalParagraphs: number,
+  estimatedHeight = DEFAULT_PARAGRAPH_HEIGHT_PX,
+  measuredHeights: ReadonlyMap<number, number> = new Map(),
+): number {
+  if (totalParagraphs <= 0) {
+    return 0;
+  }
+  let remaining = Math.max(0, offset);
+  for (let position = 0; position < totalParagraphs; position += 1) {
+    const height = paragraphHeight(position, estimatedHeight, measuredHeights);
+    if (remaining < height) {
+      return position;
+    }
+    remaining -= height;
+  }
+  return totalParagraphs - 1;
 }
 
 function clampWindow(first: number, last: number, total: number): ParagraphWindowState {

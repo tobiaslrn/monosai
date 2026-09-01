@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   extendWindow,
   MAXIMUM_MOUNTED_PARAGRAPHS,
+  paragraphAtOffset,
+  paragraphSpacers,
   windowAround,
   windowContains,
   windowEnd,
@@ -94,5 +96,36 @@ describe('windowContains', () => {
     expect(windowContains(window, 7)).toBe(true);
     expect(windowContains(window, 8)).toBe(false);
     expect(windowContains(window, 4)).toBe(false);
+  });
+});
+
+describe('virtual paragraph space', () => {
+  it('sizes the unmounted ranges with the stable estimate', () => {
+    expect(paragraphSpacers({ first: 10, count: 5 }, 100, 200)).toEqual({
+      before: 2_000,
+      after: 17_000,
+    });
+  });
+
+  it('replaces estimates with retained measurements', () => {
+    const measured = new Map([
+      [0, 250],
+      [19, 150],
+    ]);
+    expect(paragraphSpacers({ first: 2, count: 16 }, 20, 200, measured)).toEqual({
+      before: 450,
+      after: 350,
+    });
+  });
+
+  it('maps scrollbar offsets to the represented paragraph', () => {
+    expect(paragraphAtOffset(0, 100, 200)).toBe(0);
+    expect(paragraphAtOffset(999, 100, 200)).toBe(4);
+    expect(paragraphAtOffset(20_000, 100, 200)).toBe(99);
+  });
+
+  it('uses measurements while resolving offsets', () => {
+    expect(paragraphAtOffset(240, 3, 200, new Map([[0, 250]]))).toBe(0);
+    expect(paragraphAtOffset(250, 3, 200, new Map([[0, 250]]))).toBe(1);
   });
 });

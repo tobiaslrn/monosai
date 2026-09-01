@@ -30,6 +30,12 @@ import { TtsStore } from '../../application/settings/tts.store';
 import { LibraryStore } from '../../application/reading/library.store';
 import { ViewportService } from '../../core/platform/viewport.service';
 import { describeDeletion } from '../../domain/reading/deletion-plan';
+import {
+  DEFAULT_PARAGRAPH_HEIGHT_PX,
+  paragraphAtOffset,
+  paragraphSpacers,
+  windowContains,
+} from '../../domain/reading/paragraph-window';
 import type { Reading } from '../../domain/reading/reading';
 import { findingsCoveringToken, sentenceWideFindings } from '../../domain/enrichment/finding-spans';
 import { readingId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
@@ -230,11 +236,13 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
             </section>
           }
           @case ('ready') {
-            @if (store.hasMoreAbove()) {
-              <div class="sentinel" #topSentinel aria-hidden="true"></div>
-            }
-
             <article class="text">
+              <div
+                class="virtual-spacer"
+                aria-hidden="true"
+                data-virtual-spacer="before"
+                [style.height.px]="spacers().before"
+              ></div>
               @for (paragraph of store.paragraphs(); track paragraph.paragraph.id) {
                 <mn-reader-paragraph
                   [entry]="paragraph"
@@ -252,10 +260,15 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                   (sentenceSelected)="selectSentence($event)"
                 />
               }
+              <div
+                class="virtual-spacer"
+                aria-hidden="true"
+                data-virtual-spacer="after"
+                [style.height.px]="spacers().after"
+              ></div>
             </article>
 
             @if (store.hasMoreBelow()) {
-              <div class="sentinel" #bottomSentinel aria-hidden="true"></div>
               <p class="mn-hint" role="status">
                 {{ store.loadingMore() ? 'Loading more…' : '' }}
               </p>
@@ -463,8 +476,10 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       padding-top: var(--space-2);
     }
 
-    .sentinel {
-      height: 1px;
+    .virtual-spacer {
+      width: 1px;
+      max-width: 100%;
+      pointer-events: none;
     }
   `,
 })
@@ -498,8 +513,16 @@ export class ReaderPageComponent {
   private readonly wordPopover = viewChild.required<TemplateRef<unknown>>('wordPopover');
   private readonly wordPreview = viewChild.required<TemplateRef<unknown>>('wordPreview');
   private readonly sentencePopover = viewChild.required<TemplateRef<unknown>>('sentencePopover');
-  private readonly topSentinel = viewChild<ElementRef<HTMLElement>>('topSentinel');
-  private readonly bottomSentinel = viewChild<ElementRef<HTMLElement>>('bottomSentinel');
+  private readonly estimatedParagraphHeightSignal = signal(DEFAULT_PARAGRAPH_HEIGHT_PX);
+  private readonly measuredParagraphHeightsSignal = signal<ReadonlyMap<number, number>>(new Map());
+  protected readonly spacers = computed(() =>
+    paragraphSpacers(
+      this.store.window(),
+      this.store.totalParagraphs(),
+      this.estimatedParagraphHeightSignal(),
+      this.measuredParagraphHeightsSignal(),
+    ),
+  );
 
   private readonly selectedSentenceIdSignal = signal<SentenceId | null>(null);
   private inspectedActivation: TokenActivation | null = null;
@@ -691,7 +714,10 @@ export class ReaderPageComponent {
     () => this.textModel.configForTask('grammar') !== null,
   );
 
-  private edgeObserver: IntersectionObserver | null = null;
+  private scrollWindowFrame: number | null = null;
+  private lastScrollY = window.scrollY;
+  private lastScrollDirection: 'backward' | 'forward' | null = null;
+  private measuredLayoutKey = '';
   /** Keeps the docked sheet clear of the docked player as the player resizes. */
   private playerResizeObserver: ResizeObserver | null = null;
   /**
@@ -733,8 +759,8 @@ export class ReaderPageComponent {
     });
 
     effect(() => {
-      // Re-registered whenever the mounted window changes, because the observed
-      // sentinels and sentences are replaced with it.
+      // Measurements survive unmounting, so spacer estimates become exact for
+      // every paragraph the learner has passed.
       const paragraphs = this.store.paragraphs();
       const reading = this.store.reading();
       if (reading !== null) {
@@ -750,8 +776,23 @@ export class ReaderPageComponent {
           );
         });
       }
-      queueMicrotask(() => {
-        this.observeEdges();
+      requestAnimationFrame(() => {
+        this.measureMountedParagraphs();
+      });
+    });
+
+    effect(() => {
+      const layoutKey = `${String(this.textScale())}:${String(this.preferences().furigana)}`;
+      this.store.paragraphs();
+      untracked(() => {
+        if (layoutKey !== this.measuredLayoutKey) {
+          this.measuredLayoutKey = layoutKey;
+          this.measuredParagraphHeightsSignal.set(new Map());
+          this.estimatedParagraphHeightSignal.set(DEFAULT_PARAGRAPH_HEIGHT_PX * this.textScale());
+        }
+        requestAnimationFrame(() => {
+          this.measureMountedParagraphs();
+        });
       });
     });
 
@@ -853,11 +894,40 @@ export class ReaderPageComponent {
       // itself off.
       if (!this.scrollingProgrammatically) {
         this.followPlayback = false;
+        if (window.scrollY > this.lastScrollY + 1) {
+          this.lastScrollDirection = 'forward';
+        } else if (window.scrollY < this.lastScrollY - 1) {
+          this.lastScrollDirection = 'backward';
+        }
       }
+      this.lastScrollY = window.scrollY;
+      this.scheduleWindowForScroll();
     };
     window.addEventListener('scroll', suppressFollow, { passive: true });
     window.addEventListener('wheel', suppressFollow, { passive: true });
     window.addEventListener('touchmove', suppressFollow, { passive: true });
+    const navigateEdge = (event: KeyboardEvent): void => {
+      if (
+        (event.key !== 'Home' && event.key !== 'End') ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
+      ) {
+        return;
+      }
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target instanceof HTMLSelectElement ||
+        (event.target instanceof HTMLElement && event.target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      void this.moveToDocumentEdge(event.key === 'End' ? 'end' : 'start');
+    };
+    window.addEventListener('keydown', navigateEdge);
 
     inject(DestroyRef).onDestroy(() => {
       // Leaving the reading ends the session that was reading it aloud. The
@@ -874,7 +944,10 @@ export class ReaderPageComponent {
       window.removeEventListener('scroll', suppressFollow);
       window.removeEventListener('wheel', suppressFollow);
       window.removeEventListener('touchmove', suppressFollow);
-      this.edgeObserver?.disconnect();
+      window.removeEventListener('keydown', navigateEdge);
+      if (this.scrollWindowFrame !== null) {
+        cancelAnimationFrame(this.scrollWindowFrame);
+      }
       this.store.close();
     });
   }
@@ -1409,31 +1482,74 @@ export class ReaderPageComponent {
     }, SCROLL_SETTLE_MS);
   }
 
-  /** Extends the mounted window when a sentinel at either edge scrolls in. */
-  private observeEdges(): void {
-    this.edgeObserver?.disconnect();
-    const top = this.topSentinel()?.nativeElement;
-    const bottom = this.bottomSentinel()?.nativeElement;
-    if (!top && !bottom) {
+  private measureMountedParagraphs(): void {
+    const content = this.content()?.nativeElement;
+    if (content === undefined) {
       return;
     }
+    const next = new Map(this.measuredParagraphHeightsSignal());
+    const measured: number[] = [];
+    for (const paragraph of content.querySelectorAll<HTMLElement>('mn-reader-paragraph p')) {
+      const position = Number(paragraph.dataset['paragraphPosition']);
+      const margin = Number.parseFloat(getComputedStyle(paragraph).marginBottom) || 0;
+      const height = paragraph.getBoundingClientRect().height + margin;
+      if (Number.isFinite(position) && height > 0) {
+        next.set(position, height);
+        measured.push(height);
+      }
+    }
+    if (measured.length === 0) {
+      return;
+    }
+    this.measuredParagraphHeightsSignal.set(next);
+    if (next.size === measured.length) {
+      this.estimatedParagraphHeightSignal.set(
+        measured.reduce((total, height) => total + height, 0) / measured.length,
+      );
+    }
+    this.scheduleWindowForScroll();
+  }
 
-    this.edgeObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) {
-            continue;
-          }
-          void this.store.extend(entry.target === top ? 'backward' : 'forward');
-        }
-      },
-      { rootMargin: '400px' },
-    );
-    if (top) {
-      this.edgeObserver.observe(top);
+  private scheduleWindowForScroll(): void {
+    if (this.scrollWindowFrame !== null || this.store.status() !== 'ready') {
+      return;
     }
-    if (bottom) {
-      this.edgeObserver.observe(bottom);
-    }
+    this.scrollWindowFrame = requestAnimationFrame(() => {
+      this.scrollWindowFrame = null;
+      const content = this.content()?.nativeElement;
+      if (content === undefined) {
+        return;
+      }
+      const documentTop = content.getBoundingClientRect().top + window.scrollY;
+      const offset = window.scrollY + window.innerHeight / 2 - documentTop;
+      const position = paragraphAtOffset(
+        offset,
+        this.store.totalParagraphs(),
+        this.estimatedParagraphHeightSignal(),
+        this.measuredParagraphHeightsSignal(),
+      );
+      if (
+        (this.lastScrollDirection === 'forward' && position < this.store.window().first) ||
+        (this.lastScrollDirection === 'backward' &&
+          position >= this.store.window().first + this.store.window().count)
+      ) {
+        return;
+      }
+      if (!windowContains(this.store.window(), position)) {
+        void this.store.moveTo(position);
+      }
+    });
+  }
+
+  private async moveToDocumentEdge(edge: 'start' | 'end'): Promise<void> {
+    const position = edge === 'start' ? 0 : Math.max(0, this.store.totalParagraphs() - 1);
+    await this.store.moveTo(position);
+    requestAnimationFrame(() => {
+      this.scrollingProgrammatically = true;
+      window.scrollTo({ top: edge === 'start' ? 0 : document.documentElement.scrollHeight });
+      requestAnimationFrame(() => {
+        this.scrollingProgrammatically = false;
+      });
+    });
   }
 }

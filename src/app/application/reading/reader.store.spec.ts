@@ -105,6 +105,31 @@ describe('ReaderStore', () => {
   });
 
   describe('window extension', () => {
+    it('moves directly to a bounded window around a virtual-scroll position', async () => {
+      const rows = repository.add(buildReading({ id: 'r1', paragraphCount: 100 }));
+      const reader = store();
+      await reader.open(rows.reading.id);
+
+      await reader.moveTo(80);
+
+      expect(reader.window()).toEqual({ first: 77, count: 7 });
+      expect(reader.paragraphs().map((paragraph) => paragraph.paragraph.position)).toEqual([
+        77, 78, 79, 80, 81, 82, 83,
+      ]);
+      expect(reader.paragraphs().length).toBeLessThanOrEqual(15);
+    });
+
+    it('moves directly to the final paragraph for End semantics', async () => {
+      const rows = repository.add(buildReading({ id: 'r1', paragraphCount: 100 }));
+      const reader = store();
+      await reader.open(rows.reading.id);
+
+      await reader.moveTo(99);
+
+      expect(reader.window()).toEqual({ first: 96, count: 4 });
+      expect(reader.paragraphs().at(-1)?.paragraph.position).toBe(99);
+    });
+
     it('extends forward and keeps the window within the mounted bound', async () => {
       const rows = repository.add(buildReading({ id: 'r1', paragraphCount: 20 }));
       const reader = store();
