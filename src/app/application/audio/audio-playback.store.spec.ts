@@ -313,7 +313,7 @@ describe('AudioPlaybackStore', () => {
   });
 
   /**
-   * Clips are keyed by the configuration that produced them (ADR 0042), so
+   * Clips are keyed by the configuration that produced them (ADR 0043), so
    * changing the voice hides every clip made with the previous one without
    * deleting a row. Coverage falling from full to empty is then indistinguishable
    * from deletion unless the store can say that the clips are still there.

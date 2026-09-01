@@ -1259,7 +1259,7 @@ what survives, with cancelling focused and Escape keeping it.
 
 #### Audio settings say where they stand, and where the clips went
 
-[ADR 0042](decisions/0042-voice-changes-hide-clips-and-say-so.md) settles what a
+[ADR 0043](decisions/0043-voice-changes-hide-clips-and-say-so.md) settles what a
 configuration change does to audio already paid for: nothing is deleted, and
 both screens that used to go quiet now speak.
 

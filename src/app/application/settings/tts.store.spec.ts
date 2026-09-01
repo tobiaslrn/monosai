@@ -325,7 +325,7 @@ describe('TtsStore', () => {
 
   /**
    * Clips are keyed by the configuration that produced them, so a voice change
-   * hides them rather than deleting them (ADR 0042) — and setting the voice
+   * hides them rather than deleting them (ADR 0043) — and setting the voice
    * back has to bring exactly the same key back with it.
    */
   it('restores the previous test, and its fingerprint, when a voice is set back', async () => {

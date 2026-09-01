@@ -101,7 +101,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
       <!--
         The one thing the card prints. Clips are keyed by the settings that made
-        them (ADR 0042), so changing a voice hides every clip made with the old
+        them (ADR 0043), so changing a voice hides every clip made with the old
         one without deleting anything — and a bar that falls from full to empty
         with no word said reads as audio that has been lost and paid for twice.
         The prose budget keeps room for exactly this: money and apparent loss.
