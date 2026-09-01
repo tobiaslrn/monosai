@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
@@ -41,7 +42,7 @@ export function formatVocabularyState(snapshot: VocabularyStatusSnapshot | null)
     <section class="rows" aria-labelledby="mn-learning-data-heading">
       <h2 id="mn-learning-data-heading" class="mn-visually-hidden">Your learning data</h2>
 
-      <a class="row" routerLink="/vocabulary">
+      <a class="row" routerLink="/vocabulary" [state]="settingsOriginState">
         <mn-icon name="vocabulary" [size]="20" />
         <span class="labels">
           <span class="title">Vocabulary</span>
@@ -50,7 +51,7 @@ export function formatVocabularyState(snapshot: VocabularyStatusSnapshot | null)
         <mn-icon name="chevron-right" [size]="18" />
       </a>
 
-      <a class="row" routerLink="/grammar">
+      <a class="row" routerLink="/grammar" [state]="settingsOriginState">
         <mn-icon name="grammar" [size]="20" />
         <span class="labels">
           <span class="title">Grammar</span>
@@ -94,6 +95,7 @@ export function formatVocabularyState(snapshot: VocabularyStatusSnapshot | null)
   `,
 })
 export class LearningDataSectionComponent {
+  protected readonly settingsOriginState = navigationOriginState('/settings');
   private readonly snapshots = inject(SnapshotHistoryStore);
   private readonly grammar = inject(GrammarProfileStore);
 

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import type {
   GrammarPresetLine,
   PrerequisiteCheck,
@@ -32,7 +33,14 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
               <span class="mn-visually-hidden">{{ check.label }}: </span>{{ check.detail }}
             </p>
             @if (check.route !== '') {
-              <a class="mn-button" [routerLink]="check.route">{{ check.actionLabel }}</a>
+              <a
+                class="mn-button"
+                [routerLink]="check.route"
+                [queryParams]="{ from: 'generate' }"
+                [state]="generateOriginState"
+              >
+                {{ check.actionLabel }}
+              </a>
             }
           </li>
         }
@@ -92,6 +100,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
   `,
 })
 export class PrerequisitePanelComponent {
+  protected readonly generateOriginState = navigationOriginState('/generate');
   readonly checks = input.required<readonly PrerequisiteCheck[]>();
   readonly preset = input.required<GrammarPresetLine>();
 

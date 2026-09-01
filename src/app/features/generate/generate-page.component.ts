@@ -23,6 +23,10 @@ import { AppSettingsStore } from '../../application/settings/app-settings.store'
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { technicalCode } from '../../domain/shared/errors';
 import {
+  NavigationHistoryService,
+  navigationOriginState,
+} from '../../core/routing/navigation-history.service';
+import {
   completionLabel,
   grammarLabel,
 } from '../../shared-ui/reading-summary/reading-summary-labels';
@@ -107,6 +111,8 @@ import { ExceptionPolicyFieldComponent } from './exception-policy-field.componen
             <a
               class="mn-button mn-button--primary"
               [routerLink]="['/reader', reading.id]"
+              [replaceUrl]="true"
+              [state]="navigation.preservedOriginState('/library')"
               data-testid="open-story"
               >Open story</a
             >
@@ -191,7 +197,12 @@ import { ExceptionPolicyFieldComponent } from './exception-policy-field.componen
               </button>
             }
             @if (needsStorageRecovery()) {
-              <a class="mn-button mn-button--primary" routerLink="/settings">
+              <a
+                class="mn-button mn-button--primary"
+                routerLink="/settings"
+                [queryParams]="{ from: 'generate' }"
+                [state]="generateOriginState"
+              >
                 Open storage settings
               </a>
             }
@@ -215,6 +226,8 @@ export class GeneratePageComponent implements OnDestroy {
   private readonly snapshots = inject(SnapshotHistoryStore);
   private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
+  protected readonly navigation = inject(NavigationHistoryService);
+  protected readonly generateOriginState = navigationOriginState('/generate');
 
   protected readonly state = this.generation.state;
   protected readonly pageHeading = computed(() => {

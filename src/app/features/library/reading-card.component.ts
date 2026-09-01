@@ -9,6 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import type { Reading } from '../../domain/reading/reading';
 import { formatCountOf, formatDateTime } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
@@ -27,7 +28,9 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       <div class="head">
         <div class="copy">
           <h3>
-            <a [routerLink]="['/reader', reading().id]">{{ reading().title }}</a>
+            <a [routerLink]="['/reader', reading().id]" [state]="libraryOriginState">
+              {{ reading().title }}
+            </a>
           </h3>
           <p class="meta">
             <span>{{ characterLabel() }}</span>
@@ -205,6 +208,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
   `,
 })
 export class ReadingCardComponent {
+  protected readonly libraryOriginState = navigationOriginState('/library');
   readonly reading = input.required<Reading>();
   readonly deleteRequested = output<Reading>();
 

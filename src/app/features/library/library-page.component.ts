@@ -10,7 +10,9 @@ import {
   viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { RouterLink } from '@angular/router';
+import { NavigationStart, Router, RouterLink } from '@angular/router';
+import { navigationOriginState } from '../../core/routing/navigation-history.service';
+import { LibraryScrollMemoryService } from '../../core/routing/library-scroll-memory.service';
 import { LibraryStore } from '../../application/reading/library.store';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
@@ -62,7 +64,12 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           <img class="mark" src="icons/icon-192.png" alt="" width="40" height="40" />
           <span class="wordmark">Monosai</span>
         </div>
-        <a class="mn-icon-button" routerLink="/settings" aria-label="Settings">
+        <a
+          class="mn-icon-button"
+          routerLink="/settings"
+          [state]="libraryOriginState"
+          aria-label="Settings"
+        >
           <mn-icon name="settings" [size]="20" />
         </a>
       </header>
@@ -113,14 +120,14 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
               Add Japanese you already have, or generate a story from reviewed Anki vocabulary.
             </p>
             <div class="empty-choices">
-              <a class="empty-choice" routerLink="/add">
+              <a class="empty-choice" routerLink="/add" [state]="libraryOriginState">
                 <mn-icon name="add" [size]="20" />
                 <span>
                   <strong>Add Japanese you already have</strong>
                   <small>Paste text and start reading.</small>
                 </span>
               </a>
-              <a class="empty-choice" routerLink="/generate">
+              <a class="empty-choice" routerLink="/generate" [state]="libraryOriginState">
                 <mn-icon name="generate" [size]="20" />
                 <span>
                   <strong>Generate from reviewed Anki vocabulary</strong>
@@ -366,6 +373,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   `,
 })
 export class LibraryPageComponent {
+  protected readonly libraryOriginState = navigationOriginState('/library');
   protected readonly store = inject(LibraryStore);
   private readonly clock = inject(CLOCK);
   private readonly dialog = inject(Dialog);
@@ -374,6 +382,7 @@ export class LibraryPageComponent {
   private readonly translationJob = inject(TranslationJobStore);
   private readonly audioJob = inject(AudioJobStore);
   private readonly playback = inject(AudioPlaybackStore);
+  private readonly scrollMemory = inject(LibraryScrollMemoryService);
 
   private readonly newReading = viewChild<ElementRef<HTMLElement>>('newReading');
   private readonly newReadingMenu = viewChild.required<TemplateRef<unknown>>('newReadingMenu');
@@ -392,8 +401,24 @@ export class LibraryPageComponent {
   );
 
   constructor() {
-    void this.store.load();
-    inject(DestroyRef).onDestroy(() => {
+    const destroyRef = inject(DestroyRef);
+    const navigationEvents = inject(Router).events.subscribe((event) => {
+      if (event instanceof NavigationStart) {
+        this.scrollMemory.remember(window.scrollY);
+      }
+    });
+    const returnPosition = this.scrollMemory.take();
+    void this.store.load().then(() => {
+      if (returnPosition !== null) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.scrollTo(0, returnPosition);
+          });
+        });
+      }
+    });
+    destroyRef.onDestroy(() => {
+      navigationEvents.unsubscribe();
       this.popover.close();
     });
   }

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from
 import { Dialog } from '@angular/cdk/dialog';
 import { Router } from '@angular/router';
 import { ImportStore } from '../../application/reading/import.store';
+import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { TextInputStepComponent } from './text-input-step.component';
@@ -142,6 +143,7 @@ import { TextInputStepComponent } from './text-input-step.component';
 export class AddTextPageComponent {
   protected readonly store = inject(ImportStore);
   private readonly router = inject(Router);
+  private readonly navigation = inject(NavigationHistoryService);
   private readonly dialog = inject(Dialog);
 
   protected readonly busyMessage = computed(() => {
@@ -181,7 +183,10 @@ export class AddTextPageComponent {
   protected async save(): Promise<void> {
     const id = await this.store.save();
     if (id !== null) {
-      await this.router.navigate(['/reader', id]);
+      await this.router.navigate(['/reader', id], {
+        replaceUrl: true,
+        state: this.navigation.preservedOriginState('/library'),
+      });
     }
   }
 

@@ -1029,6 +1029,29 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
 /** End-to-end scenario 2: pasted text validation. */
 test.describe('scenario 2 — pasted text validation', () => {
+  test('guards an unsaved import when navigating back', async ({ page }) => {
+    await page.goto('./#/library');
+    await page.getByRole('link', { name: 'Add Japanese you already have' }).click();
+    await page.getByLabel('Japanese text').fill(SAMPLE_TEXT);
+
+    await page.getByRole('button', { name: 'Back to library' }).click();
+    await expect(page.getByRole('alertdialog')).toContainText('Leave without saving?');
+    await page.getByRole('button', { name: 'Stay here' }).click();
+    await expect(page).toHaveURL(/#\/add$/);
+  });
+
+  test('replaces the import form after saving', async ({ page }) => {
+    await page.goto('./#/library');
+    await page.getByRole('link', { name: 'Add Japanese you already have' }).click();
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+    await page.goBack();
+
+    await expect(page).toHaveURL(/#\/library$/);
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+    await expect(page).not.toHaveURL(/#\/add/);
+  });
+
   test('keeps Add reading disabled for pasted text over the 50,000-character limit', async ({
     page,
   }) => {
@@ -1051,6 +1074,41 @@ test.describe('scenario 2 — pasted text validation', () => {
 
 /** End-to-end scenario 14: filtering, resume, deletion cascade, and repair. */
 test.describe('scenario 14 — library, filtering, deletion', () => {
+  test('restores Library context with both in-app and browser Back', async ({ page }) => {
+    await importReading(page, SAMPLE_TEXT, '第一章');
+    await page.getByRole('link', { name: 'Back to library' }).click();
+    await page.addStyleTag({ content: 'mn-reading-card { display: block; margin-top: 80rem; }' });
+    await page.getByRole('link', { name: '第一章' }).scrollIntoViewIfNeeded();
+    const libraryScroll = await page.evaluate(() => window.scrollY);
+    expect(libraryScroll).toBeGreaterThan(100);
+
+    await page.getByRole('link', { name: '第一章' }).click();
+    await page.getByRole('link', { name: 'Back to library' }).click();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+
+    await page.getByRole('link', { name: '第一章' }).click();
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/library$/);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+  });
+
+  test('replaces a deleted reader so browser Back cannot reopen it', async ({ page }) => {
+    await page.goto('./#/library');
+    await page.getByRole('link', { name: 'Add Japanese you already have' }).click();
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+    const deletedUrl = page.url();
+
+    await page.getByRole('button', { name: 'Reading actions' }).click();
+    await page.getByRole('menuitem', { name: 'Delete reading' }).click();
+    await page.getByRole('button', { name: 'Delete permanently' }).click();
+    await expect(page).toHaveURL(/#\/library$/);
+
+    await page.goBack();
+    await expect(page).not.toHaveURL(deletedUrl);
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+  });
+
   /** A compact row identifies the reading without repeating its contents. */
   test('a dated library row shows the title and character count without a preview', async ({
     page,
