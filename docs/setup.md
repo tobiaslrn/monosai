@@ -4,7 +4,7 @@ A user-facing guide to installing Monosai, connecting Anki, configuring
 OpenRouter, and understanding what works offline. For error codes and their
 recovery, see [troubleshooting.md](troubleshooting.md). For which combinations
 have actually been observed rather than assumed, see
-[compatibility-matrix.md](compatibility-matrix.md).
+[risks and technical debt](arc42/11-risks-and-technical-debt.md).
 
 ## Installing Monosai
 

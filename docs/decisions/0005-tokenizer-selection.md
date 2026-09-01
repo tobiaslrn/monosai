@@ -33,7 +33,7 @@ ESLint zone rules keep it that way.
 | Surface, lemma, reading, part of speech | IPADIC features: surface, base form, katakana reading, and four part-of-speech columns                       |
 | Offsets against the original text      | UTF-8 byte offsets converted to UTF-16 in `token-mapping.ts`, verified against the source slice per token    |
 | Inflection support                     | Base forms and conjugation classes let `食べました` resolve to `食べる`; covered by the golden corpus         |
-| Initialization budget                  | 6.5 ms to instantiate the module, 136 ms to build the tokenizer, measured locally (see IMPLEMENTATION_STATUS) |
+| Initialization budget                  | 6.5 ms to instantiate the module, 136 ms to build the tokenizer, measured locally when this decision was taken |
 | Redistribution with attribution        | Lindera is MIT; IPADIC is BSD 3-clause. Both notices ship in the asset manifest                              |
 | Golden corpus                          | `golden-corpus.spec.ts` passes against the shipped artifact                                                  |
 

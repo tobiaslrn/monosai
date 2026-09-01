@@ -1,11 +1,15 @@
 # Monosai agent guide
 
 Monosai is a local-first Japanese reading app for beginners. Read the relevant
-specifications before changing behavior, and prefer small, maintainable changes
+documentation before changing behavior, and prefer small, maintainable changes
 over speculative abstractions.
 
 ## Engineering
 
+- Read [the architecture documentation](docs/arc42/) before changing structure,
+  layers, ports, persistence, or an external boundary. It describes the system as
+  it is; [the decision records](docs/decisions/) say why. Update the affected
+  chapter in the same commit as the change.
 - Use strict TypeScript and established Angular patterns.
 - Keep domain logic independent of UI, storage, and external services; access
   those concerns through explicit interfaces.
@@ -27,7 +31,7 @@ over speculative abstractions.
 
 ## UI
 
-- Read [the design system](docs/spec/design-system.md) before changing anything
+- Read [the design system](docs/design-system.md) before changing anything
   visual or interactive, and follow it. It is the authority for structure,
   controls, colour, units, motion, voice, and state. It holds rules and intent;
   values live in `src/styles/_tokens.scss` and `src/styles/_controls.scss`. A

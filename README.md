@@ -4,7 +4,8 @@
   <p>
     <a href="https://tobiaslrn.github.io/monosai/"><b>Open Monosai</b></a> ·
     <a href="docs/setup.md">Setup guide</a> ·
-    <a href="docs/troubleshooting.md">Help</a>
+    <a href="docs/troubleshooting.md">Help</a> ·
+    <a href="docs/arc42/README.md">Architecture</a>
   </p>
 </div>
 

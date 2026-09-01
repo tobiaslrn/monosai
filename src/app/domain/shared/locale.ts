@@ -11,7 +11,7 @@
  * call a `toLocale*` method with no locale argument.** Japanese text is content
  * and is never formatted; it carries `lang="ja"` where it is rendered.
  *
- * See `docs/spec/design-system.md` §8 for the rule this file implements.
+ * See `docs/design-system.md` §8 for the rule this file implements.
  */
 export const APP_LOCALE = 'en';
 
