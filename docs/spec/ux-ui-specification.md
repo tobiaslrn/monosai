@@ -218,6 +218,15 @@ Global aids start on: furigana, token spacing, warning markers, and an unscaled
 text size. There is no preference for showing translations or grammar, because
 neither is ever laid out on the page.
 
+Vocabulary marking is derived from the current vocabulary, so losing that
+vocabulary repaints every reading, a story generated from those very words
+included. When there is no current vocabulary, when it has no words in it, or
+when it could not be read, the aids panel carries one line saying so beside the
+warning-marker switch, with a link to Vocabulary settings, and the aids button's
+accessible name says a note is waiting. An empty vocabulary and no vocabulary at
+all are described differently, because the first marks every word and the second
+marks none.
+
 Opening a sentence or a word requests nothing. The sentence popover always
 offers **Copy**, which writes the immutable Japanese source rather than the
 rendered ruby or marker labels and reports success or failure beside the action.
@@ -453,9 +462,11 @@ Reached only when repair could not give the story the shape that was asked for; 
 
 ## 8. Vocabulary sources
 
-The page presents a single list of independently enabled sources feeding one
+The page presents a single list of independently included sources feeding one
 combined current vocabulary. Source cards use source-specific controls rather
-than forcing every source through Anki terminology.
+than forcing every source through Anki terminology. Inclusion and automatic
+syncing are separate decisions and are never presented as one control: a
+learner who stops background syncing must not lose vocabulary by doing so.
 
 ### Provider selection
 
@@ -483,22 +494,41 @@ can start Anki or install another application automatically.
   expression per line. Show the parsed non-empty line count and exact duplicate
   count before saving. Editing or disabling it rebuilds the combined vocabulary
   without requiring Anki.
-- AnkiConnect sources always sync while Anki is available. Automatic failures
-  are non-modal and always state that the current vocabulary was kept.
+- AnkiConnect sources sync while Anki is available and automatic syncing is on
+  for that source. Automatic failures are non-modal and always state that the
+  current vocabulary was kept.
 
 ### Mapping editor
 
-Anki and pasted-list sources appear in the same list and share Enabled and
-Remove controls. Source-specific configuration stays within its row: Anki has
-deck, note type, expression field, and subdeck settings; a pasted list has its
-named multiline editor. Dropdown options come only from the provider/package.
-Stale mappings are retained but marked invalid until fixed or removed.
+Anki and pasted-list sources appear in the same list and share an **Include in
+vocabulary** checkbox and a **Remove** action. The checkbox is named for its
+consequence, so its accessible name stays true in both states; it never carries
+a bare state word such as "Enabled". Source-specific configuration stays within
+its row: Anki has deck, note type, expression field, and subdeck settings; a
+pasted list has its named multiline editor. Dropdown options come only from the
+provider/package. Stale mappings are retained but marked invalid until fixed or
+removed.
+
+A live AnkiConnect source carries its syncing controls in a separate group,
+visually divided from inclusion: a **Sync automatically** checkbox and a **Sync
+now** action. Sync now shows its waiting state on the control, can be cancelled
+while it runs, states its failure with the code and the promise that the
+previous vocabulary is unchanged, and is retried by pressing it again. A read
+that would empty a source that previously had words is refused rather than
+committed.
+
+**Remove** is irreversible and asks first. The dialog names the source, says
+whether the vocabulary drops to nothing, how many stories were generated from
+the current vocabulary, and what is not affected, and it points at the
+reversible alternative of clearing Include in vocabulary. Keep it is the
+initially focused answer.
 
 ### Updating
 
-There is no manual refresh section or confirmation step. Adding a source,
-changing its configuration, editing it, enabling it, pausing it, or removing it
-updates the combined vocabulary immediately. AnkiConnect also refreshes on
+There is no page-level refresh section or confirmation step for building a
+snapshot. Adding a source, changing its configuration, editing it, including or
+excluding it, or removing it updates the combined vocabulary immediately;
+removal asks first. AnkiConnect also refreshes on
 startup, focus, and its background interval while Anki is available. Detailed
 query/analyse progress remains an implementation state exposed to assistive
 technology, not a permanent dashboard. Failures keep the previous vocabulary
@@ -507,7 +537,7 @@ and offer a specific recovery path.
 ### Current vocabulary
 
 The compact **Current** section leads with the unique count, then shows the
-updated time, enabled source count, and number of generated stories using the
+updated time, included source count, and number of generated stories using the
 current vocabulary. The source-management section is simply **Sources**; avoid
 repeating page context in explanatory headings. There is no snapshot history or
 deletion UI in v1.

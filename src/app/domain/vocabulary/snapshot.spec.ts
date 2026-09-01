@@ -3,6 +3,7 @@ import { snapshotId } from '../shared/ids';
 import {
   GENERATION_SNAPSHOT_MINIMUM,
   meetsGenerationMinimum,
+  vocabularyAvailability,
   type VocabularySnapshot,
 } from './snapshot';
 
@@ -39,5 +40,25 @@ describe('meetsGenerationMinimum', () => {
 
   it('is true at and above the minimum', () => {
     expect(meetsGenerationMinimum(snapshotWith(GENERATION_SNAPSHOT_MINIMUM))).toBe(true);
+  });
+});
+
+/**
+ * An empty snapshot is not the same as no snapshot.
+ *
+ * With none, nothing is marked; with an empty one, everything is. The reader
+ * has to be able to tell the learner which of the two it is looking at.
+ */
+describe('vocabularyAvailability', () => {
+  it('reports no vocabulary at all when nothing is active', () => {
+    expect(vocabularyAvailability(null)).toBe('none');
+  });
+
+  it('reports an active snapshot with no words as empty', () => {
+    expect(vocabularyAvailability(snapshotWith(0))).toBe('empty');
+  });
+
+  it('reports a snapshot with words as ready', () => {
+    expect(vocabularyAvailability(snapshotWith(1))).toBe('ready');
   });
 });
