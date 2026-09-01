@@ -85,6 +85,29 @@ test.describe('generate prerequisites', () => {
 test.describe('generating a story', () => {
   test.use({ storageState: GENERATION_READY_STATE });
 
+  test('keeps the action discoverable and explains over-limit fields at laptop and phone sizes @mobile', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 700 });
+    await openGenerate(page);
+
+    const generate = page.getByTestId('generate');
+    await expect(generate).toBeInViewport();
+    await expect(page.getByText('0 of 1,000 characters')).toHaveCount(2);
+    await expect(page.getByText('0 of 2,000 characters')).toBeVisible();
+
+    await page.getByTestId('premise').fill('あ'.repeat(1_001));
+    await expect(page.getByRole('alert')).toContainText('Remove 1 character to continue.');
+    await expect(generate).toBeDisabled();
+
+    await page.setViewportSize({ width: 393, height: 727 });
+    await generate.scrollIntoViewIfNeeded();
+    await expect(generate).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
+  });
+
   test('saves a strict story, lists it, and opens it in the reader @smoke', async ({ page }) => {
     test.setTimeout(SETUP_TIMEOUT);
     await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
@@ -99,6 +122,7 @@ test.describe('generating a story', () => {
       timeout: 60_000,
     });
     await expect(page.getByTestId('open-story')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your story is ready' })).toHaveCount(1);
 
     // Grammar review and translation really ran; their saved summaries are the
     // durable result after the temporary waiting message disappears.
@@ -168,6 +192,11 @@ test.describe('generating a story', () => {
     await expect(page.getByTestId('invalid-draft-text')).toBeVisible({ timeout: 60_000 });
     await expect(page.getByTestId('invalid-draft-issues')).toContainText('sentence');
     await expect(page.getByText('2 repair attempts')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Story draft' })).toHaveCount(1);
+    await expect(page.getByRole('heading', { name: 'This story was not saved' })).toHaveCount(1);
+    await expect(
+      page.locator('mn-invalid-draft').getByText('Nothing was added to your library.'),
+    ).toHaveCount(1);
     await expect(page.getByRole('button', { name: /save anyway/i })).toHaveCount(0);
 
     const rows = await countOwnedRows(page);

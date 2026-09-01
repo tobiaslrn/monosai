@@ -142,7 +142,6 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       } @else {
         <div class="editor-head">
           <h3>Add pasted list</h3>
-          <button type="button" class="mn-button" (click)="mode.set('choices')">Back</button>
         </div>
         <mn-text-list-source (saved)="close()" (cancelled)="mode.set('choices')" />
       }

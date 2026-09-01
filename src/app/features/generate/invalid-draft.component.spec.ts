@@ -86,6 +86,13 @@ describe('InvalidDraftComponent', () => {
     expect(element.textContent).toContain('2 repair attempts');
   });
 
+  it('states the unsaved result once before its useful detail', () => {
+    const { element } = render();
+
+    expect(element.querySelector('h2')?.textContent).toBe('This story was not saved');
+    expect(element.textContent.match(/Nothing was added to your library\./g)).toHaveLength(1);
+  });
+
   it('offers no way to save it anyway', () => {
     const { element } = render();
 

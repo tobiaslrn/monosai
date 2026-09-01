@@ -6,6 +6,7 @@ import {
   STORY_SENTENCE_COUNTS,
 } from '../../domain/ai/story-request';
 import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
+import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
 const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
@@ -36,14 +37,20 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             data-testid="premise"
             placeholder="Describe what the story should be about (up to 1,000 characters)"
             [value]="draft.premise()"
-            [attr.aria-describedby]="'mn-premise-count'"
+            [attr.aria-describedby]="premiseDescriptionIds()"
             [attr.aria-invalid]="premiseTooLong()"
             [disabled]="disabled()"
             (input)="onPremise($event)"
           ></textarea>
           <p id="mn-premise-count" class="counter" [class.is-over]="premiseTooLong()">
-            {{ draft.premiseLength() }} / {{ draft.premiseLimit }} characters
+            {{ formatCount(draft.premiseLength()) }} of
+            {{ formatCount(draft.premiseLimit) }} characters
           </p>
+          @if (premiseTooLong()) {
+            <p id="mn-premise-limit" class="limit-hint" role="alert">
+              {{ premiseLimitMessage() }}
+            </p>
+          }
         </div>
 
         <div class="mn-field">
@@ -54,14 +61,20 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             data-testid="special-instructions"
             placeholder="Tone, viewpoint, dialogue, or register (optional)"
             [value]="draft.specialInstructions()"
-            [attr.aria-describedby]="'mn-instructions-count'"
+            [attr.aria-describedby]="instructionsDescriptionIds()"
             [attr.aria-invalid]="instructionsTooLong()"
             [disabled]="disabled()"
             (input)="onInstructions($event)"
           ></textarea>
           <p id="mn-instructions-count" class="counter" [class.is-over]="instructionsTooLong()">
-            {{ draft.instructionsLength() }} / {{ draft.instructionsLimit }} characters
+            {{ formatCount(draft.instructionsLength()) }} of
+            {{ formatCount(draft.instructionsLimit) }} characters
           </p>
+          @if (instructionsTooLong()) {
+            <p id="mn-instructions-limit" class="limit-hint" role="alert">
+              {{ instructionsLimitMessage() }}
+            </p>
+          }
         </div>
 
         <ng-content select="[text-fields-extra]" />
@@ -134,23 +147,20 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <strong>{{ presetName() }}</strong>
           </a>
         </div>
+        <div class="actions">
+          <button
+            type="button"
+            class="mn-button mn-button--primary"
+            data-testid="generate"
+            [disabled]="disabled() || !canGenerate()"
+            (click)="generate.emit()"
+          >
+            <mn-icon name="generate" [size]="18" />
+            <span>Generate story</span>
+          </button>
+        </div>
       </aside>
     </div>
-
-    <footer class="form-footer">
-      <div class="actions">
-        <button
-          type="button"
-          class="mn-button mn-button--primary"
-          data-testid="generate"
-          [disabled]="disabled() || !canGenerate()"
-          (click)="generate.emit()"
-        >
-          <mn-icon name="generate" [size]="18" />
-          <span>Generate story</span>
-        </button>
-      </div>
-    </footer>
   `,
   styles: `
     :host {
@@ -163,12 +173,17 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       margin: 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);
-      text-align: right;
     }
 
     .counter.is-over {
       color: var(--status-danger);
       font-weight: 600;
+    }
+
+    .limit-hint {
+      margin: calc(var(--space-1) * -1) 0 0;
+      color: var(--status-danger);
+      font-size: var(--text-sm);
     }
 
     .composer-grid {
@@ -185,6 +200,11 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       border-radius: var(--radius-card);
       background: var(--surface-raised);
       box-shadow: var(--shadow-raised);
+    }
+
+    .story-settings {
+      display: flex;
+      flex-direction: column;
     }
 
     .text-fields {
@@ -403,20 +423,13 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       white-space: nowrap;
     }
 
-    .form-footer {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3) var(--space-5);
-      align-items: center;
-      justify-content: flex-end;
-      padding-top: var(--space-1);
-    }
-
     .actions {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-3);
       align-items: center;
+      justify-content: flex-end;
+      padding-top: var(--space-5);
     }
   `,
 })
@@ -434,6 +447,7 @@ export class StoryFormComponent {
 
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
   protected readonly lengthLabels = LENGTH_LABELS;
+  protected readonly formatCount = formatCount;
 
   protected readonly selectedLengthIndex = computed(() => {
     const index = STORY_SENTENCE_COUNTS.indexOf(
@@ -470,6 +484,20 @@ export class StoryFormComponent {
   protected readonly instructionsTooLong = computed(
     () => this.draft.instructionsLength() > this.draft.instructionsLimit,
   );
+  protected readonly premiseDescriptionIds = computed(() =>
+    this.premiseTooLong() ? 'mn-premise-count mn-premise-limit' : 'mn-premise-count',
+  );
+  protected readonly instructionsDescriptionIds = computed(() =>
+    this.instructionsTooLong()
+      ? 'mn-instructions-count mn-instructions-limit'
+      : 'mn-instructions-count',
+  );
+  protected readonly premiseLimitMessage = computed(() =>
+    this.limitMessage(this.draft.premiseLength() - this.draft.premiseLimit),
+  );
+  protected readonly instructionsLimitMessage = computed(() =>
+    this.limitMessage(this.draft.instructionsLength() - this.draft.instructionsLimit),
+  );
 
   protected onPremise(event: Event): void {
     this.draft.setPremise((event.target as HTMLTextAreaElement).value);
@@ -492,5 +520,9 @@ export class StoryFormComponent {
     if (value === 'uniform' || value === 'recent' || value === 'difficult') {
       this.ankiWordPriorityModeChanged.emit(value);
     }
+  }
+
+  private limitMessage(overBy: number): string {
+    return `Remove ${formatCountOf(overBy, 'character')} to continue.`;
   }
 }

@@ -77,7 +77,7 @@ describe('StoryFormComponent', () => {
     fixture.detectChanges();
 
     expect(element.querySelector('#mn-premise-count')?.textContent).toContain(
-      `2 / ${String(MAX_PREMISE_LENGTH)}`,
+      '2 of 1,000 characters',
     );
   });
 
@@ -90,6 +90,25 @@ describe('StoryFormComponent', () => {
     expect(element.querySelector('[data-testid="premise"]')?.getAttribute('aria-invalid')).toBe(
       'true',
     );
+    expect(element.querySelector('#mn-premise-limit')?.getAttribute('role')).toBe('alert');
+    expect(element.querySelector('#mn-premise-limit')?.textContent).toContain(
+      'Remove 1 character to continue.',
+    );
+    expect(
+      element.querySelector('[data-testid="premise"]')?.getAttribute('aria-describedby'),
+    ).toContain('mn-premise-limit');
+  });
+
+  it('uses the same counter wording and alignment for both story fields', () => {
+    const { element } = render();
+
+    expect(element.querySelector('#mn-premise-count')?.textContent).toContain(
+      '0 of 1,000 characters',
+    );
+    expect(element.querySelector('#mn-instructions-count')?.textContent).toContain(
+      '0 of 1,000 characters',
+    );
+    expect(element.querySelectorAll('.counter')).toHaveLength(2);
   });
 
   it('offers more length stops up to 800 sentences without adding length names', () => {
@@ -207,6 +226,7 @@ describe('StoryFormComponent', () => {
     expect(sources?.textContent).toContain('200 reviewed words');
     expect(sources?.textContent).toContain('Starter forms');
     expect(sources?.querySelectorAll('a')).toHaveLength(2);
+    expect(element.querySelector('.story-settings [data-testid="generate"]')).not.toBeNull();
   });
 
   /**

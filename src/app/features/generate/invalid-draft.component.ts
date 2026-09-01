@@ -68,7 +68,7 @@ function mark(textJa: string, surfaces: readonly string[]): MarkedLine {
   template: `
     <div class="heading">
       <mn-icon name="warning" [size]="20" />
-      <h3>This story was not saved</h3>
+      <h2>This story was not saved</h2>
     </div>
 
     <p class="mn-hint">
@@ -157,7 +157,7 @@ function mark(textJa: string, surfaces: readonly string[]): MarkedLine {
       color: var(--status-warning);
     }
 
-    .heading h3 {
+    .heading h2 {
       margin: 0;
       font-size: 18px;
     }
