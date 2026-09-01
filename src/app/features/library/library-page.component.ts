@@ -24,7 +24,12 @@ import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PopoverService } from '../../shared-ui/popover/popover.service';
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
+import {
+  GenerationJobsStore,
+  type GenerationJob,
+} from '../../application/generation/generation-jobs.store';
 import { NewReadingMenuComponent } from './new-reading-menu.component';
+import { GenerationJobCardComponent } from './generation-job-card.component';
 import { groupLibraryReadings } from './library-date-groups';
 import { ReadingCardComponent } from './reading-card.component';
 
@@ -56,6 +61,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     ReaderPopoverComponent,
     NewReadingMenuComponent,
     ReadingCardComponent,
+    GenerationJobCardComponent,
   ],
   template: `
     <div class="mn-page library-page">
@@ -113,7 +119,25 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           </div>
         }
 
-        @if (store.hasNoReadings()) {
+        <!--
+          Stories still being written sit above the shelf, in the same row
+          shape, so starting one and leaving has a visible result and the
+          layout does not move when the story arrives.
+        -->
+        @if (generationJobs().length > 0) {
+          <section class="date-group" aria-labelledby="library-group-generating">
+            <h2 id="library-group-generating">Story generations</h2>
+            <ul class="reading-list">
+              @for (job of generationJobs(); track job.id) {
+                <li>
+                  <mn-generation-job-card [job]="job" (dismissRequested)="confirmDismiss($event)" />
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (store.hasNoReadings() && generationJobs().length === 0) {
           <section class="empty-state" aria-labelledby="mn-library-empty-heading">
             <h2 id="mn-library-empty-heading">Start with a reading</h2>
             <p class="mn-hint">
@@ -136,7 +160,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
               </a>
             </div>
           </section>
-        } @else if (store.isEmpty()) {
+        } @else if (store.isEmpty() && generationJobs().length === 0) {
           <p class="mn-hint">No {{ store.filter() }} readings yet.</p>
         } @else {
           <div class="date-groups">
@@ -383,6 +407,7 @@ export class LibraryPageComponent {
   private readonly audioJob = inject(AudioJobStore);
   private readonly playback = inject(AudioPlaybackStore);
   private readonly scrollMemory = inject(LibraryScrollMemoryService);
+  private readonly jobs = inject(GenerationJobsStore);
 
   private readonly newReading = viewChild<ElementRef<HTMLElement>>('newReading');
   private readonly newReadingMenu = viewChild.required<TemplateRef<unknown>>('newReadingMenu');
@@ -398,6 +423,15 @@ export class LibraryPageComponent {
   );
   protected readonly readingGroups = computed(() =>
     groupLibraryReadings(this.store.items(), this.clock.now()),
+  );
+
+  /**
+   * The generations worth a row here. Every one of them would become a
+   * generated story, so the Imported filter hides them rather than showing
+   * rows the filter says are excluded.
+   */
+  protected readonly generationJobs = computed(() =>
+    this.store.filter() === 'imported' ? [] : this.jobs.libraryEntries(),
   );
 
   constructor() {
@@ -458,6 +492,32 @@ export class LibraryPageComponent {
 
   protected closeNewReading(): void {
     this.popover.close();
+  }
+
+  /**
+   * Removes a generation's row.
+   *
+   * A run still working is confirmed first: dismissing it stops requests that
+   * have already been paid for and produces nothing. A run that has stopped has
+   * nothing left to lose, so its row goes without a question.
+   */
+  protected async confirmDismiss(job: GenerationJob): Promise<void> {
+    if (job.store.isBusy()) {
+      const confirmed = await openConfirmDialog(this.dialog, {
+        title: 'Stop writing this story?',
+        message: 'This cannot be undone. It permanently removes:',
+        details: ['The story being written', 'The requests already spent on it'],
+        footnote: 'Your vocabulary, grammar profile, and other readings are not affected.',
+        confirmLabel: 'Stop and remove',
+        cancelLabel: 'Keep writing',
+        tone: 'danger',
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+    this.jobs.dismiss(job.id);
+    this.store.noteExternalChange('The generation was removed. Nothing was saved.');
   }
 
   /**

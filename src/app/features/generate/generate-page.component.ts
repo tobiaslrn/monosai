@@ -1,27 +1,29 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
+  effect,
   inject,
-  type OnDestroy,
+  input,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { Router, RouterLink } from '@angular/router';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
+import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
 import {
   allPrerequisitesMet,
   grammarPresetLine,
   prerequisiteChecks,
 } from '../../application/generation/generation-prerequisites';
-import { GenerationStore } from '../../application/generation/generation.store';
-import { StoryAssemblyService } from '../../application/generation/story-assembly.service';
-import { VocabularyPreparationService } from '../../application/generation/vocabulary-preparation.service';
+import type { GenerationState } from '../../application/generation/generation.store';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { ExceptionPolicyStore } from '../../application/settings/exception-policy.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { technicalCode } from '../../domain/shared/errors';
+import { jobId } from '../../domain/shared/ids';
 import {
   NavigationHistoryService,
   navigationOriginState,
@@ -40,19 +42,22 @@ import { PrerequisitePanelComponent } from './prerequisite-panel.component';
 import { StoryFormComponent } from './story-form.component';
 import { ExceptionPolicyFieldComponent } from './exception-policy-field.component';
 
+/** What the screen shows when it is not attached to a run. */
+const IDLE: GenerationState = { kind: 'idle' };
+
 /**
- * The Generate screen.
+ * The Generate screen: the form, and the progress of one running job.
  *
- * `GenerationStore` is provided here rather than at the root, so leaving the
- * screen discards whatever is in flight and no half-validated candidate can
- * survive a navigation. The learner's typing lives in the root-provided
- * `GenerationDraftStore` instead, because every failed prerequisite links to
- * another screen and the draft has to survive that trip.
+ * Runs live in the root `GenerationJobsStore`, not here, so leaving the screen
+ * leaves the story being written. Which run this screen is showing comes from
+ * the `:jobId` segment, so the library row for a background generation leads
+ * back to exactly the run it started. The learner's typing lives in the
+ * root-provided `GenerationDraftStore`, because every failed prerequisite links
+ * to another screen and the draft has to survive that trip.
  */
 @Component({
   selector: 'mn-generate-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [GenerationStore, StoryAssemblyService, VocabularyPreparationService],
   imports: [
     RouterLink,
     ErrorScreenComponent,
@@ -68,7 +73,7 @@ import { ExceptionPolicyFieldComponent } from './exception-policy-field.componen
       <mn-page-header [heading]="pageHeading()" backTo="/library" backLabel="Back to library" />
 
       <p class="mn-visually-hidden" role="status" aria-live="polite" data-testid="generate-status">
-        {{ generation.announcement() }}
+        {{ announcement() }}
       </p>
 
       <!--
@@ -76,14 +81,31 @@ import { ExceptionPolicyFieldComponent } from './exception-policy-field.componen
         learner finished long ago is a permanent header on a screen they came to
         write on.
       -->
-      @if (state().kind === 'idle' && hasBlockers()) {
+      @if (!missingJob() && state().kind === 'idle' && hasBlockers()) {
         <section class="mn-panel" aria-labelledby="mn-generate-checks-heading">
           <h2 id="mn-generate-checks-heading" class="mn-visually-hidden">Before you generate</h2>
           <mn-prerequisite-panel [checks]="checks()" [preset]="presetLine()" />
         </section>
       }
 
-      @if (state().kind === 'invalid-draft') {
+      @if (missingJob()) {
+        <!--
+          A run only exists in the tab that started it, so a reload or a stale
+          link arrives here with nothing to show. It says that, rather than
+          quietly presenting an empty form as though nothing had been started.
+        -->
+        <section class="mn-panel" data-testid="missing-job">
+          <h2>This generation is no longer running</h2>
+          <p class="mn-hint">
+            Stories are written in the tab you start them in, and reloading ends them. Nothing was
+            saved.
+          </p>
+          <div class="actions">
+            <a class="mn-button mn-button--primary" routerLink="/generate">Start a new story</a>
+            <a class="mn-button" routerLink="/library">Back to library</a>
+          </div>
+        </section>
+      } @else if (state().kind === 'invalid-draft') {
         <section class="mn-panel">
           <mn-invalid-draft
             [draft]="invalidDraft()!"
@@ -127,14 +149,18 @@ import { ExceptionPolicyFieldComponent } from './exception-policy-field.componen
             <a class="mn-button" routerLink="/library">Back to library</a>
           </div>
         </section>
-      } @else if (generation.isBusy()) {
+      } @else if (isBusy()) {
         <section
           class="wait-screen"
           aria-label="Story generation progress"
           data-testid="generation-screen"
         >
-          <mn-generation-wait />
-          @if (generation.canCancel()) {
+          <mn-generation-wait [state]="state()" />
+          <p class="mn-hint leave-hint" data-testid="leave-hint">
+            You can go back to your library while this is written. It keeps going, and the story
+            appears when it is ready.
+          </p>
+          @if (canCancel()) {
             <button
               type="button"
               class="mn-button cancel"
@@ -163,7 +189,8 @@ import { ExceptionPolicyFieldComponent } from './exception-policy-field.componen
           <h2 id="mn-generate-form-heading" class="mn-visually-hidden">Your story</h2>
           <mn-story-form
             [canGenerate]="canGenerate()"
-            [disabled]="generation.isBusy()"
+            [disabled]="isBusy()"
+            [atGenerationLimit]="!jobs.canStart()"
             [snapshotSummary]="snapshotSummary()"
             [presetName]="presetLine().presetName"
             [ankiWordPriorityMode]="appSettings.ankiWordPriorityMode()"
@@ -216,8 +243,11 @@ import { ExceptionPolicyFieldComponent } from './exception-policy-field.componen
   `,
   styleUrl: './generate-page.component.scss',
 })
-export class GeneratePageComponent implements OnDestroy {
-  protected readonly generation = inject(GenerationStore);
+export class GeneratePageComponent {
+  /** The run this screen is showing, from `generate/:jobId`. */
+  readonly jobId = input<string | undefined>(undefined);
+
+  protected readonly jobs = inject(GenerationJobsStore);
   protected readonly draft = inject(GenerationDraftStore);
   protected readonly textModel = inject(TextModelStore);
   private readonly policy = inject(ExceptionPolicyStore);
@@ -229,8 +259,24 @@ export class GeneratePageComponent implements OnDestroy {
   protected readonly navigation = inject(NavigationHistoryService);
   protected readonly generateOriginState = navigationOriginState('/generate');
 
-  protected readonly state = this.generation.state;
+  /** The addressed job, or null on the plain form and after it has ended. */
+  protected readonly job = computed(() => {
+    const id = this.jobId();
+    return id === undefined ? null : this.jobs.job(jobId(id));
+  });
+
+  /** A job was addressed and there is no such run in this tab. */
+  protected readonly missingJob = computed(() => this.jobId() !== undefined && this.job() === null);
+
+  protected readonly state = computed<GenerationState>(() => this.job()?.store.state() ?? IDLE);
+  protected readonly isBusy = computed(() => this.job()?.store.isBusy() ?? false);
+  protected readonly canCancel = computed(() => this.job()?.store.canCancel() ?? false);
+  protected readonly announcement = computed(() => this.job()?.store.announcement() ?? '');
+
   protected readonly pageHeading = computed(() => {
+    if (this.missingJob()) {
+      return 'Generation not found';
+    }
     switch (this.state().kind) {
       case 'idle':
         return 'Write with AI';
@@ -267,7 +313,7 @@ export class GeneratePageComponent implements OnDestroy {
   });
 
   protected readonly canGenerate = computed(
-    () => allPrerequisitesMet(this.checks()) && this.draft.isValid(),
+    () => allPrerequisitesMet(this.checks()) && this.draft.isValid() && this.jobs.canStart(),
   );
 
   /**
@@ -360,7 +406,9 @@ export class GeneratePageComponent implements OnDestroy {
   protected readonly canRetrySave = computed(() => {
     const state = this.state();
     return (
-      state.kind === 'failed' && state.during === 'finalizing' && this.generation.canRetrySave()
+      state.kind === 'failed' &&
+      state.during === 'finalizing' &&
+      (this.job()?.store.canRetrySave() ?? false)
     );
   });
 
@@ -377,36 +425,78 @@ export class GeneratePageComponent implements OnDestroy {
     void this.policy.load();
     void this.grammar.load();
     void this.snapshots.load();
+
+    // Tells the registry which run has a screen, so a story that lands while
+    // the learner is watching keeps its panel instead of being cleaned up the
+    // moment it is saved.
+    effect(() => {
+      const id = this.jobId();
+      this.jobs.watch(id === undefined ? null : jobId(id));
+    });
+    inject(DestroyRef).onDestroy(() => {
+      // Leaving no longer stops the run — that is the point. It only stops
+      // being the watched one, and a story already saved has nothing left to
+      // report from here.
+      const id = this.jobId();
+      if (id !== undefined) {
+        this.jobs.release(jobId(id));
+      }
+    });
   }
 
-  ngOnDestroy(): void {
-    // Leaving the screen abandons anything in flight; the typed draft survives.
-    this.generation.dispose();
-  }
-
+  /**
+   * Starts a run and hands the screen over to it.
+   *
+   * The address is replaced rather than pushed: the form and the run it started
+   * are one step in the learner's history, so Back from the wait screen goes
+   * where they came from instead of to a form they have already submitted.
+   */
   protected generate(): void {
-    void this.generation.generate(
+    void this.startGeneration();
+  }
+
+  private async startGeneration(): Promise<void> {
+    const started = this.jobs.start(
       this.draft.sentenceCount(),
       this.draft.input(),
       this.textModel.activePresetId(),
     );
+    if (started === null) {
+      return;
+    }
+    await this.router.navigate(['/generate', started], {
+      replaceUrl: true,
+      state: this.navigation.preservedOriginState('/library'),
+    });
   }
 
   protected cancel(): void {
-    this.generation.cancel();
+    this.job()?.store.cancel();
   }
 
   protected async retrySave(): Promise<void> {
-    await this.generation.retrySave();
+    await this.job()?.store.retrySave();
   }
 
   /** Returns to the form with the draft intact, ready for another attempt. */
   protected retry(): void {
-    this.generation.reset();
+    void this.endJobAndReturnToForm();
   }
 
   protected changePremise(): void {
-    this.generation.reset();
+    void this.endJobAndReturnToForm();
+  }
+
+  /** Drops the finished run and puts the form back at the plain address. */
+  private async endJobAndReturnToForm(): Promise<void> {
+    const job = this.job();
+    if (job !== null) {
+      this.jobs.dismiss(job.id);
+    }
+    await this.router.navigate(['/generate'], {
+      replaceUrl: true,
+      state: this.navigation.preservedOriginState('/library'),
+    });
   }
 
   /**
@@ -424,7 +514,10 @@ export class GeneratePageComponent implements OnDestroy {
       tone: 'danger',
     });
     if (confirmed) {
-      this.generation.reset();
+      const job = this.job();
+      if (job !== null) {
+        this.jobs.dismiss(job.id);
+      }
       await this.router.navigate(['/library']);
     }
   }

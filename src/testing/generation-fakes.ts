@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { signal, type EnvironmentProviders, type Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { GenerationStore } from '../app/application/generation/generation.store';
 import { StoryAssemblyService } from '../app/application/generation/story-assembly.service';
@@ -330,6 +330,8 @@ export interface GenerationTestBedOptions {
   readonly storyTokenBudget?: number;
   readonly uniqueEntryCount?: number;
   readonly ankiWordPriorityMode?: AnkiWordPriorityMode;
+  /** Anything a spec around the pipeline needs, such as the library's channel. */
+  readonly extraProviders?: readonly (Provider | EnvironmentProviders)[];
 }
 
 /**
@@ -420,6 +422,7 @@ export function configureGenerationTestBed(
           }),
         },
       },
+      ...(options.extraProviders ?? []),
     ],
   });
 

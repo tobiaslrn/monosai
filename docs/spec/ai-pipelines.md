@@ -138,6 +138,12 @@ accepted-japanese
 
 Any cancellable state may transition to `cancelled`; cancelled generations persist no reading or generated enrichment. `invalid-draft` remains only in feature memory and is never a library record; it is reached by structural failure alone. Words the repair budget could not replace do not block acceptance: they are saved marked, and the reader carries the warning. See ADR 0033.
 
+### Job lifetime
+
+A run is a background job of the application, not of the Generate screen. Up to three run concurrently, each with its own state machine, abort signal, and captured inputs; a fourth is refused until one finishes. Leaving the screen does not stop a run, and the Library lists every job that is not `saved` as a muted row naming its current state. `saved` is reported by the story appearing in the Library; every other terminal state keeps its row until the learner dismisses it. Dismissing a running job cancels it.
+
+Jobs are never persisted, and belong to the tab that started them: an open provider request cannot be resumed and nothing is written before `finalizing`, so a reload ends every run in the tab. The application warns before unload while any run is in flight. See ADR 0044.
+
 ### Prerequisite check
 
 Require a tested story-capable configuration, current snapshot >= 50 unique entries, nonempty grammar profile, and valid premise. Capture the current snapshot identity, grammar profile, structural baseline, exception policy, selected story model, resolved grammar-judgement model, and prompt versions before the first request. Later setting changes do not affect the active job.

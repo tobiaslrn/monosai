@@ -333,6 +333,16 @@ used; where one does not, none is invented.
 Skeleton placeholders are not used. Monosai's slow work is generation and
 analysis, which have no shape to promise in advance.
 
+**Work the learner walked away from keeps a row where its result will appear.**
+A story being written is a Library row of the same shape and height as the
+reading it will become, so the shelf is laid out identically before, during, and
+after. The row is muted — secondary text on the sunken surface — and states in
+words both that it is not a reading yet and which stage it is in; the muting is
+never the only thing saying so. It leads back to the screen that shows the run
+in full. A run that stopped without producing anything keeps its row, marked as
+needing attention, until the learner dismisses it: work they were not watching
+when it failed is not allowed to disappear.
+
 ### Irreversible actions
 
 Anything irreversible **asks first**, in a dialog that names the specific thing

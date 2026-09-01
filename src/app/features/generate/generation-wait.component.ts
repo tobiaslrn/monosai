@@ -1,8 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import {
-  GenerationStore,
-  type GenerationState,
-} from '../../application/generation/generation.store';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import type { GenerationState } from '../../application/generation/generation.store';
 
 interface WaitCopy {
   readonly key: string;
@@ -116,7 +113,11 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
   styleUrl: './generation-wait.component.scss',
 })
 export class GenerationWaitComponent {
-  private readonly generation = inject(GenerationStore);
+  /**
+   * The run to describe, passed in rather than injected: several generations
+   * can be in flight, so the screen has to say which one it is showing.
+   */
+  readonly state = input.required<GenerationState>();
 
-  protected readonly copy = computed(() => generationWaitCopy(this.generation.state()));
+  protected readonly copy = computed(() => generationWaitCopy(this.state()));
 }

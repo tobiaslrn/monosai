@@ -167,6 +167,12 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <mn-icon name="generate" [size]="18" />
             <span>Generate story</span>
           </button>
+          @if (atGenerationLimit()) {
+            <p class="mn-hint" data-testid="generation-limit">
+              You already have as many stories being written as Monosai runs at once. This one can
+              start when one of them finishes.
+            </p>
+          }
         </div>
       </aside>
     </div>
@@ -448,6 +454,8 @@ export class StoryFormComponent {
 
   readonly canGenerate = input.required<boolean>();
   readonly disabled = input.required<boolean>();
+  /** Whether enough stories are already being written that this one must wait. */
+  readonly atGenerationLimit = input(false);
   readonly snapshotSummary = input.required<string>();
   readonly presetName = input.required<string>();
   readonly ankiWordPriorityMode = input<AnkiWordPriorityMode>('uniform');
