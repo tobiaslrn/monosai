@@ -54,6 +54,25 @@ export interface VocabularyProvenance {
   readonly sourceRecordId?: string;
 }
 
+/**
+ * What the reader can classify against right now.
+ *
+ * `empty` is deliberately not folded into `none`: a snapshot with no words
+ * still classifies, and it marks every content word as new. That is the state
+ * the reader has to explain, and it looks nothing like never having connected a
+ * source at all.
+ */
+export type VocabularyAvailability = 'none' | 'empty' | 'ready';
+
+export function vocabularyAvailability(
+  snapshot: VocabularySnapshot | null,
+): VocabularyAvailability {
+  if (snapshot === null) {
+    return 'none';
+  }
+  return snapshot.uniqueEntryCount > 0 ? 'ready' : 'empty';
+}
+
 /** Minimum unique entries before story generation becomes available. */
 export const GENERATION_SNAPSHOT_MINIMUM = 50;
 

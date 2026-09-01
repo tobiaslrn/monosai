@@ -4,7 +4,9 @@
 
 - All Anki access is read-only.
 - The production code contains an allowlist of permitted actions; it does not expose a generic action method to application code.
-- Vocabulary sources are explicit, independently enabled records. Anki sources
+- Vocabulary sources are explicit records, each independently included in or
+  left out of the combined vocabulary. Inclusion is separate from automatic
+  syncing, in the model and in the UI. Anki sources
   select a deck, note type, and expression field; text-list sources contain one
   literal expression per line.
 - A vocabulary item is eligible only when at least one associated card in the selected deck has been reviewed at least once.
@@ -122,7 +124,7 @@ interface SourceMapping {
 
 ### Automatic AnkiConnect synchronization
 
-- Automatic sync applies only to enabled desktop/Android connection sources that
+- Automatic sync applies only to included desktop/Android connection sources that
   opt in. Package and pasted-list sources are never polled.
 - Trigger after successful app initialization and when a hidden app becomes
   visible or regains focus. Coalesce concurrent triggers and enforce a cooldown.
@@ -136,6 +138,20 @@ interface SourceMapping {
   set unchanged is silent, even when source records, provenance, or timestamps
   differ.
 - Do not use service-worker Background Sync and do not cache Anki HTTP responses.
+
+### Manual source sync
+
+- Every live connection source offers a manual read, whether or not it syncs
+  automatically. Package and pasted-list sources have nothing to read again and
+  offer none.
+- A manual read uses the same reader, the same completeness rule, and the same
+  unexpectedly-empty guard as the automatic one. It is cancellable while it
+  runs, and cancelling writes nothing.
+- Any failure before or during the commit leaves the current vocabulary exactly
+  as it was, states so, and is retried by pressing the same control again.
+- There is no online check: AnkiConnect answers on the loopback address, so a
+  device with no network can still sync. An unreachable Anki fails the probe and
+  is reported as such.
 
 ## 5. Reviewed eligibility
 

@@ -1,8 +1,4 @@
 import { DOCUMENT, Injectable, inject, signal } from '@angular/core';
-import { ankiError, type AnkiError } from '../../domain/anki/anki-error';
-import type { ExtractedEntry } from '../../domain/anki/anki-provider';
-import { canRefresh } from '../../domain/anki/capabilities';
-import { canRefreshMappings, resolveMappings } from '../../domain/anki/mapping-validation';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
 import {
   isAutomaticAnkiSource,
@@ -10,9 +6,9 @@ import {
   type AnkiVocabularySource,
   type VocabularySourceCache,
 } from '../../domain/vocabulary/vocabulary-source';
-import { ANKI_PROVIDER_FACTORY } from '../shared/anki-tokens';
 import { CLOCK, VOCABULARY_SOURCE_REPOSITORY } from '../shared/repository-tokens';
 import type { Clock } from '../../domain/shared/clock';
+import { AnkiSourceReader, isTransientAnkiFailure } from './anki-source-reader';
 import { VocabularySyncService } from './vocabulary-sync.service';
 
 const COOLDOWN_MS = 60_000;
@@ -31,7 +27,7 @@ export type AutomaticAnkiSyncStatus =
 @Injectable()
 export class AutomaticAnkiSyncCoordinator {
   private readonly repository = inject(VOCABULARY_SOURCE_REPOSITORY);
-  private readonly createProvider = inject(ANKI_PROVIDER_FACTORY);
+  private readonly reader = inject(AnkiSourceReader);
   private readonly sync = inject(VocabularySyncService);
   private readonly clock = inject<Clock>(CLOCK);
   private readonly view = inject(DOCUMENT).defaultView;
@@ -92,18 +88,18 @@ export class AutomaticAnkiSyncCoordinator {
     this.statusSignal.set({ kind: 'checking' });
     const replacements: VocabularySourceCache[] = [];
     for (const providerKind of distinctProviderKinds(sources)) {
-      const refreshed = await this.readProviderSources(
+      const refreshed = await this.reader.read(
         providerKind,
         sources.filter((source) => source.providerKind === providerKind),
       );
       if (!refreshed.ok) {
         this.statusSignal.set({
-          kind: transient(refreshed.error) ? 'waiting' : 'attention',
+          kind: isTransientAnkiFailure(refreshed.error) ? 'waiting' : 'attention',
           message: `${refreshed.error.message} Your current vocabulary was kept.`,
         });
         return;
       }
-      replacements.push(...refreshed.caches);
+      replacements.push(...refreshed.value);
     }
 
     const previous = await this.repository.readCaches(replacements.map((cache) => cache.sourceId));
@@ -157,75 +153,6 @@ export class AutomaticAnkiSyncCoordinator {
       }
     }, SUCCESS_VISIBLE_MS);
   }
-
-  private async readProviderSources(
-    providerKind: AnkiConnectionKind,
-    sources: readonly AnkiVocabularySource[],
-  ): Promise<
-    | { readonly ok: true; readonly caches: readonly VocabularySourceCache[] }
-    | { readonly ok: false; readonly error: AnkiError }
-  > {
-    const provider = this.createProvider(providerKind);
-    try {
-      const probed = await provider.probe();
-      if (!probed.ok) {
-        return probed;
-      }
-      if (!canRefresh(probed.value)) {
-        return {
-          ok: false,
-          error: ankiError(
-            'review-evidence-unsupported',
-            'This Anki connection cannot prove which cards were reviewed.',
-          ),
-        };
-      }
-      const catalog = await provider.discover();
-      if (!catalog.ok) {
-        return catalog;
-      }
-      const resolution = resolveMappings(sources, catalog.value);
-      if (!canRefreshMappings(resolution)) {
-        return {
-          ok: false,
-          error: ankiError(
-            'query-failed',
-            'An automatic Anki source no longer matches its deck, note type, or field.',
-          ),
-        };
-      }
-
-      const entries = new Map(sources.map((source) => [source.id, [] as ExtractedEntry[]]));
-      const warnings: string[] = [];
-      for await (const event of provider.extractReviewed(resolution.resolved)) {
-        if (event.kind === 'entry') {
-          entries.get(event.entry.sourceMappingId)?.push(event.entry);
-        } else if (event.kind === 'warning') {
-          warnings.push(event.message);
-        } else if (event.kind === 'failed') {
-          return { ok: false, error: event.error };
-        }
-      }
-      const refreshedAt = this.clock.now();
-      return {
-        ok: true,
-        caches: sources.map((source) => ({
-          sourceId: source.id,
-          refreshedAt,
-          entries: (entries.get(source.id) ?? []).map((entry) => ({
-            rawValue: entry.rawFieldValue,
-            ...(entry.sourceNoteId === undefined ? {} : { sourceRecordId: entry.sourceNoteId }),
-            ...(entry.reps === undefined ? {} : { reps: entry.reps }),
-            ...(entry.lapseRatio === undefined ? {} : { lapseRatio: entry.lapseRatio }),
-            ...(entry.easeFactor === undefined ? {} : { easeFactor: entry.easeFactor }),
-          })),
-          warnings,
-        })),
-      };
-    } finally {
-      provider.dispose();
-    }
-  }
 }
 
 function distinctProviderKinds(
@@ -238,8 +165,4 @@ function distinctProviderKinds(
         .filter((kind): kind is AnkiConnectionKind => kind !== 'package'),
     ),
   ];
-}
-
-function transient(error: AnkiError): boolean {
-  return ['not-running', 'bridge-not-running', 'timeout', 'cancelled'].includes(error.code);
 }
