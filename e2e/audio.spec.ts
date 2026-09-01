@@ -1074,6 +1074,11 @@ test.describe('audio settings and readiness', () => {
     await page.goto('./#/settings');
     await expect(audioStatus(page)).toHaveText('Ready');
 
+    // A configuration an earlier preview proved stays proven when a later one
+    // is stopped, so the wait that can be abandoned is a changed one.
+    await page.getByRole('combobox', { name: 'Voice' }).selectOption('Kore');
+    await expect(audioStatus(page)).toHaveText('Settings changed');
+
     await page.getByTestId('test-tts').click();
     await expect(audioStatus(page)).toHaveText('Playing…');
 
