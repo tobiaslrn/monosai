@@ -12,6 +12,7 @@ import type { GrammarRepository } from '../../domain/grammar/grammar-repository'
 import type { EnrichmentRepository } from '../../domain/enrichment/enrichment-repository';
 import type { JobRepository } from '../../domain/enrichment/job-repository';
 import type { StorageMaintenance } from '../../domain/storage/storage-maintenance';
+import type { ReadingMutationChannel } from '../reading/reading-mutation-channel';
 
 /**
  * Injection tokens for domain ports.
@@ -45,6 +46,10 @@ export const ENRICHMENT_REPOSITORY = new InjectionToken<EnrichmentRepository>(
 export const JOB_REPOSITORY = new InjectionToken<JobRepository>('monosai.job-repository');
 export const STORAGE_MAINTENANCE = new InjectionToken<StorageMaintenance>(
   'monosai.storage-maintenance',
+);
+/** Cross-tab notification of reading mutations. See ADR 0042. */
+export const READING_MUTATION_CHANNEL = new InjectionToken<ReadingMutationChannel>(
+  'monosai.reading-mutation-channel',
 );
 
 /** Active persistence schema version, surfaced in Settings diagnostics. */

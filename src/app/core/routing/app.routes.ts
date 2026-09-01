@@ -1,6 +1,7 @@
 import type { Routes } from '@angular/router';
 import { unsavedImportGuard } from '../../features/add-text/unsaved-import.guard';
 import { firstUseRedirect } from './first-use.resolver';
+import { wellFormedReadingLink } from './reading-link.guard';
 
 export const APP_ROUTES: Routes = [
   {
@@ -27,8 +28,19 @@ export const APP_ROUTES: Routes = [
   {
     path: 'reader/:id',
     title: 'Reading · Monosai',
+    // Only ids that could name a reading reach the reader. Anything else falls
+    // through to the route below, which says so without claiming a deletion.
+    canMatch: [wellFormedReadingLink],
     loadComponent: () =>
       import('../../features/reader/reader-page.component').then((m) => m.ReaderPageComponent),
+  },
+  {
+    path: 'reader/:id',
+    title: 'Link not recognised · Monosai',
+    loadComponent: () =>
+      import('../../features/reader/broken-reading-link.component').then(
+        (m) => m.BrokenReadingLinkComponent,
+      ),
   },
   {
     path: 'vocabulary',

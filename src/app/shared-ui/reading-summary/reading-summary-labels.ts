@@ -1,5 +1,6 @@
 import type { CompletionSummary, GrammarSummary } from '../../domain/reading/summaries';
 import { isComplete } from '../../domain/reading/summaries';
+import { formatCount, formatDate, formatRelativeDays } from '../../domain/shared/locale';
 
 /**
  * Wording for a reading's denormalized summaries.
@@ -17,7 +18,7 @@ export function completionLabel(name: string, summary: CompletionSummary): strin
   if (isComplete(summary)) {
     return `${name}: complete`;
   }
-  return `${name}: ${String(summary.completed)} of ${String(summary.total)}`;
+  return `${name}: ${formatCount(summary.completed)} of ${formatCount(summary.total)}`;
 }
 
 /**
@@ -45,7 +46,6 @@ function concerns(count: number): string {
   return count === 1 ? '1 note' : `${String(count)} notes`;
 }
 
-const RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 const DAY_MS = 86_400_000;
 
 /**
@@ -62,5 +62,5 @@ export function relativeDay(timestamp: number, now: number): string {
     return date.getTime();
   };
   const days = Math.round((startOfDay(timestamp) - startOfDay(now)) / DAY_MS);
-  return days > -7 ? RELATIVE.format(days, 'day') : new Date(timestamp).toLocaleDateString();
+  return days > -7 ? formatRelativeDays(days) : formatDate(timestamp);
 }

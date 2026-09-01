@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Reading } from '../../domain/reading/reading';
+import { formatCountOf } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
 /** One compact library row, with only the metadata useful before opening it. */
@@ -213,10 +214,9 @@ export class ReadingCardComponent {
   protected readonly menuId = computed(() => `mn-reading-actions-${this.reading().id}`);
   protected readonly anchorName = computed(() => `--mn-reading-actions-${this.reading().id}`);
 
-  protected readonly characterLabel = computed(() => {
-    const count = this.reading().characterCount;
-    return count === 1 ? '1 character' : `${String(count)} characters`;
-  });
+  protected readonly characterLabel = computed(() =>
+    formatCountOf(this.reading().characterCount, 'character'),
+  );
   protected readonly hasAudio = computed(() => this.reading().audioSummary.completed > 0);
 
   protected onMenuToggle(event: Event): void {

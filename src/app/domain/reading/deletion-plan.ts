@@ -1,4 +1,5 @@
 import type { Reading } from './reading';
+import { formatCountOf } from '../shared/locale';
 
 /**
  * Every store a reading owns outright.
@@ -48,10 +49,6 @@ const NO_JOB_ACTIVITY: ReadingJobActivity = {
   audioRunning: false,
 };
 
-function plural(count: number, singular: string): string {
-  return `${count.toLocaleString('en')} ${count === 1 ? singular : `${singular}s`}`;
-}
-
 /**
  * Describes what deleting a reading removes.
  *
@@ -62,7 +59,7 @@ export function describeDeletion(
   reading: Reading,
   activity: ReadingJobActivity = NO_JOB_ACTIVITY,
 ): DeletionPlan {
-  const removes = [`The text and ${plural(reading.sentenceCount, 'sentence')}`];
+  const removes = [`The text and ${formatCountOf(reading.sentenceCount, 'sentence')}`];
 
   if (activity.translationRunning) {
     removes.push('The translation currently in progress');
@@ -72,10 +69,10 @@ export function describeDeletion(
   }
 
   if (reading.translationSummary.completed > 0) {
-    removes.push(plural(reading.translationSummary.completed, 'saved translation'));
+    removes.push(formatCountOf(reading.translationSummary.completed, 'saved translation'));
   }
   if (reading.audioSummary.completed > 0) {
-    removes.push(plural(reading.audioSummary.completed, 'saved audio clip'));
+    removes.push(formatCountOf(reading.audioSummary.completed, 'saved audio clip'));
   }
   if (reading.grammarSummary.state !== 'not-requested') {
     removes.push('Saved grammar analyses');
