@@ -2477,3 +2477,58 @@ throughout.
   key.
 - Full Vitest suite green (1,998 tests, 170 files). Playwright was not run in
   this worktree; the E2E lane runs after integration.
+
+## Vocabulary source safety
+
+### Delivered
+
+- Inclusion and automatic syncing are separate decisions on the source card,
+  separated in the model's language, in the layout, and in the words. The
+  checkbox that decides whether a source's words are in the combined vocabulary
+  is named **Include in vocabulary**, so its accessible name is true whether it
+  is ticked or not; the static "Auto-sync" pill that used to sit beside a
+  checkbox named "Enabled" is gone, replaced by a real **Sync automatically**
+  control in its own divided group. Turning automatic syncing off no longer
+  changes what is in the vocabulary.
+- Removing a source asks first, in the shared confirmation dialog. It names the
+  source, says whether the vocabulary drops to nothing, how many stories were
+  generated from the current vocabulary, what is not affected — the Anki
+  collection included, which Monosai only ever reads — and points at clearing
+  Include in vocabulary as the reversible alternative. Keep it is focused, and
+  Escape keeps the source.
+- Live Anki sources offer **Sync now**, for a learner who turned automatic
+  syncing off or whose last automatic attempt failed. It shows its waiting state
+  on the control, can be cancelled, and cannot corrupt the last valid snapshot:
+  a failed read writes nothing, a read that would empty a source that had words
+  is refused, and the commit is the same single transaction the automatic path
+  uses.
+- The reader explains the marking it is showing. Losing the vocabulary repaints
+  every reading, a story generated from those very words included; the aids
+  panel now carries one line beside the warning-marker switch saying that the
+  vocabulary is empty, absent, or unreadable, with a link to Vocabulary
+  settings, and the aids button's accessible name says a note is waiting. An
+  empty vocabulary and no vocabulary are worded differently, because the first
+  marks every word and the second marks none.
+
+### Architecture notes
+
+- `AnkiSourceReader` is the one place a live connection is probed, validated,
+  and read into caches. The background coordinator and the manual sync store
+  both use it, so the two cannot disagree about what a complete read is.
+- The persisted `enabled` field is unchanged, so no Dexie version moved. Only
+  the behavioural API around it was renamed to say what it decides
+  (`isIncludedInVocabulary`, `SourceMappingStore.setIncluded`, `included`).
+- `VocabularyAvailabilityStore` gives surfaces outside the Vocabulary page the
+  one fact they need — no snapshot, an empty snapshot, or an unreadable one —
+  without loading that page's provenance and story-count read model.
+
+### Verification
+
+- Vitest covers the removal wording, inclusion versus automatic syncing, manual
+  sync success, failure, cancellation, single-flight, the emptied-source guard,
+  snapshot preservation across a failed commit, the availability states, the
+  truthful checkbox names, and the confirmation's safe default.
+- `e2e/vocabulary.spec.ts` covers, with AnkiConnect stubbed, removal and its
+  cancellation by button and by Escape, excluding and re-including a source,
+  turning automatic syncing off without losing vocabulary, a manual sync, a
+  refused manual sync with its retry, and the reader's notice afterwards.

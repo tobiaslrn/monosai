@@ -8,6 +8,7 @@ import type {
   TextListVocabularySource,
   VocabularySource,
 } from '../../domain/vocabulary/vocabulary-source';
+import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-source';
 import { CLOCK, ID_GENERATOR, SOURCE_MAPPING_REPOSITORY } from '../shared/repository-tokens';
 
 export interface NewMapping {
@@ -53,8 +54,15 @@ export class SourceMappingStore {
   readonly loaded = this.loadedSignal.asReadonly();
   readonly lastFailure = this.failureSignal.asReadonly();
 
-  readonly enabled = computed(() => this.sourcesSignal().filter((source) => source.enabled));
-  readonly hasEnabled = computed(() => this.enabled().length > 0);
+  /**
+   * The sources whose words make up the combined vocabulary.
+   *
+   * Named for the consequence rather than for the stored flag: including a
+   * source is what puts its words in the vocabulary, and it is a separate
+   * decision from whether that source is read automatically.
+   */
+  readonly included = computed(() => this.sourcesSignal().filter(isIncludedInVocabulary));
+  readonly hasIncluded = computed(() => this.included().length > 0);
 
   async load(): Promise<void> {
     const listed = await this.repository.list();
@@ -157,8 +165,9 @@ export class SourceMappingStore {
     );
   }
 
-  async setEnabled(id: VocabularySourceId, enabled: boolean): Promise<void> {
-    const saved = await this.repository.setEnabled(id, enabled);
+  /** Adds this source's words to the combined vocabulary, or takes them out. */
+  async setIncluded(id: VocabularySourceId, included: boolean): Promise<void> {
+    const saved = await this.repository.setEnabled(id, included);
     if (!saved.ok) {
       this.failureSignal.set(saved.error);
       return;

@@ -10,6 +10,7 @@ import type {
   VocabularySource,
   VocabularySourceCache,
 } from '../../domain/vocabulary/vocabulary-source';
+import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-source';
 import type { SnapshotCommit } from '../../domain/vocabulary/vocabulary-repository';
 import { LanguageStore } from '../language/language.store';
 import { VocabularyClassificationService } from '../reading/vocabulary-classification.service';
@@ -68,8 +69,8 @@ export class VocabularySyncService {
     if (!listed.ok) {
       return listed;
     }
-    const enabled = upsert(listed.value, pendingSources).filter((source) => source.enabled);
-    const cached = await this.sources.readCaches(enabled.map((source) => source.id));
+    const included = upsert(listed.value, pendingSources).filter(isIncludedInVocabulary);
+    const cached = await this.sources.readCaches(included.map((source) => source.id));
     if (!cached.ok) {
       return cached;
     }
@@ -91,7 +92,7 @@ export class VocabularySyncService {
       currentExpressionHashes = hashes.value;
     }
     const warnings = new Set<string>();
-    const entries = enabled.flatMap((source) => {
+    const entries = included.flatMap((source) => {
       const cache = cachesById.get(source.id);
       if (cache === undefined) {
         warnings.add(`${source.label} has not been read yet.`);
@@ -106,7 +107,7 @@ export class VocabularySyncService {
     const built = await this.builder.build(
       {
         entries,
-        sources: enabled,
+        sources: included,
         warnings: [...warnings],
         ...(current.value === null ? {} : { snapshotId: current.value.id }),
       },

@@ -104,9 +104,13 @@ test.describe('vocabulary', () => {
     await expect(rows).toHaveCount(2);
     await expect(rows.nth(0)).toContainText('My textbook');
     await expect(rows.nth(1)).toContainText('Anki');
-    await expect(rows.nth(1)).toContainText('Auto-sync');
-    await expect(rows.nth(0).getByRole('checkbox', { name: 'Enabled' })).toBeChecked();
-    await expect(rows.nth(1).getByRole('checkbox', { name: 'Enabled' })).toBeChecked();
+    await expect(rows.nth(1).getByRole('checkbox', { name: 'Sync automatically' })).toBeChecked();
+    await expect(
+      rows.nth(0).getByRole('checkbox', { name: 'Include in vocabulary' }),
+    ).toBeChecked();
+    await expect(
+      rows.nth(1).getByRole('checkbox', { name: 'Include in vocabulary' }),
+    ).toBeChecked();
 
     const snapshots = await readSnapshots(page);
     expect(snapshots).toHaveLength(1);
@@ -165,17 +169,157 @@ test.describe('vocabulary', () => {
     await expectNoSeriousAccessibilityViolations(page);
   });
 
-  test('uses the same pause and remove controls for every source kind', async ({ page }) => {
+  test('uses the same inclusion and remove controls for every source kind', async ({ page }) => {
     await openVocabulary(page);
     await addTextList(page, 'Course words', '猫\n犬');
     const source = page.locator('li.source').filter({ hasText: 'Course words' });
 
-    await source.getByRole('checkbox', { name: 'Enabled' }).uncheck();
+    await source.getByRole('checkbox', { name: 'Include in vocabulary' }).uncheck();
     await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('0', {
       timeout: 60_000,
     });
+    // Excluding is reversible: the source and everything read from it stay.
+    await expect(source).toHaveCount(1);
+    await source.getByRole('checkbox', { name: 'Include in vocabulary' }).check();
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2', {
+      timeout: 60_000,
+    });
+
     await source.getByRole('button', { name: 'Remove Course words' }).click();
+    await page.getByRole('button', { name: 'Remove permanently' }).click();
     await expect(source).toHaveCount(0);
+  });
+
+  test('asks before removing a source and says what goes with it', async ({ page }) => {
+    await openVocabulary(page);
+    await addTextList(page, 'Course words', '猫\n犬');
+    const source = page.locator('li.source').filter({ hasText: 'Course words' });
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2', {
+      timeout: 60_000,
+    });
+
+    await source.getByRole('button', { name: 'Remove Course words' }).click();
+    const dialog = page.getByRole('alertdialog');
+    await expect(dialog).toContainText('Remove Course words?');
+    await expect(dialog).toContainText('drops to none');
+    await expect(dialog).toContainText('Include in vocabulary');
+    // The safe answer is the one a stray Enter or Space would press.
+    await expect(dialog.getByRole('button', { name: 'Keep it' })).toBeFocused();
+
+    await dialog.getByRole('button', { name: 'Keep it' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(source).toHaveCount(1);
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2');
+    await expectNoSeriousAccessibilityViolations(page);
+  });
+
+  test('escapes the removal dialog without destroying the source', async ({ page }) => {
+    await openVocabulary(page);
+    await addTextList(page, 'Course words', '猫\n犬');
+    const source = page.locator('li.source').filter({ hasText: 'Course words' });
+
+    await source.getByRole('button', { name: 'Remove Course words' }).click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByRole('alertdialog')).toBeHidden();
+    await expect(source).toHaveCount(1);
+  });
+
+  test('separates including a source from syncing it automatically', async ({ page }) => {
+    test.setTimeout(120_000);
+    await stubAnkiConnect(page, ankiAnswers(['ねこ', '食べる']));
+    await openVocabulary(page);
+    await addLiveAnki(page);
+    const source = page.locator('li.source').filter({ hasText: 'Anki' });
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2', {
+      timeout: 60_000,
+    });
+
+    // Turning off automatic syncing is not a way to lose your vocabulary.
+    await source.getByRole('checkbox', { name: 'Sync automatically' }).uncheck();
+    await expect(source.getByRole('checkbox', { name: 'Include in vocabulary' })).toBeChecked();
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2');
+    expect((await readSnapshots(page))[0].uniqueEntryCount).toBe(2);
+    await expectNoSeriousAccessibilityViolations(page);
+  });
+
+  test('syncs one source by hand after automatic syncing is off', async ({ page }) => {
+    test.setTimeout(120_000);
+    await stubAnkiConnect(page, ankiAnswers(['ねこ']));
+    await openVocabulary(page);
+    await addLiveAnki(page);
+    const source = page.locator('li.source').filter({ hasText: 'Anki' });
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('1', {
+      timeout: 60_000,
+    });
+    await source.getByRole('checkbox', { name: 'Sync automatically' }).uncheck();
+
+    await page.unrouteAll({ behavior: 'wait' });
+    await stubAnkiConnect(page, ankiAnswers(['ねこ', '犬']));
+    await source.getByTestId('sync-now').click();
+
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2', {
+      timeout: 60_000,
+    });
+    await expect
+      .poll(async () => (await readSnapshots(page))[0]?.uniqueEntryCount, { timeout: 60_000 })
+      .toBe(2);
+  });
+
+  test('keeps the last good vocabulary when a manual sync cannot reach Anki', async ({ page }) => {
+    test.setTimeout(120_000);
+    await stubAnkiConnect(page, ankiAnswers(['ねこ', '食べる']));
+    await openVocabulary(page);
+    await addLiveAnki(page);
+    const source = page.locator('li.source').filter({ hasText: 'Anki' });
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2', {
+      timeout: 60_000,
+    });
+
+    await page.unrouteAll({ behavior: 'wait' });
+    await refuseAnkiConnect(page);
+    await source.getByTestId('sync-now').click();
+
+    const failure = source.getByTestId('sync-failed');
+    await expect(failure).toBeVisible({ timeout: 60_000 });
+    await expect(failure).toContainText('unchanged');
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2');
+    expect((await readSnapshots(page))[0].uniqueEntryCount).toBe(2);
+
+    // Retry is the same control, and it works once Anki answers again.
+    await page.unrouteAll({ behavior: 'wait' });
+    await stubAnkiConnect(page, ankiAnswers(['ねこ', '食べる', '犬']));
+    await source.getByTestId('sync-now').click();
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('3', {
+      timeout: 60_000,
+    });
+  });
+
+  test('explains in the reader why every word is suddenly marked', async ({ page }) => {
+    test.setTimeout(180_000);
+    await importReading(page, 'ねこを見る。');
+    const readerUrl = page.url();
+
+    await openVocabulary(page);
+    await addTextList(page, 'Course words', 'ねこ');
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('1', {
+      timeout: 60_000,
+    });
+
+    const source = page.locator('li.source').filter({ hasText: 'Course words' });
+    await source.getByRole('button', { name: 'Remove Course words' }).click();
+    await page.getByRole('button', { name: 'Remove permanently' }).click();
+    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('0', {
+      timeout: 60_000,
+    });
+
+    await page.goto(readerUrl);
+    await page.getByRole('button', { name: /Aids/ }).click();
+    const notice = page.getByTestId('reader-vocabulary-notice');
+    await expect(notice).toBeVisible({ timeout: 60_000 });
+    await expect(notice).toContainText('marked as new');
+    await expect(notice.getByRole('link', { name: 'Vocabulary settings' })).toBeVisible();
   });
 
   test('names the exact failure for a package it cannot read', async ({ page }) => {

@@ -27,7 +27,7 @@ describe('SourceMappingStore', () => {
   it('starts empty and unloaded', () => {
     expect(store.mappings()).toEqual([]);
     expect(store.loaded()).toBe(false);
-    expect(store.hasEnabled()).toBe(false);
+    expect(store.hasIncluded()).toBe(false);
   });
 
   it('adds a mapping enabled by default', async () => {
@@ -36,7 +36,7 @@ describe('SourceMappingStore', () => {
     expect(added).not.toBeNull();
     expect(store.mappings()).toHaveLength(1);
     expect(store.mappings()[0].enabled).toBe(true);
-    expect(store.hasEnabled()).toBe(true);
+    expect(store.hasIncluded()).toBe(true);
   });
 
   it('persists what it added', async () => {
@@ -76,11 +76,11 @@ describe('SourceMappingStore', () => {
     const added = await store.add(BASIC);
     if (added === null) return;
 
-    await store.setEnabled(added.id, false);
+    await store.setIncluded(added.id, false);
 
     expect(store.mappings()).toHaveLength(1);
-    expect(store.enabled()).toHaveLength(0);
-    expect(store.hasEnabled()).toBe(false);
+    expect(store.included()).toHaveLength(0);
+    expect(store.hasIncluded()).toBe(false);
   });
 
   it('removes a mapping', async () => {

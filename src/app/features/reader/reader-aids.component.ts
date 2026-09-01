@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
+import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import {
   MAX_TEXT_SCALE,
   MIN_TEXT_SCALE,
@@ -36,14 +38,16 @@ const AIDS: readonly AidOption[] = [
 @Component({
   selector: 'mn-reader-aids',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent],
+  imports: [IconComponent, RouterLink],
   template: `
     <div>
       <button
         type="button"
         class="mn-icon-button anchor-button"
         popovertarget="mn-aids-panel"
-        aria-label="Aids"
+        [attr.aria-label]="
+          vocabularyNotice() === null ? 'Aids' : 'Aids, with a note about word marking'
+        "
       >
         <mn-icon name="aids" />
       </button>
@@ -73,6 +77,13 @@ const AIDS: readonly AidOption[] = [
             />
             <span>{{ aid.label }}</span>
           </label>
+        }
+
+        @if (vocabularyNotice(); as notice) {
+          <p class="vocabulary-notice" data-testid="reader-vocabulary-notice">
+            {{ notice }}
+            <a routerLink="/vocabulary">Vocabulary settings</a>
+          </p>
         }
       </div>
     </div>
@@ -130,6 +141,15 @@ const AIDS: readonly AidOption[] = [
       font-variant-numeric: tabular-nums;
     }
 
+    .vocabulary-notice {
+      margin: 0;
+      padding: var(--space-2);
+      border-radius: var(--radius-control);
+      background: var(--status-warning-soft);
+      color: var(--text-primary);
+      font-size: var(--text-sm);
+    }
+
     .aid {
       display: flex;
       gap: var(--space-3);
@@ -142,6 +162,7 @@ const AIDS: readonly AidOption[] = [
 })
 export class ReaderAidsComponent {
   protected readonly settings = inject(AppSettingsStore);
+  private readonly vocabulary = inject(VocabularyAvailabilityStore);
   protected readonly aids = AIDS;
   protected readonly minScale = MIN_TEXT_SCALE;
   protected readonly maxScale = MAX_TEXT_SCALE;
@@ -151,6 +172,37 @@ export class ReaderAidsComponent {
 
   /** A percentage rather than a bare multiplier, which reads as nothing. */
   protected readonly scaleLabel = computed(() => `${String(Math.round(this.scale() * 100))}%`);
+
+  /**
+   * Why the markers look the way they do, when the reason is not the text.
+   *
+   * Marking is derived from the current vocabulary, so losing that vocabulary
+   * silently repaints every reading — including a story generated from those
+   * very words. This says so beside the switch that draws the markers, which is
+   * the control a learner reaches for when the page suddenly looks wrong.
+   */
+  protected readonly vocabularyNotice = computed(() => {
+    const state = this.vocabulary.state();
+    switch (state.kind) {
+      case 'unknown':
+        return null;
+      case 'unavailable':
+        return `Your vocabulary could not be read, so word marking may be wrong here. ${state.message}`;
+      case 'known':
+        switch (state.availability) {
+          case 'ready':
+            return null;
+          case 'empty':
+            return 'Your vocabulary has no words in it, so every word here is marked as new.';
+          case 'none':
+            return 'You have no vocabulary yet, so no word here is marked as new.';
+        }
+    }
+  });
+
+  constructor() {
+    void this.vocabulary.refresh();
+  }
 
   protected toggleAid(key: AidToggle, event: Event): void {
     void this.settings.setReaderPreference(key, (event.target as HTMLInputElement).checked);

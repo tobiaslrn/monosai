@@ -1,15 +1,25 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
+import { ManualSourceSyncStore } from '../../application/vocabulary/manual-source-sync.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import { VocabularySyncService } from '../../application/vocabulary/vocabulary-sync.service';
 import type { StaleReason } from '../../domain/anki/mapping-validation';
+import { technicalCode } from '../../domain/shared/errors';
 import type { VocabularySourceId } from '../../domain/shared/ids';
 import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
+import { describeSourceRemoval } from '../../domain/vocabulary/source-removal';
 import type {
+  AnkiVocabularySource,
   TextListVocabularySource,
   VocabularySource,
 } from '../../domain/vocabulary/vocabulary-source';
+import {
+  isIncludedInVocabulary,
+  supportsManualSync,
+} from '../../domain/vocabulary/vocabulary-source';
+import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { TextListSourceComponent } from './text-list-source.component';
 
@@ -32,20 +42,8 @@ const STALE_REASONS: Record<StaleReason, string> = {
             <div class="identity">
               <strong>{{ source.label }}</strong>
               <span class="kind">{{ kindLabel(source) }}</span>
-              @if (source.kind === 'anki-connect' && source.automaticSync) {
-                <span class="sync-badge">Auto-sync</span>
-              }
             </div>
             <div class="source-actions">
-              <label class="check">
-                <input
-                  type="checkbox"
-                  [checked]="source.enabled"
-                  [disabled]="refresh.isBusy()"
-                  (change)="setEnabled(source.id, $event)"
-                />
-                <span>Enabled</span>
-              </label>
               @if (source.kind === 'text-list') {
                 <button type="button" class="mn-button" (click)="toggleEdit(source.id)">
                   {{ editingId() === source.id ? 'Close' : 'Edit' }}
@@ -54,14 +52,31 @@ const STALE_REASONS: Record<StaleReason, string> = {
               <button
                 type="button"
                 class="mn-button mn-button--danger"
-                [disabled]="refresh.isBusy()"
-                (click)="remove(source.id)"
+                [disabled]="refresh.isBusy() || manual.isSyncing()"
+                (click)="confirmRemove(source)"
                 [attr.aria-label]="'Remove ' + source.label"
+                data-testid="remove-source"
               >
                 <mn-icon name="delete" /> Remove
               </button>
             </div>
           </div>
+
+          <!--
+            Inclusion is its own row, away from anything about syncing: the two
+            were read as one control, and unticking the box to stop background
+            reads emptied the vocabulary instead.
+          -->
+          <label class="check inclusion">
+            <input
+              type="checkbox"
+              [checked]="isIncluded(source)"
+              [disabled]="refresh.isBusy() || manual.isSyncing()"
+              (change)="setIncluded(source.id, $event)"
+              data-testid="include-source"
+            />
+            <span>Include in vocabulary</span>
+          </label>
 
           @if (source.kind === 'text-list') {
             @if (editingId() === source.id) {
@@ -132,6 +147,43 @@ const STALE_REASONS: Record<StaleReason, string> = {
             </p>
           }
 
+          @if (syncable(source)) {
+            <div class="sync" role="group" [attr.aria-label]="'Syncing ' + source.label">
+              <label class="check">
+                <input
+                  type="checkbox"
+                  [checked]="source.automaticSync"
+                  [disabled]="refresh.isBusy() || manual.isSyncing()"
+                  (change)="setAutomaticSync(source.id, $event)"
+                  data-testid="automatic-sync"
+                />
+                <span>Sync automatically</span>
+              </label>
+              @if (manual.isSyncingSource(source.id)) {
+                <div class="sync-actions">
+                  <span class="details">Syncing…</span>
+                  <button type="button" class="mn-button" (click)="manual.cancel()">Cancel</button>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  class="mn-button"
+                  [disabled]="refresh.isBusy() || manual.isSyncing()"
+                  (click)="syncNow(source)"
+                  [attr.aria-label]="'Sync ' + source.label + ' now'"
+                  data-testid="sync-now"
+                >
+                  Sync now
+                </button>
+              }
+            </div>
+            @if (syncFailure(source.id); as failure) {
+              <p class="stale" role="alert" data-testid="sync-failed">
+                {{ failure }} Your previous vocabulary is unchanged.
+              </p>
+            }
+          }
+
           @if (staleReason(source); as reason) {
             <p class="stale" role="alert">
               {{ staleMessage(reason) }} Reconnect this source to repair it.
@@ -192,8 +244,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
       flex-wrap: wrap;
     }
 
-    .kind,
-    .sync-badge {
+    .kind {
       padding: 0.2rem 0.5rem;
       border-radius: 999px;
       background: var(--surface-raised);
@@ -201,10 +252,21 @@ const STALE_REASONS: Record<StaleReason, string> = {
       font-size: var(--text-sm);
     }
 
-    .sync-badge {
-      background: var(--status-success-soft);
-      color: var(--status-success);
-      font-weight: 600;
+    /* A rule, not decoration: it is what stops the two rows reading as one. */
+    .sync {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      padding-top: var(--space-2);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .sync-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
     }
 
     .fields {
@@ -244,12 +306,24 @@ const STALE_REASONS: Record<StaleReason, string> = {
 export class MappingEditorComponent {
   protected readonly store = inject(SourceMappingStore);
   protected readonly refresh = inject(VocabularyRefreshStore);
+  protected readonly manual = inject(ManualSourceSyncStore);
   private readonly sync = inject(VocabularySyncService);
   private readonly history = inject(SnapshotHistoryStore);
+  private readonly dialog = inject(Dialog);
 
   protected readonly editingId = signal<VocabularySourceId | null>(null);
   protected readonly sourceChangeError = signal<string | null>(null);
-  protected readonly announcement = signal('');
+  private readonly localAnnouncement = signal('');
+
+  /**
+   * One live region for the list.
+   *
+   * A manual sync owns it while it is running or has just finished, because it
+   * is the thing the learner started; otherwise the source edits do.
+   */
+  protected readonly announcement = computed(() =>
+    this.manual.state().kind === 'idle' ? this.localAnnouncement() : this.manual.announcement(),
+  );
   protected readonly deckNames = computed(
     () => this.refresh.catalog()?.decks.map((deck) => deck.name) ?? [],
   );
@@ -262,6 +336,20 @@ export class MappingEditorComponent {
         (this.refresh.resolution()?.stale ?? []).map((entry) => [entry.mapping.id, entry.reason]),
       ),
   );
+
+  protected isIncluded(source: VocabularySource): boolean {
+    return isIncludedInVocabulary(source);
+  }
+
+  protected syncable(source: VocabularySource): source is AnkiVocabularySource {
+    return supportsManualSync(source);
+  }
+
+  /** The message for a manual sync that failed against this source, with its code. */
+  protected syncFailure(id: VocabularySourceId): string | null {
+    const failure = this.manual.failureFor(id);
+    return failure === null ? null : `${failure.message} (${technicalCode(failure)})`;
+  }
 
   protected kindLabel(source: VocabularySource): string {
     switch (source.kind) {
@@ -346,13 +434,60 @@ export class MappingEditorComponent {
     await this.applyConnectedSourceChange();
   }
 
-  protected async setEnabled(id: VocabularySourceId, event: Event): Promise<void> {
-    await this.store.setEnabled(id, readChecked(event));
-    await this.rebuildAfterSourceChange('Updated the combined vocabulary.');
+  protected async setIncluded(id: VocabularySourceId, event: Event): Promise<void> {
+    const included = readChecked(event);
+    await this.store.setIncluded(id, included);
+    await this.rebuildAfterSourceChange(
+      included
+        ? 'Included the source in your vocabulary.'
+        : 'Left the source out of your vocabulary. It is still here, and its words come back when you include it again.',
+    );
   }
 
-  protected async remove(id: VocabularySourceId): Promise<void> {
-    await this.store.remove(id);
+  protected async setAutomaticSync(id: VocabularySourceId, event: Event): Promise<void> {
+    const automatic = readChecked(event);
+    await this.store.setAutomaticSync(id, automatic);
+    this.localAnnouncement.set(
+      automatic
+        ? 'Monosai will read this source automatically.'
+        : 'Automatic syncing is off for this source. Its words stay in your vocabulary.',
+    );
+  }
+
+  /** Reads one source again on demand, then reloads what the page shows. */
+  protected async syncNow(source: AnkiVocabularySource): Promise<void> {
+    await this.manual.syncNow(source);
+    if (this.manual.state().kind === 'complete') {
+      await this.history.load();
+    }
+  }
+
+  /**
+   * Asks before removing a source, naming what goes with it.
+   *
+   * Removing is the one action here that cannot be undone: the stored read goes
+   * with the source, and rebuilding it means connecting the source again. The
+   * dialog opens with the safe answer focused, so the press that opened it
+   * cannot carry through into confirming it.
+   */
+  protected async confirmRemove(source: VocabularySource): Promise<void> {
+    const plan = describeSourceRemoval(source, {
+      sources: this.store.sources(),
+      storyCount: this.history.activeEntry()?.storyCount ?? 0,
+    });
+    const confirmed = await openConfirmDialog(this.dialog, {
+      title: plan.title,
+      message: 'This cannot be undone. It permanently removes:',
+      details: plan.removes,
+      footnote: `${plan.preserves.join(' and ')} are not affected. To keep the source but leave its words out, clear "Include in vocabulary" instead.`,
+      confirmLabel: 'Remove permanently',
+      cancelLabel: 'Keep it',
+      tone: 'danger',
+    });
+    if (!confirmed) {
+      return;
+    }
+    await this.store.remove(source.id);
     await this.rebuildAfterSourceChange('Removed the source and updated the vocabulary.');
   }
 
@@ -360,7 +495,7 @@ export class MappingEditorComponent {
     await this.refresh.refreshAndCommit();
     if (this.refresh.state().kind === 'complete') {
       this.sourceChangeError.set(null);
-      this.announcement.set('Updated the source and combined vocabulary.');
+      this.localAnnouncement.set('Updated the source and combined vocabulary.');
       await this.history.load();
     }
   }
@@ -372,7 +507,7 @@ export class MappingEditorComponent {
       return;
     }
     this.sourceChangeError.set(null);
-    this.announcement.set(successMessage);
+    this.localAnnouncement.set(successMessage);
     await this.history.load();
   }
 }

@@ -178,9 +178,9 @@ export class VocabularyRefreshStore {
   }
 
   /**
-   * Reads every enabled mapping and prepares a snapshot for confirmation.
+   * Reads every included mapping and prepares a snapshot for confirmation.
    *
-   * All enabled mappings are combined into one snapshot; there is deliberately
+   * All included mappings are combined into one snapshot; there is deliberately
    * no per-mapping or per-generation source selection, and the mappings are
    * read from the store rather than passed in so a caller cannot refresh
    * against a list the editor is not showing. Nothing is stored here — the
@@ -212,7 +212,7 @@ export class VocabularyRefreshStore {
           'query-failed',
           resolution !== null && resolution.stale.length > 0
             ? 'Some vocabulary sources no longer match your collection. Repair or remove them, then refresh again.'
-            : 'Enable at least one vocabulary source before refreshing.',
+            : 'Include at least one vocabulary source before refreshing.',
         ),
       );
       return;

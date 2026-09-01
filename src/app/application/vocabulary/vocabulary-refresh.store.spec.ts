@@ -49,7 +49,7 @@ describe('VocabularyRefreshStore', () => {
       if (!mapping.enabled) {
         const added = sources.mappings().at(-1);
         if (added !== undefined) {
-          await sources.setEnabled(added.id, false);
+          await sources.setIncluded(added.id, false);
         }
       }
     }
