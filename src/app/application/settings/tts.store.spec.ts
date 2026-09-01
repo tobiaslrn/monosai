@@ -249,6 +249,104 @@ describe('TtsStore', () => {
     expect(provider.calls).toBe(0);
   });
 
+  /**
+   * A provider that accepts the request and never answers is the case the Stop
+   * control exists for: the request itself times out after a minute, which is
+   * far longer than a learner will sit in front of "Playing…".
+   */
+  it('stops a test that is still waiting, and says the test was stopped', async () => {
+    const store = await ready();
+    store.setDraft(CONFIGURED);
+    await store.save();
+    let aborted = false;
+    provider.testConfiguration = (_config, signal) =>
+      new Promise((resolve) => {
+        signal?.addEventListener('abort', () => {
+          aborted = true;
+          resolve({
+            ok: false,
+            error: aiError('cancelled', 'tts-test', 'The request was cancelled.'),
+          });
+        });
+      });
+
+    const pending = store.test();
+    await Promise.resolve();
+    expect(store.action()).toBe('testing');
+
+    store.cancelTest();
+    await pending;
+
+    expect(aborted).toBe(true);
+    expect(store.action()).toBe('idle');
+    expect(store.testCancelled()).toBe(true);
+    // Stopping proves nothing either way, so nothing is recorded as a failure.
+    expect(store.testFailure()).toBeNull();
+    expect(store.readiness()).toBe('untested');
+  });
+
+  it('forgets that a test was stopped once another one starts', async () => {
+    const store = await ready();
+    store.setDraft(CONFIGURED);
+    await store.save();
+    store.cancelTest();
+    expect(store.testCancelled()).toBe(false);
+
+    const pending = store.test();
+    store.cancelTest();
+    await pending;
+    expect(store.testCancelled()).toBe(true);
+
+    await store.test();
+
+    expect(store.testCancelled()).toBe(false);
+    expect(store.readiness()).toBe('ready');
+  });
+
+  /**
+   * The field is cleared to be retyped, not to ask for half speed. Storing the
+   * minimum there left a learner with permanent half-speed narration, a retired
+   * model test, and every clip made at the old speed out of reach.
+   */
+  it('leaves the saved speed alone when the field holds no number', async () => {
+    const store = await ready();
+    store.setDraft({ ...CONFIGURED, speed: 1.5 });
+    await store.test();
+
+    // What a field with nothing usable in it holds: no number at all.
+    store.setDraft({ speed: Number.NaN });
+    expect(store.hasUnsavedChanges()).toBe(false);
+    await store.save();
+
+    expect(settings.tts.speed).toBe(1.5);
+    // Nothing was written, so the test that vouches for this voice still does.
+    expect(store.readiness()).toBe('ready');
+  });
+
+  /**
+   * Clips are keyed by the configuration that produced them, so a voice change
+   * hides them rather than deleting them (ADR 0042) — and setting the voice
+   * back has to bring exactly the same key back with it.
+   */
+  it('restores the previous test, and its fingerprint, when a voice is set back', async () => {
+    const store = await ready();
+    store.setDraft(CONFIGURED);
+    await store.test();
+    const original = settings.tts.lastTestFingerprint;
+
+    store.setDraft({ voiceId: 'kaede' });
+    await store.save();
+    expect(store.readiness()).toBe('stale');
+    // Nothing about the change deletes the evidence of the earlier test.
+    expect(settings.tts.lastTestFingerprint).toBe(original);
+
+    store.setDraft({ voiceId: FAKE_OPENROUTER.voice });
+    await store.save();
+
+    expect(store.readiness()).toBe('ready');
+    expect(settings.tts.lastTestFingerprint).toBe(original);
+  });
+
   it('surfaces a storage failure when the result cannot be stored', async () => {
     const store = await ready();
     store.setDraft(CONFIGURED);
