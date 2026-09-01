@@ -1,15 +1,21 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ImportStore } from '../../application/reading/import.store';
+import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
 
 /**
- * Step 1 of Add text: paste Japanese text.
+ * The pasted-text field of Add text, with its title and its character counter.
+ *
+ * It was once step 1 of a stepper and still carried that shape's `tabpanel`
+ * role, with no tablist and no tab anywhere on the page: a screen reader
+ * announced "tab panel" over a plain form field and offered a tab to move to
+ * that did not exist. Add text is one form, and this is one field group in it.
  */
 @Component({
   selector: 'mn-text-input-step',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div role="tabpanel" id="mn-panel-paste" class="mn-field">
+    <div class="mn-field">
       <label for="mn-import-text">Japanese text</label>
       <textarea
         id="mn-import-text"
@@ -24,8 +30,7 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
         (input)="onPaste($event)"
       ></textarea>
       <p id="mn-import-count" class="count" [class.is-over]="isOverLimit()">
-        {{ store.characterCount().toLocaleString('en') }} of
-        {{ limit.toLocaleString('en') }} characters
+        {{ formatCount(store.characterCount()) }} of {{ formatCount(limit) }} characters
       </p>
       @if (isOverLimit()) {
         <p id="mn-import-limit-hint" class="limit-hint" role="alert">{{ overLimitMessage() }}</p>
@@ -89,10 +94,11 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
 export class TextInputStepComponent {
   protected readonly store = inject(ImportStore);
   protected readonly limit = MAXIMUM_IMPORT_CHARACTERS;
-  protected readonly overLimitMessage = computed(() => {
-    const excess = this.store.characterCount() - this.limit;
-    return `Remove ${String(excess)} ${excess === 1 ? 'character' : 'characters'} to continue.`;
-  });
+  protected readonly formatCount = formatCount;
+  protected readonly overLimitMessage = computed(
+    () =>
+      `Remove ${formatCountOf(this.store.characterCount() - this.limit, 'character')} to continue.`,
+  );
 
   protected isOverLimit(): boolean {
     return this.store.characterCount() > MAXIMUM_IMPORT_CHARACTERS;

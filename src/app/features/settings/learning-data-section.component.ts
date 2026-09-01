@@ -5,6 +5,7 @@ import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-hist
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
 import type { VocabularySourceKind } from '../../domain/vocabulary/vocabulary-source';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { formatCountOf } from '../../domain/shared/locale';
 
 const SOURCE_LABELS: Record<VocabularySourceKind, string> = {
   'anki-connect': 'AnkiConnect',
@@ -22,7 +23,7 @@ export function formatVocabularyState(snapshot: VocabularyStatusSnapshot | null)
 
   const sources = [...new Set(snapshot.sourceKinds.map((kind) => SOURCE_LABELS[kind]))];
   const source = sources.length > 0 ? sources.join(' + ') : 'Source not recorded';
-  return `${snapshot.uniqueEntryCount.toLocaleString('en')} unique expressions · ${source}`;
+  return `${formatCountOf(snapshot.uniqueEntryCount, 'unique expression')} · ${source}`;
 }
 
 /**

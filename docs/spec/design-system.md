@@ -264,6 +264,34 @@ Two exceptions:
 A format used in two places is used the same way in both. A counter, a count, a
 character limit, and a duration each have one form across the application.
 
+### Numbers, dates, and one locale
+
+Monosai is written in English and only in English: every label, hint, and error
+exists once, with no translation layer, under `<html lang="en">`. **Numbers and
+dates are therefore both formatted in `en`, explicitly, and never in whatever
+locale the browser happens to carry.** Following the browser for one and not
+the other is what produced `31.8.2026, 17:26:40` beside `72 unique expressions`
+on the same page, and a `50,000` character limit on a browser that writes
+`50.000`.
+
+The formatters live in `src/app/domain/shared/locale.ts` and nothing else
+formats a number or a date:
+
+- **A count** is grouped: `3,118 characters`, `50,000 characters`. The singular
+  is used for exactly one: `1 character`.
+- **A day** is `Aug 31, 2026` — a named month, because `8/31` and `31/8` are
+  the same six characters read two ways.
+- **A day with a time** is `Aug 31, 2026, 5:26 PM`. Seconds are not shown; no
+  screen has ever needed them.
+- **A recent day** is said in words — `today`, `yesterday`, `3 days ago` — and
+  falls back to the date once counting days stops being useful.
+
+Calling `toLocaleString()`, `toLocaleDateString()`, or `toLocaleTimeString()`
+with no locale argument is a defect anywhere in the application. Japanese is
+content, not a format: it is never passed through these, and it carries
+`lang="ja"` where it is rendered. See
+[ADR 0042](../decisions/0042-cross-tab-reading-mutations.md).
+
 ## 9. State
 
 ### Reporting
@@ -281,6 +309,14 @@ Every state change that is visible has a screen-reader equivalent, whether or
 not it is expressed in words on screen. A player that deliberately prints
 nothing still announces its position, because the reason for the silence is
 visual economy, not secrecy.
+
+**A request the browser can decline reports every answer it has.** Granted,
+declined, not available here, and could not be completed are four different
+situations and get four different sentences; a control that leaves the screen
+character-for-character unchanged has reported that it did nothing. The report
+says what the browser did, never what it will do — "it may grant this later" is
+as far as a promise about browser behaviour is allowed to go, and a retryable
+request stays enabled to match.
 
 ### Waiting
 

@@ -69,8 +69,9 @@ describe('relativeDay', () => {
     expect(relativeDay(new Date(2026, 7, 18, 9, 0, 0).getTime(), noon)).toBe('3 days ago');
   });
 
-  it('falls back to a date once a relative day stops being useful', () => {
+  /** The application's one locale, not the browser's. See ADR 0042 and §8. */
+  it('falls back to a date in the application locale once a day count stops helping', () => {
     const old = new Date(2026, 0, 4, 9, 0, 0).getTime();
-    expect(relativeDay(old, noon)).toBe(new Date(old).toLocaleDateString());
+    expect(relativeDay(old, noon)).toBe('Jan 4, 2026');
   });
 });
