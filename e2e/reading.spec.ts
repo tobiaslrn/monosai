@@ -187,7 +187,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   });
 
   test('does not leave reader controls on a missing reading', async ({ page }) => {
-    await page.goto('./#/reader/does-not-exist');
+    // A well-formed id that names nothing: the reading was there and is not
+    // any more. A segment that is not a UUID is a different screen (ADR 0042).
+    await page.goto('./#/reader/00000000-0000-4000-8000-000000000000');
 
     await expect(
       page.getByRole('heading', { name: 'Reading unavailable', level: 1 }),

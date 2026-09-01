@@ -25,7 +25,10 @@ test.describe('two tabs on one library', () => {
     await card.getByRole('button', { name: 'Actions for Cross-tab reading' }).click();
     await card.getByRole('menuitem', { name: 'Delete' }).click();
     await first.getByRole('button', { name: 'Delete permanently' }).click();
-    await expect(first.getByText('Cross-tab reading')).toHaveCount(0);
+    // The row, not the words: both tabs name the reading as they announce it.
+    await expect(first.getByRole('article').filter({ hasText: 'Cross-tab reading' })).toHaveCount(
+      0,
+    );
 
     // No reload in the second tab: it must correct itself.
     await expect(second).toHaveURL(/#\/library/);
@@ -46,7 +49,9 @@ test.describe('two tabs on one library', () => {
     await card.getByRole('menuitem', { name: 'Delete' }).click();
     await first.getByRole('button', { name: 'Delete permanently' }).click();
 
-    await expect(second.getByText('Shelf reading')).toHaveCount(0);
+    await expect(second.getByRole('article').filter({ hasText: 'Shelf reading' })).toHaveCount(0);
+    // The other tab says why the row went, rather than silently dropping it.
+    await expect(second.getByRole('status')).toContainText('Shelf reading');
   });
 });
 
