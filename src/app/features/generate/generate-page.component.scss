@@ -25,6 +25,12 @@
   min-height: 540px;
 }
 
+.leave-hint {
+  max-width: 34rem;
+  margin: var(--space-3) 0 0;
+  text-align: center;
+}
+
 .cancel {
   margin-top: auto;
 }

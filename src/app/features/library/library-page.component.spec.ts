@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
+import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { LibraryStore } from '../../application/reading/library.store';
@@ -18,6 +19,11 @@ import { storageError } from '../../domain/storage/storage-error';
 import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/match-media';
 import { FakeReadingMutationChannel } from '../../../testing/reading-mutation-channel-fake';
 import { FakeReadingRepository } from '../../../testing/reading-repository-fake';
+import {
+  FakeGenerationJobsStore,
+  FakeGenerationRun,
+  fakeGenerationJob,
+} from '../../../testing/generation-job-fakes';
 import { FILTER_VISIBILITY_THRESHOLD, LibraryPageComponent } from './library-page.component';
 
 function reading(
@@ -93,6 +99,7 @@ describe('LibraryPageComponent', () => {
   let translationJob: FakeJobStore;
   let audioJob: FakeJobStore;
   let playback: FakePlaybackStore;
+  let jobs: FakeGenerationJobsStore;
 
   beforeEach(() => {
     media = installFakeMatchMedia(1280);
@@ -100,6 +107,7 @@ describe('LibraryPageComponent', () => {
     translationJob = new FakeJobStore();
     audioJob = new FakeJobStore();
     playback = new FakePlaybackStore();
+    jobs = new FakeGenerationJobsStore();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -110,6 +118,7 @@ describe('LibraryPageComponent', () => {
         { provide: TranslationJobStore, useValue: translationJob },
         { provide: AudioJobStore, useValue: audioJob },
         { provide: AudioPlaybackStore, useValue: playback },
+        { provide: GenerationJobsStore, useValue: jobs },
       ],
     });
   });
@@ -406,5 +415,79 @@ describe('LibraryPageComponent', () => {
     expect(alert?.textContent).toContain('could not be loaded');
     expect(alert?.textContent).toContain('Nothing was changed or deleted');
     expect(alert?.querySelector('button')?.textContent).toContain('Try again');
+  });
+
+  it('lists a story being written above the shelf, naming its stage', async () => {
+    repository.readings = [reading('a', 'imported', 1_000)];
+    jobs.setJobs([fakeGenerationJob('job-1', new FakeGenerationRun({ kind: 'writing' }))]);
+    const fixture = await render();
+
+    const card = element(fixture).querySelector('mn-generation-job-card');
+    expect(card?.textContent).toContain('A cat visits the market');
+    expect(card?.textContent).toContain('Being written');
+    expect(card?.textContent).toContain('Generating your story');
+    expect(card?.querySelector('a')?.getAttribute('href')).toBe('/generate/job-1');
+    // Above the shelf, so starting one and leaving has a visible result.
+    const rows = [...element(fixture).querySelectorAll('mn-generation-job-card, mn-reading-card')];
+    expect(rows[0]?.tagName.toLowerCase()).toBe('mn-generation-job-card');
+  });
+
+  it('keeps a stopped generation on the shelf and marks it as needing attention', async () => {
+    jobs.setJobs([
+      fakeGenerationJob(
+        'job-2',
+        new FakeGenerationRun({
+          kind: 'failed',
+          error: { domain: 'ai', task: 'story-generation', code: 'unknown', message: 'No.' },
+          during: 'writing',
+        }),
+      ),
+    ]);
+    const fixture = await render();
+
+    const card = element(fixture).querySelector('mn-generation-job-card');
+    expect(card?.textContent).toContain('Needs attention');
+    // The shelf is empty, but the run is not nothing: the way in is not shown
+    // in place of a result the learner still has to deal with.
+    expect(element(fixture).querySelector('.empty-state')).toBeNull();
+  });
+
+  it('dismisses a stopped generation without asking, and says nothing was saved', async () => {
+    jobs.setJobs([
+      fakeGenerationJob('job-3', new FakeGenerationRun({ kind: 'cancelled', during: 'writing' })),
+    ]);
+    const fixture = await render();
+
+    element(fixture).querySelector<HTMLButtonElement>('.dismiss')?.click();
+    await settle(fixture);
+
+    expect(jobs.dismissed.map(String)).toEqual(['job-3']);
+    expect(element(fixture).querySelector('[role="status"]')?.textContent).toContain(
+      'Nothing was saved',
+    );
+  });
+
+  it('confirms before stopping a story that is still being written', async () => {
+    jobs.setJobs([fakeGenerationJob('job-4', new FakeGenerationRun({ kind: 'writing' }))]);
+    const fixture = await render();
+
+    element(fixture).querySelector<HTMLButtonElement>('.dismiss')?.click();
+    await settle(fixture);
+
+    const dialog = document.querySelector('.cdk-overlay-container');
+    expect(dialog?.textContent).toContain('Stop writing this story?');
+    expect(jobs.dismissed).toHaveLength(0);
+  });
+
+  it('hides generations while the shelf is filtered to imported readings', async () => {
+    repository.readings = shelf();
+    jobs.setJobs([fakeGenerationJob('job-5')]);
+    const fixture = await render();
+
+    const chips = [...element(fixture).querySelectorAll<HTMLButtonElement>('.chip')];
+    chips.find((chip) => chip.textContent.trim() === 'Imported')?.click();
+    await settle(fixture);
+
+    expect(element(fixture).querySelectorAll('mn-generation-job-card')).toHaveLength(0);
   });
 });

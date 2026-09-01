@@ -2616,3 +2616,46 @@ throughout.
   first is reflected in the second's reader and in its Library without a
   reload. The same file scans Add text with axe and asserts the malformed and
   the missing link screens say different, accurate things.
+
+## Backgrounded story generation
+
+### Delivered
+
+- A story is written by a background job, not by the Generate screen
+  ([ADR 0044](decisions/0044-backgrounded-story-generation.md)). The
+  root-provided `GenerationJobsStore` owns the runs, giving each one its own
+  `GenerationStore` in its own environment injector, so the state machine keeps
+  its single abort controller and its inputs captured before the first request
+  while up to three stories are written at once.
+- Leaving the Generate screen no longer aborts the run it started. The screen is
+  now a view of a job: `generate/:jobId` shows the run named by the segment,
+  guarded by the same well-formed-id `canMatch` the reader uses, and starting a
+  run replaces the address with the job's so Back does not lead to a submitted
+  form.
+- The Library lists every run that is not saved as a muted **Story generations** row
+  of the same shape and height as the reading it will become, naming the stage
+  the wait screen names, and links back to it. A saved story replaces its row
+  and is announced in the Library's live region; a cancelled, failed, or invalid
+  run keeps its row, marked **Needs attention**, until it is dismissed.
+  Dismissing a run that is still being written asks first.
+- Runs belong to the tab that started them. `beforeunload` warns while any run
+  is in flight, and an address for a job this tab does not have says the
+  generation is no longer running rather than showing an empty form. The busy
+  reason moved from the per-run store to the registry, where one key cannot be
+  cleared by one run while another still holds it.
+- No stored row changed shape, so no Dexie schema version was added.
+
+### Verification
+
+- `generation-jobs.store.spec.ts` runs the real pipeline against the generation
+  harness: a story finishes after its screen is gone, a watched job keeps its
+  saved state until released, three runs go at once and a fourth is refused,
+  a dismissed run saves nothing, and one busy reason survives runs ending
+  independently.
+- TestBed coverage for the new Library row and for the Generate screen's four
+  states — the form, a watched run, an addressed run this tab does not have, and
+  the saved panel.
+- `e2e/generation.spec.ts` walks the journey: a run held at the auxiliary stage
+  is left for the Library, listed there with its stage, reopened from its row,
+  cancelled, kept as needing attention, and dismissed; and a run left alone
+  puts its story in the Library the learner walked back to.

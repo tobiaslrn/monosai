@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import {
   applyDecisions,
@@ -44,7 +44,6 @@ import { ExceptionPolicyStore } from '../settings/exception-policy.store';
 import { AppSettingsStore } from '../settings/app-settings.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
-import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
 import { StoryAssemblyService, type AcceptedSentence } from './story-assembly.service';
@@ -76,7 +75,8 @@ export interface InvalidDraft {
  * a single transaction that either writes the whole story or writes nothing.
  *
  * `invalid-draft` is a state, not a record. It lives in this store and dies
- * with the screen; there is deliberately no path from it to storage. Only a
+ * with the job that produced it; there is deliberately no path from it to
+ * storage. Only a
  * structural failure reaches it — unknown words the repairs could not replace
  * are saved with the story and marked in the reader instead.
  */
@@ -213,8 +213,9 @@ function candidateKey(token: Token): string {
 /**
  * One generation, from prerequisites through to a saved story.
  *
- * The store is provided by the Generate page rather than at the root, so
- * leaving the screen discards the draft and stops whatever is in flight. Every
+ * One instance is one run. `GenerationJobsStore` creates a store per job in its
+ * own environment injector rather than sharing a singleton, so several stories
+ * can be written at once without sharing an abort controller or a draft. Every
  * captured input is taken before the first request, so changing a setting
  * mid-run cannot change what the running story is judged against.
  */
@@ -234,7 +235,6 @@ export class GenerationStore {
   private readonly enrichmentKeys = inject(EnrichmentKeysService);
   private readonly translationService = inject(TranslationService);
   private readonly grammarAnalysisService = inject(GrammarAnalysisService);
-  private readonly busyRegistry = inject(AppBusyRegistry);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly stateSignal = signal<GenerationState>(IDLE);
@@ -283,15 +283,6 @@ export class GenerationStore {
     const state = this.stateSignal();
     return state.kind === 'failed' && state.during === 'finalizing' && this.builtDraft !== null;
   });
-
-  constructor() {
-    effect((onCleanup) => {
-      this.busyRegistry.setBusy('generation', this.isBusy() ? 'a story is being generated' : null);
-      onCleanup(() => {
-        this.busyRegistry.setBusy('generation', null);
-      });
-    });
-  }
 
   /**
    * Runs one generation.

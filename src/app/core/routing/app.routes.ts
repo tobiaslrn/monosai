@@ -1,6 +1,7 @@
 import type { Routes } from '@angular/router';
 import { unsavedImportGuard } from '../../features/add-text/unsaved-import.guard';
 import { firstUseRedirect } from './first-use.resolver';
+import { wellFormedGenerationJobLink } from './generation-job-link.guard';
 import { wellFormedReadingLink } from './reading-link.guard';
 
 export const APP_ROUTES: Routes = [
@@ -20,6 +21,17 @@ export const APP_ROUTES: Routes = [
   {
     path: 'generate',
     title: 'Generate · Monosai',
+    loadComponent: () =>
+      import('../../features/generate/generate-page.component').then(
+        (m) => m.GeneratePageComponent,
+      ),
+  },
+  {
+    // A generation the learner left running. Same screen, addressed by job, so
+    // a row in the library can lead back to the run it started.
+    path: 'generate/:jobId',
+    title: 'Generate · Monosai',
+    canMatch: [wellFormedGenerationJobLink],
     loadComponent: () =>
       import('../../features/generate/generate-page.component').then(
         (m) => m.GeneratePageComponent,

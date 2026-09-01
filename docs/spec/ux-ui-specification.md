@@ -483,6 +483,26 @@ saved title and **Open story** as the primary action.
 
 Cancel remains available until saving begins. During saving it is disabled for the brief transaction. A user cancellation discards the entire story even if auxiliary results had completed.
 
+### Leaving a generation running
+
+The generation screen says that the learner may go back to their library while
+the story is written. Leaving it does not stop the run. Up to three stories may
+be written at once; while three are running, the form explains that this one can
+start when one of them finishes.
+
+A run the learner has left is a muted Library row under **Story generations**, above
+the date groups, naming the same stage the generation screen names. Its link
+returns to that run's generation screen, addressed as `#/generate/<jobId>`. When
+the story is saved the row is replaced by the reading itself, announced in the
+Library's live region. A run that stopped — cancelled, failed, or an invalid
+draft — keeps its row, marked **Needs attention**, until it is dismissed;
+dismissing a run that is still being written asks first, because it stops
+requests that have already been paid for.
+
+Runs belong to the tab that started them. Reloading or closing the tab warns
+first and ends every run in it; an address for a run that is no longer in this
+tab says so and offers a new story and the library.
+
 ### Invalid draft
 
 Reached only when repair could not give the story the shape that was asked for; unknown words alone save with the story and are marked in the reader. Show the unsaved Japanese with unknown markers, an issue list, repair-attempt count, and actions **Try a new generation**, **Change premise/instructions**, and **Close**. No Save anyway action exists. Closing loses the draft after confirmation.

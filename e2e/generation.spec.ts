@@ -353,3 +353,73 @@ test.describe('generating a story', () => {
     expect(rows['readings']).toBe(0);
   });
 });
+
+test.describe('generating in the background', () => {
+  test.use({ storageState: GENERATION_READY_STATE });
+
+  test('keeps writing while the learner is in the library @smoke', async ({ page }) => {
+    test.setTimeout(SETUP_TIMEOUT);
+    // Both auxiliary branches stay in flight, so the run is still working for
+    // as long as this test needs it to be.
+    await prepareGeneration(page, {
+      generation: { stories: [STRICT_STORY], grammar: ['hang'], translations: ['hang'] },
+    });
+
+    await openGenerate(page);
+    await page.getByTestId('premise').fill(PREMISE);
+    await page.getByTestId('story-length').fill('0');
+    await page.getByTestId('generate').click();
+    await expect(page.getByTestId('generation-copy')).toContainText(
+      'Reviewing grammar and translating',
+      { timeout: 60_000 },
+    );
+
+    // Leaving used to abandon the run. In-app navigation only: a reload cannot
+    // resume a request that is already open.
+    await page.getByLabel('Back to library').click();
+    await expect(page).toHaveURL(/#\/library$/);
+
+    const row = page.locator('mn-generation-job-card');
+    await expect(row).toContainText(PREMISE);
+    await expect(row).toContainText('Being written');
+    await expect(row).toContainText('Reviewing grammar and translating');
+
+    // The row leads back to the run it started, not to a fresh form.
+    await row.getByRole('link').click();
+    await expect(page.getByTestId('generation-screen')).toBeVisible();
+    await expect(page.getByTestId('generation-copy')).toContainText(
+      'Reviewing grammar and translating',
+    );
+
+    // A stopped run keeps its row, so a failure the learner was away for is
+    // still there to deal with.
+    await page.getByTestId('cancel-generation').click();
+    await expect(page.getByRole('heading', { name: 'Generation stopped', level: 2 })).toBeVisible();
+    await page.getByLabel('Back to library').click();
+    await expect(row).toContainText('Needs attention');
+
+    await row.getByRole('button', { name: `Dismiss ${PREMISE}` }).click();
+    await expect(page.locator('mn-generation-job-card')).toHaveCount(0);
+    expect((await countOwnedRows(page))['readings']).toBe(0);
+  });
+
+  test('puts the finished story in the library the learner walked back to', async ({ page }) => {
+    test.setTimeout(SETUP_TIMEOUT);
+    await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
+
+    await openGenerate(page);
+    await page.getByTestId('premise').fill(PREMISE);
+    await page.getByTestId('story-length').fill('0');
+    await page.getByTestId('generate').click();
+    await expect(page.getByTestId('generation-screen')).toBeVisible();
+
+    await page.getByLabel('Back to library').click();
+
+    // The story arrives where the learner is, and the row it replaces goes.
+    await expect(page.getByRole('link', { name: STRICT_STORY.titleJa })).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.locator('mn-generation-job-card')).toHaveCount(0);
+    expect((await countOwnedRows(page))['readings']).toBe(1);
+  });
+});
