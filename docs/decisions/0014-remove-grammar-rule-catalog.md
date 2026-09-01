@@ -57,9 +57,8 @@ guidance string — which catches the same class of authoring slip without a
 
 ### The measured defects
 
-The catalog is Monosai-authored content, so its defects are ours to fix, and
-`docs/IMPLEMENTATION_STATUS.md` recorded a **full manual 256-entry language
-review as a release gate**. Confirmed before this decision, in addition to the
+The catalog is Monosai-authored content, so its defects are ours to fix, and a
+**full manual 256-entry language review** was recorded as a release gate. Confirmed before this decision, in addition to the
 id/pattern disagreements above:
 
 - `mn-n2-you-de-wa` ships an ungrammatical example, `こんな成績ようでは困る。`,

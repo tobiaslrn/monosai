@@ -4,7 +4,7 @@ import angular from 'angular-eslint';
 import importPlugin from 'eslint-plugin-import';
 
 /**
- * Architectural zones (see docs/spec/system-architecture.md):
+ * Architectural zones (see docs/arc42/05-building-block-view.md):
  *
  *   presentation -> application -> domain
  *                        |           ^

@@ -12,9 +12,9 @@ names the *roles* those tokens fill and the rules that govern their use. When
 the two disagree, this document describes the intent and the tokens describe the
 current state — reconcile by changing the tokens.
 
-Screen-by-screen behaviour lives in the [UX/UI specification](ux-ui-specification.md).
-Where that document describes what a particular screen does, this one describes
-what any screen may do.
+This document describes what any screen may do. What a particular screen does is
+described by the screen's own code, and the structure it sits in is described by
+[the architecture documentation](arc42/README.md).
 
 ## 1. Principles
 
@@ -290,7 +290,7 @@ Calling `toLocaleString()`, `toLocaleDateString()`, or `toLocaleTimeString()`
 with no locale argument is a defect anywhere in the application. Japanese is
 content, not a format: it is never passed through these, and it carries
 `lang="ja"` where it is rendered. See
-[ADR 0042](../decisions/0042-cross-tab-reading-mutations.md).
+[ADR 0042](decisions/0042-cross-tab-reading-mutations.md).
 
 ## 9. State
 

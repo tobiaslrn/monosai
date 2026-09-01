@@ -6,8 +6,8 @@ Status: Accepted
 ## Context
 
 A 50,000-character import can be thousands of sentences and tens of thousands
-of token buttons. `docs/spec/implementation-roadmap.md` §5 requires the reader
-to meet a performance/reflow requirement for long readings, which mounting the
+of token buttons. The reader has to meet a performance and reflow requirement
+for long readings, which mounting the
 whole document at once cannot do: every aid toggle (furigana, spacing, status
 markers) re-renders every mounted token, so the render cost has to be bounded
 by what is actually near the viewport, not by reading length.
@@ -36,7 +36,7 @@ the real 50,000-character import budget in `e2e/reading-performance.spec.ts`:
 opening the fixture mounts 4 paragraphs (`windowAround` clamps the radius at
 the very first paragraph, where there is nothing to show on the near side), and
 scrolling to the end of a 200-paragraph reading never exceeds 15 mounted at
-once. See `docs/IMPLEMENTATION_STATUS.md` Milestone 3 for the measured figures.
+once. The figures were measured while this decision was taken.
 
 The three numbers are deliberately small relative to the ceiling: a radius and
 step of 3 mean the window changes in small increments, so an `IntersectionObserver`
