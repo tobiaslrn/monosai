@@ -41,7 +41,11 @@ function formatBytes(bytes: number | null): string {
       <dl>
         <div>
           <dt>Browser storage protection</dt>
-          <dd>{{ persistenceLabel() }}</dd>
+          <!--
+            A live region because the answer to the request below appears here
+            and nowhere else; a refusal changed nothing on screen before.
+          -->
+          <dd aria-live="polite">{{ persistenceLabel() }}</dd>
         </div>
         <div>
           <dt>Approximate usage</dt>
@@ -191,11 +195,30 @@ export class StorageSectionComponent {
   /** Whether the clear that just ran also had to stop something playing. */
   protected readonly stoppedPlayback = signal(false);
 
-  protected readonly persistenceLabel = computed(() =>
-    this.storage.status().persisted
-      ? 'Granted — the browser keeps Monosai data'
-      : 'Not granted — the browser may evict data when space runs low',
-  );
+  /**
+   * What storage protection is, said without promising browser behaviour.
+   *
+   * Each state gets its own sentence. A refusal in particular says that the
+   * browser was asked and declined, and that it may still grant later — which
+   * is why the button stays enabled — rather than repeating the sentence that
+   * was already there before the button was pressed.
+   */
+  protected readonly persistenceLabel = computed(() => {
+    switch (this.storage.persistence()) {
+      case 'granted':
+        return 'Granted — the browser keeps Monosai data';
+      case 'unsupported':
+        return 'Not available — this browser does not offer storage protection';
+      case 'refused':
+        return 'Not granted — the browser declined. It may grant this later once you have used Monosai more.';
+      case 'request-failed':
+        return 'Not granted — the request could not be completed. Nothing was changed.';
+      case 'not-asked':
+        return 'Not granted — the browser may evict data when space runs low';
+      case 'unknown':
+        return 'Not reported by this browser';
+    }
+  });
 
   protected readonly usageLabel = computed(() => formatBytes(this.storage.status().usageBytes));
 

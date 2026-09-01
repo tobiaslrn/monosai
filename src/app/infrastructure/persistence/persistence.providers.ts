@@ -12,6 +12,7 @@ import {
   ID_GENERATOR,
   JOB_REPOSITORY,
   RANDOM_SOURCE,
+  READING_MUTATION_CHANNEL,
   READING_REPOSITORY,
   SETTINGS_REPOSITORY,
   SOURCE_MAPPING_REPOSITORY,
@@ -23,6 +24,7 @@ import {
   BrowserStorageMaintenance,
   resolveMaintenanceDependencies,
 } from './browser-storage-maintenance';
+import { createReadingMutationChannel } from './cross-tab-mutation-channel';
 import { CURRENT_SCHEMA_VERSION } from './migrations';
 import { MonosaiDatabase } from './monosai-db';
 import { DexieCredentialRepository } from './repositories/dexie-credential.repository';
@@ -90,6 +92,10 @@ export function providePersistence(): Provider[] {
         new DexieCredentialRepository(inject(MonosaiDatabase), inject<Clock>(CLOCK)),
     },
     {
+      provide: READING_MUTATION_CHANNEL,
+      useFactory: () => createReadingMutationChannel(inject(DOCUMENT).defaultView),
+    },
+    {
       provide: READING_REPOSITORY,
       useFactory: () => new DexieReadingRepository(inject(MonosaiDatabase), inject<Clock>(CLOCK)),
     },
@@ -122,7 +128,6 @@ export function providePersistence(): Provider[] {
           inject(MonosaiDatabase),
           dependencies.navigatorRef,
           dependencies.caches,
-          inject<Logger>(LOGGER),
         );
       },
     },

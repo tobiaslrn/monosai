@@ -5,13 +5,18 @@ import { AudioPlaybackStore } from '../../application/audio/audio-playback.store
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { LibraryStore } from '../../application/reading/library.store';
-import { CLOCK, READING_REPOSITORY } from '../../application/shared/repository-tokens';
+import {
+  CLOCK,
+  READING_MUTATION_CHANNEL,
+  READING_REPOSITORY,
+} from '../../application/shared/repository-tokens';
 import type { Reading } from '../../domain/reading/reading';
 import type { ReadingId } from '../../domain/shared/ids';
 import { fixedClock } from '../../domain/shared/clock';
 import { readingId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
 import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/match-media';
+import { FakeReadingMutationChannel } from '../../../testing/reading-mutation-channel-fake';
 import { FakeReadingRepository } from '../../../testing/reading-repository-fake';
 import { FILTER_VISIBILITY_THRESHOLD, LibraryPageComponent } from './library-page.component';
 
@@ -101,6 +106,7 @@ describe('LibraryPageComponent', () => {
         LibraryStore,
         { provide: CLOCK, useValue: fixedClock(1_700_000_000_000) },
         { provide: READING_REPOSITORY, useValue: repository },
+        { provide: READING_MUTATION_CHANNEL, useValue: new FakeReadingMutationChannel() },
         { provide: TranslationJobStore, useValue: translationJob },
         { provide: AudioJobStore, useValue: audioJob },
         { provide: AudioPlaybackStore, useValue: playback },

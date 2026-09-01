@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
 import { AppShellComponent } from './core/layout/app-shell.component';
+import { OpenReadingWatcher } from './core/platform/open-reading-watcher.service';
 import { PointerModalityService } from './core/platform/pointer-modality.service';
 import { ErrorScreenComponent } from './shared-ui/error-screen/error-screen.component';
 import { technicalCode } from './domain/shared/errors';
@@ -45,6 +46,11 @@ export class App {
    * else keys off it.
    */
   private readonly pointerModality = inject(PointerModalityService);
+  /**
+   * Started here so a reading deleted in another tab stops being rendered in
+   * this one, whichever route is open when it happens. See ADR 0042.
+   */
+  private readonly openReadingWatcher = inject(OpenReadingWatcher);
   protected readonly technicalCode = technicalCode;
 
   protected retry(): void {

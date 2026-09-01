@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
+import { formatDateTime } from '../../domain/shared/locale';
 /** Shows the one current vocabulary result and its source summary. */
 @Component({
   selector: 'mn-snapshot-history',
@@ -98,6 +99,6 @@ export class SnapshotHistoryComponent {
   protected readonly history = inject(SnapshotHistoryStore);
 
   protected formatted(timestamp: number): string {
-    return new Date(timestamp).toLocaleString();
+    return formatDateTime(timestamp);
   }
 }
