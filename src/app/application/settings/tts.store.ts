@@ -27,6 +27,17 @@ export const MIN_TTS_SPEED = 0.5;
 export const MAX_TTS_SPEED = 2;
 
 /**
+ * Whether a typed speed is a value that may be committed.
+ *
+ * An empty or half-written field is *incomplete input*, not a request for the
+ * minimum: clearing the box to retype used to store 0.5 and leave a learner
+ * with permanent half-speed narration.
+ */
+export function isValidTtsSpeed(speed: number): boolean {
+  return Number.isFinite(speed) && speed >= MIN_TTS_SPEED && speed <= MAX_TTS_SPEED;
+}
+
+/**
  * The exact TTS model, voice, and speed, with their own test.
  *
  * Deliberately a separate store from the text model rather than a mode of one:
@@ -53,6 +64,7 @@ export class TtsStore {
   private readonly speedAppliedSignal = signal<boolean | null>(null);
   private readonly instructionsAppliedSignal = signal<boolean | null>(null);
   private readonly sampleSignal = signal<Blob | null>(null);
+  private readonly testCancelledSignal = signal(false);
 
   private controller: AbortController | null = null;
 
@@ -67,6 +79,14 @@ export class TtsStore {
   readonly speechInstructionsApplied = this.instructionsAppliedSignal.asReadonly();
   /** The verified clip, played only on an explicit action. */
   readonly sample = this.sampleSignal.asReadonly();
+  /**
+   * True when the learner stopped the last test rather than it answering.
+   *
+   * Readiness cannot carry this: a cancelled test proves nothing, so the
+   * configuration is still untested or stale, and only the surface that offers
+   * the retry needs to say which of the two ways it got there.
+   */
+  readonly testCancelled = this.testCancelledSignal.asReadonly();
 
   readonly lastTestedAt = computed(() => this.settingsSignal().lastTestedAt);
   /**
@@ -94,7 +114,9 @@ export class TtsStore {
     return (
       draft.modelId.trim() !== settings.modelId ||
       draft.voiceId.trim() !== settings.voiceId ||
-      draft.speed !== settings.speed
+      // An unusable speed is not a change waiting to be saved. Treating it as
+      // one made every emptied field a write of some other number.
+      (isValidTtsSpeed(draft.speed) && draft.speed !== settings.speed)
     );
   });
 
@@ -310,7 +332,7 @@ export class TtsStore {
     const patch = {
       modelId: draft.modelId.trim(),
       voiceId: resolveTtsVoice(draft.modelId, draft.voiceId),
-      speed: clampSpeed(draft.speed),
+      speed: this.speedToPersist(draft.speed),
       activePresetId: null,
     };
 
@@ -327,6 +349,7 @@ export class TtsStore {
     });
     this.storageFailureSignal.set(null);
     this.testFailureSignal.set(null);
+    this.testCancelledSignal.set(false);
     this.speedAppliedSignal.set(null);
     this.instructionsAppliedSignal.set(null);
     this.sampleSignal.set(null);
@@ -354,6 +377,7 @@ export class TtsStore {
     this.controller = controller;
     this.actionSignal.set('testing');
     this.testFailureSignal.set(null);
+    this.testCancelledSignal.set(false);
     this.sampleSignal.set(null);
 
     const persisted = await this.persistDraft();
@@ -422,6 +446,7 @@ export class TtsStore {
     this.controller = controller;
     this.actionSignal.set('testing');
     this.testFailureSignal.set(null);
+    this.testCancelledSignal.set(false);
     this.sampleSignal.set(null);
     const result = await this.provider.testConfiguration(
       {
@@ -487,10 +512,29 @@ export class TtsStore {
     return preset !== undefined && this.isPresetReady(preset) ? preset : null;
   }
 
+  /** Stops a test that is still waiting, and says so rather than reporting a failure. */
   cancelTest(): void {
+    const wasTesting = this.actionSignal() === 'testing';
     this.controller?.abort();
     this.controller = null;
     this.actionSignal.set('idle');
+    if (wasTesting) {
+      this.testCancelledSignal.set(true);
+    }
+  }
+
+  /**
+   * What a save should write for the speed the field currently holds.
+   *
+   * A value outside the bounds is clamped, because a number was meant; a value
+   * that is not a number at all leaves the saved speed alone, because nothing
+   * was meant yet.
+   */
+  private speedToPersist(draftSpeed: number): number {
+    if (!Number.isFinite(draftSpeed)) {
+      return this.settingsSignal().speed;
+    }
+    return clampSpeed(draftSpeed);
   }
 
   private fingerprintFor(settings: Pick<TtsSettings, 'modelId' | 'voiceId' | 'speed'>): string {

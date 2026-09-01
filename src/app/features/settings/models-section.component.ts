@@ -19,7 +19,16 @@ import type { ConfigurationReadiness } from '../../domain/ai/configuration-readi
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { ModelPickerComponent } from './model-picker.component';
+import { SpeedFieldComponent } from './speed-field.component';
 import { TokenBudgetFieldComponent } from './token-budget-field.component';
+
+/**
+ * Every state the audio configuration can be in, as one surface has to say it.
+ *
+ * Readiness plus the two states a test itself is in, so nothing on screen has
+ * to combine three signals to answer "can this read to me yet".
+ */
+export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
 
 /**
  * The AI configuration, shaped as the tree it actually is.
@@ -33,7 +42,7 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
 @Component({
   selector: 'mn-models-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ModelPickerComponent, TokenBudgetFieldComponent],
+  imports: [ModelPickerComponent, SpeedFieldComponent, TokenBudgetFieldComponent],
   host: {
     '(document:pointerdown)': 'closeConnectionMenuFromOutside($event)',
     '(document:keydown.escape)': 'connectionMenuOpen.set(false)',
@@ -269,17 +278,42 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
         >
           <div class="node-head">
             <h3 id="mn-audio-model-label">Audio</h3>
-            <button
-              type="button"
-              class="status status--action"
-              data-testid="test-tts"
-              [disabled]="
-                tts.draft().modelId === '' || tts.draft().voiceId === '' || tts.action() !== 'idle'
-              "
-              (click)="testAudio()"
-            >
-              {{ tts.action() === 'testing' ? 'Playing…' : 'Preview' }}
-            </button>
+            <!--
+              The same two answers the Text head gives — where this stands, and
+              the press that moves it on — because a speech model that has never
+              been previewed looks identical to one that has, and only the
+              second of them can be generated with.
+            -->
+            <div class="head-status">
+              <span
+                class="status"
+                [class.status--ok]="tts.readiness() === 'ready'"
+                [class.status--bad]="audioStatus() === 'failed'"
+                data-testid="audio-readiness"
+                [title]="audioStatusTitle()"
+                >{{ audioStatusLabel() }}</span
+              >
+              @if (tts.action() === 'testing') {
+                <button
+                  type="button"
+                  class="status status--action"
+                  data-testid="cancel-tts-test"
+                  (click)="tts.cancelTest()"
+                >
+                  Stop
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="status status--action"
+                  data-testid="test-tts"
+                  [disabled]="tts.draft().modelId === '' || tts.draft().voiceId === ''"
+                  (click)="testAudio()"
+                >
+                  Preview
+                </button>
+              }
+            </div>
           </div>
 
           <mn-model-picker
@@ -326,25 +360,33 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
                 />
               }
             </div>
-            <label class="option">
-              <span>Speed</span>
-              <input
-                class="mn-control"
-                type="number"
-                min="0.5"
-                max="2"
-                step="0.05"
+            <div class="option">
+              <span id="mn-speed-label">Speed</span>
+              <mn-speed-field
+                testId="tts-speed-input"
+                labelledBy="mn-speed-label"
+                [value]="tts.settings().speed"
                 [disabled]="!credential.isConfigured()"
-                [value]="tts.draft().speed"
-                (change)="setSpeed($event)"
+                (committed)="setSpeed($event)"
               />
-            </label>
+            </div>
           </div>
 
           <!-- Speed is only ever produced by the model, so the surface says
                which channel carried it rather than implying it took effect. -->
           @if (paceNote(); as note) {
             <p class="hint" data-testid="audio-pace-note">{{ note }}</p>
+          }
+
+          <!--
+            Both sentences are about money and about audio that looks lost, which
+            is what the prose budget keeps room for. The first says why the
+            Preview is a press here when a text model tests itself on selection;
+            the second says where the clips went when a voice changed under a
+            reading that already had audio.
+          -->
+          @if (audioReadinessNote(); as note) {
+            <p class="hint" data-testid="audio-readiness-note">{{ note }}</p>
           }
 
           <!-- The preview is heard, not operated: it starts itself and leaves no player behind. -->
@@ -514,6 +556,21 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
     .status--ok {
       color: var(--status-success);
     }
+    .status--bad {
+      color: var(--status-danger);
+    }
+    /* Where this stands, and the press that moves it on, on one line. */
+    .head-status {
+      display: flex;
+      flex: none;
+      align-items: center;
+      gap: var(--space-2);
+      min-width: 0;
+    }
+    .head-status .status {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .status--action {
       padding: 2px var(--space-2);
       border: 1px solid var(--border-subtle);
@@ -619,6 +676,76 @@ export class ModelsSectionComponent {
       ? 'This model cannot change speaking speed.'
       : 'Speaking speed is produced by the model.';
   });
+  /**
+   * Where the speech configuration stands, in one value the head can render.
+   *
+   * `testing` and `cancelled` are not readiness — a running test proves nothing
+   * yet, and a stopped one proves nothing ever — but they are two of the six
+   * states a learner has to be able to tell apart, so they are resolved here
+   * rather than each being inferred from a different signal at the template.
+   */
+  protected readonly audioStatus = computed<AudioStatus>(() => {
+    if (this.tts.action() === 'testing') {
+      return 'testing';
+    }
+    const readiness = this.tts.readiness();
+    if (this.tts.testCancelled() && readiness !== 'ready') {
+      return 'cancelled';
+    }
+    return readiness;
+  });
+
+  protected readonly audioStatusLabel = computed(
+    () =>
+      ({
+        testing: 'Playing…',
+        cancelled: 'Stopped',
+        ready: 'Ready',
+        untested: 'Not tested',
+        stale: 'Settings changed',
+        failed: 'Failed',
+        'not-configured': 'No model',
+      })[this.audioStatus()],
+  );
+
+  protected readonly audioStatusTitle = computed(
+    () =>
+      ({
+        testing: 'Playing a test clip from this model.',
+        cancelled: 'You stopped the preview, so this configuration is still untested.',
+        ready: 'This model, voice and speed passed their preview.',
+        untested: 'Preview this model before generating audio.',
+        stale: 'The model, voice or speed changed since the last preview.',
+        failed: 'The last preview failed.',
+        'not-configured': 'Choose a speech model and a voice.',
+      })[this.audioStatus()],
+  );
+
+  /**
+   * The one sentence each unready state owes the learner.
+   *
+   * Both are inside the prose budget: one is about a request that costs money,
+   * the other is about audio that has been paid for and looks lost.
+   */
+  protected readonly audioReadinessNote = computed(() => {
+    if (!this.credential.isConfigured() || this.tts.settings().modelId === '') {
+      return null;
+    }
+    switch (this.audioStatus()) {
+      case 'untested':
+        return 'Preview plays one test sentence. Audio can only be generated once it has passed.';
+      case 'cancelled':
+        return 'The preview was stopped, so this configuration is still untested.';
+      case 'stale':
+        return 'Audio saved with the previous settings is kept on this device, but it cannot be played in these ones — a reading may show as having no audio until you generate it again or set the previous voice and speed back.';
+      case 'testing':
+      case 'ready':
+      case 'failed':
+      case 'not-configured':
+        return null;
+    }
+  });
+
   /** The branches open on their own once a learner has set one. */
   protected readonly hasOverrides = computed(
     () => this.text.grammarPresetId() != null || this.text.translationPresetId() != null,
@@ -766,8 +893,9 @@ export class ModelsSectionComponent {
     this.tts.setDraft({ voiceId: (event.target as HTMLInputElement).value });
     void this.tts.save();
   }
-  protected setSpeed(event: Event): void {
-    this.tts.setDraft({ speed: Number((event.target as HTMLInputElement).value) });
+  /** Only ever reached with a speed the field has already accepted. */
+  protected setSpeed(speed: number): void {
+    this.tts.setDraft({ speed });
     void this.tts.save();
   }
   protected testAudio(): void {

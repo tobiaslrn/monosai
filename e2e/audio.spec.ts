@@ -1,8 +1,15 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import { countOwnedRows, importReading, openSentence } from './reading';
-import { stubOpenRouter, type ProviderCalls, type StubOptions } from './openrouter';
+import {
+  expectReadiness,
+  stubOpenRouter,
+  ttsReadiness,
+  type ProviderCalls,
+  type StubOptions,
+} from './openrouter';
 import { TTS_READY_STATE } from './state';
+import { readSettingsRecord } from './storage';
 
 /** Four sentences: short enough to prepare in full, long enough to fail partway. */
 const SENTENCE_COUNT = 4;
@@ -990,5 +997,111 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await waitForPopoverSettled(page);
 
     await expectNoSeriousAccessibilityViolations(page);
+  });
+});
+
+/**
+ * Scenario 19 in the polish audit: the settings that decide what the reader can
+ * do, and what they say while they decide it.
+ *
+ * Every clip is keyed by the configuration that produced it (ADR 0042), so a
+ * changed voice hides clips instead of deleting them. That is defensible only
+ * while both screens say so.
+ */
+test.describe('audio settings and readiness', () => {
+  test.use({ storageState: TTS_READY_STATE });
+
+  /** What the audio node says about itself, beside the Preview that tests it. */
+  function audioStatus(page: Page): Locator {
+    return page.getByTestId('audio-readiness');
+  }
+
+  function ttsSpeed(page: Page): Locator {
+    return page.getByTestId('tts-speed-input');
+  }
+
+  async function storedSpeed(page: Page): Promise<unknown> {
+    const record = await readSettingsRecord(page, 'tts');
+    return (record as { value?: Record<string, unknown> } | null)?.value?.['speed'];
+  }
+
+  test('keeps the clips a changed voice cannot see, and says where they went', async ({ page }) => {
+    await prepareReading(page);
+    const reader = page.url();
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page);
+    expect(await generatedPercent(page)).toBe(100);
+    const clips = await storedClipCount(page);
+    expect(clips).toBe(SENTENCE_COUNT);
+
+    await page.goto('./#/settings');
+    await expect(audioStatus(page)).toHaveText('Ready');
+    await page.getByRole('combobox', { name: 'Voice' }).selectOption('Kore');
+
+    // Settings says what happened, in the words the audit found missing.
+    await expectReadiness(ttsReadiness(page), 'stale');
+    await expect(audioStatus(page)).toHaveText('Settings changed');
+    await expect(page.getByTestId('audio-readiness-note')).toContainText(
+      'Audio saved with the previous settings is kept',
+    );
+
+    await page.goto(reader);
+    await openAudioPlayer(page);
+
+    // And so does the player, rather than showing 100% falling to 0% in silence.
+    await expect(audioPlayer(page).getByTestId('player-voice-mismatch')).toContainText(
+      'other audio settings',
+    );
+    expect(await generatedPercent(page)).toBe(0);
+    expect(await storedClipCount(page), 'nothing was deleted').toBe(clips);
+
+    // Setting the voice back is the offer, and it costs nothing.
+    await page.goto('./#/settings');
+    await page.getByRole('combobox', { name: 'Voice' }).selectOption('sakura');
+    await expectReadiness(ttsReadiness(page), 'ready');
+    await page.goto(reader);
+    await openAudioPlayer(page);
+
+    await expect(audioPlayer(page).getByTestId('player-voice-mismatch')).toHaveCount(0);
+    expect(await generatedPercent(page)).toBe(100);
+  });
+
+  test('stops a preview that is still waiting', async ({ page }) => {
+    // A provider that accepts the request and answers a minute later is what a
+    // learner sitting in front of "Playing…" is actually waiting on.
+    await stubOpenRouter(page, { audioDelayMs: 60_000 });
+    await page.goto('./#/settings');
+    await expect(audioStatus(page)).toHaveText('Ready');
+
+    await page.getByTestId('test-tts').click();
+    await expect(audioStatus(page)).toHaveText('Playing…');
+
+    await page.getByTestId('cancel-tts-test').click();
+
+    await expect(audioStatus(page)).toHaveText('Stopped');
+    await expect(page.getByTestId('audio-readiness-note')).toContainText('still untested');
+    // Stopping is not a failure, and nothing pretends the model answered.
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByTestId('test-tts')).toBeEnabled();
+  });
+
+  test('treats a cleared speed as unfinished input rather than half speed', async ({ page }) => {
+    await stubOpenRouter(page);
+    await page.goto('./#/settings');
+    await ttsSpeed(page).fill('1.5');
+    await ttsSpeed(page).blur();
+    await expect.poll(() => storedSpeed(page)).toBe(1.5);
+
+    await ttsSpeed(page).fill('');
+    await ttsSpeed(page).blur();
+
+    await expect(ttsSpeed(page)).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.getByRole('alert')).toContainText('between 0.5 and 2');
+    expect(await storedSpeed(page), 'the minimum is never what clearing a box meant').toBe(1.5);
+
+    await page.reload();
+    await expect(ttsSpeed(page)).toHaveValue('1.5');
+    expect(await storedSpeed(page)).toBe(1.5);
   });
 });

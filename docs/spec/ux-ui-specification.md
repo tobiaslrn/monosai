@@ -336,9 +336,10 @@ the existing sentence and word popover dismissal rules remain unchanged.
 
 The player is a compact, rounded, elevated card fixed above the viewport bottom
 and centered at desktop widths, and a full-width bar docked to the bottom edge
-below the desktop breakpoint, clearing `env(safe-area-inset-bottom)`. Its height is fixed and it
-never scrolls, because nothing inside it can grow; an open player adds bottom
-clearance to the reading. The sticky reader header and the player sit above the
+below the desktop breakpoint, clearing `env(safe-area-inset-bottom)`. It never
+scrolls, and its height changes only for the one disclosure below; the height is
+published as the reading's bottom clearance, so what is docked beneath it and
+the clearance under the reading follow it rather than assume it. The sticky reader header and the player sit above the
 CDK popover backdrop, so the Audio toggle and player remain reachable alongside
 a sentence or word popover.
 
@@ -348,9 +349,17 @@ over a track that can be dragged. Every slot in that row is always rendered, so
 the card is one height and one set of positions whatever the state, and a clip
 landing or a run ending never reflows the reading beneath it.
 
-**The player prints nothing.** The position, how much of the reading has audio,
-what a stopped run managed, and why playback stopped are all said by the state
-of a control and by a `.mn-visually-hidden` live region — never by a paragraph.
+**The player prints nothing, with one exception.** The position, how much of the
+reading has audio, what a stopped run managed, and why playback stopped are all
+said by the state of a control and by a `.mn-visually-hidden` live region —
+never by a paragraph. The exception is audio the current settings cannot see:
+clips are keyed by the configuration that produced them (ADR 0042), so changing
+a voice takes coverage from full to empty without deleting anything, and a bar
+that empties in silence reads as audio that has been lost and has to be paid for
+twice. That one state prints one line — that the reading's audio was saved in
+other audio settings — with a link to Settings, which is where it can be brought
+back. It is inside the prose budget for exactly the reason the budget has one:
+money and apparent data loss.
 A card that floats over a reading has no room to be a form, and a learner
 reading Japanese does not want an English status report in the corner of their
 eye. Nothing is lost to a screen reader: the wording of the position line, the
@@ -367,9 +376,12 @@ the two contextual slots. An empty slot is held open, and at the end of the line
 an empty one is simply where the line stops. The track underneath spans the full
 width it is measuring.
 
-The centre of the transport is whatever the **primary verb** is: **Generate
-audio** when the reading has no audio at all, and play, pause, resume, read on
-or play again once it has. The one contextual slot is what the band of buttons
+The centre of the transport is whatever the **primary verb** is: **Set up
+audio**, linking to Settings, when no speech model is ready — a first run is the
+one state no icon can explain, and a dead Play beside a gear misreports it —
+**Generate audio** when the reading has no audio at all, and play, pause,
+resume, read on or play again once it has. It is the only control that carries
+its own visible label. The one contextual slot is what the band of buttons
 became:
 
 | State | Control |
@@ -379,7 +391,7 @@ became:
 | A run stopped or failed | **Try again**, what happened in its tooltip |
 | A retry that has produced nothing twice | **Dismiss**, which puts the report away without spending another request |
 | Playback failed | **Dismiss**, what stopped the reading in its tooltip |
-| No audio model | **Set up audio model**, linking to settings |
+| No audio model | Empty: the centre control is the setup, and one screen offers the same link once |
 | Nothing to add | Empty, and its space kept |
 
 - There is **one** track, not one per thing being measured. Playback position and generation coverage share the reading as their denominator, so they compose the way a buffered bar does in any media player: a quiet fill for what has audio, the accent fill for how far playback has reached. The generation fill is what fraction of the *reading* has audio and never the running job's own percentage, so a retry covering the two sentences a run missed is not drawn as half the reading.
@@ -595,6 +607,9 @@ readiness, errors, and retry actions remain visible.
 - API key entry, Save/Replace, Remove, and configured/not-configured indicator stay separate and compact. Never show the saved value or a reveal toggle after save.
 - Story generation and reader audio use the Settings defaults for their capability and offer no per-request model selector. The model actually used is still captured in provenance/cache identity.
 - Story generation token budget remains bounded to 4,096–32,768 (default 16,384). Changing key/model marks matching test evidence stale but preserves cached content.
+- The audio panel renders its own readiness beside the Preview that tests it, in the same place the text panel does: no model, not tested, playing, stopped, ready, failed, or settings changed. A speech model is not tested on selection — a preview costs a request and makes a sound — so the untested state says that the Preview is the test, and the changed state says that clips made with the previous settings are kept and where they went.
+- A running preview can be stopped, and stopping it is reported as stopped rather than as a failure: it proves nothing either way, so the configuration stays untested.
+- Speaking speed is bounded to 0.5–2 (default 1) and behaves as the token budget does. A cleared or out-of-range field is unfinished input: it stays on screen as an error, changes no playback, and never commits — least of all the minimum, which is the one value clearing a box to retype cannot have meant.
 
 ### Generation policy
 

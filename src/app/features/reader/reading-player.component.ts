@@ -29,7 +29,7 @@ export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
  * name and tint say which of them it currently is.
  */
 export interface AuxAction {
-  readonly kind: 'cancel' | 'generate' | 'retry' | 'dismiss' | 'settings';
+  readonly kind: 'cancel' | 'generate' | 'retry' | 'dismiss';
   readonly icon: IconName;
   /** The accessible name, and the whole of what the button says out loud. */
   readonly label: string;
@@ -100,6 +100,20 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       }
 
       <!--
+        The one thing the card prints. Clips are keyed by the settings that made
+        them (ADR 0042), so changing a voice hides every clip made with the old
+        one without deleting anything — and a bar that falls from full to empty
+        with no word said reads as audio that has been lost and paid for twice.
+        The prose budget keeps room for exactly this: money and apparent loss.
+      -->
+      @if (voiceMismatch()) {
+        <p class="notice" data-testid="player-voice-mismatch">
+          Saved in other audio settings.
+          <a routerLink="/settings">Audio settings</a>
+        </p>
+      }
+
+      <!--
         Every control on one line above the track, ranged to the leading edge:
         the transport first, where a thumb already is on a docked card, then the
         mode, then the two contextual slots. An unused slot is held open, and at
@@ -128,6 +142,22 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           dead Play is the one that makes the audio instead.
         -->
         @switch (centreAction()) {
+          @case ('setup') {
+            <!--
+              A reading whose audio needs a model has no Play to press, and a
+              dead Play beside a gear says none of that. The primary control is
+              the setup itself, in the place and the shape Play would have had.
+            -->
+            <a
+              class="primary primary--wide"
+              routerLink="/settings"
+              aria-label="Set up audio model"
+              title="Set up audio model"
+            >
+              <mn-icon name="settings" [size]="20" />
+              <span>Set up audio</span>
+            </a>
+          }
           @case ('generate') {
             <button
               type="button"
@@ -214,43 +244,32 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
         }
 
         @if (auxAction(); as aux) {
-          @if (aux.kind === 'settings') {
-            <a
-              [class]="'slot tone-' + aux.tone"
-              routerLink="/settings"
-              [attr.aria-label]="aux.label"
-              [title]="aux.title"
-            >
-              <mn-icon [name]="aux.icon" [size]="20" />
-            </a>
-          } @else {
-            <button
-              type="button"
-              [class]="'slot tone-' + aux.tone"
-              [attr.aria-label]="aux.label"
-              [title]="aux.title"
-              (click)="pressAux(aux)"
-            >
-              @if (aux.kind === 'cancel') {
-                <!--
+          <button
+            type="button"
+            [class]="'slot tone-' + aux.tone"
+            [attr.aria-label]="aux.label"
+            [title]="aux.title"
+            (click)="pressAux(aux)"
+          >
+            @if (aux.kind === 'cancel') {
+              <!--
                   The run, drawn where the control that stops it is. A count in
                   words underneath said what the ring and the track already say.
                 -->
-                <svg class="ring" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
-                  <circle class="ring-track" cx="22" cy="22" [attr.r]="ringRadius" />
-                  <circle
-                    class="ring-fill"
-                    cx="22"
-                    cy="22"
-                    [attr.r]="ringRadius"
-                    [attr.stroke-dasharray]="ringCircumference"
-                    [attr.stroke-dashoffset]="ringOffset()"
-                  />
-                </svg>
-              }
-              <mn-icon [name]="aux.icon" [size]="aux.kind === 'cancel' ? 14 : 20" />
-            </button>
-          }
+              <svg class="ring" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
+                <circle class="ring-track" cx="22" cy="22" [attr.r]="ringRadius" />
+                <circle
+                  class="ring-fill"
+                  cx="22"
+                  cy="22"
+                  [attr.r]="ringRadius"
+                  [attr.stroke-dasharray]="ringCircumference"
+                  [attr.stroke-dashoffset]="ringOffset()"
+                />
+              </svg>
+            }
+            <mn-icon [name]="aux.icon" [size]="aux.kind === 'cancel' ? 14 : 20" />
+          </button>
         } @else {
           <span class="slot" aria-hidden="true"></span>
         }
@@ -533,6 +552,39 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       opacity: 0.55;
     }
 
+    /*
+     * The one primary that says a word. A first run cannot be inferred from an
+     * icon, so the control that leaves it carries its own name and takes the
+     * width that needs — still one control, in the place Play would have been.
+     */
+    .primary--wide {
+      gap: var(--space-2);
+      inline-size: auto;
+      min-inline-size: 3.25rem;
+      padding-inline: var(--space-3);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    /*
+     * Prints only where something has been paid for and looks lost, and sits
+     * above the controls so nothing under it moves when it appears.
+     */
+    .notice {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-1) var(--space-2);
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    .notice a {
+      color: var(--text-primary);
+    }
+
     /* The run, drawn around the control that stops it. */
     .ring {
       position: absolute;
@@ -632,6 +684,17 @@ export class ReadingPlayerComponent {
 
   protected readonly isPlaying = computed(() => this.store.status() === 'playing');
 
+  /**
+   * Clips exist for this reading, and the settings in force cannot play them.
+   *
+   * Reported only while nothing at all is playable, because that is the state
+   * that reads as loss: a partly covered reading already has a transport and a
+   * bar that account for themselves.
+   */
+  protected readonly voiceMismatch = computed(
+    () => this.store.hasAudioInOtherSettings() && !this.store.hasPlayableAudio(),
+  );
+
   /** Whether a run is filling in the rest, which only the track and ring report. */
   protected readonly isGenerating = computed(() => this.rail() === 'running');
 
@@ -642,9 +705,18 @@ export class ReadingPlayerComponent {
    * a learner opening that player wants is the audio itself — so the primary
    * control is the one that makes it, in the same place and the same shape.
    */
-  protected readonly centreAction = computed<'generate' | 'play' | 'pause'>(() => {
+  protected readonly centreAction = computed<'setup' | 'generate' | 'play' | 'pause'>(() => {
     if (this.isPlaying()) {
       return 'pause';
+    }
+    // Nothing can be generated and nothing can be played without a tested
+    // model, so the press that is worth making is the one that gets one.
+    if (
+      this.store.sentenceCount() > 0 &&
+      !this.modelConfigured() &&
+      !this.store.hasPlayableAudio()
+    ) {
+      return 'setup';
     }
     if (
       this.store.sentenceCount() > 0 &&
@@ -698,13 +770,9 @@ export class ReadingPlayerComponent {
         : { kind: 'dismiss', icon: 'close', label: 'Dismiss', title, tone: 'danger' };
     }
     if (!this.modelConfigured()) {
-      return {
-        kind: 'settings',
-        icon: 'settings',
-        label: 'Set up audio model',
-        title: 'Set up audio model',
-        tone: 'secondary',
-      };
+      // The centre control is the setup in this state, and one screen does not
+      // offer the same link twice.
+      return null;
     }
     if (this.rail() === 'offer' && this.store.hasPlayableAudio()) {
       return {
@@ -934,6 +1002,11 @@ export class ReadingPlayerComponent {
     if (jobFailure !== null) {
       parts.push(jobFailure);
     }
+    if (this.voiceMismatch()) {
+      parts.push(
+        'This reading has saved audio that was made with other audio settings, so none of it can be played as things stand. It is still stored: restore those settings, or generate this reading again.',
+      );
+    }
     if (this.rail() === 'offer') {
       parts.push(`${this.offerLabel()} — audio can be generated.`);
     }
@@ -969,8 +1042,6 @@ export class ReadingPlayerComponent {
           return;
         }
         this.dismissGeneration.emit();
-        return;
-      case 'settings':
         return;
     }
   }
