@@ -19,6 +19,7 @@ describe('generationWaitCopy', () => {
       generationWaitCopy({
         kind: 'repairing',
         attempt: 1,
+        totalAttempts: 2,
         unknownCount: 5,
         structureIssueCount: 0,
       }),

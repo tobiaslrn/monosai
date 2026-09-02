@@ -5,12 +5,14 @@ import type { SettingsRepository } from '../../../domain/settings/settings-repos
 import {
   DEFAULT_APP_SETTINGS,
   DEFAULT_EXCEPTION_POLICY,
+  DEFAULT_GENERATION_SETTINGS,
   DEFAULT_LANGUAGE_ASSET_SETTINGS,
   DEFAULT_READER_PREFERENCES,
   DEFAULT_TEXT_MODEL_SETTINGS,
   DEFAULT_TTS_SETTINGS,
   type AppSettings,
   type ExceptionPolicy,
+  type GenerationSettings,
   type LanguageAssetSettings,
   type ReaderPreferences,
   type TextModelSettings,
@@ -24,6 +26,7 @@ import {
   SETTINGS_KEYS,
   appSettingsSchema,
   exceptionPolicySchema,
+  generationSettingsSchema,
   languageAssetSettingsSchema,
   readerPreferencesSchema,
   textModelSettingsSchema,
@@ -65,6 +68,26 @@ export class DexieSettingsRepository implements SettingsRepository {
       SETTINGS_KEYS.readerPreferences,
       readerPreferencesSchema,
       DEFAULT_READER_PREFERENCES,
+      patch,
+      true,
+    );
+  }
+
+  getGenerationSettings(): Promise<Result<GenerationSettings, StorageError>> {
+    return this.read(
+      SETTINGS_KEYS.generation,
+      generationSettingsSchema,
+      DEFAULT_GENERATION_SETTINGS,
+    );
+  }
+
+  updateGenerationSettings(
+    patch: Partial<GenerationSettings>,
+  ): Promise<Result<GenerationSettings, StorageError>> {
+    return this.write(
+      SETTINGS_KEYS.generation,
+      generationSettingsSchema,
+      DEFAULT_GENERATION_SETTINGS,
       patch,
       true,
     );

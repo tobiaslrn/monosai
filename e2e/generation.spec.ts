@@ -155,14 +155,14 @@ test.describe('generating a story', () => {
     await expect(firstSentence).toContainText('庭');
   });
 
-  test('saves a word two repairs could not replace and marks it in the reader', async ({
+  test('saves a word the standard repair could not replace and marks it in the reader', async ({
     page,
   }) => {
     test.setTimeout(SETUP_TIMEOUT);
     await prepareGeneration(page, {
       generation: {
         stories: [STORY_WITH_UNKNOWN],
-        repairs: [STORY_WITH_UNKNOWN, STORY_WITH_UNKNOWN],
+        repairs: [STORY_WITH_UNKNOWN],
       },
     });
 

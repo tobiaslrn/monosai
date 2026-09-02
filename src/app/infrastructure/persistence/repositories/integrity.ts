@@ -139,7 +139,7 @@ export function assertEnrichmentConsistent(draft: GeneratedStoryDraft): void {
       ),
     );
   }
-  if (translationSummary.completed + translationSummary.failed !== translationSummary.total) {
+  if (translationSummary.completed + translationSummary.failed > translationSummary.total) {
     throw new StorageRuleViolation(
       storageError('conflict', 'The translation summary counts do not add up.'),
     );

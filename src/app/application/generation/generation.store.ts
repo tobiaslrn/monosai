@@ -6,7 +6,6 @@ import {
   type ExceptionCandidate,
   type ExceptionReviewOutcome,
 } from '../../domain/ai/exception-review';
-import { MAX_REPAIR_ATTEMPTS } from '../../domain/ai/generation-provenance';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import {
   storyFormForSentenceCount,
@@ -37,6 +36,7 @@ import { LanguageStore } from '../language/language.store';
 import { VocabularyClassificationService } from '../reading/vocabulary-classification.service';
 import { ExceptionPolicyStore } from '../settings/exception-policy.store';
 import { AppSettingsStore } from '../settings/app-settings.store';
+import { GenerationSettingsStore } from '../settings/generation-settings.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
 import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
@@ -66,6 +66,7 @@ export type GenerationState =
   | {
       readonly kind: 'repairing';
       readonly attempt: number;
+      readonly totalAttempts: number;
       readonly unknownCount: number;
       readonly structureIssueCount: number;
     }
@@ -161,6 +162,7 @@ interface CapturedContext {
   readonly grammarTaskConfig: TextTaskConfig;
   readonly translationTaskConfig: TextTaskConfig;
   readonly ankiWordPriorityMode: AnkiWordPriorityMode;
+  readonly repairBudget: number;
 }
 
 /** Title and sentences carry the same analysis; only the title has no row. */
@@ -204,6 +206,7 @@ export class GenerationStore {
   private readonly grammar = inject(GrammarProfileStore);
   private readonly policy = inject(ExceptionPolicyStore);
   private readonly appSettings = inject(AppSettingsStore);
+  private readonly generationSettings = inject(GenerationSettingsStore);
   private readonly textModel = inject(TextModelStore);
   private readonly language = inject(LanguageStore);
   private readonly enrichmentKeys = inject(EnrichmentKeysService);
@@ -486,7 +489,7 @@ export class GenerationStore {
           .filter((candidate) => settledRejections.has(candidate.id))
           .map((candidate) => candidate.id),
       ]);
-      const budgetSpent = this.repairSignal() >= MAX_REPAIR_ATTEMPTS;
+      const budgetSpent = this.repairSignal() >= context.repairBudget;
       const outstanding = remaining.size > 0 || structureIssues.length > 0;
 
       if (!outstanding || budgetSpent) {
@@ -506,13 +509,19 @@ export class GenerationStore {
       const unknownCount = remaining.size;
       const structureIssueCount = structureIssues.length;
       this.repairSignal.set(attempt);
-      this.stateSignal.set({ kind: 'repairing', attempt, unknownCount, structureIssueCount });
+      this.stateSignal.set({
+        kind: 'repairing',
+        attempt,
+        totalAttempts: context.repairBudget,
+        unknownCount,
+        structureIssueCount,
+      });
       const repairWork =
         unknownCount > 0
           ? `Replacing ${String(unknownCount)} unfamiliar ${unknownCount === 1 ? 'word' : 'words'}${structureIssueCount > 0 ? ' and fixing the story structure' : ''}`
           : 'Fixing the story structure';
       this.announce(
-        `${repairWork} (attempt ${String(attempt)} of ${String(MAX_REPAIR_ATTEMPTS)})…`,
+        `${repairWork} (attempt ${String(attempt)} of ${String(context.repairBudget)})…`,
       );
 
       const spans = this.unknownSpans(units, candidates, remaining);
@@ -554,6 +563,7 @@ export class GenerationStore {
     | { readonly ok: true; readonly value: CapturedContext }
     | { readonly ok: false; readonly error: GenerationFailure }
   > {
+    const repairBudget = this.generationSettings.repairBudget();
     const snapshot = await this.vocabulary.getActiveSnapshot();
     if (!snapshot.ok) {
       return { ok: false, error: snapshot.error };
@@ -612,6 +622,7 @@ export class GenerationStore {
         translationTaskConfig:
           configurable.configForPreset?.(settings.translationPresetId ?? null) ?? selected,
         ankiWordPriorityMode,
+        repairBudget,
       },
     };
   }

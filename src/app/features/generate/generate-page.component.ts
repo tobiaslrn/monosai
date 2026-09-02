@@ -19,6 +19,7 @@ import type { GenerationState } from '../../application/generation/generation.st
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { ExceptionPolicyStore } from '../../application/settings/exception-policy.store';
+import { GenerationSettingsStore } from '../../application/settings/generation-settings.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { technicalCode } from '../../domain/shared/errors';
@@ -182,6 +183,8 @@ const IDLE: GenerationState = { kind: 'idle' };
             [presetName]="presetLine().presetName"
             [ankiWordPriorityMode]="appSettings.ankiWordPriorityMode()"
             (ankiWordPriorityModeChanged)="appSettings.setAnkiWordPriorityMode($event)"
+            [vocabularyStrictness]="generationSettings.vocabularyStrictness()"
+            (vocabularyStrictnessChanged)="generationSettings.setVocabularyStrictness($event)"
             (generate)="generate()"
           >
             <mn-exception-policy-field text-fields-extra />
@@ -239,6 +242,7 @@ export class GeneratePageComponent {
   protected readonly textModel = inject(TextModelStore);
   private readonly policy = inject(ExceptionPolicyStore);
   protected readonly appSettings = inject(AppSettingsStore);
+  protected readonly generationSettings = inject(GenerationSettingsStore);
   private readonly grammar = inject(GrammarProfileStore);
   private readonly snapshots = inject(SnapshotHistoryStore);
   private readonly router = inject(Router);
