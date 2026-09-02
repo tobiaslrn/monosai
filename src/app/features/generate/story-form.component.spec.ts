@@ -125,7 +125,7 @@ describe('StoryFormComponent', () => {
     expect(element.querySelector('#mn-length-help')).toBeNull();
   });
 
-  it('snaps to the selected named length and stores its exact sentence count', () => {
+  it('snaps to the selected named length and stores its sentence target', () => {
     const { element, fixture } = render();
 
     const slider = element.querySelector<HTMLInputElement>('[data-testid="story-length"]');

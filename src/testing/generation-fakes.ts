@@ -474,7 +474,7 @@ export function storyWithUnknown(): ReturnType<typeof strictStory> {
   ]);
 }
 
-/** A well-formed story of the wrong length, which is repairable, not malformed. */
+/** A well-formed story that undershoots the requested length guideline. */
 export function shortStory(): ReturnType<typeof strictStory> {
   return story(['ねこがいます。', 'ねこはねます。']);
 }
