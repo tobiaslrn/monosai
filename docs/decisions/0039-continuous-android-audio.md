@@ -6,6 +6,11 @@ Status: Accepted
 Refines the playback transport in [ADR 0037](0037-audio-transport-recovery-and-one-track.md)
 and supersedes its conclusion that Android background playback is not attempted.
 
+The partial-reading rule below — that a session started before a generation run
+finishes stays sentence-based — is superseded by
+[ADR 0045](0045-a-reading-is-extended-while-it-is-generated.md), which builds
+the resource over what exists and appends the rest to it as it is made.
+
 ## Context
 
 Whole-reading playback used one `HTMLAudioElement`, but replaced its Blob URL
@@ -58,8 +63,9 @@ because Android and Chrome versions expose different subsets.
 
 - A complete continuous reading can cross sentence boundaries in Android's
   native media pipeline while the document is backgrounded.
-- Generation still becomes playable progressively; a session started before
-  completion remains sentence-based until the next whole-reading start.
+- Generation still becomes playable progressively. A session started before
+  completion remained sentence-based until the next whole-reading start, which
+  ADR 0045 replaced with a resource that grows while the run fills it in.
 - No Dexie version, stored row, cache identity, or visible player control changes.
 - Background behaviour and the exact notification buttons still require a real
   installed-PWA test on Android; browser automation cannot lock physical hardware.

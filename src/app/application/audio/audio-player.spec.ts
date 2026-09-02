@@ -98,6 +98,8 @@ function wave(samples: readonly number[], sampleRate = 2): Blob {
 
 class FakeSourceBuffer extends EventTarget {
   mode: AppendMode = 'segments';
+  aborts = 0;
+  appends = 0;
   private end = 0;
   readonly buffered = {
     get length() {
@@ -108,8 +110,13 @@ class FakeSourceBuffer extends EventTarget {
   } as TimeRanges;
 
   appendBuffer(): void {
+    this.appends += 1;
     this.end += 1;
     queueMicrotask(() => this.dispatchEvent(new Event('updateend')));
+  }
+
+  abort(): void {
+    this.aborts += 1;
   }
 }
 
@@ -132,11 +139,38 @@ class FakeMediaSource extends EventTarget {
   }
 }
 
+/** A view whose `MediaSource` opens as soon as the element loads it. */
+function mpegView(element: FakeAudioElement): ReturnType<typeof fakeView> {
+  const fake = fakeView(element);
+  (fake.view as unknown as { MediaSource: typeof MediaSource }).MediaSource =
+    FakeMediaSource as unknown as typeof MediaSource;
+  element.onLoad = () => {
+    queueMicrotask(() => {
+      const source = fake.createObjectURL.mock.calls.at(-1)?.[0] as FakeMediaSource | undefined;
+      source?.dispatchEvent(new Event('sourceopen'));
+    });
+  };
+  return fake;
+}
+
+function sourceOf(fake: ReturnType<typeof fakeView>): FakeMediaSource {
+  return fake.createObjectURL.mock.calls.at(-1)?.[0] as FakeMediaSource;
+}
+
+/** Lets the player's own queued source-buffer work run to completion. */
+function settle(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function mpeg(name: string): { readonly blob: Blob; readonly mimeType: 'audio/mpeg' } {
+  return { blob: new Blob([name]), mimeType: 'audio/mpeg' };
+}
+
 describe('createAudioPlayer', () => {
   it('combines compatible WAV clips and records exact sentence boundaries', async () => {
     const combined = await combineWaveClips([wave([1, 2]), wave([3, 4, 5, 6])]);
 
-    expect(combined.timeline).toEqual({ starts: [0, 1], duration: 3 });
+    expect(combined.timeline).toEqual({ starts: [0, 1], duration: 3, open: false, floor: 0 });
     expect(combined.blob.type).toBe('audio/wav');
     const bytes = new DataView(await combined.blob.arrayBuffer());
     expect(bytes.getUint32(4, true)).toBe(48);
@@ -168,9 +202,101 @@ describe('createAudioPlayer', () => {
       { blob: new Blob(['three']), mimeType: 'audio/mpeg' },
     ]);
 
-    expect(timeline).toEqual({ starts: [0, 1, 2], duration: 3 });
+    expect(timeline).toEqual({ starts: [0, 1, 2], duration: 3, open: false, floor: 0 });
     expect(element.played).toBe(1);
     expect(fake.createObjectURL).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The whole reason an open resource exists: a reading started before it has
+   * been generated grows inside the element rather than being reloaded at every
+   * seam, so nothing has to run between two sentences for the next one to play.
+   */
+  it('keeps an open sequence accepting sentences made after it started', async () => {
+    const element = new FakeAudioElement();
+    const fake = mpegView(element);
+    const player = createAudioPlayer(fake.view);
+
+    const started = await player.playSequence([mpeg('one'), mpeg('two')], { open: true });
+    const grown = await player.extendSequence([mpeg('three')]);
+
+    expect(started).toEqual({ starts: [0, 1], duration: 2, open: true, floor: 0 });
+    expect(grown).toEqual({ starts: [0, 1, 2], duration: 3, open: true, floor: 0 });
+    expect(player.sequenceOpen()).toBe(true);
+    expect(sourceOf(fake).ended).toBe(false);
+    // One resource, played once: the element was never given a new source.
+    expect(fake.createObjectURL).toHaveBeenCalledTimes(1);
+    expect(element.played).toBe(1);
+    expect(player.duration()).toBe(3);
+  });
+
+  it('ends the stream when the sequence is closed', async () => {
+    const element = new FakeAudioElement();
+    const fake = mpegView(element);
+    const player = createAudioPlayer(fake.view);
+    await player.playSequence([mpeg('one')], { open: true });
+
+    player.closeSequence();
+    await settle();
+
+    expect(sourceOf(fake).ended).toBe(true);
+    expect(player.sequenceOpen()).toBe(false);
+  });
+
+  it('refuses to extend a sequence a newer clip replaced', async () => {
+    const element = new FakeAudioElement();
+    const fake = mpegView(element);
+    const player = createAudioPlayer(fake.view);
+    await player.playSequence([mpeg('one')], { open: true });
+    const source = sourceOf(fake);
+
+    await player.play(new Blob(['newer']));
+
+    expect(source.sourceBuffer.aborts).toBe(1);
+    expect(player.sequenceOpen()).toBe(false);
+    await expect(player.extendSequence([mpeg('two')])).rejects.toThrow('No audio sequence is open');
+  });
+
+  it('refuses to extend when no sequence is open', async () => {
+    const player = createAudioPlayer(mpegView(new FakeAudioElement()).view);
+
+    await expect(player.extendSequence([mpeg('one')])).rejects.toThrow('No audio sequence is open');
+  });
+
+  /**
+   * A RIFF header states its own data length, so a WAV resource cannot grow.
+   * Asking for one open builds it closed rather than promising an append that
+   * would have to rewrite the blob and interrupt the reading.
+   */
+  it('builds a WAV sequence closed even when it is asked for open', async () => {
+    const element = new FakeAudioElement();
+    const player = createAudioPlayer(mpegView(element).view);
+
+    const timeline = await player.playSequence([{ blob: wave([1, 2]), mimeType: 'audio/wav' }], {
+      open: true,
+    });
+
+    expect(timeline.open).toBe(false);
+    expect(player.sequenceOpen()).toBe(false);
+  });
+
+  it('forwards running out of audio and starting again, and nothing after a stop', async () => {
+    const element = new FakeAudioElement();
+    const player = createAudioPlayer(fakeView(element).view);
+    const stalled = vi.fn();
+    const resumed = vi.fn();
+    player.onStalled(stalled);
+    player.onResumed(resumed);
+    await player.play(new Blob(['clip']));
+
+    element.fire('waiting');
+    element.fire('playing');
+    player.stop();
+    element.fire('waiting');
+    element.fire('playing');
+
+    expect(stalled).toHaveBeenCalledTimes(1);
+    expect(resumed).toHaveBeenCalledTimes(1);
   });
 
   it('does not let a slow sequence replace a newer clip', async () => {

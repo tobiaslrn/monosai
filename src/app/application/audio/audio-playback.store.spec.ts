@@ -54,7 +54,13 @@ class FakeAudioPlayer implements AudioPlayer {
   failNextResume = false;
   sequenceSupported = false;
   readonly sequences: AudioSequenceClip[][] = [];
+  /** Every clip appended to the open resource after it was built, in order. */
+  readonly appended: AudioSequenceClip[][] = [];
+  closes = 0;
+  /** Set to make the next `extendSequence` reject, standing in for a refused append. */
+  failNextExtend = false;
   private trackDuration = 0;
+  private open = false;
 
   private ended: (() => void) | null = null;
 
@@ -76,13 +82,54 @@ class FakeAudioPlayer implements AudioPlayer {
       return Promise.reject(new Error('sequence unsupported'));
     }
     this.sequences.push([...clips]);
+    this.appended.push([]);
     this.position = options?.startIndex ?? 0;
     this.trackDuration = clips.length;
+    this.open = options?.open === true;
     this.startedPaused.push(options?.startPaused === true);
-    return Promise.resolve({
-      starts: clips.map((_, index) => index),
-      duration: clips.length,
-    });
+    return Promise.resolve(this.timeline());
+  }
+
+  extendSequence(clips: readonly AudioSequenceClip[]): Promise<AudioTimeline> {
+    if (this.failNextExtend) {
+      this.failNextExtend = false;
+      return Promise.reject(new Error('append refused'));
+    }
+    if (!this.open) {
+      return Promise.reject(new Error('no open sequence'));
+    }
+    const sequence = this.sequences.at(-1);
+    const appended = this.appended.at(-1);
+    if (sequence === undefined || appended === undefined) {
+      return Promise.reject(new Error('no open sequence'));
+    }
+    sequence.push(...clips);
+    appended.push(...clips);
+    this.trackDuration = sequence.length;
+    return Promise.resolve(this.timeline());
+  }
+
+  closeSequence(): void {
+    if (!this.open) {
+      return;
+    }
+    this.open = false;
+    this.closes += 1;
+  }
+
+  sequenceOpen(): boolean {
+    return this.open;
+  }
+
+  /** One second per sentence, which makes a boundary and its index the same number. */
+  private timeline(): AudioTimeline {
+    const length = this.sequences.at(-1)?.length ?? 0;
+    return {
+      starts: Array.from({ length }, (_, index) => index),
+      duration: length,
+      open: this.open,
+      floor: 0,
+    };
   }
 
   pause(): void {
@@ -129,9 +176,29 @@ class FakeAudioPlayer implements AudioPlayer {
   }
 
   private timeUpdate: (() => void) | null = null;
+  private stalled: (() => void) | null = null;
+  private resumed: (() => void) | null = null;
 
   onTimeUpdate(handler: () => void): void {
     this.timeUpdate = handler;
+  }
+
+  onStalled(handler: () => void): void {
+    this.stalled = handler;
+  }
+
+  onResumed(handler: () => void): void {
+    this.resumed = handler;
+  }
+
+  /** Runs out of appended audio, as the element's `waiting` event would. */
+  stall(): void {
+    this.stalled?.();
+  }
+
+  /** Starts producing sound again, as the element's `playing` event would. */
+  unstall(): void {
+    this.resumed?.();
   }
 
   moveTo(seconds: number): void {
@@ -254,7 +321,11 @@ function storeClips(bed: PlaybackBed, count = SENTENCE_COUNT): Promise<void> {
  * stopping a run, so a real available set can have holes in it rather than
  * only a frontier.
  */
-async function storeClipsAt(bed: PlaybackBed, positions: readonly number[]): Promise<void> {
+async function storeClipsAt(
+  bed: PlaybackBed,
+  positions: readonly number[],
+  mimeType: 'audio/mpeg' | 'audio/wav' = 'audio/mpeg',
+): Promise<void> {
   const sentences = orderedSentences(bed.draft);
   const cacheKeys = new Map<SentenceId, string>(
     sentences.map((sentence) => [sentence.id, keyFor(bed, sentence.contentHash)]),
@@ -272,9 +343,9 @@ async function storeClipsAt(bed: PlaybackBed, positions: readonly number[]): Pro
         responseFormat: 'mp3',
         speed: bed.settings().speed,
       }),
-      mimeType: 'audio/mpeg',
+      mimeType,
       byteLength: 4,
-      blob: new Blob([new Uint8Array([1, 2, 3, index])], { type: 'audio/mpeg' }),
+      blob: new Blob([new Uint8Array([1, 2, 3, index])], { type: mimeType }),
       cacheKey: keyFor(bed, sentence.contentHash),
       createdAt: NOW + index,
     };
@@ -808,7 +879,7 @@ describe('AudioPlaybackStore', () => {
       await settle();
       expect(bed.store.status()).toBe('waiting');
 
-      bed.store.abandonWaiting();
+      bed.store.stopExpectingClips();
 
       expect(bed.store.status()).toBe('ended');
       expect(bed.store.pendingSentenceId()).toBeNull();
@@ -820,7 +891,7 @@ describe('AudioPlaybackStore', () => {
     it('ignores a release when nothing is waiting', async () => {
       await bed.store.play();
 
-      bed.store.abandonWaiting();
+      bed.store.stopExpectingClips();
 
       expect(bed.store.status()).toBe('playing');
       expect(bed.store.failure()).toBeNull();
@@ -1229,15 +1300,35 @@ describe('AudioPlaybackStore', () => {
       expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
     });
 
-    it('keeps partial readings on the progressive sentence path', async () => {
-      await storeClips(bed, SENTENCE_COUNT - 1);
+    /**
+     * A resource that starts partway through the reading indexes from its own
+     * first sentence, so every boundary the store reads is offset from the
+     * reading's. Getting that wrong highlights the wrong sentence and seeks to
+     * the wrong place, and it is invisible while a resource always starts at
+     * sentence one.
+     */
+    it('maps positions from the sentence the resource starts at', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed);
       await bed.store.prepare(bed.reading);
       bed.player.sequenceSupported = true;
 
-      await bed.store.play();
+      await bed.store.playFrom(sentences[2].id);
 
-      expect(bed.player.sequences).toEqual([]);
-      expect(bed.player.played).toHaveLength(1);
+      expect(bed.player.sequences[0]).toHaveLength(2);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+
+      bed.player.moveTo(1.2);
+      expect(bed.store.currentSentenceId()).toBe(sentences[3].id);
+
+      // Sentence 2 is not in this resource. Aiming at it builds one from there
+      // rather than seeking into audio the element does not have.
+      await bed.store.seekTo(2);
+
+      expect(bed.player.sequences).toHaveLength(2);
+      expect(bed.player.sequences[1]).toHaveLength(3);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.player.played).toEqual([]);
     });
 
     it('keeps one-sentence mode on the sentence path even with a complete set', async () => {
@@ -1245,6 +1336,132 @@ describe('AudioPlaybackStore', () => {
       await bed.store.prepare(bed.reading);
       bed.player.sequenceSupported = true;
       bed.store.setStepMode(true);
+
+      await bed.store.play();
+
+      expect(bed.player.sequences).toEqual([]);
+      expect(bed.player.played).toHaveLength(1);
+    });
+  });
+
+  /**
+   * A reading started while it is still being generated used to be sentence by
+   * sentence for the whole session, and advancing between two sentences is
+   * JavaScript — an event handler, a read from storage, a new source — which a
+   * locked Android screen may never run. The resource is therefore built over
+   * the clips that exist and left open, and each sentence is appended to it as
+   * it is stored, so the element never goes quiet at a seam.
+   */
+  describe('a track that grows while it is generated', () => {
+    beforeEach(async () => {
+      await storeClips(bed, 2);
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+    });
+
+    it('starts a partly generated reading on a resource left open', async () => {
+      await bed.store.play();
+
+      expect(bed.player.sequences[0]).toHaveLength(2);
+      expect(bed.player.sequenceOpen()).toBe(true);
+      expect(bed.player.played).toEqual([]);
+      expect(bed.store.status()).toBe('playing');
+    });
+
+    it('appends each sentence as it is stored, without loading a second clip', async () => {
+      await bed.store.play();
+
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.player.appended[0]).toHaveLength(1);
+      expect(bed.player.sequences[0]).toHaveLength(3);
+      expect(bed.player.played).toEqual([]);
+      expect(bed.player.sequenceOpen()).toBe(true);
+    });
+
+    it('seals the resource once the last sentence has been appended', async () => {
+      await bed.store.play();
+
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.player.sequences[0]).toHaveLength(SENTENCE_COUNT);
+      expect(bed.player.closes).toBe(1);
+      expect(bed.player.sequenceOpen()).toBe(false);
+    });
+
+    /**
+     * Catching up with generation is a stall inside the resource, not a
+     * teardown: the element holds where it ran out, and the append that follows
+     * starts it again without a second Play.
+     */
+    it('names the sentence it is holding for, and reads on when it arrives', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.play();
+
+      bed.player.stall();
+
+      expect(bed.store.status()).toBe('waiting');
+      expect(bed.store.pendingSentenceId()).toBe(sentences[2].id);
+
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+      bed.player.unstall();
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.pendingSentenceId()).toBeNull();
+      expect(bed.player.played).toEqual([]);
+    });
+
+    it('seals the resource and lets go when the run that was filling it stops', async () => {
+      await bed.store.play();
+      bed.player.stall();
+
+      bed.store.stopExpectingClips();
+
+      expect(bed.player.closes).toBe(1);
+      expect(bed.store.status()).toBe('ended');
+      expect(bed.store.failure()).toEqual({ kind: 'not-generated', position: 3 });
+    });
+
+    /**
+     * A changed voice re-keys the reading (ADR 0043). Appending a clip made
+     * under the new one to a resource built under the old would put two voices
+     * in a single reading, so what is in it plays out and nothing is added.
+     */
+    it('seals rather than appending a clip made by another voice', async () => {
+      await bed.store.play();
+
+      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.player.closes).toBe(1);
+      expect(bed.player.sequences[0]).toHaveLength(2);
+    });
+
+    it('seals rather than failing the session when an append is refused', async () => {
+      await bed.store.play();
+      await storeClips(bed, 3);
+      bed.player.failNextExtend = true;
+
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.player.closes).toBe(1);
+      expect(bed.player.sequences[0]).toHaveLength(2);
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.failure()).toBeNull();
+    });
+
+    /**
+     * A WAV container states its own length, so a partial one could never grow
+     * and the session would end at the frontier with no way on. The
+     * per-sentence path waits there instead.
+     */
+    it('keeps a partly generated WAV reading on the sentence path', async () => {
+      await bed.db.audioAssets.clear();
+      await storeClipsAt(bed, [0, 1], 'audio/wav');
+      await bed.store.prepare(bed.reading);
 
       await bed.store.play();
 

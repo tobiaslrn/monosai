@@ -151,3 +151,49 @@ The cache key is a fingerprint of everything that could change the answer, which
 [chapter 8](08-crosscutting-concepts.md) describes. Change the voice and the old clips are hidden
 rather than played, and the screens say so
 ([ADR 0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md)).
+
+## 6.5 Hear a reading that is still being generated
+
+Audio arrives one sentence at a time, and a reading can be started as soon as the sentence being
+started from has a clip ([ADR 0034](../decisions/0034-progressive-four-way-audio.md)). Continuous
+playback then builds **one native media resource** over the sentences that exist and leaves it open,
+so each new clip is appended to the resource the element is already playing rather than replacing its
+source ([ADR 0045](../decisions/0045-a-reading-is-extended-while-it-is-generated.md)).
+
+```mermaid
+sequenceDiagram
+    actor Learner
+    participant Reader as Reader page
+    participant Job as Audio job store
+    participant Playback as Playback store
+    participant Player as Audio player
+    participant Repo as Enrichment repository
+
+    Learner->>Job: generate audio
+    Job->>Repo: store a clip (four requests, reading order)
+    Learner->>Playback: play
+    Playback->>Repo: read the clips from here on
+    Playback->>Player: play them as one open resource
+    loop until the run ends
+        Job->>Repo: store the next clip
+        Reader->>Playback: prepare (progress changed)
+        Playback->>Repo: read what is stored now
+        Playback->>Player: append the next sentences
+    end
+    alt every sentence appended
+        Playback->>Player: close the resource
+    else the run failed or was cancelled
+        Reader->>Playback: stop expecting clips
+        Playback->>Player: close the resource
+    end
+```
+
+The appends are what let the reading carry on with the screen locked: the element stays audible
+across every sentence boundary, so the document keeps the media-playing reason not to be frozen and
+the advance happens inside the native pipeline rather than in an event handler. Playback learns of a
+new clip from its own read of what is stored — it never watches the generation job
+([ADR 0037](../decisions/0037-audio-transport-recovery-and-one-track.md)).
+
+Reaching the frontier is a stall inside the resource, reported as `waiting` and named by sentence.
+It ends when the next clip is appended. It is the one gap left: a stall long enough for the page to
+be frozen still stops the reading, which is why the bound on concurrent synthesis exists.

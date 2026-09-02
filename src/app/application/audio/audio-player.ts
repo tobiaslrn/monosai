@@ -16,6 +16,14 @@ export interface PlayOptions {
 export interface SequencePlayOptions extends PlayOptions {
   /** Zero-based sentence whose boundary should be the initial position. */
   readonly startIndex?: number;
+  /**
+   * Leaves the resource open, so later sentences can be appended to it.
+   *
+   * MPEG only. A RIFF header states its own data length, so a WAV sequence
+   * cannot grow without being rewritten and reloaded — which is the very
+   * source swap a growing resource exists to avoid.
+   */
+  readonly open?: boolean;
 }
 
 export interface AudioSequenceClip {
@@ -27,6 +35,15 @@ export interface AudioTimeline {
   /** Start of each sentence in seconds, in the same order as the input clips. */
   readonly starts: readonly number[];
   readonly duration: number;
+  /** Whether more clips may still be appended to this resource. */
+  readonly open: boolean;
+  /**
+   * Earliest time still buffered, in seconds.
+   *
+   * Zero unless the browser refused an append for want of room and older audio
+   * was evicted to make it. Seeking below it lands in a hole.
+   */
+  readonly floor: number;
 }
 
 /**
@@ -47,11 +64,28 @@ export interface AudioTimeline {
 export interface AudioPlayer {
   /** Loads a clip and starts it. Revokes whatever URL was loaded before. */
   play(clip: Blob, options?: PlayOptions): Promise<void>;
-  /** Builds and plays one native media resource from a complete reading. */
+  /**
+   * Builds and plays one native media resource from a run of sentences.
+   *
+   * With `open`, the resource is left accepting appends, so a reading can be
+   * started before it has been generated and grown while it plays.
+   */
   playSequence(
     clips: readonly AudioSequenceClip[],
     options?: SequencePlayOptions,
   ): Promise<AudioTimeline>;
+  /**
+   * Appends sentences to the open resource, without touching playback.
+   *
+   * Rejects when nothing is open or a newer load superseded it. Never seeks and
+   * never plays: an element that ran out of audio resumes itself when more
+   * arrives, and that is the whole point of appending rather than reloading.
+   */
+  extendSequence(clips: readonly AudioSequenceClip[]): Promise<AudioTimeline>;
+  /** Declares the open resource complete, so the element can reach its end. */
+  closeSequence(): void;
+  /** Whether an extensible resource is loaded and still accepting clips. */
+  sequenceOpen(): boolean;
   pause(): void;
   resume(): Promise<void>;
   /** Stops, unloads, and revokes the current object URL. */
@@ -73,6 +107,10 @@ export interface AudioPlayer {
   onError(handler: () => void): void;
   /** Called while the native element advances, including in the background. */
   onTimeUpdate(handler: () => void): void;
+  /** Called when the element runs out of buffered audio without ending. */
+  onStalled(handler: () => void): void;
+  /** Called when the element starts producing sound again. */
+  onResumed(handler: () => void): void;
 }
 
 interface WaveFormat {
@@ -190,8 +228,32 @@ export async function combineWaveClips(
   }
   return {
     blob: new Blob([output], { type: 'audio/wav' }),
-    timeline: { starts, duration: elapsed },
+    timeline: { starts, duration: elapsed, open: false, floor: 0 },
   };
+}
+
+/**
+ * How much already-played audio is kept when room has to be made.
+ *
+ * Only reached when the browser refuses an append for want of buffer space,
+ * which a reading long enough to exceed it can do. Enough to keep Previous and
+ * a scrub back over the sentence just heard working.
+ */
+const SEQUENCE_RETAIN_SECONDS = 30;
+
+/** Whether an append was refused for want of buffer space rather than content. */
+function isQuotaError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'QuotaExceededError';
+}
+
+interface OpenSequence {
+  readonly source: MediaSource;
+  readonly buffer: SourceBuffer;
+  /** The `operationToken` this resource was built under. */
+  readonly token: number;
+  readonly starts: number[];
+  end: number;
+  floor: number;
 }
 
 /**
@@ -248,15 +310,50 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       target.addEventListener('error', onError, { once: true });
     });
 
-  const buildMpegSequence = async (
-    clips: readonly Blob[],
-    token: number,
-  ): Promise<AudioTimeline> => {
-    const assertCurrent = (): void => {
-      if (token !== operationToken) {
-        throw new Error('Audio load was superseded');
-      }
-    };
+  /**
+   * The open resource, when one is loaded and still accepting sentences.
+   *
+   * Held here rather than handed to the caller because there is one element and
+   * one session: `stop()` and every new load invalidate it by token, so a
+   * caller cannot hold a handle to a resource that is no longer playing.
+   */
+  let openSequence: OpenSequence | null = null;
+  /**
+   * Serialises everything that touches the source buffer.
+   *
+   * A `SourceBuffer` accepts one append at a time, and an append that lands
+   * while another is updating throws. Appends arrive as clips are generated, so
+   * two can be asked for at once.
+   */
+  let sequenceWork: Promise<unknown> = Promise.resolve();
+
+  const queueSequenceWork = <T>(work: () => Promise<T>): Promise<T> => {
+    const next = sequenceWork.then(work, work);
+    sequenceWork = next.catch(() => undefined);
+    return next;
+  };
+
+  /** Drops the open resource without ending it, for a load that replaced it. */
+  const discardSequence = (): void => {
+    if (openSequence === null) {
+      return;
+    }
+    try {
+      openSequence.buffer.abort();
+    } catch {
+      // The source may already be detached, which is the state abort wanted.
+    }
+    openSequence = null;
+  };
+
+  const timelineOf = (sequence: OpenSequence, open: boolean): AudioTimeline => ({
+    starts: [...sequence.starts],
+    duration: sequence.end,
+    open,
+    floor: sequence.floor,
+  });
+
+  const openMpegSequence = async (token: number): Promise<OpenSequence> => {
     const MediaSourceConstructor = Reflect.get(view, 'MediaSource') as
       typeof MediaSource | undefined;
     if (MediaSourceConstructor?.isTypeSupported('audio/mpeg') !== true) {
@@ -269,35 +366,70 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
     loaded = true;
     element.load();
     await waitFor(source, 'sourceopen');
-    assertCurrent();
-    const sourceBuffer = source.addSourceBuffer('audio/mpeg');
-    sourceBuffer.mode = 'sequence';
-    const starts: number[] = [];
-    let end = 0;
+    if (token !== operationToken) {
+      throw new Error('Audio load was superseded');
+    }
+    const buffer = source.addSourceBuffer('audio/mpeg');
+    buffer.mode = 'sequence';
+    return { source, buffer, token, starts: [], end: 0, floor: 0 };
+  };
+
+  /** Makes room for an append the browser refused, keeping the recent past. */
+  const evictPlayedAudio = async (sequence: OpenSequence): Promise<boolean> => {
+    const floor = Math.max(element.currentTime - SEQUENCE_RETAIN_SECONDS, 0);
+    if (floor <= sequence.floor) {
+      return false;
+    }
+    const updated = waitFor(sequence.buffer, 'updateend');
+    sequence.buffer.remove(sequence.floor, floor);
+    await updated;
+    sequence.floor = floor;
+    return true;
+  };
+
+  const appendClip = async (sequence: OpenSequence, bytes: ArrayBuffer): Promise<void> => {
+    const updated = waitFor(sequence.buffer, 'updateend');
+    sequence.buffer.appendBuffer(bytes);
+    await updated;
+  };
+
+  const appendClips = async (sequence: OpenSequence, clips: readonly Blob[]): Promise<void> => {
     for (const clip of clips) {
-      starts.push(end);
       const bytes = await clip.arrayBuffer();
-      assertCurrent();
-      const updated = waitFor(sourceBuffer, 'updateend');
-      sourceBuffer.appendBuffer(bytes);
-      await updated;
-      assertCurrent();
-      if (sourceBuffer.buffered.length === 0) {
+      if (sequence.token !== operationToken) {
+        throw new Error('Audio load was superseded');
+      }
+      const start = sequence.end;
+      try {
+        await appendClip(sequence, bytes);
+      } catch (error) {
+        // A refusal for want of room is the one append failure worth a second
+        // attempt: a reading long enough to fill the buffer can still be read
+        // on from, as long as what is already behind the learner is let go.
+        if (!isQuotaError(error) || !(await evictPlayedAudio(sequence))) {
+          throw error;
+        }
+        await appendClip(sequence, bytes);
+      }
+      if (sequence.token !== operationToken) {
+        throw new Error('Audio load was superseded');
+      }
+      if (sequence.buffer.buffered.length === 0) {
         throw new Error('MPEG sequence produced no buffered audio');
       }
-      end = sourceBuffer.buffered.end(sourceBuffer.buffered.length - 1);
+      sequence.starts.push(start);
+      sequence.end = sequence.buffer.buffered.end(sequence.buffer.buffered.length - 1);
     }
-    source.endOfStream();
-    if (!Number.isFinite(end) || end <= 0) {
+    if (!Number.isFinite(sequence.end) || sequence.end <= 0) {
       throw new Error('MPEG sequence has no duration');
     }
-    return { starts, duration: end };
   };
 
   return {
     async play(clip: Blob, options?: PlayOptions): Promise<void> {
       operationToken += 1;
       trackDuration = 0;
+      discardSequence();
       loadBlob(clip);
       if (options?.startPaused === true) {
         element.load();
@@ -310,6 +442,7 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       options?: SequencePlayOptions,
     ): Promise<AudioTimeline> {
       const token = (operationToken += 1);
+      discardSequence();
       if (clips.length === 0) {
         throw new Error('A sequence needs at least one clip');
       }
@@ -317,6 +450,10 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       if (!clips.every((clip) => clip.mimeType === mimeType)) {
         throw new Error('A sequence cannot mix audio formats');
       }
+      // A WAV request is always built closed: the container states its own
+      // length, so growing one means rewriting the blob and reassigning the
+      // source, which is the interruption an open resource exists to avoid.
+      const keepOpen = options?.open === true && mimeType === 'audio/mpeg';
       const timeline =
         mimeType === 'audio/wav'
           ? await combineWaveClips(clips.map((clip) => clip.blob)).then((combined) => {
@@ -326,10 +463,19 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
               loadBlob(combined.blob);
               return combined.timeline;
             })
-          : await buildMpegSequence(
-              clips.map((clip) => clip.blob),
-              token,
-            );
+          : await queueSequenceWork(async () => {
+              const sequence = await openMpegSequence(token);
+              await appendClips(
+                sequence,
+                clips.map((clip) => clip.blob),
+              );
+              if (keepOpen) {
+                openSequence = sequence;
+              } else {
+                sequence.source.endOfStream();
+              }
+              return timelineOf(sequence, keepOpen);
+            });
       if (token !== operationToken) {
         throw new Error('Audio load was superseded');
       }
@@ -341,6 +487,49 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       }
       await element.play();
       return timeline;
+    },
+    async extendSequence(clips: readonly AudioSequenceClip[]): Promise<AudioTimeline> {
+      if (clips.length === 0) {
+        throw new Error('A sequence extension needs at least one clip');
+      }
+      if (!clips.every((clip) => clip.mimeType === 'audio/mpeg')) {
+        throw new Error('An open sequence takes MPEG clips only');
+      }
+      const timeline = await queueSequenceWork(async () => {
+        const sequence = openSequence;
+        if (sequence === null) {
+          throw new Error('No audio sequence is open');
+        }
+        if (sequence.token !== operationToken) {
+          throw new Error('Audio load was superseded');
+        }
+        await appendClips(
+          sequence,
+          clips.map((clip) => clip.blob),
+        );
+        return timelineOf(sequence, true);
+      });
+      trackDuration = timeline.duration;
+      return timeline;
+    },
+    closeSequence(): void {
+      const sequence = openSequence;
+      if (sequence === null) {
+        return;
+      }
+      openSequence = null;
+      // Queued rather than called, because an append may still be updating and
+      // ending the stream under one throws. Ending it is what lets the element
+      // reach `ended` at the last sentence instead of stalling there for ever.
+      void queueSequenceWork(() => {
+        if (sequence.token === operationToken && sequence.source.readyState === 'open') {
+          sequence.source.endOfStream();
+        }
+        return Promise.resolve();
+      }).catch(() => undefined);
+    },
+    sequenceOpen(): boolean {
+      return openSequence !== null;
     },
     pause(): void {
       element.pause();
@@ -367,6 +556,7 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       operationToken += 1;
       loaded = false;
       trackDuration = 0;
+      discardSequence();
       element.pause();
       element.removeAttribute('src');
       element.load();
@@ -388,6 +578,20 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
     },
     onTimeUpdate(handler: () => void): void {
       element.addEventListener('timeupdate', () => {
+        if (loaded) {
+          handler();
+        }
+      });
+    },
+    onStalled(handler: () => void): void {
+      element.addEventListener('waiting', () => {
+        if (loaded) {
+          handler();
+        }
+      });
+    },
+    onResumed(handler: () => void): void {
+      element.addEventListener('playing', () => {
         if (loaded) {
           handler();
         }
