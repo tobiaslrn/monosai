@@ -30,5 +30,3 @@ export interface GenerationProvenance {
   readonly ankiWordPriorityMode: AnkiWordPriorityMode;
   readonly createdAt: number;
 }
-
-export const MAX_REPAIR_ATTEMPTS = 2;

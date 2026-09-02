@@ -366,6 +366,27 @@ describe('DexieReadingRepository', () => {
       expect(await db.readings.count()).toBe(0);
       expect(await db.translations.count()).toBe(0);
     });
+
+    it('accepts an unresolved translation summary when no translations are being saved', async () => {
+      const base = generatedStoryDraftFixture(storySnapshotId, { translations: [] });
+      const draft = {
+        ...base,
+        reading: {
+          ...base.reading,
+          translationSummary: {
+            total: base.sentences.length,
+            completed: 0,
+            failed: 0,
+          },
+        },
+      };
+
+      const saved = await repository.saveGeneratedStory(draft);
+
+      expect(saved.ok).toBe(true);
+      expect(await db.readings.count()).toBe(1);
+      expect(await db.translations.count()).toBe(0);
+    });
   });
 
   describe('reading the graph', () => {

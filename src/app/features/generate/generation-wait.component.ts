@@ -57,7 +57,7 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
       return {
         key: `${state.kind}-${String(state.attempt)}`,
         title,
-        detail: `Repair attempt ${String(state.attempt)} of 2. The revised story will be checked again.`,
+        detail: `Repair attempt ${String(state.attempt)} of ${String(state.totalAttempts)}. The revised story will be checked again.`,
       };
     }
     case 'auxiliary-review':

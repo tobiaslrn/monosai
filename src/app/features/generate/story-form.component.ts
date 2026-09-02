@@ -6,7 +6,7 @@ import {
   STORY_LENGTH_RELIABILITY_WARNING_SENTENCES,
   STORY_SENTENCE_COUNTS,
 } from '../../domain/ai/story-request';
-import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
+import type { AnkiWordPriorityMode, VocabularyStrictness } from '../../domain/settings/settings';
 import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
@@ -137,6 +137,43 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <option value="difficult">Difficult</option>
           </select>
         </div>
+
+        <details class="mn-disclosure strictness">
+          <summary>Vocabulary strictness</summary>
+          <fieldset [disabled]="disabled()">
+            <legend class="mn-visually-hidden">Vocabulary strictness</legend>
+            <label>
+              <input
+                type="radio"
+                name="mn-vocabulary-strictness"
+                value="relaxed"
+                [checked]="vocabularyStrictness() === 'relaxed'"
+                (change)="onVocabularyStrictness($event)"
+              />
+              <span><strong>Relaxed</strong> Keep the first draft</span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="mn-vocabulary-strictness"
+                value="standard"
+                [checked]="vocabularyStrictness() === 'standard'"
+                (change)="onVocabularyStrictness($event)"
+              />
+              <span><strong>Standard</strong> Try once to replace unfamiliar words</span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="mn-vocabulary-strictness"
+                value="strict"
+                [checked]="vocabularyStrictness() === 'strict'"
+                (change)="onVocabularyStrictness($event)"
+              />
+              <span><strong>Strict</strong> Try twice to replace unfamiliar words</span>
+            </label>
+          </fieldset>
+        </details>
 
         <div class="generation-sources" data-testid="form-sources">
           <p class="setting-section-title">Uses</p>
@@ -382,6 +419,38 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       border-top: 1px solid var(--border-subtle);
     }
 
+    .strictness {
+      margin-top: var(--space-3);
+    }
+
+    .strictness fieldset {
+      display: grid;
+      gap: var(--space-2);
+      margin: 0;
+      padding: 0 0 0 var(--space-4);
+      border: 0;
+    }
+
+    .strictness label {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: var(--space-2);
+      align-items: start;
+      min-height: var(--touch-target);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      cursor: pointer;
+    }
+
+    .strictness input {
+      margin-top: 0.2rem;
+    }
+
+    .strictness strong {
+      display: block;
+      color: var(--text-primary);
+    }
+
     @media (max-width: 719px) {
       .composer-grid {
         grid-template-columns: minmax(0, 1fr);
@@ -460,9 +529,11 @@ export class StoryFormComponent {
   readonly snapshotSummary = input.required<string>();
   readonly presetName = input.required<string>();
   readonly ankiWordPriorityMode = input<AnkiWordPriorityMode>('uniform');
+  readonly vocabularyStrictness = input<VocabularyStrictness>('standard');
 
   readonly generate = output<void>();
   readonly ankiWordPriorityModeChanged = output<AnkiWordPriorityMode>();
+  readonly vocabularyStrictnessChanged = output<VocabularyStrictness>();
 
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
   protected readonly lengthLabels = LENGTH_LABELS;
@@ -538,6 +609,13 @@ export class StoryFormComponent {
     const value = (event.target as HTMLSelectElement).value;
     if (value === 'uniform' || value === 'recent' || value === 'difficult') {
       this.ankiWordPriorityModeChanged.emit(value);
+    }
+  }
+
+  protected onVocabularyStrictness(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    if (value === 'relaxed' || value === 'standard' || value === 'strict') {
+      this.vocabularyStrictnessChanged.emit(value);
     }
   }
 

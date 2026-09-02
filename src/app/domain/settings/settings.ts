@@ -1,9 +1,11 @@
 import type { StructuredOutputMode } from '../ai/model-test';
 import type { SpeechInstructionsSupport } from '../ai/speech-instructions';
 import type { SnapshotId } from '../shared/ids';
+import type { PreparationLayer } from '../enrichment/preparation';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
 export type AnkiWordPriorityMode = 'uniform' | 'recent' | 'difficult';
+export type VocabularyStrictness = 'relaxed' | 'standard' | 'strict';
 
 export const DEFAULT_ANKI_CONNECT_PORT = 8_765;
 
@@ -26,6 +28,30 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   ankiWordPriorityMode: 'uniform',
   updatedAt: 0,
 };
+
+/** Generation choices captured once so an in-flight story cannot change beneath the learner. */
+export interface GenerationSettings {
+  readonly vocabularyStrictness: VocabularyStrictness;
+  readonly defaultPreparationTargets: readonly PreparationLayer[];
+  readonly updatedAt: number;
+}
+
+export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
+  vocabularyStrictness: 'standard',
+  defaultPreparationTargets: ['english', 'grammar'],
+  updatedAt: 0,
+};
+
+export function repairBudgetFor(strictness: VocabularyStrictness): number {
+  switch (strictness) {
+    case 'relaxed':
+      return 0;
+    case 'standard':
+      return 1;
+    case 'strict':
+      return 2;
+  }
+}
 
 /**
  * The bounds of the reader's text scale.

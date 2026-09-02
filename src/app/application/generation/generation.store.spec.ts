@@ -275,6 +275,7 @@ describe('GenerationStore repair', () => {
   });
 
   it('does not ask the policy twice about a word it already refused', async () => {
+    bed = configureGenerationTestBed({ vocabularyStrictness: 'strict' });
     await bed.setPolicy(POLICY);
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.reviewQueue.push(ok([REJECTION]));
@@ -289,6 +290,7 @@ describe('GenerationStore repair', () => {
   });
 
   it('asks again about a word whose review never got an answer', async () => {
+    bed = configureGenerationTestBed({ vocabularyStrictness: 'strict' });
     await bed.setPolicy(POLICY);
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     // A failed review settles nothing, so every pass has to ask again.
@@ -331,6 +333,7 @@ describe('GenerationStore repair', () => {
   });
 
   it('names a surface an earlier repair already failed to remove', async () => {
+    bed = configureGenerationTestBed({ vocabularyStrictness: 'strict' });
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
 
@@ -341,6 +344,7 @@ describe('GenerationStore repair', () => {
   });
 
   it('saves the story after two repairs, with the words they could not replace marked', async () => {
+    bed = configureGenerationTestBed({ vocabularyStrictness: 'strict' });
     bed.provider.storyQueue.push(ok(storyWithUnknown()));
     bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
 
@@ -364,6 +368,28 @@ describe('GenerationStore repair', () => {
       category: 'unknown',
       reason: 'unresolved-after-repair',
     });
+  });
+
+  it('saves the first draft without a repair in relaxed mode', async () => {
+    bed = configureGenerationTestBed({ vocabularyStrictness: 'relaxed' });
+    bed.provider.storyQueue.push(ok(storyWithUnknown()));
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.provider.generationCalls).toMatchObject({ story: 1, repair: 0 });
+    expect(bed.store.state().kind).toBe('saved');
+    expect(bed.readings.provenance[0].repairAttempts).toBe(0);
+  });
+
+  it('spends one repair in standard mode, then saves remaining unfamiliar words', async () => {
+    bed.provider.storyQueue.push(ok(storyWithUnknown()));
+    bed.provider.repairQueue.push(ok(storyWithUnknown()));
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.provider.generationCalls).toMatchObject({ story: 1, repair: 1 });
+    expect(bed.store.state().kind).toBe('saved');
+    expect(bed.readings.provenance[0].repairAttempts).toBe(1);
   });
 });
 

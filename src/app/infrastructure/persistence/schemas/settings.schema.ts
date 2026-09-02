@@ -25,6 +25,16 @@ export const readerPreferencesSchema = z.object({
   updatedAt: timestampSchema,
 });
 
+export const generationSettingsSchema = z.object({
+  vocabularyStrictness: z.enum(['relaxed', 'standard', 'strict']),
+  defaultPreparationTargets: z
+    .array(z.enum(['english', 'grammar', 'audio']))
+    .max(3)
+    .refine((targets) => new Set(targets).size === targets.length)
+    .readonly(),
+  updatedAt: timestampSchema,
+});
+
 export const textModelSettingsSchema = z.object({
   modelId: z.string(),
   reasoningEffort: z.string().nullable().default(null),
@@ -122,6 +132,7 @@ export const credentialRowSchema = z.object({
 export const SETTINGS_KEYS = {
   app: 'app',
   readerPreferences: 'reader-preferences',
+  generation: 'generation',
   textModel: 'text-model',
   tts: 'tts',
   exceptionPolicy: 'exception-policy',

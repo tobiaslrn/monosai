@@ -3,6 +3,7 @@ import type { StorageError } from '../storage/storage-error';
 import type {
   AppSettings,
   ExceptionPolicy,
+  GenerationSettings,
   LanguageAssetSettings,
   ReaderPreferences,
   TextModelSettings,
@@ -21,6 +22,11 @@ export interface SettingsRepository {
   updateReaderPreferences(
     patch: Partial<ReaderPreferences>,
   ): Promise<Result<ReaderPreferences, StorageError>>;
+
+  getGenerationSettings(): Promise<Result<GenerationSettings, StorageError>>;
+  updateGenerationSettings(
+    patch: Partial<GenerationSettings>,
+  ): Promise<Result<GenerationSettings, StorageError>>;
 
   getTextModelSettings(): Promise<Result<TextModelSettings, StorageError>>;
   updateTextModelSettings(

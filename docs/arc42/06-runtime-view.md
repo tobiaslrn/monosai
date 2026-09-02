@@ -74,7 +74,8 @@ governs exactly one run, while several run side by side
 go and read something else; the library lists each unsaved run as a muted row naming its stage.
 
 Every input is captured before the first request, so changing a setting during a run cannot change
-what the running story is judged against.
+what the running story is judged against. This includes vocabulary strictness: relaxed spends no
+content repair, standard spends at most one, and strict spends at most two.
 
 ```mermaid
 sequenceDiagram

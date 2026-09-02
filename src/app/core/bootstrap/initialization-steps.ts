@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { CredentialStore } from '../../application/settings/credential.store';
+import { GenerationSettingsStore } from '../../application/settings/generation-settings.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import { MonosaiDatabase } from '../../infrastructure/persistence/monosai-db';
@@ -19,6 +20,7 @@ export function provideInitializationSteps() {
       const database = inject(MonosaiDatabase);
       const settings = inject(AppSettingsStore);
       const credential = inject(CredentialStore);
+      const generationSettings = inject(GenerationSettingsStore);
       const textModel = inject(TextModelStore);
       const tts = inject(TtsStore);
 
@@ -38,6 +40,10 @@ export function provideInitializationSteps() {
         {
           name: 'settings',
           run: () => settings.load(),
+        },
+        {
+          name: 'generation-settings',
+          run: () => generationSettings.load(),
         },
         // Model configuration is app-wide state. Loading it before routes
         // render prevents a route's asynchronous reload from replacing a

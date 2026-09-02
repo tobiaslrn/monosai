@@ -7,6 +7,7 @@ import { GrammarProfileStore } from '../app/application/grammar/grammar-profile.
 import { LanguageStore } from '../app/application/language/language.store';
 import { VocabularyClassificationService } from '../app/application/reading/vocabulary-classification.service';
 import { ExceptionPolicyStore } from '../app/application/settings/exception-policy.store';
+import { GenerationSettingsStore } from '../app/application/settings/generation-settings.store';
 import { AppSettingsStore } from '../app/application/settings/app-settings.store';
 import { TextModelStore } from '../app/application/settings/text-model.store';
 import { TEXT_GENERATION_PROVIDER } from '../app/application/shared/ai-tokens';
@@ -43,10 +44,15 @@ import { snapshotId, vocabularyItemId, type SnapshotId } from '../app/domain/sha
 import type { RandomSource } from '../app/domain/shared/random';
 import { ok, type Result } from '../app/domain/shared/result';
 import type { StorageError } from '../app/domain/storage/storage-error';
-import type { AnkiWordPriorityMode, ExceptionPolicy } from '../app/domain/settings/settings';
+import type {
+  AnkiWordPriorityMode,
+  ExceptionPolicy,
+  VocabularyStrictness,
+} from '../app/domain/settings/settings';
 import {
   DEFAULT_EXCEPTION_POLICY,
   DEFAULT_STORY_TOKEN_BUDGET,
+  repairBudgetFor,
 } from '../app/domain/settings/settings';
 import type { SettingsRepository } from '../app/domain/settings/settings-repository';
 import type { VocabularyItem, VocabularySnapshot } from '../app/domain/vocabulary/snapshot';
@@ -330,6 +336,7 @@ export interface GenerationTestBedOptions {
   readonly storyTokenBudget?: number;
   readonly uniqueEntryCount?: number;
   readonly ankiWordPriorityMode?: AnkiWordPriorityMode;
+  readonly vocabularyStrictness?: VocabularyStrictness;
   /** Anything a spec around the pipeline needs, such as the library's channel. */
   readonly extraProviders?: readonly (Provider | EnvironmentProviders)[];
 }
@@ -354,6 +361,7 @@ export function configureGenerationTestBed(
   const vocabulary = new StubVocabularyRepository();
   const policyRepository = new StubPolicyRepository();
   const priorityMode = signal<AnkiWordPriorityMode>(options.ankiWordPriorityMode ?? 'uniform');
+  const vocabularyStrictness = options.vocabularyStrictness ?? 'standard';
 
   const snapshot = snapshotFixture(options.uniqueEntryCount ?? REVIEWED_EXPRESSIONS.length);
   vocabulary.snapshots.push(snapshot);
@@ -405,6 +413,13 @@ export function configureGenerationTestBed(
         useValue: {
           activeSnapshotId: signal<SnapshotId | null>(snapshot.id),
           ankiWordPriorityMode: priorityMode,
+        },
+      },
+      {
+        provide: GenerationSettingsStore,
+        useValue: {
+          vocabularyStrictness: signal(vocabularyStrictness),
+          repairBudget: signal(repairBudgetFor(vocabularyStrictness)),
         },
       },
       {

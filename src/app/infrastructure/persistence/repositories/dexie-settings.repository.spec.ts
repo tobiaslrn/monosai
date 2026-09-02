@@ -3,6 +3,7 @@ import { fixedClock } from '../../../domain/shared/clock';
 import {
   DEFAULT_STORY_TOKEN_BUDGET,
   DEFAULT_READER_PREFERENCES,
+  DEFAULT_GENERATION_SETTINGS,
   DEFAULT_TEXT_MODEL_SETTINGS,
 } from '../../../domain/settings/settings';
 import { createTestDatabase, destroyTestDatabase } from '../../../../testing/test-database';
@@ -36,6 +37,9 @@ describe('DexieSettingsRepository', () => {
 
     const textModel = await repository.getTextModelSettings();
     expect(textModel.ok && textModel.value.storyTokenBudget).toBe(DEFAULT_STORY_TOKEN_BUDGET);
+
+    const generation = await repository.getGenerationSettings();
+    expect(generation.ok && generation.value).toEqual(DEFAULT_GENERATION_SETTINGS);
   });
 
   it('persists a valid AnkiConnect port and rejects an invalid one', async () => {
@@ -54,6 +58,26 @@ describe('DexieSettingsRepository', () => {
     expect(saved.ok && saved.value.ankiWordPriorityMode).toBe('difficult');
     const reloaded = await repository.getAppSettings();
     expect(reloaded.ok && reloaded.value.ankiWordPriorityMode).toBe('difficult');
+  });
+
+  it('stores generation strictness in its own settings row', async () => {
+    const saved = await repository.updateGenerationSettings({ vocabularyStrictness: 'strict' });
+
+    expect(saved.ok && saved.value.vocabularyStrictness).toBe('strict');
+    const row = await db.settings.get(SETTINGS_KEYS.generation);
+    expect(row?.value).toMatchObject({
+      vocabularyStrictness: 'strict',
+      defaultPreparationTargets: ['english', 'grammar'],
+    });
+  });
+
+  it('rejects duplicate preparation targets without writing them', async () => {
+    const invalid = await repository.updateGenerationSettings({
+      defaultPreparationTargets: ['english', 'english'],
+    });
+
+    expect(invalid.ok).toBe(false);
+    expect(await db.settings.get(SETTINGS_KEYS.generation)).toBeUndefined();
   });
 
   it('defaults the priority mode when reading an older app row', async () => {

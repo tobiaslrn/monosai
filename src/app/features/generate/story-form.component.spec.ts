@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { MAX_PREMISE_LENGTH } from '../../domain/ai/story-request';
-import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
+import type { AnkiWordPriorityMode, VocabularyStrictness } from '../../domain/settings/settings';
 import { StoryFormComponent } from './story-form.component';
 
 @Component({
@@ -17,6 +17,8 @@ import { StoryFormComponent } from './story-form.component';
     presetName="Starter forms"
     [ankiWordPriorityMode]="priorityMode()"
     (ankiWordPriorityModeChanged)="priorityMode.set($event)"
+    [vocabularyStrictness]="strictness()"
+    (vocabularyStrictnessChanged)="strictness.set($event)"
     (generate)="generated = generated + 1"
   />`,
 })
@@ -24,6 +26,7 @@ class HostComponent {
   readonly canGenerate = signal(true);
   readonly disabled = signal(false);
   readonly priorityMode = signal<AnkiWordPriorityMode>('uniform');
+  readonly strictness = signal<VocabularyStrictness>('standard');
   generated = 0;
 }
 
@@ -191,6 +194,23 @@ describe('StoryFormComponent', () => {
     host.disabled.set(true);
     fixture.detectChanges();
     expect(select.disabled).toBe(true);
+  });
+
+  it('keeps vocabulary strictness in an advanced disclosure and emits changes', () => {
+    const { element, fixture, host } = render();
+    const details = element.querySelector<HTMLDetailsElement>('.strictness');
+
+    expect(details?.open).toBe(false);
+    expect(details?.querySelector('summary')?.textContent).toContain('Vocabulary strictness');
+    const relaxed = details?.querySelector<HTMLInputElement>('input[value="relaxed"]');
+    if (relaxed === null || relaxed === undefined) {
+      throw new Error('relaxed strictness choice was not rendered');
+    }
+    relaxed.click();
+    fixture.detectChanges();
+
+    expect(host.strictness()).toBe('relaxed');
+    expect(details?.textContent).toContain('Keep the first draft');
   });
 
   it('leaves model choice to Settings', () => {
