@@ -1,23 +1,15 @@
-import type { SentenceRange, StoryCandidate } from './story-request';
+import type { StoryCandidate } from './story-request';
 
 /**
  * What is wrong with a parsed candidate's shape.
  *
- * `format` issues mean the model did not answer the contract at all and a
- * format-recovery request is the response. `repairable` issues mean the answer
- * was well formed but says the wrong thing — a story of the wrong length is
- * still a story — so they go to a content repair and spend the repair budget
- * (ai-pipelines section 5).
+ * Format issues mean the model did not answer the contract at all and a
+ * format-recovery request is the response.
  */
-export type StructureSeverity = 'format' | 'repairable';
+export type StructureSeverity = 'format';
 
 export type StructureIssueCode =
-  | 'title-empty'
-  | 'no-sentences'
-  | 'sentence-empty'
-  | 'duplicate-index'
-  | 'non-contiguous-index'
-  | 'sentence-count-out-of-range';
+  'title-empty' | 'no-sentences' | 'sentence-empty' | 'duplicate-index' | 'non-contiguous-index';
 
 export interface StructureIssue {
   readonly code: StructureIssueCode;
@@ -51,10 +43,7 @@ export function normalizeCandidate(candidate: StoryCandidate): StoryCandidate {
  * Indexes must be unique and contiguous from zero, so the ordered sentences the
  * story is built from cannot depend on the order the model happened to emit.
  */
-export function checkStoryStructure(
-  candidate: StoryCandidate,
-  range: SentenceRange,
-): readonly StructureIssue[] {
+export function checkStoryStructure(candidate: StoryCandidate): readonly StructureIssue[] {
   const issues: StructureIssue[] = [];
 
   if (candidate.titleJa === '') {
@@ -106,23 +95,11 @@ export function checkStoryStructure(
     }
   }
 
-  if (candidate.sentences.length < range.min || candidate.sentences.length > range.max) {
-    const requirement =
-      range.min === range.max
-        ? `exactly ${String(range.min)}`
-        : `between ${String(range.min)} and ${String(range.max)}`;
-    issues.push({
-      code: 'sentence-count-out-of-range',
-      severity: 'repairable',
-      message: `The story has ${String(candidate.sentences.length)} sentences; it needs ${requirement}.`,
-    });
-  }
-
   return issues;
 }
 
 export function hasFormatFailure(issues: readonly StructureIssue[]): boolean {
-  return issues.some((issue) => issue.severity === 'format');
+  return issues.length > 0;
 }
 
 /** The sentences in index order, which is the order the story is saved in. */

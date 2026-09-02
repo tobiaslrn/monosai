@@ -71,6 +71,7 @@ describe('GenerationStore strict pass', () => {
     expect(bed.readings.provenance).toHaveLength(1);
 
     const provenance = bed.readings.provenance[0];
+    expect(provenance.requestedSentenceCount).toBe(5);
     expect(provenance.repairAttempts).toBe(0);
     expect(provenance.modelId).toBe('vendor/text-model');
     expect(provenance.promptVersions).toMatchObject({ story: 'story/3' });
@@ -135,7 +136,7 @@ describe('GenerationStore strict pass', () => {
     expect(request.allowedVocabulary).toHaveLength(8);
     expect(request.suggestedVocabulary.length).toBeGreaterThan(0);
     expect(request.structuralBaseline).toContain('は');
-    expect(request.sentenceRange).toEqual({ min: 5, max: 5 });
+    expect(request.requestedSentenceCount).toBe(5);
   });
 
   it('opens in the structured-output mode the stored test proved', async () => {
@@ -301,22 +302,18 @@ describe('GenerationStore repair', () => {
     expect(bed.provider.generationCalls).toMatchObject({ repair: 2, review: 3 });
   });
 
-  it('repairs a story of the wrong length rather than treating it as malformed', async () => {
+  it('saves a short story without spending a count repair', async () => {
     bed.provider.storyQueue.push(ok(shortStory()));
-    bed.provider.repairQueue.push(ok(strictStory()));
 
     await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
       story: 1,
-      repair: 1,
+      repair: 0,
       review: 0,
       grammar: 1,
       translate: 1,
     });
-    expect(bed.provider.repairRequests[0].structureIssues[0].code).toBe(
-      'sentence-count-out-of-range',
-    );
     expect(bed.store.state().kind).toBe('saved');
   });
 
@@ -367,44 +364,6 @@ describe('GenerationStore repair', () => {
       category: 'unknown',
       reason: 'unresolved-after-repair',
     });
-  });
-
-  it('keeps a story whose structure two repairs never fixed out of the library', async () => {
-    bed.provider.storyQueue.push(ok(shortStory()));
-    bed.provider.repairQueue.push(ok(shortStory()), ok(shortStory()));
-
-    await bed.store.generate(5, PREMISE);
-
-    expect(bed.provider.generationCalls).toEqual({
-      story: 1,
-      repair: 2,
-      review: 0,
-      grammar: 0,
-      translate: 0,
-    });
-    const state = bed.store.state();
-    expect(state.kind).toBe('invalid-draft');
-    if (state.kind !== 'invalid-draft') {
-      return;
-    }
-    expect(state.draft.repairAttempts).toBe(2);
-    expect(state.draft.issues).not.toHaveLength(0);
-
-    expect(bed.readings.readings).toHaveLength(0);
-    expect(bed.readings.sentences).toHaveLength(0);
-    expect(bed.readings.frozenValidations).toHaveLength(0);
-    expect(bed.readings.provenance).toHaveLength(0);
-  });
-
-  it('offers no way out of an invalid draft except starting over', async () => {
-    bed.provider.storyQueue.push(ok(shortStory()));
-    bed.provider.repairQueue.push(ok(shortStory()), ok(shortStory()));
-
-    await bed.store.generate(5, PREMISE);
-    bed.store.reset();
-
-    expect(bed.store.state().kind).toBe('idle');
-    expect(bed.readings.readings).toHaveLength(0);
   });
 });
 

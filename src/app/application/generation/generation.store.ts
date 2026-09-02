@@ -9,18 +9,13 @@ import {
 import { MAX_REPAIR_ATTEMPTS } from '../../domain/ai/generation-provenance';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import {
-  sentenceRangeForCount,
   storyFormForSentenceCount,
   validateStoryInput,
   type StoryCandidate,
   type StoryGenerationRequest,
   type StoryInputDraft,
 } from '../../domain/ai/story-request';
-import {
-  checkStoryStructure,
-  orderedSentences,
-  type StructureIssue,
-} from '../../domain/ai/story-structure';
+import { checkStoryStructure, orderedSentences } from '../../domain/ai/story-structure';
 import type { TextTaskConfig, UnknownSpan } from '../../domain/ai/text-generation-provider';
 import type { GrammarProfileSnapshot } from '../../domain/grammar/profile';
 import { VALIDATOR_VERSION } from '../../domain/language/analyzer-version';
@@ -52,20 +47,6 @@ import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 
 export type GenerationFailure = AiError | LanguageError | StorageError;
 
-/** One sentence of an unsaved draft, with the words that kept it out. */
-export interface InvalidDraftSentence {
-  readonly textJa: string;
-  readonly unknownSurfaces: readonly string[];
-}
-
-export interface InvalidDraft {
-  readonly titleJa: string;
-  readonly titleUnknownSurfaces: readonly string[];
-  readonly sentences: readonly InvalidDraftSentence[];
-  readonly issues: readonly string[];
-  readonly repairAttempts: number;
-}
-
 /**
  * The generation state machine from ai-pipelines section 5.
  *
@@ -73,12 +54,6 @@ export interface InvalidDraft {
  * discardable, so a cancellation or a failure at any of those states leaves no
  * reading row, and `finalizing` is the one non-cancellable state because it is
  * a single transaction that either writes the whole story or writes nothing.
- *
- * `invalid-draft` is a state, not a record. It lives in this store and dies
- * with the job that produced it; there is deliberately no path from it to
- * storage. Only a
- * structural failure reaches it — unknown words the repairs could not replace
- * are saved with the story and marked in the reader instead.
  */
 export type GenerationState =
   | { readonly kind: 'idle' }
@@ -101,7 +76,6 @@ export type GenerationState =
     }
   | { readonly kind: 'finalizing' }
   | { readonly kind: 'saved'; readonly reading: GeneratedStory }
-  | { readonly kind: 'invalid-draft'; readonly draft: InvalidDraft }
   | {
       readonly kind: 'cancelled';
       /** The stage the run was in when it was cancelled. */
@@ -269,13 +243,7 @@ export class GenerationStore {
 
   readonly isBusy = computed(() => {
     const kind = this.stateSignal().kind;
-    return (
-      kind !== 'idle' &&
-      kind !== 'saved' &&
-      kind !== 'invalid-draft' &&
-      kind !== 'cancelled' &&
-      kind !== 'failed'
-    );
+    return kind !== 'idle' && kind !== 'saved' && kind !== 'cancelled' && kind !== 'failed';
   });
   readonly canCancel = computed(() => CANCELLABLE.has(this.stateSignal().kind));
   /** Whether `retrySave` can currently do anything. */
@@ -353,7 +321,7 @@ export class GenerationStore {
 
     const request: StoryGenerationRequest = {
       form,
-      sentenceRange: sentenceRangeForCount(sentenceCount),
+      requestedSentenceCount: sentenceCount,
       premise: input.value.premise,
       allowedVocabulary: prepared.value.allowedVocabulary,
       suggestedVocabulary: prepared.value.suggestedVocabulary,
@@ -413,7 +381,7 @@ export class GenerationStore {
     await this.persist(draft);
   }
 
-  /** Returns to the empty form, discarding an invalid draft or a finished run. */
+  /** Returns to the empty form, discarding a finished run. */
   reset(): void {
     this.controller?.abort();
     this.controller = null;
@@ -434,7 +402,7 @@ export class GenerationStore {
    * Parse, validate, review, and repair until the candidate is accepted, the
    * repair budget runs out, or something fails. A budget that runs out with
    * words still unknown is not a rejection: the story is saved with those words
-   * marked. Only a structure the repairs never fixed ends in `invalid-draft`.
+   * marked.
    *
    * Every pass reparses and revalidates the whole returned story. Nothing from
    * an earlier pass survives into a later one: a repair's token analysis,
@@ -460,7 +428,7 @@ export class GenerationStore {
 
     for (;;) {
       this.stateSignal.set({ kind: 'parsing' });
-      const structureIssues = checkStoryStructure(candidate, request.sentenceRange);
+      const structureIssues = checkStoryStructure(candidate);
 
       this.stateSignal.set({ kind: 'validating' });
       this.announce('Checking every word against your vocabulary…');
@@ -521,7 +489,7 @@ export class GenerationStore {
       const budgetSpent = this.repairSignal() >= MAX_REPAIR_ATTEMPTS;
       const outstanding = remaining.size > 0 || structureIssues.length > 0;
 
-      if (!outstanding || (budgetSpent && structureIssues.length === 0)) {
+      if (!outstanding || budgetSpent) {
         this.markUnresolved(units, remaining);
         await this.finalize(
           units,
@@ -531,11 +499,6 @@ export class GenerationStore {
           review.approvals.size,
           signal,
         );
-        return;
-      }
-
-      if (budgetSpent) {
-        this.invalidDraft(units, candidates, remaining, structureIssues);
         return;
       }
 
@@ -865,6 +828,7 @@ export class GenerationStore {
       grammarProfileSnapshotId: context.profile.id,
       exceptionPolicyHash: context.policyHash,
       modelId: context.taskConfig.modelId,
+      requestedSentenceCount: request.requestedSentenceCount,
       repairAttempts: this.repairSignal(),
       suggestedVocabularyItemIds: suggestedItemIds,
       ankiWordPriorityMode: context.ankiWordPriorityMode,
@@ -983,61 +947,6 @@ export class GenerationStore {
     this.stateSignal.set({ kind: 'saved', reading: saved.value });
     this.logger.info('job.succeeded', { kind: 'generation' });
     this.announce(`Saved “${saved.value.title}” to your library.`);
-  }
-
-  /**
-   * The terminal state for a candidate whose structure never validated.
-   *
-   * Only a structural failure gets here. Words the repairs could not replace
-   * are saved with the story and marked in the reader, so the issue list names
-   * them as context for a structure that is still wrong, not as the reason.
-   */
-  private invalidDraft(
-    units: readonly AnalyzedUnit[],
-    candidates: readonly ExceptionCandidate[],
-    remaining: ReadonlySet<string>,
-    structureIssues: readonly StructureIssue[],
-  ): void {
-    const surfacesOf = (unit: AnalyzedUnit): readonly string[] => {
-      const tokenById = new Map(unit.tokens.map((token) => [token.id, token]));
-      const surfaces = new Set<string>();
-      for (const status of unit.statuses) {
-        if (status.validation.category !== 'unknown') {
-          continue;
-        }
-        const token = tokenById.get(status.tokenId);
-        if (token !== undefined && remaining.has(candidateKey(token))) {
-          surfaces.add(token.surface);
-        }
-      }
-      return [...surfaces];
-    };
-
-    const unresolved = candidates
-      .filter((candidate) => remaining.has(candidate.id))
-      .map((candidate) => `“${candidate.surface}” is not in your reviewed vocabulary.`);
-
-    this.controller = null;
-    this.logger.warn('job.failed', {
-      kind: 'generation',
-      errorCode: 'invalid-draft',
-      phase: 'validating',
-    });
-    this.stateSignal.set({
-      kind: 'invalid-draft',
-      draft: {
-        titleJa: units[0].textJa,
-        titleUnknownSurfaces: surfacesOf(units[0]),
-        sentences: units
-          .filter((unit) => unit.sentenceIndex !== null)
-          .map((unit) => ({ textJa: unit.textJa, unknownSurfaces: surfacesOf(unit) })),
-        issues: [...structureIssues.map((issue) => issue.message), ...unresolved],
-        repairAttempts: this.repairSignal(),
-      },
-    });
-    this.announce(
-      'This story still does not have the shape that was asked for, so it was not saved. Nothing was added to your library.',
-    );
   }
 
   /** Structural baseline forms, which stay readable whatever the allowlist says. */

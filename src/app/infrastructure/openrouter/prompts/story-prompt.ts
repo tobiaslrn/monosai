@@ -16,7 +16,7 @@ const TASK_LAYER = [
   'Role: Write controlled Japanese reading material for one learner.',
   'Goal: Write one coherent story that follows the supplied premise and constraints.',
   'Success criteria:',
-  '- Write a number of sentences inside `sentenceCount`. When its `min` and `max` are equal, that count is exact.',
+  '- Aim for `requestedSentenceCount` sentences. Treat it as a length target while keeping the story coherent.',
   '- Give the story a recognizable beginning, development, and ending, with causal or temporal continuity.',
   '- Keep the Japanese natural within the learner constraints. Avoid repetitive sentence templates and do not showcase vocabulary or grammar for its own sake.',
   '- Stay faithful to the premise and any compatible learner style instructions.',
@@ -51,7 +51,7 @@ export function buildStoryPrompt(request: StoryGenerationRequest): AssembledProm
       ),
     ),
     jsonConfigBlock('story requirements', {
-      sentenceCount: { min: request.sentenceRange.min, max: request.sentenceRange.max },
+      requestedSentenceCount: request.requestedSentenceCount,
     }),
     asData('premise', request.premise),
     request.specialInstructions === undefined

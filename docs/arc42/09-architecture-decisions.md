@@ -60,6 +60,7 @@ files are already linked from code comments and from other records.
 | [0033](../decisions/0033-unresolved-unknown-words-are-marked-not-rejected.md) | A word repair could not replace is marked, not a reason to throw the story away |
 | [0040](../decisions/0040-speech-capabilities-are-declared.md) | The catalog declares speech capabilities, the probe confirms them |
 | [0044](../decisions/0044-backgrounded-story-generation.md) | A story is written by a job, not by a screen |
+| [0046](../decisions/0046-length-is-a-guideline.md) | Story length is a guideline, not a contract |
 
 ### The reader
 

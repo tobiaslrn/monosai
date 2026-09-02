@@ -54,6 +54,7 @@ export interface AcceptedStory {
   readonly grammarProfileSnapshotId: string;
   readonly exceptionPolicyHash: string;
   readonly modelId: string;
+  readonly requestedSentenceCount: number;
   readonly repairAttempts: number;
   readonly suggestedVocabularyItemIds: readonly VocabularyItemId[];
   readonly ankiWordPriorityMode?: AnkiWordPriorityMode;
@@ -157,6 +158,7 @@ export class StoryAssemblyService {
       exceptionPolicyHash: accepted.exceptionPolicyHash,
       modelId: accepted.modelId,
       promptVersions: promptVersionRecord(),
+      requestedSentenceCount: accepted.requestedSentenceCount,
       repairAttempts: accepted.repairAttempts,
       suggestedVocabularyItemIds: accepted.suggestedVocabularyItemIds,
       ankiWordPriorityMode: accepted.ankiWordPriorityMode ?? 'uniform',

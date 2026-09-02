@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import type { StoryGenerationRequest } from '../../../domain/ai/story-request';
-import { sentenceRangeForCount } from '../../../domain/ai/story-request';
 import { snapshotId } from '../../../domain/shared/ids';
 import { buildStoryPrompt } from './story-prompt';
 import { CONFIG_CLOSE, CONFIG_OPEN, DATA_CLOSE, DATA_OPEN } from './prompt-layers';
@@ -8,7 +7,7 @@ import { CONFIG_CLOSE, CONFIG_OPEN, DATA_CLOSE, DATA_OPEN } from './prompt-layer
 function request(overrides: Partial<StoryGenerationRequest> = {}): StoryGenerationRequest {
   return {
     form: 'micro',
-    sentenceRange: sentenceRangeForCount(5),
+    requestedSentenceCount: 5,
     premise: '猫が旅に出る話。',
     allowedVocabulary: ['猫', '旅', '出る', '猫'],
     suggestedVocabulary: ['猫', '猫', '未許可'],
@@ -76,14 +75,12 @@ describe('prompt assembly contracts', () => {
     });
   });
 
-  it('sends the sentence count as a structured range and the fallback shape in one contract', () => {
+  it('sends the requested sentence count and the fallback shape in one contract', () => {
     const prompt = buildStoryPrompt(request());
     const requirements = jsonBlock(prompt.user, 'story requirements');
 
-    // One encoding of the constraint, everywhere; the task layer says what an
-    // equal min and max means.
-    expect(requirements['sentenceCount']).toEqual({ min: 5, max: 5 });
-    expect(prompt.system).toContain('When its `min` and `max` are equal, that count is exact');
+    expect(requirements['requestedSentenceCount']).toBe(5);
+    expect(prompt.system).toContain('Treat it as a length target');
     expect(prompt.jsonContract).toContain('"titleJa"');
     expect(prompt.system).not.toContain('Include no other fields');
   });

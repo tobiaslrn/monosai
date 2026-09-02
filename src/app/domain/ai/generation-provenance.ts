@@ -21,6 +21,8 @@ export interface GenerationProvenance {
   readonly exceptionPolicyHash: string;
   readonly modelId: string;
   readonly promptVersions: Readonly<Record<string, string>>;
+  /** Length selected when generation began; absent only on stories saved before ADR 0046. */
+  readonly requestedSentenceCount?: number;
   /** Content repairs actually spent, 0 to 2. Format recovery is not counted. */
   readonly repairAttempts: number;
   readonly suggestedVocabularyItemIds: readonly VocabularyItemId[];

@@ -1,7 +1,7 @@
 # 0033 — A word repair could not replace is marked, not a reason to throw the story away
 
 Date: 2026-08-26
-Status: Accepted
+Status: Accepted; invalid-draft consequence superseded by ADR 0046
 
 ## Context
 

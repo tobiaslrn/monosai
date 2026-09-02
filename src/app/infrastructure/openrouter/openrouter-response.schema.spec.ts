@@ -10,15 +10,15 @@ import {
 } from './openrouter-response.schema';
 
 describe('request-specific provider JSON schemas', () => {
-  it('puts exact story and segment counts into the array contracts', () => {
-    expect(storyCandidateJsonSchema({ min: 7, max: 7 })).toMatchObject({
-      schema: { properties: { sentences: { minItems: 7, maxItems: 7 } } },
+  it('accepts undershoot while keeping requested upper bounds', () => {
+    expect(storyCandidateJsonSchema(7)).toMatchObject({
+      schema: { properties: { sentences: { minItems: 1, maxItems: 7 } } },
     });
     expect(storyBlueprintJsonSchema(4)).toMatchObject({
       schema: { properties: { segments: { minItems: 4, maxItems: 4 } } },
     });
     expect(storySegmentJsonSchema(37)).toMatchObject({
-      schema: { properties: { sentences: { minItems: 37, maxItems: 37 } } },
+      schema: { properties: { sentences: { minItems: 1, maxItems: 37 } } },
     });
     expect(storyRepairPatchJsonSchema(3)).toMatchObject({
       schema: { properties: { replacements: { minItems: 3, maxItems: 3 } } },

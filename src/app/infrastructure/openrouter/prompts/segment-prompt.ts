@@ -16,7 +16,7 @@ const TASK_LAYER = [
   'Role: Write one bounded segment of a planned controlled-Japanese story.',
   'Goal: Continue the same story through the assigned beat without restarting, recapping, or jumping ahead.',
   'Success criteria:',
-  '- Write the exact supplied number of Japanese sentences with local indexes contiguous from 0.',
+  '- Aim for the supplied number of Japanese sentences, with local indexes contiguous from 0.',
   '- Follow the assigned beat while remaining consistent with the cumulative summary and preceding Japanese.',
   '- Preserve causal and temporal continuity, character state, viewpoint, tone, and register.',
   '- Avoid repetitive templates, disconnected vocabulary display, and an artificial ending unless this is the final segment.',

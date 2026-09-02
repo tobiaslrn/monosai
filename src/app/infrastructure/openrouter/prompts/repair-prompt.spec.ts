@@ -1,15 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import {
-  sentenceRangeForCount,
-  type StoryGenerationRequest,
-} from '../../../domain/ai/story-request';
+import type { StoryGenerationRequest } from '../../../domain/ai/story-request';
 import type { StoryRepairRequest } from '../../../domain/ai/text-generation-provider';
 import { snapshotId } from '../../../domain/shared/ids';
 import { buildRepairPrompt } from './repair-prompt';
 
 const ORIGINAL: StoryGenerationRequest = {
   form: 'micro',
-  sentenceRange: sentenceRangeForCount(5),
+  requestedSentenceCount: 5,
   premise: 'ねこが一日をすごす話。',
   allowedVocabulary: ['ねこ', 'ねる'],
   suggestedVocabulary: ['ねこ'],
@@ -50,7 +47,7 @@ describe('buildRepairPrompt', () => {
       candidate: CANDIDATE,
       unknownSpans: [{ sentenceIndex: 2, surface: '図書館' }],
       structureIssues: [
-        { code: 'sentence-count-out-of-range', severity: 'repairable', message: 'too short' },
+        { code: 'non-contiguous-index', severity: 'format', message: 'missing index' },
       ],
       attempt: 2,
       previouslyAttempted: ['図書館'],

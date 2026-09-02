@@ -6,16 +6,13 @@ import {
   countCodePoints,
   normalizeStorySentenceCount,
   planStorySegments,
-  sentenceRangeForCount,
   storyFormForSentenceCount,
   validateStoryInput,
 } from './story-request';
 
 describe('story length', () => {
-  it('supports very long stories and enforces the selected count exactly', () => {
+  it('offers length targets through very long stories', () => {
     expect(STORY_SENTENCE_COUNTS).toEqual([5, 15, 30, 50, 100, 200, 400, 800]);
-    expect(sentenceRangeForCount(30)).toEqual({ min: 30, max: 30 });
-    expect(sentenceRangeForCount(800)).toEqual({ min: 800, max: 800 });
   });
 
   it('normalizes untrusted slider values to the nearest supported stop', () => {

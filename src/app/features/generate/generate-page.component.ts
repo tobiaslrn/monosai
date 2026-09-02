@@ -7,7 +7,6 @@ import {
   inject,
   input,
 } from '@angular/core';
-import { Dialog } from '@angular/cdk/dialog';
 import { Router, RouterLink } from '@angular/router';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
@@ -33,11 +32,9 @@ import {
   grammarLabel,
 } from '../../shared-ui/reading-summary/reading-summary-labels';
 import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
-import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { GenerationWaitComponent } from './generation-wait.component';
-import { InvalidDraftComponent } from './invalid-draft.component';
 import { PrerequisitePanelComponent } from './prerequisite-panel.component';
 import { StoryFormComponent } from './story-form.component';
 import { ExceptionPolicyFieldComponent } from './exception-policy-field.component';
@@ -62,7 +59,6 @@ const IDLE: GenerationState = { kind: 'idle' };
     RouterLink,
     ErrorScreenComponent,
     GenerationWaitComponent,
-    InvalidDraftComponent,
     PageHeaderComponent,
     PrerequisitePanelComponent,
     StoryFormComponent,
@@ -104,15 +100,6 @@ const IDLE: GenerationState = { kind: 'idle' };
             <a class="mn-button mn-button--primary" routerLink="/generate">Start a new story</a>
             <a class="mn-button" routerLink="/library">Back to library</a>
           </div>
-        </section>
-      } @else if (state().kind === 'invalid-draft') {
-        <section class="mn-panel">
-          <mn-invalid-draft
-            [draft]="invalidDraft()!"
-            (tryAgain)="retry()"
-            (changePremise)="changePremise()"
-            (closeRequested)="confirmClose()"
-          />
         </section>
       } @else if (savedReading(); as reading) {
         <section class="result-screen" aria-label="Saved story details">
@@ -254,7 +241,6 @@ export class GeneratePageComponent {
   protected readonly appSettings = inject(AppSettingsStore);
   private readonly grammar = inject(GrammarProfileStore);
   private readonly snapshots = inject(SnapshotHistoryStore);
-  private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
   protected readonly navigation = inject(NavigationHistoryService);
   protected readonly generateOriginState = navigationOriginState('/generate');
@@ -284,8 +270,6 @@ export class GeneratePageComponent {
         return 'Your story is ready';
       case 'cancelled':
         return 'Generation stopped';
-      case 'invalid-draft':
-        return 'Story draft';
       case 'failed':
         return 'Story generation failed';
       default:
@@ -323,11 +307,6 @@ export class GeneratePageComponent {
   protected readonly hasBlockers = computed(
     () => !allPrerequisitesMet(this.checks()) || this.presetLine().warning !== null,
   );
-
-  protected readonly invalidDraft = computed(() => {
-    const state = this.state();
-    return state.kind === 'invalid-draft' ? state.draft : null;
-  });
 
   protected readonly savedReading = computed(() => {
     const state = this.state();
@@ -483,10 +462,6 @@ export class GeneratePageComponent {
     void this.endJobAndReturnToForm();
   }
 
-  protected changePremise(): void {
-    void this.endJobAndReturnToForm();
-  }
-
   /** Drops the finished run and puts the form back at the plain address. */
   private async endJobAndReturnToForm(): Promise<void> {
     const job = this.job();
@@ -497,28 +472,5 @@ export class GeneratePageComponent {
       replaceUrl: true,
       state: this.navigation.preservedOriginState('/library'),
     });
-  }
-
-  /**
-   * Closing an invalid draft loses it, so it is confirmed: there is no copy of
-   * this Japanese anywhere else and no way to get the same one back.
-   */
-  protected async confirmClose(): Promise<void> {
-    const confirmed = await openConfirmDialog(this.dialog, {
-      title: 'Discard this draft?',
-      message: 'The story was never saved, and closing loses it for good.',
-      details: ['The Japanese shown here', 'The list of words that kept it out'],
-      footnote: 'Your premise and instructions are kept.',
-      confirmLabel: 'Discard the draft',
-      cancelLabel: 'Keep looking at it',
-      tone: 'danger',
-    });
-    if (confirmed) {
-      const job = this.job();
-      if (job !== null) {
-        this.jobs.dismiss(job.id);
-      }
-      await this.router.navigate(['/library']);
-    }
   }
 }

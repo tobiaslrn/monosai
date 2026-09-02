@@ -1,7 +1,6 @@
 import type { AiError } from '../../domain/ai/ai-error';
 import type { ExceptionDecision } from '../../domain/ai/exception-review';
 import type {
-  SentenceRange,
   StoryBlueprint,
   StoryCandidate,
   StoryGenerationRequest,
@@ -91,7 +90,7 @@ export class OpenRouterStoryGenerator {
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<StoryCandidate, AiError>> {
-    if (request.sentenceRange.max > MAX_STORY_SEGMENT_SENTENCES) {
+    if (request.requestedSentenceCount > MAX_STORY_SEGMENT_SENTENCES) {
       return this.generateLongStory(request, config, signal);
     }
     return this.generateBoundedStory(request, config, signal);
@@ -106,9 +105,9 @@ export class OpenRouterStoryGenerator {
       task: 'story-generation',
       config,
       prompt: buildStoryPrompt(request),
-      jsonSchema: storyCandidateJsonSchema(request.sentenceRange),
+      jsonSchema: storyCandidateJsonSchema(request.requestedSentenceCount),
       maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
-      read: storyReader(request.sentenceRange),
+      read: storyReader(),
       ...(signal === undefined ? {} : { signal }),
     });
   }
@@ -119,15 +118,14 @@ export class OpenRouterStoryGenerator {
    * A story whose only fault is vocabulary is repaired sentence by sentence:
    * the returned patch is spliced in and then revalidated in full, so the
    * checks are unchanged while the untouched sentences lose their chance to
-   * acquire a new unknown. A wrong sentence count is a property of the whole
-   * story, so those still travel as a whole story.
+   * acquire a new unknown.
    */
   async repairStory(
     request: StoryRepairRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<StoryCandidate, AiError>> {
-    if (request.original.sentenceRange.max > MAX_STORY_SEGMENT_SENTENCES) {
+    if (request.original.requestedSentenceCount > MAX_STORY_SEGMENT_SENTENCES) {
       return this.repairLongStory(request, config, signal);
     }
     if (request.structureIssues.length === 0 && request.unknownSpans.length > 0) {
@@ -166,9 +164,9 @@ export class OpenRouterStoryGenerator {
       task: 'story-repair',
       config,
       prompt: buildRepairPrompt(request),
-      jsonSchema: storyCandidateJsonSchema(request.original.sentenceRange),
+      jsonSchema: storyCandidateJsonSchema(request.original.requestedSentenceCount),
       maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
-      read: storyReader(request.original.sentenceRange),
+      read: storyReader(),
       ...(signal === undefined ? {} : { signal }),
     });
   }
@@ -178,7 +176,7 @@ export class OpenRouterStoryGenerator {
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<StoryCandidate, AiError>> {
-    const planned = planStorySegments(request.sentenceRange.max);
+    const planned = planStorySegments(request.requestedSentenceCount);
     const blueprint = await this.runner.run<StoryBlueprint>({
       task: 'story-generation',
       config,
@@ -209,41 +207,13 @@ export class OpenRouterStoryGenerator {
         }),
         jsonSchema: storySegmentJsonSchema(segment.sentenceCount),
         maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
-        read: segmentReader(segment.sentenceCount),
+        read: segmentReader(),
         ...(signal === undefined ? {} : { signal }),
       });
       if (!generated.ok) {
         return generated;
       }
-      let segmentSentences = generated.value.sentences;
-      if (segmentSentences.length !== segment.sentenceCount) {
-        const repaired = await this.repairBoundedStory(
-          {
-            original: {
-              ...request,
-              sentenceRange: { min: segment.sentenceCount, max: segment.sentenceCount },
-            },
-            candidate: { titleJa: blueprint.value.titleJa, sentences: segmentSentences },
-            unknownSpans: [],
-            structureIssues: [
-              {
-                code: 'sentence-count-out-of-range',
-                severity: 'repairable',
-                message: `Segment ${String(segment.index)} must contain exactly ${String(segment.sentenceCount)} sentences.`,
-              },
-            ],
-            attempt: 1,
-            previouslyAttempted: [],
-            promptVersion: request.promptVersion.replace(/^story\//u, 'repair/'),
-          },
-          config,
-          signal,
-        );
-        if (!repaired.ok) {
-          return repaired;
-        }
-        segmentSentences = repaired.value.sentences;
-      }
+      const segmentSentences = generated.value.sentences;
       const offset = sentences.length;
       sentences.push(
         ...segmentSentences.map((sentence) => ({
@@ -264,45 +234,45 @@ export class OpenRouterStoryGenerator {
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<StoryCandidate, AiError>> {
-    const plans = planStorySegments(request.original.sentenceRange.max);
     const ordered = [...request.candidate.sentences]
       .sort((left, right) => left.index - right.index)
       .map((sentence) => sentence.textJa);
+    const plans = planStorySegments(ordered.length);
     const repairedSentences: StoryCandidate['sentences'][number][] = [];
     let titleJa = request.candidate.titleJa;
-    let offset = 0;
+    let sourceOffset = 0;
 
     for (const plan of plans) {
-      const texts = ordered.slice(offset, offset + plan.sentenceCount);
+      const texts = ordered.slice(sourceOffset, sourceOffset + plan.sentenceCount);
       const spans = request.unknownSpans
         .filter(
           (span) =>
             (span.sentenceIndex === null && plan.index === 0) ||
             (span.sentenceIndex !== null &&
-              span.sentenceIndex >= offset &&
-              span.sentenceIndex < offset + plan.sentenceCount),
+              span.sentenceIndex >= sourceOffset &&
+              span.sentenceIndex < sourceOffset + plan.sentenceCount),
         )
         .map((span) => ({
           ...span,
           sentenceIndex:
-            span.sentenceIndex === null ? null : Math.max(0, span.sentenceIndex - offset),
+            span.sentenceIndex === null ? null : Math.max(0, span.sentenceIndex - sourceOffset),
         }));
-      const countMismatch = texts.length !== plan.sentenceCount;
       const carriesStructureIssue =
         request.structureIssues.length > 0 && plan.index === plans.length - 1;
-      const shouldRepair = spans.length > 0 || countMismatch || carriesStructureIssue;
+      const shouldRepair = spans.length > 0 || carriesStructureIssue;
 
       if (!shouldRepair) {
+        const outputOffset = repairedSentences.length;
         repairedSentences.push(
-          ...texts.map((textJa, index) => ({ index: offset + index, textJa })),
+          ...texts.map((textJa, index) => ({ index: outputOffset + index, textJa })),
         );
-        offset += plan.sentenceCount;
+        sourceOffset += texts.length;
         continue;
       }
 
       const segmentOriginal: StoryGenerationRequest = {
         ...request.original,
-        sentenceRange: { min: plan.sentenceCount, max: plan.sentenceCount },
+        requestedSentenceCount: texts.length,
       };
       const segmentRequest: StoryRepairRequest = {
         ...request,
@@ -312,7 +282,7 @@ export class OpenRouterStoryGenerator {
           sentences: texts.map((textJa, index) => ({ index, textJa })),
         },
         unknownSpans: spans,
-        structureIssues: countMismatch || carriesStructureIssue ? request.structureIssues : [],
+        structureIssues: carriesStructureIssue ? request.structureIssues : [],
       };
       const repaired =
         segmentRequest.structureIssues.length === 0 && segmentRequest.unknownSpans.length > 0
@@ -324,13 +294,14 @@ export class OpenRouterStoryGenerator {
       if (plan.index === 0) {
         titleJa = repaired.value.titleJa;
       }
+      const outputOffset = repairedSentences.length;
       repairedSentences.push(
         ...repaired.value.sentences.map((sentence) => ({
-          index: offset + sentence.index,
+          index: outputOffset + sentence.index,
           textJa: sentence.textJa,
         })),
       );
-      offset += plan.sentenceCount;
+      sourceOffset += texts.length;
     }
 
     return ok({ titleJa, sentences: repairedSentences });
@@ -385,9 +356,7 @@ function blueprintReader(
   };
 }
 
-function segmentReader(
-  sentenceCount: number,
-): (parsed: unknown) => Result<StorySegmentCandidate, string> {
+function segmentReader(): (parsed: unknown) => Result<StorySegmentCandidate, string> {
   return (parsed: unknown) => {
     const payload = storySegmentCandidateSchema.safeParse(parsed);
     if (!payload.success) {
@@ -397,11 +366,9 @@ function segmentReader(
       titleJa: 'segment',
       sentences: payload.data.sentences,
     });
-    const issues = checkStoryStructure(normalized, { min: sentenceCount, max: sentenceCount });
+    const issues = checkStoryStructure(normalized);
     if (hasFormatFailure(issues)) {
-      return err(
-        issues.find((issue) => issue.severity === 'format')?.code ?? 'story-segment-structure',
-      );
+      return err(issues[0]?.code ?? 'story-segment-structure');
     }
     return ok({
       sentences: normalized.sentences,
@@ -415,21 +382,18 @@ function segmentReader(
  *
  * The structural checks run here so that the single format recovery covers
  * everything a differently phrased request could fix — a missing title, an
- * empty sentence, a duplicate or missing index. A story of the wrong length is
- * deliberately not one of those: it is well formed and says the wrong thing, so
- * it travels back as a candidate and spends a content repair instead
- * (ai-pipelines section 5).
+ * empty sentence, or a duplicate or missing index.
  */
-function storyReader(range: SentenceRange): (parsed: unknown) => Result<StoryCandidate, string> {
+function storyReader(): (parsed: unknown) => Result<StoryCandidate, string> {
   return (parsed: unknown) => {
     const payload = storyCandidateSchema.safeParse(parsed);
     if (!payload.success) {
       return err('story-shape');
     }
     const candidate = normalizeCandidate(payload.data);
-    const issues = checkStoryStructure(candidate, range);
+    const issues = checkStoryStructure(candidate);
     if (hasFormatFailure(issues)) {
-      return err(issues.find((issue) => issue.severity === 'format')?.code ?? 'story-structure');
+      return err(issues[0]?.code ?? 'story-structure');
     }
     return ok(candidate);
   };

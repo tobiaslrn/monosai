@@ -167,28 +167,6 @@ describe('GeneratePageComponent', () => {
     expect(run.saveRetries).toHaveLength(1);
   });
 
-  it('shows the invalid draft rather than saving it', async () => {
-    jobs.setJobs([
-      fakeGenerationJob(
-        JOB_ID,
-        new FakeGenerationRun({
-          kind: 'invalid-draft',
-          draft: {
-            titleJa: '猫の朝',
-            titleUnknownSurfaces: [],
-            sentences: [{ textJa: '猫は庭で遊びます。', unknownSurfaces: [] }],
-            issues: ['The story has 1 sentence, not 5.'],
-            repairAttempts: 2,
-          },
-        }),
-      ),
-    ]);
-    const page = (await renderFixture(JOB_ID)).nativeElement as HTMLElement;
-
-    expect(page.querySelector('mn-invalid-draft')).not.toBeNull();
-    expect(page.textContent).toContain('The story has 1 sentence, not 5.');
-  });
-
   it('explains that a new story has to wait while the limit is reached', async () => {
     jobs.nextJobId = null;
     const page = await render();

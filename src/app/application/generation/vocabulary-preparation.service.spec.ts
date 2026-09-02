@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { sentenceRangeForCount, type StoryGenerationRequest } from '../../domain/ai/story-request';
+import type { StoryGenerationRequest } from '../../domain/ai/story-request';
 import { snapshotId, vocabularyItemId, type SnapshotId } from '../../domain/shared/ids';
 import type { RandomSource } from '../../domain/shared/random';
 import type { VocabularyItem } from '../../domain/vocabulary/snapshot';
@@ -116,7 +116,7 @@ describe('VocabularyPreparationService', () => {
   function request(allowedVocabulary: readonly string[]): StoryGenerationRequest {
     return {
       form: 'micro',
-      sentenceRange: sentenceRangeForCount(5),
+      requestedSentenceCount: 5,
       premise: 'ねこの話。',
       allowedVocabulary,
       suggestedVocabulary: [],

@@ -62,7 +62,7 @@ export function estimateRequestTokens(request: StoryGenerationRequest): number {
       alwaysAvailableForms: request.structuralBaseline,
     },
     storyRequirements: {
-      sentenceCount: request.sentenceRange,
+      sentenceCount: request.requestedSentenceCount,
     },
   });
   return (
@@ -70,7 +70,7 @@ export function estimateRequestTokens(request: StoryGenerationRequest): number {
     estimateTokens(compactDynamicJson) +
     estimateTokens(request.premise) +
     estimateTokens(request.specialInstructions ?? '') +
-    (request.sentenceRange.max > 50 ? estimateTokens(JSON.stringify({ segmentSize: 50 })) : 0)
+    (request.requestedSentenceCount > 50 ? estimateTokens(JSON.stringify({ segmentSize: 50 })) : 0)
   );
 }
 
