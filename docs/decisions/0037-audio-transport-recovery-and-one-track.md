@@ -60,6 +60,11 @@ sentence. `ReaderPageComponent` calls it when the audio job reports `failed` or
 `cancelled`: whether a job is still running belongs to the reader, and the
 playback store does not watch generation.
 
+[ADR 0045](0045-a-reading-is-extended-while-it-is-generated.md) renames it
+`stopExpectingClips()` and widens it to seal a continuous resource as well. The
+rule this paragraph is about — that the reader is the one who knows, and that
+playback does not watch the job — is unchanged.
+
 The transport gains a **Stop reading** control, live whenever a session is
 active. There is therefore always something to press, including at the
 frontier.

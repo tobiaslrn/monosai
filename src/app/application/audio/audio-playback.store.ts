@@ -75,6 +75,22 @@ export type PlaybackFailure =
   | { readonly kind: 'decode-failed'; readonly position: number }
   | { readonly kind: 'storage'; readonly message: string };
 
+/**
+ * The native resource a continuous session is playing, and where it starts.
+ *
+ * The resource covers a run of sentences from `baseIndex` rather than the whole
+ * reading: a session started while generation is still going gets the clips
+ * that exist, and the rest are appended to the same resource as they are made.
+ * Its own indices are therefore offset from the reading's.
+ */
+interface LoadedSequence {
+  timeline: AudioTimeline;
+  /** Index in `refs` of the sentence the resource starts at. */
+  readonly baseIndex: number;
+  /** Cache keys appended so far, in reading order from `baseIndex`. */
+  readonly keys: string[];
+}
+
 /** What a load is: something the learner pressed, or reading on by itself. */
 interface LoadOptions {
   /**
@@ -180,8 +196,15 @@ export class AudioPlaybackStore {
    * rather than in either caller.
    */
   private single = false;
-  /** Sentence boundaries of the native whole-reading resource, when one is loaded. */
-  private timeline: AudioTimeline | null = null;
+  /** The native continuous resource, when one is loaded. */
+  private sequence: LoadedSequence | null = null;
+  /**
+   * The append in flight, so two refreshes cannot append the same clip twice.
+   *
+   * `prepare` runs on every completed sentence of a generation run and is
+   * routinely re-entered while an earlier call is still reading blobs.
+   */
+  private extending: Promise<void> | null = null;
 
   readonly status = this.statusSignal.asReadonly();
   readonly currentSentenceId = this.currentSignal.asReadonly();
@@ -269,6 +292,12 @@ export class AudioPlaybackStore {
     });
     this.player.onTimeUpdate(() => {
       this.followSequencePosition();
+    });
+    this.player.onStalled(() => {
+      this.noteFrontierReached();
+    });
+    this.player.onResumed(() => {
+      this.noteFrontierPassed();
     });
     this.mediaSession.setHandlers({
       play: () => {
@@ -382,6 +411,7 @@ export class AudioPlaybackStore {
     }
     this.availableSignal.set(available);
     await this.continueIfPendingArrived();
+    await this.extendSequence();
   }
 
   /**
@@ -394,6 +424,12 @@ export class AudioPlaybackStore {
   private async continueIfPendingArrived(): Promise<void> {
     const pending = this.pendingSignal();
     if (pending === null || this.statusSignal() !== 'waiting') {
+      return;
+    }
+    if (this.sequence !== null) {
+      // A continuous session waits inside its own resource. Appending the clip
+      // is what reads on there, and loading it separately would replace the
+      // resource the reading is playing from.
       return;
     }
     if (!this.availableSignal().has(pending)) {
@@ -454,14 +490,18 @@ export class AudioPlaybackStore {
     }
     const target = refs[index].id;
     if (this.isActive()) {
-      if (this.timeline !== null) {
+      const time = this.sequenceTimeOf(index);
+      if (time !== null) {
         this.navigationSignal.update((count) => count + 1);
         this.currentSignal.set(target);
-        this.player.seek(this.timeline.starts[index] ?? 0);
+        this.player.seek(time);
         this.publishMediaMetadata(index);
         this.publishMediaPosition();
         return;
       }
+      // Outside the resource being played — a clip stored since it was built,
+      // or one before the sentence it starts at. Starting there builds a new
+      // resource from that sentence rather than seeking into silence.
       await this.startAt(target);
       return;
     }
@@ -561,7 +601,7 @@ export class AudioPlaybackStore {
     this.loading = false;
     this.pauseRequested = false;
     this.pendingSignal.set(null);
-    this.timeline = null;
+    this.sequence = null;
     this.player.stop();
     this.statusSignal.set('idle');
     this.currentSignal.set(null);
@@ -618,7 +658,7 @@ export class AudioPlaybackStore {
     if (this.currentSignal() === null) {
       return Promise.resolve();
     }
-    const currentStart = this.timeline?.starts[Math.max(this.currentPosition() - 1, 0)] ?? 0;
+    const currentStart = this.sequenceTimeOf(Math.max(this.currentPosition() - 1, 0)) ?? 0;
     if (this.player.elapsed() - currentStart > REPLAY_WINDOW_SECONDS) {
       return this.replayCurrent();
     }
@@ -626,15 +666,20 @@ export class AudioPlaybackStore {
   }
 
   /**
-   * Lets go of a session waiting for a clip that is not coming.
+   * Says that no more clips are coming for this reading.
    *
-   * Nothing else ever leaves `waiting`, so a run that failed or was cancelled
-   * used to park the player at "Waiting for sentence N of M" with every
-   * transport control dead and the only escape a header toggle that threw the
-   * session away. The reader calls this when the job stops, because whether a
-   * job is still running belongs to the reader rather than to playback.
+   * Two things follow, and both are about a session that would otherwise wait
+   * for ever. A continuous resource is sealed, so the element reaches the end
+   * of what was appended and finishes there rather than stalling at it. A
+   * session already waiting is let go: nothing else ever leaves `waiting`, so a
+   * run that failed or was cancelled used to park the player at "Waiting for
+   * sentence N of M" with every transport control dead.
+   *
+   * The reader calls this when the job stops, because whether a job is still
+   * running belongs to the reader rather than to playback.
    */
-  abandonWaiting(): void {
+  stopExpectingClips(): void {
+    this.sealSequence();
     if (this.statusSignal() !== 'waiting') {
       return;
     }
@@ -720,9 +765,9 @@ export class AudioPlaybackStore {
     this.navigationSignal.update((count) => count + 1);
     this.pendingSignal.set(null);
     try {
-      if (this.timeline !== null) {
-        const index = this.currentPosition() - 1;
-        this.player.seek(this.timeline.starts[Math.max(index, 0)] ?? 0);
+      const start = this.sequenceTimeOf(Math.max(this.currentPosition() - 1, 0));
+      if (start !== null) {
+        this.player.seek(start);
         await this.player.resume();
       } else {
         await this.player.restart();
@@ -759,10 +804,11 @@ export class AudioPlaybackStore {
     this.navigationSignal.update((count) => count + 1);
     this.single = false;
     this.pendingSignal.set(null);
-    if (this.timeline !== null) {
+    const time = this.sequenceTimeOf(target);
+    if (time !== null) {
       const targetRef = this.refsSignal()[target];
       this.currentSignal.set(targetRef.id);
-      this.player.seek(this.timeline.starts[target] ?? 0);
+      this.player.seek(time);
       try {
         await this.player.resume();
       } catch {
@@ -776,6 +822,13 @@ export class AudioPlaybackStore {
       this.publishMediaPosition();
       return;
     }
+    if (this.sequence !== null) {
+      // A sentence stored since the resource was built, or one before its
+      // start. Starting there builds a resource from it rather than seeking
+      // into audio the element does not have.
+      await this.startAt(this.refsSignal()[target].id);
+      return;
+    }
     await this.load(this.refsSignal()[target].id);
   }
 
@@ -786,7 +839,9 @@ export class AudioPlaybackStore {
     if (current === null) {
       return;
     }
-    if (this.timeline !== null) {
+    if (this.sequence !== null) {
+      // A resource only ends once it has been sealed, so its end is the end of
+      // the reading or of everything that was ever going to be made for it.
       this.finish();
       return;
     }
@@ -839,11 +894,30 @@ export class AudioPlaybackStore {
     this.publishMediaPosition();
   }
 
+  /**
+   * Whether this start can be one native resource.
+   *
+   * Continuous mode only: one-sentence-at-a-time stops at every seam, which is
+   * the JavaScript the resource exists to remove. Everything else the resource
+   * needs — clips to build it from, a container that can hold them, a browser
+   * with MediaSource — is decided in `loadSequence`, which falls back to the
+   * per-sentence path when any of it is missing.
+   */
   private canUseSequence(): boolean {
-    return this.modeSignal() === 'continuous' && this.canPlayWholeReading();
+    return this.modeSignal() === 'continuous';
   }
 
-  /** Loads every current clip into one native resource before playback starts. */
+  /**
+   * Loads the clips that exist from one sentence on into one native resource.
+   *
+   * The run is contiguous from the start sentence rather than the whole
+   * reading, so a session can begin while generation is still going. While it
+   * is short of the end the resource is left **open**, and `extendSequence`
+   * appends each sentence as it is stored. That is what keeps a locked screen
+   * reading on: the element never goes quiet between two sentences, so the
+   * document keeps the media-playing reason not to be frozen, and the advance
+   * itself happens inside the native pipeline rather than in an event handler.
+   */
   private async loadSequence(sentenceId: SentenceId): Promise<void> {
     const token = (this.loadToken += 1);
     const refs = this.refsSignal();
@@ -851,13 +925,20 @@ export class AudioPlaybackStore {
     if (startIndex === -1) {
       return;
     }
+    const run = this.contiguousRunFrom(startIndex);
+    if (run.length === 0) {
+      await this.load(sentenceId);
+      return;
+    }
     this.loading = true;
     this.statusSignal.set('loading');
     const byKey = new Map<string, AudioSequenceClip>();
     const clips: AudioSequenceClip[] = [];
-    for (const ref of refs) {
+    const keys: string[] = [];
+    for (const ref of run) {
       const cacheKey = this.cacheKeysSignal().get(ref.id);
       if (cacheKey === undefined) {
+        this.loading = false;
         await this.load(sentenceId);
         return;
       }
@@ -873,26 +954,44 @@ export class AudioPlaybackStore {
           return;
         }
         if (loaded.value === null) {
+          this.loading = false;
           await this.load(sentenceId);
           return;
         }
         if (loaded.value.mimeType !== 'audio/mpeg' && loaded.value.mimeType !== 'audio/wav') {
+          this.loading = false;
           await this.load(sentenceId);
           return;
         }
         clip = { blob: loaded.value.blob, mimeType: loaded.value.mimeType };
         byKey.set(cacheKey, clip);
       }
+      keys.push(cacheKey);
       clips.push(clip);
+    }
+
+    const complete = startIndex + run.length === refs.length;
+    const open = !complete && clips.every((clip) => clip.mimeType === 'audio/mpeg');
+    if (!complete && !open) {
+      // A WAV resource states its own length and cannot grow, so building one
+      // over part of a reading would end the session at the frontier with no
+      // way on. The per-sentence path waits there instead.
+      this.loading = false;
+      await this.load(sentenceId);
+      return;
     }
 
     const startPaused = this.pauseRequested;
     try {
-      const timeline = await this.player.playSequence(clips, { startIndex, startPaused });
+      const timeline = await this.player.playSequence(clips, {
+        startIndex: 0,
+        startPaused,
+        open,
+      });
       if (token !== this.loadToken) {
         return;
       }
-      this.timeline = timeline;
+      this.sequence = { timeline, baseIndex: startIndex, keys };
     } catch {
       if (token === this.loadToken) {
         // Browsers without MPEG MediaSource retain the established foreground path.
@@ -908,6 +1007,176 @@ export class AudioPlaybackStore {
     this.failureSignal.set(null);
     this.publishMediaMetadata(startIndex);
     this.mediaSession.setPlaybackState(startPaused ? 'paused' : 'playing');
+    this.publishMediaPosition();
+  }
+
+  /** The sentences from one index on that have a clip, stopping at the first that does not. */
+  private contiguousRunFrom(startIndex: number): readonly SentenceRef[] {
+    const refs = this.refsSignal();
+    const available = this.availableSignal();
+    const run: SentenceRef[] = [];
+    for (let index = startIndex; index < refs.length; index += 1) {
+      if (!available.has(refs[index].id)) {
+        break;
+      }
+      run.push(refs[index]);
+    }
+    return run;
+  }
+
+  /** Where a sentence starts in the loaded resource, or null if it is not in it. */
+  private sequenceTimeOf(refIndex: number): number | null {
+    const sequence = this.sequence;
+    if (sequence === null) {
+      return null;
+    }
+    const offset = refIndex - sequence.baseIndex;
+    if (offset < 0 || offset >= sequence.timeline.starts.length) {
+      return null;
+    }
+    const start = sequence.timeline.starts[offset];
+    // Never below the floor: audio evicted to make room for an append is no
+    // longer there to seek to, and landing under it would stall the element.
+    return Math.max(start, sequence.timeline.floor);
+  }
+
+  /** Index in `refs` of the last sentence appended to the resource, or -1. */
+  private appendedLimitIndex(): number {
+    const sequence = this.sequence;
+    return sequence === null ? -1 : sequence.baseIndex + sequence.timeline.starts.length - 1;
+  }
+
+  /**
+   * Appends every sentence stored since the resource was last extended.
+   *
+   * Called from `prepare`, which the reader already re-runs on each completed
+   * sentence of a generation run. Playback therefore learns of a clip from its
+   * own read of what is stored, and still does not watch the job (ADR 0037).
+   */
+  private async extendSequence(): Promise<void> {
+    const sequence = this.sequence;
+    if (sequence === null || !sequence.timeline.open || this.extending !== null) {
+      return;
+    }
+    this.extending = this.appendStoredClips(sequence);
+    try {
+      await this.extending;
+    } finally {
+      this.extending = null;
+    }
+  }
+
+  private async appendStoredClips(sequence: LoadedSequence): Promise<void> {
+    const refs = this.refsSignal();
+    const cacheKeys = this.cacheKeysSignal();
+    // A changed voice re-keys the whole reading. Appending a clip made under
+    // the new configuration to a resource built under the old one would put two
+    // voices in one reading, which ADR 0043 refuses, so it is sealed instead
+    // and what is already in it plays out.
+    const rekeyed =
+      sequence.baseIndex + sequence.keys.length > refs.length ||
+      sequence.keys.some(
+        (key, offset) => cacheKeys.get(refs[sequence.baseIndex + offset].id) !== key,
+      );
+    if (rekeyed) {
+      this.sealSequence();
+      return;
+    }
+
+    const available = this.availableSignal();
+    const pending: { readonly cacheKey: string }[] = [];
+    for (let index = this.appendedLimitIndex() + 1; index < refs.length; index += 1) {
+      const cacheKey = cacheKeys.get(refs[index].id);
+      if (cacheKey === undefined || !available.has(refs[index].id)) {
+        break;
+      }
+      pending.push({ cacheKey });
+    }
+    if (pending.length === 0) {
+      return;
+    }
+
+    const byKey = new Map<string, AudioSequenceClip>();
+    const clips: AudioSequenceClip[] = [];
+    for (const item of pending) {
+      let clip = byKey.get(item.cacheKey);
+      if (clip === undefined) {
+        const loaded = await this.enrichment.getAudioByCacheKey(item.cacheKey);
+        if (this.sequence !== sequence) {
+          return;
+        }
+        if (!loaded.ok || loaded.value?.mimeType !== 'audio/mpeg') {
+          // Nothing that can go into this resource. Sealing keeps what is in it
+          // playable and lets the element finish, rather than failing a session
+          // over a sentence it has not reached yet.
+          this.sealSequence();
+          return;
+        }
+        clip = { blob: loaded.value.blob, mimeType: 'audio/mpeg' };
+        byKey.set(item.cacheKey, clip);
+      }
+      clips.push(clip);
+    }
+
+    try {
+      const timeline = await this.player.extendSequence(clips);
+      if (this.sequence !== sequence) {
+        return;
+      }
+      sequence.timeline = timeline;
+      sequence.keys.push(...pending.map((item) => item.cacheKey));
+    } catch {
+      if (this.sequence === sequence) {
+        this.sealSequence();
+      }
+      return;
+    }
+    this.publishMediaPosition();
+    if (this.appendedLimitIndex() === refs.length - 1) {
+      this.sealSequence();
+    }
+  }
+
+  /** Declares the resource complete, so the element can reach its end. */
+  private sealSequence(): void {
+    const sequence = this.sequence;
+    if (sequence?.timeline.open !== true) {
+      return;
+    }
+    sequence.timeline = { ...sequence.timeline, open: false };
+    this.player.closeSequence();
+  }
+
+  /**
+   * The reading caught up with generation inside the resource.
+   *
+   * The element has run out of appended audio and is holding, not paused and
+   * not ended. Saying `waiting` names the sentence it is holding for, exactly
+   * as the per-sentence frontier does; nothing is unloaded, so the append that
+   * follows reads on without a second Play.
+   */
+  private noteFrontierReached(): void {
+    const sequence = this.sequence;
+    if (sequence === null || !sequence.timeline.open || this.statusSignal() !== 'playing') {
+      return;
+    }
+    const nextIndex = this.appendedLimitIndex() + 1;
+    if (nextIndex >= this.refsSignal().length) {
+      return;
+    }
+    this.pendingSignal.set(this.refsSignal()[nextIndex].id);
+    this.statusSignal.set('waiting');
+    this.mediaSession.setPlaybackState('paused');
+  }
+
+  /** The appended clip arrived and the element started itself again. */
+  private noteFrontierPassed(): void {
+    if (this.sequence === null || this.statusSignal() !== 'waiting') {
+      return;
+    }
+    this.pendingSignal.set(null);
+    this.statusSignal.set('playing');
+    this.mediaSession.setPlaybackState('playing');
     this.publishMediaPosition();
   }
 
@@ -927,7 +1196,7 @@ export class AudioPlaybackStore {
       return;
     }
 
-    this.timeline = null;
+    this.sequence = null;
     this.loading = true;
     if (options?.keepStatus !== true) {
       this.statusSignal.set('loading');
@@ -973,10 +1242,11 @@ export class AudioPlaybackStore {
   }
 
   private followSequencePosition(): void {
-    const timeline = this.timeline;
-    if (timeline === null) {
+    const sequence = this.sequence;
+    if (sequence === null) {
       return;
     }
+    const timeline = sequence.timeline;
     const elapsed = this.player.elapsed();
     let index = 0;
     for (let candidate = 1; candidate < timeline.starts.length; candidate += 1) {
@@ -985,7 +1255,11 @@ export class AudioPlaybackStore {
       }
       index = candidate;
     }
-    const ref = this.refsSignal()[index];
+    const refIndex = sequence.baseIndex + index;
+    if (refIndex >= this.refsSignal().length) {
+      return;
+    }
+    const ref = this.refsSignal()[refIndex];
     if (ref.id !== this.currentSignal()) {
       if (this.modeSignal() === 'sentence') {
         this.player.pause();
@@ -994,16 +1268,21 @@ export class AudioPlaybackStore {
         this.player.seek(timeline.starts[index]);
       }
       this.currentSignal.set(ref.id);
-      this.publishMediaMetadata(index);
+      this.publishMediaMetadata(sequence.baseIndex + index);
     }
     this.publishMediaPosition();
   }
 
   private seekSequenceTime(seconds: number): void {
-    if (this.timeline === null) {
+    const sequence = this.sequence;
+    if (sequence === null) {
       return;
     }
-    this.player.seek(seconds);
+    // Clamped to what the resource actually holds: a lock-screen scrub can name
+    // a position past the frontier or below audio that has been evicted.
+    this.player.seek(
+      Math.min(Math.max(seconds, sequence.timeline.floor), sequence.timeline.duration),
+    );
     this.followSequencePosition();
   }
 
@@ -1016,15 +1295,23 @@ export class AudioPlaybackStore {
     });
   }
 
+  /**
+   * Publishes where the reading is, over what has been appended so far.
+   *
+   * The duration of an open resource grows as the reading is generated, so the
+   * lock-screen timeline lengthens behind the position rather than being wrong
+   * about where the end is.
+   */
   private publishMediaPosition(): void {
-    if (this.timeline === null || this.timeline.duration <= 0) {
+    const timeline = this.sequence?.timeline;
+    if (timeline === undefined || timeline.duration <= 0) {
       this.mediaSession.setPositionState(null);
       return;
     }
     this.mediaSession.setPositionState({
-      duration: this.timeline.duration,
+      duration: timeline.duration,
       playbackRate: 1,
-      position: Math.min(Math.max(this.player.elapsed(), 0), this.timeline.duration),
+      position: Math.min(Math.max(this.player.elapsed(), 0), timeline.duration),
     });
   }
 

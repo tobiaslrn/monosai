@@ -512,6 +512,73 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     );
   });
 
+  /**
+   * The reading a learner starts before its audio is finished is the one most
+   * likely to be listened to with the phone in a pocket, and it used to stop at
+   * whatever had been made when the screen went dark: the session stayed on the
+   * per-sentence path, and advancing there is JavaScript in a moment when the
+   * element makes no sound (ADR 0045).
+   *
+   * What automation can prove is the application half. Headless Chromium
+   * reports every page as visible, so the document is told it is hidden and the
+   * event raised; that a *physically* locked Android screen keeps the tab alive
+   * stays risk 6 in arc42 chapter 11 and needs one hardware session.
+   */
+  test('reads past the generation frontier with the document in the background', async ({
+    page,
+  }) => {
+    await prepareReading(page, LONG_TEXT, { audioDelayMs: 1_500 });
+
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioPlayable(page);
+
+    // Pressed while most of the reading does not exist yet, which is the whole
+    // point: everything after this arrives during the session.
+    expect(await generatedPercent(page)).toBeLessThan(100);
+    expect(await storedClipCount(page)).toBeLessThan(LONG_SENTENCE_COUNT);
+    await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    // Finished is only reachable after every sentence has been played, so the
+    // session crossed the frontier rather than stopping at it.
+    await expect(playerStatus(page)).toHaveText('Finished', { timeout: 60_000 });
+    expect(await storedClipCount(page)).toBe(LONG_SENTENCE_COUNT);
+    await expect(audioPlayer(page).getByRole('button', { name: 'Play again' })).toBeVisible();
+  });
+
+  /**
+   * The other end of the same session: a run that stops leaves a reading that
+   * will never be completed. The session has to reach the end of what was made
+   * rather than hold for a clip nobody is making.
+   */
+  test('finishes what was made when the run filling it is stopped', async ({ page }) => {
+    await prepareReading(page, LONG_TEXT, { audioDelayMs: 3_000 });
+
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioPlayable(page);
+    await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
+
+    await stopGenerating(page);
+
+    // Ended rather than held: the reading played every sentence the stopped run
+    // had produced, and the card says how far that run got.
+    await expect(playerStatus(page)).toContainText('Finished', { timeout: 60_000 });
+    await expect(playerStatus(page)).toContainText(/Stopped with \d+ of 8 sentences ready/);
+    await expect(audioPlayer(page).getByRole('button', { name: 'Play again' })).toBeVisible();
+  });
+
   test('waits where generation has got to, and reads on when the clip arrives', async ({
     page,
   }) => {

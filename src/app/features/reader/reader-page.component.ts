@@ -845,20 +845,22 @@ export class ReaderPageComponent {
     });
 
     effect(() => {
-      // A session waiting at the frontier is waiting for a clip the run is
-      // about to store. Once the run has failed or been cancelled that clip is
-      // never coming, and only the reader knows: the playback store has no
-      // business watching a generation job, so the release is made from here.
+      // A session at the frontier is waiting for a clip the run is about to
+      // store. Once the run has failed or been cancelled that clip is never
+      // coming, and only the reader knows: the playback store has no business
+      // watching a generation job, so the word is passed from here.
       //
-      // The wait itself is watched, not only the job: one sentence at a time
-      // can start a wait *after* the run has stopped, and a release that only
-      // fired on the job's own transition would leave that one waiting for
-      // something that had already been called off.
+      // Told whether or not a wait is showing, because a continuous session
+      // holds inside its own resource: that resource has to be sealed for the
+      // element to reach the end of what was made rather than stall at it.
+      // The wait is still watched too — one sentence at a time can start one
+      // *after* the run has stopped, and a release that only fired on the job's
+      // own transition would leave it waiting for something already called off.
       const kind = this.audioProgress().kind;
-      const waiting = this.playback.status() === 'waiting';
-      if (waiting && (kind === 'failed' || kind === 'cancelled')) {
+      this.playback.status();
+      if (kind === 'failed' || kind === 'cancelled') {
         untracked(() => {
-          this.playback.abandonWaiting();
+          this.playback.stopExpectingClips();
         });
       }
     });

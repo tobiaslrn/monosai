@@ -75,7 +75,7 @@ altitude.
 | **language** | Tokenizer and runtime interfaces, segmentation, dictionary, kana, the structural baseline | Prepare the tokenizer and the assets, and report readiness | The language worker client and asset loader |
 | **ai** | Provider interfaces, tasks, prompt versions, configuration fingerprints, story structure | Run a generation as a job. Test and select models | The AI provider adapters |
 | **enrichment** | Translation, grammar, and audio records, cache keys, staleness, the job model | Produce and cache aids, per sentence and per reading | Persistence, the AI provider |
-| **audio** | — | Own playback and the platform media session for one reading | The AI provider, for synthesis |
+| **audio** | — | Own playback and the platform media session for one reading, including the native resource a continuous reading is played from and grown in | The AI provider, for synthesis |
 | **grammar** | Difficulty presets, the profile, the profile hash | Hold the selected preset, register, and optional edited guidance | Persistence |
 | **settings** | Settings and credential shapes | Hold configuration that startup loads before routes render | Persistence |
 | **storage** | The storage error type, persistence status, maintenance | Report and reclaim space | Persistence |
