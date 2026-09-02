@@ -3,12 +3,6 @@ import type { StoryForm } from '../reading/reading';
 import type { SnapshotId } from '../shared/ids';
 import { err, ok, type Result } from '../shared/result';
 
-/** Inclusive bounds on how many sentences a request may contain. */
-export interface SentenceRange {
-  readonly min: number;
-  readonly max: number;
-}
-
 export const STORY_SENTENCE_COUNTS = [5, 15, 30, 50, 100, 200, 400, 800] as const;
 export const MIN_STORY_SENTENCES = STORY_SENTENCE_COUNTS[0];
 export const MAX_STORY_SENTENCES = STORY_SENTENCE_COUNTS[STORY_SENTENCE_COUNTS.length - 1];
@@ -53,11 +47,6 @@ export function normalizeStorySentenceCount(value: number): number {
   return STORY_SENTENCE_COUNTS.reduce((closest, candidate) =>
     Math.abs(candidate - value) < Math.abs(closest - value) ? candidate : closest,
   );
-}
-
-/** The slider selects an exact count, which the prompt and local validator share. */
-export function sentenceRangeForCount(sentenceCount: number): SentenceRange {
-  return { min: sentenceCount, max: sentenceCount };
 }
 
 /** Divides a requested total into deterministic contiguous model-sized segments. */
@@ -107,7 +96,8 @@ export const MAX_SPECIAL_INSTRUCTIONS_LENGTH = 1_000;
  */
 export interface StoryGenerationRequest {
   readonly form: StoryForm;
-  readonly sentenceRange: SentenceRange;
+  /** A prompt target, not a local acceptance constraint. */
+  readonly requestedSentenceCount: number;
   readonly premise: string;
   readonly specialInstructions?: string;
   /** Canonical expressions the story may use. The local validation authority. */

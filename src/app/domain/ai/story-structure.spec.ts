@@ -14,7 +14,6 @@ function candidate(texts: readonly string[], titleJa = 'ねこの一日'): Story
   };
 }
 
-const MICRO = { min: 4, max: 6 };
 const FOUR = ['一。', '二。', '三。', '四。'];
 
 describe('normalizeCandidate', () => {
@@ -36,71 +35,55 @@ describe('normalizeCandidate', () => {
 });
 
 describe('checkStoryStructure', () => {
-  it('accepts a well-formed candidate inside the range', () => {
-    expect(checkStoryStructure(candidate(FOUR), MICRO)).toEqual([]);
+  it('accepts a well-formed candidate', () => {
+    expect(checkStoryStructure(candidate(FOUR))).toEqual([]);
+  });
+
+  it.each([1, 90])('accepts %i sentences regardless of the requested guideline', (count) => {
+    expect(checkStoryStructure(candidate(Array.from({ length: count }, () => '文。')))).toEqual([]);
   });
 
   it('reports an empty title as a format failure', () => {
-    const issues = checkStoryStructure(candidate(FOUR, ''), MICRO);
+    const issues = checkStoryStructure(candidate(FOUR, ''));
 
     expect(issues.map((issue) => issue.code)).toEqual(['title-empty']);
     expect(hasFormatFailure(issues)).toBe(true);
   });
 
   it('reports an empty sentence as a format failure', () => {
-    const issues = checkStoryStructure(candidate(['一。', '', '三。', '四。']), MICRO);
+    const issues = checkStoryStructure(candidate(['一。', '', '三。', '四。']));
 
     expect(issues.map((issue) => issue.code)).toContain('sentence-empty');
     expect(hasFormatFailure(issues)).toBe(true);
   });
 
   it('reports a duplicate index and the index it left missing', () => {
-    const issues = checkStoryStructure(
-      {
-        titleJa: 'ねこ',
-        sentences: [
-          { index: 0, textJa: '一。' },
-          { index: 1, textJa: '二。' },
-          { index: 1, textJa: '三。' },
-          { index: 3, textJa: '四。' },
-        ],
-      },
-      MICRO,
-    );
+    const issues = checkStoryStructure({
+      titleJa: 'ねこ',
+      sentences: [
+        { index: 0, textJa: '一。' },
+        { index: 1, textJa: '二。' },
+        { index: 1, textJa: '三。' },
+        { index: 3, textJa: '四。' },
+      ],
+    });
 
     expect(issues.map((issue) => issue.code)).toEqual(['duplicate-index', 'non-contiguous-index']);
     expect(issues[1].index).toBe(2);
   });
 
   it('reports indexes that do not start at zero', () => {
-    const issues = checkStoryStructure(
-      {
-        titleJa: 'ねこ',
-        sentences: [1, 2, 3, 4].map((index) => ({ index, textJa: '文。' })),
-      },
-      MICRO,
-    );
+    const issues = checkStoryStructure({
+      titleJa: 'ねこ',
+      sentences: [1, 2, 3, 4].map((index) => ({ index, textJa: '文。' })),
+    });
 
     expect(issues.map((issue) => issue.code)).toEqual(['non-contiguous-index']);
     expect(issues[0].index).toBe(0);
   });
 
-  it('treats a wrong sentence count as repairable, not as a format failure', () => {
-    const issues = checkStoryStructure(candidate(['一。', '二。']), MICRO);
-
-    expect(issues.map((issue) => issue.code)).toEqual(['sentence-count-out-of-range']);
-    expect(issues[0].severity).toBe('repairable');
-    expect(hasFormatFailure(issues)).toBe(false);
-  });
-
-  it('states an equal sentence bound as an exact requirement', () => {
-    const issues = checkStoryStructure(candidate(['一。', '二。']), { min: 15, max: 15 });
-
-    expect(issues[0].message).toBe('The story has 2 sentences; it needs exactly 15.');
-  });
-
   it('stops after reporting that there are no sentences at all', () => {
-    const issues = checkStoryStructure(candidate([]), MICRO);
+    const issues = checkStoryStructure(candidate([]));
 
     expect(issues.map((issue) => issue.code)).toEqual(['no-sentences']);
   });

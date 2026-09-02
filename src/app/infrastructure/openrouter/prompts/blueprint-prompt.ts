@@ -48,7 +48,7 @@ export function buildBlueprintPrompt(
     ),
     jsonConfigBlock('required segment plan', segments),
     jsonConfigBlock('story requirements', {
-      sentenceCount: { min: request.sentenceRange.min, max: request.sentenceRange.max },
+      requestedSentenceCount: request.requestedSentenceCount,
     }),
     asData('premise', request.premise),
     request.specialInstructions === undefined

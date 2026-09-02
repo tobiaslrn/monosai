@@ -178,7 +178,7 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
   'story-blueprint-200': blueprint(200),
   'story-blueprint-800': blueprint(800),
   'story-segment-50': storySegment(50),
-  'story-segment-short': storySegment(2),
+  'story-segment-short': storySegment(47),
   'decisions-approved': decisions('approved'),
   'decisions-rejected': decisions('rejected'),
   'grammar-complete': JSON.stringify({

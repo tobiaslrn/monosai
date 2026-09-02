@@ -38,6 +38,7 @@ function acceptedStory(sentenceCount: number): AcceptedStory {
     grammarProfileSnapshotId: 'profile-capture',
     exceptionPolicyHash: 'policy-hash',
     modelId: 'vendor/model',
+    requestedSentenceCount: 5,
     repairAttempts: 0,
     suggestedVocabularyItemIds: [],
     exceptionCount: 0,

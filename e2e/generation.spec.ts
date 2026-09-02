@@ -176,8 +176,6 @@ test.describe('generating a story', () => {
     await expect(page.getByTestId('saved-title')).toHaveText(STORY_WITH_UNKNOWN.titleJa, {
       timeout: 60_000,
     });
-    await expect(page.getByTestId('invalid-draft-text')).toHaveCount(0);
-
     await page.getByTestId('open-story').click();
     await expect(page).toHaveURL(/#\/reader\//);
     const marked = page.locator('.is-warning-vocabulary');
@@ -189,10 +187,10 @@ test.describe('generating a story', () => {
     await expect(page).not.toHaveURL(/#\/generate/);
   });
 
-  test('shows an invalid draft and leaves the library empty @smoke', async ({ page }) => {
+  test('saves a story that undershoots the requested length @smoke', async ({ page }) => {
     test.setTimeout(SETUP_TIMEOUT);
     await prepareGeneration(page, {
-      generation: { stories: [SHORT_STORY], repairs: [SHORT_STORY, SHORT_STORY] },
+      generation: { stories: [SHORT_STORY] },
     });
 
     await openGenerate(page);
@@ -200,21 +198,15 @@ test.describe('generating a story', () => {
     await page.getByTestId('story-length').fill('0');
     await page.getByTestId('generate').click();
 
-    await expect(page.getByTestId('invalid-draft-text')).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByTestId('invalid-draft-issues')).toContainText('sentence');
-    await expect(page.getByText('2 repair attempts')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Story draft' })).toHaveCount(1);
-    await expect(page.getByRole('heading', { name: 'This story was not saved' })).toHaveCount(1);
-    await expect(
-      page.locator('mn-invalid-draft').getByText('Nothing was added to your library.'),
-    ).toHaveCount(1);
-    await expect(page.getByRole('button', { name: /save anyway/i })).toHaveCount(0);
+    await expect(page.getByTestId('saved-title')).toHaveText(SHORT_STORY.titleJa, {
+      timeout: 60_000,
+    });
 
     const rows = await countOwnedRows(page);
-    expect(rows['readings']).toBe(0);
-    expect(rows['sentences']).toBe(0);
-    expect(rows['frozenValidations']).toBe(0);
-    expect(rows['generationProvenance']).toBe(0);
+    expect(rows['readings']).toBe(1);
+    expect(rows['sentences']).toBe(2);
+    expect(rows['frozenValidations']).toBe(2);
+    expect(rows['generationProvenance']).toBe(1);
 
     await expectNoSeriousAccessibilityViolations(page);
   });

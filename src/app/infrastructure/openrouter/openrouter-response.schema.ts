@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import {
-  MAX_STORY_SEGMENT_SENTENCES,
-  MAX_STORY_SENTENCES,
-  type SentenceRange,
-} from '../../domain/ai/story-request';
+import { MAX_STORY_SEGMENT_SENTENCES, MAX_STORY_SENTENCES } from '../../domain/ai/story-request';
 
 /**
  * Runtime shapes for everything the provider can send back.
@@ -122,13 +118,11 @@ export type StoryCandidatePayload = z.infer<typeof storyCandidateSchema>;
 /**
  * The JSON Schema sent to models driven by provider-native structured output.
  *
- * Built per request rather than fixed, so the sentence count — the single most
- * repaired constraint — is expressed where the provider can enforce it instead
- * of only as prose the model may drift from. `description` carries the field
- * semantics to the point where the field is emitted, which steers far harder
- * than the same sentence in a system prompt several thousand tokens earlier.
+ * Built per request so the requested upper bound is expressed where the
+ * provider can enforce it. Undershoot remains valid because length is guidance
+ * to a stochastic writer, not a local acceptance constraint.
  */
-export function storyCandidateJsonSchema(range: SentenceRange): Record<string, unknown> {
+export function storyCandidateJsonSchema(requestedSentenceCount: number): Record<string, unknown> {
   return {
     name: 'monosai_story',
     strict: true,
@@ -144,8 +138,8 @@ export function storyCandidateJsonSchema(range: SentenceRange): Record<string, u
         },
         sentences: {
           type: 'array',
-          minItems: Math.min(range.min, MAX_STORY_SEGMENT_SENTENCES),
-          maxItems: Math.min(range.max, MAX_STORY_SEGMENT_SENTENCES),
+          minItems: 1,
+          maxItems: Math.min(requestedSentenceCount, MAX_STORY_SEGMENT_SENTENCES),
           description: 'The story in reading order, one sentence per entry.',
           items: {
             type: 'object',
@@ -304,7 +298,7 @@ export function storySegmentJsonSchema(sentenceCount: number): Record<string, un
       properties: {
         sentences: {
           type: 'array',
-          minItems: sentenceCount,
+          minItems: 1,
           maxItems: sentenceCount,
           description: 'This segment only, in reading order, one sentence per entry.',
           items: {

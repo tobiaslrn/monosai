@@ -31,11 +31,21 @@ describe('GenerationJobCardComponent', () => {
 
   /** Colour is never the only carrier: the state is written out either way. */
   it('says a stopped run needs attention rather than only colouring it', () => {
-    const page = render(new FakeGenerationRun({ kind: 'invalid-draft', draft: DRAFT }))
-      .nativeElement as HTMLElement;
+    const page = render(
+      new FakeGenerationRun({
+        kind: 'failed',
+        error: {
+          domain: 'ai',
+          code: 'provider-unavailable',
+          task: 'story-generation',
+          message: 'The provider is unavailable.',
+        },
+        during: 'writing',
+      }),
+    ).nativeElement as HTMLElement;
 
     expect(page.querySelector('.meta')?.textContent).toContain('Needs attention');
-    expect(page.querySelector('.meta')?.textContent).toContain('The story still needs work');
+    expect(page.querySelector('.meta')?.textContent).toContain('Generation stopped');
     expect(page.querySelector('article')?.classList.contains('needs-attention')).toBe(true);
   });
 
@@ -64,11 +74,3 @@ describe('GenerationJobCardComponent', () => {
     expect(dismissed).toEqual([JOB_ID]);
   });
 });
-
-const DRAFT = {
-  titleJa: 'ねこ',
-  titleUnknownSurfaces: [],
-  sentences: [],
-  issues: ['The story has no sentences.'],
-  repairAttempts: 2,
-};

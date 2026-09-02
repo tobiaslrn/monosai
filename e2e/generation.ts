@@ -154,12 +154,7 @@ export const STORY_WITH_UNKNOWN = {
   ],
 } as const;
 
-/**
- * A well-formed story of the wrong length, which repair is asked to fix.
- *
- * Every word is reviewed, so the only thing wrong with it is its shape, which
- * is what keeps a story out of the library.
- */
+/** A well-formed story that undershoots the requested length guideline. */
 export const SHORT_STORY = {
   titleJa: '猫の朝',
   sentences: ['猫は庭で遊びます。', '猫は魚を食べます。'],

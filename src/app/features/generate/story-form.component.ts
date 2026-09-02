@@ -87,6 +87,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <label for="mn-story-length">Length</label>
           </div>
           <output for="mn-story-length" aria-live="polite">
+            <span>about</span>
             <strong>{{ draft.sentenceCount() }}</strong>
             <span>sentences</span>
           </output>

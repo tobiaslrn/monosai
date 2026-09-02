@@ -109,8 +109,10 @@ leaves no row behind. Finalizing is the one stage that cannot be cancelled, beca
 transaction that writes the whole story or writes nothing.
 
 A word that repair could not replace does not throw the story away. It is saved and marked in the
-reader ([ADR 0033](../decisions/0033-unresolved-unknown-words-are-marked-not-rejected.md)). Only a
-structural failure ends in the invalid-draft state, which lives in the store and dies with it.
+reader ([ADR 0033](../decisions/0033-unresolved-unknown-words-are-marked-not-rejected.md)). Story
+length is guidance to the writer rather than a local acceptance rule, while malformed structured
+replies are refused at the provider boundary
+([ADR 0046](../decisions/0046-length-is-a-guideline.md)).
 
 A job is not persisted, and it belongs to the tab that started it. An open provider request cannot be
 resumed, and nothing is written before the final transaction, so a reload ends every run. The

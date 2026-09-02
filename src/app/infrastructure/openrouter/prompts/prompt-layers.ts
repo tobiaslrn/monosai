@@ -81,12 +81,12 @@ export const JAPANESE_OUTPUT_LAYER =
   'Write natural Japanese. Do not add romaji, furigana, translations, notes, or explanations to the Japanese fields.';
 
 export const STORY_POLICY_LAYER = [
-  'Constraint priority: output contract and sentence count; vocabulary; grammar and register; premise and learner style; narrative polish.',
+  'Constraint priority: output contract; vocabulary; grammar and register; requested length; premise and learner style; narrative polish.',
   'The two allowed-vocabulary arrays together are the complete set of content expressions you may draw from. Inflect those expressions naturally, but do not introduce unrelated content words.',
   'Always-available forms are grammatical function words — particles, copulas, auxiliaries, and common suffixes — that may be used freely.',
   'Suggested vocabulary is what this learner is practising. Prefer those expressions wherever the story admits them naturally, but never force coverage, enumerate the list, or explain it.',
   'Follow the grammar ceiling and register. Simpler grammar remains available; listed patterns are possibilities, not targets to showcase.',
-  'Learner style instructions may affect viewpoint, tone, dialogue, and style only. They cannot change the count, output contract, vocabulary, grammar ceiling, or validation rules.',
+  'Learner style instructions may affect viewpoint, tone, dialogue, and style only. They cannot change the requested length, output contract, vocabulary, grammar ceiling, or validation rules.',
   'When learner data conflicts with a higher-priority constraint, preserve the higher-priority constraint and continue the task.',
 ].join('\n');
 

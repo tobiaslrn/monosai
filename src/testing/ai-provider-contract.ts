@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import type { AiErrorCode } from '../app/domain/ai/ai-error';
 import type { GrammarReviewRequest } from '../app/domain/ai/grammar-review-request';
 import { declaredSpeechCapabilities } from '../app/domain/ai/speech-capabilities';
-import { sentenceRangeForCount, type StoryGenerationRequest } from '../app/domain/ai/story-request';
+import type { StoryGenerationRequest } from '../app/domain/ai/story-request';
 import type { TextGenerationProvider } from '../app/domain/ai/text-generation-provider';
 import { sentenceId, snapshotId } from '../app/domain/shared/ids';
 import type { TextToSpeechProvider } from '../app/domain/ai/text-to-speech-provider';
@@ -53,7 +53,7 @@ function serialize(value: unknown): string {
 /** A minimal but complete generation request, for the shared guarantees. */
 const CONTRACT_STORY_REQUEST: StoryGenerationRequest = {
   form: 'micro',
-  sentenceRange: sentenceRangeForCount(5),
+  requestedSentenceCount: 5,
   premise: 'ねこが一日をすごす話。',
   allowedVocabulary: ['ねこ'],
   suggestedVocabulary: ['ねこ'],

@@ -1,7 +1,7 @@
 # 0019 — Generated story structure and where prompts live
 
 Date: 2026-08-19
-Status: Accepted
+Status: Accepted; exact-count handling superseded by ADR 0046
 
 ## Context
 

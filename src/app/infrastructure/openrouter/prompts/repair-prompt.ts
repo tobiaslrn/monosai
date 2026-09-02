@@ -35,7 +35,7 @@ const TASK_LAYER = [
   'Success criteria:',
   '- Preserve already-valid wording, premise, meaning, ordering, register, and narrative continuity wherever possible.',
   '- Remove or rewrite every listed disallowed expression using only the vocabulary inventory. Do not keep it, gloss it, or evade validation by changing its script.',
-  '- Restore the exact requested sentence count and keep the result coherent rather than appending disconnected filler.',
+  '- Keep the story near the requested length without adding disconnected filler.',
   '- Expressions listed under `alreadyAttempted` survived an earlier repair. Choose a different replacement for them rather than the one you would reach for first.',
   'Output semantics: return `titleJa` and `sentences` of `{ index, textJa }`, with indexes contiguous from 0 and one sentence per entry.',
 ] as const;
@@ -60,7 +60,6 @@ const SCOPED_JSON_CONTRACT =
   'Return {"titleJa":string|null,"replacements":[{"index":integer,"textJa":string}]}. Include no other fields.';
 
 export function buildRepairPrompt(request: StoryRepairRequest): AssembledPrompt {
-  const range = request.original.sentenceRange;
   const system = assemble([
     PROTOCOL_LAYER,
     STORY_POLICY_LAYER,
@@ -71,7 +70,7 @@ export function buildRepairPrompt(request: StoryRepairRequest): AssembledPrompt 
   const user = assemble([
     ...sharedConfigBlocks(request),
     jsonConfigBlock('repair requirements', {
-      sentenceCount: { min: range.min, max: range.max },
+      requestedSentenceCount: request.original.requestedSentenceCount,
       attempt: request.attempt,
       disallowedReason: DISALLOWED_REASON,
     }),

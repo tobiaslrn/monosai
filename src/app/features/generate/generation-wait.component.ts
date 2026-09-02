@@ -80,12 +80,6 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
       };
     case 'cancelled':
       return { key: state.kind, title: 'Generation stopped', detail: 'Nothing was saved.' };
-    case 'invalid-draft':
-      return {
-        key: state.kind,
-        title: 'The story still needs work',
-        detail: 'It could not be made valid after two repair attempts.',
-      };
     case 'failed':
       return { key: state.kind, title: 'Generation stopped', detail: state.error.message };
     case 'idle':

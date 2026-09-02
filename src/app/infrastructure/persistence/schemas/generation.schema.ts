@@ -67,6 +67,8 @@ export const generationProvenanceRowSchema = z.object({
   exceptionPolicyHash: z.string(),
   modelId: nonEmptyString,
   promptVersions: z.record(z.string(), nonEmptyString),
+  // Optional only for rows written before ADR 0046. Every new generation writes it.
+  requestedSentenceCount: z.number().int().positive().optional(),
   repairAttempts: z.number().int().min(0).max(2),
   suggestedVocabularyItemIds: z.array(vocabularyItemIdSchema).readonly(),
   ankiWordPriorityMode: z.enum(['uniform', 'recent', 'difficult']).default('uniform'),

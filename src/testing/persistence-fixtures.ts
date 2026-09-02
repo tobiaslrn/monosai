@@ -281,6 +281,7 @@ export function generatedStoryDraftFixture(
     ankiWordPriorityMode: 'uniform',
     createdAt,
     ...options.provenance,
+    requestedSentenceCount: options.provenance?.requestedSentenceCount ?? sentences.length,
   };
 
   return {
