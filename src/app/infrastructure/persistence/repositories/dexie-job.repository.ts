@@ -17,7 +17,7 @@ import { assetJobRowSchema, type AssetJobRow } from '../schemas/job.schema';
 import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
 
 /**
- * Persisted batch jobs for whole-reading translation and audio preparation.
+ * Persisted batch jobs for whole-reading translation, grammar, and audio.
  *
  * Each completion is committed with the job update in one transaction, so a
  * reload can never report progress that its stored assets do not support.

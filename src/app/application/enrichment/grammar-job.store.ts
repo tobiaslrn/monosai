@@ -1,0 +1,440 @@
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { aiError, type AiError } from '../../domain/ai/ai-error';
+import { MAX_GRAMMAR_REVIEW_BATCH } from '../../domain/ai/grammar-review-request';
+import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
+import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
+import { planBatches } from '../../domain/ai/translation-request';
+import { grammarConfigFingerprint } from '../../domain/enrichment/cache-keys';
+import { remainingSentenceIds, type AssetJob } from '../../domain/enrichment/jobs';
+import type { GrammarProfileSnapshot } from '../../domain/grammar/profile';
+import { jobId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
+import type { StorageError } from '../../domain/storage/storage-error';
+import { GrammarProfileStore } from '../grammar/grammar-profile.store';
+import { LanguageStore } from '../language/language.store';
+import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
+import {
+  CLOCK,
+  HASHER,
+  ID_GENERATOR,
+  JOB_REPOSITORY,
+  READING_REPOSITORY,
+} from '../shared/repository-tokens';
+import { AppBusyRegistry } from '../shared/app-busy.registry';
+import { TextModelStore } from '../settings/text-model.store';
+import { EnrichmentKeysService } from './enrichment-keys.service';
+import { GrammarAnalysisService } from './grammar-analysis.service';
+
+export type GrammarJobError =
+  | { readonly source: 'provider'; readonly error: AiError }
+  | { readonly source: 'storage'; readonly error: StorageError };
+
+export interface GrammarJobCounts {
+  readonly total: number;
+  readonly requested: number;
+  readonly completed: number;
+  readonly failed: number;
+}
+
+export type GrammarJobProgress =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'preparing'; readonly readingId: ReadingId }
+  | { readonly kind: 'running'; readonly readingId: ReadingId; readonly counts: GrammarJobCounts }
+  | { readonly kind: 'complete'; readonly readingId: ReadingId; readonly counts: GrammarJobCounts }
+  | { readonly kind: 'cancelled'; readonly readingId: ReadingId; readonly counts: GrammarJobCounts }
+  | { readonly kind: 'deleted'; readonly readingId: ReadingId }
+  | {
+      readonly kind: 'failed';
+      readonly readingId: ReadingId;
+      readonly counts: GrammarJobCounts;
+      readonly error: GrammarJobError;
+    };
+
+const IDLE: GrammarJobProgress = { kind: 'idle' };
+
+function isAborted(signal: AbortSignal): boolean {
+  return signal.aborted;
+}
+
+interface JobContext {
+  readonly readingId: ReadingId;
+  readonly modelId: string;
+  readonly taskConfig: TextTaskConfig;
+  readonly profile: GrammarProfileSnapshot;
+  readonly cacheKeys: ReadonlyMap<SentenceId, string>;
+  readonly fingerprint: string;
+  readonly total: number;
+}
+
+/** Resumable, sequential whole-reading grammar analysis. */
+@Injectable({ providedIn: 'root' })
+export class GrammarJobStore {
+  private readonly readings = inject(READING_REPOSITORY);
+  private readonly jobs = inject(JOB_REPOSITORY);
+  private readonly grammar = inject(GrammarAnalysisService);
+  private readonly keys = inject(EnrichmentKeysService);
+  private readonly textModel = inject(TextModelStore);
+  private readonly grammarProfile = inject(GrammarProfileStore);
+  private readonly language = inject(LanguageStore);
+  private readonly hasher = inject(HASHER);
+  private readonly clock = inject(CLOCK);
+  private readonly ids = inject(ID_GENERATOR);
+  private readonly busyRegistry = inject(AppBusyRegistry);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
+
+  private readonly progressSignal = signal<GrammarJobProgress>(IDLE);
+  private controller: AbortController | null = null;
+  private activeRun: Promise<void> | null = null;
+
+  readonly progress = this.progressSignal.asReadonly();
+  readonly isRunning = computed(() => {
+    const kind = this.progressSignal().kind;
+    return kind === 'preparing' || kind === 'running';
+  });
+
+  constructor() {
+    effect(() => {
+      this.busyRegistry.setBusy(
+        'grammar-job',
+        this.isRunning() ? 'a grammar analysis job is running' : null,
+      );
+    });
+  }
+
+  progressFor(readingId: ReadingId): GrammarJobProgress {
+    const progress = this.progressSignal();
+    return progress.kind !== 'idle' && progress.readingId === readingId ? progress : IDLE;
+  }
+
+  isRunningFor(readingId: ReadingId): boolean {
+    const kind = this.progressFor(readingId).kind;
+    return kind === 'preparing' || kind === 'running';
+  }
+
+  async start(readingId: ReadingId): Promise<void> {
+    if (this.activeRun !== null) {
+      await this.activeRun;
+      return;
+    }
+    const run = this.run(readingId);
+    this.activeRun = run;
+    try {
+      await run;
+    } finally {
+      if (this.activeRun === run) this.activeRun = null;
+    }
+  }
+
+  private async run(readingId: ReadingId): Promise<void> {
+    const controller = new AbortController();
+    this.controller = controller;
+    this.logger.info('job.started', { kind: 'grammar' });
+    this.progressSignal.set({ kind: 'preparing', readingId });
+    const prepared = await this.prepare(readingId);
+    if (prepared !== null) {
+      await this.process(prepared.context, prepared.job, controller.signal);
+    }
+  }
+
+  async resume(readingId: ReadingId): Promise<void> {
+    if (this.isRunning()) return;
+    const existing = await this.jobs.findActive(readingId, 'analyze-reading');
+    if (!existing.ok) {
+      this.failStorage(readingId, existing.error, emptyCounts());
+      return;
+    }
+    if (existing.value === null) {
+      if (this.progressFor(readingId).kind !== 'idle') this.progressSignal.set(IDLE);
+      return;
+    }
+    await this.start(readingId);
+  }
+
+  retry(readingId: ReadingId): Promise<void> {
+    return this.start(readingId);
+  }
+
+  cancel(readingId: ReadingId): void {
+    if (!this.owns(readingId)) return;
+    this.controller?.abort();
+    this.controller = null;
+    const progress = this.progressSignal();
+    const counts = progress.kind === 'running' ? progress.counts : emptyCounts();
+    this.progressSignal.set({ kind: 'cancelled', readingId, counts });
+  }
+
+  async cancelAndWait(readingId: ReadingId): Promise<void> {
+    this.cancel(readingId);
+    await this.activeRun;
+  }
+
+  async readingDeleted(readingId: ReadingId): Promise<void> {
+    if (!this.owns(readingId)) return;
+    await this.cancelAndWait(readingId);
+    this.progressSignal.set({ kind: 'deleted', readingId });
+  }
+
+  acknowledge(readingId: ReadingId): void {
+    if (this.owns(readingId) && !this.isRunningFor(readingId)) this.progressSignal.set(IDLE);
+  }
+
+  private owns(readingId: ReadingId): boolean {
+    const progress = this.progressSignal();
+    return progress.kind !== 'idle' && progress.readingId === readingId;
+  }
+
+  private async prepare(
+    readingId: ReadingId,
+  ): Promise<{ readonly context: JobContext; readonly job: AssetJob } | null> {
+    await this.language.initialize();
+    const configured = this.textModel.configForTask('grammar');
+    if (configured === null) {
+      this.failProvider(
+        readingId,
+        aiError(
+          'capability-unsupported',
+          'grammar-review',
+          'No tested text model is available for grammar analysis.',
+          { detail: { capability: 'structured-output' } },
+        ),
+        emptyCounts(),
+      );
+      return null;
+    }
+    const captured = await this.grammarProfile.captureProfile();
+    if (!captured.ok) {
+      this.failStorage(readingId, captured.error, emptyCounts());
+      return null;
+    }
+    const refs = await this.readings.listSentenceRefs(readingId);
+    if (!refs.ok) {
+      this.failStorage(readingId, refs.error, emptyCounts());
+      return null;
+    }
+    const profile = captured.value;
+    const cacheKeys = this.keys.grammarKeys(
+      refs.value,
+      configured.modelId,
+      PROMPT_VERSIONS.grammar,
+      profile.profileHash,
+    );
+    const context: JobContext = {
+      readingId,
+      modelId: configured.modelId,
+      taskConfig: configured,
+      profile,
+      cacheKeys,
+      fingerprint: grammarConfigFingerprint(
+        this.hasher,
+        configured.modelId,
+        PROMPT_VERSIONS.grammar,
+        profile.profileHash,
+      ),
+      total: refs.value.length,
+    };
+    const active = await this.jobs.findActive(readingId, 'analyze-reading');
+    if (!active.ok) {
+      this.failStorage(readingId, active.error, emptyCounts());
+      return null;
+    }
+    if (active.value !== null && active.value.configFingerprint === context.fingerprint) {
+      const reconciled = await this.reconcile(context, active.value);
+      return reconciled === null ? null : { context, job: reconciled };
+    }
+    if (active.value !== null) {
+      const closed = await this.jobs.setState(active.value.id, 'cancelled');
+      if (!closed.ok) {
+        this.failStorage(readingId, closed.error, emptyCounts());
+        return null;
+      }
+    }
+    const created = await this.createJob(context);
+    return created === null ? null : { context, job: created };
+  }
+
+  private async reconcile(context: JobContext, job: AssetJob): Promise<AssetJob | null> {
+    const missing = await this.missingSentenceIds(context);
+    if (missing === null) return null;
+    const outstanding = new Set(missing);
+    const completed = job.orderedSentenceIds.filter((id) => !outstanding.has(id));
+    const updated = await this.jobs.reconcile(job.id, completed);
+    if (!updated.ok) {
+      this.failStorage(context.readingId, updated.error, emptyCounts());
+      return null;
+    }
+    return updated.value;
+  }
+
+  private async createJob(context: JobContext): Promise<AssetJob | null> {
+    const missing = await this.missingSentenceIds(context);
+    if (missing === null) return null;
+    const now = this.clock.now();
+    const created = await this.jobs.create({
+      id: jobId(this.ids.nextId()),
+      kind: 'analyze-reading',
+      readingId: context.readingId,
+      state: 'running',
+      orderedSentenceIds: missing,
+      completedSentenceIds: [],
+      failedItems: [],
+      configFingerprint: context.fingerprint,
+      createdAt: now,
+      updatedAt: now,
+    });
+    if (!created.ok) {
+      this.failStorage(context.readingId, created.error, emptyCounts());
+      return null;
+    }
+    return created.value;
+  }
+
+  private async missingSentenceIds(context: JobContext): Promise<readonly SentenceId[] | null> {
+    const missing = await this.grammar.missingSentenceIds(context.cacheKeys);
+    if (!missing.ok) {
+      this.failStorage(context.readingId, missing.error, emptyCounts());
+      return null;
+    }
+    return missing.value;
+  }
+
+  private async process(context: JobContext, job: AssetJob, signal: AbortSignal): Promise<void> {
+    const outstanding = remainingSentenceIds(job);
+    let counts: GrammarJobCounts = {
+      total: context.total,
+      requested: job.orderedSentenceIds.length,
+      completed: job.completedSentenceIds.length,
+      failed: job.failedItems.length,
+    };
+    if (outstanding.length === 0) {
+      this.controller = null;
+      this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
+      return;
+    }
+    const loaded = await this.readings.loadSentences(outstanding);
+    if (!loaded.ok) {
+      this.failStorage(context.readingId, loaded.error, counts);
+      return;
+    }
+    if (job.state !== 'running') {
+      const started = await this.jobs.setState(job.id, 'running');
+      if (!started.ok) {
+        this.failStorage(context.readingId, started.error, counts);
+        return;
+      }
+    }
+    this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+    let firstError: AiError | null = null;
+
+    for (const batch of planBatches(loaded.value, MAX_GRAMMAR_REVIEW_BATCH)) {
+      if (isAborted(signal)) {
+        await this.markCancelled(job, counts);
+        return;
+      }
+      const outcome = await this.grammar.runBatch(
+        batch,
+        context.readingId,
+        context.cacheKeys,
+        context.profile.profileHash,
+        context.profile.resolvedGuidance,
+        context.profile.registerPreference,
+        context.modelId,
+        PROMPT_VERSIONS.grammar,
+        context.taskConfig,
+        signal,
+      );
+      if (outcome.status === 'complete') {
+        for (const record of outcome.records) {
+          const stored = await this.grammar.store(record, context.cacheKeys);
+          if (!stored.ok) {
+            this.failStorage(context.readingId, stored.error, counts);
+            return;
+          }
+          const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
+          if (!advanced.ok) {
+            this.failStorage(context.readingId, advanced.error, counts);
+            return;
+          }
+          counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
+          this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+        }
+      } else if (outcome.error.code !== 'cancelled') {
+        firstError ??= outcome.error;
+        for (const sentence of batch) {
+          const recorded = await this.jobs.recordFailure(job.id, {
+            sentenceId: sentence.id,
+            errorCode: outcome.error.code,
+            failedAt: this.clock.now(),
+          });
+          if (!recorded.ok) {
+            this.failStorage(context.readingId, recorded.error, counts);
+            return;
+          }
+          counts = { ...counts, failed: recorded.value.failedItems.length };
+        }
+        this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+      }
+      if (isAborted(signal)) {
+        await this.markCancelled(job, counts);
+        return;
+      }
+    }
+
+    this.controller = null;
+    if (firstError !== null) {
+      const marked = await this.jobs.setState(job.id, 'failed');
+      if (!marked.ok) {
+        this.failStorage(context.readingId, marked.error, counts);
+        return;
+      }
+      this.failProvider(context.readingId, firstError, counts);
+      return;
+    }
+    const marked = await this.jobs.setState(job.id, 'complete');
+    if (!marked.ok) {
+      this.failStorage(context.readingId, marked.error, counts);
+      return;
+    }
+    this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
+    this.logger.info('job.succeeded', { kind: 'grammar', count: counts.completed });
+  }
+
+  private async markCancelled(job: AssetJob, counts: GrammarJobCounts): Promise<void> {
+    this.controller = null;
+    await this.jobs.setState(job.id, 'cancelled');
+    this.progressSignal.set({ kind: 'cancelled', readingId: job.readingId, counts });
+    this.logger.info('job.cancelled', { kind: 'grammar', count: counts.completed });
+  }
+
+  private failProvider(readingId: ReadingId, error: AiError, counts: GrammarJobCounts): void {
+    this.controller = null;
+    this.progressSignal.set({
+      kind: 'failed',
+      readingId,
+      counts,
+      error: { source: 'provider', error },
+    });
+    this.logger.error('job.failed', {
+      kind: 'grammar',
+      errorDomain: error.domain,
+      errorCode: error.code,
+    });
+  }
+
+  private failStorage(readingId: ReadingId, error: StorageError, counts: GrammarJobCounts): void {
+    this.controller = null;
+    this.progressSignal.set({
+      kind: 'failed',
+      readingId,
+      counts,
+      error: { source: 'storage', error },
+    });
+    this.logger.error('job.failed', {
+      kind: 'grammar',
+      errorDomain: error.domain,
+      errorCode: error.code,
+    });
+  }
+}
+
+function emptyCounts(): GrammarJobCounts {
+  return { total: 0, requested: 0, completed: 0, failed: 0 };
+}

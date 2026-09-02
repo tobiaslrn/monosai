@@ -150,6 +150,15 @@ sequenceDiagram
 Nothing on this path starts by itself. The reader shows a reading with no aid until the learner asks
 for one, which is how quality goal 3 is met at runtime.
 
+A learner can also ask to analyse a whole reading. That explicit action creates an
+`analyze-reading` job. The job captures the text-model configuration and immutable grammar profile
+once, includes the profile hash in its configuration fingerprint, and sends sequential batches of
+at most 20 sentences. Each successful analysis is stored before the next batch begins. A failed
+batch is recorded against its sentences without discarding successful batches before or after it;
+the job itself adds no retries beyond the provider client's bounded transport retries. After a
+reload, only a matching unfinished job resumes. A configuration mismatch closes the old job and
+starts work under the new fingerprint, while cancellation keeps every analysis already stored.
+
 The cache key is a fingerprint of everything that could change the answer, which
 [chapter 8](08-crosscutting-concepts.md) describes. Change the voice and the old clips are hidden
 rather than played, and the screens say so
