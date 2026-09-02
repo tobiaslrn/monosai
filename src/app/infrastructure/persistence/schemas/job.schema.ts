@@ -11,7 +11,7 @@ import {
 export const assetJobRowSchema = z.object({
   v: rowVersionSchema,
   id: jobIdSchema,
-  kind: z.enum(['translate-reading', 'prepare-audio']),
+  kind: z.enum(['translate-reading', 'analyze-reading', 'prepare-audio']),
   readingId: readingIdSchema,
   state: z.enum(['queued', 'running', 'paused', 'cancelled', 'failed', 'complete']),
   orderedSentenceIds: z.array(sentenceIdSchema).readonly(),

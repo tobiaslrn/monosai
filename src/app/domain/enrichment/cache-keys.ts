@@ -64,6 +64,20 @@ export function translationConfigFingerprint(
   });
 }
 
+/** The whole-reading grammar configuration, including its immutable profile. */
+export function grammarConfigFingerprint(
+  hasher: Hasher,
+  modelId: string,
+  promptVersion: string,
+  profileHash: string,
+): string {
+  return hashCanonical(hasher, 'grammar-review-config', {
+    modelId,
+    promptVersion,
+    profileHash,
+  });
+}
+
 /**
  * The canonical synthesis options a clip was produced under.
  *

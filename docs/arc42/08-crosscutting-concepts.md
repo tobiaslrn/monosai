@@ -105,6 +105,9 @@ serialization, so the same inputs always produce the same key
 ([ADR 0002](../decisions/0002-hashing-and-canonical-serialization.md)).
 This is how a repeated request costs nothing, and how a voice change hides clips that no longer match
 instead of playing them ([ADR 0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md)).
+Persisted whole-reading jobs use a configuration-level fingerprint without sentence content. A
+grammar job's version contains the model, prompt version, and immutable profile hash, so it can
+resume only work whose remaining items still mean the same thing.
 
 ## 8.7 Offline and update behaviour
 

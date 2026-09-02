@@ -1,6 +1,6 @@
 import type { JobId, ReadingId, SentenceId } from '../shared/ids';
 
-export type AssetJobKind = 'translate-reading' | 'prepare-audio';
+export type AssetJobKind = 'translate-reading' | 'analyze-reading' | 'prepare-audio';
 export type JobState = 'queued' | 'running' | 'paused' | 'cancelled' | 'failed' | 'complete';
 
 export interface JobItemFailure {

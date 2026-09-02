@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { aiError, type AiError } from '../../domain/ai/ai-error';
 import {
   MAX_GRAMMAR_REVIEW_BATCH,
   type GrammarReviewRequest,
@@ -18,6 +19,10 @@ import { CLOCK, ENRICHMENT_REPOSITORY, ID_GENERATOR } from '../shared/repository
 export type GrammarRunOutcome =
   | { readonly status: 'complete'; readonly records: readonly GrammarAnalysisRecord[] }
   | { readonly status: 'unavailable'; readonly records: readonly []; readonly reasonCode: string };
+
+export type GrammarBatchOutcome =
+  | { readonly status: 'complete'; readonly records: readonly GrammarAnalysisRecord[] }
+  | { readonly status: 'unavailable'; readonly records: readonly []; readonly error: AiError };
 
 /**
  * Reviews a generated story's grammar in bounded ordered batches.
@@ -48,25 +53,72 @@ export class GrammarAnalysisService {
     config: TextTaskConfig,
     signal: AbortSignal,
   ): Promise<GrammarRunOutcome> {
-    const normalized: NormalizedFinding[] = [];
+    const records: GrammarAnalysisRecord[] = [];
     for (const batch of planBatches(sentences, MAX_GRAMMAR_REVIEW_BATCH)) {
-      const request: GrammarReviewRequest = {
-        profileGuidance,
-        registerPreference,
-        sentences: batch.map((sentence) => ({ id: sentence.id, textJa: sentence.japaneseText })),
-        promptVersion,
-      };
-      const reviewed = await this.provider.reviewGrammar(request, config, signal);
-      if (!reviewed.ok) {
-        return { status: 'unavailable', records: [], reasonCode: reviewed.error.code };
-      }
       if (signal.aborted) {
         return { status: 'unavailable', records: [], reasonCode: 'cancelled' };
       }
-      const sentenceIds = batch.map((sentence) => sentence.id);
-      const textById = new Map(batch.map((sentence) => [sentence.id, sentence.japaneseText]));
-      normalized.push(...normalizeReview(sentenceIds, reviewed.value, textById));
+      const outcome = await this.runBatch(
+        batch,
+        readingId,
+        keys,
+        profileHash,
+        profileGuidance,
+        registerPreference,
+        modelId,
+        promptVersion,
+        config,
+        signal,
+      );
+      if (outcome.status === 'unavailable') {
+        return { status: 'unavailable', records: [], reasonCode: outcome.error.code };
+      }
+      records.push(...outcome.records);
     }
+
+    return { status: 'complete', records };
+  }
+
+  /** Reviews exactly one caller-planned batch without persisting it. */
+  async runBatch(
+    sentences: readonly Sentence[],
+    readingId: ReadingId,
+    keys: ReadonlyMap<SentenceId, string>,
+    profileHash: string,
+    profileGuidance: string,
+    registerPreference: string,
+    modelId: string,
+    promptVersion: string,
+    config: TextTaskConfig,
+    signal: AbortSignal,
+  ): Promise<GrammarBatchOutcome> {
+    if (signal.aborted) {
+      return {
+        status: 'unavailable',
+        records: [],
+        error: aiError('cancelled', 'grammar-review', 'The grammar review was stopped.'),
+      };
+    }
+    const request: GrammarReviewRequest = {
+      profileGuidance,
+      registerPreference,
+      sentences: sentences.map((sentence) => ({
+        id: sentence.id,
+        textJa: sentence.japaneseText,
+      })),
+      promptVersion,
+    };
+    const reviewed = await this.provider.reviewGrammar(request, config, signal);
+    if (!reviewed.ok) {
+      return { status: 'unavailable', records: [], error: reviewed.error };
+    }
+    const sentenceIds = sentences.map((sentence) => sentence.id);
+    const textById = new Map(sentences.map((sentence) => [sentence.id, sentence.japaneseText]));
+    const normalized: readonly NormalizedFinding[] = normalizeReview(
+      sentenceIds,
+      reviewed.value,
+      textById,
+    );
 
     const findingsBySentence = new Map<SentenceId, GrammarFinding[]>();
     for (const finding of normalized) {
@@ -82,7 +134,7 @@ export class GrammarAnalysisService {
       findingsBySentence.set(finding.sentenceId, existing);
     }
 
-    const records: GrammarAnalysisRecord[] = sentences.map((sentence) => {
+    const records = sentences.map((sentence): GrammarAnalysisRecord => {
       const cacheKey = keys.get(sentence.id) ?? '';
       return {
         id: this.ids.nextId(),
@@ -115,5 +167,22 @@ export class GrammarAnalysisService {
     currentCacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<GrammarAnalysisRecord, StorageError>> {
     return this.enrichment.storeGrammarAnalysis(record, currentCacheKeys);
+  }
+
+  /** Finds sentences that do not have a current analysis under these keys. */
+  async missingSentenceIds(
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    const rows = await this.enrichment.listGrammarAnalysesForCacheKeys([
+      ...new Set(cacheKeys.values()),
+    ]);
+    if (!rows.ok) {
+      return rows;
+    }
+    const storedKeys = new Set(rows.value.map((row) => row.cacheKey));
+    return {
+      ok: true,
+      value: [...cacheKeys].filter(([, key]) => !storedKeys.has(key)).map(([id]) => id),
+    };
   }
 }
