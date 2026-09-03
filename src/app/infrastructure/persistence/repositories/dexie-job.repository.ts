@@ -7,11 +7,11 @@ import type {
   JobItemFailure,
   JobState,
 } from '../../../domain/enrichment/jobs';
-import { isTerminal } from '../../../domain/enrichment/jobs';
+import { isClaimLive, isTerminal } from '../../../domain/enrichment/jobs';
 import type { JobRepository } from '../../../domain/enrichment/job-repository';
 import { storageError, type StorageError } from '../../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../monosai-db';
-import { parseRecord } from '../record-validation';
+import { parseRecord, parseRecords } from '../record-validation';
 import { ROW_VERSION } from '../schemas/common.schema';
 import { assetJobRowSchema, type AssetJobRow } from '../schemas/job.schema';
 import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
@@ -63,6 +63,97 @@ export class DexieJobRepository implements JobRepository {
     }
     const parsed = parseRecord(assetJobRowSchema, active, 'assetJobs');
     return parsed.ok ? ok(toJob(parsed.value)) : parsed;
+  }
+
+  async listActive(): Promise<Result<readonly AssetJob[], StorageError>> {
+    const loaded = await runStorage('assetJobs.listActive', () =>
+      this.db.assetJobs.where('state').anyOf(['queued', 'running', 'paused']).toArray(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const parsed = parseRecords(assetJobRowSchema, loaded.value, 'assetJobs');
+    return parsed.ok ? ok(parsed.value.map(toJob)) : parsed;
+  }
+
+  /**
+   * Reads and writes every one of the reading's active rows in one transaction,
+   * so two lanes racing for the same reading cannot both come away believing
+   * they hold it.
+   */
+  claimReading(
+    readingId: ReadingId,
+    ownerId: string,
+    now: number,
+  ): Promise<Result<readonly AssetJob[], StorageError>> {
+    return runStorageWithRules('assetJobs.claimReading', () =>
+      this.db.transaction('rw', this.db.assetJobs, async () => {
+        const active = await this.activeRows(readingId);
+        const held = active.find(
+          (job) =>
+            job.claim !== undefined && job.claim.ownerId !== ownerId && isClaimLive(job.claim, now),
+        );
+        if (held !== undefined) {
+          throw new StorageRuleViolation(
+            storageError('conflict', 'That reading is being prepared somewhere else.'),
+          );
+        }
+        const claimed = active.map((job) => ({ ...job, claim: { ownerId, heartbeatAt: now } }));
+        await this.db.assetJobs.bulkPut(claimed.map((job) => ({ ...job, v: ROW_VERSION })));
+        return claimed;
+      }),
+    );
+  }
+
+  heartbeatReading(
+    readingId: ReadingId,
+    ownerId: string,
+    now: number,
+  ): Promise<Result<void, StorageError>> {
+    return runStorage('assetJobs.heartbeatReading', () =>
+      this.db.transaction('rw', this.db.assetJobs, async () => {
+        const mine = (await this.activeRows(readingId)).filter(
+          (job) => job.claim?.ownerId === ownerId,
+        );
+        await this.db.assetJobs.bulkPut(
+          mine.map((job) => ({ ...job, claim: { ownerId, heartbeatAt: now }, v: ROW_VERSION })),
+        );
+      }),
+    );
+  }
+
+  /**
+   * Clears this owner's claim from every one of the reading's rows, terminal
+   * ones included: letting go means the reading carries no trace of this lane.
+   */
+  releaseReading(readingId: ReadingId, ownerId: string): Promise<Result<void, StorageError>> {
+    return runStorage('assetJobs.releaseReading', () =>
+      this.db.transaction('rw', this.db.assetJobs, async () => {
+        const rows = await this.db.assetJobs.where('readingId').equals(readingId).toArray();
+        const parsed = parseRecords(assetJobRowSchema, rows, 'assetJobs');
+        if (!parsed.ok) {
+          throw new StorageRuleViolation(parsed.error);
+        }
+        const mine = parsed.value.map(toJob).filter((job) => job.claim?.ownerId === ownerId);
+        await this.db.assetJobs.bulkPut(
+          mine.map(({ claim: _claim, ...job }) => ({ ...job, v: ROW_VERSION })),
+        );
+      }),
+    );
+  }
+
+  /** Inside a transaction: this reading's non-terminal rows, validated. */
+  private async activeRows(readingId: ReadingId): Promise<readonly AssetJob[]> {
+    const rows = await this.db.assetJobs.where('readingId').equals(readingId).toArray();
+    const parsed = parseRecords(
+      assetJobRowSchema,
+      rows.filter((row) => !isTerminal(row.state)),
+      'assetJobs',
+    );
+    if (!parsed.ok) {
+      throw new StorageRuleViolation(parsed.error);
+    }
+    return parsed.value.map(toJob);
   }
 
   recordCompletion(id: JobId, sentenceId: SentenceId): Promise<Result<AssetJob, StorageError>> {

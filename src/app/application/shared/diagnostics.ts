@@ -79,6 +79,7 @@ export type LogEventName =
   | 'worker.operation.succeeded'
   | 'job.cancelled'
   | 'job.failed'
+  | 'job.paused'
   | 'job.started'
   | 'job.succeeded';
 

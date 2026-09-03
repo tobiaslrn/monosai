@@ -147,4 +147,98 @@ describe('DexieJobRepository', () => {
     expect(missing.error.code).toBe('not-found');
     expect(await db.assetJobs.count()).toBe(1);
   });
+
+  describe('the lane work list', () => {
+    it('lists every non-terminal row and no terminal one', async () => {
+      const finished: AssetJob = {
+        ...job,
+        id: jobId(uuid(8200)),
+        kind: 'analyze-reading',
+        state: 'complete',
+      };
+      const parked: AssetJob = {
+        ...job,
+        id: jobId(uuid(8201)),
+        kind: 'prepare-audio',
+        state: 'paused',
+      };
+      await repository.create(finished);
+      await repository.create(parked);
+
+      const active = await repository.listActive();
+
+      expect(active.ok).toBe(true);
+      expect(active.ok && active.value.map((row) => row.kind).sort()).toEqual([
+        'prepare-audio',
+        'translate-reading',
+      ]);
+    });
+  });
+
+  describe('one preparation pipeline per reading', () => {
+    it('claims every active row of the reading at once', async () => {
+      await repository.create({ ...job, id: jobId(uuid(8210)), kind: 'analyze-reading' });
+
+      const claimed = await repository.claimReading(draft.reading.id, 'lane-a', 1_700_600_000_000);
+
+      expect(claimed.ok && claimed.value).toHaveLength(2);
+      const stored = await repository.listActive();
+      expect(stored.ok && stored.value.every((row) => row.claim?.ownerId === 'lane-a')).toBe(true);
+    });
+
+    it('refuses a reading another lane is still working', async () => {
+      await repository.claimReading(draft.reading.id, 'lane-a', 1_700_600_000_000);
+
+      const contended = await repository.claimReading(
+        draft.reading.id,
+        'lane-b',
+        1_700_600_000_000 + 1_000,
+      );
+
+      expect(contended.ok).toBe(false);
+      expect(!contended.ok && contended.error.code).toBe('conflict');
+    });
+
+    it('takes over a claim whose lane stopped saying it was there', async () => {
+      await repository.claimReading(draft.reading.id, 'lane-a', 1_700_600_000_000);
+
+      const reclaimed = await repository.claimReading(
+        draft.reading.id,
+        'lane-b',
+        1_700_600_000_000 + 120_000,
+      );
+
+      expect(reclaimed.ok).toBe(true);
+      expect(reclaimed.ok && reclaimed.value[0].claim?.ownerId).toBe('lane-b');
+    });
+
+    it('keeps a claim alive through a heartbeat and drops it on release', async () => {
+      await repository.claimReading(draft.reading.id, 'lane-a', 1_700_600_000_000);
+      await repository.heartbeatReading(draft.reading.id, 'lane-a', 1_700_600_000_000 + 90_000);
+
+      const stillContended = await repository.claimReading(
+        draft.reading.id,
+        'lane-b',
+        1_700_600_000_000 + 100_000,
+      );
+      expect(!stillContended.ok && stillContended.error.code).toBe('conflict');
+
+      await repository.releaseReading(draft.reading.id, 'lane-a');
+      const afterRelease = await repository.claimReading(
+        draft.reading.id,
+        'lane-b',
+        1_700_600_000_000 + 101_000,
+      );
+      expect(afterRelease.ok).toBe(true);
+    });
+
+    it('leaves the claim of another lane alone when releasing', async () => {
+      await repository.claimReading(draft.reading.id, 'lane-a', 1_700_600_000_000);
+
+      await repository.releaseReading(draft.reading.id, 'lane-b');
+
+      const active = await repository.listActive();
+      expect(active.ok && active.value[0].claim?.ownerId).toBe('lane-a');
+    });
+  });
 });

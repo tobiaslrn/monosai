@@ -11,7 +11,9 @@ import { LanguageStore } from './application/language/language.store';
 import { AutomaticAnkiSyncCoordinator } from './application/vocabulary/automatic-anki-sync.coordinator';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
 import { provideInitializationSteps } from './core/bootstrap/initialization-steps';
+import { NetworkStatusService } from './core/platform/network-status.service';
 import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
+import { NETWORK_STATUS } from './domain/platform/network-status.port';
 import { APP_ROUTES } from './core/routing/app.routes';
 import { provideAnki } from './infrastructure/anki/anki.providers';
 import { provideDiagnosticsLogging } from './infrastructure/diagnostics/diagnostics.providers';
@@ -35,6 +37,8 @@ export const appConfig: ApplicationConfig = {
       // its reading id without injecting ActivatedRoute.
       withComponentInputBinding(),
     ),
+    // The shell owns the browser events; the application layer sees a signal.
+    { provide: NETWORK_STATUS, useExisting: NetworkStatusService },
     providePersistence(),
     provideLanguage(),
     provideAnki(),

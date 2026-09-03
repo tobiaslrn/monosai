@@ -1,3 +1,6 @@
+import { PreparationStore } from '../enrichment/preparation.store';
+import type { Reading } from '../../domain/reading/reading';
+import type { ReadingId } from '../../domain/shared/ids';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ok } from '../../domain/shared/result';
@@ -18,11 +21,25 @@ describe('GenerationJobsStore', () => {
   let bed: GenerationTestBed;
   let jobs: GenerationJobsStore;
   let library: LibraryStore;
+  let reconciled: ReadingId[];
 
   beforeEach(() => {
+    reconciled = [];
     bed = configureGenerationTestBed({
       extraProviders: [
         { provide: READING_MUTATION_CHANNEL, useValue: new FakeReadingMutationChannel() },
+        {
+          // Only what a saved story asks of the lane. The real one reaches the
+          // job repository and three producers, none of which writing a story
+          // has any business starting.
+          provide: PreparationStore,
+          useValue: {
+            reconcile: (reading: Reading) => {
+              reconciled.push(reading.id);
+              return Promise.resolve();
+            },
+          },
+        },
       ],
     });
     jobs = TestBed.inject(GenerationJobsStore);
@@ -134,5 +151,14 @@ describe('GenerationJobsStore', () => {
     expect(entry.id).toBe(id);
     expect(entry.store.state().kind).toBe('cancelled');
     expect(entry.premise).toBe(PREMISE.premise);
+  });
+
+  it('queues the preparation a saved story declares', async () => {
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    expect(jobs.start(5, PREMISE)).not.toBeNull();
+    await settle();
+
+    expect(reconciled).toHaveLength(1);
   });
 });

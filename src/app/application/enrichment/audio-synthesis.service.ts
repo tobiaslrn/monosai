@@ -1,3 +1,4 @@
+import { sentencesWithoutStoredAid } from '../../domain/enrichment/preparation';
 import { Injectable, inject } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
 import type { SpeechContext, SpeechInstructionsSupport } from '../../domain/ai/speech-instructions';
@@ -134,5 +135,19 @@ export class AudioSynthesisService {
     currentCacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<readonly SentenceId[], StorageError>> {
     return this.enrichment.listSentenceIdsMissingAudio(readingId, currentCacheKeys);
+  }
+
+  /**
+   * Sentences that have never been read aloud, under any configuration.
+   *
+   * What the preparation lane queues, as opposed to what *Prepare again* asks:
+   * a cache key changes with the model, and a reading already prepared must not
+   * be prepared a second time because the learner picked a different one.
+   */
+  async neverPreparedSentenceIds(
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    const stored = await this.enrichment.listSentenceIdsWithStoredAudio([...cacheKeys.keys()]);
+    return stored.ok ? ok(sentencesWithoutStoredAid(cacheKeys, stored.value)) : stored;
   }
 }

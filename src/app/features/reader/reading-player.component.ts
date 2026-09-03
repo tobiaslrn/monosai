@@ -902,11 +902,14 @@ export class ReadingPlayerComponent {
   protected readonly jobLine = computed(() => {
     const progress = this.progress();
     switch (progress.kind) {
+      // A paused run is still going as far as the learner is concerned: it
+      // stopped to let something else through and picks up on its own.
       case 'idle':
       case 'complete':
       case 'deleted':
       case 'preparing':
       case 'running':
+      case 'paused':
         return '';
       case 'cancelled':
         return progress.counts.requested === 0

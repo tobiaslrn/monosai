@@ -171,14 +171,48 @@ describe('TranslationJobStore', () => {
     });
   });
 
-  it('records a failed batch, stops scheduling, and never retries it itself', async () => {
-    bed.provider.translateWith = () =>
-      err(aiError('provider-unavailable', 'translation', 'The provider was unavailable.'));
+  it('records a batch that failed for its own sentences and translates the rest', async () => {
+    let call = 0;
+    bed.provider.translateWith = (request) => {
+      call += 1;
+      return call === 1
+        ? err(aiError('provider-unavailable', 'translation', 'The provider was unavailable.'))
+        : ok(
+            translationTargets(request).map((sentence) => ({
+              id: sentence.id,
+              textEn: `English for ${sentence.textJa}`,
+            })),
+          );
+    };
 
     await bed.store.start(bed.draft.reading.id);
 
-    // Exactly one request: the first batch failed and nothing was scheduled
-    // after it, so the client's own transport retries stay the only retries.
+    // A blip on one batch used to strand every sentence after it. The failure
+    // is recorded and the rest of the reading is still translated, which is the
+    // split the audio job already drew (ADR 0035).
+    expect(bed.provider.generationCalls.translate).toBeGreaterThan(1);
+
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('failed');
+    if (progress.kind !== 'failed') {
+      return;
+    }
+    expect(progress.counts.failed).toBe(MAX_TRANSLATION_BATCH);
+    expect(progress.counts.completed).toBe(SENTENCE_COUNT - MAX_TRANSLATION_BATCH);
+
+    const rows = await bed.db.assetJobs.toArray();
+    expect(rows[0].state).toBe('failed');
+    expect(rows[0].failedItems.map((item) => item.errorCode)).toContain('provider-unavailable');
+  });
+
+  it('stops at the first batch when the refusal is about the setup', async () => {
+    bed.provider.translateWith = () =>
+      err(aiError('authentication', 'translation', 'That key was rejected.'));
+
+    await bed.store.start(bed.draft.reading.id);
+
+    // Exactly one request: every later batch would be refused identically, and
+    // spending on that is not a service.
     expect(bed.provider.generationCalls.translate).toBe(1);
 
     const progress = bed.store.progress();
@@ -193,7 +227,6 @@ describe('TranslationJobStore', () => {
     const rows = await bed.db.assetJobs.toArray();
     expect(rows).toHaveLength(1);
     expect(rows[0].state).toBe('failed');
-    expect(rows[0].failedItems.map((item) => item.errorCode)).toContain('provider-unavailable');
   });
 
   it('retries a failed job as a fresh bounded attempt over what is still missing', async () => {
@@ -404,5 +437,42 @@ describe('TranslationJobStore', () => {
     expect(progress.error.source === 'provider' && progress.error.error.code).toBe(
       'capability-unsupported',
     );
+  });
+
+  describe('queueing without spending', () => {
+    it('creates a row and issues nothing', async () => {
+      const outcome = await bed.store.enqueue(bed.draft.reading.id);
+
+      expect(outcome.kind).toBe('queued');
+      expect(bed.provider.generationCalls.translate).toBe(0);
+      const row = await bed.jobs.findActive(bed.draft.reading.id, 'translate-reading');
+      expect(row.ok && row.value?.state).toBe('queued');
+    });
+
+    it('queues nothing at all once a model change is the only thing missing', async () => {
+      await bed.store.start(bed.draft.reading.id);
+      expect(bed.store.progress().kind).toBe('complete');
+      const spentOnFirstRun = bed.provider.generationCalls.translate;
+
+      // Everything the reading has was produced under the old model, so its
+      // cache keys all change. That must not be work.
+      bed.settings.update((settings) => ({ ...settings, modelId: 'vendor/another-model' }));
+      const outcome = await bed.store.enqueue(bed.draft.reading.id);
+
+      expect(outcome.kind).toBe('nothing-to-do');
+      expect(bed.provider.generationCalls.translate).toBe(spentOnFirstRun);
+      const rows = await bed.jobs.listActive();
+      expect(rows.ok && rows.value).toEqual([]);
+    });
+
+    it('still asks for everything when the learner wants it done again', async () => {
+      await bed.store.start(bed.draft.reading.id);
+      const spentOnFirstRun = bed.provider.generationCalls.translate;
+      bed.settings.update((settings) => ({ ...settings, modelId: 'vendor/another-model' }));
+
+      await bed.store.start(bed.draft.reading.id);
+
+      expect(bed.provider.generationCalls.translate).toBeGreaterThan(spentOnFirstRun);
+    });
   });
 });
