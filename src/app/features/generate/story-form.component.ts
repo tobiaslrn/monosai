@@ -7,8 +7,11 @@ import {
   STORY_SENTENCE_COUNTS,
 } from '../../domain/ai/story-request';
 import type { AnkiWordPriorityMode, VocabularyStrictness } from '../../domain/settings/settings';
+import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
+import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { PreparationTargetsComponent } from '../../shared-ui/preparation-targets/preparation-targets.component';
 
 const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
 
@@ -26,7 +29,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
 @Component({
   selector: 'mn-story-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink, IconComponent, PreparationTargetsComponent],
   template: `
     <div class="composer-grid">
       <div class="text-fields">
@@ -137,6 +140,15 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <option value="difficult">Difficult</option>
           </select>
         </div>
+
+        <mn-preparation-targets
+          class="preparation-targets"
+          legend="Prepare after generation"
+          [targets]="preparationTargets()"
+          [audioReadiness]="audioReadiness()"
+          [disabled]="disabled()"
+          (targetsChanged)="preparationTargetsChanged.emit($event)"
+        />
 
         <details class="mn-disclosure strictness">
           <summary>Vocabulary strictness</summary>
@@ -423,6 +435,12 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       margin-top: var(--space-3);
     }
 
+    .preparation-targets {
+      margin-top: var(--space-4);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+    }
+
     .strictness fieldset {
       display: grid;
       gap: var(--space-2);
@@ -530,10 +548,13 @@ export class StoryFormComponent {
   readonly presetName = input.required<string>();
   readonly ankiWordPriorityMode = input<AnkiWordPriorityMode>('uniform');
   readonly vocabularyStrictness = input<VocabularyStrictness>('standard');
+  readonly preparationTargets = input<readonly PreparationLayer[]>(['english', 'grammar']);
+  readonly audioReadiness = input<ConfigurationReadiness>('not-configured');
 
   readonly generate = output<void>();
   readonly ankiWordPriorityModeChanged = output<AnkiWordPriorityMode>();
   readonly vocabularyStrictnessChanged = output<VocabularyStrictness>();
+  readonly preparationTargetsChanged = output<readonly PreparationLayer[]>();
 
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
   protected readonly lengthLabels = LENGTH_LABELS;

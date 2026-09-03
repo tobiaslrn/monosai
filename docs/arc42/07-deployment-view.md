@@ -13,7 +13,7 @@ flowchart TB
             lw["Language worker<br/>tokenizer, dictionary"]
             pw["Package worker<br/>ZIP + SQLite"]
             sw["Service worker<br/>monosai-sw.js → ngsw-worker.js"]
-            idb[("IndexedDB<br/>Dexie, schema v7")]
+            idb[("IndexedDB<br/>Dexie, schema v8")]
             cs[("Cache Storage<br/>shell, assets, share inbox")]
         end
         anki["Anki Desktop<br/>AnkiConnect on 127.0.0.1"]

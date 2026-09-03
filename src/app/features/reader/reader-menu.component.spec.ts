@@ -19,6 +19,7 @@ function reading(completed: number, total: number, audioCompleted = 0): Reading 
     translationSummary: { total, completed, failed: 0 },
     grammarSummary: { state: 'not-requested' },
     audioSummary: { total, completed: audioCompleted, failed: 0 },
+    preparationTargets: [],
     analyzerVersion: 'analyzer/1',
     importSource: 'paste',
     sourceTextHash: 'hash-0',

@@ -8,6 +8,7 @@ import {
   type WindowDirection,
 } from '../../domain/reading/paragraph-window';
 import type { Reading } from '../../domain/reading/reading';
+import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Paragraph, Sentence } from '../../domain/reading/text-hierarchy';
 import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
@@ -146,6 +147,18 @@ export class ReaderStore {
     if (reading.ok && reading.value !== null) {
       this.readingSignal.set(reading.value);
     }
+  }
+
+  async setPreparationTargets(targets: readonly PreparationLayer[]): Promise<void> {
+    const current = this.readingSignal();
+    if (current === null) return;
+    const saved = await this.readings.setPreparationTargets(current.id, targets);
+    if (!saved.ok) {
+      this.errorSignal.set(saved.error);
+      return;
+    }
+    this.readingSignal.set(saved.value);
+    this.errorSignal.set(null);
   }
 
   /** Mounts more paragraphs when the learner reaches an edge of the window. */

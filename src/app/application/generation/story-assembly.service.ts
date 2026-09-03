@@ -13,6 +13,7 @@ import {
   grammarUnavailable,
   NO_GRAMMAR_REVIEW,
 } from '../../domain/reading/summaries';
+import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Paragraph, Sentence } from '../../domain/reading/text-hierarchy';
 import type { Token, TokenAnalysis } from '../../domain/reading/token';
 import type {
@@ -59,6 +60,8 @@ export interface AcceptedStory {
   readonly suggestedVocabularyItemIds: readonly VocabularyItemId[];
   readonly ankiWordPriorityMode?: AnkiWordPriorityMode;
   readonly exceptionCount: number;
+  /** What the learner asked this story to be prepared with, at the time it was written. */
+  readonly preparationTargets: readonly PreparationLayer[];
 }
 
 /**
@@ -136,6 +139,7 @@ export class StoryAssemblyService {
       translationSummary: emptyCompletion(sentences.length),
       grammarSummary: NO_GRAMMAR_REVIEW,
       audioSummary: emptyCompletion(sentences.length),
+      preparationTargets: accepted.preparationTargets,
       analyzerVersion: ANALYZER_VERSION,
       form: accepted.form,
       premise: accepted.premise,

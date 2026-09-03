@@ -177,6 +177,81 @@ describe('DexieEnrichmentRepository', () => {
     expect(missing.value).toEqual([draft.sentences[1].id, draft.sentences[2].id]);
   });
 
+  describe('sentences that own a stored aid under any configuration', () => {
+    it('reports a row stored under a configuration that is no longer current', async () => {
+      await repository.storeTranslation(translation(0, 'historic-key'), currentTranslationKeys());
+
+      const stored = await repository.listSentenceIdsWithStoredTranslation(
+        draft.sentences.map((sentence) => sentence.id),
+      );
+
+      expect(stored.ok).toBe(true);
+      if (!stored.ok) {
+        return;
+      }
+      expect(stored.value).toEqual([draft.sentences[0].id]);
+    });
+
+    it('answers only for the sentences it was asked about', async () => {
+      await repository.storeTranslation(translation(0), currentTranslationKeys());
+      await repository.storeTranslation(translation(1, 'translation-1'), currentTranslationKeys());
+
+      const stored = await repository.listSentenceIdsWithStoredTranslation([draft.sentences[1].id]);
+
+      expect(stored.ok).toBe(true);
+      if (!stored.ok) {
+        return;
+      }
+      expect(stored.value).toEqual([draft.sentences[1].id]);
+    });
+
+    it('reports stored grammar analyses regardless of their profile', async () => {
+      await repository.storeGrammarAnalysis(
+        { ...grammarAnalysis(2), profileHash: 'a-retired-profile' },
+        currentGrammarKeys(),
+      );
+
+      const stored = await repository.listSentenceIdsWithStoredGrammarAnalysis(
+        draft.sentences.map((sentence) => sentence.id),
+      );
+
+      expect(stored.ok).toBe(true);
+      if (!stored.ok) {
+        return;
+      }
+      expect(stored.value).toEqual([draft.sentences[2].id]);
+    });
+
+    it('reports stored audio without reading a single clip', async () => {
+      await repository.storeAudio(audio(1), currentAudioKeys());
+      const spy = vi.spyOn(db.audioAssets, 'toArray');
+
+      const stored = await repository.listSentenceIdsWithStoredAudio(
+        draft.sentences.map((sentence) => sentence.id),
+      );
+
+      expect(stored.ok).toBe(true);
+      if (!stored.ok) {
+        return;
+      }
+      expect(stored.value).toEqual([draft.sentences[1].id]);
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('asks nothing of the database for an empty reading', async () => {
+      const spy = vi.spyOn(db.translations, 'where');
+
+      const stored = await repository.listSentenceIdsWithStoredTranslation([]);
+
+      expect(stored.ok).toBe(true);
+      if (!stored.ok) {
+        return;
+      }
+      expect(stored.value).toEqual([]);
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
   it('lists translations only for the requested sentences, not the whole reading', async () => {
     const cacheKeys = currentTranslationKeys();
     await repository.storeTranslation(translation(0), cacheKeys);

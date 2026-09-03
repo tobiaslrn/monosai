@@ -110,6 +110,26 @@ the glyph itself is the visual indicator; a boundary is not required to satisfy
 it. Text inputs are the opposite case and keep their visible boundary, because
 an empty input with no border is not perceivable as a control at all.
 
+### Switch groups
+
+A compact switch group declares a small, stable set of independent outcomes,
+such as which reading aids a reading should eventually have. Each row carries a
+visible noun and a native checkbox with `role="switch"`, and the group has a
+fieldset and a legend. Switches are never hidden behind a disclosure, because
+the outcomes they select are part of the action being configured rather than
+advanced detail.
+
+A group sits with the thing it configures: on the form that starts the work, or
+in the header of the screen that shows the result. It does not go into a list
+row's action menu. That menu is a short list of things to do to a row, and a
+shelf is for choosing what to open rather than for configuring each entry.
+
+The track uses the sunken surface at rest and the action colour when selected.
+A disabled switch stays visible and names, below the group, the exact state
+that prevents it; generic setup advice is never substituted for an untested,
+stale, or failed configuration. The whole labelled row meets the touch-target
+floor while the switch itself stays compact.
+
 ## 4. Colour
 
 Monosai's palette is warm paper, a muted sage as the action colour, a lavender

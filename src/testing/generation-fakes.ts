@@ -51,9 +51,11 @@ import type {
 } from '../app/domain/settings/settings';
 import {
   DEFAULT_EXCEPTION_POLICY,
+  DEFAULT_GENERATION_SETTINGS,
   DEFAULT_STORY_TOKEN_BUDGET,
   repairBudgetFor,
 } from '../app/domain/settings/settings';
+import type { PreparationLayer } from '../app/domain/enrichment/preparation';
 import type { SettingsRepository } from '../app/domain/settings/settings-repository';
 import type { VocabularyItem, VocabularySnapshot } from '../app/domain/vocabulary/snapshot';
 import { StubTextProvider, autoAnswerAuxiliary, modelTest } from './ai-fakes';
@@ -337,6 +339,7 @@ export interface GenerationTestBedOptions {
   readonly uniqueEntryCount?: number;
   readonly ankiWordPriorityMode?: AnkiWordPriorityMode;
   readonly vocabularyStrictness?: VocabularyStrictness;
+  readonly defaultPreparationTargets?: readonly PreparationLayer[];
   /** Anything a spec around the pipeline needs, such as the library's channel. */
   readonly extraProviders?: readonly (Provider | EnvironmentProviders)[];
 }
@@ -362,6 +365,8 @@ export function configureGenerationTestBed(
   const policyRepository = new StubPolicyRepository();
   const priorityMode = signal<AnkiWordPriorityMode>(options.ankiWordPriorityMode ?? 'uniform');
   const vocabularyStrictness = options.vocabularyStrictness ?? 'standard';
+  const defaultPreparationTargets =
+    options.defaultPreparationTargets ?? DEFAULT_GENERATION_SETTINGS.defaultPreparationTargets;
 
   const snapshot = snapshotFixture(options.uniqueEntryCount ?? REVIEWED_EXPRESSIONS.length);
   vocabulary.snapshots.push(snapshot);
@@ -420,6 +425,9 @@ export function configureGenerationTestBed(
         useValue: {
           vocabularyStrictness: signal(vocabularyStrictness),
           repairBudget: signal(repairBudgetFor(vocabularyStrictness)),
+          defaultPreparationTargets: signal(defaultPreparationTargets),
+          setVocabularyStrictness: () => Promise.resolve(),
+          setDefaultPreparationTargets: () => Promise.resolve(),
         },
       },
       {

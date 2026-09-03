@@ -22,6 +22,7 @@ function reading(characterCount: number): Reading {
     translationSummary: { total: 4, completed: 0, failed: 0 },
     grammarSummary: { state: 'not-requested' },
     audioSummary: { total: 4, completed: 0, failed: 0 },
+    preparationTargets: [],
     analyzerVersion: '1',
   };
 }

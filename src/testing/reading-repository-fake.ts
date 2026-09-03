@@ -6,6 +6,7 @@ import type {
 } from '../app/domain/reading/reading';
 import type { GenerationProvenance } from '../app/domain/ai/generation-provenance';
 import type { GrammarAnalysisRecord, TranslationRecord } from '../app/domain/enrichment/records';
+import type { PreparationLayer } from '../app/domain/enrichment/preparation';
 import type { FrozenSentenceValidation } from '../app/domain/reading/validation';
 import type {
   GeneratedStoryDraft,
@@ -28,7 +29,7 @@ import {
   type SentenceId,
 } from '../app/domain/shared/ids';
 import { err, ok, type Result } from '../app/domain/shared/result';
-import type { StorageError } from '../app/domain/storage/storage-error';
+import { storageError, type StorageError } from '../app/domain/storage/storage-error';
 
 /** One synthetic reading's rows, shaped exactly as the repository stores them. */
 export interface FakeReadingRows {
@@ -109,6 +110,7 @@ export function buildReading(options: BuildReadingOptions = {}): FakeReadingRows
     translationSummary: { total: sentences.length, completed: 0, failed: 0 },
     grammarSummary: { state: 'not-requested' as const },
     audioSummary: { total: sentences.length, completed: 0, failed: 0 },
+    preparationTargets: [],
     analyzerVersion: 'fake',
   };
 
@@ -213,6 +215,19 @@ export class FakeReadingRepository implements ReadingRepository {
 
   getReading(id: ReadingId): Promise<Result<Reading | null, StorageError>> {
     return Promise.resolve(ok(this.readings.find((reading) => reading.id === id) ?? null));
+  }
+
+  setPreparationTargets(
+    id: ReadingId,
+    targets: readonly PreparationLayer[],
+  ): Promise<Result<Reading, StorageError>> {
+    const reading = this.readings.find((item) => item.id === id);
+    if (reading === undefined) {
+      return Promise.resolve(err(storageError('not-found', 'That reading no longer exists.')));
+    }
+    const updated = { ...reading, preparationTargets: targets };
+    this.readings = this.readings.map((item) => (item.id === id ? updated : item));
+    return Promise.resolve(ok(updated));
   }
 
   listLibraryPage(request: LibraryPageRequest): Promise<Result<LibraryPage, StorageError>> {

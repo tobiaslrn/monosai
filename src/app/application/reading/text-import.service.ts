@@ -193,6 +193,7 @@ export class TextImportService {
       translationSummary: emptyCompletion(sentences.length),
       grammarSummary: NO_GRAMMAR_REVIEW,
       audioSummary: emptyCompletion(sentences.length),
+      preparationTargets: [],
       analyzerVersion: ANALYZER_VERSION,
       importSource: request.importSource,
       sourceTextHash: hashCanonical(this.hasher, 'reading-source', request.sourceText),

@@ -17,6 +17,7 @@ function reading(id: string, createdAt: number): Reading {
     translationSummary: { total: 1, completed: 0, failed: 0 },
     grammarSummary: { state: 'not-requested' },
     audioSummary: { total: 1, completed: 0, failed: 0 },
+    preparationTargets: [],
     analyzerVersion: '1',
     importSource: 'paste',
     sourceTextHash: 'hash',

@@ -686,4 +686,45 @@ describe('DexieReadingRepository', () => {
       expect((await repository.loadTokenAnalyses([draft.sentences[0].id])).ok).toBe(false);
     });
   });
+
+  describe('declaring preparation targets', () => {
+    it('records the targets and touches the reading, keeping the rest intact', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+
+      const saved = await repository.setPreparationTargets(draft.reading.id, ['english', 'audio']);
+
+      expect(saved.ok).toBe(true);
+      if (!saved.ok) {
+        return;
+      }
+      expect(saved.value.preparationTargets).toEqual(['english', 'audio']);
+      expect(saved.value.updatedAt).toBe(1_700_100_000_000);
+      expect(saved.value.title).toBe(draft.reading.title);
+      expect(saved.value.sentenceCount).toBe(draft.reading.sentenceCount);
+    });
+
+    it('keeps one entry per layer when a caller repeats one', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+
+      const saved = await repository.setPreparationTargets(draft.reading.id, [
+        'english',
+        'english',
+      ]);
+
+      expect(saved.ok && saved.value.preparationTargets).toEqual(['english']);
+    });
+
+    it('reports a reading that no longer exists rather than creating one', async () => {
+      const missing = await repository.setPreparationTargets(
+        readingId('3f6d2c1a-9b4e-4a7d-8f21-0c5e7a9b1d33'),
+        ['english'],
+      );
+
+      expect(missing.ok).toBe(false);
+      expect(!missing.ok && missing.error.code).toBe('not-found');
+      expect(await db.readings.count()).toBe(0);
+    });
+  });
 });

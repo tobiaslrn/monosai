@@ -1,5 +1,6 @@
 import type { ReadingId, SnapshotId } from '../shared/ids';
 import type { CompletionSummary, GrammarSummary } from './summaries';
+import type { PreparationLayer } from '../enrichment/preparation';
 
 export type ReadingKind = 'imported' | 'generated';
 export type ImportSource = 'paste' | 'text-file';
@@ -21,6 +22,8 @@ interface ReadingBase {
   readonly translationSummary: CompletionSummary;
   readonly grammarSummary: GrammarSummary;
   readonly audioSummary: CompletionSummary;
+  /** Aid layers this reading should eventually contain. */
+  readonly preparationTargets: readonly PreparationLayer[];
   readonly analyzerVersion: string;
 }
 

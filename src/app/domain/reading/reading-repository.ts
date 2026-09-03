@@ -3,6 +3,7 @@ import type { ParagraphId, ReadingId, SentenceId } from '../shared/ids';
 import type { StorageError } from '../storage/storage-error';
 import type { GenerationProvenance } from '../ai/generation-provenance';
 import type { GrammarAnalysisRecord, TranslationRecord } from '../enrichment/records';
+import type { PreparationLayer } from '../enrichment/preparation';
 import type { GeneratedStory, ImportedReading, LibraryFilter, Reading } from './reading';
 import type { FrozenSentenceValidation } from './validation';
 import type { Paragraph, ReadingGraph, Sentence } from './text-hierarchy';
@@ -81,6 +82,10 @@ export interface ReadingRepository {
    */
   saveGeneratedStory(draft: GeneratedStoryDraft): Promise<Result<GeneratedStory, StorageError>>;
   getReading(id: ReadingId): Promise<Result<Reading | null, StorageError>>;
+  setPreparationTargets(
+    id: ReadingId,
+    targets: readonly PreparationLayer[],
+  ): Promise<Result<Reading, StorageError>>;
   listLibraryPage(request: LibraryPageRequest): Promise<Result<LibraryPage, StorageError>>;
   countReadings(filter: LibraryFilter): Promise<Result<number, StorageError>>;
   loadGraph(id: ReadingId, window?: ParagraphWindow): Promise<Result<ReadingGraph, StorageError>>;
