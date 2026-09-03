@@ -16,6 +16,7 @@ import {
   prerequisiteChecks,
 } from '../../application/generation/generation-prerequisites';
 import type { GenerationState } from '../../application/generation/generation.store';
+import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { ExceptionPolicyStore } from '../../application/settings/exception-policy.store';
@@ -29,10 +30,6 @@ import {
   NavigationHistoryService,
   navigationOriginState,
 } from '../../core/routing/navigation-history.service';
-import {
-  completionLabel,
-  grammarLabel,
-} from '../../shared-ui/reading-summary/reading-summary-labels';
 import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
@@ -43,6 +40,19 @@ import { ExceptionPolicyFieldComponent } from './exception-policy-field.componen
 
 /** What the screen shows when it is not attached to a run. */
 const IDLE: GenerationState = { kind: 'idle' };
+
+/** The learner's words for the three aid layers, in `PREPARATION_ORDER`. */
+const PREPARATION_LABELS: Readonly<Record<PreparationLayer, string>> = {
+  english: 'English',
+  grammar: 'grammar notes',
+  audio: 'audio',
+};
+
+function formatList(items: readonly string[]): string {
+  return items.length <= 1
+    ? (items[0] ?? '')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
 
 /**
  * The Generate screen: the form, and the progress of one running job.
@@ -108,15 +118,8 @@ const IDLE: GenerationState = { kind: 'idle' };
           <div class="ready-mark" aria-hidden="true">✓</div>
           <p class="eyebrow">Saved to your library</p>
           <p class="story-title" lang="ja" data-testid="saved-title">{{ reading.title }}</p>
-          <ul class="summaries" data-testid="saved-summaries">
-            <li>{{ translationSummaryLabel() }}</li>
-            <li>{{ grammarSummaryLabel() }}</li>
-          </ul>
-          @if (hasMissingTranslations()) {
-            <p class="mn-hint">
-              Some sentences were not translated. The reader's status panel can translate the rest
-              whenever you want them.
-            </p>
+          @if (preparingLabel(); as label) {
+            <p class="mn-hint" data-testid="saved-preparation">{{ label }}</p>
           }
           <div class="actions">
             <a
@@ -323,23 +326,16 @@ export class GeneratePageComponent {
   });
 
   /**
-   * The saved story's auxiliary counts, worded exactly as the library card
-   * words them, so the two places a learner sees them cannot disagree.
+   * What is still being made for the story, or null when nothing was asked for.
+   *
+   * The story is in the library the moment its Japanese is valid; the layers it
+   * declares are prepared afterwards and appear in the reader as they land, so
+   * this says that rather than reporting counts that are all zero.
    */
-  /** Whether the saved story is missing translations the reader can finish. */
-  protected readonly hasMissingTranslations = computed(() => {
-    const summary = this.savedReading()?.translationSummary;
-    return summary !== undefined && summary.completed < summary.total;
-  });
-
-  protected readonly translationSummaryLabel = computed(() => {
-    const reading = this.savedReading();
-    return reading === null ? '' : completionLabel('Translations', reading.translationSummary);
-  });
-
-  protected readonly grammarSummaryLabel = computed(() => {
-    const reading = this.savedReading();
-    return reading === null ? '' : grammarLabel(reading.grammarSummary);
+  protected readonly preparingLabel = computed(() => {
+    const targets = this.savedReading()?.preparationTargets ?? [];
+    const named = targets.map((target) => PREPARATION_LABELS[target]);
+    return named.length === 0 ? null : `Preparing ${formatList(named)}. You can start reading now.`;
   });
 
   /**

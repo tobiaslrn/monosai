@@ -25,6 +25,8 @@ import {
   READING_REPOSITORY,
 } from '../shared/repository-tokens';
 import { TextModelStore } from '../settings/text-model.store';
+import { GrammarProfileStore } from '../grammar/grammar-profile.store';
+import type { GrammarProfileSelection } from '../../domain/grammar/profile';
 import { TranslationJobStore } from './translation-job.store';
 
 const NOW = 1_700_600_000_000;
@@ -101,6 +103,17 @@ async function configure(): Promise<JobTestBed> {
         },
       },
       { provide: TextModelStore, useValue: { settings } },
+      {
+        provide: GrammarProfileStore,
+        useValue: {
+          loaded: signal(true),
+          load: () => Promise.resolve(),
+          selection: signal<GrammarProfileSelection>({
+            presetId: 'mn-preset-starter',
+            registerPreference: 'written',
+          }),
+        },
+      },
     ],
   });
 
@@ -437,6 +450,33 @@ describe('TranslationJobStore', () => {
     expect(progress.error.source === 'provider' && progress.error.error.code).toBe(
       'capability-unsupported',
     );
+  });
+
+  it('translates an imported reading with the register but no story context', async () => {
+    await bed.store.start(bed.draft.reading.id);
+
+    // An imported reading has no premise and no provenance. That is a reading
+    // to translate, not a run to refuse, so the request simply carries less.
+    const request = bed.provider.translationRequests[0];
+    expect(request.registerPreference).toBe('written');
+    expect(request.premiseJa).toBeUndefined();
+    expect(request.titleJa).toBeUndefined();
+  });
+
+  it('reads nothing beyond the sentence refs to queue a reading', async () => {
+    const analyses: string[] = [];
+    const original = bed.readings.loadTokenAnalyses.bind(bed.readings);
+    bed.readings.loadTokenAnalyses = (ids) => {
+      analyses.push(...ids);
+      return original(ids);
+    };
+
+    await bed.store.enqueue(bed.draft.reading.id);
+
+    // Queueing is one of the four reconciliation moments and runs for every
+    // reading in the library; it must not load a reading's tokens to decide
+    // there is work.
+    expect(analyses).toEqual([]);
   });
 
   describe('queueing without spending', () => {

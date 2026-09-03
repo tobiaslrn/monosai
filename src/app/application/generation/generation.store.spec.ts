@@ -1,12 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
-import { translationTargets } from '../../domain/ai/translation-request';
 import { err, ok } from '../../domain/shared/result';
 import { storageError } from '../../domain/storage/storage-error';
 import {
   configureGenerationTestBed,
   shortStory,
-  story,
   storyWithUnknown,
   strictStory,
   type GenerationTestBed,
@@ -44,8 +42,8 @@ describe('GenerationStore strict pass', () => {
       story: 1,
       repair: 0,
       review: 0,
-      grammar: 1,
-      translate: 1,
+      grammar: 0,
+      translate: 0,
     });
     const state = bed.store.state();
     expect(state.kind).toBe('saved');
@@ -107,7 +105,7 @@ describe('GenerationStore strict pass', () => {
     expect(categories).not.toContain('not-in-snapshot');
   });
 
-  it('runs grammar review and translation before saving, and records the result', async () => {
+  it('saves the Japanese and claims no aid it has not produced', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
     await bed.store.generate(5, PREMISE);
@@ -117,13 +115,10 @@ describe('GenerationStore strict pass', () => {
       expect.unreachable('expected a saved story');
       return;
     }
-    expect(state.reading.translationSummary).toEqual({ total: 5, completed: 5, failed: 0 });
-    expect(state.reading.grammarSummary).toEqual({ state: 'complete', concernCount: 0 });
+    expect(state.reading.translationSummary).toEqual({ total: 5, completed: 0, failed: 0 });
+    expect(state.reading.grammarSummary).toEqual({ state: 'not-requested' });
     expect(state.reading.audioSummary).toEqual({ total: 5, completed: 0, failed: 0 });
-    expect(bed.readings.readings[0]).toMatchObject({
-      translationSummary: { total: 5, completed: 5, failed: 0 },
-      grammarSummary: { state: 'complete', concernCount: 0 },
-    });
+    expect(state.reading.preparationTargets).toEqual(['english', 'grammar']);
   });
 
   it('sends the whole reviewed allowlist and a hidden suggestion palette', async () => {
@@ -133,7 +128,7 @@ describe('GenerationStore strict pass', () => {
 
     const request = bed.provider.storyRequests[0];
     expect(request.allowedVocabulary).toContain('ねこ');
-    expect(request.allowedVocabulary).toHaveLength(8);
+    expect(request.allowedVocabulary).toHaveLength(9);
     expect(request.suggestedVocabulary.length).toBeGreaterThan(0);
     expect(request.structuralBaseline).toContain('は');
     expect(request.requestedSentenceCount).toBe(5);
@@ -179,8 +174,8 @@ describe('GenerationStore exception review', () => {
       story: 1,
       repair: 0,
       review: 1,
-      grammar: 1,
-      translate: 1,
+      grammar: 0,
+      translate: 0,
     });
     const state = bed.store.state();
     expect(state.kind).toBe('saved');
@@ -206,8 +201,8 @@ describe('GenerationStore exception review', () => {
       story: 1,
       repair: 1,
       review: 0,
-      grammar: 1,
-      translate: 1,
+      grammar: 0,
+      translate: 0,
     });
   });
 
@@ -225,8 +220,8 @@ describe('GenerationStore exception review', () => {
       story: 1,
       repair: 1,
       review: 1,
-      grammar: 1,
-      translate: 1,
+      grammar: 0,
+      translate: 0,
     });
     expect(bed.store.state().kind).toBe('saved');
     const categories = bed.readings.frozenValidations
@@ -267,8 +262,8 @@ describe('GenerationStore repair', () => {
       story: 1,
       repair: 1,
       review: 1,
-      grammar: 1,
-      translate: 1,
+      grammar: 0,
+      translate: 0,
     });
     expect(bed.store.state().kind).toBe('saved');
     expect(bed.readings.provenance[0].repairAttempts).toBe(1);
@@ -323,8 +318,8 @@ describe('GenerationStore repair', () => {
       story: 1,
       repair: 0,
       review: 0,
-      grammar: 1,
-      translate: 1,
+      grammar: 0,
+      translate: 0,
     });
     expect(bed.store.state().kind).toBe('saved');
   });
@@ -364,8 +359,8 @@ describe('GenerationStore repair', () => {
       story: 1,
       repair: 2,
       review: 0,
-      grammar: 1,
-      translate: 1,
+      grammar: 0,
+      translate: 0,
     });
     expect(bed.store.state().kind).toBe('saved');
     expect(bed.readings.provenance[0].repairAttempts).toBe(2);
@@ -488,96 +483,38 @@ describe('GenerationStore failures', () => {
     expect(state.error.code).toBe('quota');
     expect(state.during).toBe('finalizing');
     expect(bed.readings.readings).toHaveLength(0);
-    expect(bed.readings.translations).toHaveLength(0);
-    expect(bed.readings.grammarAnalyses).toHaveLength(0);
   });
 });
 
-describe('GenerationStore auxiliary review', () => {
+describe('GenerationStore after acceptance', () => {
   let bed: GenerationTestBed;
 
   beforeEach(() => {
     bed = configureGenerationTestBed();
   });
 
-  it('saves the story with an unavailable grammar summary when grammar review fails', async () => {
+  it('saves without asking for a grammar review or a translation', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
-    bed.provider.grammarQueue.push(
-      err(aiError('provider-unavailable', 'grammar-review', 'The provider is down.')),
-    );
 
     await bed.store.generate(5, PREMISE);
 
-    const state = bed.store.state();
-    expect(state.kind).toBe('saved');
-    if (state.kind !== 'saved') {
-      return;
-    }
-    expect(state.reading.grammarSummary).toEqual({
-      state: 'unavailable',
-      reasonCode: 'provider-unavailable',
-    });
-    expect(state.reading.translationSummary).toEqual({ total: 5, completed: 5, failed: 0 });
-    expect(bed.readings.grammarAnalyses).toHaveLength(0);
+    // The lane owns both layers now (ADR 0048), so acceptance is followed by
+    // the save and by nothing else the learner pays for.
+    expect(bed.provider.generationCalls.grammar).toBe(0);
+    expect(bed.provider.generationCalls.translate).toBe(0);
+    expect(bed.store.state().kind).toBe('saved');
   });
 
-  it('saves the story with an honest count when one translation batch fails', async () => {
-    const sentences = Array.from({ length: 15 }, () => 'ねこがいます。');
-    bed.provider.storyQueue.push(ok(story(sentences)));
-    bed.provider.beforeAnswer = () => {
-      if (bed.provider.grammarRequests.length > 0 && bed.provider.grammarQueue.length === 0) {
-        bed.provider.grammarQueue.push(ok({ findings: [] }));
-      }
-      const translateCallIndex = bed.provider.translationRequests.length;
-      if (translateCallIndex > 0 && bed.provider.translationQueue.length === 0) {
-        if (translateCallIndex === 2) {
-          bed.provider.translationQueue.push(
-            err(aiError('provider-unavailable', 'translation', 'The provider is down.')),
-          );
-        } else {
-          const request = bed.provider.translationRequests[translateCallIndex - 1];
-          bed.provider.translationQueue.push(
-            ok(
-              translationTargets(request).map((sentence) => ({
-                id: sentence.id,
-                textEn: `EN: ${sentence.textJa}`,
-              })),
-            ),
-          );
-        }
-      }
-    };
-
-    await bed.store.generate(15, PREMISE);
-
-    expect(bed.provider.generationCalls.translate).toBe(2);
-    const state = bed.store.state();
-    expect(state.kind).toBe('saved');
-    if (state.kind !== 'saved') {
-      return;
-    }
-    expect(state.reading.translationSummary).toEqual({ total: 15, completed: 10, failed: 5 });
-  });
-
-  it('cancels during auxiliary review and saves nothing, not even a translation that already arrived', async () => {
+  it('cancels between acceptance and the save, and writes nothing', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
-    bed.provider.beforeAnswer = () => {
-      if (bed.store.state().kind === 'auxiliary-review') {
-        bed.store.cancel();
-      }
+    bed.runtime.beforeAnalyze = () => {
+      bed.store.cancel();
     };
 
     await bed.store.generate(5, PREMISE);
 
-    const state = bed.store.state();
-    expect(state.kind).toBe('cancelled');
-    if (state.kind !== 'cancelled') {
-      return;
-    }
-    expect(state.during).toBe('auxiliary-review');
+    expect(bed.store.state().kind).toBe('cancelled');
     expect(bed.readings.readings).toHaveLength(0);
-    expect(bed.readings.translations).toHaveLength(0);
-    expect(bed.readings.grammarAnalyses).toHaveLength(0);
   });
 
   it('retries a finalizing failure without spending another provider call', async () => {
@@ -599,19 +536,8 @@ describe('GenerationStore auxiliary review', () => {
     if (state.kind !== 'saved') {
       return;
     }
-    expect(state.reading.translationSummary).toEqual({ total: 5, completed: 5, failed: 0 });
+    expect(state.reading.translationSummary).toEqual({ total: 5, completed: 0, failed: 0 });
     expect(bed.store.canRetrySave()).toBe(false);
-  });
-
-  it('makes exactly one grammar call and one translation batch call per bounded group', async () => {
-    bed.provider.storyQueue.push(ok(strictStory()));
-
-    await bed.store.generate(5, PREMISE);
-
-    expect(bed.provider.generationCalls.grammar).toBe(1);
-    expect(bed.provider.generationCalls.translate).toBe(1);
-    expect(bed.provider.grammarRequests[0].sentences).toHaveLength(5);
-    expect(translationTargets(bed.provider.translationRequests[0])).toHaveLength(5);
   });
 });
 

@@ -28,6 +28,19 @@ export interface TranslationWindowEntry {
   readonly textEn?: string;
 }
 
+/**
+ * How a recurring surface was already rendered, shown by a translated use.
+ *
+ * A name is only stable across independent requests if each one is told how the
+ * last one rendered it, so this travels forward through a reading rather than
+ * being re-derived per batch.
+ */
+export interface EstablishedRendering {
+  readonly surfaceJa: string;
+  readonly exampleJa: string;
+  readonly exampleEn: string;
+}
+
 export interface TranslationBatchRequest {
   readonly window: readonly TranslationWindowEntry[];
   /** The reading's Japanese title, when it has one, as subject-matter context. */
@@ -35,11 +48,7 @@ export interface TranslationBatchRequest {
   /** The register the Japanese was written for, so "preserve register" has a referent. */
   readonly registerPreference?: string;
   /** Earlier choices for recurring names or terms, represented by a translated use. */
-  readonly establishedRenderings?: readonly {
-    readonly surfaceJa: string;
-    readonly exampleJa: string;
-    readonly exampleEn: string;
-  }[];
+  readonly establishedRenderings?: readonly EstablishedRendering[];
   /** The learner's premise, when generation supplied one, as story-level context. */
   readonly premiseJa?: string;
   readonly promptVersion: string;

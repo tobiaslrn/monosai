@@ -23,7 +23,6 @@ import type { TokenAnalysis } from '../../../domain/reading/token';
 import { storageError, type StorageError } from '../../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../monosai-db';
 import { parseBulkRecords, parseRecord, parseRecords } from '../record-validation';
-import { ROW_VERSION } from '../schemas/common.schema';
 import {
   paragraphRowSchema,
   readingRowSchema,
@@ -129,6 +128,10 @@ export class DexieReadingRepository implements ReadingRepository {
    * transaction. The two extra tables are what make a generated story
    * explainable, so they are written with it rather than after it — a story
    * that is visible without its validation would be a story nobody can check.
+   *
+   * No aid table is touched. Generation writes Japanese and the preparation
+   * lane stores each aid on its own afterwards, so this transaction locks only
+   * the tables a story is actually made of.
    */
   saveGeneratedStory(draft: GeneratedStoryDraft): Promise<Result<GeneratedStory, StorageError>> {
     return runStorageWithRules('readings.saveGenerated', async () => {
@@ -145,8 +148,6 @@ export class DexieReadingRepository implements ReadingRepository {
           this.db.tokenAnalyses,
           this.db.frozenValidations,
           this.db.generationProvenance,
-          this.db.translations,
-          this.db.grammarAnalyses,
         ],
         async () => {
           const existing = await this.db.readings.get(draft.reading.id);
@@ -167,20 +168,6 @@ export class DexieReadingRepository implements ReadingRepository {
             ),
           );
           await this.db.generationProvenance.add(toGenerationProvenanceRow(draft.provenance));
-          // Translation rows are content-addressed by cacheKey. Repeated
-          // Japanese sentences therefore intentionally share one row.
-          await this.db.translations.bulkPut(
-            uniqueCacheKeyRecords(draft.translations).map((record) => ({
-              ...record,
-              v: ROW_VERSION,
-            })),
-          );
-          await this.db.grammarAnalyses.bulkPut(
-            uniqueCacheKeyRecords(draft.grammarAnalyses).map((record) => ({
-              ...record,
-              v: ROW_VERSION,
-            })),
-          );
         },
       );
 
@@ -475,17 +462,4 @@ export class DexieReadingRepository implements ReadingRepository {
       );
     }
   }
-}
-
-/** Content-addressed enrichment rows are shared by sentences with the same key. */
-function uniqueCacheKeyRecords<T extends { readonly cacheKey: string }>(
-  records: readonly T[],
-): T[] {
-  const unique = new Map<string, T>();
-  for (const record of records) {
-    if (!unique.has(record.cacheKey)) {
-      unique.set(record.cacheKey, record);
-    }
-  }
-  return [...unique.values()];
 }

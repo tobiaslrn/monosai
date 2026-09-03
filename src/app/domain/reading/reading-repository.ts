@@ -2,7 +2,6 @@ import type { Result } from '../shared/result';
 import type { ParagraphId, ReadingId, SentenceId } from '../shared/ids';
 import type { StorageError } from '../storage/storage-error';
 import type { GenerationProvenance } from '../ai/generation-provenance';
-import type { GrammarAnalysisRecord, TranslationRecord } from '../enrichment/records';
 import type { PreparationLayer } from '../enrichment/preparation';
 import type { GeneratedStory, ImportedReading, LibraryFilter, Reading } from './reading';
 import type { FrozenSentenceValidation } from './validation';
@@ -25,6 +24,9 @@ export interface ImportedReadingDraft {
  * provenance that says which snapshot, profile, policy, model, and prompts
  * produced it. Both are written in the same transaction as the text, so a
  * story is never visible without the evidence that it was validated.
+ *
+ * No aid rows: generation writes Japanese, and the preparation lane stores
+ * each translation, grammar analysis, and clip on its own afterwards.
  */
 export interface GeneratedStoryDraft {
   readonly reading: GeneratedStory;
@@ -33,8 +35,6 @@ export interface GeneratedStoryDraft {
   readonly tokenAnalyses: readonly TokenAnalysis[];
   readonly frozenValidations: readonly FrozenSentenceValidation[];
   readonly provenance: GenerationProvenance;
-  readonly translations: readonly TranslationRecord[];
-  readonly grammarAnalyses: readonly GrammarAnalysisRecord[];
 }
 
 /** A sentence's identity, content hash, and position — enough to tell whether

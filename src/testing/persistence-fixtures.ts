@@ -7,7 +7,6 @@ import type {
 import type { FrozenSentenceValidation, TokenValidation } from '../app/domain/reading/validation';
 import type { Paragraph, Sentence } from '../app/domain/reading/text-hierarchy';
 import type { TokenAnalysis } from '../app/domain/reading/token';
-import type { GrammarAnalysisRecord, TranslationRecord } from '../app/domain/enrichment/records';
 import type {
   VocabularyItem,
   VocabularyProvenance,
@@ -167,8 +166,6 @@ export interface GeneratedDraftOptions {
   /** Replaces the validation of the first token, for invariant coverage. */
   readonly firstTokenValidation?: TokenValidation;
   readonly provenance?: Partial<GenerationProvenance>;
-  readonly translations?: readonly TranslationRecord[];
-  readonly grammarAnalyses?: readonly GrammarAnalysisRecord[];
 }
 
 /**
@@ -236,35 +233,15 @@ export function generatedStoryDraftFixture(
 
   const sourceText = texts.join('');
 
-  // Generated stories are translated synchronously as part of assembly, so a
-  // freshly accepted story's translation summary is already fully resolved:
-  // no "pending" state is ever persisted at save time.
-  const translations: readonly TranslationRecord[] =
-    options.translations ??
-    sentences.map((sentence, index) => ({
-      id: uuid(seed * 1000 + 300 + index),
-      sentenceId: sentence.id,
-      readingId: id,
-      sourceContentHash: sentence.contentHash,
-      textEn: `Sentence ${index} in English.`,
-      modelId: 'vendor/text-model',
-      promptVersion: 'translate-v1',
-      cacheKey: `translation-${seed}-${index}`,
-      createdAt,
-    }));
-  const grammarAnalyses: readonly GrammarAnalysisRecord[] = options.grammarAnalyses ?? [];
-
   const reading: GeneratedStory = {
     ...generatedStoryFixture(seed, storySnapshotId, createdAt),
     id,
     sentenceCount: sentences.length,
     characterCount: sourceText.length,
     excerpt: sourceText,
-    translationSummary: {
-      total: translations.length,
-      completed: translations.length,
-      failed: 0,
-    },
+    // A generated story is saved with its Japanese and nothing else; the
+    // preparation lane fills the aid summaries in afterwards.
+    translationSummary: { total: sentences.length, completed: 0, failed: 0 },
     grammarSummary: { state: 'not-requested' },
     audioSummary: { total: sentences.length, completed: 0, failed: 0 },
     generationProvenanceId: provenanceId,
@@ -293,8 +270,6 @@ export function generatedStoryDraftFixture(
     tokenAnalyses,
     frozenValidations,
     provenance,
-    translations,
-    grammarAnalyses,
   };
 }
 

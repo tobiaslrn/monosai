@@ -28,10 +28,7 @@ import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import type { VocabularyItemId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
-import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
-import { EnrichmentKeysService } from '../enrichment/enrichment-keys.service';
-import { GrammarAnalysisService } from '../enrichment/grammar-analysis.service';
-import { TranslationService } from '../enrichment/translation.service';
+import type { AnkiWordPriorityMode, VocabularyStrictness } from '../../domain/settings/settings';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { LanguageStore } from '../language/language.store';
 import { VocabularyClassificationService } from '../reading/vocabulary-classification.service';
@@ -71,11 +68,6 @@ export type GenerationState =
       readonly unknownCount: number;
       readonly structureIssueCount: number;
     }
-  | {
-      readonly kind: 'auxiliary-review';
-      readonly grammar: BranchState;
-      readonly translation: BranchState;
-    }
   | { readonly kind: 'finalizing' }
   | { readonly kind: 'saved'; readonly reading: GeneratedStory }
   | {
@@ -96,26 +88,6 @@ export type GenerationState =
       readonly during: RunningStateKind;
     };
 
-/**
- * One auxiliary branch's progress, independent of the other's.
- *
- * `unavailable` is kept apart from `partial` because they mean different
- * things to the learner: a review that did not happen is not the same as a
- * translation that covered some of the story, and collapsing them would make
- * "grammar was not reviewed" read as "grammar found nothing".
- */
-export type BranchState =
-  | { readonly status: 'running' }
-  | { readonly status: 'complete' }
-  | { readonly status: 'partial'; readonly completed: number; readonly total: number }
-  | { readonly status: 'unavailable' };
-
-/** How both auxiliary branches ended, once they have. */
-export interface AuxiliaryOutcome {
-  readonly grammar: BranchState;
-  readonly translation: BranchState;
-}
-
 /** The states a run passes through, as opposed to the ones it ends in. */
 export type RunningStateKind =
   | 'checking-prerequisites'
@@ -125,7 +97,6 @@ export type RunningStateKind =
   | 'validating'
   | 'exception-review'
   | 'repairing'
-  | 'auxiliary-review'
   | 'finalizing';
 
 const IDLE: GenerationState = { kind: 'idle' };
@@ -139,7 +110,6 @@ const CANCELLABLE = new Set<GenerationState['kind']>([
   'validating',
   'exception-review',
   'repairing',
-  'auxiliary-review',
 ]);
 
 /**
@@ -160,9 +130,8 @@ interface CapturedContext {
   readonly policyText: string;
   readonly policyHash: string;
   readonly taskConfig: TextTaskConfig;
-  readonly grammarTaskConfig: TextTaskConfig;
-  readonly translationTaskConfig: TextTaskConfig;
   readonly ankiWordPriorityMode: AnkiWordPriorityMode;
+  readonly vocabularyStrictness: VocabularyStrictness;
   readonly repairBudget: number;
   /**
    * The aid layers the saved story declares. Captured like everything else
@@ -216,22 +185,17 @@ export class GenerationStore {
   private readonly generationSettings = inject(GenerationSettingsStore);
   private readonly textModel = inject(TextModelStore);
   private readonly language = inject(LanguageStore);
-  private readonly enrichmentKeys = inject(EnrichmentKeysService);
-  private readonly translationService = inject(TranslationService);
-  private readonly grammarAnalysisService = inject(GrammarAnalysisService);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly stateSignal = signal<GenerationState>(IDLE);
   private readonly announcementSignal = signal('');
   private readonly repairSignal = signal(0);
   private readonly reviewSignal = signal(0);
-  private readonly auxiliarySignal = signal<AuxiliaryOutcome | null>(null);
 
   private controller: AbortController | null = null;
   /**
-   * The draft as it stood after the last auxiliary merge, kept in memory so a
-   * `finalizing` failure can be retried without calling the provider again.
-   * Cleared once it is safely saved.
+   * The assembled draft, kept in memory so a `finalizing` failure can be
+   * retried without writing the story again. Cleared once it is safely saved.
    */
   private builtDraft: GeneratedStoryDraft | null = null;
 
@@ -241,15 +205,6 @@ export class GenerationStore {
   readonly repairAttempts = this.repairSignal.asReadonly();
   /** Exception reviews run so far, so the stepper can say Skipped honestly. */
   readonly exceptionReviews = this.reviewSignal.asReadonly();
-  /**
-   * How the auxiliary branches ended, or null before they have.
-   *
-   * Held apart from `state` because the run moves on to `finalizing` and
-   * `saved` while the outcome stays worth showing: the progress display and the
-   * saved panel both have to keep reporting a partial translation after the
-   * story is in the library.
-   */
-  readonly auxiliary = this.auxiliarySignal.asReadonly();
 
   readonly isBusy = computed(() => {
     const kind = this.stateSignal().kind;
@@ -286,7 +241,6 @@ export class GenerationStore {
 
     this.repairSignal.set(0);
     this.reviewSignal.set(0);
-    this.auxiliarySignal.set(null);
     this.stateSignal.set({ kind: 'checking-prerequisites' });
     this.announce('Checking what this story needs…');
 
@@ -377,11 +331,12 @@ export class GenerationStore {
   }
 
   /**
-   * Resubmits the already-merged draft after a `finalizing` failure.
+   * Resubmits the assembled draft after a `finalizing` failure.
    *
-   * Spends zero additional provider calls: grammar and translation already
-   * ran, and their results are kept in `builtDraft` exactly as they were
-   * merged. A no-op outside a retryable `finalizing` failure.
+   * A storage failure is the one failure worth offering again unchanged: the
+   * Japanese passed validation and the draft in `builtDraft` is exactly the
+   * rows the transaction refused, so retrying spends nothing and asks the
+   * provider for nothing. A no-op outside a retryable `finalizing` failure.
    */
   async retrySave(): Promise<void> {
     if (!this.canRetrySave() || this.builtDraft === null) {
@@ -398,7 +353,6 @@ export class GenerationStore {
     this.builtDraft = null;
     this.repairSignal.set(0);
     this.reviewSignal.set(0);
-    this.auxiliarySignal.set(null);
     this.stateSignal.set(IDLE);
     this.announce('');
   }
@@ -570,6 +524,7 @@ export class GenerationStore {
     | { readonly ok: true; readonly value: CapturedContext }
     | { readonly ok: false; readonly error: GenerationFailure }
   > {
+    const vocabularyStrictness = this.generationSettings.vocabularyStrictness();
     const repairBudget = this.generationSettings.repairBudget();
     const preparationTargets = this.generationSettings.defaultPreparationTargets();
     const snapshot = await this.vocabulary.getActiveSnapshot();
@@ -625,11 +580,8 @@ export class GenerationStore {
         policyText: policy.text,
         policyHash: policy.policyHash,
         taskConfig: selected,
-        grammarTaskConfig:
-          configurable.configForPreset?.(settings.grammarPresetId ?? null) ?? selected,
-        translationTaskConfig:
-          configurable.configForPreset?.(settings.translationPresetId ?? null) ?? selected,
         ankiWordPriorityMode,
+        vocabularyStrictness,
         repairBudget,
         preparationTargets,
       },
@@ -822,9 +774,13 @@ export class GenerationStore {
   }
 
   /**
-   * Builds the accepted story, runs grammar review and translation
-   * concurrently against it, and writes the result and its evidence in one
+   * Builds the accepted story and writes it and its evidence in one
    * transaction.
+   *
+   * Generation writes Japanese and stops. The aid layers the story declares are
+   * queued by the preparation lane the moment the save lands (ADR 0047,
+   * ADR 0048), so a story reaches the library as soon as its own text is valid
+   * rather than after two batched provider stages nobody asked to wait for.
    */
   private async finalize(
     units: readonly AnalyzedUnit[],
@@ -852,6 +808,7 @@ export class GenerationStore {
       repairAttempts: this.repairSignal(),
       suggestedVocabularyItemIds: suggestedItemIds,
       ankiWordPriorityMode: context.ankiWordPriorityMode,
+      vocabularyStrictness: context.vocabularyStrictness,
       exceptionCount,
       preparationTargets: context.preparationTargets,
       ...(request.specialInstructions === undefined
@@ -859,98 +816,17 @@ export class GenerationStore {
         : { specialInstructions: request.specialInstructions }),
     });
 
-    this.stateSignal.set({
-      kind: 'auxiliary-review',
-      grammar: { status: 'running' },
-      translation: { status: 'running' },
-    });
-    this.announce('Reviewing grammar and translating…');
-
-    const modelId = context.translationTaskConfig.modelId;
-    const grammarModelId = context.grammarTaskConfig.modelId;
-    const translationKeys = this.enrichmentKeys.translationKeys(
-      draft.sentences,
-      modelId,
-      PROMPT_VERSIONS.translation,
-    );
-    const grammarKeys = this.enrichmentKeys.grammarKeys(
-      draft.sentences,
-      grammarModelId,
-      PROMPT_VERSIONS.grammar,
-      context.profile.profileHash,
-    );
-
-    const [grammarOutcome, translationOutcome] = await Promise.all([
-      this.grammarAnalysisService.run(
-        draft.sentences,
-        draft.reading.id,
-        grammarKeys,
-        context.profile.profileHash,
-        context.profile.resolvedGuidance,
-        context.profile.registerPreference,
-        grammarModelId,
-        PROMPT_VERSIONS.grammar,
-        context.grammarTaskConfig,
-        signal,
-      ),
-      this.translationService.run(
-        draft.sentences,
-        draft.reading.id,
-        translationKeys,
-        modelId,
-        PROMPT_VERSIONS.translation,
-        context.translationTaskConfig,
-        signal,
-        // The generated path is the one place that knows both: the story was
-        // written to this register, and the title is its own subject matter.
-        {
-          titleJa: draft.reading.title,
-          registerPreference: context.profile.registerPreference,
-          premiseJa: request.premise,
-          consistencyTermsJa: [
-            ...new Set(
-              units.flatMap((unit) =>
-                unit.tokens
-                  .filter((token) => token.partOfSpeech === 'proper-noun')
-                  .map((token) => token.surface),
-              ),
-            ),
-          ],
-        },
-      ),
-    ]);
-
+    // The last place a cancellation can still be honoured: `persist` opens the
+    // one transaction that either writes the whole story or writes nothing.
     if (isAborted(signal)) {
       this.cancelled();
       return;
     }
 
-    const outcome: AuxiliaryOutcome = {
-      grammar:
-        grammarOutcome.status === 'unavailable'
-          ? { status: 'unavailable' }
-          : { status: 'complete' },
-      translation:
-        translationOutcome.failures.length === 0
-          ? { status: 'complete' }
-          : {
-              status: 'partial',
-              completed: translationOutcome.records.length,
-              total: draft.sentences.length,
-            },
-    };
-    this.auxiliarySignal.set(outcome);
-    this.stateSignal.set({
-      kind: 'auxiliary-review',
-      grammar: outcome.grammar,
-      translation: outcome.translation,
-    });
-
-    const merged = this.assembly.withAuxiliary(draft, grammarOutcome, translationOutcome);
-    await this.persist(merged);
+    await this.persist(draft);
   }
 
-  /** Saves a fully merged draft, the shared tail of `finalize` and `retrySave`. */
+  /** Saves an assembled draft, the shared tail of `finalize` and `retrySave`. */
   private async persist(draft: GeneratedStoryDraft): Promise<void> {
     this.stateSignal.set({ kind: 'finalizing' });
     this.announce('Saving the story. This cannot be cancelled.');
@@ -1018,7 +894,6 @@ export class GenerationStore {
       case 'validating':
       case 'exception-review':
       case 'repairing':
-      case 'auxiliary-review':
       case 'finalizing':
         return kind;
       default:

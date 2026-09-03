@@ -29,16 +29,15 @@ describe('generationWaitCopy', () => {
     });
   });
 
-  it('says that grammar review and translation run together', () => {
-    const state: GenerationState = {
-      kind: 'auxiliary-review',
-      grammar: { status: 'running' },
-      translation: { status: 'running' },
-    };
+  it('promises only the Japanese while the story is being saved', () => {
+    const state: GenerationState = { kind: 'finalizing' };
 
+    // Aids are no longer part of this wait: the lane produces them after the
+    // story is in the library, so saying otherwise here would be a promise the
+    // save does not keep.
     expect(generationWaitCopy(state)).toMatchObject({
-      title: 'Reviewing grammar and translating',
-      detail: 'These two finishing checks are running at the same time.',
+      title: 'Saving your story',
+      detail: 'Adding the Japanese to your library.',
     });
   });
 });

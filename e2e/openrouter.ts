@@ -54,6 +54,15 @@ export interface GenerationStubs {
   readonly grammar?: readonly AuxiliaryOutcome[];
   /** How each translation batch answers, in order. */
   readonly translations?: readonly AuxiliaryOutcome[];
+  /**
+   * How long each grammar or translation reply is held before it is fulfilled.
+   *
+   * The preparation lane starts the moment a generated story is saved, so
+   * against an instant stub the aids can land before a test has looked at the
+   * library at all. A small delay makes "the story is there before its aids
+   * are" a state the test can actually observe.
+   */
+  readonly aidDelayMs?: number;
 }
 
 /**
@@ -393,7 +402,12 @@ export async function stubOpenRouter(
       return;
     }
 
-    const generated = generationContent(route.request().postDataJSON() as ChatBody);
+    const body = route.request().postDataJSON() as ChatBody;
+    const aidDelayMs = isAidRequest(body) ? options.generation?.aidDelayMs : undefined;
+    const generated = generationContent(body);
+    if (generated !== null && generated !== HANG && aidDelayMs !== undefined) {
+      await new Promise((resolve) => setTimeout(resolve, aidDelayMs));
+    }
     if (generated === HANG) {
       // Never fulfilled, so cancelling this one stage is real while the stages
       // before it answered normally.
@@ -426,6 +440,12 @@ export async function stubOpenRouter(
       }),
     });
   });
+
+  /** Whether this request is a grammar review or a translation batch. */
+  function isAidRequest(body: ChatBody): boolean {
+    const schema = body.response_format?.json_schema?.name;
+    return schema === GRAMMAR_SCHEMA || schema === TRANSLATIONS_SCHEMA;
+  }
 
   /**
    * The reply for a generation task, or `null` when this is not one.

@@ -89,49 +89,18 @@ export function assertProvenanceComplete(
 }
 
 /**
- * Refuses a draft whose enrichment rows are inconsistent with its text or
- * with the summaries the reading claims to have. A translation or grammar
- * analysis that outlived the sentence it was written for — or a summary that
- * disagrees with the rows actually being saved — must never enter storage.
+ * Refuses a generated draft whose aid summaries claim more than it is saving.
+ *
+ * A generated story is written with its Japanese and nothing else: the
+ * preparation lane produces every aid afterwards and refreshes the summary as
+ * it stores each row (ADR 0047, ADR 0048). So the only consistent summary at
+ * save time is one that claims nothing, and a summary claiming otherwise is a
+ * count no stored row supports.
  */
 export function assertEnrichmentConsistent(draft: GeneratedStoryDraft): void {
-  const sentenceContentHashById = new Map(
-    draft.sentences.map((sentence) => [sentence.id, sentence.contentHash]),
-  );
-
-  for (const translation of draft.translations) {
-    const contentHash = sentenceContentHashById.get(translation.sentenceId);
-    if (contentHash === undefined) {
-      throw new StorageRuleViolation(
-        storageError('conflict', 'A translation references a sentence that is not being saved.'),
-      );
-    }
-    if (contentHash !== translation.sourceContentHash) {
-      throw new StorageRuleViolation(
-        storageError('conflict', 'A translation no longer matches its sentence content.'),
-      );
-    }
-  }
-
-  for (const analysis of draft.grammarAnalyses) {
-    const contentHash = sentenceContentHashById.get(analysis.sentenceId);
-    if (contentHash === undefined) {
-      throw new StorageRuleViolation(
-        storageError(
-          'conflict',
-          'A grammar analysis references a sentence that is not being saved.',
-        ),
-      );
-    }
-    if (contentHash !== analysis.sourceContentHash) {
-      throw new StorageRuleViolation(
-        storageError('conflict', 'A grammar analysis no longer matches its sentence content.'),
-      );
-    }
-  }
-
   const { translationSummary, grammarSummary } = draft.reading;
-  if (translationSummary.completed !== draft.translations.length) {
+
+  if (translationSummary.completed !== 0) {
     throw new StorageRuleViolation(
       storageError(
         'conflict',
@@ -144,19 +113,7 @@ export function assertEnrichmentConsistent(draft: GeneratedStoryDraft): void {
       storageError('conflict', 'The translation summary counts do not add up.'),
     );
   }
-
-  if (grammarSummary.state === 'unavailable' && draft.grammarAnalyses.length !== 0) {
-    throw new StorageRuleViolation(
-      storageError(
-        'conflict',
-        'The grammar summary claims no analysis is available, but analyses are being saved.',
-      ),
-    );
-  }
-  if (
-    grammarSummary.state === 'complete' &&
-    draft.grammarAnalyses.length !== draft.sentences.length
-  ) {
+  if (grammarSummary.state === 'complete') {
     throw new StorageRuleViolation(
       storageError(
         'conflict',

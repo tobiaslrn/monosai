@@ -6,6 +6,7 @@ import {
   matchTranslations,
   planBatches,
   translationTargets,
+  type EstablishedRendering,
   type TranslationWindowEntry,
 } from '../../domain/ai/translation-request';
 import type { TranslationRecord } from '../../domain/enrichment/records';
@@ -29,6 +30,15 @@ export interface TranslationContext {
   readonly premiseJa?: string;
   /** Proper nouns and other terms whose English rendering should stay stable. */
   readonly consistencyTermsJa?: readonly string[];
+  /**
+   * Renderings an earlier call already settled.
+   *
+   * A caller that translates one reading in several calls — the whole-reading
+   * job, which stores every answer before it asks the next question — passes
+   * back what the previous call learned, so a name survives the boundary
+   * between two independent requests.
+   */
+  readonly establishedRenderings?: readonly EstablishedRendering[];
 }
 
 /** Keeps terminology context useful without letting it become another story-sized payload. */
@@ -46,6 +56,8 @@ export interface TranslationRunOutcome {
    * down" and "the response did not match what was asked for".
    */
   readonly error: AiError | null;
+  /** Everything this call knows about how the reading's names were rendered. */
+  readonly establishedRenderings: readonly EstablishedRendering[];
 }
 
 /**
@@ -85,10 +97,9 @@ export class TranslationService {
     // earlier batch of this run. It travels with the context entries so that a
     // name rendered in one batch is rendered the same way in the next.
     const englishByPosition = new Map<number, string>();
-    const establishedBySurface = new Map<
-      string,
-      { readonly surfaceJa: string; readonly exampleJa: string; readonly exampleEn: string }
-    >();
+    const establishedBySurface = new Map<string, EstablishedRendering>(
+      (context.establishedRenderings ?? []).map((rendering) => [rendering.surfaceJa, rendering]),
+    );
     const consistencyTerms = [...new Set(context.consistencyTermsJa ?? [])].filter(
       (surface) => surface.trim() !== '',
     );
@@ -211,7 +222,12 @@ export class TranslationService {
       }
     }
 
-    return { records, failures, error };
+    return {
+      records,
+      failures,
+      error,
+      establishedRenderings: [...establishedBySurface.values()],
+    };
   }
 
   /**
@@ -262,10 +278,7 @@ export class TranslationService {
 }
 
 function rememberRenderings(
-  established: Map<
-    string,
-    { readonly surfaceJa: string; readonly exampleJa: string; readonly exampleEn: string }
-  >,
+  established: Map<string, EstablishedRendering>,
   terms: readonly string[],
   textJa: string,
   textEn: string,

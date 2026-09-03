@@ -5,7 +5,6 @@ import type {
   Reading,
 } from '../app/domain/reading/reading';
 import type { GenerationProvenance } from '../app/domain/ai/generation-provenance';
-import type { GrammarAnalysisRecord, TranslationRecord } from '../app/domain/enrichment/records';
 import type { PreparationLayer } from '../app/domain/enrichment/preparation';
 import type { FrozenSentenceValidation } from '../app/domain/reading/validation';
 import type {
@@ -161,8 +160,6 @@ export class FakeReadingRepository implements ReadingRepository {
   readonly analysisRequests: (readonly SentenceId[])[] = [];
   frozenValidations: FrozenSentenceValidation[] = [];
   provenance: GenerationProvenance[] = [];
-  translations: TranslationRecord[] = [];
-  grammarAnalyses: GrammarAnalysisRecord[] = [];
   /** Set to make an accepted story fail to save, without losing the candidate. */
   failSaveGeneratedWith: StorageError | null = null;
 
@@ -208,8 +205,6 @@ export class FakeReadingRepository implements ReadingRepository {
     this.tokenAnalyses.push(...draft.tokenAnalyses);
     this.frozenValidations.push(...draft.frozenValidations);
     this.provenance.push(draft.provenance);
-    this.translations.push(...draft.translations);
-    this.grammarAnalyses.push(...draft.grammarAnalyses);
     return Promise.resolve(ok(draft.reading));
   }
 
