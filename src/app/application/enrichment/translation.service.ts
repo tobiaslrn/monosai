@@ -1,3 +1,4 @@
+import { sentencesWithoutStoredAid } from '../../domain/enrichment/preparation';
 import { Injectable, inject } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
@@ -10,7 +11,7 @@ import {
 import type { TranslationRecord } from '../../domain/enrichment/records';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { ReadingId, SentenceId } from '../../domain/shared/ids';
-import type { Result } from '../../domain/shared/result';
+import { ok, type Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
 import { CLOCK, ENRICHMENT_REPOSITORY, ID_GENERATOR } from '../shared/repository-tokens';
@@ -241,6 +242,22 @@ export class TranslationService {
     currentCacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<readonly SentenceId[], StorageError>> {
     return this.enrichment.listSentenceIdsMissingTranslation(readingId, currentCacheKeys);
+  }
+
+  /**
+   * Sentences that have never been translated, under any configuration.
+   *
+   * What the preparation lane queues, as opposed to what *Prepare again* asks:
+   * a cache key changes with the model, and a reading already prepared must not
+   * be prepared a second time because the learner picked a different one.
+   */
+  async neverPreparedSentenceIds(
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    const stored = await this.enrichment.listSentenceIdsWithStoredTranslation([
+      ...cacheKeys.keys(),
+    ]);
+    return stored.ok ? ok(sentencesWithoutStoredAid(cacheKeys, stored.value)) : stored;
   }
 }
 

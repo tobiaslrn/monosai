@@ -1,13 +1,14 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import { MAX_GRAMMAR_REVIEW_BATCH } from '../../domain/ai/grammar-review-request';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import { planBatches } from '../../domain/ai/translation-request';
 import { grammarConfigFingerprint } from '../../domain/enrichment/cache-keys';
-import { remainingSentenceIds, type AssetJob } from '../../domain/enrichment/jobs';
+import { remainingSentenceIds, type AssetJob, type JobState } from '../../domain/enrichment/jobs';
 import type { GrammarProfileSnapshot } from '../../domain/grammar/profile';
 import { jobId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
+import type { Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { LanguageStore } from '../language/language.store';
@@ -19,10 +20,10 @@ import {
   JOB_REPOSITORY,
   READING_REPOSITORY,
 } from '../shared/repository-tokens';
-import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { TextModelStore } from '../settings/text-model.store';
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { GrammarAnalysisService } from './grammar-analysis.service';
+import { NOTHING_TO_DO, QUEUED, type EnqueueOutcome, type LayerError } from './layer-progress';
 
 export type GrammarJobError =
   | { readonly source: 'provider'; readonly error: AiError }
@@ -41,6 +42,7 @@ export type GrammarJobProgress =
   | { readonly kind: 'running'; readonly readingId: ReadingId; readonly counts: GrammarJobCounts }
   | { readonly kind: 'complete'; readonly readingId: ReadingId; readonly counts: GrammarJobCounts }
   | { readonly kind: 'cancelled'; readonly readingId: ReadingId; readonly counts: GrammarJobCounts }
+  | { readonly kind: 'paused'; readonly readingId: ReadingId; readonly counts: GrammarJobCounts }
   | { readonly kind: 'deleted'; readonly readingId: ReadingId }
   | {
       readonly kind: 'failed';
@@ -53,6 +55,25 @@ const IDLE: GrammarJobProgress = { kind: 'idle' };
 
 function isAborted(signal: AbortSignal): boolean {
   return signal.aborted;
+}
+
+/**
+ * Which sentences a newly created job covers.
+ *
+ * `current-configuration` is what an explicit analysis asks; `never-prepared`
+ * is what the lane queues, so changing the model or the profile queues nothing.
+ */
+type JobScope = 'current-configuration' | 'never-prepared';
+
+type PlanOutcome =
+  | { readonly kind: 'planned'; readonly context: JobContext; readonly job: AssetJob }
+  | { readonly kind: 'nothing-to-do'; readonly context: JobContext }
+  | { readonly kind: 'unavailable'; readonly outcome: UnavailableOutcome };
+
+type UnavailableOutcome = Extract<EnqueueOutcome, { kind: 'unavailable' }>;
+
+function unavailable(error: LayerError): PlanOutcome {
+  return { kind: 'unavailable', outcome: { kind: 'unavailable', error } };
 }
 
 interface JobContext {
@@ -78,27 +99,18 @@ export class GrammarJobStore {
   private readonly hasher = inject(HASHER);
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
-  private readonly busyRegistry = inject(AppBusyRegistry);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly progressSignal = signal<GrammarJobProgress>(IDLE);
   private controller: AbortController | null = null;
   private activeRun: Promise<void> | null = null;
+  private yieldRequested = false;
 
   readonly progress = this.progressSignal.asReadonly();
   readonly isRunning = computed(() => {
     const kind = this.progressSignal().kind;
     return kind === 'preparing' || kind === 'running';
   });
-
-  constructor() {
-    effect(() => {
-      this.busyRegistry.setBusy(
-        'grammar-job',
-        this.isRunning() ? 'a grammar analysis job is running' : null,
-      );
-    });
-  }
 
   progressFor(readingId: ReadingId): GrammarJobProgress {
     const progress = this.progressSignal();
@@ -108,6 +120,25 @@ export class GrammarJobStore {
   isRunningFor(readingId: ReadingId): boolean {
     const kind = this.progressFor(readingId).kind;
     return kind === 'preparing' || kind === 'running';
+  }
+
+  /**
+   * Queues this reading without issuing a single request. The row covers the
+   * sentences never analysed under any configuration.
+   */
+  async enqueue(readingId: ReadingId): Promise<EnqueueOutcome> {
+    const prepared = await this.plan(readingId, 'never-prepared', 'queued');
+    if (prepared.kind !== 'planned') {
+      return prepared.kind === 'nothing-to-do' ? NOTHING_TO_DO : prepared.outcome;
+    }
+    return remainingSentenceIds(prepared.job).length === 0 ? NOTHING_TO_DO : QUEUED;
+  }
+
+  /** Asks this run to stop at the next batch boundary and stay resumable. */
+  yieldAfterBatch(): void {
+    if (this.isRunning()) {
+      this.yieldRequested = true;
+    }
   }
 
   async start(readingId: ReadingId): Promise<void> {
@@ -127,12 +158,24 @@ export class GrammarJobStore {
   private async run(readingId: ReadingId): Promise<void> {
     const controller = new AbortController();
     this.controller = controller;
+    this.yieldRequested = false;
     this.logger.info('job.started', { kind: 'grammar' });
     this.progressSignal.set({ kind: 'preparing', readingId });
-    const prepared = await this.prepare(readingId);
-    if (prepared !== null) {
-      await this.process(prepared.context, prepared.job, controller.signal);
+    const prepared = await this.plan(readingId, 'current-configuration', 'running');
+    if (prepared.kind === 'unavailable') {
+      this.report(readingId, prepared.outcome.error);
+      return;
     }
+    if (prepared.kind === 'nothing-to-do') {
+      this.controller = null;
+      this.progressSignal.set({
+        kind: 'complete',
+        readingId,
+        counts: { total: prepared.context.total, requested: 0, completed: 0, failed: 0 },
+      });
+      return;
+    }
+    await this.process(prepared.context, prepared.job, controller.signal);
   }
 
   async resume(readingId: ReadingId): Promise<void> {
@@ -182,33 +225,38 @@ export class GrammarJobStore {
     return progress.kind !== 'idle' && progress.readingId === readingId;
   }
 
-  private async prepare(
+  /**
+   * Resolves configuration, keys, and the job row this run will advance.
+   *
+   * A stored job whose `configFingerprint` no longer matches is closed rather
+   * than resumed: its remaining items were chosen against a model or a profile
+   * that is no longer in force.
+   */
+  private async plan(
     readingId: ReadingId,
-  ): Promise<{ readonly context: JobContext; readonly job: AssetJob } | null> {
+    scope: JobScope,
+    initialState: JobState,
+  ): Promise<PlanOutcome> {
     await this.language.initialize();
     const configured = this.textModel.configForTask('grammar');
     if (configured === null) {
-      this.failProvider(
-        readingId,
-        aiError(
+      return unavailable({
+        source: 'provider',
+        error: aiError(
           'capability-unsupported',
           'grammar-review',
           'No tested text model is available for grammar analysis.',
           { detail: { capability: 'structured-output' } },
         ),
-        emptyCounts(),
-      );
-      return null;
+      });
     }
     const captured = await this.grammarProfile.captureProfile();
     if (!captured.ok) {
-      this.failStorage(readingId, captured.error, emptyCounts());
-      return null;
+      return unavailable({ source: 'storage', error: captured.error });
     }
     const refs = await this.readings.listSentenceRefs(readingId);
     if (!refs.ok) {
-      this.failStorage(readingId, refs.error, emptyCounts());
-      return null;
+      return unavailable({ source: 'storage', error: refs.error });
     }
     const profile = captured.value;
     const cacheKeys = this.keys.grammarKeys(
@@ -233,67 +281,69 @@ export class GrammarJobStore {
     };
     const active = await this.jobs.findActive(readingId, 'analyze-reading');
     if (!active.ok) {
-      this.failStorage(readingId, active.error, emptyCounts());
-      return null;
+      return unavailable({ source: 'storage', error: active.error });
     }
     if (active.value !== null && active.value.configFingerprint === context.fingerprint) {
       const reconciled = await this.reconcile(context, active.value);
-      return reconciled === null ? null : { context, job: reconciled };
+      return reconciled.ok
+        ? { kind: 'planned', context, job: reconciled.value }
+        : unavailable({ source: 'storage', error: reconciled.error });
     }
     if (active.value !== null) {
       const closed = await this.jobs.setState(active.value.id, 'cancelled');
       if (!closed.ok) {
-        this.failStorage(readingId, closed.error, emptyCounts());
-        return null;
+        return unavailable({ source: 'storage', error: closed.error });
       }
     }
-    const created = await this.createJob(context);
-    return created === null ? null : { context, job: created };
-  }
-
-  private async reconcile(context: JobContext, job: AssetJob): Promise<AssetJob | null> {
-    const missing = await this.missingSentenceIds(context);
-    if (missing === null) return null;
-    const outstanding = new Set(missing);
-    const completed = job.orderedSentenceIds.filter((id) => !outstanding.has(id));
-    const updated = await this.jobs.reconcile(job.id, completed);
-    if (!updated.ok) {
-      this.failStorage(context.readingId, updated.error, emptyCounts());
-      return null;
+    const wanted =
+      scope === 'never-prepared'
+        ? await this.grammar.neverPreparedSentenceIds(context.cacheKeys)
+        : await this.grammar.missingSentenceIds(context.cacheKeys);
+    if (!wanted.ok) {
+      return unavailable({ source: 'storage', error: wanted.error });
     }
-    return updated.value;
+    // No row is written for a reading with nothing outstanding: an empty job
+    // could never complete itself, and the lane would pick it up forever.
+    if (wanted.value.length === 0) {
+      return { kind: 'nothing-to-do', context };
+    }
+    const created = await this.createJob(context, wanted.value, initialState);
+    return created.ok
+      ? { kind: 'planned', context, job: created.value }
+      : unavailable({ source: 'storage', error: created.error });
   }
 
-  private async createJob(context: JobContext): Promise<AssetJob | null> {
-    const missing = await this.missingSentenceIds(context);
-    if (missing === null) return null;
+  private async reconcile(
+    context: JobContext,
+    job: AssetJob,
+  ): Promise<Result<AssetJob, StorageError>> {
+    const missing = await this.grammar.missingSentenceIds(context.cacheKeys);
+    if (!missing.ok) {
+      return missing;
+    }
+    const outstanding = new Set(missing.value);
+    const completed = job.orderedSentenceIds.filter((id) => !outstanding.has(id));
+    return this.jobs.reconcile(job.id, completed);
+  }
+
+  private createJob(
+    context: JobContext,
+    orderedSentenceIds: readonly SentenceId[],
+    state: JobState,
+  ): Promise<Result<AssetJob, StorageError>> {
     const now = this.clock.now();
-    const created = await this.jobs.create({
+    return this.jobs.create({
       id: jobId(this.ids.nextId()),
       kind: 'analyze-reading',
       readingId: context.readingId,
-      state: 'running',
-      orderedSentenceIds: missing,
+      state,
+      orderedSentenceIds,
       completedSentenceIds: [],
       failedItems: [],
       configFingerprint: context.fingerprint,
       createdAt: now,
       updatedAt: now,
     });
-    if (!created.ok) {
-      this.failStorage(context.readingId, created.error, emptyCounts());
-      return null;
-    }
-    return created.value;
-  }
-
-  private async missingSentenceIds(context: JobContext): Promise<readonly SentenceId[] | null> {
-    const missing = await this.grammar.missingSentenceIds(context.cacheKeys);
-    if (!missing.ok) {
-      this.failStorage(context.readingId, missing.error, emptyCounts());
-      return null;
-    }
-    return missing.value;
   }
 
   private async process(context: JobContext, job: AssetJob, signal: AbortSignal): Promise<void> {
@@ -327,6 +377,10 @@ export class GrammarJobStore {
     for (const batch of planBatches(loaded.value, MAX_GRAMMAR_REVIEW_BATCH)) {
       if (isAborted(signal)) {
         await this.markCancelled(job, counts);
+        return;
+      }
+      if (this.yieldRequested) {
+        await this.markPaused(job, counts);
         return;
       }
       const outcome = await this.grammar.runBatch(
@@ -395,6 +449,23 @@ export class GrammarJobStore {
     }
     this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
     this.logger.info('job.succeeded', { kind: 'grammar', count: counts.completed });
+  }
+
+  /** Parks the run where it stands, keeping the row for whoever resumes it. */
+  private async markPaused(job: AssetJob, counts: GrammarJobCounts): Promise<void> {
+    this.yieldRequested = false;
+    this.controller = null;
+    await this.jobs.setState(job.id, 'paused');
+    this.progressSignal.set({ kind: 'paused', readingId: job.readingId, counts });
+    this.logger.info('job.paused', { kind: 'grammar', count: counts.completed });
+  }
+
+  private report(readingId: ReadingId, error: LayerError): void {
+    if (error.source === 'provider') {
+      this.failProvider(readingId, error.error, emptyCounts());
+    } else {
+      this.failStorage(readingId, error.error, emptyCounts());
+    }
   }
 
   private async markCancelled(job: AssetJob, counts: GrammarJobCounts): Promise<void> {

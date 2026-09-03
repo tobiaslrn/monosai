@@ -128,7 +128,7 @@ learner activates the new version from a banner. See
 | Responses cannot exhaust memory | Declared size caps on JSON and audio responses, and resource limits in the package worker |
 | Anki access cannot write | An action allowlist with no write action on it |
 | Anki field markup is never trusted as HTML | Visible text is extracted behind a port, so the one place that parses untrusted markup stays replaceable and out of the domain |
-| No content is sent anywhere except in response to a learner action | Every provider call starts in a store method that a control invokes |
+| No content is sent anywhere except in response to a learner action | Every provider call traces to a named act, which may have been taken earlier: a layer switched on, a generated story saved with the layers chosen for it, a reader opened, or an explicit *Prepare*, *Retry*, or *Prepare again*. Nothing else creates work — not a launch, not a configuration change |
 | Nothing is collected about the learner | There is no analytics code and no reporting endpoint |
 
 ## 8.9 User interface

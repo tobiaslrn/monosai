@@ -31,7 +31,7 @@ flowchart TB
 | **GitHub Pages** | The application shell, the tokenizer, and the dictionary assets | Nothing |
 | **Anki Desktop** | Decks, note types, and the reviewed expressions in the fields the learner mapped | Read queries only. No card, tag, or schedule ever changes |
 | **AnkiDroid** | The same reviewed expressions, through a bridge app or an exported package file | Read queries only |
-| **OpenRouter** | A generated story, a translation, a grammar review, an exception verdict, or audio | The premise, the known words, the grammar guidance, and the sentence concerned. Nothing else, and only after a learner action |
+| **OpenRouter** | A generated story, a translation, a grammar review, an exception verdict, or audio | The premise, the known words, the grammar guidance, and the sentence concerned. Nothing else, and only after a learner act — which the preparation lane may carry out later, but never invents |
 
 ### Scope
 

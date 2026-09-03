@@ -148,7 +148,8 @@ sequenceDiagram
 ```
 
 Nothing on this path starts by itself. The reader shows a reading with no aid until the learner asks
-for one, which is how quality goal 3 is met at runtime.
+for one, or until the preparation lane fills in a layer the reading declares, which is how quality
+goal 3 is met at runtime.
 
 A learner can also ask to analyse a whole reading. That explicit action creates an
 `analyze-reading` job. The job captures the text-model configuration and immutable grammar profile
@@ -163,6 +164,41 @@ The cache key is a fingerprint of everything that could change the answer, which
 [chapter 8](08-crosscutting-concepts.md) describes. Change the voice and the old clips are hidden
 rather than played, and the screens say so
 ([ADR 0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md)).
+
+### The preparation lane
+
+A reading declares the aid layers it should eventually contain
+([ADR 0047](../decisions/0047-a-reading-declares-what-it-should-have.md)). Four moments, and only
+four, turn that declaration into work: a layer is switched on, a generated story is saved with the
+layers chosen for it, a reader is opened, and an explicit *Prepare*, *Retry*, or *Prepare again*.
+Each queues a job row covering the sentences that have never been given that layer under **any**
+configuration, so changing the model queues nothing.
+
+```mermaid
+sequenceDiagram
+    participant Moment as One of the four moments
+    participant Lane as Preparation lane
+    participant Rows as Job rows
+    participant Runner as Layer producer
+
+    Moment->>Lane: reconcile this reading
+    Lane->>Rows: queue the declared layers it has never had
+    loop while rows are outstanding
+        Lane->>Rows: claim this reading, with a heartbeat
+        alt another lane holds it
+            Rows-->>Lane: conflict
+            Note over Lane: skip this reading; work another
+        else claimed
+            Lane->>Runner: run English, then grammar, then audio
+            Runner->>Rows: store each result, then record it
+        end
+    end
+    Note over Lane: A generation, an update, or a lost<br/>connection parks the run at a batch<br/>boundary. It never cancels one.
+```
+
+The lane runs one reading at a time, the open one first, and never registers as busy: an update
+activates while a queue exists, and the rows are picked back up after the reload
+([ADR 0048](../decisions/0048-the-preparation-lane-yields.md)).
 
 ## 6.5 Hear a reading that is still being generated
 

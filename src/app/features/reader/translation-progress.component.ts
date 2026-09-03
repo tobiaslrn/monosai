@@ -153,6 +153,8 @@ export class TranslationProgressComponent {
         return 'Translation finished.';
       case 'deleted':
         return '';
+      case 'paused':
+        return 'Paused. It picks up where it left off.';
       case 'cancelled':
         return 'Stopped. Sentences already translated were kept.';
       case 'failed':

@@ -1,11 +1,12 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { aiError, type AiError } from '../../domain/ai/ai-error';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { aiError, isAutomaticallyRetryable, type AiError } from '../../domain/ai/ai-error';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import { MAX_TRANSLATION_BATCH, planBatches } from '../../domain/ai/translation-request';
 import { translationConfigFingerprint } from '../../domain/enrichment/cache-keys';
-import { remainingSentenceIds, type AssetJob } from '../../domain/enrichment/jobs';
+import { remainingSentenceIds, type AssetJob, type JobState } from '../../domain/enrichment/jobs';
 import { jobId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
+import type { Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import {
   CLOCK,
@@ -14,11 +15,11 @@ import {
   JOB_REPOSITORY,
   READING_REPOSITORY,
 } from '../shared/repository-tokens';
-import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { TextModelStore } from '../settings/text-model.store';
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { TranslationService } from './translation.service';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
+import { NOTHING_TO_DO, QUEUED, type EnqueueOutcome, type LayerError } from './layer-progress';
 
 /** Which layer refused, so the reader's panel can offer the right next action. */
 export type TranslationJobError =
@@ -52,6 +53,11 @@ export type TranslationJobProgress =
       readonly readingId: ReadingId;
       readonly counts: TranslationJobCounts;
     }
+  | {
+      readonly kind: 'paused';
+      readonly readingId: ReadingId;
+      readonly counts: TranslationJobCounts;
+    }
   | { readonly kind: 'deleted'; readonly readingId: ReadingId }
   | {
       readonly kind: 'failed';
@@ -65,6 +71,27 @@ const IDLE: TranslationJobProgress = { kind: 'idle' };
 /** Reads the flag through a call, so an earlier check never narrows a later one. */
 function isAborted(signal: AbortSignal): boolean {
   return signal.aborted;
+}
+
+/**
+ * Which sentences a newly created job covers.
+ *
+ * `current-configuration` is what *Translate reading* asks: everything without
+ * a row under today's model and prompt. `never-prepared` is what the lane
+ * queues: everything with no stored translation at all, so changing the model
+ * queues nothing.
+ */
+type JobScope = 'current-configuration' | 'never-prepared';
+
+type PlanOutcome =
+  | { readonly kind: 'planned'; readonly context: JobContext; readonly job: AssetJob }
+  | { readonly kind: 'nothing-to-do'; readonly context: JobContext }
+  | { readonly kind: 'unavailable'; readonly outcome: UnavailableOutcome };
+
+type UnavailableOutcome = Extract<EnqueueOutcome, { kind: 'unavailable' }>;
+
+function unavailable(error: LayerError): PlanOutcome {
+  return { kind: 'unavailable', outcome: { kind: 'unavailable', error } };
 }
 
 /** Everything one run needs, captured once so no setting can change mid-flight. */
@@ -102,11 +129,11 @@ export class TranslationJobStore {
   private readonly hasher = inject(HASHER);
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
-  private readonly busyRegistry = inject(AppBusyRegistry);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly progressSignal = signal<TranslationJobProgress>(IDLE);
   private controller: AbortController | null = null;
+  private yieldRequested = false;
   /** The full prepare/process lifetime, so deletion can join it before removing rows. */
   private activeRun: Promise<void> | null = null;
 
@@ -127,13 +154,33 @@ export class TranslationJobStore {
     return kind === 'preparing' || kind === 'running';
   }
 
-  constructor() {
-    effect(() => {
-      this.busyRegistry.setBusy(
-        'translation-job',
-        this.isRunning() ? 'a translation job is running' : null,
-      );
-    });
+  /**
+   * Queues this reading without issuing a single request.
+   *
+   * The row covers the sentences that have never been translated under any
+   * configuration, which is what makes a model change free: work is what has
+   * never been produced, not what is out of date under today's settings.
+   */
+  async enqueue(readingId: ReadingId): Promise<EnqueueOutcome> {
+    const prepared = await this.plan(readingId, 'never-prepared', 'queued');
+    if (prepared.kind !== 'planned') {
+      return prepared.kind === 'nothing-to-do' ? NOTHING_TO_DO : prepared.outcome;
+    }
+    return remainingSentenceIds(prepared.job).length === 0 ? NOTHING_TO_DO : QUEUED;
+  }
+
+  /**
+   * Asks this run to stop at the next batch boundary and stay resumable.
+   *
+   * Not a cancellation, and deliberately not spelled as one. Nothing is stored
+   * until a batch returns, so aborting mid-batch throws away a request that has
+   * already been paid for, and a run reported as cancelled means something
+   * final to every screen watching it.
+   */
+  yieldAfterBatch(): void {
+    if (this.isRunning()) {
+      this.yieldRequested = true;
+    }
   }
 
   /**
@@ -165,11 +212,22 @@ export class TranslationJobStore {
     // configuration is still being read stops the run rather than being ignored.
     const controller = new AbortController();
     this.controller = controller;
+    this.yieldRequested = false;
     this.logger.info('job.started', { kind: 'translation' });
     this.progressSignal.set({ kind: 'preparing', readingId });
 
-    const prepared = await this.prepare(readingId);
-    if (prepared === null) {
+    const prepared = await this.plan(readingId, 'current-configuration', 'running');
+    if (prepared.kind === 'unavailable') {
+      this.report(readingId, prepared.outcome.error);
+      return;
+    }
+    if (prepared.kind === 'nothing-to-do') {
+      this.controller = null;
+      this.progressSignal.set({
+        kind: 'complete',
+        readingId,
+        counts: { total: prepared.context.total, requested: 0, completed: 0, failed: 0 },
+      });
       return;
     }
     await this.process(prepared.context, prepared.job, controller.signal);
@@ -263,30 +321,32 @@ export class TranslationJobStore {
    * than resumed: its remaining items were chosen against a model that is no
    * longer configured, and continuing it would report two configurations'
    * output under one progress number.
+   *
+   * `scope` chooses what a *new* row covers. It has no bearing on an existing
+   * one, whose sentence list was settled when it was created.
    */
-  private async prepare(
+  private async plan(
     readingId: ReadingId,
-  ): Promise<{ readonly context: JobContext; readonly job: AssetJob } | null> {
+    scope: JobScope,
+    initialState: JobState,
+  ): Promise<PlanOutcome> {
     const settings = this.textModel.settings();
     const structuredOutput = settings.structuredOutput;
     if (settings.modelId === '' || structuredOutput === null) {
-      this.failProvider(
-        readingId,
-        aiError(
+      return unavailable({
+        source: 'provider',
+        error: aiError(
           'capability-unsupported',
           'translation',
           'No tested text model is available for translation.',
           { detail: { capability: 'structured-output' } },
         ),
-        emptyCounts(),
-      );
-      return null;
+      });
     }
 
     const refs = await this.readings.listSentenceRefs(readingId);
     if (!refs.ok) {
-      this.failStorage(readingId, refs.error, emptyCounts());
-      return null;
+      return unavailable({ source: 'storage', error: refs.error });
     }
 
     const context: JobContext = {
@@ -312,75 +372,80 @@ export class TranslationJobStore {
 
     const active = await this.jobs.findActive(readingId, 'translate-reading');
     if (!active.ok) {
-      this.failStorage(readingId, active.error, emptyCounts());
-      return null;
+      return unavailable({ source: 'storage', error: active.error });
     }
 
     if (active.value !== null && active.value.configFingerprint === context.fingerprint) {
       const reconciled = await this.reconcile(context, active.value);
-      return reconciled === null ? null : { context, job: reconciled };
+      return reconciled.ok
+        ? { kind: 'planned', context, job: reconciled.value }
+        : unavailable({ source: 'storage', error: reconciled.error });
     }
 
     if (active.value !== null) {
       const closed = await this.jobs.setState(active.value.id, 'cancelled');
       if (!closed.ok) {
-        this.failStorage(readingId, closed.error, emptyCounts());
-        return null;
+        return unavailable({ source: 'storage', error: closed.error });
       }
     }
 
-    const created = await this.createJob(context);
-    return created === null ? null : { context, job: created };
+    const wanted =
+      scope === 'never-prepared'
+        ? await this.translation.neverPreparedSentenceIds(context.cacheKeys)
+        : await this.missingSentenceIds(context);
+    if (!wanted.ok) {
+      return unavailable({ source: 'storage', error: wanted.error });
+    }
+    // No row is written for a reading with nothing outstanding. An empty job
+    // could never complete itself, and the lane would pick it up forever.
+    if (wanted.value.length === 0) {
+      return { kind: 'nothing-to-do', context };
+    }
+
+    const created = await this.createJob(context, wanted.value, initialState);
+    return created.ok
+      ? { kind: 'planned', context, job: created.value }
+      : unavailable({ source: 'storage', error: created.error });
   }
 
   /** Re-derives completion from stored rows, so a reload never over-reports. */
-  private async reconcile(context: JobContext, job: AssetJob): Promise<AssetJob | null> {
+  private async reconcile(
+    context: JobContext,
+    job: AssetJob,
+  ): Promise<Result<AssetJob, StorageError>> {
     const missing = await this.missingSentenceIds(context);
-    if (missing === null) {
-      return null;
+    if (!missing.ok) {
+      return missing;
     }
-    const outstanding = new Set(missing);
+    const outstanding = new Set(missing.value);
     const completed = job.orderedSentenceIds.filter((id) => !outstanding.has(id));
-    const updated = await this.jobs.reconcile(job.id, completed);
-    if (!updated.ok) {
-      this.failStorage(context.readingId, updated.error, emptyCounts());
-      return null;
-    }
-    return updated.value;
+    return this.jobs.reconcile(job.id, completed);
   }
 
-  private async createJob(context: JobContext): Promise<AssetJob | null> {
-    const missing = await this.missingSentenceIds(context);
-    if (missing === null) {
-      return null;
-    }
+  private createJob(
+    context: JobContext,
+    orderedSentenceIds: readonly SentenceId[],
+    state: JobState,
+  ): Promise<Result<AssetJob, StorageError>> {
     const now = this.clock.now();
-    const created = await this.jobs.create({
+    return this.jobs.create({
       id: jobId(this.ids.nextId()),
       kind: 'translate-reading',
       readingId: context.readingId,
-      state: 'running',
-      orderedSentenceIds: missing,
+      state,
+      orderedSentenceIds,
       completedSentenceIds: [],
       failedItems: [],
       configFingerprint: context.fingerprint,
       createdAt: now,
       updatedAt: now,
     });
-    if (!created.ok) {
-      this.failStorage(context.readingId, created.error, emptyCounts());
-      return null;
-    }
-    return created.value;
   }
 
-  private async missingSentenceIds(context: JobContext): Promise<readonly SentenceId[] | null> {
-    const missing = await this.translation.missingSentenceIds(context.readingId, context.cacheKeys);
-    if (!missing.ok) {
-      this.failStorage(context.readingId, missing.error, emptyCounts());
-      return null;
-    }
-    return missing.value;
+  private missingSentenceIds(
+    context: JobContext,
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    return this.translation.missingSentenceIds(context.readingId, context.cacheKeys);
   }
 
   /**
@@ -422,10 +487,15 @@ export class TranslationJobStore {
     }
 
     this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+    let firstError: AiError | null = null;
 
     for (const batch of planBatches(loaded.value, MAX_TRANSLATION_BATCH)) {
       if (isAborted(signal)) {
         await this.markCancelled(job, counts);
+        return;
+      }
+      if (this.yieldRequested) {
+        await this.markPaused(job, counts);
         return;
       }
 
@@ -474,17 +544,35 @@ export class TranslationJobStore {
           return;
         }
         counts = { ...counts, failed: recorded.failedItems.length };
-        const marked = await this.jobs.setState(job.id, 'failed');
-        if (!marked.ok) {
-          this.failStorage(context.readingId, marked.error, counts);
+        firstError ??= error;
+        // The split audio already draws (ADR 0035). A batch that failed for a
+        // reason local to its sentences leaves the rest of a long reading
+        // perfectly translatable, so the queue continues and the failure is
+        // reported at the end. A configuration-wide refusal will refuse every
+        // remaining batch identically, and spending on that is not a service.
+        if (!isSentenceLocalFailure(error)) {
+          const marked = await this.jobs.setState(job.id, 'failed');
+          if (!marked.ok) {
+            this.failStorage(context.readingId, marked.error, counts);
+            return;
+          }
+          this.failProvider(context.readingId, error, counts);
           return;
         }
-        this.failProvider(context.readingId, error, counts);
-        return;
+        this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
       }
     }
 
     this.controller = null;
+    if (firstError !== null) {
+      const marked = await this.jobs.setState(job.id, 'failed');
+      if (!marked.ok) {
+        this.failStorage(context.readingId, marked.error, counts);
+        return;
+      }
+      this.failProvider(context.readingId, firstError, counts);
+      return;
+    }
     this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
     this.logger.info('job.succeeded', { kind: 'translation', count: counts.completed });
   }
@@ -509,6 +597,28 @@ export class TranslationJobStore {
       latest = recorded.value;
     }
     return latest;
+  }
+
+  /**
+   * Parks the run where it stands, keeping the row for whoever resumes it.
+   *
+   * The state is `paused`, never `cancelled`: the difference is what every
+   * screen watching a run does next.
+   */
+  private async markPaused(job: AssetJob, counts: TranslationJobCounts): Promise<void> {
+    this.yieldRequested = false;
+    this.controller = null;
+    await this.jobs.setState(job.id, 'paused');
+    this.progressSignal.set({ kind: 'paused', readingId: job.readingId, counts });
+    this.logger.info('job.paused', { kind: 'translation', count: counts.completed });
+  }
+
+  private report(readingId: ReadingId, error: LayerError): void {
+    if (error.source === 'provider') {
+      this.failProvider(readingId, error.error, emptyCounts());
+    } else {
+      this.failStorage(readingId, error.error, emptyCounts());
+    }
   }
 
   private async markCancelled(job: AssetJob, counts: TranslationJobCounts): Promise<void> {
@@ -555,4 +665,14 @@ export class TranslationJobStore {
 
 function emptyCounts(): TranslationJobCounts {
   return { total: 0, requested: 0, completed: 0, failed: 0 };
+}
+
+/**
+ * Whether this refusal is about these sentences rather than about the setup.
+ *
+ * A transport hiccup or a reply that did not parse says nothing about the next
+ * batch; a rejected key or an unsupported capability says everything about it.
+ */
+function isSentenceLocalFailure(error: AiError): boolean {
+  return isAutomaticallyRetryable(error) || error.code === 'malformed-response';
 }

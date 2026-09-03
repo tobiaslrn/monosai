@@ -26,6 +26,7 @@ export const assetJobRowSchema = z.object({
     )
     .readonly(),
   configFingerprint: nonEmptyString,
+  claim: z.object({ ownerId: nonEmptyString, heartbeatAt: timestampSchema }).optional(),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
 });

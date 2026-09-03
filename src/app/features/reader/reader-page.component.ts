@@ -19,6 +19,8 @@ import { AudioConfigurationService } from '../../application/enrichment/audio-co
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { ReadingAudioMaintenanceStore } from '../../application/enrichment/reading-audio-maintenance.store';
 import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
+import { PreparationStore } from '../../application/enrichment/preparation.store';
+import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
@@ -151,7 +153,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                 <mn-preparation-menu
                   [targets]="reading.preparationTargets"
                   [audioReadiness]="tts.readiness()"
-                  (targetsChanged)="store.setPreparationTargets($event)"
+                  (targetsChanged)="changePreparationTargets($event)"
                 />
               }
               <mn-reader-aids />
@@ -505,6 +507,7 @@ export class ReaderPageComponent {
   protected readonly store = inject(ReaderStore);
   protected readonly aids = inject(SentenceAidsStore);
   protected readonly translationJob = inject(TranslationJobStore);
+  protected readonly preparation = inject(PreparationStore);
   protected readonly audioJob = inject(AudioJobStore);
   protected readonly playback = inject(AudioPlaybackStore);
   protected readonly readingAudioMaintenance = inject(ReadingAudioMaintenanceStore);
@@ -966,6 +969,7 @@ export class ReaderPageComponent {
       if (this.scrollWindowFrame !== null) {
         cancelAnimationFrame(this.scrollWindowFrame);
       }
+      this.preparation.setOpenReading(null);
       this.store.close();
     });
   }
@@ -974,12 +978,35 @@ export class ReaderPageComponent {
     void this.openReading(this.currentReadingId());
   }
 
+  /**
+   * Opening a reader is one of the four moments that create preparation work
+   * (ADR 0047): whatever this reading declares and has never been given is
+   * queued, and the lane works it — this reading first, because it is the one
+   * being read.
+   */
   private async openReading(id: ReadingId): Promise<void> {
     await this.store.open(id);
-    if (this.currentReadingId() !== id || this.store.status() !== 'ready') {
+    const reading = this.store.reading();
+    if (this.currentReadingId() !== id || this.store.status() !== 'ready' || reading === null) {
       return;
     }
-    await Promise.all([this.translationJob.resume(id), this.audioJob.resume(id)]);
+    this.preparation.setOpenReading(id);
+    await this.preparation.reconcile(reading);
+  }
+
+  /**
+   * Records what this reading should have, then queues whatever that adds.
+   *
+   * Switching a layer on is a moment that creates work; switching one off
+   * leaves what already exists alone, because nothing is gained by deleting an
+   * aid the learner has already paid for.
+   */
+  protected async changePreparationTargets(targets: readonly PreparationLayer[]): Promise<void> {
+    await this.store.setPreparationTargets(targets);
+    const reading = this.store.reading();
+    if (reading !== null) {
+      await this.preparation.reconcile(reading);
+    }
   }
 
   /**

@@ -1,3 +1,5 @@
+import { PreparationStore } from '../enrichment/preparation.store';
+import { GenerationActivityRegistry } from './generation-activity.registry';
 import {
   DestroyRef,
   EnvironmentInjector,
@@ -76,6 +78,9 @@ export class GenerationJobsStore {
   private readonly clock = inject(CLOCK);
   private readonly library = inject(LibraryStore);
   private readonly busyRegistry = inject(AppBusyRegistry);
+  /** A saved story is one of the four moments that create preparation work. */
+  private readonly preparation = inject(PreparationStore);
+  private readonly activity = inject(GenerationActivityRegistry);
 
   private readonly records = signal<readonly JobRecord[]>([]);
   private readonly watchedSignal = signal<JobId | null>(null);
@@ -105,6 +110,9 @@ export class GenerationJobsStore {
     // clearing the key while a first still runs would tell a reload it is safe.
     effect(() => {
       const running = this.runningCount();
+      // The lane reads this rather than this store, so neither subsystem has to
+      // import the other.
+      this.activity.setRunningCount(running);
       this.busyRegistry.setBusy(
         'generation',
         running === 0
@@ -218,6 +226,12 @@ export class GenerationJobsStore {
    * so the learner reading the wait screen still gets the saved panel.
    */
   private storySaved(id: JobId): void {
+    const saved = this.records()
+      .find((record) => record.job.id === id)
+      ?.store.state();
+    if (saved?.kind === 'saved') {
+      void this.preparation.reconcile(saved.reading);
+    }
     void this.library.load();
     this.library.noteExternalChange('Your generated story is ready and is in your library.');
     if (this.watchedSignal() !== id) {
