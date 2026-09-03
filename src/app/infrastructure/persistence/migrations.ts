@@ -55,6 +55,7 @@ const V4_STORES: Readonly<Record<string, string | null>> = {
 const V5_STORES = V4_STORES;
 const V6_STORES = V5_STORES;
 const V7_STORES = V6_STORES;
+const V8_STORES = V7_STORES;
 
 export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   {
@@ -216,6 +217,35 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
         return { ...preset, speedSupported: seededSpeedSupport(preset['modelId']) };
       });
       await settings.put(ttsRow);
+    },
+  },
+  {
+    version: 8,
+    stores: V8_STORES,
+    upgrade: async (transaction) => {
+      await transaction
+        .table('readings')
+        .toCollection()
+        .modify((row: unknown) => {
+          const reading = requireRecord(row, 'reading');
+          const sentenceCount = reading['sentenceCount'];
+          if (typeof sentenceCount !== 'number' || sentenceCount === 0) {
+            reading['preparationTargets'] = [];
+            return;
+          }
+          const translation = requireRecord(reading['translationSummary'], 'translation summary');
+          const grammar = requireRecord(reading['grammarSummary'], 'grammar summary');
+          const audio = requireRecord(reading['audioSummary'], 'audio summary');
+          reading['preparationTargets'] = [
+            ...(typeof translation['completed'] === 'number' && translation['completed'] > 0
+              ? ['english']
+              : []),
+            ...(grammar['state'] === 'complete' || grammar['state'] === 'partial'
+              ? ['grammar']
+              : []),
+            ...(typeof audio['completed'] === 'number' && audio['completed'] > 0 ? ['audio'] : []),
+          ];
+        });
     },
   },
 ];

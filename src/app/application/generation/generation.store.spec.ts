@@ -274,6 +274,16 @@ describe('GenerationStore repair', () => {
     expect(bed.readings.provenance[0].repairAttempts).toBe(1);
   });
 
+  it('saves the story declaring the aid layers chosen when it started', async () => {
+    bed = configureGenerationTestBed({ defaultPreparationTargets: ['english', 'audio'] });
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.store.state().kind).toBe('saved');
+    expect(bed.readings.readings[0].preparationTargets).toEqual(['english', 'audio']);
+  });
+
   it('does not ask the policy twice about a word it already refused', async () => {
     bed = configureGenerationTestBed({ vocabularyStrictness: 'strict' });
     await bed.setPolicy(POLICY);

@@ -31,6 +31,7 @@ const readingBaseShape = {
   translationSummary: completionSummarySchema,
   grammarSummary: grammarSummarySchema,
   audioSummary: completionSummarySchema,
+  preparationTargets: z.array(z.enum(['english', 'grammar', 'audio'])).readonly(),
   analyzerVersion: nonEmptyString,
 };
 

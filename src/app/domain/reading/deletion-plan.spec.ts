@@ -17,6 +17,7 @@ function reading(overrides: Partial<ImportedReading> = {}): ImportedReading {
     translationSummary: { total: 12, completed: 0, failed: 0 },
     grammarSummary: { state: 'not-requested' },
     audioSummary: { total: 12, completed: 0, failed: 0 },
+    preparationTargets: [],
     analyzerVersion: '1',
     importSource: 'paste',
     sourceTextHash: 'h',

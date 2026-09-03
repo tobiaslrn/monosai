@@ -45,6 +45,7 @@ function reading(
     translationSummary: { total: 4, completed: 0, failed: 0 },
     grammarSummary: { state: 'not-requested' as const },
     audioSummary: { total: 4, completed: completedAudio, failed: 0 },
+    preparationTargets: [],
     analyzerVersion: '1',
   };
   return kind === 'imported'

@@ -42,6 +42,7 @@ function acceptedStory(sentenceCount: number): AcceptedStory {
     repairAttempts: 0,
     suggestedVocabularyItemIds: [],
     exceptionCount: 0,
+    preparationTargets: ['english', 'grammar'],
   };
 }
 
@@ -193,5 +194,14 @@ describe('StoryAssemblyService', () => {
         assertEnrichmentConsistent(merged);
       }).not.toThrow();
     });
+  });
+
+  it('saves the story with the aid layers it was asked to be prepared with', () => {
+    const draft = service.build({
+      ...acceptedStory(3),
+      preparationTargets: ['english', 'audio'],
+    });
+
+    expect(draft.reading.preparationTargets).toEqual(['english', 'audio']);
   });
 });

@@ -1,5 +1,6 @@
 import Dexie from 'dexie';
 import type { Clock } from '../../../domain/shared/clock';
+import type { PreparationLayer } from '../../../domain/enrichment/preparation';
 import { ok, type Result } from '../../../domain/shared/result';
 import type { ReadingId, SentenceId } from '../../../domain/shared/ids';
 import type {
@@ -346,6 +347,31 @@ export class DexieReadingRepository implements ReadingRepository {
             .sort((left, right) => left.positionInReading - right.positionInReading),
         )
       : parsed;
+  }
+
+  setPreparationTargets(
+    id: ReadingId,
+    targets: readonly PreparationLayer[],
+  ): Promise<Result<Reading, StorageError>> {
+    return runStorageWithRules('readings.setPreparationTargets', () =>
+      this.db.transaction('rw', this.db.readings, async () => {
+        const row = await this.db.readings.get(id);
+        if (row === undefined) {
+          throw new StorageRuleViolation(
+            storageError('not-found', 'That reading no longer exists.'),
+          );
+        }
+        const next = {
+          ...row,
+          preparationTargets: [...new Set(targets)],
+          updatedAt: this.clock.now(),
+        };
+        const parsed = parseRecord(readingRowSchema, next, 'readings');
+        if (!parsed.ok) throw new StorageRuleViolation(parsed.error);
+        await this.db.readings.put(parsed.value);
+        return toReading(parsed.value);
+      }),
+    );
   }
 
   deleteReading(id: ReadingId): Promise<Result<void, StorageError>> {

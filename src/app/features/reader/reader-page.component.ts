@@ -46,6 +46,7 @@ import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PopoverService, type PopoverRef } from '../../shared-ui/popover/popover.service';
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
+import { PreparationMenuComponent } from './preparation-menu.component';
 import { ReaderAidsComponent } from './reader-aids.component';
 import { ReaderParagraphComponent } from './reader-paragraph.component';
 import { ReaderMenuComponent } from './reader-menu.component';
@@ -115,6 +116,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
   imports: [
     RouterLink,
     IconComponent,
+    PreparationMenuComponent,
     ReaderAidsComponent,
     ReaderParagraphComponent,
     ReaderMenuComponent,
@@ -145,6 +147,13 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           <h1>{{ readerHeading() }}</h1>
           @if (store.status() === 'ready') {
             <div class="bar-actions">
+              @if (store.reading(); as reading) {
+                <mn-preparation-menu
+                  [targets]="reading.preparationTargets"
+                  [audioReadiness]="tts.readiness()"
+                  (targetsChanged)="store.setPreparationTargets($event)"
+                />
+              }
               <mn-reader-aids />
               <!--
                 Always here for a loaded reading, whether or not it has any
@@ -504,7 +513,7 @@ export class ReaderPageComponent {
   private readonly settings = inject(AppSettingsStore);
   private readonly library = inject(LibraryStore);
   private readonly textModel = inject(TextModelStore);
-  private readonly tts = inject(TtsStore);
+  protected readonly tts = inject(TtsStore);
   private readonly audioConfig = inject(AudioConfigurationService);
   private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly language = inject(LanguageStore);

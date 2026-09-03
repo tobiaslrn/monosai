@@ -190,4 +190,27 @@ describe('ReaderStore', () => {
       expect(repository.graphRequests.length).toBe(requestsBefore + 1);
     });
   });
+
+  describe('preparation targets', () => {
+    it('stores what the open reading should contain and shows the saved row', async () => {
+      const rows = repository.add(buildReading({ id: 'r1' }));
+      const reader = store();
+      await reader.open(rows.reading.id);
+
+      await reader.setPreparationTargets(['english', 'grammar']);
+
+      expect(reader.reading()?.preparationTargets).toEqual(['english', 'grammar']);
+      const stored = await repository.getReading(rows.reading.id);
+      expect(stored.ok && stored.value?.preparationTargets).toEqual(['english', 'grammar']);
+    });
+
+    it('does nothing at all with no reading open', async () => {
+      const reader = store();
+
+      await reader.setPreparationTargets(['english']);
+
+      expect(reader.reading()).toBeNull();
+      expect(reader.lastError()).toBeNull();
+    });
+  });
 });

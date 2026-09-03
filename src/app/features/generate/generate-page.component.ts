@@ -20,6 +20,7 @@ import { GrammarProfileStore } from '../../application/grammar/grammar-profile.s
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { ExceptionPolicyStore } from '../../application/settings/exception-policy.store';
 import { GenerationSettingsStore } from '../../application/settings/generation-settings.store';
+import { TtsStore } from '../../application/settings/tts.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { technicalCode } from '../../domain/shared/errors';
@@ -185,6 +186,9 @@ const IDLE: GenerationState = { kind: 'idle' };
             (ankiWordPriorityModeChanged)="appSettings.setAnkiWordPriorityMode($event)"
             [vocabularyStrictness]="generationSettings.vocabularyStrictness()"
             (vocabularyStrictnessChanged)="generationSettings.setVocabularyStrictness($event)"
+            [preparationTargets]="generationSettings.defaultPreparationTargets()"
+            [audioReadiness]="tts.readiness()"
+            (preparationTargetsChanged)="generationSettings.setDefaultPreparationTargets($event)"
             (generate)="generate()"
           >
             <mn-exception-policy-field text-fields-extra />
@@ -243,6 +247,7 @@ export class GeneratePageComponent {
   private readonly policy = inject(ExceptionPolicyStore);
   protected readonly appSettings = inject(AppSettingsStore);
   protected readonly generationSettings = inject(GenerationSettingsStore);
+  protected readonly tts = inject(TtsStore);
   private readonly grammar = inject(GrammarProfileStore);
   private readonly snapshots = inject(SnapshotHistoryStore);
   private readonly router = inject(Router);

@@ -22,6 +22,7 @@ import type { LanguageError } from '../../domain/language/language-error';
 import type { SentenceTokens } from '../../domain/language/language-runtime';
 import type { GeneratedStory } from '../../domain/reading/reading';
 import type { GeneratedStoryDraft } from '../../domain/reading/reading-repository';
+import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import type { VocabularyItemId } from '../../domain/shared/ids';
@@ -163,6 +164,12 @@ interface CapturedContext {
   readonly translationTaskConfig: TextTaskConfig;
   readonly ankiWordPriorityMode: AnkiWordPriorityMode;
   readonly repairBudget: number;
+  /**
+   * The aid layers the saved story declares. Captured like everything else
+   * here, so switching the defaults while a story is being written changes the
+   * next story rather than this one.
+   */
+  readonly preparationTargets: readonly PreparationLayer[];
 }
 
 /** Title and sentences carry the same analysis; only the title has no row. */
@@ -564,6 +571,7 @@ export class GenerationStore {
     | { readonly ok: false; readonly error: GenerationFailure }
   > {
     const repairBudget = this.generationSettings.repairBudget();
+    const preparationTargets = this.generationSettings.defaultPreparationTargets();
     const snapshot = await this.vocabulary.getActiveSnapshot();
     if (!snapshot.ok) {
       return { ok: false, error: snapshot.error };
@@ -623,6 +631,7 @@ export class GenerationStore {
           configurable.configForPreset?.(settings.translationPresetId ?? null) ?? selected,
         ankiWordPriorityMode,
         repairBudget,
+        preparationTargets,
       },
     };
   }
@@ -844,6 +853,7 @@ export class GenerationStore {
       suggestedVocabularyItemIds: suggestedItemIds,
       ankiWordPriorityMode: context.ankiWordPriorityMode,
       exceptionCount,
+      preparationTargets: context.preparationTargets,
       ...(request.specialInstructions === undefined
         ? {}
         : { specialInstructions: request.specialInstructions }),

@@ -14,6 +14,7 @@ import {
   LucideInfo,
   LucideLanguages,
   LucideLibrary,
+  LucideListChecks,
   LucideListStart,
   LucideMenu,
   LucideMerge,
@@ -76,6 +77,7 @@ export const ICON_SET = {
   step: LucideStepForward,
   retry: LucideRotateCcw,
   'sentence-start': LucideListStart,
+  prepare: LucideListChecks,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICON_SET;

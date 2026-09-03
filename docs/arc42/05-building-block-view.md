@@ -70,11 +70,11 @@ altitude.
 
 | Area | In `domain/` | In `application/` | Adapter area in `infrastructure/` |
 | --- | --- | --- | --- |
-| **reading** | Readings, paragraphs, sentences, tokens, the paragraph window, token status | Import, open, list, delete. Classification against the current snapshot | Persistence |
+| **reading** | Readings, paragraphs, sentences, tokens, the paragraph window, token status, the declared preparation targets | Import, open, list, delete, declare targets. Classification against the current snapshot | Persistence |
 | **vocabulary** | Snapshots, sources, mappings, deduplication of expressions | Read a source and build one replacement snapshot | Anki, persistence |
 | **language** | Tokenizer and runtime interfaces, segmentation, dictionary, kana, the structural baseline | Prepare the tokenizer and the assets, and report readiness | The language worker client and asset loader |
 | **ai** | Provider interfaces, tasks, prompt versions, configuration fingerprints, story structure | Run a generation as a job. Test and select models | The AI provider adapters |
-| **enrichment** | Translation, grammar, and audio records, cache keys, staleness, the job model | Produce and cache aids, per sentence and in resumable whole-reading jobs | Persistence, the AI provider |
+| **enrichment** | Translation, grammar, and audio records, cache keys, staleness, the job model, the preparation layers a reading declares | Produce and cache aids, per sentence and in resumable whole-reading jobs | Persistence, the AI provider |
 | **audio** | — | Own playback and the platform media session for one reading, including the native resource a continuous reading is played from and grown in | The AI provider, for synthesis |
 | **grammar** | Difficulty presets, the profile, the profile hash | Hold the selected preset, register, and optional edited guidance | Persistence |
 | **settings** | Settings and credential shapes | Hold configuration that startup loads before routes render | Persistence |

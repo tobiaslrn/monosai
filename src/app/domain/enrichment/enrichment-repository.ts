@@ -91,6 +91,24 @@ export interface EnrichmentRepository {
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<GrammarSummary, StorageError>>;
+  /**
+   * Which of these sentences own a stored aid under *any* configuration.
+   *
+   * The `listSentenceIdsMissing*` queries above answer "is this current",
+   * which is what *Prepare again* asks. This answers "was this ever
+   * prepared", which is what deciding whether to spend money asks: a cache
+   * key changes with the model, and a library already prepared must not be
+   * prepared a second time because the learner picked a different model.
+   */
+  listSentenceIdsWithStoredTranslation(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly SentenceId[], StorageError>>;
+  listSentenceIdsWithStoredGrammarAnalysis(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly SentenceId[], StorageError>>;
+  listSentenceIdsWithStoredAudio(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly SentenceId[], StorageError>>;
   listSentenceIdsMissingTranslation(
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,

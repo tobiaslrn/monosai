@@ -24,6 +24,7 @@ files are already linked from code comments and from other records.
 | [0004](../decisions/0004-persistence-shape.md) | Persistence shape decisions |
 | [0012](../decisions/0012-resume-basis.md) | Resume basis: exact, nearest, or beginning, stated rather than hidden |
 | [0042](../decisions/0042-cross-tab-reading-mutations.md) | Tabs tell each other about deleted readings, and format in one locale |
+| [0047](../decisions/0047-a-reading-declares-what-it-should-have.md) | A reading declares what it should have |
 
 ### Language processing
 

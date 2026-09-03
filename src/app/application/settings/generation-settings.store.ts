@@ -49,4 +49,19 @@ export class GenerationSettingsStore {
       this.failureSignal.set(saved.error);
     }
   }
+
+  async setDefaultPreparationTargets(
+    defaultPreparationTargets: GenerationSettings['defaultPreparationTargets'],
+  ): Promise<void> {
+    const previous = this.settingsSignal();
+    this.settingsSignal.set({ ...previous, defaultPreparationTargets });
+    const saved = await this.repository.updateGenerationSettings({ defaultPreparationTargets });
+    if (saved.ok) {
+      this.settingsSignal.set(saved.value);
+      this.failureSignal.set(null);
+    } else {
+      this.settingsSignal.set(previous);
+      this.failureSignal.set(saved.error);
+    }
+  }
 }

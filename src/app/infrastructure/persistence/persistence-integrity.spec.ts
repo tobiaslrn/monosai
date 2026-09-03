@@ -18,6 +18,13 @@ import { uuid } from '../../../testing/persistence-fixtures';
 
 const clock = fixedClock(1_700_800_000_000);
 
+/** Only the fields the v8 backfill is asserted on; the row itself is untyped storage. */
+interface UpgradedReadingRow {
+  readonly id: string;
+  readonly title: string;
+  readonly preparationTargets: readonly string[];
+}
+
 describe('database schema', () => {
   let db: MonosaiDatabase;
 
@@ -288,6 +295,82 @@ describe('database schema', () => {
         // Gemini ignores the parameter, so its seed says so from the start.
         expect.objectContaining({ id: 'gemini-1', speedSupported: false }),
       ]);
+      upgraded.close();
+    } finally {
+      legacy.close();
+      await Dexie.delete(name);
+    }
+  });
+
+  it('backfills preparation targets from stored aid evidence during the v8 upgrade', async () => {
+    const name = `monosai-v7-preparation-${Date.now()}`;
+    const legacy = new Dexie(name);
+    const v7 = SCHEMA_VERSIONS.find((entry) => entry.version === 7);
+    if (v7 === undefined) {
+      throw new Error('The immutable v7 schema is missing.');
+    }
+    legacy.version(7).stores(v7.stores);
+    const summaries = [
+      {
+        id: 'not-requested',
+        sentenceCount: 3,
+        translationSummary: { total: 3, completed: 1, failed: 0 },
+        grammarSummary: { state: 'not-requested' },
+        audioSummary: { total: 3, completed: 0, failed: 0 },
+      },
+      {
+        id: 'partial',
+        sentenceCount: 3,
+        translationSummary: { total: 3, completed: 0, failed: 0 },
+        grammarSummary: { state: 'partial', analyzedSentenceCount: 1, concernCount: 0 },
+        audioSummary: { total: 3, completed: 1, failed: 0 },
+      },
+      {
+        id: 'complete',
+        sentenceCount: 3,
+        translationSummary: { total: 3, completed: 0, failed: 0 },
+        grammarSummary: { state: 'complete', concernCount: 0 },
+        audioSummary: { total: 3, completed: 0, failed: 0 },
+      },
+      {
+        id: 'unavailable',
+        sentenceCount: 3,
+        translationSummary: { total: 3, completed: 0, failed: 0 },
+        grammarSummary: { state: 'unavailable', reasonCode: 'provider-unavailable' },
+        audioSummary: { total: 3, completed: 0, failed: 0 },
+      },
+      {
+        id: 'empty',
+        sentenceCount: 0,
+        translationSummary: { total: 0, completed: 1, failed: 0 },
+        grammarSummary: { state: 'complete', concernCount: 0 },
+        audioSummary: { total: 0, completed: 1, failed: 0 },
+      },
+    ];
+
+    try {
+      await legacy.open();
+      await legacy.table('readings').bulkPut(
+        summaries.map((summary) => ({
+          ...summary,
+          kind: 'imported',
+          title: `Preserved ${summary.id}`,
+        })),
+      );
+      legacy.close();
+
+      const upgraded = new MonosaiDatabase(name);
+      await upgraded.open();
+      const rows = (await upgraded.table('readings').toArray()) as UpgradedReadingRow[];
+      const byId = new Map(rows.map((row) => [row.id, row]));
+
+      expect(byId.get('not-requested')?.preparationTargets).toEqual(['english']);
+      expect(byId.get('partial')?.preparationTargets).toEqual(['grammar', 'audio']);
+      expect(byId.get('complete')?.preparationTargets).toEqual(['grammar']);
+      expect(byId.get('unavailable')?.preparationTargets).toEqual([]);
+      expect(byId.get('empty')?.preparationTargets).toEqual([]);
+      expect(byId.get('partial')?.title).toBe('Preserved partial');
+      expect(rows).toHaveLength(summaries.length);
       upgraded.close();
     } finally {
       legacy.close();

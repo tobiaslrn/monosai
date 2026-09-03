@@ -1,3 +1,4 @@
+import type { Table } from 'dexie';
 import { ok, type Result } from '../../../domain/shared/result';
 import type { AssetId, ReadingId, SentenceId } from '../../../domain/shared/ids';
 import type { CompletionSummary, GrammarSummary } from '../../../domain/reading/summaries';
@@ -298,6 +299,49 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     return runStorage('grammarAnalyses.summarize', () =>
       this.computeGrammarSummary(readingId, cacheKeys),
     );
+  }
+
+  /**
+   * Read through the `sentenceId` index only. Dexie returns the matching index
+   * values without deserializing a record, so this stays cheap on `audioAssets`
+   * and never pulls a clip's bytes into memory.
+   */
+  listSentenceIdsWithStoredTranslation(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    return runStorage('translations.storedSentenceIds', () =>
+      this.storedSentenceIds(this.db.translations, sentenceIds),
+    );
+  }
+
+  listSentenceIdsWithStoredGrammarAnalysis(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    return runStorage('grammarAnalyses.storedSentenceIds', () =>
+      this.storedSentenceIds(this.db.grammarAnalyses, sentenceIds),
+    );
+  }
+
+  listSentenceIdsWithStoredAudio(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    return runStorage('audioAssets.storedSentenceIds', () =>
+      this.storedSentenceIds(this.db.audioAssets, sentenceIds),
+    );
+  }
+
+  private async storedSentenceIds(
+    table: Table<{ readonly sentenceId: SentenceId }, string>,
+    sentenceIds: readonly SentenceId[],
+  ): Promise<readonly SentenceId[]> {
+    if (sentenceIds.length === 0) {
+      return [];
+    }
+    const keys = await table
+      .where('sentenceId')
+      .anyOf([...sentenceIds])
+      .keys();
+    return [...new Set(keys as SentenceId[])];
   }
 
   async listSentenceIdsMissingTranslation(

@@ -218,6 +218,24 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
     return Promise.resolve(ok({ state: 'partial', analyzedSentenceCount, concernCount: 0 }));
   }
 
+  listSentenceIdsWithStoredTranslation(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    return Promise.resolve(ok(storedSentenceIds(this.translations, sentenceIds)));
+  }
+
+  listSentenceIdsWithStoredGrammarAnalysis(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    return Promise.resolve(ok(storedSentenceIds(this.grammarAnalyses, sentenceIds)));
+  }
+
+  listSentenceIdsWithStoredAudio(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly SentenceId[], StorageError>> {
+    return Promise.resolve(ok(storedSentenceIds(this.audio, sentenceIds)));
+  }
+
   listSentenceIdsMissingAudio(
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
@@ -237,4 +255,12 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
       .map(([sentenceId]) => sentenceId);
     return Promise.resolve(ok(missing));
   }
+}
+
+function storedSentenceIds(
+  rows: readonly { readonly sentenceId: SentenceId }[],
+  sentenceIds: readonly SentenceId[],
+): readonly SentenceId[] {
+  const wanted = new Set(sentenceIds);
+  return [...new Set(rows.map((row) => row.sentenceId).filter((id) => wanted.has(id)))];
 }
