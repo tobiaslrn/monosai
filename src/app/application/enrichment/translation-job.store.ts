@@ -5,6 +5,8 @@ import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import { MAX_TRANSLATION_BATCH, planBatches } from '../../domain/ai/translation-request';
 import { translationConfigFingerprint } from '../../domain/enrichment/cache-keys';
 import { remainingSentenceIds, type AssetJob, type JobState } from '../../domain/enrichment/jobs';
+import type { SentenceRef } from '../../domain/reading/reading-repository';
+import type { TokenAnalysis } from '../../domain/reading/token';
 import { jobId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
 import type { Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
@@ -15,9 +17,10 @@ import {
   JOB_REPOSITORY,
   READING_REPOSITORY,
 } from '../shared/repository-tokens';
+import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { EnrichmentKeysService } from './enrichment-keys.service';
-import { TranslationService } from './translation.service';
+import { TranslationService, type TranslationContext } from './translation.service';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 import { NOTHING_TO_DO, QUEUED, type EnqueueOutcome, type LayerError } from './layer-progress';
 
@@ -102,6 +105,8 @@ interface JobContext {
   readonly cacheKeys: ReadonlyMap<SentenceId, string>;
   readonly fingerprint: string;
   readonly total: number;
+  /** Every sentence of the reading, in order — the basis for its translation context. */
+  readonly refs: readonly SentenceRef[];
 }
 
 /**
@@ -126,6 +131,7 @@ export class TranslationJobStore {
   private readonly translation = inject(TranslationService);
   private readonly keys = inject(EnrichmentKeysService);
   private readonly textModel = inject(TextModelStore);
+  private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly hasher = inject(HASHER);
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
@@ -368,6 +374,7 @@ export class TranslationJobStore {
         PROMPT_VERSIONS.translation,
       ),
       total: refs.value.length,
+      refs: refs.value,
     };
 
     const active = await this.jobs.findActive(readingId, 'translate-reading');
@@ -406,6 +413,46 @@ export class TranslationJobStore {
     return created.ok
       ? { kind: 'planned', context, job: created.value }
       : unavailable({ source: 'storage', error: created.error });
+  }
+
+  /**
+   * What this reading is, beyond the sentences themselves.
+   *
+   * The prompt asks for tone, register, and terminology to be held steady, and
+   * it can only do that if something says what they are. Generation used to
+   * assemble this inline from the story it had just written; the same facts are
+   * on disk afterwards, so the job assembles them from storage instead.
+   *
+   * Every part is optional and every lookup degrades rather than failing. An
+   * imported reading has no premise at all, and a reading whose title or tokens
+   * cannot be read is still worth translating without them: a missing hint
+   * costs a little consistency, and refusing the run would cost the aid.
+   *
+   * The names are what `TranslationService` turns into established renderings,
+   * and `process` carries those forward from batch to batch so a name is
+   * rendered the same way in the tenth sentence and the twentieth.
+   */
+  private async readingContext(context: JobContext): Promise<TranslationContext> {
+    const { readingId, refs } = context;
+    // The lane runs from anywhere, including a session that has never opened
+    // the grammar screen, so the stored selection is read before it is asked
+    // for its register rather than defaulting silently.
+    if (!this.grammarProfile.loaded()) {
+      await this.grammarProfile.load();
+    }
+    const registerPreference = this.grammarProfile.selection().registerPreference;
+
+    const reading = await this.readings.getReading(readingId);
+    const story = reading.ok && reading.value?.kind === 'generated' ? reading.value : null;
+
+    const analyses = await this.readings.loadTokenAnalyses(refs.map((ref) => ref.id));
+    const consistencyTermsJa = analyses.ok ? properNouns(refs, analyses.value) : [];
+
+    return {
+      registerPreference,
+      ...(story === null ? {} : { titleJa: story.title, premiseJa: story.premise }),
+      ...(consistencyTermsJa.length === 0 ? {} : { consistencyTermsJa }),
+    };
   }
 
   /** Re-derives completion from stored rows, so a reload never over-reports. */
@@ -487,6 +534,12 @@ export class TranslationJobStore {
     }
 
     this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+    // Assembled here rather than in `plan`, so queueing a reading the lane may
+    // never reach reads nothing beyond its sentence refs. It then travels from
+    // one batch to the next carrying what the last one settled, because each
+    // batch is an independent request and nothing else pins how a name was
+    // rendered in the one before it.
+    let translationContext = await this.readingContext(context);
     let firstError: AiError | null = null;
 
     for (const batch of planBatches(loaded.value, MAX_TRANSLATION_BATCH)) {
@@ -507,7 +560,12 @@ export class TranslationJobStore {
         PROMPT_VERSIONS.translation,
         context.taskConfig,
         signal,
+        translationContext,
       );
+      translationContext = {
+        ...translationContext,
+        establishedRenderings: outcome.establishedRenderings,
+      };
 
       // Whatever this batch already returned is stored before cancellation is
       // honoured: the request was paid for and the results are independently
@@ -665,6 +723,30 @@ export class TranslationJobStore {
 
 function emptyCounts(): TranslationJobCounts {
   return { total: 0, requested: 0, completed: 0, failed: 0 };
+}
+
+/**
+ * Distinct proper nouns in the reading, in reading order.
+ *
+ * Names are the terms whose English rendering has to stay stable across
+ * batches, and the analyzer already labelled them when the text was saved. The
+ * order follows the sentence refs rather than the order storage happened to
+ * return, so the same reading always produces the same request.
+ */
+function properNouns(
+  refs: readonly SentenceRef[],
+  analyses: readonly TokenAnalysis[],
+): readonly string[] {
+  const bySentenceId = new Map(analyses.map((analysis) => [analysis.sentenceId, analysis]));
+  const surfaces = new Set<string>();
+  for (const ref of refs) {
+    for (const token of bySentenceId.get(ref.id)?.tokens ?? []) {
+      if (token.partOfSpeech === 'proper-noun') {
+        surfaces.add(token.surface);
+      }
+    }
+  }
+  return [...surfaces];
 }
 
 /**

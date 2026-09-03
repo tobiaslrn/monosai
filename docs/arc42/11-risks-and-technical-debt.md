@@ -26,6 +26,6 @@ with it.
 
 | Item | Cost today | Suggested action |
 | --- | --- | --- |
-| The generation state machine is the largest unit in the codebase | One store holds prerequisites, capture, writing, parsing, validation, exception review, repair, the auxiliary branches, and finalizing. It is cohesive, but it is the one part of the system that is hard to hold in the head | Lift the repair loop and the auxiliary branch coordination into their own services in the same area, keeping the state machine itself in the store |
+| The generation state machine is the largest unit in the codebase | One store holds prerequisites, capture, writing, parsing, validation, exception review, repair, and finalizing. It is cohesive, but it is the one part of the system that is hard to hold in the head | Lift the repair loop into its own service in the same area, keeping the state machine itself in the store |
 | Two records share the ADR number `0028` | A reference to "ADR 0028" is ambiguous | Leave the files as they are. Both are linked from code comments and other records, so renumbering would break more than it fixes. [Chapter 9](09-architecture-decisions.md) lists both by title |
 | One repository port still carries a compatibility alias | Two names for one port, left from generalising Anki source mapping | Finish the rename and drop the alias |

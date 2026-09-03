@@ -86,6 +86,7 @@ const LEXICON: readonly string[] = [
   'ねます',
   'います',
   '図書館',
+  'ミケ',
   '一日',
   'ねこ',
   'へ',
@@ -104,7 +105,16 @@ export const REVIEWED_EXPRESSIONS: readonly string[] = [
   'のみます',
   'いきます',
   '一日',
+  'ミケ',
 ];
+
+/**
+ * Surfaces the fake analyzer labels as names.
+ *
+ * A proper noun is the one part of speech translation context cares about: it
+ * is what a reading has to render the same way from one batch to the next.
+ */
+const PROPER_NOUNS = new Set(['ミケ']);
 
 /** Function words the structural baseline always accepts. */
 const BASELINE_FORMS: readonly string[] = ['は', 'が', 'の', 'へ'];
@@ -124,6 +134,7 @@ function tokenize(text: string): readonly Token[] {
       lemma: surface,
       dictionaryKeys: [surface],
       isPunctuation,
+      ...(PROPER_NOUNS.has(surface) ? { partOfSpeech: 'proper-noun' as const } : {}),
     });
     cursor += surface.length;
   };

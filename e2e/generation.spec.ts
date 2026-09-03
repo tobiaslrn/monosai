@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import {
-  LONG_STRICT_STORY,
   SHORT_STORY,
   STORY_WITH_UNKNOWN,
   STRICT_STORY,
@@ -131,10 +130,11 @@ test.describe('generating a story', () => {
     await expect(page.getByTestId('open-story')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Your story is ready' })).toHaveCount(1);
 
-    // Grammar review and translation really ran; their saved summaries are the
-    // durable result after the temporary waiting message disappears.
-    await expect(page.getByTestId('saved-summaries')).toContainText('Translations: complete');
-    await expect(page.getByTestId('saved-summaries')).toContainText('Grammar: reviewed');
+    // The panel names what is still being made rather than reporting counts
+    // that are all zero: the story is finished, its aids are not.
+    await expect(page.getByTestId('saved-preparation')).toContainText(
+      'Preparing English and grammar notes',
+    );
 
     await expectNoSeriousAccessibilityViolations(page);
 
@@ -248,18 +248,18 @@ test.describe('generating a story', () => {
     expect(rows['generationProvenance']).toBe(0);
   });
 
-  test('cancelling during the auxiliary stage stores no translation at all @smoke', async ({
+  test('puts the story in the library before its aids, then fills them in @smoke', async ({
     page,
   }) => {
     test.setTimeout(SETUP_TIMEOUT);
-    // Everything up to acceptance answers normally; both auxiliary branches
-    // stay in flight, so the cancel lands exactly where the specification says
-    // nothing may have been written yet.
+    // The aids answer slowly on purpose, so "the story is there and they are
+    // not" is a state this test can stand in rather than a race it has to win.
     await prepareGeneration(page, {
       generation: {
         stories: [STRICT_STORY],
-        grammar: ['hang'],
-        translations: ['hang'],
+        grammar: ['ok'],
+        translations: ['ok'],
+        aidDelayMs: 2_000,
       },
     });
 
@@ -268,63 +268,35 @@ test.describe('generating a story', () => {
     await page.getByTestId('story-length').fill('0');
     await page.getByTestId('generate').click();
 
-    await expect(page.getByTestId('generation-copy')).toContainText(
-      'Reviewing grammar and translating',
-      {
-        timeout: 60_000,
-      },
-    );
-    await page.getByTestId('cancel-generation').click();
-
-    await expect(page.getByRole('heading', { name: 'Generation stopped', level: 2 })).toBeVisible();
-
-    // The story is discarded, and so is every translation that a branch might
-    // already have produced: nothing is written before the single save.
-    const rows = await countOwnedRows(page);
-    expect(rows['readings']).toBe(0);
-    expect(rows['sentences']).toBe(0);
-    expect(rows['translations']).toBe(0);
-    expect(rows['grammarAnalyses']).toBe(0);
-    expect(rows['generationProvenance']).toBe(0);
-  });
-
-  test('saves a story whose grammar review failed and whose translation is partial @smoke', async ({
-    page,
-  }) => {
-    test.setTimeout(SETUP_TIMEOUT);
-    // Fifteen sentences make two translation batches: the first is answered,
-    // the second comes back incomplete and is rejected whole.
-    await prepareGeneration(page, {
-      generation: {
-        stories: [LONG_STRICT_STORY],
-        grammar: ['unavailable'],
-        translations: ['ok', 'partial'],
-      },
-    });
-
-    await openGenerate(page);
-    await page.getByTestId('premise').fill(PREMISE);
-    await page.getByTestId('generate').click();
-
-    // Locally valid Japanese still saves: an auxiliary failure is not a story
-    // failure.
-    await expect(page.getByTestId('saved-title')).toHaveText(LONG_STRICT_STORY.titleJa, {
+    await expect(page.getByTestId('saved-title')).toHaveText(STRICT_STORY.titleJa, {
       timeout: 60_000,
     });
 
-    const summaries = page.getByTestId('saved-summaries');
-    await expect(summaries).toContainText('Grammar: unavailable');
-    await expect(summaries).toContainText('Translations: 10 of 15');
+    // The save waited for nothing: the reading is whole and no aid row exists.
+    const atSave = await countOwnedRows(page);
+    expect(atSave['readings']).toBe(1);
+    expect(atSave['sentences']).toBe(STRICT_STORY.sentences.length);
+    expect(atSave['translations']).toBe(0);
+    expect(atSave['grammarAnalyses']).toBe(0);
+    await expect(page.getByTestId('saved-preparation')).toContainText('You can start reading now');
 
-    const rows = await countOwnedRows(page);
-    expect(rows['readings']).toBe(1);
-    expect(rows['translations']).toBe(10);
-    expect(rows['grammarAnalyses']).toBe(0);
+    await page.getByTestId('open-story').click();
+    await expect(page).toHaveURL(/#\/reader\//);
+    await expect(page.locator('mn-reader-sentence').first()).toBeVisible({ timeout: 60_000 });
 
-    await page.goto('./#/library');
-    const card = page.locator('mn-reading-card').first();
-    await expect(card).toContainText(LONG_STRICT_STORY.titleJa);
-    await expect(card).not.toContainText('Grammar:');
+    // The lane fills the declared layers in behind the open reader. Nothing is
+    // reloaded and nothing is asked for: the aids simply become available.
+    await expect
+      .poll(async () => (await countOwnedRows(page))['translations'], { timeout: 60_000 })
+      .toBe(STRICT_STORY.sentences.length);
+    await expect
+      .poll(async () => (await countOwnedRows(page))['grammarAnalyses'], { timeout: 60_000 })
+      .toBe(STRICT_STORY.sentences.length);
+
+    await page.locator('.sentence').first().click();
+    const popover = page.locator('mn-sentence-popover');
+    await expect(popover).toContainText('EN:');
+    await expect(popover.getByRole('button', { name: 'Translate', exact: true })).toHaveCount(0);
   });
 
   test('reports a provider failure without adding anything to the library', async ({ page }) => {
@@ -351,20 +323,18 @@ test.describe('generating in the background', () => {
 
   test('keeps writing while the learner is in the library @smoke', async ({ page }) => {
     test.setTimeout(SETUP_TIMEOUT);
-    // Both auxiliary branches stay in flight, so the run is still working for
-    // as long as this test needs it to be.
-    await prepareGeneration(page, {
-      generation: { stories: [STRICT_STORY], grammar: ['hang'], translations: ['hang'] },
-    });
+    await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
+    // The story request never answers, so the run is still working for as long
+    // as this test needs it to be.
+    await stubOpenRouter(page, { chat: { kind: 'hang' } });
 
     await openGenerate(page);
     await page.getByTestId('premise').fill(PREMISE);
     await page.getByTestId('story-length').fill('0');
     await page.getByTestId('generate').click();
-    await expect(page.getByTestId('generation-copy')).toContainText(
-      'Reviewing grammar and translating',
-      { timeout: 60_000 },
-    );
+    await expect(page.getByTestId('generation-copy')).toContainText('Generating your story', {
+      timeout: 60_000,
+    });
 
     // Leaving used to abandon the run. In-app navigation only: a reload cannot
     // resume a request that is already open.
@@ -374,14 +344,12 @@ test.describe('generating in the background', () => {
     const row = page.locator('mn-generation-job-card');
     await expect(row).toContainText(PREMISE);
     await expect(row).toContainText('Being written');
-    await expect(row).toContainText('Reviewing grammar and translating');
+    await expect(row).toContainText('Generating your story');
 
     // The row leads back to the run it started, not to a fresh form.
     await row.getByRole('link').click();
     await expect(page.getByTestId('generation-screen')).toBeVisible();
-    await expect(page.getByTestId('generation-copy')).toContainText(
-      'Reviewing grammar and translating',
-    );
+    await expect(page.getByTestId('generation-copy')).toContainText('Generating your story');
 
     // A stopped run keeps its row, so a failure the learner was away for is
     // still there to deal with.

@@ -60,17 +60,11 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
         detail: `Repair attempt ${String(state.attempt)} of ${String(state.totalAttempts)}. The revised story will be checked again.`,
       };
     }
-    case 'auxiliary-review':
-      return {
-        key: state.kind,
-        title: 'Reviewing grammar and translating',
-        detail: 'These two finishing checks are running at the same time.',
-      };
     case 'finalizing':
       return {
         key: state.kind,
         title: 'Saving your story',
-        detail: 'Adding the Japanese and available reading aids to your library.',
+        detail: 'Adding the Japanese to your library.',
       };
     case 'saved':
       return {

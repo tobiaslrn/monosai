@@ -6,13 +6,7 @@ import { buildExcerpt } from '../../domain/reading/excerpt';
 import { countCharacters } from '../../domain/reading/import-text';
 import type { GeneratedStory, StoryForm } from '../../domain/reading/reading';
 import type { GeneratedStoryDraft } from '../../domain/reading/reading-repository';
-import { concernCount } from '../../domain/enrichment/grammar-normalization';
-import {
-  emptyCompletion,
-  grammarComplete,
-  grammarUnavailable,
-  NO_GRAMMAR_REVIEW,
-} from '../../domain/reading/summaries';
+import { emptyCompletion, NO_GRAMMAR_REVIEW } from '../../domain/reading/summaries';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Paragraph, Sentence } from '../../domain/reading/text-hierarchy';
 import type { Token, TokenAnalysis } from '../../domain/reading/token';
@@ -23,11 +17,9 @@ import type {
 import { hashCanonical } from '../../domain/shared/hashing';
 import { paragraphId, readingId, sentenceId } from '../../domain/shared/ids';
 import type { SnapshotId, VocabularyItemId } from '../../domain/shared/ids';
-import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
+import type { AnkiWordPriorityMode, VocabularyStrictness } from '../../domain/settings/settings';
 import type { Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
-import type { GrammarRunOutcome } from '../enrichment/grammar-analysis.service';
-import type { TranslationRunOutcome } from '../enrichment/translation.service';
 import { CLOCK, HASHER, ID_GENERATOR, READING_REPOSITORY } from '../shared/repository-tokens';
 
 /** One accepted sentence with the analysis and statuses it was accepted on. */
@@ -59,6 +51,8 @@ export interface AcceptedStory {
   readonly repairAttempts: number;
   readonly suggestedVocabularyItemIds: readonly VocabularyItemId[];
   readonly ankiWordPriorityMode?: AnkiWordPriorityMode;
+  /** How much repair the learner's strictness allowed this run to spend. */
+  readonly vocabularyStrictness: VocabularyStrictness;
   readonly exceptionCount: number;
   /** What the learner asked this story to be prepared with, at the time it was written. */
   readonly preparationTargets: readonly PreparationLayer[];
@@ -73,9 +67,10 @@ export interface AcceptedStory {
  * paragraph, because the model returns an ordered list of sentences and not the
  * blank-line structure a learner's own text carries (see ADR 0019).
  *
- * The auxiliary summaries start empty here. Grammar review and translation are
- * Milestone 8 and fill these branches in on top of this save path; a story
- * saved today reads as "no translations yet", which is exactly true.
+ * The aid summaries start empty and stay empty. Generation writes Japanese;
+ * the preparation lane fills in the layers the story declares afterwards, one
+ * stored row at a time (ADR 0047, ADR 0048), so a freshly saved story reads as
+ * "no translations yet", which is exactly true.
  */
 @Injectable({ providedIn: 'root' })
 export class StoryAssemblyService {
@@ -166,6 +161,8 @@ export class StoryAssemblyService {
       repairAttempts: accepted.repairAttempts,
       suggestedVocabularyItemIds: accepted.suggestedVocabularyItemIds,
       ankiWordPriorityMode: accepted.ankiWordPriorityMode ?? 'uniform',
+      vocabularyStrictness: accepted.vocabularyStrictness,
+      preparationTargets: accepted.preparationTargets,
       createdAt: now,
     };
 
@@ -176,42 +173,6 @@ export class StoryAssemblyService {
       tokenAnalyses,
       frozenValidations,
       provenance,
-      translations: [],
-      grammarAnalyses: [],
-    };
-  }
-
-  /**
-   * Merges the concurrent grammar/translation results into the built draft.
-   *
-   * The result must satisfy `assertEnrichmentConsistent`: the translation
-   * summary's `completed` count always equals `translation.records.length`,
-   * and a `complete` grammar status only ever comes from a run that produced
-   * exactly one record per sentence (`GrammarAnalysisService.run` guarantees
-   * this), so `grammarAnalyses.length` matches `sentences.length` whenever the
-   * summary claims completion.
-   */
-  withAuxiliary(
-    draft: GeneratedStoryDraft,
-    grammar: GrammarRunOutcome,
-    translation: TranslationRunOutcome,
-  ): GeneratedStoryDraft {
-    const translationSummary = {
-      total: draft.sentences.length,
-      completed: translation.records.length,
-      failed: translation.failures.length,
-    };
-
-    const grammarSummary =
-      grammar.status === 'unavailable'
-        ? grammarUnavailable(grammar.reasonCode)
-        : grammarComplete(concernCount(grammar.records.flatMap((record) => record.findings)));
-
-    return {
-      ...draft,
-      reading: { ...draft.reading, translationSummary, grammarSummary },
-      translations: translation.records,
-      grammarAnalyses: grammar.records,
     };
   }
 

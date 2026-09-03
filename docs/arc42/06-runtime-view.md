@@ -99,11 +99,18 @@ sequenceDiagram
         Store->>Provider: repair the affected sentences
         Provider-->>Store: revised sentences
     end
-    Store->>Provider: grammar review and translation, independently
     Store->>Repo: finalize
     Repo->>Repo: one transaction: the story, its evidence,<br/>and its provenance
     Repo-->>Store: saved
+    Note over Store,Repo: The saved story's declared aid layers<br/>are queued for the preparation lane (§6.4).
 ```
+
+Generation writes Japanese and stops. The aid layers the story declares are produced afterwards by
+the preparation lane described in [§6.4](#the-preparation-lane), so a story reaches the library as
+soon as its own text is valid rather than after two batched provider stages. The story carries the
+targets chosen for it, and provenance records those targets as they stood at generation time — the
+reading's own declaration is the mutable one
+([ADR 0047](../decisions/0047-a-reading-declares-what-it-should-have.md)).
 
 Everything before the final step is discardable. A cancellation or a failure at any earlier stage
 leaves no row behind. Finalizing is the one stage that cannot be cancelled, because it is a single

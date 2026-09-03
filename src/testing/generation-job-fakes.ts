@@ -14,7 +14,6 @@ const RUNNING = new Set<GenerationState['kind']>([
   'validating',
   'exception-review',
   'repairing',
-  'auxiliary-review',
   'finalizing',
 ]);
 
