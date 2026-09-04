@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
+import { importReading } from './reading';
 
 test.describe('application shell', () => {
   /**
@@ -16,6 +17,39 @@ test.describe('application shell', () => {
     await expect(page.getByRole('main')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Back to library' })).toBeVisible();
     await expect(page).toHaveURL(/#\/settings$/);
+  });
+
+  /**
+   * The Library is the one screen with standing navigation, and it is text
+   * rather than icons: neither destination is pressed often enough in a session
+   * for a symbol to have earned its silence.
+   */
+  test('reaches what you can read from the Library masthead and back @smoke', async ({ page }) => {
+    await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
+    await page.goto('./#/library');
+
+    const masthead = page.getByRole('navigation', { name: 'Monosai' });
+    await expect(masthead.getByRole('link', { name: 'Settings' })).toBeVisible();
+    await masthead.getByRole('link', { name: 'What you can read' }).click();
+
+    await expect(page).toHaveURL(/#\/reading-level$/);
+    await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Back to library' }).click();
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+  });
+
+  /** The line the Library leads with, and the page it explains. */
+  test('states the learner standing on the Library and links it to that page', async ({ page }) => {
+    await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
+    await page.goto('./#/library');
+
+    const standing = page.getByTestId('library-standing');
+    await expect(standing).toContainText('No words yet.');
+    await expect(standing).toContainText('Connect Anki to write stories');
+
+    await standing.click();
+    await expect(page).toHaveURL(/#\/reading-level$/);
   });
 
   /** Settings is configuration only; nothing there describes the learner. */

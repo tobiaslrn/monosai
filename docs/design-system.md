@@ -52,6 +52,24 @@ express — Generate's length and word-selection panel is the case this exists
 for. The aside stacks below the fields when the width no longer supports it. It
 is available to forms only; reading surfaces, lists, and prose never take one.
 
+### The masthead
+
+The application frame carries no navigation. **The Library is the single
+exception**: it is the home screen, it is where a learner arrives, and it wears
+a masthead — the wordmark, and text links to the destinations that are not
+readings. Every other screen, the reader included, still states only its own way
+back.
+
+The links are words, never bare icons. Neither destination is pressed often
+enough in a session for a symbol to have earned its silence, and a gear that
+hides the learner's own profile is what this rule exists to prevent.
+
+Below the masthead the Library states **where the learner stands** — how many
+words Monosai can write from, and at what level — as one line that links to the
+page which explains it. It is the screen's lead, not a decoration: it is what
+makes the primary action self-explanatory. It states the current facts and is
+never itself a control.
+
 ### Vertical composition
 
 Pages are **top-aligned and grow downward**, like a document. Content is never
