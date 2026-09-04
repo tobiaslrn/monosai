@@ -82,6 +82,15 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         </div>
 
         <ng-content select="[text-fields-extra]" />
+
+        <mn-preparation-targets
+          class="preparation-targets"
+          legend="Prepare after generation"
+          [targets]="preparationTargets()"
+          [audioReadiness]="audioReadiness()"
+          [disabled]="disabled()"
+          (targetsChanged)="preparationTargetsChanged.emit($event)"
+        />
       </div>
 
       <aside class="story-settings" aria-label="Story settings">
@@ -140,15 +149,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <option value="difficult">Difficult</option>
           </select>
         </div>
-
-        <mn-preparation-targets
-          class="preparation-targets"
-          legend="Prepare after generation"
-          [targets]="preparationTargets()"
-          [audioReadiness]="audioReadiness()"
-          [disabled]="disabled()"
-          (targetsChanged)="preparationTargetsChanged.emit($event)"
-        />
 
         <details class="mn-disclosure strictness">
           <summary>Vocabulary strictness</summary>
@@ -436,7 +436,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     }
 
     .preparation-targets {
-      margin-top: var(--space-4);
       padding-top: var(--space-3);
       border-top: 1px solid var(--border-subtle);
     }
