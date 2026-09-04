@@ -1,7 +1,7 @@
 # 0031 — On touch, a long press selects a sentence and details dock as a sheet
 
 Date: 2026-08-25
-Status: Accepted — refined by ADR 0032 (what a word tap costs and looks like)
+Status: Partly superseded by ADR 0053 for touch gestures and player-boundary sizing; retained for the remaining popover behavior
 
 ## Context
 
@@ -63,8 +63,8 @@ per width.
   every time instead of racing the platform's callout.
 - Journeys that need an open sentence run a different gesture per project, so
   the end-to-end suite has one shared helper for it rather than a click.
-- `ux-ui-specification.md` sections 6 and 11 record the sheet, the gesture, and
-  the scrolling rule.
+- The design system and [ADR 0053](0053-reader-touch-details-and-measured-sheets.md)
+  now record the sheet, the gesture, and the scrolling rule.
 
 ## Alternatives considered
 

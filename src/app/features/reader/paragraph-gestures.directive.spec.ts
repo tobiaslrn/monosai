@@ -1,7 +1,11 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ParagraphGesturesDirective, type SentenceSelection } from './paragraph-gestures.directive';
+import {
+  ParagraphGesturesDirective,
+  SENTENCE_DOUBLE_TAP_WINDOW_MS,
+  type SentenceSelection,
+} from './paragraph-gestures.directive';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -9,7 +13,7 @@ import { ParagraphGesturesDirective, type SentenceSelection } from './paragraph-
   template: `
     <p mnParagraphGestures (sentenceSelected)="selections.push($event)">
       <span data-sentence-id="s1">猫が。</span>
-      <span data-sentence-id="s2">犬も。</span>
+      <span data-sentence-id="s2">犬も。<button class="token" type="button">単語</button></span>
     </p>
   `,
 })
@@ -52,9 +56,15 @@ describe('ParagraphGesturesDirective', () => {
     layOut(element.querySelector<HTMLElement>('[data-sentence-id="s2"]')!, [
       rect(140, 160, 0, 200),
     ]);
+    // ReaderTokenComponent stops its own click so a delayed word activation
+    // cannot also select the surrounding sentence.
+    element.querySelector<HTMLButtonElement>('button.token')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
   });
 
   afterEach(() => {
+    fixture.destroy();
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -63,238 +73,220 @@ describe('ParagraphGesturesDirective', () => {
     return (fixture.nativeElement as HTMLElement).querySelector('p')!;
   }
 
-  function click(clientX: number, clientY: number): void {
-    paragraph().dispatchEvent(new MouseEvent('click', { bubbles: true, clientX, clientY }));
+  function word(): HTMLButtonElement {
+    return paragraph().querySelector('button.token')!;
   }
 
-  function pointerDown(pointerType: string, clientX: number, clientY: number): void {
-    paragraph().dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerType, clientX, clientY }),
+  function click(target: EventTarget, clientX: number, clientY: number): void {
+    target.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, clientX, clientY }),
     );
+  }
+
+  function pointer(
+    type: 'pointerdown' | 'pointerup' | 'pointercancel' | 'pointermove',
+    target: EventTarget,
+    pointerType: string,
+    clientX: number,
+    clientY: number,
+    pointerId = 1,
+  ): void {
+    target.dispatchEvent(
+      new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        pointerType,
+        pointerId,
+        clientX,
+        clientY,
+      }),
+    );
+  }
+
+  function touchTap(target: EventTarget, clientX: number, clientY: number, pointerId = 1): void {
+    pointer('pointerdown', target, 'touch', clientX, clientY, pointerId);
+    pointer('pointerup', target, 'touch', clientX, clientY, pointerId);
+    target.dispatchEvent(new Event('selectstart', { bubbles: true, cancelable: true }));
+    click(target, clientX, clientY);
   }
 
   function selections(): readonly SentenceSelection[] {
     return fixture.componentInstance.selections;
   }
 
-  it('selects the sentence a press landed in', () => {
-    click(50, 110);
+  it('selects a sentence from mouse prose immediately', () => {
+    click(paragraph(), 50, 110);
 
-    expect(selections()).toHaveLength(1);
-    expect(selections()[0].sentenceId).toBe('s1');
+    expect(selections()).toEqual([{ sentenceId: 's1', x: 50, y: 110 }]);
   });
 
-  it('selects from the leading between two lines, which belongs to no sentence', () => {
-    // The press that a per-sentence listener would have dropped, and the whole
-    // reason the gesture is resolved at the paragraph.
-    click(50, 137);
+  it('selects from the leading between two lines', () => {
+    click(paragraph(), 50, 137);
 
     expect(selections()[0].sentenceId).toBe('s2');
   });
 
-  it('carries the press position, so the popover opens where it was asked for', () => {
-    click(64, 150);
+  it('does not delay a keyboard word activation', () => {
+    let activations = 0;
+    word().addEventListener('click', () => {
+      activations += 1;
+    });
 
-    expect(selections()[0]).toMatchObject({ sentenceId: 's2', x: 64, y: 150 });
+    click(word(), 0, 0);
+
+    expect(activations).toBe(1);
   });
 
-  it('ignores a click reported at the origin rather than guessing a sentence', () => {
-    // Assistive technology synthesizes these; its route in is the word buttons.
-    click(0, 0);
+  it('does not let a mouse selection start suppress the following click', () => {
+    let activations = 0;
+    word().addEventListener('click', () => {
+      activations += 1;
+    });
 
-    expect(selections()).toHaveLength(0);
+    pointer('pointerdown', word(), 'mouse', 50, 150);
+    document.dispatchEvent(new Event('selectstart', { bubbles: true, cancelable: true }));
+    pointer('pointerup', word(), 'mouse', 50, 150);
+    click(word(), 50, 150);
+
+    expect(activations).toBe(1);
   });
 
-  it('leaves a press that selected text alone', () => {
-    const selection = { isCollapsed: false } as Selection;
-    vi.spyOn(window, 'getSelection').mockReturnValue(selection);
-
-    click(50, 110);
-
-    expect(selections()).toHaveLength(0);
-  });
-
-  it('treats a mouse drag as selection even if the browser reports no range', () => {
-    vi.spyOn(window, 'getSelection').mockReturnValue({ isCollapsed: true } as Selection);
-
-    pointerDown('mouse', 20, 110);
-    paragraph().dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        pointerType: 'mouse',
-        clientX: 120,
-        clientY: 150,
-      }),
-    );
-    paragraph().dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse' }),
-    );
-    paragraph().dispatchEvent(
-      new MouseEvent('click', { bubbles: true, clientX: 120, clientY: 150, detail: 1 }),
-    );
-
-    expect(selections()).toHaveLength(0);
-  });
-
-  it('ignores a tap, which on touch is how the reader dismisses and scrolls on', () => {
-    // The gesture that used to select. Answering it with a popover meant every
-    // attempt to put one away opened the next one.
-    pointerDown('touch', 50, 110);
-    paragraph().dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerType: 'touch' }),
-    );
-    click(50, 110);
-
-    expect(selections()).toHaveLength(0);
-  });
-
-  it('selects on a mouse click again after a touch tap, on a device with both', () => {
-    pointerDown('touch', 50, 110);
-    click(50, 110);
-    pointerDown('mouse', 50, 110);
-    click(50, 110);
-
-    expect(selections()).toHaveLength(1);
-  });
-
-  it('tints the sentence under a finger while the press is being timed', () => {
+  it('delays one touch word tap until the double-tap window expires', () => {
     vi.useFakeTimers();
-    const target = paragraph().querySelector<HTMLElement>('[data-sentence-id="s2"]')!;
+    let activations = 0;
+    word().addEventListener('click', () => {
+      activations += 1;
+    });
 
-    pointerDown('touch', 50, 150);
-    // A tap is a press too, so the tint waits long enough to be sure the finger
-    // is resting rather than tapping or starting a scroll.
-    expect(target.classList.contains('is-pressing')).toBe(false);
-    vi.advanceTimersByTime(140);
-    expect(target.classList.contains('is-pressing')).toBe(true);
+    touchTap(word(), 50, 150);
+    expect(activations).toBe(0);
 
-    // Selecting hands the tint over to the open sentence, and a press that
-    // turns into a scroll takes it away again.
-    vi.advanceTimersByTime(310);
-    expect(target.classList.contains('is-pressing')).toBe(false);
+    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS - 1);
+    expect(activations).toBe(0);
+    vi.advanceTimersByTime(1);
 
-    pointerDown('touch', 50, 150);
-    vi.advanceTimersByTime(140);
-    expect(target.classList.contains('is-pressing')).toBe(true);
-    paragraph().dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        pointerType: 'touch',
-        clientX: 50,
-        clientY: 190,
-      }),
-    );
-    expect(target.classList.contains('is-pressing')).toBe(false);
+    expect(activations).toBe(1);
   });
 
-  it('suppresses the platform long-press menu that would cover the popover', () => {
-    pointerDown('touch', 50, 110);
-    const menu = new Event('contextmenu', { bubbles: true, cancelable: true });
-    paragraph().dispatchEvent(menu);
+  it('opens sentence details on two touch taps on the same sentence word', () => {
+    let activations = 0;
+    word().addEventListener('click', () => {
+      activations += 1;
+    });
 
-    expect(menu.defaultPrevented).toBe(true);
+    touchTap(word(), 50, 150);
+    touchTap(word(), 60, 151);
+
+    expect(selections()).toEqual([{ sentenceId: 's2', x: 60, y: 151 }]);
+    expect(activations).toBe(0);
   });
 
-  it('leaves the mouse its own context menu', () => {
-    pointerDown('mouse', 50, 110);
+  it('recognizes two taps in sentence whitespace', () => {
+    touchTap(paragraph(), 50, 110);
+    touchTap(paragraph(), 60, 111);
+
+    expect(selections()[0].sentenceId).toBe('s1');
+  });
+
+  it('requires both the same sentence and the distance window', () => {
+    vi.useFakeTimers();
+    touchTap(word(), 50, 150);
+    touchTap(paragraph(), 50, 110);
+
+    expect(selections()).toHaveLength(0);
+
+    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS + 1);
+    touchTap(word(), 50, 150);
+    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS + 1);
+    touchTap(word(), 75, 150);
+    expect(selections()).toHaveLength(0);
+  });
+
+  it('flushes a first word tap before starting a tap on another sentence', () => {
+    vi.useFakeTimers();
+    let activations = 0;
+    word().addEventListener('click', () => {
+      activations += 1;
+    });
+
+    touchTap(word(), 50, 150);
+    touchTap(paragraph(), 50, 110);
+
+    expect(activations).toBe(1);
+    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS);
+    expect(selections()).toHaveLength(0);
+  });
+
+  it.each(['scroll', 'selectionchange'] as const)('cancels a pending tap on %s', (eventName) => {
+    vi.useFakeTimers();
+    let activations = 0;
+    word().addEventListener('click', () => {
+      activations += 1;
+    });
+    touchTap(word(), 50, 150);
+
+    if (eventName === 'selectionchange') {
+      vi.spyOn(window, 'getSelection').mockReturnValue({ isCollapsed: false } as Selection);
+    }
+    (eventName === 'scroll' ? window : document).dispatchEvent(new Event(eventName));
+    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS + 1);
+
+    expect(activations).toBe(0);
+    expect(selections()).toHaveLength(0);
+  });
+
+  it('cancels a pending tap on pointer cancellation', () => {
+    vi.useFakeTimers();
+    let activations = 0;
+    word().addEventListener('click', () => {
+      activations += 1;
+    });
+    touchTap(word(), 50, 150);
+    pointer('pointercancel', word(), 'touch', 50, 150);
+    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS + 1);
+
+    expect(activations).toBe(0);
+  });
+
+  it('cancels the first touch when a second finger appears', () => {
+    vi.useFakeTimers();
+    let activations = 0;
+    word().addEventListener('click', () => {
+      activations += 1;
+    });
+    pointer('pointerdown', word(), 'touch', 50, 150, 1);
+    pointer('pointerdown', paragraph(), 'touch', 60, 150, 2);
+    pointer('pointerup', word(), 'touch', 50, 150, 1);
+    click(word(), 50, 150);
+    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS + 1);
+
+    expect(activations).toBe(0);
+    expect(selections()).toHaveLength(0);
+  });
+
+  it('keeps the native context menu available on touch', () => {
     const menu = new Event('contextmenu', { bubbles: true, cancelable: true });
     paragraph().dispatchEvent(menu);
 
     expect(menu.defaultPrevented).toBe(false);
   });
 
-  it('selects on a touch long press, including one that started on a word', () => {
+  it('does not select or tint a sentence after a long native press', () => {
     vi.useFakeTimers();
-
-    paragraph().dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        pointerType: 'touch',
-        clientX: 50,
-        clientY: 150,
-      }),
-    );
-    vi.advanceTimersByTime(500);
-
-    expect(selections()[0].sentenceId).toBe('s2');
-  });
-
-  it('treats a press that moved as a scroll rather than a long press', () => {
-    vi.useFakeTimers();
-
-    paragraph().dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        pointerType: 'touch',
-        clientX: 50,
-        clientY: 150,
-      }),
-    );
-    paragraph().dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        pointerType: 'touch',
-        clientX: 50,
-        clientY: 190,
-      }),
-    );
-    vi.advanceTimersByTime(500);
+    pointer('pointerdown', paragraph(), 'touch', 50, 110);
+    vi.advanceTimersByTime(1_000);
 
     expect(selections()).toHaveLength(0);
+    expect(paragraph().querySelector('.is-pressing')).toBeNull();
   });
 
-  it('eats the click a long press ends in, but never the next gesture', () => {
+  it('does not turn a touch drag into a tap', () => {
     vi.useFakeTimers();
-    const longPress = (): void => {
-      paragraph().dispatchEvent(
-        new PointerEvent('pointerdown', {
-          bubbles: true,
-          pointerType: 'touch',
-          clientX: 50,
-          clientY: 150,
-        }),
-      );
-      vi.advanceTimersByTime(500);
-    };
-    let wordPresses = 0;
-    const word = document.createElement('button');
-    word.addEventListener('click', () => {
-      wordPresses += 1;
-    });
-    paragraph().append(word);
-
-    // The click the finger's release produces belongs to the press that has
-    // already been answered with a sentence.
-    longPress();
-    word.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 50, clientY: 150 }));
-    expect(wordPresses).toBe(0);
-
-    // A new gesture is a new intent, and must not be eaten by the last guard.
-    longPress();
-    paragraph().dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        pointerType: 'touch',
-        clientX: 9,
-        clientY: 9,
-      }),
-    );
-    word.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 9, clientY: 9 }));
-    expect(wordPresses).toBe(1);
-  });
-
-  it('does not long-press for a mouse, which has its own route', () => {
-    vi.useFakeTimers();
-
-    paragraph().dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        pointerType: 'mouse',
-        clientX: 50,
-        clientY: 150,
-      }),
-    );
-    vi.advanceTimersByTime(500);
+    pointer('pointerdown', paragraph(), 'touch', 50, 110);
+    pointer('pointermove', paragraph(), 'touch', 80, 150);
+    pointer('pointerup', paragraph(), 'touch', 80, 150);
+    click(paragraph(), 80, 150);
+    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS + 1);
 
     expect(selections()).toHaveLength(0);
   });

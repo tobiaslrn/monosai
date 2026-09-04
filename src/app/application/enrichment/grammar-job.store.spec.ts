@@ -1,6 +1,6 @@
 import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
 import { MAX_GRAMMAR_REVIEW_BATCH } from '../../domain/ai/grammar-review-request';
 import type { GrammarProfileSnapshot } from '../../domain/grammar/profile';
@@ -9,6 +9,7 @@ import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import { jobId } from '../../domain/shared/ids';
 import { err, ok } from '../../domain/shared/result';
+import { storageError } from '../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../../infrastructure/persistence/monosai-db';
 import { DexieEnrichmentRepository } from '../../infrastructure/persistence/repositories/dexie-enrichment.repository';
 import { DexieJobRepository } from '../../infrastructure/persistence/repositories/dexie-job.repository';
@@ -32,15 +33,15 @@ import { GrammarAnalysisService } from './grammar-analysis.service';
 import { GrammarJobStore } from './grammar-job.store';
 
 const NOW = 1_700_700_000_000;
-const SENTENCE_COUNT = 41;
+const SENTENCE_COUNT = 9;
 const TEST_HASHER: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
 
 function longReading(seed = 1): ImportedReadingDraft {
   return importedReadingFixture({
     seed,
     paragraphTexts: [
-      Array.from({ length: 21 }, (_value, index) => `文${String(index)}です。`),
-      Array.from({ length: 20 }, (_value, index) => `段落${String(index)}です。`),
+      Array.from({ length: 5 }, (_value, index) => `文${String(index)}です。`),
+      Array.from({ length: 4 }, (_value, index) => `段落${String(index)}です。`),
     ],
   });
 }
@@ -141,6 +142,7 @@ describe('GrammarJobStore', () => {
 
   afterEach(async () => {
     await destroyTestDatabase(bed.db);
+    vi.restoreAllMocks();
   });
 
   it('does nothing when resume finds no active job', async () => {
@@ -217,5 +219,85 @@ describe('GrammarJobStore', () => {
       completed: SENTENCE_COUNT - MAX_GRAMMAR_REVIEW_BATCH,
       failed: MAX_GRAMMAR_REVIEW_BATCH,
     });
+  });
+
+  it('leaves a timed-out request stopped with a retryable job', async () => {
+    bed.provider.grammarQueue.push(
+      err(aiError('timeout', 'grammar-review', 'The provider did not answer in time.')),
+      ok({ findings: [] }),
+      ok({ findings: [] }),
+    );
+
+    await bed.store.start(bed.draft.reading.id);
+
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('failed');
+    if (progress.kind !== 'failed') return;
+    expect(progress.error).toMatchObject({ source: 'provider', error: { code: 'timeout' } });
+    expect(progress.counts.failed).toBe(MAX_GRAMMAR_REVIEW_BATCH);
+    expect(
+      (await bed.db.assetJobs.toArray()).find((row) => row.kind === 'analyze-reading')?.state,
+    ).toBe('failed');
+  });
+
+  it('leaves a persistence failure stopped and exposes storage recovery', async () => {
+    const failure = storageError('unavailable', 'The grammar cache could not be written.');
+    vi.spyOn(bed.enrichment, 'storeGrammarAnalysis').mockResolvedValueOnce(err(failure));
+    bed.provider.grammarQueue.push(ok({ findings: [] }));
+
+    await bed.store.start(bed.draft.reading.id);
+
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('failed');
+    if (progress.kind !== 'failed') return;
+    expect(progress.error).toEqual({ source: 'storage', error: failure });
+    expect(progress.counts.completed).toBe(0);
+    expect(
+      (await bed.db.assetJobs.toArray()).find((row) => row.kind === 'analyze-reading')?.state,
+    ).toBe('running');
+  });
+
+  it('retries only failed sentences after a provider failure', async () => {
+    bed.provider.grammarQueue.push(
+      err(aiError('provider-unavailable', 'grammar-review', 'Unavailable.')),
+      ok({ findings: [] }),
+      ok({ findings: [] }),
+    );
+
+    await bed.store.start(bed.draft.reading.id);
+    const afterFailure = await bed.enrichment.listGrammarAnalyses(bed.draft.reading.id);
+    expect(afterFailure.ok && afterFailure.value).toHaveLength(
+      SENTENCE_COUNT - MAX_GRAMMAR_REVIEW_BATCH,
+    );
+
+    bed.provider.grammarQueue.push(ok({ findings: [] }));
+    await bed.store.retry(bed.draft.reading.id);
+
+    expect(bed.provider.generationCalls.grammar).toBe(4);
+    expect((await bed.enrichment.listGrammarAnalyses(bed.draft.reading.id)).ok).toBe(true);
+    const stored = await bed.enrichment.listGrammarAnalyses(bed.draft.reading.id);
+    expect(stored.ok && stored.value).toHaveLength(SENTENCE_COUNT);
+    expect(bed.store.progress().kind).toBe('complete');
+  });
+
+  it('resumes a paused job without requesting saved analyses again', async () => {
+    bed.provider.grammarQueue.push(ok({ findings: [] }));
+    bed.provider.beforeAnswer = () => {
+      bed.store.yieldAfterBatch();
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(bed.store.progress().kind).toBe('paused');
+    expect(bed.provider.generationCalls.grammar).toBe(1);
+    bed.provider.beforeAnswer = null;
+    bed.provider.grammarQueue.push(ok({ findings: [] }), ok({ findings: [] }));
+
+    await bed.store.resume(bed.draft.reading.id);
+
+    expect(bed.provider.generationCalls.grammar).toBe(3);
+    const stored = await bed.enrichment.listGrammarAnalyses(bed.draft.reading.id);
+    expect(stored.ok && stored.value).toHaveLength(SENTENCE_COUNT);
+    expect(bed.store.progress().kind).toBe('complete');
   });
 });

@@ -5,10 +5,12 @@ import {
   type ConnectedPosition,
   type FlexibleConnectedPositionStrategyOrigin,
   type OverlayRef,
+  type PositionStrategy,
 } from '@angular/cdk/overlay';
 import { TemplatePortal } from '@angular/cdk/portal';
 import {
   Injectable,
+  effect,
   inject,
   Injector,
   type TemplateRef,
@@ -64,6 +66,27 @@ export interface PopoverOptions {
 
 export interface PopoverRef {
   close(): void;
+}
+
+function positionStrategy(
+  injector: Injector,
+  options: PopoverOptions,
+  sheet: boolean,
+): PositionStrategy {
+  if (sheet) {
+    return createGlobalPositionStrategy(injector)
+      .bottom('var(--mn-docked-player-height, 0px)')
+      .left('0');
+  }
+  return createFlexibleConnectedPositionStrategy(injector, options.origin)
+    .withFlexibleDimensions(false)
+    .withPush(true)
+    .withViewportMargin(8)
+    .withPositions(
+      options.preferredVerticalPlacement === 'above'
+        ? [...ABOVE_FIRST_POSITIONS]
+        : [...BELOW_FIRST_POSITIONS],
+    );
 }
 
 /**
@@ -128,6 +151,24 @@ export class PopoverService {
 
   private overlayRef: OverlayRef | null = null;
   private closeCurrent: (() => void) | null = null;
+  private currentMode: {
+    readonly overlay: OverlayRef;
+    readonly options: PopoverOptions;
+    readonly modal: boolean;
+  } | null = null;
+
+  constructor() {
+    // The same open surface must follow a phone rotation or a resize across
+    // the breakpoint. Its card changes through ViewportService, while this
+    // service updates the pane's position and sheet class to match.
+    effect(() => {
+      this.viewport.isMobile();
+      const current = this.currentMode;
+      if (current !== null) {
+        this.syncViewportMode(current.overlay, current.options, current.modal);
+      }
+    });
+  }
 
   open(options: PopoverOptions): PopoverRef {
     this.close();
@@ -135,19 +176,7 @@ export class PopoverService {
     const modal = options.modal ?? true;
     const sheet = modal && options.mobileSheet !== false && this.viewport.isMobile();
     const overlayRef = createOverlayRef(this.injector, {
-      positionStrategy: sheet
-        ? createGlobalPositionStrategy(this.injector)
-            .bottom('var(--mn-docked-player-height, 0px)')
-            .left('0')
-        : createFlexibleConnectedPositionStrategy(this.injector, options.origin)
-            .withFlexibleDimensions(false)
-            .withPush(true)
-            .withViewportMargin(8)
-            .withPositions(
-              options.preferredVerticalPlacement === 'above'
-                ? [...ABOVE_FIRST_POSITIONS]
-                : [...BELOW_FIRST_POSITIONS],
-            ),
+      positionStrategy: positionStrategy(this.injector, options, sheet),
       // Nothing is blocked or repositioned by scrolling. A docked sheet is
       // fixed to an edge rather than to a line, so the reading is free to move
       // behind it — which is what makes it possible to read on with a
@@ -171,6 +200,7 @@ export class PopoverService {
         return;
       }
       this.overlayRef = null;
+      this.currentMode = null;
       this.closeCurrent = null;
       overlayRef.dispose();
       options.returnFocusTo?.focus();
@@ -242,12 +272,15 @@ export class PopoverService {
       });
     }
 
-    if (options.closeOnScroll === true && !sheet) {
-      // Armed a frame late and only for scrolls outside the card. A docked
-      // sheet never arms it at all: it is fixed to an edge rather than to the
-      // line that moved, so scrolling past the sentence it explains is exactly
-      // what a reader does while reading its translation.
+    if (options.closeOnScroll === true) {
+      // Armed a frame late and closes an anchored card on scrolls outside it.
+      // A docked sheet ignores those scrolls: it is fixed to an edge rather
+      // than to the line that moved, so scrolling past the sentence it
+      // explains is exactly what a reader does while reading its translation.
       const onScroll = (event: Event): void => {
+        if (this.isSheet(options, modal)) {
+          return;
+        }
         if (!overlayRef.overlayElement.contains(event.target as Node)) {
           close();
         }
@@ -270,12 +303,32 @@ export class PopoverService {
     });
 
     this.overlayRef = overlayRef;
+    this.currentMode = { overlay: overlayRef, options, modal };
     this.closeCurrent = close;
+    this.syncViewportMode(overlayRef, options, modal);
     return { close };
   }
 
   /** Closes whatever is open. Safe to call when nothing is. */
   close(): void {
     this.closeCurrent?.();
+  }
+
+  private isSheet(options: PopoverOptions, modal: boolean): boolean {
+    return modal && options.mobileSheet !== false && this.viewport.isMobile();
+  }
+
+  private syncViewportMode(overlay: OverlayRef, options: PopoverOptions, modal: boolean): void {
+    if (this.overlayRef !== overlay) {
+      return;
+    }
+    const sheet = this.isSheet(options, modal);
+    overlay.updatePositionStrategy(positionStrategy(this.injector, options, sheet));
+    if (sheet) {
+      overlay.addPanelClass('is-sheet');
+    } else {
+      overlay.removePanelClass('is-sheet');
+    }
+    overlay.updatePosition();
   }
 }

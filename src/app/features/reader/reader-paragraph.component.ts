@@ -14,9 +14,9 @@ import {
  *
  * Paragraphs are the unit the reader mounts and unmounts, so keeping them a
  * component of their own is what lets a long reading render a window rather
- * than the whole document. It is also where a press is resolved to a sentence,
- * because the whitespace a reader aims at — the leading between two lines —
- * belongs to the paragraph and to no sentence element.
+ * than the whole document. It is also where a touch double tap is resolved to
+ * a sentence, because the whitespace a reader aims at — the leading between
+ * two lines — belongs to the paragraph and to no sentence element.
  */
 @Component({
   selector: 'mn-reader-paragraph',
@@ -55,30 +55,11 @@ import {
       /*
        * Furigana needs the taller leading so ruby never overlaps the line
        * above, and the same leading is the whitespace a sentence is pressed in.
-       */
+      */
       line-height: var(--reader-line-height-ruby);
-      /*
-       * Scrolling and pinch-zoom stay; the browser's own double-tap zoom does
-       * not. A reader tapping two words in quick succession was having the
-       * second tap held back while the browser waited to see whether it was a
-       * zoom, which is what made a word sometimes need pressing twice.
-       */
+      /* Keep scrolling and pinch-zoom native while the directive recognizes
+       * the reader's two-tap sentence gesture. */
       touch-action: manipulation;
-    }
-
-    /*
-     * A long press is the reader's gesture for a sentence on touch, and the
-     * platform answers the same press by starting a text selection with a
-     * callout menu over it. Selecting text with a finger is given up here so
-     * the gesture the application does offer works every time; a mouse keeps
-     * both, because a mouse selects by dragging rather than by resting.
-     */
-    @media (pointer: coarse) {
-      .paragraph {
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        user-select: none;
-      }
     }
   `,
 })

@@ -2,7 +2,7 @@ import type { FindingConfidence } from '../enrichment/records';
 import type { SentenceId } from '../shared/ids';
 
 /** Keeps input and the at-most-three findings per sentence inside a bounded reply. */
-export const MAX_GRAMMAR_REVIEW_BATCH = 20;
+export const MAX_GRAMMAR_REVIEW_BATCH = 4;
 
 export interface GrammarReviewRequest {
   readonly profileGuidance: string;

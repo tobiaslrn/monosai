@@ -1,7 +1,7 @@
 # 0032 — A tap on a phone is one press, one colour, and one open thing
 
 Date: 2026-08-25
-Status: Accepted
+Status: Partly superseded by ADR 0053 for the touch sentence gesture; the hover, colour, and target rules remain
 
 ## Context
 
@@ -56,11 +56,13 @@ for it.
 
 ## Consequences
 
-- ADR 0031's gestures are unchanged: a tap opens a word, a long press opens a
-  sentence, a tap on prose dismisses. This ADR changes what a tap costs, what it
+- ADR 0031's remaining surface rules are unchanged: a tap opens a word, a tap
+  on prose dismisses, and sheets, colours, and targets keep their existing
+  behavior. ADR 0053 supersedes the touch long-press sentence gesture and
+  restores native touch selection. This ADR changes what a tap costs, what it
   looks like, and what it can reach.
-- Copying furigana with a mouse is unaffected; on touch the reading surface
-  already takes no text selection.
+- Copying the Japanese reading remains native on mouse and touch; ruby
+  annotations remain presentation-only.
 - Anything else in the application can key hover styling off `data-pointer`
   rather than `@media (hover: hover)`, which on a touchscreen laptop is wrong.
 - A press on a word that produces no click — a cancelled gesture — leaves the

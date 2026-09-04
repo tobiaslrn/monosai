@@ -21,7 +21,6 @@ import { ReadingAudioMaintenanceStore } from '../../application/enrichment/readi
 import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
 import { PreparationStore } from '../../application/enrichment/preparation.store';
 import { PREPARATION_ORDER, type PreparationLayer } from '../../domain/enrichment/preparation';
-import { LayerRunners } from '../../application/enrichment/layer-runner';
 import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { readerContentState } from './reader-content-state';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
@@ -180,17 +179,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           }
         </div>
 
-        <!--
-          A running job belongs with the header rather than over the text, and
-          it takes none of the page while nothing is running.
-        -->
         @if (store.status() === 'ready') {
-          @if (contentNotice(); as notice) {
-            <button type="button" class="content-notice" (click)="openStoryOptions()">
-              <span role="status">{{ notice }}</span
-              ><span class="details">Details</span>
-            </button>
-          }
           @if (readingAudioMaintenance.state() === 'cleared') {
             <p class="audio-maintenance-message mn-hint" role="status">
               Audio deleted. You can generate it again from scratch.
@@ -357,9 +346,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
      * measurement lands.
      */
     .reader.has-audio-player {
-      padding-bottom: calc(
-        var(--mn-docked-player-height, 7rem) + var(--space-4) + env(safe-area-inset-bottom)
-      );
+      padding-bottom: calc(var(--mn-docked-player-height, 7rem) + var(--space-4));
     }
 
     /*
@@ -404,27 +391,6 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       flex: none;
       gap: var(--space-2);
       align-items: center;
-    }
-
-    .content-notice {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: var(--space-3);
-      width: 100%;
-      min-height: var(--touch-target);
-      padding: var(--space-1) 0;
-      border: 0;
-      background: none;
-      color: var(--text-secondary);
-      font: inherit;
-      font-size: var(--text-sm);
-      text-align: start;
-      cursor: pointer;
-    }
-    .content-notice .details {
-      text-decoration: underline;
-      flex: none;
     }
 
     .audio-maintenance-message {
@@ -520,9 +486,7 @@ export class ReaderPageComponent {
   protected readonly aids = inject(SentenceAidsStore);
   protected readonly translationJob = inject(TranslationJobStore);
   protected readonly preparation = inject(PreparationStore);
-  private readonly layerRunners = inject(LayerRunners);
   private readonly network = inject(NETWORK_STATUS);
-  private readonly storyOptions = viewChild(ReaderMenuComponent);
   protected readonly contentPending = signal<PreparationLayer | null>(null);
   protected readonly contentError = signal<string | null>(null);
   protected readonly contentRows = computed(() => {
@@ -538,10 +502,6 @@ export class ReaderPageComponent {
             this.network.isOnline(),
           ),
         );
-  });
-  protected readonly contentNotice = computed(() => {
-    const active = this.contentRows().find((row) => row.busy || row.error !== null);
-    return active ? `${active.name} · ${active.status}` : this.contentError();
   });
   protected readonly audioJob = inject(AudioJobStore);
   protected readonly playback = inject(AudioPlaybackStore);
@@ -785,6 +745,9 @@ export class ReaderPageComponent {
   private previewTimer: ReturnType<typeof setTimeout> | null = null;
   /** Watches an open sheet, so a growing one never covers its own subject. */
   private sheetClearance: ResizeObserver | null = null;
+  private sheetAnchor: HTMLElement | null = null;
+  private sheetClearanceCheck: (() => void) | null = null;
+  private sheetClearanceFrame: number | null = null;
   private previewRef: PopoverRef | null = null;
 
   constructor() {
@@ -888,9 +851,7 @@ export class ReaderPageComponent {
     });
 
     effect(() => {
-      if (
-        this.layerRunners.runnerFor('grammar').progressFor(this.currentReadingId()).kind !== 'idle'
-      ) {
+      if (this.preparation.progressFor(this.currentReadingId(), 'grammar').kind !== 'idle') {
         untracked(() => {
           void this.store.refreshSummaries();
         });
@@ -965,9 +926,13 @@ export class ReaderPageComponent {
       this.lastScrollY = window.scrollY;
       this.scheduleWindowForScroll();
     };
+    const remeasureSheet = (): void => {
+      this.rearmSheetClearance();
+    };
     window.addEventListener('scroll', suppressFollow, { passive: true });
     window.addEventListener('wheel', suppressFollow, { passive: true });
     window.addEventListener('touchmove', suppressFollow, { passive: true });
+    window.addEventListener('resize', remeasureSheet, { passive: true });
     const navigateEdge = (event: KeyboardEvent): void => {
       if (
         (event.key !== 'Home' && event.key !== 'End') ||
@@ -1006,6 +971,7 @@ export class ReaderPageComponent {
       window.removeEventListener('scroll', suppressFollow);
       window.removeEventListener('wheel', suppressFollow);
       window.removeEventListener('touchmove', suppressFollow);
+      window.removeEventListener('resize', remeasureSheet);
       window.removeEventListener('keydown', navigateEdge);
       if (this.scrollWindowFrame !== null) {
         cancelAnimationFrame(this.scrollWindowFrame);
@@ -1041,7 +1007,7 @@ export class ReaderPageComponent {
     if (row?.action !== 'prepare' || row.disabled) return;
     this.contentError.set(null);
     if (layer === 'audio') this.readingAudioMaintenance.acknowledge();
-    void this.layerRunners.runnerFor(layer).retry(this.currentReadingId());
+    void this.preparation.retry(this.currentReadingId(), layer);
   }
 
   protected async stopContent(layer: PreparationLayer): Promise<void> {
@@ -1068,10 +1034,6 @@ export class ReaderPageComponent {
     }
   }
 
-  protected openStoryOptions(): void {
-    this.popover.close();
-    this.storyOptions()?.open();
-  }
   protected showAudioPlayer(): void {
     if (!this.audioPlayerOpenSignal()) this.toggleAudioPlayer();
   }
@@ -1179,6 +1141,7 @@ export class ReaderPageComponent {
         DOCKED_PLAYER_HEIGHT,
         `${String(Math.round(shell.getBoundingClientRect().height))}px`,
       );
+      this.scheduleSheetClearanceCheck();
     };
     publish();
     this.playerResizeObserver = new ResizeObserver(publish);
@@ -1190,6 +1153,7 @@ export class ReaderPageComponent {
     this.playerResizeObserver?.disconnect();
     this.playerResizeObserver = null;
     document.documentElement.style.removeProperty(DOCKED_PLAYER_HEIGHT);
+    this.scheduleSheetClearanceCheck();
   }
 
   /**
@@ -1378,12 +1342,22 @@ export class ReaderPageComponent {
    */
   private keepClearOfSheet(anchor: HTMLElement | null): void {
     this.releaseSheetClearance();
+    this.sheetAnchor = anchor;
+    this.armSheetClearance();
+  }
+
+  private armSheetClearance(): void {
+    const anchor = this.sheetAnchor;
     if (anchor === null || !this.viewport.isMobile()) {
       return;
     }
     // After the frame the sheet is laid out in: it is the sheet's own top edge
     // that has to be cleared, and it has none until it has been rendered.
-    requestAnimationFrame(() => {
+    this.sheetClearanceFrame = requestAnimationFrame(() => {
+      this.sheetClearanceFrame = null;
+      if (this.sheetAnchor !== anchor || !this.viewport.isMobile()) {
+        return;
+      }
       const sheet = document.querySelector<HTMLElement>('.mn-popover-pane.is-sheet');
       if (sheet === null) {
         return;
@@ -1415,18 +1389,52 @@ export class ReaderPageComponent {
           this.scrollingProgrammatically = false;
         }, SCROLL_SETTLE_MS);
       };
+      this.sheetClearanceCheck = clear;
       // A sheet is as tall as what it has to say, and it has nothing to say
       // until a lookup or a stored translation has arrived: measuring only once
       // would clear an edge the sheet is about to grow past. The observer
       // reports the first size as well, so this is also the initial check.
       this.sheetClearance = new ResizeObserver(clear);
       this.sheetClearance.observe(sheet);
+      const player = this.audioPlayerShell()?.nativeElement;
+      if (player !== undefined) {
+        this.sheetClearance.observe(player);
+      }
     });
   }
 
   private releaseSheetClearance(): void {
+    this.clearSheetClearanceObserver();
+    this.sheetAnchor = null;
+  }
+
+  private rearmSheetClearance(): void {
+    if (this.sheetAnchor === null) {
+      return;
+    }
+    this.clearSheetClearanceObserver();
+    this.armSheetClearance();
+  }
+
+  private clearSheetClearanceObserver(): void {
+    if (this.sheetClearanceFrame !== null) {
+      cancelAnimationFrame(this.sheetClearanceFrame);
+      this.sheetClearanceFrame = null;
+    }
     this.sheetClearance?.disconnect();
     this.sheetClearance = null;
+    this.sheetClearanceCheck = null;
+  }
+
+  /** Re-measures the shared sheet/player boundary after layout settles. */
+  private scheduleSheetClearanceCheck(): void {
+    if (this.sheetClearanceCheck === null || this.sheetClearanceFrame !== null) {
+      return;
+    }
+    this.sheetClearanceFrame = requestAnimationFrame(() => {
+      this.sheetClearanceFrame = null;
+      this.sheetClearanceCheck?.();
+    });
   }
 
   protected closeInspector(): void {
