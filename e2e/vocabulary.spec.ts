@@ -336,7 +336,7 @@ test.describe('vocabulary', () => {
     });
 
     await page.goto(readerUrl);
-    await page.getByRole('button', { name: /Aids/ }).click();
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
     const notice = page.getByTestId('reader-vocabulary-notice');
     await expect(notice).toBeVisible({ timeout: 60_000 });
     await expect(notice).toContainText('marked as new');

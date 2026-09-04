@@ -39,7 +39,7 @@ test.describe('settings persistence', () => {
   test('leaves reader aid controls to the Reader Aids panel', async ({ page }) => {
     await page.goto('./#/settings');
 
-    await expect(page.getByRole('group', { name: 'Reading aids' })).toHaveCount(0);
+    await expect(page.getByRole('group', { name: 'Reading appearance' })).toHaveCount(0);
     await expect(page.getByRole('slider', { name: 'Text size' })).toHaveCount(0);
     await expect(page.getByRole('checkbox', { name: 'Furigana' })).toHaveCount(0);
     await expect(page.getByRole('checkbox', { name: 'Token spacing' })).toHaveCount(0);

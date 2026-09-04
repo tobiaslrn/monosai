@@ -8,7 +8,6 @@ import {
   TEXT_SCALE_STEP,
   type ReaderPreferences,
 } from '../../domain/settings/settings';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
 
 type AidToggle = 'furigana' | 'tokenSpacing' | 'warningMarkers';
 
@@ -30,44 +29,31 @@ const AIDS: readonly AidOption[] = [
  * These are device-wide preferences, not per-reading settings: changing one
  * here applies to every open and future reading immediately.
  *
- * The panel is a native popover anchored to its own button, so dismissal by
- * `Escape` or a press outside, the top layer, and closing whenever another
- * header panel opens are all the platform's behaviour rather than three
- * listeners and a registry of our own.
+ * Embedded in Story options, alongside the reading's saved content.
  */
 @Component({
   selector: 'mn-reader-aids',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, RouterLink],
+  imports: [RouterLink],
   template: `
-    <div>
-      <button
-        type="button"
-        class="mn-icon-button anchor-button"
-        popovertarget="mn-aids-panel"
-        [attr.aria-label]="
-          vocabularyNotice() === null ? 'Aids' : 'Aids, with a note about word marking'
-        "
-      >
-        <mn-icon name="aids" />
-      </button>
+    <section class="appearance" role="group" aria-label="Reading appearance">
+      <h3>Reading appearance</h3>
+      <div class="scale">
+        <label for="mn-text-scale">Text size</label>
+        <input
+          id="mn-text-scale"
+          type="range"
+          [min]="minScale"
+          [max]="maxScale"
+          [step]="step"
+          [value]="scale()"
+          [attr.aria-valuetext]="scaleLabel()"
+          (input)="setScale($event)"
+        />
+        <span class="scale-value" aria-hidden="true">{{ scaleLabel() }}</span>
+      </div>
 
-      <div id="mn-aids-panel" popover class="panel" role="group" aria-label="Reading aids">
-        <div class="scale">
-          <label for="mn-text-scale">Text size</label>
-          <input
-            id="mn-text-scale"
-            type="range"
-            [min]="minScale"
-            [max]="maxScale"
-            [step]="step"
-            [value]="scale()"
-            [attr.aria-valuetext]="scaleLabel()"
-            (input)="setScale($event)"
-          />
-          <span class="scale-value" aria-hidden="true">{{ scaleLabel() }}</span>
-        </div>
-
+      <div class="switches">
         @for (aid of aids; track aid.key) {
           <label class="aid">
             <input
@@ -78,49 +64,41 @@ const AIDS: readonly AidOption[] = [
             <span>{{ aid.label }}</span>
           </label>
         }
-
-        @if (vocabularyNotice(); as notice) {
-          <p class="vocabulary-notice" data-testid="reader-vocabulary-notice">
-            {{ notice }}
-            <a routerLink="/vocabulary">Vocabulary settings</a>
-          </p>
-        }
       </div>
-    </div>
+      @if (vocabularyNotice(); as notice) {
+        <p class="vocabulary-notice" data-testid="reader-vocabulary-notice">
+          {{ notice }}
+          <a routerLink="/vocabulary">Vocabulary settings</a>
+        </p>
+      }
+    </section>
   `,
   styles: `
-    .anchor-button {
-      anchor-name: --mn-aids-anchor;
-    }
-
-    /*
-     * Positioned against the button rather than a wrapper, because a popover
-     * is in the top layer and no longer has an ancestor to be absolute inside.
-     */
-    .panel {
-      position: absolute;
-      position-anchor: --mn-aids-anchor;
-      /*
-       * All-physical keywords: position-area refuses a mix of physical and
-       * logical ones. The popover user-agent style pins inset to zero to centre
-       * a dialog, which has to be released before the area applies.
-       */
-      position-area: bottom span-left;
-      inset: auto;
+    .appearance {
       display: flex;
       flex-direction: column;
       gap: var(--space-2);
-      width: min(20rem, calc(100vw - 2 * var(--space-4)));
-      margin: var(--space-2) 0 0;
-      padding: var(--space-4);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
     }
 
-    .panel:not(:popover-open) {
-      display: none;
+    h3 {
+      margin: 0;
+      font-size: var(--text-sm);
+      font-weight: 600;
+    }
+    .switches {
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: var(--space-3);
+    }
+    .scale input {
+      min-width: 0;
+    }
+    .scale,
+    .aid {
+      font-size: var(--text-sm);
+    }
+    :host {
+      display: block;
     }
 
     .scale {

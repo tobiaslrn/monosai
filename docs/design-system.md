@@ -119,8 +119,8 @@ fieldset and a legend. Switches are never hidden behind a disclosure, because
 the outcomes they select are part of the action being configured rather than
 advanced detail.
 
-A group sits with the thing it configures: on the form that starts the work, or
-in the header of the screen that shows the result. It does not go into a list
+A group sits on the form that starts the work. Saved readings instead expose
+content status and explicit actions in Story options. It does not go into a list
 row's action menu. That menu is a short list of things to do to a row, and a
 shelf is for choosing what to open rather than for configuring each entry.
 
@@ -129,6 +129,22 @@ A disabled switch stays visible and names, below the group, the exact state
 that prevents it; generic setup advice is never substituted for an untested,
 stale, or failed configuration. The whole labelled row meets the touch-target
 floor while the switch itself stays compact.
+
+### Saved-story controls
+
+The reader header has Back, the title, Listen, and Story options. Appearance,
+preparation, and maintenance share Story options rather than separate header
+buttons. The panel is anchored on desktop and docked as a bottom sheet on small
+screens; it stays within the viewport, scrolls when necessary, and restores
+focus when dismissed.
+
+Reading appearance contains immediate device-wide preferences. Content for this
+story shows saved results and explicit verbs: Translate story, Add notes,
+Generate audio, Continue, Stop, and Retry remaining. Ready is a status, never a
+switch. Closing the panel leaves background work running. A compact header line
+opens its details while work is pending or needs attention; controls remain in
+the panel. Deletion is separated and confirmed. The panel carries no standing
+cost note.
 
 ## 4. Colour
 

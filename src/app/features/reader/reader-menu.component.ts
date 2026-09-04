@@ -1,211 +1,175 @@
-import type { ElementRef } from '@angular/core';
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
+  type ElementRef,
   input,
   output,
   signal,
   viewChild,
 } from '@angular/core';
-import type { Reading } from '../../domain/reading/reading';
+import { A11yModule } from '@angular/cdk/a11y';
+import { RouterLink } from '@angular/router';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ReaderAidsComponent } from './reader-aids.component';
+import type { ReaderContentState } from './reader-content-state';
+import type { PreparationLayer } from '../../domain/enrichment/preparation';
 
-/**
- * The reader's overflow menu.
- *
- * Reading-level actions live here: translating, clearing generated audio, and
- * deleting the reading. The labels are deliberately sufficient on their own.
- *
- * A native popover anchored to its own button keeps top-layer and mutual-
- * exclusion behaviour on the platform. Explicit dismissal handlers make
- * outside press, Escape, and focus return predictable across supported shells.
- */
+/** One reader options surface: appearance, saved content, and maintenance. */
 @Component({
   selector: 'mn-reader-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent],
-  host: {
-    '(document:pointerdown)': 'onDocumentPointerDown($event)',
-    '(document:keydown.escape)': 'dismiss($event)',
-  },
+  imports: [A11yModule, RouterLink, IconComponent, ReaderAidsComponent],
+  host: { '(document:keydown.escape)': 'onEscape($event)' },
   template: `
-    <div>
-      <button
-        #anchor
-        type="button"
-        class="mn-icon-button anchor-button"
-        aria-label="Reading actions"
-        aria-haspopup="menu"
-        aria-controls="mn-reader-menu-panel"
-        [attr.aria-expanded]="menuOpen()"
-        popovertarget="mn-reader-menu-panel"
-      >
-        <mn-icon name="overflow" />
-      </button>
-
-      <div
-        #panel
-        id="mn-reader-menu-panel"
-        popover
-        class="panel"
-        role="menu"
-        aria-label="Reading actions"
-        (toggle)="onMenuToggle($event)"
-      >
-        @if (isRunning()) {
-          <button type="button" role="menuitem" (click)="choose(cancelled)">
-            Stop translating
-          </button>
-        } @else if (missingCount() > 0) {
-          <button type="button" role="menuitem" (click)="choose(translateAll)">
-            Translate reading
-          </button>
-        }
-
-        @if (audioRunning()) {
-          <button type="button" role="menuitem" (click)="choose(cancelAudioRequested)">
-            Stop generating audio
-          </button>
-        }
-
-        @if (hasAudio()) {
-          <button
-            type="button"
-            role="menuitem"
-            class="danger"
-            (click)="choose(deleteAudioRequested)"
-          >
-            Delete audio
-          </button>
-        }
-
-        <button type="button" role="menuitem" class="danger" (click)="choose(deleteRequested)">
-          Delete reading
+    <button
+      #anchor
+      type="button"
+      class="mn-icon-button anchor-button"
+      aria-label="Story options"
+      title="Story options"
+      aria-haspopup="dialog"
+      aria-controls="mn-reader-menu-panel"
+      [attr.aria-expanded]="menuOpen()"
+      popovertarget="mn-reader-menu-panel"
+    >
+      <mn-icon name="overflow" />
+    </button>
+    <section
+      #panel
+      id="mn-reader-menu-panel"
+      popover
+      class="panel"
+      role="dialog"
+      aria-label="Story options"
+      [cdkTrapFocus]="menuOpen()"
+      (toggle)="onToggle()"
+    >
+      <header>
+        <h2>Story options</h2>
+        <button
+          #closeButton
+          type="button"
+          class="mn-icon-button"
+          aria-label="Close story options"
+          title="Close story options"
+          (click)="close()"
+        >
+          <mn-icon name="close" />
         </button>
-      </div>
-    </div>
+      </header>
+      <mn-reader-aids />
+      <section class="content" aria-label="Content for this story">
+        <h3>Content for this story</h3>
+        @for (row of rows(); track row.layer) {
+          <section class="content-row" [attr.aria-label]="row.name" [attr.data-layer]="row.layer">
+            <div class="row-main">
+              <div class="row-copy">
+                <strong>{{ row.name }}</strong>
+                <p role="status">{{ row.status }}</p>
+              </div>
+              @switch (row.action) {
+                @case ('settings') {
+                  <a class="mn-button" routerLink="/settings" (click)="close()">{{ row.label }}</a>
+                }
+                @case ('prepare') {
+                  <button
+                    type="button"
+                    class="mn-button"
+                    [disabled]="row.disabled || pending() === row.layer"
+                    (click)="prepare.emit(row.layer)"
+                  >
+                    {{ pending() === row.layer ? 'Saving…' : row.label }}
+                  </button>
+                }
+                @case ('cancel') {
+                  <button
+                    type="button"
+                    class="mn-button"
+                    [disabled]="pending() === row.layer"
+                    (click)="stopRequested.emit(row.layer)"
+                  >
+                    {{ pending() === row.layer ? 'Stopping…' : row.label }}
+                  </button>
+                }
+                @case ('listen') {
+                  <button type="button" class="mn-button" (click)="listenToStory()">Listen</button>
+                }
+                @default {
+                  @if (row.label) {
+                    <span class="ready"><mn-icon name="check" [size]="16" />{{ row.label }}</span>
+                  }
+                }
+              }
+            </div>
+            @if (row.error) {
+              <p class="mn-error" role="alert">{{ row.error }}</p>
+            }
+            @if (row.layer === 'audio' && hasAudio()) {
+              <details class="mn-disclosure maintenance">
+                <summary>Audio options</summary>
+                <button type="button" class="delete" (click)="deleteAudio()">Delete audio…</button>
+              </details>
+            }
+          </section>
+        }
+        @if (error()) {
+          <p class="mn-error" role="alert">{{ error() }}</p>
+        }
+      </section>
+      <footer>
+        <button type="button" class="delete" (click)="deleteStory()">Delete story…</button>
+      </footer>
+    </section>
   `,
-  styles: `
-    .anchor-button {
-      anchor-name: --mn-reader-menu-anchor;
-    }
-
-    /*
-     * Positioned against the button rather than a wrapper, because a popover
-     * is in the top layer and no longer has an ancestor to be absolute inside.
-     */
-    .panel {
-      position: absolute;
-      position-anchor: --mn-reader-menu-anchor;
-      /*
-       * All-physical keywords: position-area refuses a mix of physical and
-       * logical ones. The popover user-agent style pins inset to zero to centre
-       * a dialog, which has to be released before the area applies.
-       */
-      position-area: bottom span-left;
-      inset: auto;
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-1);
-      width: min(20rem, calc(100vw - 2 * var(--space-4)));
-      margin: var(--space-2) 0 0;
-      padding: var(--space-2);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
-    }
-
-    .panel:not(:popover-open) {
-      display: none;
-    }
-
-    .panel button {
-      display: flex;
-      align-items: center;
-      width: 100%;
-      min-height: var(--touch-target);
-      padding: var(--space-2) var(--space-3);
-      border: 0;
-      border-radius: var(--radius-control);
-      background: none;
-      color: var(--text-primary);
-      font: inherit;
-      text-align: start;
-      cursor: pointer;
-    }
-
-    .panel button:hover,
-    .panel button:focus-visible {
-      background: var(--surface-sunken);
-    }
-
-    .panel .danger {
-      color: var(--status-danger);
-    }
-  `,
+  styleUrl: './reader-menu.component.scss',
 })
 export class ReaderMenuComponent {
-  readonly reading = input.required<Reading>();
-  readonly isRunning = input(false);
-  readonly audioRunning = input(false);
-
-  readonly translateAll = output<void>();
-  readonly cancelled = output<void>();
-  /**
-   * Stopping a run, beside the other reading-level audio actions.
-   *
-   * Not in the player. The player is a transport, and a permanent row holding
-   * one rarely pressed link made a card that sits over the reading taller than
-   * the controls in it. The track's own fill says a run is going.
-   */
-  readonly cancelAudioRequested = output<void>();
+  readonly rows = input.required<readonly ReaderContentState[]>();
+  readonly hasAudio = input(false);
+  readonly pending = input<PreparationLayer | null>(null);
+  readonly error = input<string | null>(null);
+  readonly prepare = output<PreparationLayer>();
+  readonly opened = output<void>();
+  readonly stopRequested = output<PreparationLayer>();
+  readonly listen = output<void>();
   readonly deleteAudioRequested = output<void>();
   readonly deleteRequested = output<void>();
-
-  private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
   private readonly anchor = viewChild.required<ElementRef<HTMLButtonElement>>('anchor');
+  private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
+  private readonly closeButton = viewChild.required<ElementRef<HTMLButtonElement>>('closeButton');
   protected readonly menuOpen = signal(false);
 
-  /** Sentences with no current translation, from the reading's stored summary. */
-  protected readonly missingCount = computed(() => {
-    const summary = this.reading().translationSummary;
-    return Math.max(summary.total - summary.completed, 0);
-  });
-
-  protected readonly hasAudio = computed(() => {
-    const summary = this.reading().audioSummary;
-    return this.audioRunning() || summary.completed > 0 || summary.failed > 0;
-  });
-
-  protected onMenuToggle(event: Event): void {
-    this.menuOpen.set((event.currentTarget as HTMLElement).matches(':popover-open'));
+  open(): void {
+    this.panel().nativeElement.showPopover();
   }
-
-  /** Chosen entries close the menu; dismissal without choosing is the platform's. */
-  protected choose(action: { emit: () => void }): void {
+  close(): void {
     this.panel().nativeElement.hidePopover();
-    action.emit();
+    this.anchor().nativeElement.focus();
   }
-
-  protected dismiss(event: Event): void {
-    const panel = this.panel().nativeElement;
-    if (!panel.matches(':popover-open')) {
-      return;
+  protected onToggle(): void {
+    const open = this.panel().nativeElement.matches(':popover-open');
+    this.menuOpen.set(open);
+    if (open) {
+      this.opened.emit();
+      this.closeButton().nativeElement.focus();
     }
-    event.preventDefault();
-    panel.hidePopover();
   }
-
-  protected onDocumentPointerDown(event: PointerEvent): void {
-    const panel = this.panel().nativeElement;
-    if (!panel.matches(':popover-open') || !(event.target instanceof Node)) {
-      return;
+  protected onEscape(event: Event): void {
+    if (this.menuOpen()) {
+      event.preventDefault();
+      this.close();
     }
-    if (panel.contains(event.target) || this.anchor().nativeElement.contains(event.target)) {
-      return;
-    }
-    panel.hidePopover();
+  }
+  protected listenToStory(): void {
+    this.close();
+    this.listen.emit();
+  }
+  protected deleteAudio(): void {
+    this.close();
+    this.deleteAudioRequested.emit();
+  }
+  protected deleteStory(): void {
+    this.close();
+    this.deleteRequested.emit();
   }
 }

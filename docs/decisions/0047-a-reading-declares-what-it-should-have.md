@@ -1,7 +1,7 @@
 # 0047 — A reading declares what it should have
 
 Date: 2026-09-03
-Status: Accepted
+Status: Accepted; reader interaction revised below on 2026-09-04
 
 ## Context
 
@@ -86,8 +86,10 @@ re-targeting it during an upgrade would restart spend nobody asked for.
 
 - Readiness is answerable: a reading whose targets include audio and whose audio is complete is
   ready to listen to.
-- A learner declares targets where the reading itself is: in the reader header for a reading that
-  already exists, and on the generate form for a story about to be written. The library row keeps
+- A learner selects targets on the generate form for a story about to be written. An existing
+  reading instead shows saved-content status and explicit preparation actions in Story options.
+  Stopping a layer withdraws its outstanding declaration so reopening does not restart it.
+  The library row keeps
   its short list of actions and does not carry the switches; the shelf is for choosing what to
   read, not for configuring each row.
 - Changing the text model creates no work. The reading's stored aids still satisfy its targets;

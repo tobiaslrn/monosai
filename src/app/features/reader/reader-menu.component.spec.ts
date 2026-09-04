@@ -1,174 +1,157 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
-import type { Reading } from '../../domain/reading/reading';
-import { readingId } from '../../domain/shared/ids';
+import { provideRouter } from '@angular/router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReaderMenuComponent } from './reader-menu.component';
+import { configureVocabularyTestBed } from '../../../testing/vocabulary-fakes';
+import type { ReaderContentState } from './reader-content-state';
 
-function reading(completed: number, total: number, audioCompleted = 0): Reading {
-  return {
-    id: readingId('r1'),
-    kind: 'imported',
-    title: '第一章',
-    createdAt: 1,
-    updatedAt: 1,
-    sentenceCount: total,
-    lastOpenedAt: null,
-    characterCount: 100,
-    excerpt: '本文です。',
-    translationSummary: { total, completed, failed: 0 },
-    grammarSummary: { state: 'not-requested' },
-    audioSummary: { total, completed: audioCompleted, failed: 0 },
-    preparationTargets: [],
-    analyzerVersion: 'analyzer/1',
-    importSource: 'paste',
-    sourceTextHash: 'hash-0',
-  };
-}
+const ROW: ReaderContentState = {
+  layer: 'english',
+  name: 'English translation',
+  status: 'Not added',
+  action: 'prepare',
+  label: 'Translate story',
+  busy: false,
+  disabled: false,
+  error: null,
+};
 
-@Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReaderMenuComponent],
-  template: `<mn-reader-menu
-    [reading]="reading()"
-    [isRunning]="running()"
-    [audioRunning]="audioRunning()"
-    (translateAll)="translateAlls = translateAlls + 1"
-    (cancelled)="cancels = cancels + 1"
-    (cancelAudioRequested)="audioCancels = audioCancels + 1"
-    (deleteAudioRequested)="audioDeletes = audioDeletes + 1"
-    (deleteRequested)="deletes = deletes + 1"
-  />`,
-})
-class HostComponent {
-  readonly reading = signal<Reading>(reading(0, 4));
-  readonly running = signal(false);
-  readonly audioRunning = signal(false);
-  translateAlls = 0;
-  cancels = 0;
-  audioCancels = 0;
-  audioDeletes = 0;
-  deletes = 0;
-}
-
-describe('ReaderMenuComponent', () => {
-  /**
-   * The panel is a native popover, which jsdom does not implement. Dismissal
-   * itself is the platform's; what is asserted here is that the component asks
-   * for it, and jsdom is given the method to record the request.
-   */
-  function render() {
-    const fixture = TestBed.createComponent(HostComponent);
+describe('Story options', () => {
+  beforeEach(() => {
+    configureVocabularyTestBed();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+  });
+  function render(row = ROW) {
+    const fixture = TestBed.createComponent(ReaderMenuComponent);
+    fixture.componentRef.setInput('rows', [row]);
     fixture.detectChanges();
-    const panel = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.panel');
-    const dismissals: number[] = [];
-    Object.defineProperty(panel, 'hidePopover', {
-      configurable: true,
-      value: () => dismissals.push(1),
+    const element = fixture.nativeElement as HTMLElement;
+    const hide = vi.fn();
+    Object.defineProperty(element.querySelector('.panel'), 'hidePopover', { value: hide });
+    const press = (label: string) =>
+      [...element.querySelectorAll<HTMLButtonElement>('button')]
+        .find((button) => button.textContent.trim() === label)
+        ?.click();
+    return { fixture, element, hide, press };
+  }
+  it('groups appearance and content behind a single dialog button without a cost note', () => {
+    const { element } = render();
+    expect(element.querySelector('.anchor-button')?.getAttribute('aria-label')).toBe(
+      'Story options',
+    );
+    expect(element.querySelector('.panel')?.getAttribute('role')).toBe('dialog');
+    expect(element.textContent).toContain('Reading appearance');
+    expect(element.textContent).toContain('Content for this story');
+    expect(element.textContent).not.toMatch(/cost|charges|OpenRouter/);
+  });
+  it('starts a layer without closing its progress surface', () => {
+    const { fixture, hide, press } = render();
+    const prepare = vi.fn();
+    fixture.componentInstance.prepare.subscribe(prepare);
+    press('Translate story');
+    expect(prepare).toHaveBeenCalledWith('english');
+    expect(hide).not.toHaveBeenCalled();
+  });
+  it('stops only the chosen layer and shows pending cancellation', () => {
+    const { fixture, element, press } = render({
+      ...ROW,
+      action: 'cancel',
+      label: 'Stop',
+      busy: true,
     });
-    return { fixture, element: fixture.nativeElement as HTMLElement, dismissals };
-  }
-
-  /** Presses the panel entry whose label contains `label`. */
-  function press(element: HTMLElement, label: string): void {
-    [...element.querySelectorAll<HTMLButtonElement>('.panel button')]
-      .find((button) => button.textContent.includes(label))
-      ?.click();
-  }
-
-  it('is opened by the platform, from the button it is anchored to', () => {
-    const { element } = render();
-    const button = element.querySelector('.anchor-button');
-
-    expect(button?.getAttribute('popovertarget')).toBe('mn-reader-menu-panel');
-    expect(element.querySelector('.panel')?.id).toBe('mn-reader-menu-panel');
-    expect(element.querySelector('.panel')?.hasAttribute('popover')).toBe(true);
-  });
-
-  /**
-   * Labels only. The explanation of what an AI action sends is stated once, in
-   * Settings, rather than under every button that could trigger one.
-   */
-  it('carries labels and no explanations', () => {
-    const { element } = render();
-
-    expect(element.textContent).toContain('Translate reading');
-    expect(element.textContent).toContain('Delete reading');
-    expect(element.textContent).not.toContain('Sends');
-  });
-
-  it('offers nothing to translate once every sentence is translated', () => {
-    const { fixture, element } = render();
-    fixture.componentInstance.reading.set(reading(4, 4));
+    const cancel = vi.fn();
+    fixture.componentInstance.stopRequested.subscribe(cancel);
+    press('Stop');
+    expect(cancel).toHaveBeenCalledWith('english');
+    fixture.componentRef.setInput('pending', 'english');
     fixture.detectChanges();
-
-    expect(element.textContent).not.toContain('Translate reading');
+    expect(element.querySelector<HTMLButtonElement>('.row-main button')?.disabled).toBe(true);
+    expect(element.textContent).toContain('Stopping…');
+  });
+  it('closes before requesting confirmation of deletion', () => {
+    const { fixture, hide, press } = render();
+    const deleted = vi.fn();
+    fixture.componentInstance.deleteRequested.subscribe(deleted);
+    press('Delete story…');
+    expect(hide).toHaveBeenCalledOnce();
+    expect(deleted).toHaveBeenCalledOnce();
+  });
+  it('shows a ready status without a creation action', () => {
+    const { element } = render({
+      ...ROW,
+      action: null,
+      label: 'Ready',
+      status: '4 of 4 sentences saved',
+    });
+    expect(element.querySelector('.row-main button')).toBeNull();
+    expect(element.textContent).toContain('Ready');
+  });
+  it('closes before opening the audio player', () => {
+    const { fixture, hide, press } = render({
+      ...ROW,
+      layer: 'audio',
+      action: 'listen',
+      label: 'Listen',
+    });
+    const listen = vi.fn();
+    fixture.componentInstance.listen.subscribe(listen);
+    press('Listen');
+    expect(hide).toHaveBeenCalledOnce();
+    expect(listen).toHaveBeenCalledOnce();
   });
 
-  it('becomes a way to stop while a job runs', () => {
-    const { fixture, element } = render();
-    fixture.componentInstance.running.set(true);
+  it('moves focus into the panel and returns it on Escape', () => {
+    const { fixture, element, hide } = render();
+    const panel = element.querySelector<HTMLElement>('.panel')!;
+    const shown = vi.fn();
+    Object.defineProperty(panel, 'showPopover', { value: shown });
+    const matches = vi.spyOn(panel, 'matches').mockReturnValue(true);
+    const opened = vi.fn();
+    fixture.componentInstance.opened.subscribe(opened);
+    fixture.componentInstance.open();
+    expect(shown).toHaveBeenCalledOnce();
+    panel.dispatchEvent(new Event('toggle'));
     fixture.detectChanges();
-
-    press(element, 'Stop translating');
-
-    expect(fixture.componentInstance.cancels).toBe(1);
-    expect(fixture.componentInstance.translateAlls).toBe(0);
-  });
-
-  it('closes as soon as an entry is chosen', () => {
-    const { fixture, element, dismissals } = render();
-
-    press(element, 'Translate reading');
-
-    expect(fixture.componentInstance.translateAlls).toBe(1);
-    expect(dismissals).toHaveLength(1);
-  });
-
-  it('offers audio deletion in the menu once this reading has generated audio', () => {
-    const { fixture, element, dismissals } = render();
-    fixture.componentInstance.reading.set(reading(0, 4, 2));
+    expect(opened).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(
+      element.querySelector('[aria-label="Close story options"]'),
+    );
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(hide).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(element.querySelector('.anchor-button'));
+    matches.mockReturnValue(false);
+    panel.dispatchEvent(new Event('toggle'));
     fixture.detectChanges();
-
-    press(element, 'Delete audio');
-
-    expect(fixture.componentInstance.audioDeletes).toBe(1);
-    expect(dismissals).toHaveLength(1);
+    expect(element.querySelector('.anchor-button')?.getAttribute('aria-expanded')).toBe('false');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(hide).toHaveBeenCalledOnce();
   });
 
-  it('offers audio deletion while generation is running, but not for a fresh reading', () => {
-    const { fixture, element } = render();
-
-    expect(element.textContent).not.toContain('Delete audio');
-
-    fixture.componentInstance.audioRunning.set(true);
+  it('keeps audio maintenance behind its disclosure and closes before confirmation', () => {
+    const { fixture, element, hide, press } = render({ ...ROW, layer: 'audio' });
+    expect(element.querySelector('details')).toBeNull();
+    fixture.componentRef.setInput('hasAudio', true);
     fixture.detectChanges();
-    expect(element.textContent).toContain('Delete audio');
+    expect(element.querySelector('details')?.open).toBe(false);
+    const deleted = vi.fn();
+    fixture.componentInstance.deleteAudioRequested.subscribe(deleted);
+    press('Delete audio…');
+    expect(hide).toHaveBeenCalledOnce();
+    expect(deleted).toHaveBeenCalledOnce();
   });
 
-  /**
-   * Stopping a run is a reading-level audio action, so it sits with the other
-   * one rather than in the player. A permanent row in a card that floats over
-   * the reading is a poor home for something pressed once a run, if ever.
-   */
-  it('offers to stop a run only while one is going', () => {
-    const { fixture, element, dismissals } = render();
-
-    expect(element.textContent).not.toContain('Stop generating audio');
-
-    fixture.componentInstance.audioRunning.set(true);
+  it('shows saving errors and links unavailable preparation to settings', () => {
+    const { fixture, element } = render({
+      ...ROW,
+      action: 'settings',
+      label: 'Model settings',
+      error: 'Test your model.',
+    });
+    fixture.componentRef.setInput('error', 'Could not save the stop request.');
     fixture.detectChanges();
-    press(element, 'Stop generating audio');
-
-    expect(fixture.componentInstance.audioCancels).toBe(1);
-    expect(dismissals).toHaveLength(1);
-  });
-
-  it('asks for deletion rather than performing it', () => {
-    const { fixture, element } = render();
-
-    press(element, 'Delete reading');
-
-    expect(fixture.componentInstance.deletes).toBe(1);
+    expect(element.querySelector('.row-main a')?.getAttribute('href')).toBe('/settings');
+    expect([...element.querySelectorAll('[role="alert"]')].map((node) => node.textContent)).toEqual(
+      ['Test your model.', 'Could not save the stop request.'],
+    );
   });
 });

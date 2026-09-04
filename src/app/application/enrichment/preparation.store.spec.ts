@@ -1,6 +1,8 @@
 import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { err } from '../../domain/shared/result';
+import { storageError } from '../../domain/storage/storage-error';
 import { aiError } from '../../domain/ai/ai-error';
 import { jobKindFor, type PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Reading } from '../../domain/reading/reading';
@@ -273,6 +275,120 @@ describe('PreparationStore', () => {
   });
 
   describe('what starts work', () => {
+    it('does not start a queued layer cancelled while the previous layer is running', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW);
+      await outstandingRow(beds.jobs, FIRST, 'grammar', NOW + 1);
+      const gate = beds.runners.english.holdOpen();
+      const run = beds.store.pump();
+      await gate.started;
+      expect(beds.store.progressFor(FIRST, 'english').kind).toBe('running');
+      await beds.store.stopLayer(FIRST, 'grammar');
+      gate.release();
+      await run;
+      expect(beds.runners.grammar.started).toEqual([]);
+    });
+
+    it('resumes the remaining layer after a pause at a layer boundary', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW);
+      await outstandingRow(beds.jobs, FIRST, 'grammar', NOW + 1);
+      const gate = beds.runners.english.holdOpen();
+      const run = beds.store.pump();
+      await gate.started;
+      beds.store.pause();
+      gate.release();
+      await run;
+      expect(beds.runners.grammar.started).toEqual([]);
+      await beds.store.resume();
+      expect(beds.runners.grammar.started).toEqual([FIRST]);
+    });
+
+    it('leaves the next layer queued when the connection drops during a run', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW);
+      await outstandingRow(beds.jobs, FIRST, 'grammar', NOW + 1);
+      const gate = beds.runners.english.holdOpen();
+      const run = beds.store.pump();
+      await gate.started;
+      beds.online.set(false);
+      gate.release();
+      await run;
+      expect(beds.runners.grammar.started).toEqual([]);
+      expect(beds.store.progressFor(FIRST, 'grammar').kind).toBe('queued');
+    });
+
+    it('ends all producers when the entire reading is stopped', async () => {
+      await beds.store.stop(FIRST);
+      for (const layer of ['english', 'grammar', 'audio'] as const) {
+        expect(beds.runners[layer].cancelled).toEqual([FIRST]);
+      }
+    });
+
+    it('releases a running reading when it is deleted', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW);
+      const gate = beds.runners.english.holdOpen();
+      const run = beds.store.pump();
+      await gate.started;
+      await beds.store.readingDeleted(FIRST);
+      expect(beds.store.current()).toBeNull();
+      gate.release();
+      await run;
+    });
+
+    it('does not issue work when the queue cannot be read', async () => {
+      vi.spyOn(beds.jobs, 'listActive').mockResolvedValueOnce(
+        err(storageError('unavailable', 'Storage unavailable')),
+      );
+      await beds.store.pump();
+      expect(beds.runners.english.started).toEqual([]);
+    });
+
+    it('steps aside if another tab claims a reading after the queue was read', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW);
+      vi.spyOn(beds.jobs, 'claimReading').mockResolvedValueOnce(
+        err(storageError('conflict', 'Claimed elsewhere')),
+      );
+      await beds.store.pump();
+      expect(beds.runners.english.started).toEqual([]);
+    });
+
+    it('reports a failed stop write and leaves the queued job intact', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW);
+      const failure = storageError('unavailable', 'Storage unavailable');
+      vi.spyOn(beds.jobs, 'setState').mockResolvedValueOnce(err(failure));
+      expect(await beds.store.stopLayer(FIRST, 'english')).toEqual(err(failure));
+      const active = await beds.jobs.findActive(FIRST, 'translate-reading');
+      expect(active.ok && active.value?.state).toBe('queued');
+    });
+
+    it('reports an unreadable queue without pretending cancellation was saved', async () => {
+      const failure = storageError('unavailable', 'Storage unavailable');
+      vi.spyOn(beds.jobs, 'findActive').mockResolvedValueOnce(err(failure));
+      expect(await beds.store.stopLayer(FIRST, 'english')).toEqual(err(failure));
+    });
+
+    it('can stop a layer whose producer already finalized the job', async () => {
+      expect((await beds.store.stopLayer(FIRST, 'english')).ok).toBe(true);
+      expect(beds.runners.english.cancelled).toEqual([FIRST]);
+    });
+    it('stops one queued layer without cancelling other layers or readings', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW);
+      await outstandingRow(beds.jobs, FIRST, 'grammar', NOW + 1);
+      await outstandingRow(beds.jobs, SECOND, 'english', NOW + 2);
+
+      const stopped = await beds.store.stopLayer(FIRST, 'english');
+
+      expect(stopped.ok).toBe(true);
+      const rows = await beds.jobs.listActive();
+      expect(rows.ok && rows.value.map((row) => [row.readingId, row.kind]).sort()).toEqual(
+        [
+          [FIRST, 'analyze-reading'],
+          [SECOND, 'translate-reading'],
+        ].sort(),
+      );
+      await beds.store.pump();
+      expect(beds.runners.english.started).toEqual([SECOND]);
+      expect(beds.runners.grammar.started).toEqual([FIRST]);
+    });
+
     it('starts nothing at all when no reading has a job row', async () => {
       await beds.store.pump();
 
