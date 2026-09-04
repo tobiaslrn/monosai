@@ -248,6 +248,20 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
         });
     },
   },
+  {
+    version: 9,
+    stores: V8_STORES,
+    upgrade: async (transaction) => {
+      const settings = transaction.table('settings');
+      const row = (await settings.get('app')) as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        return;
+      }
+      const value = requireRecord(row['value'], 'app settings');
+      value['helpIntroSeen'] = false;
+      await settings.put(row);
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].version;

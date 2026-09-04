@@ -4,16 +4,13 @@ import { importReading } from './reading';
 
 test.describe('application shell', () => {
   /**
-   * There is no application-wide navigation. Each page states where it goes
-   * back to, so the reading is the only thing that persists on screen.
+   * Non-reader pages share utility navigation while retaining their own Back.
    */
-  test('renders the settings route with a way back and no navigation bar @smoke', async ({
-    page,
-  }) => {
+  test('renders the settings route with a way back and utility bar @smoke', async ({ page }) => {
     await page.goto('./#/settings');
 
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
-    await expect(page.getByRole('navigation')).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'Utilities' })).toBeVisible();
     await expect(page.getByRole('main')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Back to library' })).toBeVisible();
     await expect(page).toHaveURL(/#\/settings$/);
@@ -108,16 +105,18 @@ test.describe('application shell', () => {
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   });
 
-  /** The mark, the standing line and one labelled control, at 320px. */
-  test('keeps the Library head usable at 320px @mobile', async ({ page }) => {
+  /** The mark, icon utilities, and standing line at 320px. */
+  test('keeps the utility bar and Library usable at 320px @mobile', async ({ page }) => {
     await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('./#/library');
 
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Help', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'GitHub (opens in a new tab)' })).toBeVisible();
     await expect(page.getByTestId('library-standing')).toBeVisible();
-    await expect(page.locator('.wordmark')).toBeHidden();
+    await expect(page.locator('mn-app-bar .wordmark')).toBeHidden();
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);

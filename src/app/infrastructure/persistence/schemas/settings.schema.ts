@@ -10,6 +10,7 @@ import {
 import { nonEmptyString, snapshotIdSchema, timestampSchema } from './common.schema';
 
 export const appSettingsSchema = z.object({
+  helpIntroSeen: z.boolean().default(false),
   theme: z.enum(['system', 'light', 'dark']),
   activeSnapshotId: snapshotIdSchema.nullable(),
   ankiConnectPort: z.number().int().min(1).max(65_535).default(DEFAULT_ANKI_CONNECT_PORT),

@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import { env } from 'node:process';
+import { INTRO_SEEN_STATE } from './e2e/state';
 
 // Not 4200: `ng serve` owns that port, and the suite must never silently run
 // against a development server someone left running.
@@ -58,13 +59,17 @@ export default defineConfig({
       name: 'desktop-chrome',
       testIgnore: /.*\.setup\.ts/,
       dependencies: ['setup'],
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        storageState: INTRO_SEEN_STATE,
+      },
     },
     {
       name: 'android-chrome',
       testIgnore: /.*\.setup\.ts/,
       dependencies: ['setup'],
-      use: { ...devices['Pixel 5'] },
+      use: { ...devices['Pixel 5'], storageState: INTRO_SEEN_STATE },
       grep: /(?=.*@mobile)(?=.*@smoke)/,
     },
   ],

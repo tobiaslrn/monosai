@@ -10,8 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { NavigationStart, Router, RouterLink } from '@angular/router';
-import { navigationOriginState } from '../../core/routing/navigation-history.service';
+import { NavigationStart, Router } from '@angular/router';
 import { LibraryScrollMemoryService } from '../../core/routing/library-scroll-memory.service';
 import { LibraryStore } from '../../application/reading/library.store';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
@@ -58,7 +57,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   selector: 'mn-library-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    RouterLink,
     IconComponent,
     ReaderPopoverComponent,
     NewReadingMenuComponent,
@@ -69,28 +67,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   ],
   template: `
     <div class="mn-page library-page">
-      <header class="library-head">
-        <div class="identity">
-          <img class="mark" src="icons/icon-192.png" alt="" width="40" height="40" />
-          <span class="wordmark">Monosai</span>
-        </div>
-        <!--
-          One destination, labelled. Settings is not pressed often enough in a
-          session for a bare gear to have earned its silence, and what the
-          learner can read is reached from the standing line below, which says
-          why anyone would go.
-        -->
-        <a
-          class="destination"
-          routerLink="/settings"
-          [state]="libraryOriginState"
-          data-testid="library-settings"
-        >
-          <mn-icon name="settings" [size]="18" />
-          <span>Settings</span>
-        </a>
-      </header>
-
       @if (store.status() === 'failed') {
         <section class="mn-panel" role="alert">
           <h2>Your library could not be loaded</h2>
@@ -199,60 +175,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     .library-page {
       max-width: 1120px;
       gap: var(--space-7);
-      padding-top: var(--space-4);
-    }
-
-    .library-head {
-      display: flex;
-      gap: var(--space-4);
-      align-items: center;
-      justify-content: space-between;
-      min-width: 0;
-    }
-
-    .identity {
-      display: flex;
-      gap: var(--space-3);
-      align-items: center;
-      min-width: 0;
-    }
-
-    .mark {
-      flex: none;
-      border-radius: 10px;
-    }
-
-    .wordmark {
-      font-family: var(--font-ui);
-      letter-spacing: -0.02em;
-    }
-
-    .wordmark {
-      color: var(--text-primary);
-      font-size: 24px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    /* Bare at rest, like every other quiet control; the boundary is hover. */
-    .destination {
-      display: inline-flex;
-      flex: none;
-      gap: var(--space-2);
-      align-items: center;
-      min-height: var(--touch-target);
-      padding: 0 var(--space-3);
-      border: 1px solid transparent;
-      border-radius: var(--radius-control);
-      color: var(--text-secondary);
-      text-decoration: none;
-      white-space: nowrap;
-    }
-
-    .destination:hover {
-      border-color: var(--border-subtle);
-      background: var(--surface-raised);
-      color: var(--text-primary);
     }
 
     /* The action sits with the shelf it adds to, not with the standing line. */
@@ -328,30 +250,10 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       .library-page {
         gap: var(--space-5);
       }
-
-      .wordmark {
-        font-size: 21px;
-      }
-    }
-
-    /*
-     * At phone widths the mark already supplies the identity. Keeping both the
-     * wordmark and destination would squeeze the destination and Settings
-     * control for no navigational benefit.
-     */
-    @media (max-width: 479px) {
-      .wordmark {
-        display: none;
-      }
-
-      .identity {
-        gap: var(--space-2);
-      }
     }
   `,
 })
 export class LibraryPageComponent {
-  protected readonly libraryOriginState = navigationOriginState('/library');
   protected readonly store = inject(LibraryStore);
   private readonly clock = inject(CLOCK);
   private readonly dialog = inject(Dialog);

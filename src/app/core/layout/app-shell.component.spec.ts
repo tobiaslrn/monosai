@@ -1,46 +1,69 @@
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
-import { describe, expect, it } from 'vitest';
-import { APP_RELOAD, APP_UPDATE_CHECKER } from '../../domain/platform/app-update.port';
+import { Router, provideRouter } from '@angular/router';
+import { describe, expect, it, vi } from 'vitest';
 import { AppShellComponent } from './app-shell.component';
+import { HelpIntroService } from './help-intro.service';
+import { AppUpdateStore } from '../../application/pwa/app-update.store';
+
+@Component({ template: '' })
+class Page {}
 
 describe('AppShellComponent', () => {
-  function render() {
+  async function render(url = '/settings') {
+    const intro = { offer: vi.fn(), saveFailed: signal(false), retrySave: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([]),
-        { provide: APP_UPDATE_CHECKER, useValue: fakeUpdateChecker() },
-        { provide: APP_RELOAD, useValue: () => undefined },
+        provideRouter([{ path: '**', component: Page }]),
+        { provide: AppUpdateStore, useValue: {} },
       ],
     });
+    TestBed.overrideComponent(AppShellComponent, {
+      set: { providers: [{ provide: HelpIntroService, useValue: intro }] },
+    });
+    TestBed.overrideTemplate(
+      AppShellComponent,
+      `<a class="mn-skip-link" href="#mn-main">Skip</a>
+      @if (!isReaderRoute()) { <mn-app-bar /> }
+      <main id="mn-main" tabindex="-1"><router-outlet /></main>`,
+    );
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl(url);
     const fixture = TestBed.createComponent(AppShellComponent);
     fixture.detectChanges();
-    return fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    return { fixture, intro, router, element: fixture.nativeElement as HTMLElement };
   }
 
-  it('renders a skip link and a focusable main landmark', () => {
-    const element = render();
-
-    const skip = element.querySelector('a.mn-skip-link');
-    expect(skip?.getAttribute('href')).toBe('#mn-main');
-
-    const main = element.querySelector('main');
-    expect(main?.id).toBe('mn-main');
-    expect(main?.getAttribute('tabindex')).toBe('-1');
+  it('renders identity and accessible icon-only utilities', async () => {
+    const { element, intro } = await render();
+    expect(element.querySelector('.mn-skip-link')?.getAttribute('href')).toBe('#mn-main');
+    expect(element.querySelector('main')?.getAttribute('tabindex')).toBe('-1');
+    expect(element.querySelector('.identity')?.getAttribute('href')).toBe('/library');
+    const links = [...element.querySelectorAll('nav a')];
+    expect(links.map((a) => a.getAttribute('aria-label'))).toEqual([
+      'Settings',
+      'Help',
+      'GitHub (opens in a new tab)',
+    ]);
+    for (const link of links) {
+      expect(link.textContent.trim()).toBe('');
+      expect(link.getAttribute('title')).toBe(link.getAttribute('aria-label'));
+    }
+    expect(links[0].getAttribute('aria-current')).toBe('page');
+    expect(links[2].getAttribute('href')).toBe('https://github.com/tobiaslrn/monosai');
+    expect(links[2].getAttribute('target')).toBe('_blank');
+    expect(links[2].getAttribute('rel')).toContain('noopener');
+    expect(intro.offer).toHaveBeenCalled();
   });
 
-  it('carries no application-wide navigation', () => {
-    const element = render();
-
-    expect(element.querySelector('nav')).toBeNull();
+  it('defers the intro and hides utilities on a reader deep link, then offers on exit', async () => {
+    const { fixture, element, intro, router } = await render('/reader/example');
+    expect(element.querySelector('mn-app-bar')).toBeNull();
+    expect(intro.offer).not.toHaveBeenCalled();
+    await router.navigateByUrl('/help');
+    fixture.detectChanges();
+    expect(element.querySelector('mn-app-bar')).not.toBeNull();
+    expect(intro.offer).toHaveBeenCalledOnce();
   });
 });
-
-function fakeUpdateChecker() {
-  return {
-    updates: () => of({ kind: 'unsupported' as const }),
-    check: () => Promise.resolve({ ok: true as const, value: undefined }),
-    activate: () => Promise.resolve({ ok: true as const, value: undefined }),
-  };
-}

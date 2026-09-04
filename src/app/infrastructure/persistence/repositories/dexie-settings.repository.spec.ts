@@ -30,6 +30,7 @@ describe('DexieSettingsRepository', () => {
     const preferences = await repository.getReaderPreferences();
 
     expect(app.ok && app.value.theme).toBe('system');
+    expect(app.ok && app.value.helpIntroSeen).toBe(false);
     expect(app.ok && app.value.activeSnapshotId).toBeNull();
     expect(app.ok && app.value.ankiConnectPort).toBe(8_765);
     expect(app.ok && app.value.ankiWordPriorityMode).toBe('uniform');
@@ -50,6 +51,21 @@ describe('DexieSettingsRepository', () => {
     expect(invalid.ok).toBe(false);
     const reloaded = await repository.getAppSettings();
     expect(reloaded.ok && reloaded.value.ankiConnectPort).toBe(9_999);
+  });
+
+  it('round-trips Help dismissal without changing other settings and rejects invalid stored flags', async () => {
+    await repository.updateAppSettings({ theme: 'dark' });
+    await repository.updateAppSettings({ helpIntroSeen: true });
+    expect(await repository.getAppSettings()).toMatchObject({
+      ok: true,
+      value: { theme: 'dark', helpIntroSeen: true },
+    });
+    await db.settings.put({
+      key: SETTINGS_KEYS.app,
+      v: ROW_VERSION,
+      value: { theme: 'dark', activeSnapshotId: null, updatedAt: 0, helpIntroSeen: 'yes' },
+    });
+    expect((await repository.getAppSettings()).ok).toBe(false);
   });
 
   it('round-trips the Anki word-priority mode immediately', async () => {

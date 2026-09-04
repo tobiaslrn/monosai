@@ -6,10 +6,8 @@ import { IconComponent } from '../icon/icon.component';
 /**
  * The header every page outside the reader wears.
  *
- * There is no application-wide navigation: a page states where it goes back to
- * and nothing else, so the only persistent chrome in Monosai is the reading
- * itself. Trailing controls are projected, which is how the Library carries its
- * link to Settings without a second header component.
+ * Each page states its own way back below the shell utility bar. Trailing
+ * controls belong to this page; shared destinations live in the shell.
  */
 @Component({
   selector: 'mn-page-header',

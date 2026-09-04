@@ -23,6 +23,12 @@ function readingLevelSection(fragment: 'words' | 'grammar'): RedirectFunction {
 
 export const APP_ROUTES: Routes = [
   {
+    path: 'help',
+    title: 'Help · Monosai',
+    loadComponent: () =>
+      import('../../features/help/help-page.component').then((m) => m.HelpPageComponent),
+  },
+  {
     path: 'library',
     title: 'Library · Monosai',
     loadComponent: () =>
