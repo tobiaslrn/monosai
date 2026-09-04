@@ -112,7 +112,7 @@ describe('reader content state', () => {
     });
   });
 
-  it('reads saved grammar offline without requiring a model', () => {
+  it('reads analyzed grammar offline without requiring a model', () => {
     expect(
       readerContentState(
         { ...READING, grammarSummary: { state: 'complete', concernCount: 0 } },
@@ -122,7 +122,7 @@ describe('reader content state', () => {
         false,
       ),
     ).toMatchObject({
-      status: '4 of 4 sentences saved',
+      status: '4 of 4 sentences analyzed',
       action: null,
       label: 'Ready',
     });
@@ -154,7 +154,7 @@ describe('reader content state', () => {
       ),
     ).toMatchObject({
       label: 'Continue',
-      status: '2 of 4 sentences saved',
+      status: '2 of 4 sentences analyzed',
     });
   });
 
@@ -257,5 +257,39 @@ describe('reader content state', () => {
         true,
       ),
     ).toMatchObject({ status: 'Could not finish', label: 'Retry remaining' });
+  });
+
+  it('reports the grammar request phase before the first batch returns', () => {
+    expect(
+      readerContentState(
+        READING,
+        'grammar',
+        {
+          kind: 'running',
+          readingId: ID,
+          counts: { total: 4, requested: 4, completed: 0, failed: 0 },
+          phase: 'requesting',
+        },
+        'ready',
+        true,
+      ),
+    ).toMatchObject({ status: 'Analyzing…', busy: true, action: 'cancel' });
+  });
+
+  it('reports the grammar save phase before the first batch is counted', () => {
+    expect(
+      readerContentState(
+        READING,
+        'grammar',
+        {
+          kind: 'running',
+          readingId: ID,
+          counts: { total: 4, requested: 4, completed: 0, failed: 0 },
+          phase: 'saving',
+        },
+        'ready',
+        true,
+      ),
+    ).toMatchObject({ status: 'Saving…', busy: true, action: 'cancel' });
   });
 });

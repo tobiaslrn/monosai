@@ -26,6 +26,7 @@ files are already linked from code comments and from other records.
 | [0042](../decisions/0042-cross-tab-reading-mutations.md) | Tabs tell each other about deleted readings, and format in one locale |
 | [0047](../decisions/0047-a-reading-declares-what-it-should-have.md) | A reading declares what it should have |
 | [0048](../decisions/0048-the-preparation-lane-yields.md) | The preparation lane yields, and is never busy |
+| [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md) | Grammar preparation uses bounded batches and resumable recovery |
 
 ### Language processing
 
@@ -63,6 +64,7 @@ files are already linked from code comments and from other records.
 | [0040](../decisions/0040-speech-capabilities-are-declared.md) | The catalog declares speech capabilities, the probe confirms them |
 | [0044](../decisions/0044-backgrounded-story-generation.md) | A story is written by a job, not by a screen |
 | [0046](../decisions/0046-length-is-a-guideline.md) | Story length is a guideline, not a contract |
+| [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md) | Grammar preparation uses bounded batches and resumable recovery |
 
 ### The reader
 
@@ -77,6 +79,7 @@ files are already linked from code comments and from other records.
 | [0032](../decisions/0032-touch-word-taps-and-one-selection-colour.md) | A tap on a phone is one press, one colour, and one open thing |
 | [0050](../decisions/0050-the-library-wears-the-navigation.md) | The Library standing line is the way to the learner's level |
 | [0051](../decisions/0051-non-reader-utilities-and-first-use-help.md) | Non-reader utilities and first-use Help; amends 0050 and 0025 |
+| [0053](../decisions/0053-reader-touch-details-and-measured-sheets.md) | Native touch selection, sentence double taps, and measured detail sheets |
 
 ### Audio
 

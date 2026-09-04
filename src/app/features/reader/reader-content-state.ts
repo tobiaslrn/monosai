@@ -27,7 +27,7 @@ const ACTIONS: Record<PreparationLayer, string> = {
   audio: 'Generate audio',
 };
 
-/** UI projection only. Counts describe saved sentences, never a selected target. */
+/** UI projection only. Counts describe completed sentences, never a selected target. */
 export function readerContentState(
   reading: Reading,
   layer: PreparationLayer,
@@ -52,7 +52,8 @@ export function readerContentState(
     );
   }
   completed = Math.min(completed, reading.sentenceCount);
-  const saved = `${formatCount(completed)} of ${formatCount(reading.sentenceCount)} sentences saved`;
+  const completionNoun = layer === 'grammar' ? 'sentences analyzed' : 'sentences saved';
+  const completedDescription = `${formatCount(completed)} of ${formatCount(reading.sentenceCount)} ${completionNoun}`;
   const base = { layer, name: NAMES[layer], disabled: false, busy: false, error: null };
   switch (progress.kind) {
     case 'queued':
@@ -64,7 +65,13 @@ export function readerContentState(
         busy: true,
         status:
           progress.kind === 'running'
-            ? saved
+            ? layer === 'grammar' && completed === 0
+              ? progress.phase === 'requesting'
+                ? 'Analyzing…'
+                : progress.phase === 'saving'
+                  ? 'Saving…'
+                  : completedDescription
+              : completedDescription
             : progress.kind === 'preparing'
               ? 'Preparing…'
               : online
@@ -76,7 +83,7 @@ export function readerContentState(
     case 'failed':
       return {
         ...base,
-        status: `${saved} · Stopped`,
+        status: `${completedDescription} · Stopped`,
         action: progress.canRetry && readiness === 'ready' ? 'prepare' : 'settings',
         label: progress.canRetry && readiness === 'ready' ? 'Retry remaining' : 'Check settings',
         disabled: progress.canRetry && readiness === 'ready' && !online,
@@ -88,7 +95,7 @@ export function readerContentState(
     case 'cancelled':
       return {
         ...base,
-        status: `${saved} · Stopped`,
+        status: `${completedDescription} · Stopped`,
         action: readiness === 'ready' ? 'prepare' : 'settings',
         label: readiness === 'ready' ? 'Continue' : 'Check settings',
         disabled: readiness === 'ready' && !online,
@@ -101,7 +108,7 @@ export function readerContentState(
   if (reading.sentenceCount > 0 && completed >= reading.sentenceCount) {
     return {
       ...base,
-      status: saved,
+      status: completedDescription,
       action: layer === 'audio' ? 'listen' : null,
       label: layer === 'audio' ? 'Listen' : 'Ready',
     };
@@ -127,9 +134,9 @@ export function readerContentState(
   return {
     ...base,
     status: !online
-      ? `${completed > 0 ? saved : 'Not added'} · Offline`
+      ? `${completed > 0 ? completedDescription : 'Not added'} · Offline`
       : completed > 0
-        ? saved
+        ? completedDescription
         : failed
           ? 'Could not finish'
           : 'Not added',

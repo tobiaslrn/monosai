@@ -262,6 +262,22 @@ describe('PopoverService', () => {
     expect(pane()?.classList.contains('is-sheet')).toBe(false);
   });
 
+  it('moves an open reader surface with a viewport breakpoint change', () => {
+    const fixture = render();
+    fixture.componentInstance.open();
+    fixture.detectChanges();
+
+    expect(pane()?.classList.contains('is-sheet')).toBe(false);
+
+    media.setWidth(412);
+    fixture.detectChanges();
+    expect(pane()?.classList.contains('is-sheet')).toBe(true);
+
+    media.setWidth(1440);
+    fixture.detectChanges();
+    expect(pane()?.classList.contains('is-sheet')).toBe(false);
+  });
+
   it('opens a preview without a backdrop, and without taking focus', () => {
     const fixture = render();
     const anchor = fixture.componentInstance.anchor().nativeElement;

@@ -400,8 +400,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await openWordDetails(page, '分から');
     const details = wordDetails(page);
 
-    await expect(details.locator('.surface')).toHaveText('分からなかった');
-    await expect(details.locator('.reading')).toHaveText('わからなかった');
+    await expect(details.locator('.surface .ruby-base')).toHaveText('分');
+    await expect(details.locator('.surface rt')).toHaveText('わ');
+    await expect(details.locator('.surface')).toContainText('からなかった');
     await expect(details.locator('.dictionary-form')).toHaveText('分かる');
     await expect(details.locator('.part-of-speech')).toHaveText('verb');
     await expect(details.locator('.form-line')).toHaveText('Plain · negative · past');
@@ -469,7 +470,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     const openFromKeyboard = async (): Promise<void> => {
       await token.focus();
       await token.press('Enter');
-      const route = wordDetails(page).getByRole('button', { name: 'Sentence actions' });
+      const route = wordDetails(page).getByRole('button', { name: 'Sentence', exact: true });
       await route.focus();
       await route.press('Enter');
       await expect(page.locator('mn-sentence-popover')).toBeVisible();
@@ -522,7 +523,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
     await expect(wordDetails(page)).toBeVisible();
     await expect(page.locator('.mn-popover-pane')).toHaveCount(1);
-    await expect(wordDetails(page).locator('.surface')).toHaveText('猫である');
+    await expect(wordDetails(page).locator('.surface .ruby-base')).toHaveText('猫');
+    await expect(wordDetails(page).locator('.surface rt')).toHaveText('ねこ');
+    await expect(wordDetails(page).locator('.surface')).toContainText('である');
   });
 
   test('sentence details clear their context and stay in the viewport @mobile', async ({
@@ -607,7 +610,6 @@ test.describe('scenario 1 — paste, save, inspect', () => {
         viewport: { width: window.innerWidth, height: window.innerHeight },
       };
     }, String(subjectId));
-
     expect(placement.card.left).toBeGreaterThanOrEqual(0);
     expect(placement.card.right).toBeLessThanOrEqual(placement.viewport.width);
     expect(placement.card.top).toBeGreaterThanOrEqual(0);
@@ -675,7 +677,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     page,
     isMobile,
   }) => {
-    test.skip(isMobile, 'touch deliberately reserves long press for sentence details');
+    test.skip(isMobile, 'native touch selection is verified on an actual Android device');
     await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
@@ -718,7 +720,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     page,
     isMobile,
   }) => {
-    test.skip(!isMobile, 'the tap-versus-long-press split only exists on touch');
+    test.skip(!isMobile, 'the touch dismissal route only exists on touch');
     await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
@@ -780,7 +782,6 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     // on the word after the card was dismissed.
     await expect(page.locator('button.is-previewed')).toHaveCount(0);
     await expect(page.locator('mn-word-preview')).toHaveCount(0);
-    await expect(page.locator('.sentence.is-pressing')).toHaveCount(0);
   });
 
   test('the word a sheet explains stays visible above it @mobile', async ({ page, isMobile }) => {
@@ -868,9 +869,23 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       })
       .toBeLessThanOrEqual(1);
 
-    const viewport = page.viewportSize();
-    const sheetBox = await sheet.boundingBox();
-    expect(sheetBox?.y ?? 0).toBeGreaterThanOrEqual((viewport?.height ?? 0) * 0.4 - 1);
+    const placement = await page.evaluate(() => {
+      const card = document.querySelector<HTMLElement>('.mn-popover-pane .popover');
+      const playerElement = document.querySelector<HTMLElement>('[aria-label="Story audio"]');
+      if (card === null || playerElement === null) {
+        throw new Error('expected the sheet and player to be mounted');
+      }
+      const cardBox = card.getBoundingClientRect();
+      const playerBox = playerElement.getBoundingClientRect();
+      return {
+        card: { top: cardBox.top, bottom: cardBox.bottom, height: cardBox.height },
+        player: { top: playerBox.top },
+        viewportHeight: window.innerHeight,
+      };
+    });
+    expect(placement.card.top).toBeGreaterThanOrEqual(0);
+    expect(placement.card.bottom).toBeLessThanOrEqual(placement.player.top + 1);
+    expect(placement.card.height).toBeLessThanOrEqual(placement.viewportHeight * 0.6 + 1);
   });
 
   test('places an open player before the reading in keyboard order', async ({ page }) => {

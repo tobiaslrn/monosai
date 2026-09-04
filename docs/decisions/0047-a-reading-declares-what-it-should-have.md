@@ -1,7 +1,7 @@
 # 0047 — A reading declares what it should have
 
 Date: 2026-09-03
-Status: Accepted; reader interaction revised below on 2026-09-04
+Status: Accepted; reader interaction refined by ADR 0053 and grammar execution refined by ADR 0052
 
 ## Context
 

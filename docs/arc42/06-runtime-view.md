@@ -161,11 +161,13 @@ goal 3 is met at runtime.
 A learner can also ask to analyse a whole reading. That explicit action creates an
 `analyze-reading` job. The job captures the text-model configuration and immutable grammar profile
 once, includes the profile hash in its configuration fingerprint, and sends sequential batches of
-at most 20 sentences. Each successful analysis is stored before the next batch begins. A failed
-batch is recorded against its sentences without discarding successful batches before or after it;
-the job itself adds no retries beyond the provider client's bounded transport retries. After a
-reload, only a matching unfinished job resumes. A configuration mismatch closes the old job and
-starts work under the new fingerprint, while cancellation keeps every analysis already stored.
+at most four sentences. The provider adapter allows 4,096 response tokens and one bounded format
+recovery; it treats an empty findings array as a valid review. Each successful analysis is stored
+before the next batch begins. A failed batch is recorded against its sentences without discarding
+successful batches before or after it; the job itself adds no retries beyond the provider client's
+bounded transport and format-recovery rules. After a reload, only a matching unfinished job
+resumes. A configuration mismatch closes the old job and starts work under the new fingerprint,
+while cancellation keeps every analysis already stored.
 
 Whole-reading translation reports that it has stopped only after cancellation is saved. Reloading
 after that report cannot resume the cancelled job; a failed cancellation write is shown as a storage
@@ -174,8 +176,19 @@ failure instead.
 The reader combines appearance preferences, per-layer content status, and maintenance in Story
 options. Explicit preparation and retry actions use the existing layer producers; stopping a layer
 also closes its queued work and removes that layer's standing target without deleting saved aids.
-Only Listen and Story options remain beside the title. A compact progress link opens the panel;
-closing it never cancels work. Generation retains its target switches.
+Queued work, the first outstanding grammar request, completed sentence counts, provider failures,
+storage failures, and Stop, Continue, and Retry actions are reported in the affected Story options
+row. The row is an accessible live status; closing the panel never cancels work. Only Listen and
+Story options remain beside the title. Generation retains its target switches.
+
+The reading surface leaves native touch selection and copying to the browser. A touch double tap
+within the same sentence opens details, while a single word tap waits briefly to see whether it is
+the first half of that gesture; mouse and keyboard activation remain immediate. The visible Sentence
+route below a word's form summary is the equivalent keyboard and touch path. On a small viewport,
+word and sentence details are independently scrollable sheets whose bottom edge is the measured
+docked-player boundary. Their height uses the smaller of the viewport cap and the remaining space
+above that boundary, and the page remeasures when the player or viewport changes
+([ADR 0053](../decisions/0053-reader-touch-details-and-measured-sheets.md)).
 
 The cache key is a fingerprint of everything that could change the answer, which
 [chapter 8](08-crosscutting-concepts.md) describes. Change the voice and the old clips are hidden
