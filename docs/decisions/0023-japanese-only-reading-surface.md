@@ -1,7 +1,7 @@
 # 0023 — The reading surface carries Japanese and nothing else
 
 Date: 2026-08-20
-Status: Accepted
+Status: Accepted; reader gesture and sheet rules refined by ADR 0051
 
 ## Context
 
@@ -40,8 +40,10 @@ the learner opened deliberately.
 - **A sentence has no control.** A press anywhere in a paragraph that is not a
   word selects the sentence it fell in or nearest to, decided geometrically from
   the line boxes, because a press in the leading between two lines lands on the
-  paragraph and on no sentence element at all. Touch long-presses anywhere in the
-  sentence. The leading is deliberately loose — it is the target.
+  paragraph and on no sentence element at all. On touch, a double tap anywhere
+  in the sentence, including a word, opens details; a long press remains the
+  browser's native selection and copy gesture. The leading is deliberately
+  loose — it is the target.
 - **A word's target is the word.** The token button is the ruby base rather than
   the ruby's parent, and its leading is reset, so the annotation above it and the
   space around it belong to the sentence.

@@ -58,6 +58,12 @@ All external data is untrusted until a Zod schema accepts it. This applies to:
 Stored rows are validated on read because storage is external too. A browser can be inspected, and a
 schema version can be edited by hand.
 
+Grammar review is a bounded provider interaction: a request covers only the
+runner's small batch, the response has an explicit size allowance, and one
+format-recovery request is the most the adapter adds. An empty findings array
+passes validation and completes coverage for every sentence in that batch; a
+truncated or otherwise malformed reply remains a typed provider failure.
+
 ## 8.4 Ports and dependency injection
 
 Every port is an injection token declared in `application/shared/` and bound by a provider function
@@ -108,6 +114,12 @@ instead of playing them ([ADR 0043](../decisions/0043-voice-changes-hide-clips-a
 Persisted whole-reading jobs use a configuration-level fingerprint without sentence content. A
 grammar job's version contains the model, prompt version, and immutable profile hash, so it can
 resume only work whose remaining items still mean the same thing.
+
+The preparation lane writes each accepted grammar record before advancing its
+job row. Story options therefore reports the real queue/request/save outcome:
+completed analyses survive a provider failure, cancellation, reload, or a
+retry, while a storage failure leaves the job recoverable without counting an
+unwritten record.
 
 ## 8.7 Offline and update behaviour
 

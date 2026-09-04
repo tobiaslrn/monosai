@@ -1,27 +1,17 @@
 import { DestroyRef, Directive, ElementRef, HostListener, inject, output } from '@angular/core';
 import { sentenceAt, sentenceBoxesIn } from './sentence-hit-testing';
 
-/** How long a touch must rest on a sentence before it is selected. */
-const LONG_PRESS_MS = 450;
+/** The interval in which two touch taps become a sentence gesture. */
+export const SENTENCE_DOUBLE_TAP_WINDOW_MS = 300;
 
-/**
- * How long a finger must rest before the sentence under it is tinted.
- *
- * Short enough to answer a press that is going somewhere well before it
- * resolves, and long enough that a tap or the start of a scroll — neither of
- * which selects anything — leaves the page alone instead of flashing a shaded
- * sentence at the reader.
- */
-const PRESS_FEEDBACK_MS = 140;
+/** The furthest apart two taps may land and still mean the same gesture. */
+export const SENTENCE_DOUBLE_TAP_DISTANCE_PX = 24;
 
-/** Movement that turns a press into a scroll or a drag rather than a long press. */
-const MOVE_TOLERANCE_PX = 10;
+/** Movement beyond a tap's radius is a scroll or a drag, not a tap. */
+const TOUCH_TAP_MOVE_TOLERANCE_PX = SENTENCE_DOUBLE_TAP_DISTANCE_PX;
 
-/** A short buzz, so a long press is felt rather than waited out. */
-const HAPTIC_MS = 12;
-
-/** Marks the sentence a finger is resting on, before the press has resolved. */
-const PRESSING_CLASS = 'is-pressing';
+/** A synthesized click should never be mistaken for a later touch click. */
+const TOUCH_CLICK_CANDIDATE_WINDOW_MS = SENTENCE_DOUBLE_TAP_WINDOW_MS + 50;
 
 /** The selected sentence, and the point its popover is anchored to. */
 export interface SentenceSelection {
@@ -30,84 +20,210 @@ export interface SentenceSelection {
   readonly y: number;
 }
 
+interface TouchPointer {
+  readonly pointerId: number;
+  readonly x: number;
+  readonly y: number;
+  moved: boolean;
+}
+
+interface TouchClickCandidate {
+  readonly sentenceId: string | null;
+  readonly target: HTMLElement | null;
+  readonly x: number;
+  readonly y: number;
+  readonly at: number;
+}
+
+/** A first tap waiting to see whether it is part of a sentence double tap. */
+interface PendingTouchTap extends TouchClickCandidate {
+  readonly wordTarget: HTMLButtonElement | null;
+}
+
 /**
- * The two pointer routes to a sentence, one per input device.
+ * Resolves paragraph gestures without taking over the browser's text
+ * selection.
  *
- * The reader prints no control for a sentence, so the press has to be the
- * control — but the two devices cannot share one gesture. A mouse click
- * anywhere in a paragraph that is not a word selects the sentence it fell in or
- * nearest to, because a mouse has nothing else to do with a click on prose. A
- * finger does: a tap is how a reader dismisses what is open and how they scroll
- * on to the next line, so on touch only a long press selects, from anywhere in
- * the sentence including on a word.
+ * A mouse click on prose still selects its sentence immediately. A touch tap
+ * has two possible meanings: a single tap opens a word, while two taps close
+ * together on one sentence open sentence details. The paragraph captures
+ * synthesized touch clicks so a word click can wait for that decision; if the
+ * window expires it dispatches one ordinary click back to the word. Native
+ * keyboard activation never has a touch pointer candidate and therefore stays
+ * immediate.
  *
- * Listening on the paragraph rather than on each sentence is deliberate. A
- * press in the leading between two lines lands on the paragraph and on no
- * sentence element at all, so a per-sentence listener would drop exactly the
- * whitespace that makes this target big enough to hit. `sentenceAt` decides
- * from the line boxes instead.
- *
- * Token buttons stop their own click from propagating, so a click that reaches
- * here is by definition not a word, and opening word details and selecting a
- * sentence can never race. A press that moves, that is interrupted by a scroll,
- * or that ends in a text selection is not a long press: all three are things a
- * reader does while reading.
+ * Listening at paragraph level is deliberate. A tap in the leading between
+ * lines lands on the paragraph rather than on a sentence element, so
+ * `sentenceAt` remains the authority for the geometric sentence boundary.
  */
 @Directive({ selector: '[mnParagraphGestures]' })
 export class ParagraphGesturesDirective {
   readonly sentenceSelected = output<SentenceSelection>();
 
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
 
-  private pressTimer: ReturnType<typeof setTimeout> | null = null;
-  private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
-  private pressOrigin: { x: number; y: number } | null = null;
+  private readonly touchPointerIds = new Set<number>();
+  private activeTouch: TouchPointer | null = null;
+  private ignoredTouchPointerId: number | null = null;
+  private touchClickCandidate: TouchClickCandidate | null = null;
+  private touchCandidateTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingTap: PendingTouchTap | null = null;
+  private pendingTapTimer: ReturnType<typeof setTimeout> | null = null;
+  private touchClicksToSuppress = 0;
   private mousePressOrigin: { x: number; y: number } | null = null;
   private mouseDragged = false;
-  private armedSwallow: ((event: Event) => void) | null = null;
-  private swallowTimer: ReturnType<typeof setTimeout> | null = null;
-  /**
-   * The device the pending click belongs to.
-   *
-   * A click carries no pointer type of its own, and the two devices mean
-   * opposite things by one. It starts as a mouse so a click synthesized without
-   * any pointer sequence — which is how assistive technology and a keyboard
-   * reach the page — still selects.
-   */
-  private lastPointerType = 'mouse';
+  private readonly releasedClicks = new WeakSet<MouseEvent>();
+
+  private readonly onClickCapture = (event: MouseEvent): void => {
+    if (this.releasedClicks.has(event)) {
+      this.releasedClicks.delete(event);
+      return;
+    }
+    const candidate = this.touchClickCandidate;
+    if (candidate === null || Date.now() - candidate.at > TOUCH_CLICK_CANDIDATE_WINDOW_MS) {
+      if (this.touchClicksToSuppress > 0) {
+        this.touchClicksToSuppress -= 1;
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      return;
+    }
+    this.touchClickCandidate = null;
+    this.clearTouchCandidateTimer();
+
+    // A native selection wins over every application gesture. Consuming this
+    // click also prevents a button under the selected text from activating.
+    if (hasTextSelection()) {
+      this.cancelTouchActions(1);
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    const target = elementTarget(event.target) ?? candidate.target;
+    const sentenceId = this.sentenceFor(target, candidate.x, candidate.y);
+    if (sentenceId === null) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    this.handleTouchTap({
+      sentenceId,
+      target,
+      x: candidate.x,
+      y: candidate.y,
+      at: candidate.at,
+    });
+  };
+
+  private readonly onWindowPointerDown = (event: PointerEvent): void => {
+    if (!isTouchPointer(event.pointerType)) {
+      // A mouse on a hybrid device is a new modality, not the second half of
+      // a touch gesture that happened just before it.
+      this.cancelTouchActions(0);
+      this.touchClicksToSuppress = 0;
+      return;
+    }
+    const startsNewTouchSequence = this.touchPointerIds.size === 0;
+    this.touchPointerIds.add(event.pointerId);
+    if (startsNewTouchSequence) {
+      // A cancelled/dragged touch may have left one synthesized click to
+      // swallow. A genuinely new touch sequence must never inherit it,
+      // including when that sequence starts outside this paragraph.
+      this.touchClicksToSuppress = 0;
+    }
+    // A second touch anywhere in the document invalidates the first gesture.
+    // Do this in capture so a second finger outside this paragraph cannot leave
+    // a delayed word click armed here.
+    if (this.touchPointerIds.size > 1) {
+      this.cancelTouchActions(2);
+      this.ignoredTouchPointerId = event.pointerId;
+    }
+  };
+
+  private readonly onWindowPointerCancel = (event: PointerEvent): void => {
+    if (isTouchPointer(event.pointerType)) {
+      this.touchPointerIds.delete(event.pointerId);
+      this.cancelTouchActions(this.hasTouchGesture() ? 1 : 0);
+    }
+  };
+
+  private readonly onWindowPointerUp = (event: PointerEvent): void => {
+    if (isTouchPointer(event.pointerType)) {
+      this.touchPointerIds.delete(event.pointerId);
+      if (event.pointerId === this.ignoredTouchPointerId) {
+        this.ignoredTouchPointerId = null;
+      }
+    }
+  };
+
+  private readonly onScroll = (): void => {
+    this.cancelTouchActions(this.hasTouchGesture() ? 1 : 0);
+  };
+
+  private readonly onSelectionChange = (): void => {
+    if (hasTextSelection()) {
+      this.cancelTouchActions(this.hasTouchGesture() ? 1 : 0);
+    }
+  };
+
+  private readonly onSelectStart = (): void => {
+    // Chromium emits selectstart for an ordinary touch activation before its
+    // synthesized click, even when the selection remains collapsed. Defer the
+    // check until the browser has had a chance to publish a real range; the
+    // selectionchange listener remains the authoritative cancellation path.
+    queueMicrotask(() => {
+      if (hasTextSelection()) {
+        this.cancelTouchActions(this.hasTouchGesture() ? 1 : 0);
+      }
+    });
+  };
+
+  private readonly onWindowKeyDown = (): void => {
+    // Keyboard activation has no pointer sequence of its own. Clear a touch
+    // candidate before its click arrives so it cannot be mistaken for tap two.
+    this.cancelTouchActions(0);
+    this.touchClicksToSuppress = 0;
+  };
 
   constructor() {
-    const cancel = (): void => {
-      this.cancelPress();
-    };
-    // Capture, so a scroll inside any container still cancels the press.
-    window.addEventListener('scroll', cancel, { capture: true, passive: true });
-    inject(DestroyRef).onDestroy(() => {
-      window.removeEventListener('scroll', cancel, { capture: true });
-      this.cancelPress();
-      this.disarmSwallow();
+    const paragraph = this.element.nativeElement;
+    paragraph.addEventListener('click', this.onClickCapture, { capture: true });
+    window.addEventListener('pointerdown', this.onWindowPointerDown, { capture: true });
+    window.addEventListener('pointercancel', this.onWindowPointerCancel, { capture: true });
+    window.addEventListener('pointerup', this.onWindowPointerUp, { capture: true });
+    window.addEventListener('scroll', this.onScroll, { capture: true, passive: true });
+    document.addEventListener('selectionchange', this.onSelectionChange);
+    document.addEventListener('selectstart', this.onSelectStart);
+    window.addEventListener('keydown', this.onWindowKeyDown, { capture: true });
+
+    this.destroyRef.onDestroy(() => {
+      paragraph.removeEventListener('click', this.onClickCapture, { capture: true });
+      window.removeEventListener('pointerdown', this.onWindowPointerDown, { capture: true });
+      window.removeEventListener('pointercancel', this.onWindowPointerCancel, { capture: true });
+      window.removeEventListener('pointerup', this.onWindowPointerUp, { capture: true });
+      window.removeEventListener('scroll', this.onScroll, { capture: true });
+      document.removeEventListener('selectionchange', this.onSelectionChange);
+      document.removeEventListener('selectstart', this.onSelectStart);
+      window.removeEventListener('keydown', this.onWindowKeyDown, { capture: true });
+      this.cancelTouchActions();
     });
   }
 
+  /** Mouse prose remains an immediate sentence target. */
   @HostListener('click', ['$event'])
   protected onClick(event: MouseEvent): void {
-    // A tap is not a selection. On touch the reader taps to dismiss what is
-    // open and to scroll on, so answering a tap with a popover meant every
-    // attempt to put one away opened the next one.
-    if (this.lastPointerType !== 'mouse') {
-      return;
-    }
     const followedDrag = this.mouseDragged;
     this.mouseDragged = false;
-    // Text selection normally makes the guard below sufficient. Keep the
-    // geometric check as well: even if the browser collapses or fails to form
-    // the selection, releasing a drag is never a sentence activation.
     if (followedDrag && event.detail > 0) {
       return;
     }
-    // A press that produced a text selection was a reader copying a line, and
-    // a click reported at the origin was synthesized rather than aimed — for
-    // assistive technology the word buttons are the route in.
+    // A click at the origin is the coordinate-free activation synthesized by
+    // assistive technology. Word buttons and the visible sentence-action
+    // route own that keyboard path; guessing from paragraph geometry would
+    // open an arbitrary sentence.
     if (hasTextSelection() || (event.clientX === 0 && event.clientY === 0)) {
       return;
     }
@@ -116,83 +232,145 @@ export class ParagraphGesturesDirective {
 
   @HostListener('pointerdown', ['$event'])
   protected onPointerDown(event: PointerEvent): void {
-    // A new gesture is never the click the previous long press was guarding
-    // against, and leaving the guard armed would silently eat it.
-    this.disarmSwallow();
-    this.lastPointerType = event.pointerType;
-    if (event.pointerType === 'mouse') {
-      this.mousePressOrigin = { x: event.clientX, y: event.clientY };
-      this.mouseDragged = false;
-      return;
-    }
-    this.cancelPress();
-    const origin = { x: event.clientX, y: event.clientY };
-    this.pressOrigin = origin;
-    // Answered well before the press resolves, because half a second of nothing
-    // happening under a finger reads as the page having ignored it — but not on
-    // the very first frame, because a tap and the first frame of a scroll are
-    // also presses, and neither of them selects a sentence.
-    this.feedbackTimer = setTimeout(() => {
-      this.feedbackTimer = null;
-      this.markPressed(sentenceAt(sentenceBoxesIn(this.element.nativeElement), origin));
-    }, PRESS_FEEDBACK_MS);
-    this.pressTimer = setTimeout(() => {
-      this.pressTimer = null;
-      const resting = this.pressOrigin;
-      if (resting === null || hasTextSelection()) {
+    if (isTouchPointer(event.pointerType)) {
+      if (
+        (!event.isPrimary && this.activeTouch !== null) ||
+        this.ignoredTouchPointerId === event.pointerId
+      ) {
+        this.ignoredTouchPointerId = null;
+        this.cancelTouchActions(2);
         return;
       }
-      this.swallowNextClick();
-      buzz();
-      this.markPressed(null);
-      this.select(resting.x, resting.y);
-    }, LONG_PRESS_MS);
+      this.touchClicksToSuppress = 0;
+      this.activeTouch = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        moved: false,
+      };
+      return;
+    }
+    this.mousePressOrigin = { x: event.clientX, y: event.clientY };
+    this.mouseDragged = false;
   }
 
   @HostListener('pointermove', ['$event'])
   protected onPointerMove(event: PointerEvent): void {
-    const mouseOrigin = this.mousePressOrigin;
-    if (event.pointerType === 'mouse' && mouseOrigin !== null) {
-      this.mouseDragged ||= movedBeyondTolerance(mouseOrigin, event);
+    if (isTouchPointer(event.pointerType)) {
+      const active = this.activeTouch;
+      if (active?.pointerId !== event.pointerId) {
+        return;
+      }
+      if (movedBeyond(active, event)) {
+        active.moved = true;
+        this.cancelTouchActions(this.hasTouchGesture() ? 1 : 0);
+      }
       return;
     }
-    const origin = this.pressOrigin;
-    if (origin === null) {
-      return;
-    }
-    if (movedBeyondTolerance(origin, event)) {
-      this.cancelPress();
+    const origin = this.mousePressOrigin;
+    if (origin) {
+      this.mouseDragged ||= movedBeyond(origin, event);
     }
   }
 
   @HostListener('pointerup', ['$event'])
   protected onPointerUp(event: PointerEvent): void {
-    if (event.pointerType === 'mouse') {
+    if (!isTouchPointer(event.pointerType)) {
       this.mousePressOrigin = null;
       return;
     }
-    this.cancelPress();
-  }
-
-  @HostListener('pointercancel')
-  protected onPointerCancel(): void {
-    this.mousePressOrigin = null;
-    this.mouseDragged = false;
-    this.cancelPress();
-  }
-
-  /**
-   * Suppresses the platform's own long-press menu on touch.
-   *
-   * A long press is the reader's gesture for a sentence, and on Android the
-   * browser answers the same press with a text-selection menu that covers the
-   * popover it just opened.
-   */
-  @HostListener('contextmenu', ['$event'])
-  protected onContextMenu(event: Event): void {
-    if (this.lastPointerType !== 'mouse') {
-      event.preventDefault();
+    const active = this.activeTouch;
+    this.activeTouch = null;
+    if (active?.pointerId !== event.pointerId) {
+      return;
     }
+    if (active.moved) {
+      return;
+    }
+    const target = elementTarget(event.target);
+    const candidate: TouchClickCandidate = {
+      sentenceId: this.sentenceFor(target, event.clientX, event.clientY),
+      target,
+      x: event.clientX,
+      y: event.clientY,
+      at: Date.now(),
+    };
+    this.touchClickCandidate = candidate;
+    this.clearTouchCandidateTimer();
+    this.touchCandidateTimer = setTimeout(() => {
+      if (this.touchClickCandidate === candidate) {
+        this.touchClickCandidate = null;
+      }
+      this.touchCandidateTimer = null;
+    }, TOUCH_CLICK_CANDIDATE_WINDOW_MS);
+  }
+
+  @HostListener('pointercancel', ['$event'])
+  protected onPointerCancel(event: PointerEvent): void {
+    if (isTouchPointer(event.pointerType)) {
+      this.cancelTouchActions(this.hasTouchGesture() ? 1 : 0);
+    } else {
+      this.mousePressOrigin = null;
+      this.mouseDragged = false;
+    }
+  }
+
+  /** Picks the second tap's sentence from its target or from line geometry. */
+  private sentenceFor(target: HTMLElement | null, x: number, y: number): string | null {
+    return (
+      target?.closest<HTMLElement>('[data-sentence-id]')?.dataset['sentenceId'] ??
+      sentenceAt(sentenceBoxesIn(this.element.nativeElement), { x, y })
+    );
+  }
+
+  private handleTouchTap(candidate: TouchClickCandidate): void {
+    if (candidate.sentenceId === null) {
+      return;
+    }
+    const pending = this.pendingTap;
+    if (
+      pending !== null &&
+      pending.sentenceId === candidate.sentenceId &&
+      withinDistance(pending, candidate)
+    ) {
+      this.clearPendingTap();
+      this.sentenceSelected.emit({
+        sentenceId: candidate.sentenceId,
+        x: candidate.x,
+        y: candidate.y,
+      });
+      return;
+    }
+
+    // A tap on another sentence should not discard a valid first word tap.
+    // Resolve it before arming the new sentence's double-tap window.
+    if (pending !== null) {
+      this.flushPendingTap();
+    }
+    const wordTarget = candidate.target?.closest<HTMLButtonElement>('button.token') ?? null;
+    this.pendingTap = { ...candidate, wordTarget };
+    this.clearPendingTapTimer();
+    this.pendingTapTimer = setTimeout(() => {
+      this.flushPendingTap();
+    }, SENTENCE_DOUBLE_TAP_WINDOW_MS);
+  }
+
+  /** Lets one delayed word tap take its ordinary, already-tested route. */
+  private flushPendingTap(): void {
+    const pending = this.pendingTap;
+    this.clearPendingTap();
+    if (pending?.wordTarget?.isConnected !== true) {
+      return;
+    }
+    const click = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      clientX: pending.x,
+      clientY: pending.y,
+      detail: 1,
+    });
+    this.releasedClicks.add(click);
+    pending.wordTarget.dispatchEvent(click);
   }
 
   private select(x: number, y: number): void {
@@ -202,94 +380,69 @@ export class ParagraphGesturesDirective {
     }
   }
 
-  private cancelPress(): void {
-    if (this.pressTimer !== null) {
-      clearTimeout(this.pressTimer);
-      this.pressTimer = null;
-    }
-    if (this.feedbackTimer !== null) {
-      clearTimeout(this.feedbackTimer);
-      this.feedbackTimer = null;
-    }
-    this.pressOrigin = null;
-    this.markPressed(null);
+  private cancelTouchActions(clicksToSuppress = 0): void {
+    this.activeTouch = null;
+    this.ignoredTouchPointerId = null;
+    this.touchClicksToSuppress = Math.max(this.touchClicksToSuppress, clicksToSuppress);
+    this.touchClickCandidate = null;
+    this.clearTouchCandidateTimer();
+    this.clearPendingTap();
   }
 
-  /**
-   * Tints the sentence under the finger while the press is being timed.
-   *
-   * Set on the element rather than through the sentence component, because the
-   * sentence a press belongs to is resolved from line boxes here and nowhere
-   * else, and a press in the leading belongs to a sentence that is not under
-   * the pointer at all.
-   */
-  private markPressed(sentenceId: string | null): void {
-    for (const element of this.element.nativeElement.querySelectorAll<HTMLElement>(
-      `.${PRESSING_CLASS}`,
-    )) {
-      element.classList.remove(PRESSING_CLASS);
-    }
-    if (sentenceId === null) {
-      return;
-    }
-    this.element.nativeElement
-      .querySelector<HTMLElement>(`[data-sentence-id="${CSS.escape(sentenceId)}"]`)
-      ?.classList.add(PRESSING_CLASS);
+  private hasTouchGesture(): boolean {
+    return (
+      this.touchPointerIds.size > 0 ||
+      this.activeTouch !== null ||
+      this.touchClickCandidate !== null ||
+      this.pendingTap !== null
+    );
   }
 
-  /**
-   * Eats the click a long press produces when the finger is lifted, so that
-   * pressing on a word opens the sentence rather than also that word.
-   */
-  private swallowNextClick(): void {
-    const swallow = (event: Event): void => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.disarmSwallow();
-    };
-    this.armedSwallow = swallow;
-    this.element.nativeElement.addEventListener('click', swallow, { capture: true });
-    // A long press that never produces a click must not leave the guard armed
-    // for the next, genuine one.
-    this.swallowTimer = setTimeout(() => {
-      this.disarmSwallow();
-    }, LONG_PRESS_MS);
+  private clearPendingTap(): void {
+    this.pendingTap = null;
+    this.clearPendingTapTimer();
   }
 
-  private disarmSwallow(): void {
-    if (this.swallowTimer !== null) {
-      clearTimeout(this.swallowTimer);
-      this.swallowTimer = null;
+  private clearPendingTapTimer(): void {
+    if (this.pendingTapTimer !== null) {
+      clearTimeout(this.pendingTapTimer);
+      this.pendingTapTimer = null;
     }
-    if (this.armedSwallow !== null) {
-      this.element.nativeElement.removeEventListener('click', this.armedSwallow, {
-        capture: true,
-      });
-      this.armedSwallow = null;
+  }
+
+  private clearTouchCandidateTimer(): void {
+    if (this.touchCandidateTimer !== null) {
+      clearTimeout(this.touchCandidateTimer);
+      this.touchCandidateTimer = null;
     }
   }
 }
 
-function movedBeyondTolerance(origin: { x: number; y: number }, event: PointerEvent): boolean {
+function isTouchPointer(pointerType: string): boolean {
+  return pointerType !== 'mouse';
+}
+
+function movedBeyond(
+  origin: { readonly x: number; readonly y: number },
+  event: PointerEvent,
+): boolean {
   return (
-    Math.abs(event.clientX - origin.x) > MOVE_TOLERANCE_PX ||
-    Math.abs(event.clientY - origin.y) > MOVE_TOLERANCE_PX
+    Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > TOUCH_TAP_MOVE_TOLERANCE_PX
   );
+}
+
+function withinDistance(first: TouchClickCandidate, second: TouchClickCandidate): boolean {
+  return (
+    Math.hypot(second.x - first.x, second.y - first.y) <= SENTENCE_DOUBLE_TAP_DISTANCE_PX &&
+    second.at - first.at <= SENTENCE_DOUBLE_TAP_WINDOW_MS
+  );
+}
+
+function elementTarget(target: EventTarget | null): HTMLElement | null {
+  return target instanceof HTMLElement ? target : null;
 }
 
 function hasTextSelection(): boolean {
   const selection = window.getSelection();
   return selection !== null && !selection.isCollapsed;
-}
-
-/**
- * Confirms a long press where the device can, and does nothing where it cannot.
- *
- * `vibrate` is typed as always present but is absent on iOS Safari and on every
- * desktop browser, so it is feature-detected rather than called.
- */
-function buzz(): void {
-  if ('vibrate' in navigator) {
-    navigator.vibrate(HAPTIC_MS);
-  }
 }

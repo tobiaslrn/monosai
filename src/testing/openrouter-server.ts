@@ -29,6 +29,8 @@ export type ChatContentKind =
   | 'decisions-approved'
   | 'decisions-rejected'
   | 'grammar-complete'
+  | 'grammar-empty'
+  | 'grammar-truncated'
   | 'grammar-unavailable'
   | 'grammar-unlocatable-span'
   | 'grammar-unknown-sentence'
@@ -200,6 +202,8 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
       },
     ],
   }),
+  'grammar-empty': JSON.stringify({ findings: [] }),
+  'grammar-truncated': '{"findings":[',
   'grammar-unavailable': JSON.stringify({ findings: 'not-an-array' }),
   'grammar-unlocatable-span': JSON.stringify({
     findings: [

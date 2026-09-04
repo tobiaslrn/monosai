@@ -171,15 +171,6 @@ export interface TokenActivation {
       background: var(--surface-sunken);
     }
 
-    /*
-     * The sentence a finger is resting on, while the long press is being timed.
-     * The class is put on by the paragraph's gesture directive, which is the
-     * only thing that knows which sentence a press in the leading belongs to.
-     */
-    .sentence.is-pressing {
-      background: var(--surface-sunken);
-    }
-
     @media (prefers-reduced-motion: reduce) {
       .sentence {
         transition: none;

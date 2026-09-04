@@ -249,7 +249,7 @@ describe('WordInspectorComponent', () => {
     const route = element.querySelector<HTMLButtonElement>('.sentence-route');
 
     expect(route?.tagName).toBe('BUTTON');
-    expect(route?.textContent).toContain('Sentence actions');
+    expect(route?.textContent).toContain('Sentence');
     route?.click();
 
     expect(fixture.componentInstance.sentenceActionRequests).toBe(1);
@@ -307,6 +307,7 @@ describe('WordInspectorComponent', () => {
     const inspector = element.querySelector('.inspector')!;
     const surface = inspector.querySelector('.surface');
     const form = inspector.querySelector('.form-summary');
+    const route = inspector.querySelector('.sentence-route');
     const dictionary = inspector.querySelector('#mn-inspector-dictionary');
     const grammar = inspector.querySelector('.grammar-section');
     const status = inspector.querySelector('.status');
@@ -314,13 +315,15 @@ describe('WordInspectorComponent', () => {
 
     expect(surface).not.toBeNull();
     expect(form).not.toBeNull();
+    expect(route).not.toBeNull();
     expect(dictionary).not.toBeNull();
     expect(grammar).not.toBeNull();
     expect(status).not.toBeNull();
     expect(nextAction).not.toBeNull();
     expect(surface!.compareDocumentPosition(form!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(form!.compareDocumentPosition(route!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(
-      form!.compareDocumentPosition(dictionary!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      route!.compareDocumentPosition(dictionary!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
       dictionary!.compareDocumentPosition(grammar!) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -350,6 +353,47 @@ describe('WordInspectorComponent', () => {
       expect(element.querySelector('.dictionary-form')?.textContent).toBe('猫');
       expect(element.querySelector('.part-of-speech')?.textContent).toBe('noun');
       expect(element.querySelector('.form-line')).toBeNull();
+    });
+  });
+
+  describe('the tapped-form ruby heading', () => {
+    it('uses semantic ruby for the kanji stem and leaves the kana ending plain', async () => {
+      const element = (
+        await render(NO_WORD_GRAMMAR, {
+          ...TOKEN,
+          surface: '開い',
+          readingHiragana: 'ひらい',
+          partOfSpeech: 'verb',
+        })
+      ).nativeElement as HTMLElement;
+      const heading = element.querySelector<HTMLHeadingElement>('.surface');
+      const ruby = heading?.querySelector('ruby');
+
+      expect(heading?.tagName).toBe('H2');
+      expect(ruby?.querySelector('.ruby-base')?.textContent).toBe('開');
+      expect(ruby?.querySelector('rt')?.textContent).toBe('ひら');
+      expect(heading?.textContent).toContain('い');
+      expect(heading?.querySelectorAll('ruby')).toHaveLength(1);
+    });
+
+    it('keeps a kana-only form and a form without a reading as plain text', async () => {
+      const kana = (
+        await render(NO_WORD_GRAMMAR, {
+          ...TOKEN,
+          surface: 'います',
+          readingHiragana: 'います',
+        })
+      ).nativeElement as HTMLElement;
+      const unreadable = (
+        await render(NO_WORD_GRAMMAR, {
+          ...TOKEN,
+          surface: '開く',
+          readingHiragana: undefined,
+        })
+      ).nativeElement as HTMLElement;
+
+      expect(kana.querySelector('.surface ruby')).toBeNull();
+      expect(unreadable.querySelector('.surface ruby')).toBeNull();
     });
   });
 

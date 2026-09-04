@@ -98,14 +98,20 @@ const DISMISS_DISTANCE_PX = 80;
     :host(.is-sheet) .popover {
       width: 100vw;
       max-width: 100%;
-      max-height: calc(60dvh - var(--mn-docked-player-height, 0px));
+      /*
+       * The sheet gets the smaller of its normal viewport cap and the space
+       * that actually remains above the measured player boundary. The player
+       * height is not subtracted from the 60dvh cap itself: doing that made a
+       * short player needlessly shrink an otherwise comfortable sheet.
+       */
+      max-height: min(60dvh, calc(100dvh - var(--mn-docked-player-height, 0px) - var(--space-4)));
       /*
        * The reader's audio player docks to the same edge, and publishes its
        * height on the document root. The global pane uses that value as its
-       * bottom position, while this card subtracts it from the shared height
-       * budget. Both resolve to zero whenever nothing else is docked.
+       * bottom position, while this card leaves the standard gap above that
+       * boundary. Both resolve to zero whenever nothing else is docked.
        */
-      padding: 0 var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+      padding: 0 var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
       overflow: hidden auto;
       border-inline: 0;
       border-block-end: 0;
