@@ -20,7 +20,10 @@ import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { ReadingAudioMaintenanceStore } from '../../application/enrichment/reading-audio-maintenance.store';
 import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
 import { PreparationStore } from '../../application/enrichment/preparation.store';
-import type { PreparationLayer } from '../../domain/enrichment/preparation';
+import { PREPARATION_ORDER, type PreparationLayer } from '../../domain/enrichment/preparation';
+import { LayerRunners } from '../../application/enrichment/layer-runner';
+import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
+import { readerContentState } from './reader-content-state';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
@@ -48,8 +51,6 @@ import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PopoverService, type PopoverRef } from '../../shared-ui/popover/popover.service';
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
-import { PreparationMenuComponent } from './preparation-menu.component';
-import { ReaderAidsComponent } from './reader-aids.component';
 import { ReaderParagraphComponent } from './reader-paragraph.component';
 import { ReaderMenuComponent } from './reader-menu.component';
 import type { SentenceSelection } from './paragraph-gestures.directive';
@@ -57,7 +58,6 @@ import type { SelectedWord, TokenActivation } from './reader-sentence.component'
 import type { UnknownWord } from './sentence-popover.component';
 import { SentencePopoverComponent } from './sentence-popover.component';
 import { ReadingPlayerComponent } from './reading-player.component';
-import { TranslationProgressComponent } from './translation-progress.component';
 import {
   NO_WORD_GRAMMAR,
   WordInspectorComponent,
@@ -118,14 +118,11 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
   imports: [
     RouterLink,
     IconComponent,
-    PreparationMenuComponent,
-    ReaderAidsComponent,
     ReaderParagraphComponent,
     ReaderMenuComponent,
     ReaderPopoverComponent,
     ReadingPlayerComponent,
     SentencePopoverComponent,
-    TranslationProgressComponent,
     WordInspectorComponent,
     WordPreviewComponent,
   ],
@@ -149,14 +146,6 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           <h1>{{ readerHeading() }}</h1>
           @if (store.status() === 'ready') {
             <div class="bar-actions">
-              @if (store.reading(); as reading) {
-                <mn-preparation-menu
-                  [targets]="reading.preparationTargets"
-                  [audioReadiness]="tts.readiness()"
-                  (targetsChanged)="changePreparationTargets($event)"
-                />
-              }
-              <mn-reader-aids />
               <!--
                 Always here for a loaded reading, whether or not it has any
                 audio. The player behind it owns every audio state there is.
@@ -175,12 +164,14 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
               </button>
               @if (store.reading(); as reading) {
                 <mn-reader-menu
-                  [reading]="reading"
-                  [isRunning]="translationRunning()"
-                  [audioRunning]="audioRunning()"
-                  (translateAll)="startWholeReadingTranslation()"
-                  (cancelled)="cancelTranslationJob()"
-                  (cancelAudioRequested)="cancelAudioJob()"
+                  [rows]="contentRows()"
+                  [hasAudio]="reading.audioSummary.completed > 0 || audioRunning()"
+                  [pending]="contentPending()"
+                  [error]="contentError()"
+                  (prepare)="prepareContent($event)"
+                  (opened)="popover.close()"
+                  (stopRequested)="stopContent($event)"
+                  (listen)="showAudioPlayer()"
                   (deleteAudioRequested)="confirmClearReadingAudio()"
                   (deleteRequested)="confirmDelete()"
                 />
@@ -194,12 +185,12 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           it takes none of the page while nothing is running.
         -->
         @if (store.status() === 'ready') {
-          <mn-translation-progress
-            [progress]="translationProgress()"
-            (cancelled)="cancelTranslationJob()"
-            (retried)="retryWholeReadingTranslation()"
-            (dismissed)="dismissTranslationJob()"
-          />
+          @if (contentNotice(); as notice) {
+            <button type="button" class="content-notice" (click)="openStoryOptions()">
+              <span role="status">{{ notice }}</span
+              ><span class="details">Details</span>
+            </button>
+          }
           @if (readingAudioMaintenance.state() === 'cleared') {
             <p class="audio-maintenance-message mn-hint" role="status">
               Audio deleted. You can generate it again from scratch.
@@ -415,6 +406,27 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       align-items: center;
     }
 
+    .content-notice {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-3);
+      width: 100%;
+      min-height: var(--touch-target);
+      padding: var(--space-1) 0;
+      border: 0;
+      background: none;
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: var(--text-sm);
+      text-align: start;
+      cursor: pointer;
+    }
+    .content-notice .details {
+      text-decoration: underline;
+      flex: none;
+    }
+
     .audio-maintenance-message {
       margin: var(--space-2) 0 0 calc(var(--touch-target) + var(--space-2));
       font-size: var(--text-sm);
@@ -508,6 +520,29 @@ export class ReaderPageComponent {
   protected readonly aids = inject(SentenceAidsStore);
   protected readonly translationJob = inject(TranslationJobStore);
   protected readonly preparation = inject(PreparationStore);
+  private readonly layerRunners = inject(LayerRunners);
+  private readonly network = inject(NETWORK_STATUS);
+  private readonly storyOptions = viewChild(ReaderMenuComponent);
+  protected readonly contentPending = signal<PreparationLayer | null>(null);
+  protected readonly contentError = signal<string | null>(null);
+  protected readonly contentRows = computed(() => {
+    const reading = this.store.reading();
+    return reading === null
+      ? []
+      : PREPARATION_ORDER.map((layer) =>
+          readerContentState(
+            reading,
+            layer,
+            this.preparation.progressFor(reading.id, layer),
+            layer === 'audio' ? this.tts.readiness() : this.textModel.readiness(),
+            this.network.isOnline(),
+          ),
+        );
+  });
+  protected readonly contentNotice = computed(() => {
+    const active = this.contentRows().find((row) => row.busy || row.error !== null);
+    return active ? `${active.name} · ${active.status}` : this.contentError();
+  });
   protected readonly audioJob = inject(AudioJobStore);
   protected readonly playback = inject(AudioPlaybackStore);
   protected readonly readingAudioMaintenance = inject(ReadingAudioMaintenanceStore);
@@ -556,10 +591,6 @@ export class ReaderPageComponent {
   protected readonly audioProgress = computed(() =>
     this.audioJob.progressFor(this.currentReadingId()),
   );
-  protected readonly translationRunning = computed(() => {
-    const kind = this.translationProgress().kind;
-    return kind === 'preparing' || kind === 'running';
-  });
   protected readonly audioRunning = computed(() => {
     const kind = this.audioProgress().kind;
     return kind === 'preparing' || kind === 'running';
@@ -857,6 +888,16 @@ export class ReaderPageComponent {
     });
 
     effect(() => {
+      if (
+        this.layerRunners.runnerFor('grammar').progressFor(this.currentReadingId()).kind !== 'idle'
+      ) {
+        untracked(() => {
+          void this.store.refreshSummaries();
+        });
+      }
+    });
+
+    effect(() => {
       // A session at the frontier is waiting for a clip the run is about to
       // store. Once the run has failed or been cancelled that clip is never
       // coming, and only the reader knows: the playback store has no business
@@ -994,41 +1035,45 @@ export class ReaderPageComponent {
     await this.preparation.reconcile(reading);
   }
 
-  /**
-   * Records what this reading should have, then queues whatever that adds.
-   *
-   * Switching a layer on is a moment that creates work; switching one off
-   * leaves what already exists alone, because nothing is gained by deleting an
-   * aid the learner has already paid for.
-   */
-  protected async changePreparationTargets(targets: readonly PreparationLayer[]): Promise<void> {
-    await this.store.setPreparationTargets(targets);
+  /** An explicit request fills the missing content with the current settings. */
+  protected prepareContent(layer: PreparationLayer): void {
+    const row = this.contentRows().find((entry) => entry.layer === layer);
+    if (row?.action !== 'prepare' || row.disabled) return;
+    this.contentError.set(null);
+    if (layer === 'audio') this.readingAudioMaintenance.acknowledge();
+    void this.layerRunners.runnerFor(layer).retry(this.currentReadingId());
+  }
+
+  protected async stopContent(layer: PreparationLayer): Promise<void> {
     const reading = this.store.reading();
-    if (reading !== null) {
-      await this.preparation.reconcile(reading);
+    if (reading === null || this.contentPending() !== null) return;
+    this.contentPending.set(layer);
+    this.contentError.set(null);
+    try {
+      await this.store.setPreparationTargets(
+        reading.preparationTargets.filter((target) => target !== layer),
+      );
+      if (this.store.lastError() !== null) {
+        this.contentError.set(
+          'Could not save the stop request. Try again. Saved content is unchanged.',
+        );
+        return;
+      }
+      const stopped = await this.preparation.stopLayer(reading.id, layer);
+      if (!stopped.ok)
+        this.contentError.set(`Could not stop preparation: ${stopped.error.message}`);
+      await this.store.refreshSummaries();
+    } finally {
+      this.contentPending.set(null);
     }
   }
 
-  /**
-   * Translates everything in the reading that has no current translation.
-   *
-   * The only new whole-reading request in the reader. Opening a reading only
-   * resumes a persisted unfinished job that already belongs to it.
-   */
-  protected startWholeReadingTranslation(): void {
-    void this.translationJob.start(this.currentReadingId());
+  protected openStoryOptions(): void {
+    this.popover.close();
+    this.storyOptions()?.open();
   }
-
-  protected retryWholeReadingTranslation(): void {
-    void this.translationJob.retry(this.currentReadingId());
-  }
-
-  protected cancelTranslationJob(): void {
-    this.translationJob.cancel(this.currentReadingId());
-  }
-
-  protected dismissTranslationJob(): void {
-    this.translationJob.acknowledge(this.currentReadingId());
+  protected showAudioPlayer(): void {
+    if (!this.audioPlayerOpenSignal()) this.toggleAudioPlayer();
   }
 
   /**
@@ -1046,7 +1091,7 @@ export class ReaderPageComponent {
   }
 
   protected cancelAudioJob(): void {
-    this.audioJob.cancel(this.currentReadingId());
+    void this.stopContent('audio');
   }
 
   /** Puts a settled audio report away without asking for the work again. */

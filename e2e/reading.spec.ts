@@ -34,8 +34,8 @@ async function setReaderAids(
   page: Page,
   options: { readonly furigana: boolean; readonly spacing: boolean },
 ): Promise<void> {
-  await page.getByRole('button', { name: 'Aids' }).click();
-  const panel = page.getByRole('group', { name: 'Reading aids' });
+  await page.getByRole('button', { name: 'Story options', exact: true }).click();
+  const panel = page.getByRole('group', { name: 'Reading appearance' });
   await panel.getByLabel('Text size').fill('2.5');
 
   for (const [label, checked] of [
@@ -194,9 +194,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(
       page.getByRole('heading', { name: 'Reading unavailable', level: 1 }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Aids' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Story options', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Audio/ })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Reading actions' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Story options', exact: true })).toHaveCount(0);
     await expect(page.getByRole('alert')).toContainText('This reading is no longer here');
     await expect(
       page.getByRole('alert').getByRole('link', { name: 'Back to library' }),
@@ -222,8 +222,8 @@ test.describe('scenario 1 — paste, save, inspect', () => {
   test('keeps reader actions reachable and dismisses their menu predictably', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, 'Reader actions');
 
-    const toggle = page.getByRole('button', { name: 'Reading actions' });
-    const menu = page.getByRole('menu', { name: 'Reading actions' });
+    const toggle = page.getByRole('button', { name: 'Story options', exact: true });
+    const menu = page.getByRole('dialog', { name: 'Story options', exact: true });
     await expect(toggle).toBeVisible();
 
     await toggle.click();
@@ -592,7 +592,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       );
     }
     const placement = await page.evaluate((id) => {
-      const card = document.querySelector<HTMLElement>('[role="dialog"]')!.getBoundingClientRect();
+      const card = document
+        .querySelector<HTMLElement>('.mn-popover-pane [role="dialog"]')!
+        .getBoundingClientRect();
       const box = document
         .querySelector<HTMLElement>(`[data-sentence-id="${id}"]`)!
         .getBoundingClientRect();
@@ -891,7 +893,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     ).toBe(true);
 
     await page.keyboard.press('Tab');
-    await expect(page.getByRole('button', { name: 'Reading actions' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Story options', exact: true })).toBeFocused();
     await page.keyboard.press('Tab');
     await expect
       .poll(() => player.evaluate((element) => element.contains(document.activeElement)))
@@ -945,7 +947,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       Number.parseFloat(window.getComputedStyle(element).fontSize),
     );
 
-    await page.getByRole('button', { name: 'Aids' }).click();
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
     await page.getByLabel('Text size').fill('1.5');
     await page.keyboard.press('Escape');
 
@@ -965,12 +967,12 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     expect(afterReload).toBeGreaterThan(before);
   });
 
-  test('reader aid switches are changed and remembered in the Aids panel', async ({ page }) => {
+  test('reader appearance is changed and remembered in Story options', async ({ page }) => {
     await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
-    await page.getByRole('button', { name: 'Aids' }).click();
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
     const furigana = page.getByRole('checkbox', { name: 'Furigana' });
     await expect(furigana).toBeChecked();
     await furigana.uncheck();
@@ -978,7 +980,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await page.keyboard.press('Escape');
 
     await page.reload();
-    await page.getByRole('button', { name: 'Aids' }).click();
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
     await expect(page.getByRole('checkbox', { name: 'Furigana' })).not.toBeChecked();
   });
 
@@ -991,16 +993,12 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     const header = page.locator('.bar-row');
     await expect(header.getByRole('link', { name: 'Back to library' })).toBeVisible();
     await expect(header.getByRole('button', { name: /^Audio/ })).toBeVisible();
-    await expect(header.getByRole('button', { name: 'Aids' })).toBeVisible();
-    await expect(header.getByRole('button', { name: 'Reading actions' })).toBeVisible();
+    await expect(header.getByRole('button', { name: 'Story options', exact: true })).toBeVisible();
 
-    const actions = header.locator(
-      '.bar-actions > button, .bar-actions > mn-reader-aids, .bar-actions > mn-reader-menu',
-    );
-    await expect(actions).toHaveCount(3);
-    await expect(actions.nth(0)).toHaveJSProperty('tagName', 'MN-READER-AIDS');
-    await expect(actions.nth(1)).toHaveClass(/audio-button/);
-    await expect(actions.nth(2)).toHaveJSProperty('tagName', 'MN-READER-MENU');
+    const actions = header.locator('.bar-actions > button, .bar-actions > mn-reader-menu');
+    await expect(actions).toHaveCount(2);
+    await expect(actions.nth(0)).toHaveClass(/audio-button/);
+    await expect(actions.nth(1)).toHaveJSProperty('tagName', 'MN-READER-MENU');
 
     const bounds = await header.evaluate((element) => {
       const rect = element.getBoundingClientRect();
@@ -1099,8 +1097,8 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await saveAndOpenReader(page);
     const deletedUrl = page.url();
 
-    await page.getByRole('button', { name: 'Reading actions' }).click();
-    await page.getByRole('menuitem', { name: 'Delete reading' }).click();
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
+    await page.getByRole('button', { name: 'Delete story…', exact: true }).click();
     await page.getByRole('button', { name: 'Delete permanently' }).click();
     await expect(page).toHaveURL(/#\/library$/);
 

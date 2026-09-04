@@ -171,6 +171,12 @@ Whole-reading translation reports that it has stopped only after cancellation is
 after that report cannot resume the cancelled job; a failed cancellation write is shown as a storage
 failure instead.
 
+The reader combines appearance preferences, per-layer content status, and maintenance in Story
+options. Explicit preparation and retry actions use the existing layer producers; stopping a layer
+also closes its queued work and removes that layer's standing target without deleting saved aids.
+Only Listen and Story options remain beside the title. A compact progress link opens the panel;
+closing it never cancels work. Generation retains its target switches.
+
 The cache key is a fingerprint of everything that could change the answer, which
 [chapter 8](08-crosscutting-concepts.md) describes. Change the voice and the old clips are hidden
 rather than played, and the screens say so

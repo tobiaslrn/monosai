@@ -79,6 +79,41 @@ async function prepareReading(page: Page, text: string): Promise<ProviderCalls> 
 test.describe('scenario 11 — per-sentence translation and grammar', () => {
   test.use({ storageState: TEXT_MODEL_READY_STATE });
 
+  test('prepares grammar from story options and keeps working after dismissal @mobile @smoke', async ({
+    page,
+  }) => {
+    await stubOpenRouter(page, { generation: { aidDelayMs: 600 } });
+    await importReading(page, SAMPLE_TEXT);
+    const trigger = page.getByRole('button', { name: 'Story options', exact: true });
+    await trigger.click();
+    const panel = page.getByRole('dialog', { name: 'Story options', exact: true });
+    await expect(panel.getByRole('button', { name: 'Close story options' })).toBeFocused();
+    await expect(panel.getByRole('group', { name: 'Reading appearance' })).toBeVisible();
+    await expect(panel.getByText(/cost|charged/i)).toHaveCount(0);
+    await expectNoSeriousAccessibilityViolations(page);
+    await panel.getByRole('button', { name: 'Add notes', exact: true }).click();
+    await page.keyboard.press('Escape');
+    await expect(panel).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+    await expect
+      .poll(async () => (await countOwnedRows(page))['grammarAnalyses'] ?? 0)
+      .toBeGreaterThan(0);
+    await trigger.click();
+    await expect(
+      panel.locator('[data-layer="grammar"]').getByText('Ready', { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await trigger.click();
+    await expect(
+      panel.locator('[data-layer="grammar"]').getByText('Ready', { exact: true }),
+    ).toBeVisible();
+    const bounds = await panel.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+  });
+
   test('keeps grammar labels compact and opens their Details disclosure by keyboard', async ({
     page,
   }) => {
@@ -269,12 +304,14 @@ test.describe('scenario 12 — whole-reading translation', () => {
   test.use({ storageState: TEXT_MODEL_READY_STATE });
 
   function progress(page: Page): Locator {
-    return page.locator('mn-translation-progress');
+    return page.locator('[data-layer="english"]');
   }
 
   async function startWholeReadingTranslation(page: Page): Promise<void> {
-    await page.getByRole('button', { name: 'Reading actions' }).click();
-    await page.getByRole('menuitem', { name: 'Translate reading' }).click();
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
+    await progress(page)
+      .getByRole('button', { name: /^(Translate story|Continue)$/ })
+      .click();
   }
 
   test('cancels mid-run, keeps what was translated, and resumes after a reload @smoke', async ({
@@ -286,14 +323,14 @@ test.describe('scenario 12 — whole-reading translation', () => {
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
 
     // Nothing reports on the reading until a job is actually running.
-    await expect(progress(page).locator('.job')).toHaveCount(0);
+    await expect(page.locator('.content-notice')).toHaveCount(0);
 
     await startWholeReadingTranslation(page);
     await expect(progress(page).getByRole('button', { name: 'Stop' })).toBeVisible();
     await expect.poll(() => storedTranslationCount(page), { timeout: 30_000 }).toBeGreaterThan(0);
 
     await progress(page).getByRole('button', { name: 'Stop' }).click();
-    await expect(progress(page)).toContainText('Sentences already translated were kept.');
+    await expect(progress(page)).toContainText('Stopped');
 
     // The cancelled batch's request is still held open by the stub, which is
     // what made it cancellable. It is released here so the resumed run is
@@ -309,11 +346,11 @@ test.describe('scenario 12 — whole-reading translation', () => {
     const storedAfterReload = await storedTranslationCount(page);
     expect(storedAfterReload).toBeGreaterThan(0);
     expect(storedAfterReload).toBeLessThan(SENTENCE_COUNT);
-    await expect(progress(page).locator('.job')).toHaveCount(0);
+    await expect(page.locator('.content-notice')).toHaveCount(0);
     expect(callCount(resumeCalls), 'opening an interrupted reading resumes nothing').toBe(0);
 
     await startWholeReadingTranslation(page);
-    await expect(progress(page)).toContainText('Translation finished.', { timeout: 30_000 });
+    await expect(progress(page)).toContainText('Ready', { timeout: 30_000 });
     expect(await storedTranslationCount(page)).toBe(SENTENCE_COUNT);
 
     // Only the sentences that were still missing were requested. Count the
@@ -326,8 +363,8 @@ test.describe('scenario 12 — whole-reading translation', () => {
     expect(resumedSentenceCount).toBe(SENTENCE_COUNT - storedAfterReload);
 
     // And the report leaves the reader when it is dismissed.
-    await progress(page).getByRole('button', { name: 'Dismiss' }).click();
-    await expect(progress(page).locator('.job')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Close story options' }).click();
+    await expect(page.locator('.content-notice')).toHaveCount(0);
   });
 });
 
@@ -341,11 +378,11 @@ test.describe('scenario 12b — a job belongs to one reading', () => {
   test.use({ storageState: TEXT_MODEL_READY_STATE });
 
   function progress(page: Page): Locator {
-    return page.locator('mn-translation-progress');
+    return page.locator('[data-layer="english"]');
   }
 
   async function openReadingActions(page: Page): Promise<void> {
-    await page.getByRole('button', { name: 'Reading actions' }).click();
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
   }
 
   async function openFromLibrary(page: Page, title: string): Promise<void> {
@@ -364,17 +401,21 @@ test.describe('scenario 12b — a job belongs to one reading', () => {
 
     await openFromLibrary(page, 'Long reading');
     await openReadingActions(page);
-    await page.getByRole('menuitem', { name: 'Translate reading' }).click();
+    await progress(page)
+      .getByRole('button', { name: /^(Translate story|Continue)$/ })
+      .click();
     await expect(progress(page).getByRole('button', { name: 'Stop' })).toBeVisible();
 
     // The other reading is a bystander: no row, no Stop, and a menu that still
     // offers to translate the reading actually on screen.
     await openFromLibrary(page, 'Short reading');
-    await expect(progress(page).locator('.job')).toHaveCount(0);
+    await expect(page.locator('.content-notice')).toHaveCount(0);
     await expect(progress(page).getByRole('button', { name: 'Stop' })).toHaveCount(0);
     await openReadingActions(page);
-    await expect(page.getByRole('menuitem', { name: 'Translate reading' })).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: 'Stop translating' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Translate story', exact: true })).toBeVisible();
+    await expect(
+      page.locator('[data-layer="english"]').getByRole('button', { name: 'Stop', exact: true }),
+    ).toHaveCount(0);
     await page.keyboard.press('Escape');
 
     // Deleting the reading the job belongs to says so before it happens.
@@ -391,7 +432,7 @@ test.describe('scenario 12b — a job belongs to one reading', () => {
     // And the bystander is still a bystander: no report, no alert, and no
     // further work sent for a reading that no longer exists.
     await openFromLibrary(page, 'Short reading');
-    await expect(progress(page).locator('.job')).toHaveCount(0);
+    await expect(page.locator('.content-notice')).toHaveCount(0);
     await expect(page.getByRole('alert')).toHaveCount(0);
     expect(callCount(calls), 'a deleted reading sends no further work').toBe(before);
   });

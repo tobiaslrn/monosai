@@ -102,20 +102,21 @@ describe('ReaderAidsComponent', () => {
     expect(link?.getAttribute('href')).toContain('/vocabulary');
   });
 
-  /** An icon-only control has to say the state that matters. */
-  it('says on the aids button that there is a note to read', async () => {
+  /** Appearance is embedded, so a notice needs no extra header button. */
+  it('shows the vocabulary notice inside appearance without another button', async () => {
     activate(0);
     const element = await render();
 
-    expect(element.querySelector('button')?.getAttribute('aria-label')).toBe(
-      'Aids, with a note about word marking',
-    );
+    expect(element.querySelector('button')).toBeNull();
+    expect(notice(element)).toContain('no words in it');
   });
 
-  it('keeps the plain button name when there is nothing to explain', async () => {
+  it('groups the preferences under Reading appearance', async () => {
     activate(7);
     const element = await render();
 
-    expect(element.querySelector('button')?.getAttribute('aria-label')).toBe('Aids');
+    expect(element.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe(
+      'Reading appearance',
+    );
   });
 });

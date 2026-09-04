@@ -131,8 +131,8 @@ async function dismissPopover(page: Page): Promise<void> {
 }
 
 async function openReaderMenu(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Reading actions' }).click();
-  await expect(page.getByRole('menu', { name: 'Reading actions' })).toBeVisible();
+  await page.getByRole('button', { name: 'Story options', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Story options', exact: true })).toBeVisible();
 }
 
 /**
@@ -144,7 +144,12 @@ async function openReaderMenu(page: Page): Promise<void> {
  */
 async function stopGenerating(page: Page): Promise<void> {
   await openReaderMenu(page);
-  await page.getByRole('menuitem', { name: 'Stop generating audio' }).click();
+  await page
+    .locator('[data-layer="audio"]')
+    .getByRole('button', { name: 'Stop', exact: true })
+    .click();
+  await expect(page.locator('[data-layer="audio"]')).not.toContainText('Stopping…');
+  await page.keyboard.press('Escape');
 }
 
 /** The sentence popover's own audio action, which is a label and nothing else. */
@@ -900,7 +905,8 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     const beforeDelete = synthesisCount(calls);
 
     await openReaderMenu(page);
-    await page.getByRole('menuitem', { name: 'Delete audio' }).click();
+    await page.getByText('Audio options', { exact: true }).click();
+    await page.getByRole('button', { name: 'Delete audio…', exact: true }).click();
     await expect(
       page.getByRole('heading', { name: 'Delete audio for this reading?' }),
     ).toBeVisible();
@@ -1031,7 +1037,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await page.keyboard.press('Escape');
 
     await openReaderMenu(page);
-    await page.getByRole('menuitem', { name: 'Delete reading' }).click();
+    await page.getByRole('button', { name: 'Delete story…', exact: true }).click();
     await page.getByRole('button', { name: 'Delete permanently' }).click();
 
     await expect(page).toHaveURL(/#\/library/);

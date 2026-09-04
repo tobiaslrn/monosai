@@ -1,6 +1,8 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
 import type { AssetJob } from '../../domain/enrichment/jobs';
 import { CLAIM_STALE_AFTER_MS, remainingSentenceIds } from '../../domain/enrichment/jobs';
+import { ok, type Result } from '../../domain/shared/result';
+import type { StorageError } from '../../domain/storage/storage-error';
 import {
   PREPARATION_ORDER,
   jobKindFor,
@@ -215,6 +217,25 @@ export class PreparationStore {
     await this.refreshQueue();
   }
 
+  /** Stops one layer, including queued work, without discarding saved content. */
+  async stopLayer(
+    readingId: ReadingId,
+    layer: PreparationLayer,
+  ): Promise<Result<void, StorageError>> {
+    // Block before awaiting so an already-picked reading cannot start this
+    // layer while the running producer settles its cancellation.
+    this.block(readingId, layer);
+    await this.runners.runnerFor(layer).cancelAndWait(readingId);
+    const active = await this.jobs.findActive(readingId, jobKindFor(layer));
+    if (!active.ok) return active;
+    if (active.value !== null) {
+      const stopped = await this.jobs.setState(active.value.id, 'cancelled');
+      if (!stopped.ok) return stopped;
+    }
+    await this.refreshQueue();
+    return ok(undefined);
+  }
+
   /** Runs one failed layer again, from whatever it still has outstanding. */
   async retry(readingId: ReadingId, layer: PreparationLayer): Promise<void> {
     const runner = this.runners.runnerFor(layer);
@@ -296,6 +317,7 @@ export class PreparationStore {
 
     try {
       for (const layer of layers) {
+        if (this.blockedSignal().includes(blockKey(readingId, layer))) continue;
         const hold = this.currentHold();
         if (hold !== null) {
           this.park(hold);

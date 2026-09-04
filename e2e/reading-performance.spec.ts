@@ -101,8 +101,11 @@ test.describe('reader performance at the 50,000-character budget', () => {
     await pasteAndContinue(page, FIXTURE.text);
     await saveAndOpenReader(page);
 
-    await page.getByRole('button', { name: 'Aids' }).click();
-    await page.getByRole('group', { name: 'Reading aids' }).getByLabel('Text size').fill('2.5');
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
+    await page
+      .getByRole('group', { name: 'Reading appearance' })
+      .getByLabel('Text size')
+      .fill('2.5');
     await page.keyboard.press('Escape');
     await page.keyboard.press('End');
     await expect(paragraphAtPosition(page, FIXTURE.paragraphCount - 1)).toBeVisible();
