@@ -54,6 +54,11 @@ One workflow builds the application exactly once and then reuses that artifact e
 deployed bytes are the tested bytes. [`ci.yml`](../../.github/workflows/ci.yml) is the authority for
 the steps; what follows is the shape and the reason for it.
 
+Local development and CI use the exact Node release in [`.nvmrc`](../../.nvmrc). The synthetic Anki
+fixtures depend on Node's bundled SQLite and compression implementations, so a runtime upgrade must
+verify or regenerate those fixtures in the same change. A floating major version would allow an
+unchanged checkout to fail the byte-for-byte reproducibility check after a runner update.
+
 ```mermaid
 flowchart LR
     subgraph parallel["start together"]
