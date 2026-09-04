@@ -196,10 +196,34 @@ focus when dismissed.
 Reading appearance contains immediate device-wide preferences. Content for this
 story shows saved results and explicit verbs: Translate story, Add notes,
 Generate audio, Continue, Stop, and Retry remaining. Ready is a status, never a
-switch. Closing the panel leaves background work running. A compact header line
-opens its details while work is pending or needs attention; controls remain in
-the panel. Deletion is separated and confirmed. The panel carries no standing
-cost note.
+switch. Closing the panel leaves background work running. Progress, failures, and
+the recovery actions stay in this panel, beside the layer they affect; status
+changes use the row's accessible announcement. There is no second generation
+status line in the reader header. Deletion is separated and confirmed. The
+panel carries no standing cost note.
+
+### Reader gestures and details
+
+The reading surface remains native text. A long press belongs to the browser's
+selection and copy behaviour; Monosai does not replace it with a timer, haptic,
+context-menu rule, or selection lock. On touch, two short taps close together on
+one sentence open sentence details, including when either tap lands on a word.
+A single word tap waits for that gesture to resolve, then opens the word; mouse
+and keyboard activation remain immediate. Scrolling, cancellation, multiple
+touches, and native selection cancel the pending application action.
+
+Sentence details also have a visible route from a word lookup: a quiet labelled
+text button with a chevron sits directly below the tapped form and its form
+summary. It keeps the ordinary touch target even though it is visually
+secondary.
+
+On a small screen, word and sentence details are independently scrollable
+bottom sheets. Their bottom edge is the measured top edge of the docked audio
+player, and their height is the smaller of the normal viewport cap and the
+remaining space above that boundary with the standard top gap. The player and
+the sheet account for the safe-area inset once. Opening or closing the player,
+resizing it, and changing the viewport remeasure that boundary; an open sheet
+never covers the word or line it explains.
 
 ## 4. Colour
 

@@ -24,6 +24,9 @@ export interface LayerCounts {
   readonly failed: number;
 }
 
+/** The request or persistence phase of a grammar batch. */
+export type GrammarProgressPhase = 'requesting' | 'saving';
+
 /**
  * One layer's state for one reading.
  *
@@ -38,7 +41,13 @@ export type LayerProgress =
   | { readonly kind: 'preparing'; readonly readingId: ReadingId }
   /** The lane's own: outstanding, and waiting its turn. No producer reports it. */
   | { readonly kind: 'queued'; readonly readingId: ReadingId }
-  | { readonly kind: 'running'; readonly readingId: ReadingId; readonly counts: LayerCounts }
+  | {
+      readonly kind: 'running';
+      readonly readingId: ReadingId;
+      readonly counts: LayerCounts;
+      /** Present for grammar so the reader can report the real current phase. */
+      readonly phase?: GrammarProgressPhase;
+    }
   | { readonly kind: 'paused'; readonly readingId: ReadingId; readonly counts: LayerCounts }
   | { readonly kind: 'complete'; readonly readingId: ReadingId; readonly counts: LayerCounts }
   | { readonly kind: 'cancelled'; readonly readingId: ReadingId; readonly counts: LayerCounts }

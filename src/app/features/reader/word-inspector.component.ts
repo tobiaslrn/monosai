@@ -11,7 +11,7 @@ import {
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import type { GrammarFinding } from '../../domain/enrichment/records';
 import type { DictionaryEntry } from '../../domain/language/dictionary';
-import { wordReading } from '../../domain/reading/token-presentation';
+import { wordRubySegments } from '../../domain/reading/word-ruby';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { WordFormSummaryComponent } from './word-form-summary.component';
 
@@ -81,10 +81,18 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       <div class="inspector">
         <header>
           <div class="headword">
-            <p class="surface" lang="ja">{{ word.word.surface }}</p>
-            @if (reading(); as reading) {
-              <p class="reading" lang="ja">{{ reading }}</p>
-            }
+            <h2 class="surface" lang="ja">
+              @for (segment of rubySegments(); track $index) {
+                @if (segment.reading !== null) {
+                  <ruby>
+                    <span class="ruby-base">{{ segment.text }}</span>
+                    <rt lang="ja">{{ segment.reading }}</rt>
+                  </ruby>
+                } @else {
+                  <span>{{ segment.text }}</span>
+                }
+              }
+            </h2>
           </div>
           <div class="header-actions">
             <button type="button" class="close" aria-label="Close word details" (click)="onClose()">
@@ -96,6 +104,11 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         @if (store.formSummary(); as formSummary) {
           <mn-word-form-summary [summary]="formSummary" />
         }
+
+        <button type="button" class="sentence-route" (click)="sentenceActions.emit()">
+          <span>Sentence</span>
+          <mn-icon name="chevron-right" [size]="18" />
+        </button>
 
         <section class="dictionary-section" aria-labelledby="mn-inspector-dictionary">
           <h3 id="mn-inspector-dictionary">Meanings</h3>
@@ -206,10 +219,6 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         @if (nextAction(); as action) {
           <p class="next-action">{{ action }}</p>
         }
-
-        <button type="button" class="mn-button sentence-route" (click)="sentenceActions.emit()">
-          Sentence actions
-        </button>
       </div>
     }
   `,
@@ -247,10 +256,19 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       overflow-wrap: anywhere;
     }
 
-    .reading {
-      margin: 0;
+    .surface ruby {
+      ruby-position: over;
+    }
+
+    .surface rt {
       color: var(--text-secondary);
-      font-family: var(--font-japanese);
+      font-size: 0.48em;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .ruby-base {
+      white-space: nowrap;
     }
 
     .close {
@@ -412,7 +430,38 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
     }
 
     .sentence-route {
+      display: inline-flex;
+      align-items: center;
       align-self: flex-start;
+      gap: var(--space-1);
+      min-height: var(--touch-target);
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-control);
+      background: none;
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: var(--text-sm);
+      cursor: pointer;
+    }
+
+    .sentence-route:hover {
+      color: var(--text-primary);
+      text-decoration: underline;
+    }
+
+    .sentence-route:focus-visible {
+      outline: 2px solid var(--action-primary);
+      outline-offset: 2px;
+    }
+
+    .sentence-route mn-icon {
+      color: currentColor;
+    }
+
+    /* Keep the quiet route near the form, rather than visually promoting it. */
+    .sentence-route + .dictionary-section {
+      margin-top: calc(-1 * var(--space-1));
     }
 
     .mn-error {
@@ -452,10 +501,10 @@ export class WordInspectorComponent {
     return [...grammar.findings, ...grammar.sentenceFindings].map((finding) => finding.label);
   });
 
-  /** Suppressed for a kana word, where it would only repeat the headword. */
-  protected readonly reading = computed(() => {
+  /** Presentation-only ruby, derived from the token readings of the tapped form. */
+  protected readonly rubySegments = computed(() => {
     const selected = this.store.selected();
-    return selected === null ? null : wordReading(selected.word);
+    return selected === null ? [] : wordRubySegments(selected.word);
   });
 
   protected readonly entries = computed(() => {

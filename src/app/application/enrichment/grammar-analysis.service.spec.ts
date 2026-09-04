@@ -131,8 +131,8 @@ describe('GrammarAnalysisService', () => {
     });
   });
 
-  it('reviews long stories in batches of at most twenty sentences', async () => {
-    const list = sentences(41);
+  it('reviews long stories in batches of at most four sentences', async () => {
+    const list = sentences(9);
     provider.grammarQueue.push(ok({ findings: [] }), ok({ findings: [] }), ok({ findings: [] }));
 
     const outcome = await service.run(
@@ -150,6 +150,7 @@ describe('GrammarAnalysisService', () => {
 
     expect(outcome.status).toBe('complete');
     expect(provider.generationCalls.grammar).toBe(3);
+    expect(provider.grammarRequests.map((request) => request.sentences.length)).toEqual([4, 4, 1]);
   });
 
   it('drops a finding for a sentence outside the batch rather than storing it', async () => {

@@ -29,7 +29,7 @@ import { StructuredTaskRunner } from './structured-request';
  * Reviewing or translating a handful of sentences never needs the room a
  * whole story does, but still needs more than a single-word answer.
  */
-const MAX_GRAMMAR_TOKENS = 2_048;
+const MAX_GRAMMAR_TOKENS = 4_096;
 const MAX_TRANSLATION_TOKENS = 2_048;
 
 /**

@@ -58,6 +58,16 @@ describe('OpenRouterEnricher grammar review', () => {
     expect(context.server.callCount).toBe(1);
   });
 
+  it('counts an empty findings array as a complete review', async () => {
+    const context = harness({ content: 'grammar-empty' });
+
+    const result = await context.text.reviewGrammar(GRAMMAR_REQUEST, NATIVE);
+
+    expect(result).toEqual({ ok: true, value: { findings: [] } });
+    expect(context.server.callCount).toBe(1);
+    expect(context.server.requests[0]?.body['max_tokens']).toBe(4_096);
+  });
+
   it('recovers once from a malformed reply, and does not retry again', async () => {
     const context = harness({
       content: 'grammar-unavailable',
@@ -80,6 +90,33 @@ describe('OpenRouterEnricher grammar review', () => {
       return;
     }
     expect(result.error.code).toBe('malformed-response');
+    expect(context.server.callCount).toBe(2);
+  });
+
+  it('treats a truncated response as malformed with one bounded recovery', async () => {
+    const context = harness({ content: 'grammar-truncated' });
+
+    const result = await context.text.reviewGrammar(GRAMMAR_REQUEST, NATIVE);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe('malformed-response');
+    expect(context.server.callCount).toBe(2);
+  });
+
+  it('treats a response beyond the transport limit as malformed with one recovery', async () => {
+    const context = harness({ oversizedJson: true });
+
+    const result = await context.text.reviewGrammar(GRAMMAR_REQUEST, NATIVE);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe('malformed-response');
+    expect(result.error.detail?.issueCode).toBe('response-too-large');
     expect(context.server.callCount).toBe(2);
   });
 });

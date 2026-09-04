@@ -92,6 +92,12 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await expect(panel.getByText(/cost|charged/i)).toHaveCount(0);
     await expectNoSeriousAccessibilityViolations(page);
     await panel.getByRole('button', { name: 'Add notes', exact: true }).click();
+    const grammarRow = panel.locator('[data-layer="grammar"]');
+    // The real lane/provider/persistence path must expose an outstanding
+    // request rather than looking like zero completed work while the first
+    // batch is in flight.
+    await expect(grammarRow.getByRole('status')).toHaveText('Analyzing…', { timeout: 5_000 });
+    await expect(grammarRow).not.toContainText(/0 of \d+ sentences analyzed/);
     await page.keyboard.press('Escape');
     await expect(panel).not.toBeVisible();
     await expect(trigger).toBeFocused();
@@ -102,6 +108,9 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await expect(
       panel.locator('[data-layer="grammar"]').getByText('Ready', { exact: true }),
     ).toBeVisible();
+    await expect(panel.locator('[data-layer="grammar"] [role="status"]')).toContainText(
+      'sentences analyzed',
+    );
     await page.reload();
     await trigger.click();
     await expect(
@@ -286,13 +295,15 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await expect(token).toBeFocused();
   });
 
-  test('does not offer a sentence route from the word popover', async ({ page }) => {
+  test('offers a sentence route from the word popover', async ({ page }) => {
     await prepareReading(page, SAMPLE_TEXT);
 
     await openWord(page, '猫');
-    await expect(wordDetails(page).getByRole('button', { name: 'Open this sentence' })).toHaveCount(
-      0,
-    );
+    const route = wordDetails(page).getByRole('button', { name: 'Sentence', exact: true });
+    await expect(route).toBeVisible();
+    await route.click();
+    await expect(sentencePopover(page)).toBeVisible();
+    await expect(wordDetails(page)).toHaveCount(0);
   });
 });
 
