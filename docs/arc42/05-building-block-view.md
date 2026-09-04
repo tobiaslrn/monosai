@@ -82,6 +82,11 @@ altitude.
 | **platform** | Application update and shared package inbox ports | Surface an available update, and pick up a shared package | The service worker adapters |
 | **shared** | `Result`, typed errors, branded ids, clock, hashing, canonical JSON, locale | The port tokens, the busy registry, the logger interface | Hashing, diagnostics |
 
+A screen folder is not always an area folder. `features/reading-level/` is one screen composed from
+the components in `features/vocabulary/` and `features/grammar/`, which hold no page of their own
+since those two routes were merged ([ADR 0049](../decisions/0049-one-page-for-what-you-can-read.md)).
+The area names still line up across the layers; only the screen that renders them moved.
+
 Two entries are worth a note. There is no `domain/audio`, because playback is a platform behaviour
 rather than a rule about Japanese; what is durable about audio — the clip and its cache key — belongs
 to `enrichment`. And `shared` is not a catch-all: it holds only the primitives every other area

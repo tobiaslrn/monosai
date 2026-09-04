@@ -1,8 +1,25 @@
-import type { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import type { RedirectFunction, Routes } from '@angular/router';
 import { unsavedImportGuard } from '../../features/add-text/unsaved-import.guard';
 import { firstUseRedirect } from './first-use.resolver';
 import { wellFormedGenerationJobLink } from './generation-job-link.guard';
 import { wellFormedReadingLink } from './reading-link.guard';
+
+/**
+ * Sends a retired learner-profile route to its half of the merged page.
+ *
+ * A plain string redirect cannot carry a fragment, and the fragment is the
+ * whole point: the two screens became one longer screen, and a link that used
+ * to arrive at what it meant must still arrive there.
+ */
+function readingLevelSection(fragment: 'words' | 'grammar'): RedirectFunction {
+  return (redirect) =>
+    inject(Router).createUrlTree(['/reading-level'], {
+      queryParams: redirect.queryParams,
+      fragment,
+    });
+}
 
 export const APP_ROUTES: Routes = [
   {
@@ -55,19 +72,19 @@ export const APP_ROUTES: Routes = [
       ),
   },
   {
-    path: 'vocabulary',
-    title: 'Vocabulary · Monosai',
+    path: 'reading-level',
+    title: 'What you can read · Monosai',
     loadComponent: () =>
-      import('../../features/vocabulary/vocabulary-page.component').then(
-        (m) => m.VocabularyPageComponent,
+      import('../../features/reading-level/reading-level-page.component').then(
+        (m) => m.ReadingLevelPageComponent,
       ),
   },
-  {
-    path: 'grammar',
-    title: 'Grammar · Monosai',
-    loadComponent: () =>
-      import('../../features/grammar/grammar-page.component').then((m) => m.GrammarPageComponent),
-  },
+  // The two routes this screen replaced. Links live in bookmarks, in the
+  // service worker's share redirect, and in anything Android saved, so each
+  // keeps working and lands on the half of the merged page it meant, carrying
+  // its query parameters — `from`, and the share marker — across.
+  { path: 'vocabulary', redirectTo: readingLevelSection('words') },
+  { path: 'grammar', redirectTo: readingLevelSection('grammar') },
   {
     path: 'settings',
     title: 'Settings · Monosai',

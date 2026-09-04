@@ -113,7 +113,7 @@ test.describe('offline language assets', () => {
       }),
     );
 
-    await page.goto('./#/grammar');
+    await page.goto('./#/reading-level');
 
     const failure = page.getByRole('heading', { name: 'Language assets are unavailable' });
     await expect(failure).toBeVisible({ timeout: 120_000 });
@@ -138,7 +138,7 @@ test.describe('offline language assets', () => {
       await route.fallback();
     });
 
-    await page.goto('./#/grammar');
+    await page.goto('./#/reading-level');
     await expect(
       page.getByRole('heading', { name: 'Language assets are unavailable' }),
     ).toBeVisible({ timeout: 120_000 });

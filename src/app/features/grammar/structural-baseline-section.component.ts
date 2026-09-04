@@ -5,6 +5,7 @@ import {
   type StructuralBaselineCategory,
   type StructuralBaselineEntry,
 } from '../../domain/language/structural-baseline';
+import { formatCountOf } from '../../domain/shared/locale';
 
 const CATEGORY_LABELS: Readonly<Record<StructuralBaselineCategory, string>> = {
   particle: 'Particles',
@@ -29,8 +30,9 @@ interface CategoryGroup {
  *
  * The baseline is the reason a sentence full of particles is not reported as
  * unknown vocabulary, so the learner is entitled to see exactly what it covers.
- * It is 177 entries, which is far too long to sit above the preset picker, so it
- * is collapsed by default and expands in place.
+ * It is 177 entries, which is far too long to sit above the preset picker, so
+ * the page that carries it keeps it behind a disclosure that names how many
+ * categories it covers.
  */
 @Component({
   selector: 'mn-structural-baseline-section',
@@ -44,39 +46,36 @@ interface CategoryGroup {
     @if (groups().length === 0) {
       <p class="mn-hint">Language assets are still loading.</p>
     } @else {
-      <details class="mn-disclosure">
-        <summary>
-          Show all {{ entryCount() }} forms
-          <span class="mn-hint">({{ groups().length }} categories)</span>
-        </summary>
+      <p class="mn-hint" data-testid="structural-baseline-count">
+        {{ formCountLabel() }} in {{ categoryCountLabel() }}.
+      </p>
 
-        <div class="groups">
-          @for (group of groups(); track group.category) {
-            <section [attr.aria-labelledby]="'mn-baseline-' + group.category">
-              <h3 [id]="'mn-baseline-' + group.category">
-                {{ group.label }}
-                <span class="mn-hint">{{ group.entries.length }}</span>
-              </h3>
-              <dl>
-                @for (entry of group.entries; track entry.id) {
-                  <div class="entry">
-                    <dt>
-                      <span class="name">{{ entry.nameEn }}</span>
-                      <span class="forms" lang="ja">{{ formsOf(entry) }}</span>
-                    </dt>
-                    <dd>
-                      <span>{{ entry.descriptionEn }}</span>
-                      @if (entry.exampleJa) {
-                        <span class="example" lang="ja">{{ entry.exampleJa }}</span>
-                      }
-                    </dd>
-                  </div>
-                }
-              </dl>
-            </section>
-          }
-        </div>
-      </details>
+      <div class="groups">
+        @for (group of groups(); track group.category) {
+          <section [attr.aria-labelledby]="'mn-baseline-' + group.category">
+            <h3 [id]="'mn-baseline-' + group.category">
+              {{ group.label }}
+              <span class="mn-hint">{{ group.entries.length }}</span>
+            </h3>
+            <dl>
+              @for (entry of group.entries; track entry.id) {
+                <div class="entry">
+                  <dt>
+                    <span class="name">{{ entry.nameEn }}</span>
+                    <span class="forms" lang="ja">{{ formsOf(entry) }}</span>
+                  </dt>
+                  <dd>
+                    <span>{{ entry.descriptionEn }}</span>
+                    @if (entry.exampleJa) {
+                      <span class="example" lang="ja">{{ entry.exampleJa }}</span>
+                    }
+                  </dd>
+                </div>
+              }
+            </dl>
+          </section>
+        }
+      </div>
     }
   `,
   styles: `
@@ -145,7 +144,9 @@ interface CategoryGroup {
 export class StructuralBaselineSectionComponent {
   private readonly language = inject(LanguageStore);
 
-  protected readonly entryCount = computed(() => this.language.structuralBaseline().length);
+  protected readonly formCountLabel = computed(() =>
+    formatCountOf(this.language.structuralBaseline().length, 'form'),
+  );
 
   /** Empty categories are dropped so the list never shows a heading with nothing under it. */
   protected readonly groups = computed<readonly CategoryGroup[]>(() => {
@@ -156,6 +157,10 @@ export class StructuralBaselineSectionComponent {
       entries: entries.filter((entry) => entry.category === category),
     })).filter((group) => group.entries.length > 0);
   });
+
+  protected readonly categoryCountLabel = computed(() =>
+    formatCountOf(this.groups().length, 'category', 'categories'),
+  );
 
   protected formsOf(entry: StructuralBaselineEntry): string {
     return entry.forms.join('、');

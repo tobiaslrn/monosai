@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/automatic-anki-sync.coordinator';
+import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
 @Component({
   selector: 'mn-vocabulary-sync-banner',
@@ -17,7 +18,7 @@ import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/autom
             aria-atomic="true"
             data-testid="vocabulary-sync-toast"
           >
-            Vocabulary updated · {{ status.snapshot.uniqueEntryCount }} unique expressions
+            Vocabulary updated · {{ wordCount(status.snapshot.uniqueEntryCount) }}
           </aside>
         }
         @case ('attention') {
@@ -25,7 +26,7 @@ import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/autom
             <span>{{ status.message }}</span>
             <span class="actions">
               <button type="button" class="link" (click)="retry()">Retry now</button>
-              <a routerLink="/vocabulary">Manage sources</a>
+              <a routerLink="/reading-level" fragment="words">Manage sources</a>
             </span>
           </aside>
         }
@@ -113,6 +114,11 @@ import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/autom
 })
 export class VocabularySyncBannerComponent {
   protected readonly coordinator = inject(AutomaticAnkiSyncCoordinator, { optional: true });
+
+  /** The same wording the Library and the reading-level page use. */
+  protected wordCount(count: number): string {
+    return vocabularyCountLabel(count);
+  }
 
   protected retry(): void {
     void this.coordinator?.trigger(true);

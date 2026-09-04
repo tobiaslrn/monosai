@@ -18,25 +18,33 @@ test.describe('application shell', () => {
     await expect(page).toHaveURL(/#\/settings$/);
   });
 
-  test('reaches Vocabulary and Grammar through Settings', async ({ page }) => {
+  /** Settings is configuration only; nothing there describes the learner. */
+  test('keeps the learner profile out of Settings', async ({ page }) => {
     await page.goto('./#/settings');
 
-    await page.getByRole('link', { name: /Vocabulary/ }).click();
-    await expect(page.getByRole('heading', { name: 'Vocabulary', level: 1 })).toBeVisible();
-    await page.getByRole('button', { name: 'Back to settings' }).click();
-
-    await page.getByRole('link', { name: /Grammar/ }).click();
-    await expect(page.getByRole('heading', { name: 'Grammar', level: 1 })).toBeVisible();
-    await page.getByRole('button', { name: 'Back to settings' }).click();
-    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Vocabulary/ })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /^Grammar/ })).toHaveCount(0);
+    await expect(page.getByText('Your setup')).toHaveCount(0);
   });
 
-  test('uses safe internal fallbacks for direct learning-data links', async ({ page }) => {
+  /**
+   * Vocabulary and Grammar were merged into one page. Their links live in
+   * bookmarks and in anything Android saved, so each still lands on the half of
+   * that page it meant, and still knows its way back.
+   */
+  test('redirects the two routes the reading-level page replaced', async ({ page }) => {
     await page.goto('./#/vocabulary');
-    await page.getByRole('link', { name: 'Back to settings' }).click();
-    await expect(page).toHaveURL(/#\/settings$/);
+
+    await expect(page).toHaveURL(/#\/reading-level/);
+    await expect(page).toHaveURL(/#words$/);
+    await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
+    await page.getByRole('link', { name: 'Back to library' }).click();
+    await expect(page).toHaveURL(/#\/library$/);
 
     await page.goto('./#/grammar?from=generate');
+
+    await expect(page).toHaveURL(/#\/reading-level/);
+    await expect(page).toHaveURL(/#grammar$/);
     await page.getByRole('link', { name: 'Back to story' }).click();
     await expect(page).toHaveURL(/#\/generate$/);
   });

@@ -130,6 +130,23 @@ that prevents it; generic setup advice is never substituted for an untested,
 stale, or failed configuration. The whole labelled row meets the touch-target
 floor while the switch itself stays compact.
 
+### Disclosures
+
+A disclosure hides detail that is set once and rarely revisited — a mapping, a
+register, a list the learner is entitled to see but does not read. It is always
+native `details`/`summary`; it is never used to hide a control the surface's
+main action depends on, which is what a switch group is for.
+
+**A closed disclosure states its current value.** The summary carries the label
+and, opposite it, what is currently selected — a register, a count of what is
+inside. A fold that hides the answer to the question its label asks makes the
+screen worse than no fold at all, and forces the learner to open every one to
+read the page. Disclosures do not nest: a section that already sits behind one
+presents its contents plainly.
+
+Where a link can point inside a disclosure, arriving there opens it. A deep link
+that lands the learner on a long page next to a closed fold has not arrived.
+
 ### Saved-story controls
 
 The reader header has Back, the title, Listen, and Story options. Appearance,

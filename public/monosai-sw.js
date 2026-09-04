@@ -103,7 +103,7 @@ async function receiveSharedPackage(request) {
  */
 async function redirectTo(marker, reason) {
   const target = new URL(self.registration.scope);
-  target.hash = `/vocabulary?shared=${marker}${reason === undefined ? '' : `&reason=${reason}`}`;
+  target.hash = `/reading-level?shared=${marker}${reason === undefined ? '' : `&reason=${reason}`}`;
   if (self.navigator.onLine === false) {
     const shell = await caches.match(new URL('index.html', self.registration.scope));
     if (shell !== undefined) {

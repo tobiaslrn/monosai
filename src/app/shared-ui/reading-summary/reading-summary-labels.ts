@@ -1,6 +1,6 @@
 import type { CompletionSummary, GrammarSummary } from '../../domain/reading/summaries';
 import { isComplete } from '../../domain/reading/summaries';
-import { formatCount, formatDate, formatRelativeDays } from '../../domain/shared/locale';
+import { formatCount } from '../../domain/shared/locale';
 
 /**
  * Wording for a reading's denormalized summaries.
@@ -44,23 +44,4 @@ function concerns(count: number): string {
     return 'no notes';
   }
   return count === 1 ? '1 note' : `${String(count)} notes`;
-}
-
-const DAY_MS = 86_400_000;
-
-/**
- * When a reading was added, said the way a shelf says it.
- *
- * Rounded to whole days from local midnight, so something saved late last night
- * reads as "yesterday" rather than as a number of hours. A library card is not
- * a log: the exact timestamp told the learner nothing they could act on.
- */
-export function relativeDay(timestamp: number, now: number): string {
-  const startOfDay = (value: number): number => {
-    const date = new Date(value);
-    date.setHours(0, 0, 0, 0);
-    return date.getTime();
-  };
-  const days = Math.round((startOfDay(timestamp) - startOfDay(now)) / DAY_MS);
-  return days > -7 ? formatRelativeDays(days) : formatDate(timestamp);
 }

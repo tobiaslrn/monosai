@@ -56,7 +56,7 @@ test.describe('generate prerequisites', () => {
     await expect(page.getByTestId('story-length')).toHaveValue('2');
 
     await page.locator('[data-check="vocabulary"]').getByRole('link').click();
-    await expect(page).toHaveURL(/#\/vocabulary\?from=generate$/);
+    await expect(page).toHaveURL(/#\/reading-level\?from=generate#words$/);
     await page.getByRole('button', { name: 'Back to story' }).click();
 
     await expect(page.getByTestId('premise')).toHaveValue(PREMISE);

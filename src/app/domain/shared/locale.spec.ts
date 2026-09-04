@@ -5,6 +5,7 @@ import {
   formatCountOf,
   formatDate,
   formatDateTime,
+  formatRelativeDay,
   formatRelativeDays,
 } from './locale';
 
@@ -50,5 +51,27 @@ describe('application locale', () => {
     expect(formatRelativeDays(0)).toBe('today');
     expect(formatRelativeDays(-1)).toBe('yesterday');
     expect(formatRelativeDays(-3)).toBe('3 days ago');
+  });
+});
+
+describe('formatRelativeDay', () => {
+  const noon = new Date(2026, 7, 21, 12, 0, 0).getTime();
+
+  it('says today for another moment on the same day', () => {
+    expect(formatRelativeDay(new Date(2026, 7, 21, 1, 30, 0).getTime(), noon)).toBe('today');
+  });
+
+  it('says yesterday for late the previous night rather than a count of hours', () => {
+    expect(formatRelativeDay(new Date(2026, 7, 20, 23, 45, 0).getTime(), noon)).toBe('yesterday');
+  });
+
+  it('counts whole days within the last week', () => {
+    expect(formatRelativeDay(new Date(2026, 7, 18, 9, 0, 0).getTime(), noon)).toBe('3 days ago');
+  });
+
+  /** The application's one locale, not the browser's. See ADR 0042 and §8. */
+  it('falls back to a date in the application locale once a day count stops helping', () => {
+    const old = new Date(2026, 0, 4, 9, 0, 0).getTime();
+    expect(formatRelativeDay(old, noon)).toBe('Jan 4, 2026');
   });
 });
