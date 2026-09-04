@@ -1,7 +1,7 @@
 # 0032 — A tap on a phone is one press, one colour, and one open thing
 
 Date: 2026-08-25
-Status: Partly superseded by ADR 0051 for the touch sentence gesture; the hover, colour, and target rules remain
+Status: Partly superseded by ADR 0053 for the touch sentence gesture; the hover, colour, and target rules remain
 
 ## Context
 
@@ -58,7 +58,7 @@ for it.
 
 - ADR 0031's remaining surface rules are unchanged: a tap opens a word, a tap
   on prose dismisses, and sheets, colours, and targets keep their existing
-  behavior. ADR 0051 supersedes the touch long-press sentence gesture and
+  behavior. ADR 0053 supersedes the touch long-press sentence gesture and
   restores native touch selection. This ADR changes what a tap costs, what it
   looks like, and what it can reach.
 - Copying the Japanese reading remains native on mouse and touch; ruby

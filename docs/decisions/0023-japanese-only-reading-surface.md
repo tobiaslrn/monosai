@@ -1,7 +1,7 @@
 # 0023 — The reading surface carries Japanese and nothing else
 
 Date: 2026-08-20
-Status: Accepted; reader gesture and sheet rules refined by ADR 0051
+Status: Accepted; reader gesture and sheet rules refined by ADR 0053
 
 ## Context
 

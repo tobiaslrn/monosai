@@ -188,7 +188,7 @@ route below a word's form summary is the equivalent keyboard and touch path. On 
 word and sentence details are independently scrollable sheets whose bottom edge is the measured
 docked-player boundary. Their height uses the smaller of the viewport cap and the remaining space
 above that boundary, and the page remeasures when the player or viewport changes
-([ADR 0051](../decisions/0051-reader-touch-details-and-measured-sheets.md)).
+([ADR 0053](../decisions/0053-reader-touch-details-and-measured-sheets.md)).
 
 The cache key is a fingerprint of everything that could change the answer, which
 [chapter 8](08-crosscutting-concepts.md) describes. Change the voice and the old clips are hidden

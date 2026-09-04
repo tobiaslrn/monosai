@@ -77,7 +77,7 @@ files are already linked from code comments and from other records.
 | [0028](../decisions/0028-word-form-summary-popup.md) | Word details use a compact form summary |
 | [0031](../decisions/0031-touch-reading-gestures-and-docked-details.md) | On touch, a long press selects a sentence and details dock as a sheet |
 | [0032](../decisions/0032-touch-word-taps-and-one-selection-colour.md) | A tap on a phone is one press, one colour, and one open thing |
-| [0051](../decisions/0051-reader-touch-details-and-measured-sheets.md) | Native touch selection, sentence double taps, and measured detail sheets |
+| [0053](../decisions/0053-reader-touch-details-and-measured-sheets.md) | Native touch selection, sentence double taps, and measured detail sheets |
 
 ### Audio
 
