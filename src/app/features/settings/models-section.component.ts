@@ -437,6 +437,9 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     }
     .connection-button {
       white-space: nowrap;
+      // Loading credentials changes both foreground and background. Blending
+      // between the two palettes briefly makes the label unreadable.
+      transition: transform var(--motion-fast) ease-out;
     }
     .connection-dot {
       width: 8px;
