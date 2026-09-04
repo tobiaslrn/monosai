@@ -3,18 +3,43 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  inject,
   input,
   output,
   signal,
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { CLOCK } from '../../application/shared/repository-tokens';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
-import type { Reading } from '../../domain/reading/reading';
-import { formatCountOf, formatDateTime } from '../../domain/shared/locale';
+import type { ImportSource, Reading, StoryForm } from '../../domain/reading/reading';
+import { formatCountOf, formatRelativeDay } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
-/** One compact library row, with only the metadata useful before opening it. */
+/** What a story's length is called, in the words the generate form uses. */
+const FORM_LABELS: Readonly<Record<StoryForm, string>> = {
+  micro: 'Micro',
+  short: 'Short',
+  medium: 'Medium',
+  long: 'Long',
+};
+
+/** Where an imported reading came from. */
+const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
+  paste: 'Pasted',
+  'text-file': 'Text file',
+};
+
+/**
+ * One library row: what the reading is, and what it is for.
+ *
+ * A shelf is for choosing what to open, so the row leads with the two things
+ * that decide that — the title, and a sentence saying what is inside. For a
+ * generated story that sentence is the premise the learner wrote, which existed
+ * in the database and was rendered nowhere. Beside the title sits how long the
+ * reading is and when it was last read, because on a shelf the useful date is
+ * when you last picked something up rather than when it was filed.
+ */
 @Component({
   selector: 'mn-reading-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -27,23 +52,26 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     <article class="reading-row">
       <div class="head">
         <div class="copy">
-          <h3>
-            <a [routerLink]="['/reader', reading().id]" [state]="libraryOriginState">
-              {{ reading().title }}
-            </a>
-          </h3>
-          <p class="meta">
-            <span>{{ characterLabel() }}</span>
-            <span class="separator" aria-hidden="true">·</span>
-            <span>{{ createdLabel() }}</span>
-            @if (hasAudio()) {
+          <div class="title-row">
+            <h3>
+              <a [routerLink]="['/reader', reading().id]" [state]="libraryOriginState">
+                {{ reading().title }}
+              </a>
+            </h3>
+            <p class="meta">
+              <span>{{ shapeLabel() }}</span>
               <span class="separator" aria-hidden="true">·</span>
-              <span class="audio-available">
-                <mn-icon name="audio" [size]="16" />
-                <span>Audio available</span>
-              </span>
-            }
-          </p>
+              <span>{{ lastReadLabel() }}</span>
+              @if (hasAudio()) {
+                <span class="separator" aria-hidden="true">·</span>
+                <span class="audio-available">
+                  <mn-icon name="audio" [size]="16" />
+                  <span>Audio</span>
+                </span>
+              }
+            </p>
+          </div>
+          <p class="summary">{{ summaryLabel() }}</p>
         </div>
         <div class="menu-anchor">
           <button
@@ -94,19 +122,32 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     .head {
       display: flex;
       gap: var(--space-3);
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
     }
 
     .copy {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* The title and its shape share a line; the summary spans the full measure. */
+    .title-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-1) var(--space-3);
+      align-items: baseline;
+      justify-content: space-between;
       min-width: 0;
     }
 
     h3 {
+      min-width: 0;
       margin: 0;
       font-family: var(--font-japanese);
       font-size: 20px;
       line-height: 1.35;
+      overflow-wrap: anywhere;
     }
 
     h3 a {
@@ -192,12 +233,28 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 
     .meta {
       display: flex;
+      flex: none;
       flex-wrap: wrap;
       gap: var(--space-1);
       align-items: center;
-      margin: var(--space-1) 0 0;
+      margin: 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);
+    }
+
+    /*
+     * A premise is one sentence. Anything longer is trimmed rather than allowed
+     * to set the height of a row on a shelf of otherwise equal rows.
+     */
+    .summary {
+      display: -webkit-box;
+      margin: var(--space-1) 0 0;
+      overflow: hidden;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      line-height: 1.45;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
     }
 
     .audio-available {
@@ -209,6 +266,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 })
 export class ReadingCardComponent {
   protected readonly libraryOriginState = navigationOriginState('/library');
+  private readonly clock = inject(CLOCK);
   readonly reading = input.required<Reading>();
   readonly deleteRequested = output<Reading>();
 
@@ -223,7 +281,44 @@ export class ReadingCardComponent {
   protected readonly characterLabel = computed(() =>
     formatCountOf(this.reading().characterCount, 'character'),
   );
-  protected readonly createdLabel = computed(() => formatDateTime(this.reading().createdAt));
+
+  /** How long the reading is, said the way the screen that made it says it. */
+  protected readonly shapeLabel = computed(() => {
+    const reading = this.reading();
+    return reading.kind === 'generated'
+      ? FORM_LABELS[reading.form]
+      : IMPORT_LABELS[reading.importSource];
+  });
+
+  /**
+   * When the reading was last opened.
+   *
+   * A reading nobody has opened says so rather than falling back to when it was
+   * added: the two are different facts, and only one of them is about reading.
+   */
+  protected readonly lastReadLabel = computed(() => {
+    const openedAt = this.reading().lastOpenedAt;
+    return openedAt === null ? 'unread' : `read ${formatRelativeDay(openedAt, this.clock.now())}`;
+  });
+
+  /**
+   * One line saying what is inside.
+   *
+   * A generated story has a premise the learner wrote, which says more than any
+   * count could. An imported one has no such sentence, so it states its size and
+   * the file it came from, which is what tells two pasted readings apart.
+   */
+  protected readonly summaryLabel = computed(() => {
+    const reading = this.reading();
+    if (reading.kind === 'generated' && reading.premise.trim() !== '') {
+      return reading.premise;
+    }
+    const fileName = reading.kind === 'imported' ? reading.sourceFileName : undefined;
+    return fileName === undefined
+      ? this.characterLabel()
+      : `${fileName} · ${this.characterLabel()}`;
+  });
+
   protected readonly hasAudio = computed(() => this.reading().audioSummary.completed > 0);
 
   protected onMenuToggle(event: Event): void {

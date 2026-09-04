@@ -88,6 +88,23 @@ What may tighten on a wide viewport is the **vertical rhythm between sections**,
 so a long settings page scrolls less. Targets, control heights, and the padding
 inside a control do not change.
 
+### Rows on a shelf
+
+A shelf is for choosing what to open, so a row answers that and nothing else. It
+carries the name, one line saying what is inside, and — opposite the name — how
+big the thing is and when it was last used. The row is one link; the actions on
+it live in an overflow menu, because a row is not a place to configure anything.
+
+The line saying what is inside prefers **what the content already says about
+itself** over anything counted about it: a generated story states the premise
+the learner wrote, and only something with no such sentence falls back to its
+size and its origin. On a shelf the useful date is when you last picked
+something up, not when it was filed, and something never opened says so rather
+than substituting the other date.
+
+Rows on one shelf are the same height, and a row standing in for work still
+running matches the row it will become.
+
 ## 3. Controls
 
 ### The line between an icon and a label

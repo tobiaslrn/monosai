@@ -255,13 +255,14 @@ describe('LibraryPageComponent', () => {
     expect(groups).toEqual(['Today', 'Yesterday', 'Earlier this week']);
   });
 
-  it('shows character count and available audio without a sentence preview or Read button', async () => {
+  it('shows what a row is and marks its audio, without a preview or a Read button', async () => {
     repository.readings = [reading('a', 'imported', 1_000, 1, 1)];
     const fixture = await render();
     const row = element(fixture).querySelector('mn-reading-card');
 
     expect(row?.textContent).toContain('1 character');
-    expect(row?.textContent).toContain('Audio available');
+    expect(row?.textContent).toContain('Pasted');
+    expect(row?.textContent).toContain('Audio');
     expect(row?.querySelector('.excerpt')).toBeNull();
     expect(
       [...(row?.querySelectorAll('button') ?? [])].some((button) => button.textContent === 'Read'),
