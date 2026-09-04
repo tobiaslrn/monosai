@@ -10,7 +10,7 @@ import { IDLE_LAYER_PROGRESS, type EnqueueOutcome, type LayerProgress } from './
  * One aid layer's producer, as the preparation lane sees it.
  *
  * The three job stores were written independently and already agree on almost
- * everything: a captured context, sequential bounded work, every success stored
+ * everything: a captured context, bounded work, every success stored
  * before the next request, no retries of their own. This interface is that
  * agreement written down, so the lane sequences three layers without knowing
  * what any of them produces.

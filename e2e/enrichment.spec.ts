@@ -123,6 +123,40 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
   });
 
+  test('reports English and grammar at the same time without clipping @mobile @smoke', async ({
+    page,
+  }) => {
+    await stubOpenRouter(page, { generation: { aidDelayMs: 600 } });
+    await importReading(page, LONG_TEXT);
+    const trigger = page.getByRole('button', { name: 'Story options', exact: true });
+    await trigger.click();
+    const panel = page.getByRole('dialog', { name: 'Story options', exact: true });
+
+    await panel.getByRole('button', { name: 'Translate story', exact: true }).click();
+    await panel.getByRole('button', { name: 'Add notes', exact: true }).click();
+
+    // Both text layers are producers of the one claimed reading, so neither row
+    // may sit at rest while the other works.
+    const english = panel.locator('[data-layer="english"] [role="status"]');
+    const grammar = panel.locator('[data-layer="grammar"] [role="status"]');
+    await expect(english).not.toHaveText(/^$/, { timeout: 5_000 });
+    await expect(grammar).not.toHaveText(/^$/, { timeout: 5_000 });
+    await expect(english).not.toHaveText('Queued', { timeout: 10_000 });
+    await expect(grammar).not.toHaveText('Queued', { timeout: 10_000 });
+
+    const bounds = await panel.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+
+    await expect
+      .poll(async () => (await countOwnedRows(page))['grammarAnalyses'] ?? 0, { timeout: 20_000 })
+      .toBeGreaterThan(0);
+    await expect
+      .poll(async () => (await countOwnedRows(page))['translations'] ?? 0, { timeout: 20_000 })
+      .toBeGreaterThan(0);
+  });
+
   test('keeps grammar labels compact and opens their Details disclosure by keyboard', async ({
     page,
   }) => {

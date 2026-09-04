@@ -2,12 +2,11 @@ import { sentencesWithoutStoredAid } from '../../domain/enrichment/preparation';
 import { Injectable, inject } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import {
-  MAX_GRAMMAR_REVIEW_BATCH,
+  planGrammarBatches,
   type GrammarReviewRequest,
   type NormalizedFinding,
 } from '../../domain/ai/grammar-review-request';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
-import { planBatches } from '../../domain/ai/translation-request';
 import { normalizeReview } from '../../domain/enrichment/grammar-normalization';
 import type { GrammarAnalysisRecord, GrammarFinding } from '../../domain/enrichment/records';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
@@ -55,7 +54,12 @@ export class GrammarAnalysisService {
     signal: AbortSignal,
   ): Promise<GrammarRunOutcome> {
     const records: GrammarAnalysisRecord[] = [];
-    for (const batch of planBatches(sentences, MAX_GRAMMAR_REVIEW_BATCH)) {
+    for (const batch of planGrammarBatches(
+      sentences,
+      profileGuidance,
+      registerPreference,
+      (sentence) => sentence.japaneseText,
+    )) {
       if (signal.aborted) {
         return { status: 'unavailable', records: [], reasonCode: 'cancelled' };
       }

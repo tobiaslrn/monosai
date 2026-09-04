@@ -81,7 +81,13 @@ export const QUEUED: EnqueueOutcome = { kind: 'queued' };
 /** Why the lane is not working right now, in the learner's terms. */
 export type LaneHold = 'generation' | 'offline' | 'update' | 'claimed-elsewhere';
 
+/**
+ * What the lane is working on right now.
+ *
+ * English and grammar run together, so a placement names every layer currently
+ * in flight for the one claimed reading rather than a single one.
+ */
 export interface LanePlacement {
   readonly readingId: ReadingId;
-  readonly layer: PreparationLayer;
+  readonly layers: readonly PreparationLayer[];
 }

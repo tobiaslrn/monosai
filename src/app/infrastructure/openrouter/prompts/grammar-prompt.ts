@@ -10,9 +10,10 @@ import {
 /** Versioned task instructions for reviewing sentences for notable grammar. */
 const TASK_LAYER = [
   'Role: Review Japanese grammar as a precise, learner-focused language tutor.',
-  'Goal: Flag every genuine construction above the supplied profile ceiling, then add the most pedagogically useful grammar in each target sentence.',
+  'Goal: Select at most one genuinely useful grammar construction per target sentence, or return none when no note would help.',
   'Success criteria:',
-  '- Return at most three findings per sentence. When a sentence has more than three, keep the ones above the profile ceiling first and drop the merely useful ones.',
+  '- Return at most one finding per sentence. Prefer a construction above the supplied profile ceiling; otherwise choose only the single most pedagogically useful construction.',
+  '- Do not manufacture coverage. A sentence with no useful construction gets no finding.',
   '- Prefer complete constructions over isolated particles, and do not repeat the same construction within one sentence.',
   '- Explain what the construction does in this exact sentence, not merely its dictionary definition.',
   '- Write `explanationEn` as one or two plain sentences a beginner can read. Gloss any grammatical term you use.',

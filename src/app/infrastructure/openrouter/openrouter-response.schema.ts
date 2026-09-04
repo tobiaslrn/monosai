@@ -427,8 +427,8 @@ export function grammarReviewJsonSchema(sentenceCount: number): Record<string, u
       properties: {
         findings: {
           type: 'array',
-          maxItems: sentenceCount * 3,
-          description: 'At most three findings per sentence, above-ceiling constructions first.',
+          maxItems: sentenceCount,
+          description: 'At most one useful finding per sentence, with above-ceiling grammar first.',
           items: {
             type: 'object',
             additionalProperties: false,

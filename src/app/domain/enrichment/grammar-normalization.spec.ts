@@ -118,7 +118,7 @@ describe('normalizeReview', () => {
     expect(result).toEqual([]);
   });
 
-  it('deduplicates findings and keeps at most three per sentence, prioritizing concerns', () => {
+  it('deduplicates findings and keeps one concern ahead of in-profile notes', () => {
     const textById = new Map([[S1, 'これはテストです。']]);
     const findings = [
       finding({ label: 'a', explanationEn: 'first' }),
@@ -130,7 +130,7 @@ describe('normalizeReview', () => {
 
     const result = normalizeReview(sentenceIds, { findings }, textById);
 
-    expect(result.map((item) => item.label)).toEqual(['c', 'a', 'b']);
+    expect(result.map((item) => item.label)).toEqual(['c']);
   });
 });
 

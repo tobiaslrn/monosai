@@ -30,7 +30,7 @@ describe('request-specific provider JSON schemas', () => {
       schema: { properties: { decisions: { minItems: 6, maxItems: 6 } } },
     });
     expect(grammarReviewJsonSchema(8)).toMatchObject({
-      schema: { properties: { findings: { maxItems: 24 } } },
+      schema: { properties: { findings: { maxItems: 8 } } },
     });
     expect(translationsJsonSchema(9)).toMatchObject({
       schema: { properties: { translations: { minItems: 9, maxItems: 9 } } },

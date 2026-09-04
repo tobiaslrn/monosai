@@ -95,6 +95,8 @@ export class PreparationStore {
   private draining: Promise<void> | null = null;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private claimed: ReadingId | null = null;
+  /** More than one text layer may be active; audio remains a lane of its own. */
+  private readonly activeLayers = new Set<PreparationLayer>();
 
   /** Readings with outstanding work, the one being worked first. */
   readonly queue = this.queueSignal.asReadonly();
@@ -146,7 +148,7 @@ export class PreparationStore {
     this.openReadingSignal.set(readingId);
     const current = this.currentSignal();
     if (readingId !== null && current !== null && current.readingId !== readingId) {
-      this.runners.runnerFor(current.layer).yieldAfterBatch();
+      this.yieldActiveLayers();
     }
   }
 
@@ -196,7 +198,7 @@ export class PreparationStore {
     this.pausedByLearnerSignal.set(true);
     const current = this.currentSignal();
     if (current !== null) {
-      this.runners.runnerFor(current.layer).yieldAfterBatch();
+      this.yieldActiveLayers();
     }
   }
 
@@ -316,32 +318,38 @@ export class PreparationStore {
     this.holdSignal.set(null);
 
     try {
-      for (const layer of layers) {
-        if (this.blockedSignal().includes(blockKey(readingId, layer))) continue;
-        const hold = this.currentHold();
-        if (hold !== null) {
-          this.park(hold);
-          return false;
+      const eligible = layers.filter(
+        (layer) => !this.blockedSignal().includes(blockKey(readingId, layer)),
+      );
+      const textLayers = eligible.filter(
+        (layer): layer is 'english' | 'grammar' => layer === 'english' || layer === 'grammar',
+      );
+      if (textLayers.length > 0) {
+        if (!this.canStartGroup()) return false;
+        this.currentSignal.set({ readingId, layers: textLayers });
+        textLayers.forEach((layer) => this.activeLayers.add(layer));
+        try {
+          await Promise.all(
+            textLayers.map((layer) => this.runners.runnerFor(layer).start(readingId)),
+          );
+        } finally {
+          textLayers.forEach((layer) => this.activeLayers.delete(layer));
         }
-        if (this.pausedByLearnerSignal()) {
-          this.currentSignal.set(null);
-          return false;
+        if (!this.handleGroupOutcome(readingId, textLayers, deferred)) {
+          return !this.pausedByLearnerSignal();
         }
-        this.currentSignal.set({ readingId, layer });
-        const runner = this.runners.runnerFor(layer);
-        await runner.start(readingId);
-        const progress = runner.progressFor(readingId);
-        // A parked layer keeps its row: whoever resumes picks it up from here,
-        // and the lane must not walk on to the next layer of this reading as
-        // though this one were done.
-        if (progress.kind === 'failed') {
-          this.block(readingId, layer);
-          this.currentSignal.set(null);
-          return true;
+      }
+
+      if (eligible.includes('audio')) {
+        if (!this.canStartGroup()) return false;
+        this.currentSignal.set({ readingId, layers: ['audio'] });
+        this.activeLayers.add('audio');
+        try {
+          await this.runners.runnerFor('audio').start(readingId);
+        } finally {
+          this.activeLayers.delete('audio');
         }
-        if (progress.kind === 'paused' || progress.kind === 'cancelled') {
-          deferred.add(readingId);
-          this.currentSignal.set(null);
+        if (!this.handleGroupOutcome(readingId, ['audio'], deferred)) {
           return !this.pausedByLearnerSignal();
         }
       }
@@ -349,6 +357,46 @@ export class PreparationStore {
     } finally {
       this.currentSignal.set(null);
       await this.releaseClaim();
+    }
+  }
+
+  /** Checks holds only between request waves, preserving paid in-flight work. */
+  private canStartGroup(): boolean {
+    const hold = this.currentHold();
+    if (hold !== null) {
+      this.park(hold);
+      return false;
+    }
+    if (this.pausedByLearnerSignal()) {
+      this.currentSignal.set(null);
+      return false;
+    }
+    return true;
+  }
+
+  /** Blocks failed layers independently and parks the reading if any layer yielded. */
+  private handleGroupOutcome(
+    readingId: ReadingId,
+    layers: readonly PreparationLayer[],
+    deferred: Set<ReadingId>,
+  ): boolean {
+    let parked = false;
+    for (const layer of layers) {
+      const progress = this.runners.runnerFor(layer).progressFor(readingId);
+      if (progress.kind === 'failed') this.block(readingId, layer);
+      if (progress.kind === 'paused' || progress.kind === 'cancelled') parked = true;
+    }
+    if (parked) {
+      deferred.add(readingId);
+      this.currentSignal.set(null);
+      return false;
+    }
+    return true;
+  }
+
+  private yieldActiveLayers(): void {
+    for (const layer of this.activeLayers) {
+      this.runners.runnerFor(layer).yieldAfterBatch();
     }
   }
 
@@ -418,10 +466,7 @@ export class PreparationStore {
 
   private park(hold: LaneHold): void {
     this.holdSignal.set(hold);
-    const current = this.currentSignal();
-    if (current !== null) {
-      this.runners.runnerFor(current.layer).yieldAfterBatch();
-    }
+    this.yieldActiveLayers();
     this.currentSignal.set(null);
   }
 

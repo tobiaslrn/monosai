@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
-import { MAX_GRAMMAR_REVIEW_BATCH } from '../../domain/ai/grammar-review-request';
+import { planGrammarBatches } from '../../domain/ai/grammar-review-request';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import { planBatches } from '../../domain/ai/translation-request';
@@ -64,6 +64,9 @@ export type GrammarJobProgress =
 
 const IDLE: GrammarJobProgress = { kind: 'idle' };
 
+/** Three grammar requests plus three translation requests make the six-request text ceiling. */
+export const GRAMMAR_REQUEST_CONCURRENCY = 3;
+
 function isAborted(signal: AbortSignal): boolean {
   return signal.aborted;
 }
@@ -97,7 +100,7 @@ interface JobContext {
   readonly total: number;
 }
 
-/** Resumable, sequential whole-reading grammar analysis. */
+/** Resumable whole-reading grammar analysis in bounded request waves. */
 @Injectable({ providedIn: 'root' })
 export class GrammarJobStore {
   private readonly readings = inject(READING_REPOSITORY);
@@ -390,7 +393,15 @@ export class GrammarJobStore {
     });
     let firstError: AiError | null = null;
 
-    for (const batch of planBatches(loaded.value, MAX_GRAMMAR_REVIEW_BATCH)) {
+    const batches = planGrammarBatches(
+      loaded.value,
+      context.profile.resolvedGuidance,
+      context.profile.registerPreference,
+      (sentence) => sentence.japaneseText,
+    );
+    let waveNumber = 0;
+    for (const wave of planBatches(batches, GRAMMAR_REQUEST_CONCURRENCY)) {
+      waveNumber += 1;
       if (isAborted(signal)) {
         await this.markCancelled(job, counts);
         return;
@@ -405,37 +416,74 @@ export class GrammarJobStore {
         counts,
         phase: 'requesting',
       });
-      const outcome = await this.grammar.runBatch(
-        batch,
-        context.readingId,
-        context.cacheKeys,
-        context.profile.profileHash,
-        context.profile.resolvedGuidance,
-        context.profile.registerPreference,
-        context.modelId,
-        PROMPT_VERSIONS.grammar,
-        context.taskConfig,
-        signal,
+      const startedAt = this.clock.now();
+      const settled = await Promise.all(
+        wave.map(async (batch) => ({
+          batch,
+          outcome: await this.grammar.runBatch(
+            batch,
+            context.readingId,
+            context.cacheKeys,
+            context.profile.profileHash,
+            context.profile.resolvedGuidance,
+            context.profile.registerPreference,
+            context.modelId,
+            PROMPT_VERSIONS.grammar,
+            context.taskConfig,
+            signal,
+          ),
+        })),
       );
-      if (outcome.status === 'complete') {
-        this.progressSignal.set({
-          kind: 'running',
-          readingId: context.readingId,
-          counts,
-          phase: 'saving',
-        });
-        for (const record of outcome.records) {
-          const stored = await this.grammar.store(record, context.cacheKeys);
-          if (!stored.ok) {
-            this.failStorage(context.readingId, stored.error, counts);
-            return;
+      // Shape only: how much was asked for and how long it took. Never the
+      // sentences themselves and never the provider's reply.
+      this.logger.info('job.wave', {
+        kind: 'grammar',
+        step: waveNumber,
+        worker: wave.length,
+        count: wave.reduce((total, batch) => total + batch.length, 0),
+        durationMs: this.clock.now() - startedAt,
+      });
+      for (const { batch, outcome } of settled) {
+        if (outcome.status === 'complete') {
+          this.progressSignal.set({
+            kind: 'running',
+            readingId: context.readingId,
+            counts,
+            phase: 'saving',
+          });
+          for (const record of outcome.records) {
+            const stored = await this.grammar.store(record, context.cacheKeys);
+            if (!stored.ok) {
+              this.failStorage(context.readingId, stored.error, counts);
+              return;
+            }
+            const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
+            if (!advanced.ok) {
+              this.failStorage(context.readingId, advanced.error, counts);
+              return;
+            }
+            counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
+            this.progressSignal.set({
+              kind: 'running',
+              readingId: context.readingId,
+              counts,
+              phase: 'saving',
+            });
           }
-          const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
-          if (!advanced.ok) {
-            this.failStorage(context.readingId, advanced.error, counts);
-            return;
+        } else if (outcome.error.code !== 'cancelled') {
+          firstError ??= outcome.error;
+          for (const sentence of batch) {
+            const recorded = await this.jobs.recordFailure(job.id, {
+              sentenceId: sentence.id,
+              errorCode: outcome.error.code,
+              failedAt: this.clock.now(),
+            });
+            if (!recorded.ok) {
+              this.failStorage(context.readingId, recorded.error, counts);
+              return;
+            }
+            counts = { ...counts, failed: recorded.value.failedItems.length };
           }
-          counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
           this.progressSignal.set({
             kind: 'running',
             readingId: context.readingId,
@@ -443,26 +491,6 @@ export class GrammarJobStore {
             phase: 'saving',
           });
         }
-      } else if (outcome.error.code !== 'cancelled') {
-        firstError ??= outcome.error;
-        for (const sentence of batch) {
-          const recorded = await this.jobs.recordFailure(job.id, {
-            sentenceId: sentence.id,
-            errorCode: outcome.error.code,
-            failedAt: this.clock.now(),
-          });
-          if (!recorded.ok) {
-            this.failStorage(context.readingId, recorded.error, counts);
-            return;
-          }
-          counts = { ...counts, failed: recorded.value.failedItems.length };
-        }
-        this.progressSignal.set({
-          kind: 'running',
-          readingId: context.readingId,
-          counts,
-          phase: 'saving',
-        });
       }
       if (isAborted(signal)) {
         await this.markCancelled(job, counts);

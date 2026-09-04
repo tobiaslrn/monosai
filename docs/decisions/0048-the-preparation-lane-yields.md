@@ -3,6 +3,10 @@
 Date: 2026-09-03
 Status: Accepted
 
+The sequential text-layer portion is superseded by
+[ADR 0054](0054-parallel-text-preparation.md). English and grammar now run
+together in bounded request waves; audio still follows them.
+
 ## Context
 
 [ADR 0047](0047-a-reading-declares-what-it-should-have.md) gave a reading a declaration of the aid

@@ -160,14 +160,16 @@ goal 3 is met at runtime.
 
 A learner can also ask to analyse a whole reading. That explicit action creates an
 `analyze-reading` job. The job captures the text-model configuration and immutable grammar profile
-once, includes the profile hash in its configuration fingerprint, and sends sequential batches of
-at most four sentences. The provider adapter allows 4,096 response tokens and one bounded format
-recovery; it treats an empty findings array as a valid review. Each successful analysis is stored
-before the next batch begins. A failed batch is recorded against its sentences without discarding
-successful batches before or after it; the job itself adds no retries beyond the provider client's
-bounded transport and format-recovery rules. After a reload, only a matching unfinished job
-resumes. A configuration mismatch closes the old job and starts work under the new fingerprint,
-while cancellation keeps every analysis already stored.
+once, includes the profile hash in its configuration fingerprint, and plans contiguous adaptive
+batches of at most 30 sentences and 12,000 estimated input tokens. Grammar is selective — at most
+one useful finding per sentence — so an ordinary short story fits one request. Long readings run
+three independent batches at a time. The provider adapter allows 4,096 response tokens and one
+bounded format recovery; it treats an empty findings array as a valid review. Each successful
+analysis is stored before its job item advances. A failed batch is recorded without discarding
+successful siblings; the job itself adds no retries beyond the provider client's bounded transport
+and format-recovery rules. After a reload, only a matching unfinished job resumes. A configuration
+mismatch closes the old job and starts work under the new fingerprint, while cancellation keeps
+every analysis already stored.
 
 Whole-reading translation reports that it has stopped only after cancellation is saved. Reloading
 after that report cannot resume the cancelled job; a failed cancellation write is shown as a storage
@@ -219,14 +221,16 @@ sequenceDiagram
             Rows-->>Lane: conflict
             Note over Lane: skip this reading; work another
         else claimed
-            Lane->>Runner: run English, then grammar, then audio
+            Lane->>Runner: run English and grammar together, then audio
             Runner->>Rows: store each result, then record it
         end
     end
     Note over Lane: A generation, an update, or a lost<br/>connection parks the run at a batch<br/>boundary. It never cancels one.
 ```
 
-The lane runs one reading at a time, the open one first, and never registers as busy: an update
+The lane runs one reading at a time, the open one first. English and grammar each use at most three
+requests, so one reading opens at most six text requests; translation seeds its glossary in one
+batch before its three-way waves. The lane never registers as busy: an update
 activates while a queue exists, and the rows are picked back up after the reload
 ([ADR 0048](../decisions/0048-the-preparation-lane-yields.md)).
 
