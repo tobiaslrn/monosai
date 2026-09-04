@@ -14,6 +14,7 @@ export function isValidAnkiConnectPort(port: number): boolean {
 }
 
 export interface AppSettings {
+  readonly helpIntroSeen: boolean;
   readonly theme: ThemeSetting;
   readonly activeSnapshotId: SnapshotId | null;
   readonly ankiConnectPort: number;
@@ -22,6 +23,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
+  helpIntroSeen: false,
   theme: 'system',
   activeSnapshotId: null,
   ankiConnectPort: DEFAULT_ANKI_CONNECT_PORT,

@@ -52,17 +52,20 @@ express — Generate's length and word-selection panel is the case this exists
 for. The aside stacks below the fields when the width no longer supports it. It
 is available to forms only; reading surfaces, lists, and prose never take one.
 
-### The masthead
+### The non-reader utility bar
 
-The application frame carries no navigation, and no screen has a navigation
-landmark. The Library wears a **masthead** — the wordmark, and the one
-destination that is not a story — but it is a header, not a nav bar. Every other
-screen, the reader included, states only its own way back.
+Every non-reader screen shares one compact application bar: the Monosai mark
+and wordmark link to the Library, followed by Settings, Help, and GitHub in a
+labelled utility navigation landmark. The wordmark may hide at the existing
+narrow breakpoint. The Reader has no application bar and keeps its own controls.
 
-A destination there carries its label, never a bare icon: nothing in a masthead
-is pressed often enough in a session for a symbol to have earned its silence.
+These three destinations are an explicit exception to the repetition rule:
+they are icon-only on both mobile and desktop, with accessible names and
+tooltips. GitHub names its new-tab behavior. Local destinations identify the
+current page. The bar sits in the document flow and uses bare shared icon
+controls with unchanged touch targets and visible keyboard focus.
 
-Below it the Library states **where the learner stands** — how many words
+Below the bar the Library states **where the learner stands** — how many words
 Monosai can write from, and at what level. That line is the screen's lead and
 also the way to the page that explains it, so it carries a chevron: a sentence
 that reads as a statement has to say that it goes somewhere, because its words
@@ -117,6 +120,9 @@ session** and its meaning is fixed by that repetition — the reader header, the
 audio transport, close, back, and overflow. Everything else carries a visible
 label beside its icon: anything rare, anything destructive, and anything that
 spends money or sends a request.
+
+The non-reader utility bar's three destinations are the deliberate exception
+described above; this does not grant other infrequent controls icon-only status.
 
 This is narrower than it sounds, and deliberately so. Research on icon usability
 is consistent that only a small set of symbols is read reliably without a label,
@@ -344,7 +350,14 @@ Standing explanatory text exists only where **money, network, or data loss is at
 stake**. A hint under a control that merely restates the control's own label, or
 describes what a section obviously contains, is removed rather than reworded.
 
-Three exceptions:
+Four exceptions:
+
+- **Help is a prose surface.** Its job is explanation: static, local English
+  guidance uses one readable column, section headings, short paragraphs, and
+  links close to the actions they explain. It needs no cards around each topic.
+  A compact first-use dialog offers the guide after startup on a non-reader
+  surface. Every dismissal records the preference for this local installation;
+  the guide remains in the utility bar. Reader deep links are never interrupted.
 
 - **Empty states teach.** An empty surface has nothing but words to work with,
   so any empty list explains what belongs there and how to fill it. The

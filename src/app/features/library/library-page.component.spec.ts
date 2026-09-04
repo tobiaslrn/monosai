@@ -191,8 +191,6 @@ describe('LibraryPageComponent', () => {
   it('explains what Monosai is when nothing is saved yet, Anki first', async () => {
     const fixture = await render();
 
-    expect(element(fixture).querySelector('.mark')?.getAttribute('src')).toBe('icons/icon-192.png');
-    expect(element(fixture).querySelector('.wordmark')?.textContent).toBe('Monosai');
     expect(element(fixture).querySelector('h1')?.textContent).toContain(
       'Japanese you can actually read',
     );
@@ -230,20 +228,11 @@ describe('LibraryPageComponent', () => {
     expect(links.map((link) => link.getAttribute('href'))).toEqual(['/add', '/generate']);
   });
 
-  /**
-   * One labelled destination. What the learner can read is reached from the
-   * standing line, which says why anyone would go; a second link to the same
-   * page, in nearly the same words, is what this replaced.
-   */
-  it('carries one labelled destination, and the standing line as the other door', async () => {
+  it('leaves shared destinations to the shell and keeps the standing line as the level door', async () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
-    const destinations = [
-      ...element(fixture).querySelectorAll<HTMLAnchorElement>('.library-head a'),
-    ];
-    expect(destinations.map((link) => link.getAttribute('href'))).toEqual(['/settings']);
-    expect(destinations[0]?.textContent?.trim()).toBe('Settings');
+    expect(element(fixture).querySelector('.library-head')).toBeNull();
     expect(element(fixture).querySelector('mn-library-standing a')?.getAttribute('href')).toBe(
       '/reading-level',
     );

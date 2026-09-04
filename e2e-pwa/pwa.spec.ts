@@ -2,6 +2,15 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.addLocatorHandler(
+    page.getByRole('dialog', { name: 'A little help getting started' }),
+    async () => {
+      await page.getByRole('button', { name: 'Got it' }).click();
+    },
+  );
+});
+
 const CONTRACT_PACKAGE = 'contract-schema18-zstd.apkg';
 
 function ankiFixture(name: string): Buffer {

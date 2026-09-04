@@ -75,6 +75,8 @@ files are already linked from code comments and from other records.
 | [0028](../decisions/0028-word-form-summary-popup.md) | Word details use a compact form summary |
 | [0031](../decisions/0031-touch-reading-gestures-and-docked-details.md) | On touch, a long press selects a sentence and details dock as a sheet |
 | [0032](../decisions/0032-touch-word-taps-and-one-selection-colour.md) | A tap on a phone is one press, one colour, and one open thing |
+| [0050](../decisions/0050-the-library-wears-the-navigation.md) | The Library standing line is the way to the learner's level |
+| [0051](../decisions/0051-non-reader-utilities-and-first-use-help.md) | Non-reader utilities and first-use Help; amends 0050 and 0025 |
 
 ### Audio
 

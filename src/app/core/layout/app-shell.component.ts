@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/router';
 import { filter, map, tap } from 'rxjs';
@@ -7,25 +7,33 @@ import { safeErrorTypeOf } from '../../domain/shared/errors';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AppUpdateBannerComponent } from './app-update-banner.component';
 import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.component';
+import { AppBarComponent } from './app-bar.component';
+import { HelpIntroService } from './help-intro.service';
 
 /**
  * The application frame.
  *
- * Deliberately almost nothing: Monosai has no persistent navigation, because
- * the reading is the application and a bar of six equal destinations said
- * otherwise. Each page carries its own way back, so the frame owns only the
- * skip link, the update banner, and the main landmark.
+ * Utilities and the first-use guide belong to non-reader surfaces only.
+ * Reader routes retain their own controls without application chrome.
  */
 @Component({
   selector: 'mn-app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, AppUpdateBannerComponent, VocabularySyncBannerComponent],
+  imports: [RouterOutlet, AppUpdateBannerComponent, VocabularySyncBannerComponent, AppBarComponent],
+  providers: [HelpIntroService],
   template: `
     <a class="mn-skip-link" href="#mn-main">Skip to main content</a>
 
     @if (!isReaderRoute()) {
+      <mn-app-bar />
       <mn-app-update-banner />
       <mn-vocabulary-sync-banner />
+      @if (intro.saveFailed()) {
+        <div class="intro-error" role="alert">
+          <p>Your Help preference could not be saved. The introduction may appear next time.</p>
+          <button type="button" class="mn-button" (click)="intro.retrySave()">Try again</button>
+        </div>
+      }
     }
 
     <main id="mn-main" class="main" tabindex="-1">
@@ -49,6 +57,12 @@ import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.componen
       outline: none;
     }
 
+    .intro-error {
+      max-width: var(--layout-measure);
+      margin: var(--space-4) auto;
+      padding-inline: var(--space-4);
+    }
+
     @media (min-width: 960px) {
       .main {
         padding: var(--space-6);
@@ -57,6 +71,7 @@ import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.componen
   `,
 })
 export class AppShellComponent {
+  protected readonly intro = inject(HelpIntroService);
   private readonly router = inject(Router);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
   // Injected here, not just by the banner, so the update store's subscriptions
@@ -79,10 +94,20 @@ export class AppShellComponent {
         }
       }),
       filter((event) => event instanceof NavigationEnd),
-      map((event) => event.urlAfterRedirects),
+      // Keep the completed navigation as an event, even when its URL matches
+      // Router.url. The first NavigationEnd must wake the intro effect.
+      map((event) => ({ url: event.urlAfterRedirects, completed: true })),
     ),
-    { initialValue: this.router.url },
+    { initialValue: { url: this.router.url, completed: this.router.navigated } },
   );
 
-  protected readonly isReaderRoute = computed(() => this.url().startsWith('/reader/'));
+  protected readonly isReaderRoute = computed(() => this.url().url.startsWith('/reader/'));
+
+  constructor() {
+    effect(() => {
+      if (!this.isReaderRoute() && this.url().completed) {
+        this.intro.offer();
+      }
+    });
+  }
 }

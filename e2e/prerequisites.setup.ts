@@ -8,7 +8,23 @@ import {
   stubReviewedCollection,
 } from './generation';
 import { stubOpenRouter } from './openrouter';
-import { GENERATION_READY_STATE, TEXT_MODEL_READY_STATE, TTS_READY_STATE } from './state';
+import {
+  GENERATION_READY_STATE,
+  INTRO_SEEN_STATE,
+  TEXT_MODEL_READY_STATE,
+  TTS_READY_STATE,
+} from './state';
+import { expectSettingPersisted } from './storage';
+
+test.beforeEach(async ({ page }) => {
+  await page.goto('./#/library');
+  await page.getByRole('button', { name: 'Got it' }).click();
+  await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
+});
+
+test('creates a state with the first-use introduction dismissed @smoke', async ({ page }) => {
+  await saveIndexedDbState(page, INTRO_SEEN_STATE);
+});
 
 async function saveIndexedDbState(page: Page, statePath: string): Promise<void> {
   await mkdir(path.dirname(statePath), { recursive: true });
