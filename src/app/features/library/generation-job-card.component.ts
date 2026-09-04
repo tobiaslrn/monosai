@@ -23,16 +23,17 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
     <article class="job-row" [class.needs-attention]="needsAttention()">
       <div class="head">
         <div class="copy">
-          <h3>
-            <a [routerLink]="['/generate', job().id]" [state]="libraryOriginState">
-              {{ title() }}
-            </a>
-          </h3>
-          <p class="meta">
-            <span class="state">{{ stateLabel() }}</span>
-            <span class="separator" aria-hidden="true">·</span>
-            <span>{{ stageLabel() }}</span>
-          </p>
+          <div class="title-row">
+            <h3>
+              <a [routerLink]="['/generate', job().id]" [state]="libraryOriginState">
+                {{ title() }}
+              </a>
+            </h3>
+            <p class="meta">
+              <span class="state">{{ stateLabel() }}</span>
+            </p>
+          </div>
+          <p class="summary">{{ stageLabel() }}</p>
         </div>
         <button
           type="button"
@@ -58,15 +59,28 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
     .head {
       display: flex;
       gap: var(--space-3);
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
     }
 
     .copy {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* The same two-part shape a reading row has, so nothing moves when the
+       story lands and this row becomes that one. */
+    .title-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-1) var(--space-3);
+      align-items: baseline;
+      justify-content: space-between;
       min-width: 0;
     }
 
     h3 {
+      min-width: 0;
       margin: 0;
       font-family: var(--font-ui);
       font-size: 18px;
@@ -97,12 +111,24 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
 
     .meta {
       display: flex;
+      flex: none;
       flex-wrap: wrap;
       gap: var(--space-1);
       align-items: center;
-      margin: var(--space-1) 0 0;
+      margin: 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);
+    }
+
+    .summary {
+      display: -webkit-box;
+      margin: var(--space-1) 0 0;
+      overflow: hidden;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      line-height: 1.45;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
     }
 
     .state {
