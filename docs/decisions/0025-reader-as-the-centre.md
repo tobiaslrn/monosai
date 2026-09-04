@@ -46,6 +46,12 @@ Library is the root and has no back link; it carries a gear to Settings.
 Vocabulary and Grammar keep their routes but are reached from Settings, as two
 rows that each state their current condition in one line.
 
+*(Amended by [ADR 0050](0050-the-library-wears-the-navigation.md): the Library —
+and only the Library — now carries a masthead with text links to What you can
+read and to Settings, and states the learner's standing beneath it. The frame
+itself still carries nothing, and every other page still states only its own way
+back.)*
+
 *(Amended by [ADR 0049](0049-one-page-for-what-you-can-read.md): Vocabulary and
 Grammar are now one route, `/reading-level`, reached from the Library rather
 than from Settings, and Settings no longer describes the learner at all. What

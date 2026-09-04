@@ -22,7 +22,8 @@ describe('VocabularyAvailabilityStore', () => {
 
     await store.refresh();
 
-    expect(store.state()).toEqual({ kind: 'known', availability: 'none' });
+    expect(store.state()).toEqual({ kind: 'known', availability: 'none', snapshot: null });
+    expect(store.uniqueEntryCount()).toBe(0);
   });
 
   /** A storage failure is not "you have no words": it is "this could not be read". */
@@ -46,7 +47,7 @@ describe('VocabularyAvailabilityStore', () => {
   it('re-reads on demand rather than caching the first answer', async () => {
     const store = TestBed.inject(VocabularyAvailabilityStore);
     await store.refresh();
-    expect(store.state()).toEqual({ kind: 'known', availability: 'none' });
+    expect(store.state()).toEqual({ kind: 'known', availability: 'none', snapshot: null });
 
     const repository = TestBed.inject(VOCABULARY_REPOSITORY);
     const active = snapshotId('44444444-4444-4444-8444-444444444444');
@@ -77,6 +78,54 @@ describe('VocabularyAvailabilityStore', () => {
     });
     await store.refresh();
 
-    expect(store.state()).toEqual({ kind: 'known', availability: 'empty' });
+    expect(store.state()).toMatchObject({ kind: 'known', availability: 'empty' });
+    expect(store.uniqueEntryCount()).toBe(0);
+  });
+
+  /**
+   * The count travels with the availability because both come out of the one
+   * read. A home screen asking a second, heavier store for the same number is
+   * how the two start to disagree.
+   */
+  it('carries the snapshot the count and its provenance are read from', async () => {
+    const store = TestBed.inject(VocabularyAvailabilityStore);
+    const repository = TestBed.inject(VOCABULARY_REPOSITORY);
+    await repository.commitSnapshot({
+      snapshot: {
+        id: snapshotId('55555555-5555-4555-8555-555555555555'),
+        createdAt: 1_700_000_000_000,
+        status: 'complete',
+        uniqueEntryCount: 340,
+        sourceIds: [],
+        sourceKinds: ['anki-connect'],
+        analyzerVersion: 'test',
+        normalizationVersion: 'test',
+        stats: {
+          sourcesQueried: 1,
+          entriesRead: 340,
+          nonEmptyValues: 340,
+          rejectedEmptyValues: 0,
+          duplicateOccurrences: 0,
+          uniqueExpressions: 340,
+          sourceWarnings: [],
+        },
+      },
+      items: [],
+      provenance: [],
+      sources: [],
+      caches: [],
+    });
+
+    await store.refresh();
+    const state = store.state();
+
+    expect(state.kind).toBe('known');
+    expect(store.uniqueEntryCount()).toBe(340);
+    expect(state.kind === 'known' ? state.snapshot?.sourceKinds : null).toEqual(['anki-connect']);
+    expect(state.kind === 'known' ? state.snapshot?.createdAt : null).toBe(1_700_000_000_000);
+  });
+
+  it('reports no count at all while the read has not happened or failed', () => {
+    expect(TestBed.inject(VocabularyAvailabilityStore).uniqueEntryCount()).toBeNull();
   });
 });

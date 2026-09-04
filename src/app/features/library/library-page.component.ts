@@ -31,6 +31,7 @@ import {
 import { NewReadingMenuComponent } from './new-reading-menu.component';
 import { GenerationJobCardComponent } from './generation-job-card.component';
 import { groupLibraryReadings } from './library-date-groups';
+import { LibraryStandingComponent } from './library-standing.component';
 import { ReadingCardComponent } from './reading-card.component';
 
 interface FilterOption {
@@ -62,6 +63,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     NewReadingMenuComponent,
     ReadingCardComponent,
     GenerationJobCardComponent,
+    LibraryStandingComponent,
   ],
   template: `
     <div class="mn-page library-page">
@@ -70,14 +72,15 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           <img class="mark" src="icons/icon-192.png" alt="" width="40" height="40" />
           <span class="wordmark">Monosai</span>
         </div>
-        <a
-          class="mn-icon-button"
-          routerLink="/settings"
-          [state]="libraryOriginState"
-          aria-label="Settings"
-        >
-          <mn-icon name="settings" [size]="20" />
-        </a>
+        <!--
+          The application's only standing navigation, and it is on the Library
+          alone: two words each, because neither is pressed often enough for an
+          icon to have earned its silence.
+        -->
+        <nav class="destinations" aria-label="Monosai">
+          <a routerLink="/reading-level" [state]="libraryOriginState">What you can read</a>
+          <a routerLink="/settings" [state]="libraryOriginState">Settings</a>
+        </nav>
       </header>
 
       @if (store.status() === 'failed') {
@@ -89,7 +92,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         </section>
       } @else {
         <div class="library-title-row">
-          <h1>Library</h1>
+          <mn-library-standing />
           <button
             type="button"
             class="mn-button mn-button--primary"
@@ -102,6 +105,8 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
             <span>New reading</span>
           </button>
         </div>
+
+        <h1 class="shelf-heading">Library</h1>
 
         @if (showsFilters()) {
           <div class="filters" role="group" aria-label="Filter readings">
@@ -242,19 +247,63 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       white-space: nowrap;
     }
 
+    .destinations {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-4);
+      justify-content: flex-end;
+      min-width: 0;
+    }
+
+    .destinations a {
+      display: inline-flex;
+      align-items: center;
+      min-height: var(--touch-target);
+      color: var(--text-secondary);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .destinations a:hover {
+      color: var(--text-primary);
+      text-decoration: underline;
+    }
+
     .library-title-row {
       display: flex;
       gap: var(--space-4);
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
     }
 
-    .library-title-row h1 {
+    .library-title-row .mn-button {
+      flex: none;
+    }
+
+    /*
+     * Smaller than it was: the shelf is no longer the first thing the page
+     * says, and a heading the size of a page title above a standing line that
+     * outranks it would read as two competing titles.
+     */
+    /* Side by side is a wide-screen luxury; the line needs the full measure. */
+    @media (max-width: 599px) {
+      .library-title-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-3);
+      }
+
+      .library-title-row .mn-button {
+        align-self: flex-start;
+      }
+    }
+
+    .shelf-heading {
       margin: 0;
       font-family: var(--font-ui);
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-size: var(--text-lg);
+      font-weight: 600;
+      letter-spacing: -0.01em;
     }
 
     .filters {
@@ -369,10 +418,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
       .wordmark {
         font-size: 21px;
-      }
-
-      .library-title-row h1 {
-        font-size: 24px;
       }
     }
 

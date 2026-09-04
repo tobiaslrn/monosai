@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -5,7 +6,9 @@ import { AudioPlaybackStore } from '../../application/audio/audio-playback.store
 import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
+import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LibraryStore } from '../../application/reading/library.store';
+import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import {
   CLOCK,
   READING_MUTATION_CHANNEL,
@@ -120,6 +123,20 @@ describe('LibraryPageComponent', () => {
         { provide: AudioJobStore, useValue: audioJob },
         { provide: AudioPlaybackStore, useValue: playback },
         { provide: GenerationJobsStore, useValue: jobs },
+        // The standing line has its own spec for the states it renders; here it
+        // only has to exist without reaching the database.
+        {
+          provide: VocabularyAvailabilityStore,
+          useValue: {
+            state: signal({ kind: 'unknown' as const }),
+            uniqueEntryCount: signal(null),
+            refresh: () => Promise.resolve(),
+          },
+        },
+        {
+          provide: GrammarProfileStore,
+          useValue: { selectedPreset: signal(null), load: () => Promise.resolve() },
+        },
       ],
     });
   });
