@@ -3,6 +3,10 @@
 Date: 2026-08-20
 Status: Accepted
 
+The statement that grammar has no batch bound is superseded by
+[ADR 0054](0054-parallel-text-preparation.md). The shared batched provider ports
+and separation between producing and storing records remain unchanged.
+
 ## Context
 
 Milestone 8A adds grammar review and translation to a provider port that until

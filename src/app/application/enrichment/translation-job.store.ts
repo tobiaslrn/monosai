@@ -2,7 +2,11 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { aiError, isAutomaticallyRetryable, type AiError } from '../../domain/ai/ai-error';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
-import { MAX_TRANSLATION_BATCH, planBatches } from '../../domain/ai/translation-request';
+import {
+  MAX_TRANSLATION_BATCH,
+  planBatches,
+  type EstablishedRendering,
+} from '../../domain/ai/translation-request';
 import { translationConfigFingerprint } from '../../domain/enrichment/cache-keys';
 import { remainingSentenceIds, type AssetJob, type JobState } from '../../domain/enrichment/jobs';
 import type { SentenceRef } from '../../domain/reading/reading-repository';
@@ -71,6 +75,9 @@ export type TranslationJobProgress =
 
 const IDLE: TranslationJobProgress = { kind: 'idle' };
 
+/** Three translation requests plus three grammar requests make the six-request text ceiling. */
+export const TRANSLATION_REQUEST_CONCURRENCY = 3;
+
 /** Reads the flag through a call, so an earlier check never narrows a later one. */
 function isAborted(signal: AbortSignal): boolean {
   return signal.aborted;
@@ -113,7 +120,7 @@ interface JobContext {
  * The whole-reading translation job.
  *
  * Headless on purpose: everything here is signals and awaited calls, so the
- * sequencing rules that matter — bounded batches processed one at a time, every
+ * sequencing rules that matter — bounded deterministic request waves, every
  * success stored before the next request is made, nothing scheduled after
  * cancellation — are unit-testable without a reader on screen. Milestone 8B
  * adds the panel that renders `progress`.
@@ -492,12 +499,11 @@ export class TranslationJobStore {
   }
 
   /**
-   * Processes the job's outstanding sentences in sequential bounded batches.
+   * Processes the job's outstanding sentences in bounded request waves.
    *
-   * One request is in flight at a time and each answer is stored and committed
-   * before the next request is made, so an interruption between batches leaves
-   * a job whose recorded progress is exactly the progress its stored rows
-   * support.
+   * The first request seeds English terminology. Later requests run three at a
+   * time, and every accepted answer is stored before the next wave starts, so
+   * persisted progress remains the recovery authority.
    */
   private async process(context: JobContext, job: AssetJob, signal: AbortSignal): Promise<void> {
     const outstanding = remainingSentenceIds(job);
@@ -538,7 +544,10 @@ export class TranslationJobStore {
     let translationContext = await this.readingContext(context);
     let firstError: AiError | null = null;
 
-    for (const batch of planBatches(loaded.value, MAX_TRANSLATION_BATCH)) {
+    const batches = planBatches(loaded.value, MAX_TRANSLATION_BATCH);
+    let waveNumber = 0;
+    for (let offset = 0; offset < batches.length;) {
+      waveNumber += 1;
       if (isAborted(signal)) {
         await this.markCancelled(job, counts);
         return;
@@ -548,72 +557,88 @@ export class TranslationJobStore {
         return;
       }
 
-      const outcome = await this.translation.run(
-        batch,
-        context.readingId,
-        context.cacheKeys,
-        context.modelId,
-        PROMPT_VERSIONS.translation,
-        context.taskConfig,
-        signal,
-        translationContext,
+      // The first batch establishes the reading's English names and terms.
+      // Later waves share the glossary from every preceding wave, and merge
+      // their own additions in reading order before the next wave starts.
+      const width = offset === 0 ? 1 : TRANSLATION_REQUEST_CONCURRENCY;
+      const wave = batches.slice(offset, offset + width);
+      offset += wave.length;
+      const startedAt = this.clock.now();
+      const outcomes = await Promise.all(
+        wave.map((batch) =>
+          this.translation.run(
+            batch,
+            context.readingId,
+            context.cacheKeys,
+            context.modelId,
+            PROMPT_VERSIONS.translation,
+            context.taskConfig,
+            signal,
+            translationContext,
+          ),
+        ),
       );
-      translationContext = {
-        ...translationContext,
-        establishedRenderings: outcome.establishedRenderings,
-      };
+      // Shape only: how much was asked for and how long it took. Never the
+      // sentences themselves and never the provider's reply.
+      this.logger.info('job.wave', {
+        kind: 'translation',
+        step: waveNumber,
+        worker: wave.length,
+        count: wave.reduce((total, batch) => total + batch.length, 0),
+        durationMs: this.clock.now() - startedAt,
+      });
+      for (const outcome of outcomes) {
+        translationContext = {
+          ...translationContext,
+          establishedRenderings: mergeEstablishedRenderings(
+            translationContext.establishedRenderings ?? [],
+            outcome.establishedRenderings,
+          ),
+        };
 
-      // Whatever this batch already returned is stored before cancellation is
-      // honoured: the request was paid for and the results are independently
-      // useful, so discarding them would be a worse answer to "stop" than
-      // keeping them.
-      for (const record of outcome.records) {
-        const stored = await this.translation.store(record, context.cacheKeys);
-        if (!stored.ok) {
-          this.failStorage(context.readingId, stored.error, counts);
-          return;
+        // Whatever this wave already returned is stored before cancellation is
+        // honoured: the requests were paid for and each result is independently useful.
+        for (const record of outcome.records) {
+          const stored = await this.translation.store(record, context.cacheKeys);
+          if (!stored.ok) {
+            this.failStorage(context.readingId, stored.error, counts);
+            return;
+          }
+          const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
+          if (!advanced.ok) {
+            this.failStorage(context.readingId, advanced.error, counts);
+            return;
+          }
+          counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
+          this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
         }
-        const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
-        if (!advanced.ok) {
-          this.failStorage(context.readingId, advanced.error, counts);
-          return;
+
+        if (outcome.failures.length > 0 && outcome.error?.code !== 'cancelled') {
+          const error =
+            outcome.error ??
+            aiError('unknown', 'translation', 'The translation request failed.', {
+              detail: { correlationId: 'translation-job' },
+            });
+          const recorded = await this.recordFailures(job, outcome.failures, error);
+          if (recorded === null) return;
+          counts = { ...counts, failed: recorded.failedItems.length };
+          firstError ??= error;
+          if (!isSentenceLocalFailure(error)) {
+            const marked = await this.jobs.setState(job.id, 'failed');
+            if (!marked.ok) {
+              this.failStorage(context.readingId, marked.error, counts);
+              return;
+            }
+            this.failProvider(context.readingId, error, counts);
+            return;
+          }
+          this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
         }
-        counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
-        this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
       }
 
       if (isAborted(signal)) {
         await this.markCancelled(job, counts);
         return;
-      }
-
-      if (outcome.failures.length > 0) {
-        const error =
-          outcome.error ??
-          aiError('unknown', 'translation', 'The translation request failed.', {
-            detail: { correlationId: 'translation-job' },
-          });
-        const recorded = await this.recordFailures(job, outcome.failures, error);
-        if (recorded === null) {
-          return;
-        }
-        counts = { ...counts, failed: recorded.failedItems.length };
-        firstError ??= error;
-        // The split audio already draws (ADR 0035). A batch that failed for a
-        // reason local to its sentences leaves the rest of a long reading
-        // perfectly translatable, so the queue continues and the failure is
-        // reported at the end. A configuration-wide refusal will refuse every
-        // remaining batch identically, and spending on that is not a service.
-        if (!isSentenceLocalFailure(error)) {
-          const marked = await this.jobs.setState(job.id, 'failed');
-          if (!marked.ok) {
-            this.failStorage(context.readingId, marked.error, counts);
-            return;
-          }
-          this.failProvider(context.readingId, error, counts);
-          return;
-        }
-        this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
       }
     }
 
@@ -723,6 +748,18 @@ export class TranslationJobStore {
 
 function emptyCounts(): TranslationJobCounts {
   return { total: 0, requested: 0, completed: 0, failed: 0 };
+}
+
+/** Keeps the earliest English choice when parallel batches discover the same surface. */
+function mergeEstablishedRenderings(
+  established: readonly EstablishedRendering[],
+  additions: readonly EstablishedRendering[],
+): readonly EstablishedRendering[] {
+  const merged = new Map(established.map((rendering) => [rendering.surfaceJa, rendering]));
+  for (const rendering of additions) {
+    if (!merged.has(rendering.surfaceJa)) merged.set(rendering.surfaceJa, rendering);
+  }
+  return [...merged.values()];
 }
 
 /**

@@ -3,6 +3,11 @@
 Date: 2026-09-04
 Status: Accepted
 
+The fixed four-sentence, sequential batching portion is superseded by
+[ADR 0054](0054-parallel-text-preparation.md), which makes grammar sparse enough
+for adaptive batches and bounded parallel waves. Persistence and recovery remain
+as decided here.
+
 ## Context
 
 The reader could queue grammar work from **Add notes**, but the first batch was

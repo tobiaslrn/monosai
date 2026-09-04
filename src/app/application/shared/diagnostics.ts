@@ -81,7 +81,8 @@ export type LogEventName =
   | 'job.failed'
   | 'job.paused'
   | 'job.started'
-  | 'job.succeeded';
+  | 'job.succeeded'
+  | 'job.wave';
 
 export interface LogEntry {
   readonly level: LogLevel;

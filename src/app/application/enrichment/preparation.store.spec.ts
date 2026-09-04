@@ -275,7 +275,7 @@ describe('PreparationStore', () => {
   });
 
   describe('what starts work', () => {
-    it('does not start a queued layer cancelled while the previous layer is running', async () => {
+    it('can stop grammar independently while English is still running', async () => {
       await outstandingRow(beds.jobs, FIRST, 'english', NOW);
       await outstandingRow(beds.jobs, FIRST, 'grammar', NOW + 1);
       const gate = beds.runners.english.holdOpen();
@@ -285,7 +285,7 @@ describe('PreparationStore', () => {
       await beds.store.stopLayer(FIRST, 'grammar');
       gate.release();
       await run;
-      expect(beds.runners.grammar.started).toEqual([]);
+      expect(beds.runners.grammar.started).toEqual([FIRST]);
     });
 
     it('resumes the remaining layer after a pause at a layer boundary', async () => {
@@ -297,7 +297,7 @@ describe('PreparationStore', () => {
       beds.store.pause();
       gate.release();
       await run;
-      expect(beds.runners.grammar.started).toEqual([]);
+      expect(beds.runners.grammar.started).toEqual([FIRST]);
       await beds.store.resume();
       expect(beds.runners.grammar.started).toEqual([FIRST]);
     });
@@ -311,8 +311,8 @@ describe('PreparationStore', () => {
       beds.online.set(false);
       gate.release();
       await run;
-      expect(beds.runners.grammar.started).toEqual([]);
-      expect(beds.store.progressFor(FIRST, 'grammar').kind).toBe('queued');
+      expect(beds.runners.grammar.started).toEqual([FIRST]);
+      expect(beds.store.progressFor(FIRST, 'grammar').kind).toBe('complete');
     });
 
     it('ends all producers when the entire reading is stopped', async () => {
@@ -417,6 +417,23 @@ describe('PreparationStore', () => {
       expect(beds.runners.audio.started).toEqual([FIRST]);
     });
 
+    it('runs English and grammar together, then starts audio', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
+      await outstandingRow(beds.jobs, FIRST, 'grammar', NOW + 2);
+      await outstandingRow(beds.jobs, FIRST, 'audio', NOW + 3);
+      const english = beds.runners.english.holdOpen();
+      const grammar = beds.runners.grammar.holdOpen();
+
+      const run = beds.store.pump();
+      await Promise.all([english.started, grammar.started]);
+
+      expect(beds.runners.audio.started).toEqual([]);
+      english.release();
+      grammar.release();
+      await run;
+      expect(beds.runners.audio.started).toEqual([FIRST]);
+    });
+
     it('works the reading the learner has open before the rest', async () => {
       await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
       await outstandingRow(beds.jobs, SECOND, 'english', NOW + 2);
@@ -462,14 +479,14 @@ describe('PreparationStore', () => {
       expect(beds.runners.audio.yields).toBeGreaterThan(0);
     });
 
-    it('leaves the rest of a reading alone once one of its layers parks', async () => {
+    it('lets the sibling text layer finish when one of them parks', async () => {
       await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
       await outstandingRow(beds.jobs, FIRST, 'grammar', NOW + 2);
       beds.runners.english.pauseOn = FIRST;
 
       await beds.store.pump();
 
-      expect(beds.runners.grammar.started).toEqual([]);
+      expect(beds.runners.grammar.started).toEqual([FIRST]);
     });
   });
 
@@ -589,6 +606,19 @@ describe('PreparationStore', () => {
       await beds.store.retry(FIRST, 'english');
 
       expect(beds.runners.english.started).toEqual([FIRST, FIRST]);
+    });
+
+    it('leaves the sibling text layer and the audio behind it untouched', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
+      await outstandingRow(beds.jobs, FIRST, 'grammar', NOW + 2);
+      await outstandingRow(beds.jobs, FIRST, 'audio', NOW + 3);
+      beds.runners.english.failOn = FIRST;
+
+      await beds.store.pump();
+
+      expect(beds.store.progressFor(FIRST, 'english').kind).toBe('failed');
+      expect(beds.runners.grammar.started).toEqual([FIRST]);
+      expect(beds.runners.audio.started).toEqual([FIRST]);
     });
 
     it('keeps working the other readings', async () => {

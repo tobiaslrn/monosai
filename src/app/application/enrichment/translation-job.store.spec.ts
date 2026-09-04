@@ -150,7 +150,7 @@ describe('TranslationJobStore', () => {
     await destroyTestDatabase(bed.db);
   });
 
-  it('translates a reading in sequential batches of at most the bounded size', async () => {
+  it('translates a reading in bounded batches', async () => {
     await bed.store.start(bed.draft.reading.id);
 
     expect(bed.provider.generationCalls.translate).toBe(2);
@@ -183,6 +183,43 @@ describe('TranslationJobStore', () => {
       completed: SENTENCE_COUNT,
       failed: 0,
     });
+  });
+
+  it('seeds terminology before running at most three translation requests at once', async () => {
+    const draft = importedReadingFixture({
+      seed: 99,
+      paragraphTexts: [Array.from({ length: 42 }, (_value, index) => `長文${String(index)}です。`)],
+    });
+    await bed.readings.saveImportedReading(draft);
+    let inFlight = 0;
+    let peak = 0;
+    let calls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(bed.provider, 'translate').mockImplementation(async (request) => {
+      calls += 1;
+      if (calls > 1 && calls <= 4) {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        if (calls === 4) release();
+        await gate;
+        inFlight -= 1;
+      }
+      return ok(
+        translationTargets(request).map((sentence) => ({
+          id: sentence.id,
+          textEn: `EN ${sentence.textJa}`,
+        })),
+      );
+    });
+
+    await bed.store.start(draft.reading.id);
+
+    expect(calls).toBe(5);
+    expect(peak).toBe(3);
+    expect(bed.store.progress().kind).toBe('complete');
   });
 
   it('records a batch that failed for its own sentences and translates the rest', async () => {

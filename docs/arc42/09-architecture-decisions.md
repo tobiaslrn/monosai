@@ -27,6 +27,7 @@ files are already linked from code comments and from other records.
 | [0047](../decisions/0047-a-reading-declares-what-it-should-have.md) | A reading declares what it should have |
 | [0048](../decisions/0048-the-preparation-lane-yields.md) | The preparation lane yields, and is never busy |
 | [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md) | Grammar preparation uses bounded batches and resumable recovery |
+| [0054](../decisions/0054-parallel-text-preparation.md) | Text preparation uses sparse adaptive batches and bounded waves |
 
 ### Language processing
 
@@ -65,6 +66,7 @@ files are already linked from code comments and from other records.
 | [0044](../decisions/0044-backgrounded-story-generation.md) | A story is written by a job, not by a screen |
 | [0046](../decisions/0046-length-is-a-guideline.md) | Story length is a guideline, not a contract |
 | [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md) | Grammar preparation uses bounded batches and resumable recovery |
+| [0054](../decisions/0054-parallel-text-preparation.md) | Text preparation uses sparse adaptive batches and bounded waves |
 
 ### The reader
 

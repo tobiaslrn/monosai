@@ -1,9 +1,10 @@
-import type { NormalizedFinding, ReviewedFinding } from '../ai/grammar-review-request';
+import {
+  MAX_GRAMMAR_FINDINGS_PER_SENTENCE,
+  type NormalizedFinding,
+  type ReviewedFinding,
+} from '../ai/grammar-review-request';
 import type { GrammarFinding } from '../enrichment/records';
 import type { SentenceId } from '../shared/ids';
-
-/** How many findings one sentence may carry into the reader. */
-const MAX_FINDINGS_PER_SENTENCE = 3;
 
 /**
  * Whether `offset` falls between the two UTF-16 code units of one character.
@@ -104,7 +105,7 @@ export function normalizeReview(
         const profilePriority = Number(left.finding.inProfile) - Number(right.finding.inProfile);
         return profilePriority === 0 ? left.index - right.index : profilePriority;
       })
-      .slice(0, MAX_FINDINGS_PER_SENTENCE)
+      .slice(0, MAX_GRAMMAR_FINDINGS_PER_SENTENCE)
       .map(({ finding }) => finding);
   });
 }

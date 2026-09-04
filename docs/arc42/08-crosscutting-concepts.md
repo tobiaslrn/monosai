@@ -58,11 +58,13 @@ All external data is untrusted until a Zod schema accepts it. This applies to:
 Stored rows are validated on read because storage is external too. A browser can be inspected, and a
 schema version can be edited by hand.
 
-Grammar review is a bounded provider interaction: a request covers only the
-runner's small batch, the response has an explicit size allowance, and one
-format-recovery request is the most the adapter adds. An empty findings array
-passes validation and completes coverage for every sentence in that batch; a
-truncated or otherwise malformed reply remains a typed provider failure.
+Grammar review is a bounded provider interaction: a request covers at most 30
+sentences and 12,000 estimated input tokens, returns at most one useful finding
+per sentence, and has an explicit response allowance. Three independent batches
+may be in flight. One format-recovery request is the most the adapter adds. An
+empty findings array passes validation and completes coverage for every sentence
+in that batch; a truncated or otherwise malformed reply remains a typed provider
+failure.
 
 ## 8.4 Ports and dependency injection
 

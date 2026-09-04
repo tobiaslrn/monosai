@@ -23,12 +23,12 @@ describe('PROMPT_VERSIONS', () => {
     }
   });
 
-  it('invalidates every enrichment and generation prompt changed by version three', () => {
+  it('invalidates the sparse grammar contract independently', () => {
     expect(PROMPT_VERSIONS).toEqual({
       story: 'story/3',
       repair: 'repair/3',
       'exception-review': 'exception-review/3',
-      grammar: 'grammar/3',
+      grammar: 'grammar/4',
       translation: 'translation/3',
     });
   });

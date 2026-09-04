@@ -33,15 +33,15 @@ import { GrammarAnalysisService } from './grammar-analysis.service';
 import { GrammarJobStore } from './grammar-job.store';
 
 const NOW = 1_700_700_000_000;
-const SENTENCE_COUNT = 9;
+const SENTENCE_COUNT = 61;
 const TEST_HASHER: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
 
 function longReading(seed = 1): ImportedReadingDraft {
   return importedReadingFixture({
     seed,
     paragraphTexts: [
-      Array.from({ length: 5 }, (_value, index) => `文${String(index)}です。`),
-      Array.from({ length: 4 }, (_value, index) => `段落${String(index)}です。`),
+      Array.from({ length: 31 }, (_value, index) => `文${String(index)}です。`),
+      Array.from({ length: 30 }, (_value, index) => `段落${String(index)}です。`),
     ],
   });
 }
@@ -70,7 +70,20 @@ interface GrammarJobTestBed {
   readonly profile: WritableSignal<GrammarProfileSnapshot>;
 }
 
-async function configure(): Promise<GrammarJobTestBed> {
+/** Four grammar batches, so a three-request wave leaves work for the next one. */
+const WAVE_SPANNING_SENTENCE_COUNT = 91;
+
+function waveSpanningReading(seed = 2): ImportedReadingDraft {
+  return importedReadingFixture({
+    seed,
+    paragraphTexts: [
+      Array.from({ length: 46 }, (_value, index) => `波${String(index)}です。`),
+      Array.from({ length: 45 }, (_value, index) => `文節${String(index)}です。`),
+    ],
+  });
+}
+
+async function configure(draft: ImportedReadingDraft = longReading()): Promise<GrammarJobTestBed> {
   TestBed.resetTestingModule();
   const db = await createTestDatabase();
   const clock = fixedClock(NOW);
@@ -78,7 +91,6 @@ async function configure(): Promise<GrammarJobTestBed> {
   const enrichment = new DexieEnrichmentRepository(db);
   const jobs = new DexieJobRepository(db, clock);
   const provider = new StubTextProvider(ok(modelTest()));
-  const draft = longReading();
   await readings.saveImportedReading(draft);
   const capturedProfile = signal(profile());
   let counter = 0;
@@ -183,7 +195,11 @@ describe('GrammarJobStore', () => {
   });
 
   it('keeps every stored analysis when cancellation stops later batches', async () => {
-    bed.provider.grammarQueue.push(ok({ findings: [] }));
+    bed.provider.grammarQueue.push(
+      ok({ findings: [] }),
+      ok({ findings: [] }),
+      ok({ findings: [] }),
+    );
     bed.provider.beforeAnswer = () => {
       queueMicrotask(() => {
         bed.store.cancel(bed.draft.reading.id);
@@ -192,10 +208,10 @@ describe('GrammarJobStore', () => {
 
     await bed.store.start(bed.draft.reading.id);
 
-    expect(bed.provider.generationCalls.grammar).toBe(1);
+    expect(bed.provider.generationCalls.grammar).toBe(3);
     expect(bed.store.progress().kind).toBe('cancelled');
     const stored = await bed.enrichment.listGrammarAnalyses(bed.draft.reading.id);
-    expect(stored.ok && stored.value).toHaveLength(MAX_GRAMMAR_REVIEW_BATCH);
+    expect(stored.ok && stored.value).toHaveLength(SENTENCE_COUNT);
   });
 
   it('records one failed batch and still stores every successful later batch', async () => {
@@ -221,6 +237,30 @@ describe('GrammarJobStore', () => {
     });
   });
 
+  it('runs at most three grammar requests at once', async () => {
+    let inFlight = 0;
+    let peak = 0;
+    let calls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(bed.provider, 'reviewGrammar').mockImplementation(async () => {
+      calls += 1;
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      if (calls === 3) release();
+      await gate;
+      inFlight -= 1;
+      return ok({ findings: [] });
+    });
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(calls).toBe(3);
+    expect(peak).toBe(3);
+  });
+
   it('leaves a timed-out request stopped with a retryable job', async () => {
     bed.provider.grammarQueue.push(
       err(aiError('timeout', 'grammar-review', 'The provider did not answer in time.')),
@@ -243,7 +283,11 @@ describe('GrammarJobStore', () => {
   it('leaves a persistence failure stopped and exposes storage recovery', async () => {
     const failure = storageError('unavailable', 'The grammar cache could not be written.');
     vi.spyOn(bed.enrichment, 'storeGrammarAnalysis').mockResolvedValueOnce(err(failure));
-    bed.provider.grammarQueue.push(ok({ findings: [] }));
+    bed.provider.grammarQueue.push(
+      ok({ findings: [] }),
+      ok({ findings: [] }),
+      ok({ findings: [] }),
+    );
 
     await bed.store.start(bed.draft.reading.id);
 
@@ -280,8 +324,14 @@ describe('GrammarJobStore', () => {
     expect(bed.store.progress().kind).toBe('complete');
   });
 
-  it('resumes a paused job without requesting saved analyses again', async () => {
-    bed.provider.grammarQueue.push(ok({ findings: [] }));
+  it('pauses between waves and resumes without requesting saved analyses again', async () => {
+    await destroyTestDatabase(bed.db);
+    bed = await configure(waveSpanningReading());
+    bed.provider.grammarQueue.push(
+      ok({ findings: [] }),
+      ok({ findings: [] }),
+      ok({ findings: [] }),
+    );
     bed.provider.beforeAnswer = () => {
       bed.store.yieldAfterBatch();
     };
@@ -289,15 +339,19 @@ describe('GrammarJobStore', () => {
     await bed.store.start(bed.draft.reading.id);
 
     expect(bed.store.progress().kind).toBe('paused');
-    expect(bed.provider.generationCalls.grammar).toBe(1);
+    // The wave already in flight settles and is stored; the fourth batch waits.
+    expect(bed.provider.generationCalls.grammar).toBe(3);
+    const paused = await bed.enrichment.listGrammarAnalyses(bed.draft.reading.id);
+    expect(paused.ok && paused.value).toHaveLength(3 * MAX_GRAMMAR_REVIEW_BATCH);
+
     bed.provider.beforeAnswer = null;
-    bed.provider.grammarQueue.push(ok({ findings: [] }), ok({ findings: [] }));
+    bed.provider.grammarQueue.push(ok({ findings: [] }));
 
     await bed.store.resume(bed.draft.reading.id);
 
-    expect(bed.provider.generationCalls.grammar).toBe(3);
+    expect(bed.provider.generationCalls.grammar).toBe(4);
     const stored = await bed.enrichment.listGrammarAnalyses(bed.draft.reading.id);
-    expect(stored.ok && stored.value).toHaveLength(SENTENCE_COUNT);
+    expect(stored.ok && stored.value).toHaveLength(WAVE_SPANNING_SENTENCE_COUNT);
     expect(bed.store.progress().kind).toBe('complete');
   });
 });

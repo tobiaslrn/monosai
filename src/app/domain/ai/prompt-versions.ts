@@ -15,7 +15,7 @@ export const PROMPT_VERSIONS = {
   story: 'story/3',
   repair: 'repair/3',
   'exception-review': 'exception-review/3',
-  grammar: 'grammar/3',
+  grammar: 'grammar/4',
   translation: 'translation/3',
 } as const;
 
