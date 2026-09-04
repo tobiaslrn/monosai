@@ -279,12 +279,8 @@ export class TranslationJobStore {
     }
     this.controller?.abort();
     this.controller = null;
-    const progress = this.progressSignal();
-    if (progress.kind === 'preparing') {
-      this.progressSignal.set({ kind: 'cancelled', readingId, counts: emptyCounts() });
-    } else if (progress.kind === 'running') {
-      this.progressSignal.set({ kind: 'cancelled', readingId, counts: progress.counts });
-    }
+    // The run reports cancellation only after the job row is committed. A
+    // learner reloading after seeing "Stopped" must not resume a running row.
   }
 
   /** Cancels this reading's run and waits until no in-flight result can still be stored. */
@@ -681,7 +677,11 @@ export class TranslationJobStore {
 
   private async markCancelled(job: AssetJob, counts: TranslationJobCounts): Promise<void> {
     this.controller = null;
-    await this.jobs.setState(job.id, 'cancelled');
+    const marked = await this.jobs.setState(job.id, 'cancelled');
+    if (!marked.ok) {
+      this.failStorage(job.readingId, marked.error, counts);
+      return;
+    }
     this.progressSignal.set({ kind: 'cancelled', readingId: job.readingId, counts });
     this.logger.info('job.cancelled', { kind: 'translation', count: counts.completed });
   }

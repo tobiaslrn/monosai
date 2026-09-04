@@ -1,6 +1,6 @@
 import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
 import { MAX_TRANSLATION_BATCH, translationTargets } from '../../domain/ai/translation-request';
 import type { ImportedReadingDraft } from '../../domain/reading/reading-repository';
@@ -8,6 +8,7 @@ import type { TextModelSettings } from '../../domain/settings/settings';
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import { err, ok } from '../../domain/shared/result';
+import { storageError } from '../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../../infrastructure/persistence/monosai-db';
 import { DexieEnrichmentRepository } from '../../infrastructure/persistence/repositories/dexie-enrichment.repository';
 import { DexieJobRepository } from '../../infrastructure/persistence/repositories/dexie-job.repository';
@@ -274,6 +275,63 @@ describe('TranslationJobStore', () => {
     const rows = await bed.db.assetJobs.toArray();
     expect(rows).toHaveLength(1);
     expect(rows[0].state).toBe('cancelled');
+  });
+
+  it('reports stopped only after cancellation is durable, so a reload cannot resume it', async () => {
+    let notifyCommitting!: () => void;
+    const committing = new Promise<void>((resolve) => {
+      notifyCommitting = resolve;
+    });
+    let releaseCommit!: () => void;
+    const release = new Promise<void>((resolve) => {
+      releaseCommit = resolve;
+    });
+    const setState = bed.jobs.setState.bind(bed.jobs);
+    vi.spyOn(bed.jobs, 'setState').mockImplementation(async (id, state) => {
+      if (state === 'cancelled') {
+        notifyCommitting();
+        await release;
+      }
+      return setState(id, state);
+    });
+    bed.provider.beforeAnswer = () => {
+      bed.store.cancel(bed.draft.reading.id);
+    };
+
+    const run = bed.store.start(bed.draft.reading.id);
+    await committing;
+    try {
+      expect(bed.store.progress().kind).toBe('running');
+      const active = await bed.jobs.findActive(bed.draft.reading.id, 'translate-reading');
+      expect(active.ok && active.value).not.toBeNull();
+    } finally {
+      releaseCommit();
+      await run;
+    }
+
+    expect(bed.store.progress().kind).toBe('cancelled');
+    const calls = bed.provider.generationCalls.translate;
+    await bed.store.resume(bed.draft.reading.id);
+    expect(bed.store.progress().kind).toBe('idle');
+    expect(bed.provider.generationCalls.translate).toBe(calls);
+  });
+
+  it('reports a failed cancellation write instead of claiming the job stopped', async () => {
+    const failure = storageError('transaction-aborted', 'Cancellation could not be saved.');
+    const setState = bed.jobs.setState.bind(bed.jobs);
+    vi.spyOn(bed.jobs, 'setState').mockImplementation((id, state) =>
+      state === 'cancelled' ? Promise.resolve(err(failure)) : setState(id, state),
+    );
+    bed.provider.beforeAnswer = () => {
+      bed.store.cancel(bed.draft.reading.id);
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(bed.store.progress()).toMatchObject({
+      kind: 'failed',
+      error: { source: 'storage', error: failure },
+    });
   });
 
   it('resumes after a reload by reconciling with the cache and asking only for what is missing', async () => {
