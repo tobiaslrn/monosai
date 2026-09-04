@@ -9,9 +9,9 @@ import { openConfirmDialog, type ConfirmDialogData } from './confirm-dialog.comp
 class HostComponent {}
 
 const DATA: ConfirmDialogData = {
-  title: 'Delete saved audio for every reading?',
+  title: 'Delete saved audio for every story?',
   message: 'This cannot be undone. It permanently removes:',
-  details: ['Every generated audio clip, for every reading on this device'],
+  details: ['Every generated audio clip, for every story on this device'],
   footnote: 'Readings and settings are not affected.',
   confirmLabel: 'Delete saved audio',
   cancelLabel: 'Keep it',
@@ -89,7 +89,7 @@ describe('openConfirmDialog', () => {
     const { answer, fixture } = await open();
 
     const dialog = document.querySelector('[role="alertdialog"]');
-    expect(dialog?.textContent).toContain('every reading on this device');
+    expect(dialog?.textContent).toContain('every story on this device');
     expect(dialog?.textContent).toContain('Readings and settings are not affected.');
 
     button('Keep it')?.click();

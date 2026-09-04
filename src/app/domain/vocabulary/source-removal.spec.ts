@@ -99,6 +99,6 @@ describe('describeSourceRemoval', () => {
     const plan = describeSourceRemoval(ANKI, { sources: [ANKI], storyCount: 0 });
 
     expect(plan.preserves).toContain('Your Anki collection');
-    expect(plan.preserves).toContain('Your readings and stories');
+    expect(plan.preserves).toContain('Your stories');
   });
 });

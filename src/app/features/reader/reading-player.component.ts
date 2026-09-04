@@ -293,7 +293,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           step="1"
           [value]="positionValue()"
           [disabled]="!store.hasPlayableAudio()"
-          aria-label="Position in this reading"
+          aria-label="Position in this story"
           [attr.aria-valuetext]="trackLabel()"
           (input)="onScrubInput($event)"
           (change)="onScrubCommit($event)"
@@ -1007,7 +1007,7 @@ export class ReadingPlayerComponent {
     }
     if (this.voiceMismatch()) {
       parts.push(
-        'This reading has saved audio that was made with other audio settings, so none of it can be played as things stand. It is still stored: restore those settings, or generate this reading again.',
+        'This story has saved audio that was made with other audio settings, so none of it can be played as things stand. It is still stored: restore those settings, or generate this story again.',
       );
     }
     if (this.rail() === 'offer') {

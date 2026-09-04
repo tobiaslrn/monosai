@@ -30,6 +30,28 @@ export function vocabularySyncedLabel(createdAt: number, now: number): string {
   return `synced ${formatRelativeDay(createdAt, now)}`;
 }
 
+/**
+ * How a reading level is said in a sentence rather than as a label.
+ *
+ * Derived from the preset's own name, so there is no second difficulty
+ * taxonomy to drift from the first, and still no JLPT level in it
+ * ([ADR 0008](../../../../docs/decisions/0008-grammar-profile-presets.md)).
+ */
+const LEVEL_PHRASES: Readonly<Record<string, string>> = {
+  'mn-preset-starter': 'a starter level',
+  'mn-preset-basic': 'a basic level',
+  'mn-preset-everyday': 'an everyday level',
+  'mn-preset-explanatory': 'an explanatory level',
+  'mn-preset-formal': 'a formal level',
+  'mn-preset-literary': 'a literary level',
+};
+
+/** `at a starter level`, or null for a preset with no phrase and no loaded bundle. */
+export function readingLevelPhrase(presetId: string | undefined): string | null {
+  const phrase = presetId === undefined ? undefined : LEVEL_PHRASES[presetId];
+  return phrase === undefined ? null : `at ${phrase}`;
+}
+
 /** The count on its own: `340 words`, `1 word`. */
 export function vocabularyCountLabel(count: number): string {
   return formatCountOf(count, 'word');

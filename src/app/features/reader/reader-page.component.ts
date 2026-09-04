@@ -209,7 +209,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           id="reading-audio-player"
           class="audio-player-shell"
           role="region"
-          aria-label="Reading audio"
+          aria-label="Story audio"
         >
           <mn-reading-player
             [progress]="audioProgress()"
@@ -230,14 +230,14 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           }
           @case ('not-found') {
             <section class="mn-panel" role="alert">
-              <h2>This reading is no longer here</h2>
+              <h2>This story is no longer here</h2>
               <p class="mn-hint">It may have been deleted. Nothing else was affected.</p>
               <a class="mn-button" routerLink="/library">Back to library</a>
             </section>
           }
           @case ('failed') {
             <section class="mn-panel" role="alert">
-              <h2>This reading could not be opened</h2>
+              <h2>This story could not be opened</h2>
               <p class="mn-hint">{{ store.lastError()?.message }}</p>
               <p class="mn-hint">Your saved text was not changed.</p>
               <button type="button" class="mn-button" (click)="reload()">Try again</button>
@@ -602,10 +602,10 @@ export class ReaderPageComponent {
   protected readonly readerHeading = computed(() => {
     switch (this.store.status()) {
       case 'loading':
-        return 'Opening reading…';
+        return 'Opening story…';
       case 'not-found':
       case 'failed':
-        return 'Reading unavailable';
+        return 'Story unavailable';
       case 'ready':
         return this.store.reading()?.title ?? 'Reading';
       case 'idle':
@@ -1106,9 +1106,9 @@ export class ReaderPageComponent {
       return;
     }
     const confirmed = await openConfirmDialog(this.dialog, {
-      title: 'Delete audio for this reading?',
+      title: 'Delete audio for this story?',
       message: 'This permanently deletes every generated audio clip for this reading.',
-      details: ['The reading, translations, and grammar results stay saved.'],
+      details: ['The story, translations, and grammar results stay saved.'],
       footnote: 'You can generate the audio again from scratch.',
       confirmLabel: 'Delete audio',
       cancelLabel: 'Cancel',

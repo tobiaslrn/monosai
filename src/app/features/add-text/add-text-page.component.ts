@@ -46,7 +46,7 @@ import { TextInputStepComponent } from './text-input-step.component';
 
         @if (store.storageFailure(); as failure) {
           <div class="mn-error" role="alert">
-            <p><strong>The reading could not be saved.</strong> {{ failure.message }}</p>
+            <p><strong>The story could not be saved.</strong> {{ failure.message }}</p>
             <p>Your text is still here, so you can try saving again.</p>
           </div>
         }
@@ -68,7 +68,7 @@ import { TextInputStepComponent } from './text-input-step.component';
             [disabled]="!store.canSave()"
             (click)="save()"
           >
-            {{ store.duplicates().length > 0 ? 'Add another copy' : 'Add reading' }}
+            {{ store.duplicates().length > 0 ? 'Add another copy' : 'Add story' }}
           </button>
         </div>
       </section>

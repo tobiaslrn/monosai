@@ -62,7 +62,7 @@ function sentencePopover(page: Page): Locator {
 
 /** The fixed player is independent from the reader's CDK popovers. */
 function audioPlayer(page: Page): Locator {
-  return page.getByRole('region', { name: 'Reading audio' });
+  return page.getByRole('region', { name: 'Story audio' });
 }
 
 /**
@@ -760,7 +760,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // The track is a slider now: the thumb rests on the last sentence rather
     // than snapping back to the start of a reading that has just been read.
     await expect(
-      audioPlayer(page).getByRole('slider', { name: 'Position in this reading' }),
+      audioPlayer(page).getByRole('slider', { name: 'Position in this story' }),
     ).toHaveValue(String(SENTENCE_COUNT));
   });
 
@@ -786,7 +786,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // Into the middle of the reading, so there is document on both sides of the
     // cursor to scroll through. Dragging the track of a session that is not
     // playing moves the cursor and stays silent, which is all this needs.
-    const track = audioPlayer(page).getByRole('slider', { name: 'Position in this reading' });
+    const track = audioPlayer(page).getByRole('slider', { name: 'Position in this story' });
     await track.fill(String(SENTENCE_COUNT * 3));
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
 
@@ -907,9 +907,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await openReaderMenu(page);
     await page.getByText('Audio options', { exact: true }).click();
     await page.getByRole('button', { name: 'Delete audio…', exact: true }).click();
-    await expect(
-      page.getByRole('heading', { name: 'Delete audio for this reading?' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Delete audio for this story?' })).toBeVisible();
     await page.getByRole('button', { name: 'Delete audio', exact: true }).click();
 
     await expect(page.getByText(/Audio deleted/)).toBeVisible();
@@ -942,7 +940,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     const dialog = page.getByRole('alertdialog');
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText('every reading on this device');
+    await expect(dialog).toContainText('every story on this device');
     // Cancelling is the safe outcome, and it is where focus starts.
     await expect(dialog.getByRole('button', { name: 'Keep it' })).toBeFocused();
     await page.keyboard.press('Escape');

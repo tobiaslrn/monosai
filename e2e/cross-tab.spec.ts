@@ -77,9 +77,7 @@ test.describe('a link that is not a reading', () => {
   test('a well-formed id that is not stored still reads as a missing reading', async ({ page }) => {
     await page.goto('./#/reader/3f6d2c1a-9b4e-4a7d-8f21-0c5e7a9b1d33');
 
-    await expect(
-      page.getByRole('heading', { name: 'This reading is no longer here' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'This story is no longer here' })).toBeVisible();
   });
 });
 

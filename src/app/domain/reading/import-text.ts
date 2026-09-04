@@ -111,7 +111,7 @@ export function importAdvisories(text: string): readonly ImportAdvisory[] {
     advisories.push({
       code: 'long-unpunctuated',
       message:
-        'A long passage has no sentence-ending punctuation. It will be divided into shorter reading sections.',
+        'A long passage has no sentence-ending punctuation. It will be divided into shorter sections.',
     });
   }
   return advisories;

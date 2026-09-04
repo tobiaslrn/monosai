@@ -245,13 +245,13 @@ export class StorageSectionComponent {
    */
   protected async clearAudio(): Promise<void> {
     const confirmed = await openConfirmDialog(this.dialog, {
-      title: 'Delete saved audio for every reading?',
+      title: 'Delete saved audio for every story?',
       message: 'This cannot be undone. It permanently removes:',
       details: [
-        'Every generated audio clip, for every reading on this device',
+        'Every generated audio clip, for every story on this device',
         'Anything playing right now, which stops',
       ],
-      footnote: 'Readings, translations, grammar results, and settings are not affected.',
+      footnote: 'Stories, translations, grammar results, and settings are not affected.',
       confirmLabel: 'Delete saved audio',
       cancelLabel: 'Keep it',
       tone: 'danger',

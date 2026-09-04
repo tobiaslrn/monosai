@@ -4,6 +4,7 @@ import { AppSectionComponent } from './app-section.component';
 import { AppearanceSectionComponent } from './appearance-section.component';
 import { DiagnosticsSectionComponent } from './diagnostics-section.component';
 import { ModelsSectionComponent } from './models-section.component';
+import { ReadingLevelRowComponent } from './reading-level-row.component';
 import { StorageSectionComponent } from './storage-section.component';
 
 @Component({
@@ -11,6 +12,7 @@ import { StorageSectionComponent } from './storage-section.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     PageHeaderComponent,
+    ReadingLevelRowComponent,
     ModelsSectionComponent,
     AppearanceSectionComponent,
     StorageSectionComponent,
@@ -20,6 +22,13 @@ import { StorageSectionComponent } from './storage-section.component';
   template: `
     <div class="mn-page">
       <mn-page-header heading="Settings" [backTo]="backTarget()" [backLabel]="backLabel()" />
+
+      <!--
+        A signpost rather than a section: the learner profile lives on its own
+        page and is reached from the Library, but connecting Anki is something
+        people come here looking for.
+      -->
+      <mn-reading-level-row />
 
       <mn-appearance-section />
 

@@ -689,7 +689,7 @@ describe('ReadingPlayerComponent', () => {
       const scrub = scrubber(element);
 
       expect(scrub?.getAttribute('max')).toBe('6');
-      expect(scrub?.getAttribute('aria-label')).toBe('Position in this reading');
+      expect(scrub?.getAttribute('aria-label')).toBe('Position in this story');
       expect(scrub?.getAttribute('aria-valuetext')).toBe('Not started, 6 of 6 with audio');
     });
 

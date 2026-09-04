@@ -104,6 +104,27 @@ describe('ReadingLevelPageComponent', () => {
     return found;
   }
 
+  /**
+   * Three screens lead here, and each gets its own place back. Landing on the
+   * Library after arriving from Settings loses where the learner was.
+   */
+  it('goes back to wherever it was reached from', async () => {
+    const { element } = await render();
+    expect(element.querySelector('.head a')?.getAttribute('aria-label')).toBe('Back to library');
+
+    history.replaceState({ monosaiNavigationOrigin: '/settings' }, '');
+    TestBed.resetTestingModule();
+    beds = configureReadingLevelTestBed();
+    TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, { useValue: () => provider });
+    TestBed.overrideProvider(PACKAGE_PROVIDER_FACTORY, { useValue: () => provider });
+    const fromSettings = await render();
+
+    expect(fromSettings.element.querySelector('.head button')?.getAttribute('aria-label')).toBe(
+      'Back to settings',
+    );
+    history.replaceState({}, '');
+  });
+
   it('states both facts under one heading', async () => {
     const { element } = await render();
 

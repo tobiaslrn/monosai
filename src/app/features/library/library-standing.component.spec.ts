@@ -108,8 +108,8 @@ describe('LibraryStandingComponent', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
 
     expect(lines(render())).toMatchObject({
-      headline: 'You can read 340 words.',
-      detail: 'Starter forms · Anki, synced today',
+      headline: 'You can read 340 words at a starter level.',
+      detail: 'From Anki · synced today',
     });
   });
 
@@ -121,8 +121,8 @@ describe('LibraryStandingComponent', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(12) });
 
     expect(lines(render())).toMatchObject({
-      headline: 'You can read 12 words.',
-      detail: 'Starter forms · Stories are written from at least 50 words.',
+      headline: 'You can read 12 words at a starter level.',
+      detail: 'Stories are written from at least 50 words.',
     });
   });
 
@@ -130,7 +130,7 @@ describe('LibraryStandingComponent', () => {
     state.set({ kind: 'known', availability: 'empty', snapshot: snapshotOf(0) });
     expect(lines(render())).toMatchObject({
       headline: 'No words yet.',
-      detail: 'Starter forms · A source is connected but has no words in it yet.',
+      detail: 'A source is connected but has no words in it yet.',
     });
 
     state.set({ kind: 'known', availability: 'none', snapshot: null });
@@ -144,7 +144,7 @@ describe('LibraryStandingComponent', () => {
 
     expect(lines(render())).toMatchObject({
       headline: 'Your words could not be read.',
-      detail: 'Starter forms · Nothing was changed.',
+      detail: 'Nothing was changed.',
     });
   });
 
@@ -157,15 +157,26 @@ describe('LibraryStandingComponent', () => {
     expect(measured.height).toBe('54.4px');
   });
 
-  /** The count arrives first; the grammar half must not shift it when it lands. */
-  it('renders the count before the reading level is loaded', () => {
+  /**
+   * The count arrives first. Rather than guess at a level or hold the count
+   * back, the sentence drops the clause and stays a sentence.
+   */
+  it('states the count without a level while the bundle is still loading', () => {
     preset.set(null);
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
 
     expect(lines(render())).toMatchObject({
       headline: 'You can read 340 words.',
-      detail: 'Anki, synced today',
+      detail: 'From Anki · synced today',
     });
+  });
+
+  /** The words are a statement, so the chevron is what says it goes somewhere. */
+  it('marks itself as a way somewhere rather than relying on the words', () => {
+    state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
+    const element = render().nativeElement as HTMLElement;
+
+    expect(element.querySelector('.headline mn-icon')).not.toBeNull();
   });
 
   it('is one link to the page that explains it', () => {

@@ -35,13 +35,13 @@ export function buildLongImportFixture(paragraphCount = 200): {
 /** Fills the import form and waits for the direct-save action to be ready. */
 export async function pasteAndContinue(page: Page, text: string): Promise<void> {
   await page.getByLabel('Japanese text').fill(text);
-  await expect(page.getByRole('button', { name: 'Add reading' })).toBeEnabled({
+  await expect(page.getByRole('button', { name: 'Add story' })).toBeEnabled({
     timeout: 60_000,
   });
 }
 
 export async function saveAndOpenReader(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Add reading' }).click();
+  await page.getByRole('button', { name: 'Add story' }).click();
   await expect(page).toHaveURL(/#\/reader\//);
   await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
 }
@@ -53,7 +53,7 @@ export async function importReading(page: Page, text: string, title?: string): P
   if (title !== undefined) {
     await page.getByLabel('Title (optional)').fill(title);
   }
-  await page.getByRole('button', { name: 'Add reading' }).click();
+  await page.getByRole('button', { name: 'Add story' }).click();
   await expect(page).toHaveURL(/#\/reader\//, { timeout: 60_000 });
 }
 

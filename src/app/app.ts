@@ -19,7 +19,7 @@ import { technicalCode } from './domain/shared/errors';
       <mn-error-screen
         heading="Monosai could not start"
         [description]="state.failure.error.message"
-        dataStatus="Your saved readings have not been changed."
+        dataStatus="Your saved stories have not been changed."
         [code]="technicalCode(state.failure.error)"
       >
         <button data-actions type="button" class="mn-button mn-button--primary" (click)="retry()">

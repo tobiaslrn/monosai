@@ -355,7 +355,7 @@ export class GeneratePageComponent {
         whatDidNot: 'Nothing new was saved. Existing data was not partially changed.',
         primaryAction:
           'Close other Monosai tabs and reload. If it still fails, use Full reset in Storage settings.',
-        escape: 'Full reset permanently deletes local readings, vocabulary, and settings.',
+        escape: 'Full reset permanently deletes local stories, vocabulary, and settings.',
       };
     }
     return state.error.domain === 'ai'

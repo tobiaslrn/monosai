@@ -52,7 +52,7 @@ export function describeSourceRemoval(
     title: `Remove ${source.label}?`,
     removes,
     preserves: [
-      'Your readings and stories',
+      'Your stories',
       source.kind === 'text-list' ? 'Nothing else on this device' : 'Your Anki collection',
     ],
     emptiesVocabulary,
