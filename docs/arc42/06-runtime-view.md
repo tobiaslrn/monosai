@@ -167,6 +167,10 @@ the job itself adds no retries beyond the provider client's bounded transport re
 reload, only a matching unfinished job resumes. A configuration mismatch closes the old job and
 starts work under the new fingerprint, while cancellation keeps every analysis already stored.
 
+Whole-reading translation reports that it has stopped only after cancellation is saved. Reloading
+after that report cannot resume the cancelled job; a failed cancellation write is shown as a storage
+failure instead.
+
 The cache key is a fingerprint of everything that could change the answer, which
 [chapter 8](08-crosscutting-concepts.md) describes. Change the voice and the old clips are hidden
 rather than played, and the screens say so
