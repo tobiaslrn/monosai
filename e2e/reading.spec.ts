@@ -148,10 +148,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
   test('New reading offers both ways in, and Paste text reaches the reader', async ({ page }) => {
     // New reading appears once the shelf has something on it; a first visit
-    // offers its two starting paths as cards instead.
-    await page.goto('./#/add');
-    await pasteAndContinue(page, SAMPLE_TEXT);
-    await saveAndOpenReader(page);
+    // offers its two starting paths as cards instead. A different text, because
+    // re-importing the same one is not a second reading.
+    await importReading(page, '空が青いです。風が気持ちいいです。');
     await page.goto('./#/library');
 
     await page.getByRole('button', { name: 'New reading' }).click();
@@ -1110,7 +1109,10 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
     await page.goBack();
     await expect(page).not.toHaveURL(deletedUrl);
-    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+    // The last reading is gone, so the Library is a first visit again.
+    await expect(
+      page.getByRole('heading', { name: /Japanese you can actually read/, level: 1 }),
+    ).toBeVisible();
   });
 
   /** A compact row identifies the reading without repeating its contents. */

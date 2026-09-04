@@ -272,7 +272,7 @@ test.describe('Android share target', () => {
 
     await shareFile(page, CONTRACT_PACKAGE, ankiFixture(CONTRACT_PACKAGE));
 
-    await expect(page).toHaveURL(/#\/vocabulary/, { timeout: 60_000 });
+    await expect(page).toHaveURL(/#\/reading-level/, { timeout: 60_000 });
     // The marker is removed as soon as it is acted on, so a reload cannot
     // replay the share.
     await expect(page).not.toHaveURL(/shared=/, { timeout: 60_000 });
@@ -281,7 +281,7 @@ test.describe('Android share target', () => {
     await expect(page.getByTestId('package-import-complete')).toContainText('Added Core Japanese', {
       timeout: 120_000,
     });
-    await expect(page.getByTestId('current-snapshot')).toContainText('unique expressions');
+    await expect(page.getByTestId('words-standing')).toContainText('words');
     // Nothing is left behind in the handover cache.
     expect(await sharedInboxEntries(page)).toEqual([]);
 
@@ -290,7 +290,7 @@ test.describe('Android share target', () => {
     // rather than adding a second one.
     await context.setOffline(true);
     await shareFile(page, CONTRACT_PACKAGE, ankiFixture(CONTRACT_PACKAGE));
-    await expect(page).toHaveURL(/#\/vocabulary/, { timeout: 60_000 });
+    await expect(page).toHaveURL(/#\/reading-level/, { timeout: 60_000 });
     // The first import settled the mapping, so an exact-name re-import can use
     // that note type and field without asking again.
     const importState = page.locator('[data-testid^="package-import-"]');

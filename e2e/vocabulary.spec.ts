@@ -97,7 +97,7 @@ test.describe('vocabulary', () => {
     const menu = page.getByRole('dialog', { name: 'Add vocabulary source' });
 
     await openAddSource(page);
-    await page.getByRole('heading', { name: 'Sources', level: 2 }).click();
+    await page.getByRole('heading', { name: 'Words', level: 2 }).click();
     await expect(menu).toBeHidden();
 
     await toggle.click();
@@ -340,7 +340,7 @@ test.describe('vocabulary', () => {
     const notice = page.getByTestId('reader-vocabulary-notice');
     await expect(notice).toBeVisible({ timeout: 60_000 });
     await expect(notice).toContainText('marked as new');
-    await expect(notice.getByRole('link', { name: 'Vocabulary settings' })).toBeVisible();
+    await expect(notice.getByRole('link', { name: 'What you can read' })).toBeVisible();
   });
 
   test('names the exact failure for a package it cannot read', async ({ page }) => {

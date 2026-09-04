@@ -103,14 +103,16 @@ test.describe('application shell', () => {
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   });
 
-  test('keeps the Library identity and Settings action usable at 320px @mobile', async ({
-    page,
-  }) => {
+  /** Two text destinations plus the mark, at the narrowest width supported. */
+  test('keeps the whole masthead usable at 320px @mobile', async ({ page }) => {
+    await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('./#/library');
 
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
+    const masthead = page.getByRole('navigation', { name: 'Monosai' });
+    await expect(masthead.getByRole('link', { name: 'What you can read' })).toBeVisible();
+    await expect(masthead.getByRole('link', { name: 'Settings' })).toBeVisible();
     await expect(page.locator('.wordmark')).toBeHidden();
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))

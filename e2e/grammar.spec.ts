@@ -10,12 +10,25 @@ async function openGrammar(page: Page): Promise<void> {
   await expect(page.getByRole('radio', { name: new RegExp(STARTER) })).toBeVisible();
 }
 
+/**
+ * Register and the wording escape hatch are set once and then left alone, so
+ * they live behind a disclosure that names its current value.
+ */
+async function openWording(page: Page): Promise<void> {
+  await page.locator('#wording > summary').click();
+  await expect(page.locator('#wording')).toHaveAttribute('open', /.*/);
+}
+
 test.describe('grammar profile', () => {
   test('starts a fresh install on the easiest preset @mobile', async ({ page }) => {
     await openGrammar(page);
 
     await expect(page.getByRole('radio', { name: new RegExp(STARTER) })).toBeChecked();
     await expect(page.getByRole('radiogroup', { name: 'Reading level' })).toBeVisible();
+
+    // A closed disclosure still answers the question it is hiding.
+    await expect(page.locator('#wording .summary-value')).toHaveText('Either');
+    await openWording(page);
     await expect(page.getByRole('radio', { name: 'Either' })).toBeChecked();
 
     await expectNoSeriousAccessibilityViolations(page);
@@ -42,6 +55,7 @@ test.describe('grammar profile', () => {
     page,
   }) => {
     await openGrammar(page);
+    await openWording(page);
     const guidance = page.locator('mn-guidance-section .guidance');
     const presetWording = (await guidance.textContent())?.trim() ?? '';
 
@@ -53,6 +67,7 @@ test.describe('grammar profile', () => {
 
     await page.reload();
 
+    await openWording(page);
     await expect(guidance).toHaveText('Only very short sentences.');
     await page.getByRole('button', { name: 'Reset to preset' }).click();
 
@@ -62,13 +77,15 @@ test.describe('grammar profile', () => {
 
   test('publishes the always-known forms as a read-only list', async ({ page }) => {
     await openGrammar(page);
+    const forms = page.locator('#forms');
     const section = page.locator('mn-structural-baseline-section');
 
     // Collapsed on arrival: 177 entries must not push the picker off the screen.
-    await expect(section.locator('details')).not.toHaveAttribute('open', /.*/);
+    await expect(forms).not.toHaveAttribute('open', /.*/);
+    await expect(forms.locator('.summary-value')).toHaveText('9 categories');
     await expect(section.locator('.entry').first()).toBeHidden();
 
-    await section.locator('summary').click();
+    await forms.locator('> summary').click();
 
     await expect(section.locator('.entry').first()).toBeVisible();
     await expect(section.getByRole('heading', { name: /Particles/ })).toBeVisible();
