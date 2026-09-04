@@ -1,4 +1,4 @@
-# 0051 — Native touch selection, sentence double taps, and measured detail sheets
+# 0053 — Native touch selection, sentence double taps, and measured detail sheets
 
 Date: 2026-09-04
 Status: Accepted
