@@ -50,3 +50,23 @@ export function formatDateTime(timestamp: number): string {
 export function formatRelativeDays(days: number): string {
   return RELATIVE_DAY_FORMAT.format(days, 'day');
 }
+
+const DAY_MS = 86_400_000;
+
+/**
+ * A past day said the way a screen says it: `today`, `3 days ago`, `Jan 4, 2026`.
+ *
+ * Rounded to whole days from local midnight, so something saved late last night
+ * reads as `yesterday` rather than as a number of hours, and it falls back to a
+ * date once counting days has stopped being useful.
+ */
+export function formatRelativeDay(timestamp: number, now: number): string {
+  const days = Math.round((startOfDay(timestamp) - startOfDay(now)) / DAY_MS);
+  return days > -7 ? formatRelativeDays(days) : formatDate(timestamp);
+}
+
+function startOfDay(value: number): number {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}

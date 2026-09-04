@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { signal, type Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { GrammarProfileStore } from '../app/application/grammar/grammar-profile.store';
 import { LanguageStore } from '../app/application/language/language.store';
@@ -52,7 +52,7 @@ export const TEST_PRESETS: readonly GrammarPreset[] = [
   },
 ];
 
-class StubGrammarRepository implements GrammarRepository {
+export class StubGrammarRepository implements GrammarRepository {
   private stored: GrammarProfileSelection = DEFAULT_GRAMMAR_PROFILE_SELECTION;
   private readonly captures = new Map<string, GrammarProfileSnapshot>();
 
@@ -79,13 +79,24 @@ class StubGrammarRepository implements GrammarRepository {
 
 const HASH: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
 
+/**
+ * The grammar port, on its own.
+ *
+ * The reading-level page needs the real store over a stubbed repository while
+ * the rest of its providers come from the vocabulary bed, so the port is
+ * available without the language stub this file's own bed installs.
+ */
+export function provideStubGrammarRepository(): Provider {
+  return { provide: GRAMMAR_REPOSITORY, useValue: new StubGrammarRepository() };
+}
+
 export function configureGrammarTestBed(
   presets: readonly GrammarPreset[] = TEST_PRESETS,
 ): GrammarProfileStore {
   TestBed.configureTestingModule({
     providers: [
       GrammarProfileStore,
-      { provide: GRAMMAR_REPOSITORY, useValue: new StubGrammarRepository() },
+      provideStubGrammarRepository(),
       {
         provide: LanguageStore,
         useValue: {

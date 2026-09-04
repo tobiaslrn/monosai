@@ -217,7 +217,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     const afterFirstAnalysis = callCount(calls);
     await dismissPopover(page);
 
-    await page.goto('./#/grammar');
+    await page.goto('./#/reading-level');
     await page.getByRole('radio', { name: /Everyday forms/ }).check();
     await expect(page.getByTestId('grammar-confirmation')).toContainText('Everyday forms');
 

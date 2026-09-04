@@ -61,8 +61,8 @@ export async function refuseAnkiConnect(page: Page): Promise<void> {
 }
 
 export async function openVocabulary(page: Page): Promise<void> {
-  await page.goto('./#/vocabulary');
-  await expect(page.getByRole('heading', { name: 'Vocabulary', level: 1 })).toBeVisible();
+  await page.goto('./#/reading-level');
+  await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
 }
 
 /** Reads the committed current vocabulary rows straight from IndexedDB. */
@@ -123,7 +123,7 @@ export async function connectPackage(page: Page, fixture: string): Promise<void>
     await confirm.click();
   }
   await expect(complete).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByTestId('current-snapshot')).toContainText('unique expressions', {
+  await expect(page.getByTestId('words-standing')).toContainText('words', {
     timeout: 60_000,
   });
 }

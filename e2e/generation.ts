@@ -183,13 +183,13 @@ export async function configureTts(page: Page): Promise<void> {
 
 /** Builds a real snapshot from the scripted collection. */
 export async function buildSnapshot(page: Page): Promise<void> {
-  await page.goto('./#/vocabulary');
+  await page.goto('./#/reading-level');
   await page.getByTestId('add-source').click();
   await expect(page.getByRole('dialog', { name: 'Add vocabulary source' })).toBeVisible();
   await page.getByTestId('choose-ankiconnect').click();
   await page.getByTestId('connect-ankiconnect').click();
-  await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText(
-    String(REVIEWED_EXPRESSIONS.length),
+  await expect(page.getByTestId('words-standing')).toHaveText(
+    `${String(REVIEWED_EXPRESSIONS.length)} words`,
     {
       timeout: 60_000,
     },
@@ -205,7 +205,7 @@ export async function prepareGeneration(page: Page, options: StubOptions): Promi
   // Playwright intentionally does not serialize Cache Storage or a live WASM
   // worker. Visit the grammar route to activate the verified language runtime
   // before generation captures its profile.
-  await page.goto('./#/grammar');
+  await page.goto('./#/reading-level');
   await expect(page.getByRole('radio', { name: /Starter forms/ })).toBeVisible({
     timeout: 120_000,
   });

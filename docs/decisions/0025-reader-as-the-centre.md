@@ -46,6 +46,13 @@ Library is the root and has no back link; it carries a gear to Settings.
 Vocabulary and Grammar keep their routes but are reached from Settings, as two
 rows that each state their current condition in one line.
 
+*(Amended by [ADR 0049](0049-one-page-for-what-you-can-read.md): Vocabulary and
+Grammar are now one route, `/reading-level`, reached from the Library rather
+than from Settings, and Settings no longer describes the learner at all. What
+this decision was about — that the frame carries no navigation and each page
+states its own way back — is unchanged, and one route replacing two is one
+destination fewer.)*
+
 Adding a reading is one **New reading** button that opens a chooser with
 **Paste text** and **Write with AI**. Generating becomes structurally a branch
 of adding rather than a destination competing with reading.

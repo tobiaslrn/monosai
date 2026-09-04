@@ -60,7 +60,7 @@ test.describe('vocabulary', () => {
 
     await expect(page.getByTestId('add-source')).toHaveCount(1);
     await expect(page.getByTestId('mapping-locked')).toContainText('No sources yet');
-    await expect(page.getByTestId('current-snapshot')).toContainText('No words yet');
+    await expect(page.getByTestId('words-standing')).toHaveText('No words yet');
     await openAddSource(page);
     await expect(page.getByTestId('choose-ankiconnect')).toBeVisible();
     await expect(page.getByTestId('package-input')).toBeAttached();
@@ -113,12 +113,12 @@ test.describe('vocabulary', () => {
     await openVocabulary(page);
 
     await addTextList(page, 'My textbook', 'ねこ\n犬\nねこ\n\n青い 空');
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('3', {
+    await expect(page.getByTestId('words-standing')).toHaveText('3 words', {
       timeout: 60_000,
     });
 
     await addLiveAnki(page);
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('4', {
+    await expect(page.getByTestId('words-standing')).toHaveText('4 words', {
       timeout: 60_000,
     });
     const rows = page.locator('li.source');
@@ -148,7 +148,7 @@ test.describe('vocabulary', () => {
 
     // The parent deck's four reviewed expressions plus one reviewed expression
     // from Core Japanese::Verbs: package roots include their subdecks.
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('5', {
+    await expect(page.getByTestId('words-standing')).toHaveText('5 words', {
       timeout: 60_000,
     });
     await expect(page.getByTestId('start-refresh')).toHaveCount(0);
@@ -163,12 +163,12 @@ test.describe('vocabulary', () => {
     test.setTimeout(180_000);
     await openVocabulary(page);
     await addTextList(page, 'My textbook', '犬');
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('1', {
+    await expect(page.getByTestId('words-standing')).toHaveText('1 word', {
       timeout: 60_000,
     });
 
     await connectPackage(page, CONTRACT_PACKAGE);
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('5', {
+    await expect(page.getByTestId('words-standing')).toHaveText('5 words', {
       timeout: 60_000,
     });
     await expect(page.locator('li.source')).toHaveCount(2);
@@ -177,7 +177,7 @@ test.describe('vocabulary', () => {
     // is still enabled and still counted.
     await connectPackage(page, CONTRACT_PACKAGE);
     await expect(page.getByTestId('package-import-complete')).toContainText('Replaced');
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('5', {
+    await expect(page.getByTestId('words-standing')).toHaveText('5 words', {
       timeout: 60_000,
     });
 
@@ -196,13 +196,13 @@ test.describe('vocabulary', () => {
     const source = page.locator('li.source').filter({ hasText: 'Course words' });
 
     await source.getByRole('checkbox', { name: 'Include in vocabulary' }).uncheck();
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('0', {
+    await expect(page.getByTestId('words-standing')).toHaveText('0 words', {
       timeout: 60_000,
     });
     // Excluding is reversible: the source and everything read from it stay.
     await expect(source).toHaveCount(1);
     await source.getByRole('checkbox', { name: 'Include in vocabulary' }).check();
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2', {
+    await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
       timeout: 60_000,
     });
 
@@ -215,7 +215,7 @@ test.describe('vocabulary', () => {
     await openVocabulary(page);
     await addTextList(page, 'Course words', '猫\n犬');
     const source = page.locator('li.source').filter({ hasText: 'Course words' });
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2', {
+    await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
       timeout: 60_000,
     });
 
@@ -230,7 +230,7 @@ test.describe('vocabulary', () => {
     await dialog.getByRole('button', { name: 'Keep it' }).click();
     await expect(dialog).toBeHidden();
     await expect(source).toHaveCount(1);
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2');
+    await expect(page.getByTestId('words-standing')).toHaveText('2 words');
     await expectNoSeriousAccessibilityViolations(page);
   });
 
@@ -253,14 +253,14 @@ test.describe('vocabulary', () => {
     await openVocabulary(page);
     await addLiveAnki(page);
     const source = page.locator('li.source').filter({ hasText: 'Anki' });
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2', {
+    await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
       timeout: 60_000,
     });
 
     // Turning off automatic syncing is not a way to lose your vocabulary.
     await source.getByRole('checkbox', { name: 'Sync automatically' }).uncheck();
     await expect(source.getByRole('checkbox', { name: 'Include in vocabulary' })).toBeChecked();
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2');
+    await expect(page.getByTestId('words-standing')).toHaveText('2 words');
     expect((await readSnapshots(page))[0].uniqueEntryCount).toBe(2);
     await expectNoSeriousAccessibilityViolations(page);
   });
@@ -271,7 +271,7 @@ test.describe('vocabulary', () => {
     await openVocabulary(page);
     await addLiveAnki(page);
     const source = page.locator('li.source').filter({ hasText: 'Anki' });
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('1', {
+    await expect(page.getByTestId('words-standing')).toHaveText('1 word', {
       timeout: 60_000,
     });
     await source.getByRole('checkbox', { name: 'Sync automatically' }).uncheck();
@@ -280,7 +280,7 @@ test.describe('vocabulary', () => {
     await stubAnkiConnect(page, ankiAnswers(['ねこ', '犬']));
     await source.getByTestId('sync-now').click();
 
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2', {
+    await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
       timeout: 60_000,
     });
     await expect
@@ -294,7 +294,7 @@ test.describe('vocabulary', () => {
     await openVocabulary(page);
     await addLiveAnki(page);
     const source = page.locator('li.source').filter({ hasText: 'Anki' });
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2', {
+    await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
       timeout: 60_000,
     });
 
@@ -305,14 +305,14 @@ test.describe('vocabulary', () => {
     const failure = source.getByTestId('sync-failed');
     await expect(failure).toBeVisible({ timeout: 60_000 });
     await expect(failure).toContainText('unchanged');
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('2');
+    await expect(page.getByTestId('words-standing')).toHaveText('2 words');
     expect((await readSnapshots(page))[0].uniqueEntryCount).toBe(2);
 
     // Retry is the same control, and it works once Anki answers again.
     await page.unrouteAll({ behavior: 'wait' });
     await stubAnkiConnect(page, ankiAnswers(['ねこ', '食べる', '犬']));
     await source.getByTestId('sync-now').click();
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('3', {
+    await expect(page.getByTestId('words-standing')).toHaveText('3 words', {
       timeout: 60_000,
     });
   });
@@ -324,14 +324,14 @@ test.describe('vocabulary', () => {
 
     await openVocabulary(page);
     await addTextList(page, 'Course words', 'ねこ');
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('1', {
+    await expect(page.getByTestId('words-standing')).toHaveText('1 word', {
       timeout: 60_000,
     });
 
     const source = page.locator('li.source').filter({ hasText: 'Course words' });
     await source.getByRole('button', { name: 'Remove Course words' }).click();
     await page.getByRole('button', { name: 'Remove permanently' }).click();
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('0', {
+    await expect(page.getByTestId('words-standing')).toHaveText('0 words', {
       timeout: 60_000,
     });
 
@@ -372,7 +372,7 @@ test.describe('vocabulary', () => {
     await stubAnkiConnect(page, ankiAnswers(['ねこ']));
     await openVocabulary(page);
     await addLiveAnki(page);
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('1', {
+    await expect(page.getByTestId('words-standing')).toHaveText('1 word', {
       timeout: 60_000,
     });
 
@@ -390,7 +390,7 @@ test.describe('vocabulary', () => {
     expect(await toast.evaluate((element) => getComputedStyle(element).position)).toBe('fixed');
     expect(await toast.evaluate((element) => getComputedStyle(element).right)).toBe('16px');
     expect(await toast.evaluate((element) => getComputedStyle(element).bottom)).toBe('16px');
-    await expect(toast).toContainText('Vocabulary updated · 2 unique expressions');
+    await expect(toast).toContainText('Vocabulary updated · 2 words');
     await expect
       .poll(async () => (await readSnapshots(page))[0]?.uniqueEntryCount, { timeout: 60_000 })
       .toBe(2);
@@ -403,7 +403,7 @@ test.describe('vocabulary', () => {
 
     await openVocabulary(page);
     await connectPackage(page, CONTRACT_PACKAGE);
-    await expect(page.getByTestId('current-snapshot').locator('.count')).toHaveText('5', {
+    await expect(page.getByTestId('words-standing')).toHaveText('5 words', {
       timeout: 60_000,
     });
 

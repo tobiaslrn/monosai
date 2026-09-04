@@ -190,7 +190,8 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         <div class="generation-sources" data-testid="form-sources">
           <p class="setting-section-title">Uses</p>
           <a
-            routerLink="/vocabulary"
+            routerLink="/reading-level"
+            fragment="words"
             [queryParams]="{ from: 'generate' }"
             [state]="generateOriginState"
           >
@@ -198,7 +199,8 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <strong>{{ snapshotSummary() }}</strong>
           </a>
           <a
-            routerLink="/grammar"
+            routerLink="/reading-level"
+            fragment="grammar"
             [queryParams]="{ from: 'generate' }"
             [state]="generateOriginState"
           >
