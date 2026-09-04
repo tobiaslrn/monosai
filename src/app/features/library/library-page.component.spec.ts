@@ -174,7 +174,7 @@ describe('LibraryPageComponent', () => {
   }
 
   function newReadingButton(fixture: Awaited<ReturnType<typeof render>>): HTMLButtonElement | null {
-    return element(fixture).querySelector<HTMLButtonElement>('.library-title-row button');
+    return element(fixture).querySelector<HTMLButtonElement>('.shelf-head button');
   }
 
   /** Enough readings that the filter chips are worth showing. */
@@ -207,22 +207,17 @@ describe('LibraryPageComponent', () => {
   });
 
   /**
-   * Nothing about a shelf until there is one. The standing line and the learner
-   * destination both describe words, which a first visit has none of.
+   * Nothing about a shelf until there is one. The standing line describes words
+   * the learner does not have yet, and there is no shelf to add to.
    */
   it('holds back the shelf apparatus until there is something on the shelf', async () => {
     const fixture = await render();
 
     expect(newReadingButton(fixture)).toBeNull();
     expect(element(fixture).querySelector('mn-library-standing')).toBeNull();
-    expect(
-      [...element(fixture).querySelectorAll<HTMLAnchorElement>('.destinations a')].map((link) =>
-        link.textContent.trim(),
-      ),
-    ).toEqual(['Settings']);
   });
 
-  it('offers both ways in from the one New reading button', async () => {
+  it('offers both ways in from the one New story button', async () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
@@ -235,16 +230,23 @@ describe('LibraryPageComponent', () => {
     expect(links.map((link) => link.getAttribute('href'))).toEqual(['/add', '/generate']);
   });
 
-  it('leads the masthead to what the learner can read once the shelf has content', async () => {
+  /**
+   * One labelled destination. What the learner can read is reached from the
+   * standing line, which says why anyone would go; a second link to the same
+   * page, in nearly the same words, is what this replaced.
+   */
+  it('carries one labelled destination, and the standing line as the other door', async () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
-    expect(
-      [...element(fixture).querySelectorAll<HTMLAnchorElement>('.destinations a')].map((link) =>
-        link.getAttribute('href'),
-      ),
-    ).toEqual(['/reading-level', '/settings']);
-    expect(element(fixture).querySelector('mn-library-standing')).not.toBeNull();
+    const destinations = [
+      ...element(fixture).querySelectorAll<HTMLAnchorElement>('.library-head a'),
+    ];
+    expect(destinations.map((link) => link.getAttribute('href'))).toEqual(['/settings']);
+    expect(destinations[0]?.textContent?.trim()).toBe('Settings');
+    expect(element(fixture).querySelector('mn-library-standing a')?.getAttribute('href')).toBe(
+      '/reading-level',
+    );
     expect(element(fixture).querySelector('h1')?.textContent).toBe('Library');
   });
 

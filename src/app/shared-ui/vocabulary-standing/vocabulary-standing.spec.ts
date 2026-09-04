@@ -3,6 +3,7 @@ import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
 import { snapshotId } from '../../domain/shared/ids';
 import {
   generationShortfallLabel,
+  readingLevelPhrase,
   vocabularyCountLabel,
   vocabularyProvenanceLabel,
   vocabularySourceSummary,
@@ -76,6 +77,27 @@ describe('vocabularySyncedLabel', () => {
 describe('vocabularyProvenanceLabel', () => {
   it('states where the words came from and how current they are', () => {
     expect(vocabularyProvenanceLabel(snapshotOf({}), NOON)).toBe('From Anki · synced today');
+  });
+});
+
+describe('readingLevelPhrase', () => {
+  /** Derived from the preset name, so there is no second difficulty vocabulary. */
+  it('says the level as a clause, with the right article', () => {
+    expect(readingLevelPhrase('mn-preset-starter')).toBe('at a starter level');
+    expect(readingLevelPhrase('mn-preset-everyday')).toBe('at an everyday level');
+    expect(readingLevelPhrase('mn-preset-literary')).toBe('at a literary level');
+  });
+
+  /** ADR 0008: a level is never named by its JLPT band. */
+  it('never names a JLPT band', () => {
+    for (const id of ['mn-preset-starter', 'mn-preset-basic', 'mn-preset-formal']) {
+      expect(readingLevelPhrase(id)).not.toMatch(/\bN[1-5]\b/);
+    }
+  });
+
+  it('says nothing at all when there is no preset to say', () => {
+    expect(readingLevelPhrase(undefined)).toBeNull();
+    expect(readingLevelPhrase('mn-preset-unknown')).toBeNull();
   });
 });
 

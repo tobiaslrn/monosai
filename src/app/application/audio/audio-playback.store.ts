@@ -1289,7 +1289,7 @@ export class AudioPlaybackStore {
   private publishMediaMetadata(index: number): void {
     const readingTitle = mediaArtist(this.readingSignal()?.title ?? '');
     this.mediaSession.setMetadata({
-      title: readingTitle === '' ? 'Japanese reading' : readingTitle,
+      title: readingTitle === '' ? 'Japanese story' : readingTitle,
       artist: 'Monosai',
       album: `Sentence ${String(index + 1)} of ${String(this.refsSignal().length)}`,
     });

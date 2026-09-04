@@ -54,21 +54,24 @@ is available to forms only; reading surfaces, lists, and prose never take one.
 
 ### The masthead
 
-The application frame carries no navigation. **The Library is the single
-exception**: it is the home screen, it is where a learner arrives, and it wears
-a masthead — the wordmark, and text links to the destinations that are not
-readings. Every other screen, the reader included, still states only its own way
-back.
+The application frame carries no navigation, and no screen has a navigation
+landmark. The Library wears a **masthead** — the wordmark, and the one
+destination that is not a story — but it is a header, not a nav bar. Every other
+screen, the reader included, states only its own way back.
 
-The links are words, never bare icons. Neither destination is pressed often
-enough in a session for a symbol to have earned its silence, and a gear that
-hides the learner's own profile is what this rule exists to prevent.
+A destination there carries its label, never a bare icon: nothing in a masthead
+is pressed often enough in a session for a symbol to have earned its silence.
 
-Below the masthead the Library states **where the learner stands** — how many
-words Monosai can write from, and at what level — as one line that links to the
-page which explains it. It is the screen's lead, not a decoration: it is what
-makes the primary action self-explanatory. It states the current facts and is
-never itself a control.
+Below it the Library states **where the learner stands** — how many words
+Monosai can write from, and at what level. That line is the screen's lead and
+also the way to the page that explains it, so it carries a chevron: a sentence
+that reads as a statement has to say that it goes somewhere, because its words
+do not. It states current facts and never becomes a control that changes them.
+
+**A destination is named once per screen.** A masthead label that repeats the
+sentence beneath it is not navigation, it is a caption, however it is styled.
+Where a prominent line already leads somewhere, that is the door; a second link
+to the same place in nearly the same words makes both harder to see.
 
 ### Vertical composition
 
@@ -154,7 +157,7 @@ fieldset and a legend. Switches are never hidden behind a disclosure, because
 the outcomes they select are part of the action being configured rather than
 advanced detail.
 
-A group sits on the form that starts the work. Saved readings instead expose
+A group sits on the form that starts the work. Saved stories instead expose
 content status and explicit actions in Story options. It does not go into a list
 row's action menu. That menu is a short list of things to do to a row, and a
 shelf is for choosing what to open rather than for configuring each entry.
@@ -428,9 +431,9 @@ analysis, which have no shape to promise in advance.
 
 **Work the learner walked away from keeps a row where its result will appear.**
 A story being written is a Library row of the same shape and height as the
-reading it will become, so the shelf is laid out identically before, during, and
+story it will become, so the shelf is laid out identically before, during, and
 after. The row is muted — secondary text on the sunken surface — and states in
-words both that it is not a reading yet and which stage it is in; the muting is
+words both that it is not a story yet and which stage it is in; the muting is
 never the only thing saying so. It leads back to the screen that shows the run
 in full. A run that stopped without producing anything keeps its row, marked as
 needing attention, until the learner dismisses it: work they were not watching

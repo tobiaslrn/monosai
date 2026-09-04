@@ -162,7 +162,7 @@ export class LibraryStore {
    * The reading's title for use in a message about it.
    *
    * Read from the loaded page first; a reading deleted from the reader may
-   * never have been listed in this tab, and "The reading was deleted" is the
+   * never have been listed in this tab, and "The story was deleted" is the
    * last resort rather than the usual answer.
    */
   private async titleOf(id: ReadingId): Promise<string> {
@@ -171,7 +171,7 @@ export class LibraryStore {
       return listed.title;
     }
     const stored = await this.readings.getReading(id);
-    return stored.ok && stored.value !== null ? stored.value.title : 'The reading';
+    return stored.ok && stored.value !== null ? stored.value.title : 'The story';
   }
 
   /** Records that a reading was opened. */

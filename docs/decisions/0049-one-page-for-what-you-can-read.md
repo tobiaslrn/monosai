@@ -10,7 +10,7 @@ plus a gear:
 
 | Noun | What it is | Where it lived |
 | --- | --- | --- |
-| Your readings | the content | Library — visible |
+| Your stories | the content | Library — visible |
 | What you can read | words known, grammar level | inside Settings |
 | Settings | keys, models, appearance, storage | the gear |
 
@@ -83,6 +83,11 @@ anchor scrolling alone would fire before the grammar half exists.
 The "Your setup" panel and `mn-learning-data-section` are deleted. Settings is
 configuration only: appearance, models, storage, app, diagnostics. Nothing there
 describes the learner.
+
+*(Amended by [ADR 0050](0050-the-library-wears-the-navigation.md): Settings
+carries one row pointing at this page and stating its current count and level.
+The defect named here was that Settings was the only way in — a signpost, once
+the Library leads with the same fact, is not that defect.)*
 
 ## Consequences
 

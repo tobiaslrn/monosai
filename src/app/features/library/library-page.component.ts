@@ -75,16 +75,20 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           <span class="wordmark">Monosai</span>
         </div>
         <!--
-          The application's only standing navigation, and it is on the Library
-          alone: two words each, because neither is pressed often enough for an
-          icon to have earned its silence.
+          One destination, labelled. Settings is not pressed often enough in a
+          session for a bare gear to have earned its silence, and what the
+          learner can read is reached from the standing line below, which says
+          why anyone would go.
         -->
-        <nav class="destinations" aria-label="Monosai">
-          @if (!isFirstRun()) {
-            <a routerLink="/reading-level" [state]="libraryOriginState">What you can read</a>
-          }
-          <a routerLink="/settings" [state]="libraryOriginState">Settings</a>
-        </nav>
+        <a
+          class="destination"
+          routerLink="/settings"
+          [state]="libraryOriginState"
+          data-testid="library-settings"
+        >
+          <mn-icon name="settings" [size]="18" />
+          <span>Settings</span>
+        </a>
       </header>
 
       @if (store.status() === 'failed') {
@@ -97,8 +101,10 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       } @else if (isFirstRun()) {
         <mn-library-welcome />
       } @else {
-        <div class="library-title-row">
-          <mn-library-standing />
+        <mn-library-standing />
+
+        <div class="shelf-head">
+          <h1 class="shelf-heading">Library</h1>
           <button
             type="button"
             class="mn-button mn-button--primary"
@@ -108,14 +114,12 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
             (click)="openNewReading()"
           >
             <mn-icon name="add" [size]="18" />
-            <span>New reading</span>
+            <span>New story</span>
           </button>
         </div>
 
-        <h1 class="shelf-heading">Library</h1>
-
         @if (showsFilters()) {
-          <div class="filters" role="group" aria-label="Filter readings">
+          <div class="filters" role="group" aria-label="Filter stories">
             @for (option of filters; track option.value) {
               <button
                 type="button"
@@ -149,7 +153,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         }
 
         @if (store.isEmpty() && generationJobs().length === 0) {
-          <p class="mn-hint">No {{ store.filter() }} readings yet.</p>
+          <p class="mn-hint">No {{ store.filter() }} stories yet.</p>
         } @else {
           <div class="date-groups">
             @for (group of readingGroups(); track group.key) {
@@ -186,7 +190,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     </div>
 
     <ng-template #newReadingMenu>
-      <mn-reader-popover label="New reading" (closed)="closeNewReading()">
+      <mn-reader-popover label="New story" (closed)="closeNewReading()">
         <mn-new-reading-menu (chosen)="closeNewReading()" />
       </mn-reader-popover>
     </ng-template>
@@ -230,36 +234,36 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       white-space: nowrap;
     }
 
-    .destinations {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-4);
-      justify-content: flex-end;
-      min-width: 0;
-    }
-
-    .destinations a {
+    /* Bare at rest, like every other quiet control; the boundary is hover. */
+    .destination {
       display: inline-flex;
+      flex: none;
+      gap: var(--space-2);
       align-items: center;
       min-height: var(--touch-target);
+      padding: 0 var(--space-3);
+      border: 1px solid transparent;
+      border-radius: var(--radius-control);
       color: var(--text-secondary);
       text-decoration: none;
       white-space: nowrap;
     }
 
-    .destinations a:hover {
+    .destination:hover {
+      border-color: var(--border-subtle);
+      background: var(--surface-raised);
       color: var(--text-primary);
-      text-decoration: underline;
     }
 
-    .library-title-row {
+    /* The action sits with the shelf it adds to, not with the standing line. */
+    .shelf-head {
       display: flex;
       gap: var(--space-4);
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
     }
 
-    .library-title-row .mn-button {
+    .shelf-head .mn-button {
       flex: none;
     }
 
@@ -269,18 +273,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
      * outranks it would read as two competing titles.
      */
     /* Side by side is a wide-screen luxury; the line needs the full measure. */
-    @media (max-width: 599px) {
-      .library-title-row {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--space-3);
-      }
-
-      .library-title-row .mn-button {
-        align-self: flex-start;
-      }
-    }
-
     .shelf-heading {
       margin: 0;
       font-family: var(--font-ui);
@@ -479,7 +471,7 @@ export class LibraryPageComponent {
         title: 'Stop writing this story?',
         message: 'This cannot be undone. It permanently removes:',
         details: ['The story being written', 'The requests already spent on it'],
-        footnote: 'Your vocabulary, grammar profile, and other readings are not affected.',
+        footnote: 'Your vocabulary, grammar profile, and other stories are not affected.',
         confirmLabel: 'Stop and remove',
         cancelLabel: 'Keep writing',
         tone: 'danger',

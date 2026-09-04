@@ -146,15 +146,15 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.getByRole('link', { name: /Paste Japanese text/ })).toBeVisible();
   });
 
-  test('New reading offers both ways in, and Paste text reaches the reader', async ({ page }) => {
-    // New reading appears once the shelf has something on it; a first visit
+  test('New story offers both ways in, and Paste text reaches the reader', async ({ page }) => {
+    // New story appears once the shelf has something on it; a first visit
     // offers its two starting paths as cards instead. A different text, because
     // re-importing the same one is not a second reading.
     await importReading(page, '空が青いです。風が気持ちいいです。');
     await page.goto('./#/library');
 
-    await page.getByRole('button', { name: 'New reading' }).click();
-    const chooser = page.getByRole('dialog', { name: 'New reading' });
+    await page.getByRole('button', { name: 'New story' }).click();
+    const chooser = page.getByRole('dialog', { name: 'New story' });
     await expect(chooser.getByRole('link', { name: 'Paste text' })).toBeVisible();
     await expect(chooser.getByRole('link', { name: 'Write with AI' })).toBeVisible();
 
@@ -196,13 +196,11 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     // any more. A segment that is not a UUID is a different screen (ADR 0042).
     await page.goto('./#/reader/00000000-0000-4000-8000-000000000000');
 
-    await expect(
-      page.getByRole('heading', { name: 'Reading unavailable', level: 1 }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Story unavailable', level: 1 })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Story options', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Audio/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Story options', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('alert')).toContainText('This reading is no longer here');
+    await expect(page.getByRole('alert')).toContainText('This story is no longer here');
     await expect(
       page.getByRole('alert').getByRole('link', { name: 'Back to library' }),
     ).toBeVisible();
@@ -858,7 +856,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await page.getByRole('button', { name: /^Audio$/ }).click();
     await openWordDetails(page, '猫');
 
-    const player = page.getByRole('region', { name: 'Reading audio' });
+    const player = page.getByRole('region', { name: 'Story audio' });
     const sheet = page.locator('.mn-popover-pane .popover');
     await expect
       .poll(async () => {
@@ -880,13 +878,13 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
     const audio = page.getByRole('button', { name: /^Audio$/ });
     await audio.click();
-    const player = page.getByRole('region', { name: 'Reading audio' });
+    const player = page.getByRole('region', { name: 'Story audio' });
     // The region is rendered by a conditional block, so the order it is in is
     // only a fact about the document once it is in the document.
     await expect(player).toBeVisible();
     expect(
       await page.evaluate(() => {
-        const playerElement = document.querySelector('[aria-label="Reading audio"]');
+        const playerElement = document.querySelector('[aria-label="Story audio"]');
         const firstToken = document.querySelector('button.token');
         return (
           playerElement !== null &&
@@ -1055,7 +1053,7 @@ test.describe('scenario 2 — pasted text validation', () => {
     await expect(page).not.toHaveURL(/#\/add/);
   });
 
-  test('keeps Add reading disabled for pasted text over the 50,000-character limit', async ({
+  test('keeps Add story disabled for pasted text over the 50,000-character limit', async ({
     page,
   }) => {
     await page.goto('./#/add');
@@ -1063,7 +1061,7 @@ test.describe('scenario 2 — pasted text validation', () => {
 
     await expect(page.getByText('50,001 of 50,000 characters')).toBeVisible();
     await expect(page.getByRole('alert')).toContainText('Remove 1 character to continue');
-    await expect(page.getByRole('button', { name: 'Add reading' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Add story' })).toBeDisabled();
     await expect(page).toHaveURL(/#\/add/);
   });
 
@@ -1071,7 +1069,7 @@ test.describe('scenario 2 — pasted text validation', () => {
     await page.goto('./#/add');
     await page.getByLabel('Japanese text').fill('   \n  ');
 
-    await expect(page.getByRole('button', { name: 'Add reading' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Add story' })).toBeDisabled();
   });
 });
 
@@ -1139,7 +1137,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await page.goto('./#/library');
 
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
-    await expect(page.getByRole('group', { name: 'Filter readings' })).toHaveCount(0);
+    await expect(page.getByRole('group', { name: 'Filter stories' })).toHaveCount(0);
   });
 
   test('dismisses a reading actions menu on outside press and Escape', async ({ page }) => {

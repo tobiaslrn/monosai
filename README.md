@@ -26,8 +26,8 @@ dictionary.
 - Paste Japanese text.
 - See hiragana readings above kanji, clear word spacing and highlights for
   unfamiliar vocabulary and grammar.
-- Look up words in the built-in dictionary without leaving the reading.
-- Save readings and continue later.
+- Look up words in the built-in dictionary without leaving the story.
+- Save stories and continue later.
 - Use Anki as a vocabulary source and see which words are still unknown.
 - Translate individual sentences with optional AI.
 - Generate Japanese audio and listen with the built-in audio player.
@@ -82,7 +82,7 @@ from Chrome. There is no app store download.
 3. Accept the install prompt. Monosai will then open in its own window and can
    be added to your home screen or app list.
 
-Open Monosai online once before using it offline. Saved readings, dictionary
+Open Monosai online once before using it offline. Saved stories, dictionary
 help and new text imports work without a connection. New AI requests and a
 live Anki connection still need a connection.
 

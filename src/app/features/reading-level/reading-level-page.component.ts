@@ -9,6 +9,7 @@ import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-hist
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
+import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { technicalCode } from '../../domain/shared/errors';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
@@ -335,12 +336,29 @@ export class ReadingLevelPageComponent {
   readonly reason = input<string | undefined>();
   readonly from = input<string | undefined>();
 
-  protected readonly backTarget = computed(() =>
-    this.from() === 'generate' ? '/generate' : '/library',
-  );
-  protected readonly backLabel = computed(() =>
-    this.from() === 'generate' ? 'Back to story' : 'Back to library',
-  );
+  /**
+   * Where this page goes back to.
+   *
+   * Three screens lead here and each expects to get its own place back: the
+   * generate form says so in a query parameter, Settings marks the navigation
+   * with its origin, and everything else came from the Library. Read once at
+   * construction, because the history entry does not change under the page.
+   */
+  private readonly origin = inject(NavigationHistoryService).currentOrigin();
+
+  protected readonly backTarget = computed(() => {
+    if (this.from() === 'generate') {
+      return '/generate';
+    }
+    return this.origin === '/settings' ? '/settings' : '/library';
+  });
+
+  protected readonly backLabel = computed(() => {
+    if (this.from() === 'generate') {
+      return 'Back to story';
+    }
+    return this.origin === '/settings' ? 'Back to settings' : 'Back to library';
+  });
 
   protected readonly state = this.refresh.state;
 

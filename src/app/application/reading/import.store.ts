@@ -138,7 +138,7 @@ export class ImportStore {
       const duplicates = await this.imports.findDuplicates(validated.value.text);
       if (!duplicates.ok) {
         this.storageFailureSignal.set(duplicates.error);
-        this.announce('Existing readings could not be checked. Nothing was saved.');
+        this.announce('Existing stories could not be checked. Nothing was saved.');
         return null;
       }
       if (duplicates.value.length > 0) {
@@ -192,12 +192,12 @@ export class ImportStore {
 
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
-      this.announce('The reading could not be saved. Nothing was changed.');
+      this.announce('The story could not be saved. Nothing was changed.');
       return null;
     }
 
     this.savedIdSignal.set(saved.value.id);
-    this.announce('Reading saved.');
+    this.announce('Story saved.');
     return saved.value.id;
   }
 

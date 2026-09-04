@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import {
   generationShortfallLabel,
+  readingLevelPhrase,
   vocabularyCountLabel,
   vocabularySourceSummary,
   vocabularySyncedLabel,
@@ -16,7 +18,7 @@ import {
  *
  * This is the line no other Japanese reading application can show: Monosai
  * knows which words *this* learner has reviewed, and everything it writes is
- * pitched at them. Stating it above the shelf is what makes New reading
+ * pitched at them. Stating it above the shelf is what makes New story
  * self-explanatory — a story from *these* words — and it is the reason the
  * learner profile is worth a destination at all.
  *
@@ -27,7 +29,7 @@ import {
 @Component({
   selector: 'mn-library-standing',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, IconComponent],
   template: `
     <a
       class="standing"
@@ -36,7 +38,10 @@ import {
       data-testid="library-standing"
     >
       @if (headline(); as line) {
-        <span class="headline">{{ line }}</span>
+        <span class="headline">
+          <span>{{ line }}</span>
+          <mn-icon name="chevron-right" [size]="20" />
+        </span>
         <span class="detail">{{ detail() }}</span>
       }
     </a>
@@ -63,6 +68,9 @@ import {
     }
 
     .headline {
+      display: flex;
+      gap: var(--space-1);
+      align-items: center;
       font-family: var(--font-ui);
       font-size: 22px;
       font-weight: 700;
@@ -70,8 +78,37 @@ import {
       line-height: 1.25;
     }
 
-    .standing:hover .headline {
+    /* The chevron is what says this line is a way somewhere, since the words
+       themselves are a statement rather than a label. */
+    .headline mn-icon {
+      flex: none;
+      color: var(--text-secondary);
+      transition: transform var(--motion-fast) ease-out;
+    }
+
+    .standing:hover .headline span {
       text-decoration: underline;
+    }
+
+    .standing:hover .headline mn-icon {
+      color: var(--text-primary);
+      transform: translateX(2px);
+    }
+
+    .standing:focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 4px;
+      border-radius: var(--radius-control);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .headline mn-icon {
+        transition: none;
+      }
+
+      .standing:hover .headline mn-icon {
+        transform: none;
+      }
     }
 
     .detail {
@@ -92,7 +129,16 @@ export class LibraryStandingComponent {
   private readonly grammar = inject(GrammarProfileStore);
   private readonly clock = inject(CLOCK);
 
-  /** Null only while the read has not answered, which holds the space blank. */
+  /**
+   * One sentence, not two facts stapled together.
+   *
+   * The count and the level are the same fact from the learner's side — how
+   * hard a story Monosai can write for them — so they are said as one clause.
+   * The level is dropped rather than guessed at while the language bundle is
+   * still loading; the sentence stays a sentence either way.
+   *
+   * Null only while the read has not answered, which holds the space blank.
+   */
   protected readonly headline = computed<string | null>(() => {
     const state = this.vocabulary.state();
     switch (state.kind) {
@@ -100,18 +146,18 @@ export class LibraryStandingComponent {
         return null;
       case 'unavailable':
         return 'Your words could not be read.';
-      case 'known':
-        return state.snapshot === null || state.snapshot.uniqueEntryCount === 0
-          ? 'No words yet.'
-          : `You can read ${vocabularyCountLabel(state.snapshot.uniqueEntryCount)}.`;
+      case 'known': {
+        if (state.snapshot === null || state.snapshot.uniqueEntryCount === 0) {
+          return 'No words yet.';
+        }
+        const count = vocabularyCountLabel(state.snapshot.uniqueEntryCount);
+        const level = readingLevelPhrase(this.grammar.selectedPreset()?.id);
+        return level === null ? `You can read ${count}.` : `You can read ${count} ${level}.`;
+      }
     }
   });
 
-  protected readonly detail = computed(() => {
-    const state = this.vocabulary.state();
-    const parts = [this.grammar.selectedPreset()?.nameEn, this.vocabularyDetail(state)];
-    return parts.filter((part) => part !== undefined && part !== null).join(' · ');
-  });
+  protected readonly detail = computed(() => this.vocabularyDetail(this.vocabulary.state()) ?? '');
 
   constructor() {
     void this.vocabulary.refresh();
@@ -136,7 +182,7 @@ export class LibraryStandingComponent {
         // the words came from does not help anyone who cannot generate yet.
         return (
           generationShortfallLabel(snapshot.uniqueEntryCount) ??
-          `${vocabularySourceSummary(snapshot.sourceKinds)}, ${vocabularySyncedLabel(snapshot.createdAt, this.clock.now())}`
+          `From ${vocabularySourceSummary(snapshot.sourceKinds)} · ${vocabularySyncedLabel(snapshot.createdAt, this.clock.now())}`
         );
       }
     }

@@ -56,7 +56,7 @@ export const APP_ROUTES: Routes = [
   },
   {
     path: 'reader/:id',
-    title: 'Reading · Monosai',
+    title: 'Story · Monosai',
     // Only ids that could name a reading reach the reader. Anything else falls
     // through to the route below, which says so without claiming a deletion.
     canMatch: [wellFormedReadingLink],

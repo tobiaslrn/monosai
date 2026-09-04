@@ -740,7 +740,7 @@ export class ModelsSectionComponent {
       case 'cancelled':
         return 'The preview was stopped, so this configuration is still untested.';
       case 'stale':
-        return 'Audio saved with the previous settings is kept on this device, but it cannot be played in these ones — a reading may show as having no audio until you generate it again or set the previous voice and speed back.';
+        return 'Audio saved with the previous settings is kept on this device, but it cannot be played in these ones — a story may show as having no audio until you generate it again or set the previous voice and speed back.';
       case 'testing':
       case 'ready':
       case 'failed':

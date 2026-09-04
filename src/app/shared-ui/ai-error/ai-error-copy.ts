@@ -52,7 +52,7 @@ export interface AiErrorCopy {
  * here can reach readings, snapshots, or cached aids.
  */
 export const NOTHING_CHANGED =
-  'Nothing was changed. Your readings, vocabulary, and saved aids are untouched.';
+  'Nothing was changed. Your stories, vocabulary, and saved aids are untouched.';
 
 const READ_WITHOUT_IT = 'Reading, importing, and your vocabulary work without this.';
 const TRY_TEST_AGAIN = 'Try the test again in a moment.';

@@ -107,8 +107,8 @@ describe('StorageSectionComponent', () => {
     await pressDeleteAudio();
 
     const dialog = document.querySelector('[role="alertdialog"]');
-    expect(dialog?.textContent).toContain('every reading on this device');
-    expect(dialog?.textContent).toContain('Readings, translations, grammar results');
+    expect(dialog?.textContent).toContain('every story on this device');
+    expect(dialog?.textContent).toContain('Stories, translations, grammar results');
     expect(storage.calls).toEqual([]);
     expect(playback.calls).toEqual([]);
   });

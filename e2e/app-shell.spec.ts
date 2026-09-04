@@ -20,27 +20,13 @@ test.describe('application shell', () => {
   });
 
   /**
-   * The Library is the one screen with standing navigation, and it is text
-   * rather than icons: neither destination is pressed often enough in a session
-   * for a symbol to have earned its silence.
+   * The line the Library leads with is the way to what the learner can read.
+   * The masthead carries no second link to it: a label repeating the sentence
+   * beneath it in nearly the same words is what this replaced.
    */
-  test('reaches what you can read from the Library masthead and back @smoke', async ({ page }) => {
-    await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
-    await page.goto('./#/library');
-
-    const masthead = page.getByRole('navigation', { name: 'Monosai' });
-    await expect(masthead.getByRole('link', { name: 'Settings' })).toBeVisible();
-    await masthead.getByRole('link', { name: 'What you can read' }).click();
-
-    await expect(page).toHaveURL(/#\/reading-level$/);
-    await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
-
-    await page.getByRole('button', { name: 'Back to library' }).click();
-    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
-  });
-
-  /** The line the Library leads with, and the page it explains. */
-  test('states the learner standing on the Library and links it to that page', async ({ page }) => {
+  test('reaches what you can read from the Library standing line and back @smoke', async ({
+    page,
+  }) => {
     await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
     await page.goto('./#/library');
 
@@ -49,16 +35,35 @@ test.describe('application shell', () => {
     await expect(standing).toContainText('Connect Anki to write stories');
 
     await standing.click();
+
     await expect(page).toHaveURL(/#\/reading-level$/);
+    await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Back to library' }).click();
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
   });
 
-  /** Settings is configuration only; nothing there describes the learner. */
-  test('keeps the learner profile out of Settings', async ({ page }) => {
+  /**
+   * Settings holds no learner data, but it does point at the page that does:
+   * connecting an external application is something people come here to look
+   * for, and finding nothing would say it cannot be done.
+   */
+  test('signposts what you can read from Settings without describing it there', async ({
+    page,
+  }) => {
     await page.goto('./#/settings');
 
-    await expect(page.getByRole('link', { name: /Vocabulary/ })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: /^Grammar/ })).toHaveCount(0);
     await expect(page.getByText('Your setup')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Vocabulary/ })).toHaveCount(0);
+
+    const row = page.getByTestId('settings-reading-level');
+    await expect(row).toContainText('What you can read');
+    await expect(row).toContainText('No words yet');
+    await row.click();
+
+    await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
+    await page.getByRole('button', { name: 'Back to settings' }).click();
+    await expect(page).toHaveURL(/#\/settings$/);
   });
 
   /**
@@ -103,16 +108,15 @@ test.describe('application shell', () => {
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   });
 
-  /** Two text destinations plus the mark, at the narrowest width supported. */
-  test('keeps the whole masthead usable at 320px @mobile', async ({ page }) => {
+  /** The mark, the standing line and one labelled control, at 320px. */
+  test('keeps the Library head usable at 320px @mobile', async ({ page }) => {
     await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('./#/library');
 
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
-    const masthead = page.getByRole('navigation', { name: 'Monosai' });
-    await expect(masthead.getByRole('link', { name: 'What you can read' })).toBeVisible();
-    await expect(masthead.getByRole('link', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByTestId('library-standing')).toBeVisible();
     await expect(page.locator('.wordmark')).toBeHidden();
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
