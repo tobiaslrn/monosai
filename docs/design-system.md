@@ -341,11 +341,16 @@ Standing explanatory text exists only where **money, network, or data loss is at
 stake**. A hint under a control that merely restates the control's own label, or
 describes what a section obviously contains, is removed rather than reworded.
 
-Two exceptions:
+Three exceptions:
 
 - **Empty states teach.** An empty surface has nothing but words to work with,
   so any empty list explains what belongs there and how to fill it. The
   exception ends the moment the surface has content.
+- **The first run introduces the application.** An empty Library is what a
+  stranger opening the public address sees, so it says what Monosai is and what
+  it would do for them before it offers a way in. This is the one surface
+  written in the first person: that a person made this is allowed to show here
+  and nowhere else. It ends, like any empty state, the moment there is content.
 - **Failures explain.** A failure states what happened, what is unaffected, and
   what to do next, however quiet the surrounding screen is.
 

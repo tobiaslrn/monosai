@@ -32,6 +32,7 @@ import { NewReadingMenuComponent } from './new-reading-menu.component';
 import { GenerationJobCardComponent } from './generation-job-card.component';
 import { groupLibraryReadings } from './library-date-groups';
 import { LibraryStandingComponent } from './library-standing.component';
+import { LibraryWelcomeComponent } from './library-welcome.component';
 import { ReadingCardComponent } from './reading-card.component';
 
 interface FilterOption {
@@ -64,6 +65,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     ReadingCardComponent,
     GenerationJobCardComponent,
     LibraryStandingComponent,
+    LibraryWelcomeComponent,
   ],
   template: `
     <div class="mn-page library-page">
@@ -78,7 +80,9 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           icon to have earned its silence.
         -->
         <nav class="destinations" aria-label="Monosai">
-          <a routerLink="/reading-level" [state]="libraryOriginState">What you can read</a>
+          @if (!isFirstRun()) {
+            <a routerLink="/reading-level" [state]="libraryOriginState">What you can read</a>
+          }
           <a routerLink="/settings" [state]="libraryOriginState">Settings</a>
         </nav>
       </header>
@@ -90,6 +94,8 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           <p class="mn-hint">Nothing was changed or deleted.</p>
           <button type="button" class="mn-button" (click)="reload()">Try again</button>
         </section>
+      } @else if (isFirstRun()) {
+        <mn-library-welcome />
       } @else {
         <div class="library-title-row">
           <mn-library-standing />
@@ -142,30 +148,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           </section>
         }
 
-        @if (store.hasNoReadings() && generationJobs().length === 0) {
-          <section class="empty-state" aria-labelledby="mn-library-empty-heading">
-            <h2 id="mn-library-empty-heading">Start with a reading</h2>
-            <p class="mn-hint">
-              Add Japanese you already have, or generate a story from reviewed Anki vocabulary.
-            </p>
-            <div class="empty-choices">
-              <a class="empty-choice" routerLink="/add" [state]="libraryOriginState">
-                <mn-icon name="add" [size]="20" />
-                <span>
-                  <strong>Add Japanese you already have</strong>
-                  <small>Paste text and start reading.</small>
-                </span>
-              </a>
-              <a class="empty-choice" routerLink="/generate" [state]="libraryOriginState">
-                <mn-icon name="generate" [size]="20" />
-                <span>
-                  <strong>Generate from reviewed Anki vocabulary</strong>
-                  <small>Choose a story setting and write with AI.</small>
-                </span>
-              </a>
-            </div>
-          </section>
-        } @else if (store.isEmpty() && generationJobs().length === 0) {
+        @if (store.isEmpty() && generationJobs().length === 0) {
           <p class="mn-hint">No {{ store.filter() }} readings yet.</p>
         } @else {
           <div class="date-groups">
@@ -312,68 +295,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       gap: var(--space-2);
     }
 
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      max-width: 42rem;
-    }
-
-    .empty-state h2 {
-      margin: 0;
-      font-size: var(--text-lg);
-    }
-
-    .empty-state .mn-hint {
-      margin: 0;
-    }
-
-    .empty-choices {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--space-3);
-    }
-
-    .empty-choice {
-      display: flex;
-      gap: var(--space-3);
-      align-items: flex-start;
-      min-width: 0;
-      padding: var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-raised);
-      color: var(--text-primary);
-      text-decoration: none;
-    }
-
-    .empty-choice:hover {
-      border-color: var(--border-strong);
-      background: var(--surface-sunken);
-    }
-
-    .empty-choice mn-icon {
-      flex: none;
-      color: var(--action-primary);
-    }
-
-    .empty-choice span {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-1);
-      min-width: 0;
-    }
-
-    .empty-choice strong {
-      font-weight: 600;
-    }
-
-    .empty-choice small {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      line-height: 1.45;
-    }
-
     .chip {
       min-height: var(--touch-target);
       padding: var(--space-2) var(--space-4);
@@ -434,10 +355,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       .identity {
         gap: var(--space-2);
       }
-
-      .empty-choices {
-        grid-template-columns: 1fr;
-      }
     }
   `,
 })
@@ -466,6 +383,16 @@ export class LibraryPageComponent {
   protected readonly showsFilters = computed(
     () => this.store.totalReadings() >= FILTER_VISIBILITY_THRESHOLD,
   );
+  /**
+   * Nothing saved and nothing being written: the screen a stranger lands on.
+   *
+   * `hasNoReadings` is false until the shelf has actually been read, so the
+   * welcome cannot flash before the library answers.
+   */
+  protected readonly isFirstRun = computed(
+    () => this.store.hasNoReadings() && this.generationJobs().length === 0,
+  );
+
   protected readonly readingGroups = computed(() =>
     groupLibraryReadings(this.store.items(), this.clock.now()),
   );
