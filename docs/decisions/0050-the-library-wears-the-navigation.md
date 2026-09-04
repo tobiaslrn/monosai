@@ -65,6 +65,18 @@ shift the state rules forbid.
 `Library` survives as the shelf's own heading, smaller than it was. It is no
 longer the first thing the page says.
 
+### Before there is anything to read, the Library introduces Monosai
+
+An empty Library is what a stranger opening the public address sees. It now
+says what Monosai is, in the first person, and offers two ways in — **Connect
+your Anki** first, then **Paste Japanese text**. The empty state it replaced led
+with pasting text, which sells the half of the application any dictionary site
+can already do.
+
+On that screen the masthead carries Settings alone, and neither the standing
+line nor `New reading` renders: all three describe a shelf, and there is none.
+The two cards are the way in. It ends the moment the library has a reading.
+
 ### The count comes from the cheap read
 
 `VocabularyAvailabilityStore` already made one `getActiveSnapshot()` call to
@@ -87,6 +99,9 @@ heavier read than a home screen should make on every visit.
   the Library loads both stores. Both are single reads of already-open tables.
 - At the narrowest supported width the wordmark hides, as it already did, and
   the two links stay.
+- The first-run screen is the only standing prose in the application and the
+  only first-person voice in it. Both are carved out in the design system's
+  prose budget rather than left as a local exception.
 
 ## Alternatives considered
 

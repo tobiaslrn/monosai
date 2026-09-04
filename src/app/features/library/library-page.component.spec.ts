@@ -184,24 +184,46 @@ describe('LibraryPageComponent', () => {
     );
   }
 
-  it('explains both ways to start when nothing is saved yet', async () => {
+  /**
+   * The first-run screen has to explain what Monosai is: it is what a stranger
+   * lands on at the public address, and nothing else on it says so.
+   */
+  it('explains what Monosai is when nothing is saved yet, Anki first', async () => {
     const fixture = await render();
 
     expect(element(fixture).querySelector('.mark')?.getAttribute('src')).toBe('icons/icon-192.png');
     expect(element(fixture).querySelector('.wordmark')?.textContent).toBe('Monosai');
-    expect(element(fixture).querySelector('h1')?.textContent).toBe('Library');
-    expect(element(fixture).textContent).toContain('Add Japanese you already have');
-    expect(element(fixture).textContent).toContain('Generate from reviewed Anki vocabulary');
+    expect(element(fixture).querySelector('h1')?.textContent).toContain(
+      'Japanese you can actually read',
+    );
+    expect(element(fixture).textContent).toContain('reviewed in Anki');
+    expect(element(fixture).textContent).toContain('Everything stays on this device.');
     expect(
-      [...element(fixture).querySelectorAll<HTMLAnchorElement>('.empty-choice')].map((link) =>
+      [...element(fixture).querySelectorAll<HTMLAnchorElement>('.choice')].map((link) =>
         link.getAttribute('href'),
       ),
-    ).toEqual(['/add', '/generate']);
+    ).toEqual(['/reading-level#words', '/add']);
     expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(0);
-    expect(newReadingButton(fixture)).not.toBeNull();
+  });
+
+  /**
+   * Nothing about a shelf until there is one. The standing line and the learner
+   * destination both describe words, which a first visit has none of.
+   */
+  it('holds back the shelf apparatus until there is something on the shelf', async () => {
+    const fixture = await render();
+
+    expect(newReadingButton(fixture)).toBeNull();
+    expect(element(fixture).querySelector('mn-library-standing')).toBeNull();
+    expect(
+      [...element(fixture).querySelectorAll<HTMLAnchorElement>('.destinations a')].map((link) =>
+        link.textContent.trim(),
+      ),
+    ).toEqual(['Settings']);
   });
 
   it('offers both ways in from the one New reading button', async () => {
+    repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
     newReadingButton(fixture)?.click();
@@ -211,6 +233,19 @@ describe('LibraryPageComponent', () => {
     const links = [...(menu?.querySelectorAll('a') ?? [])];
     expect(links.map((link) => link.textContent.trim())).toEqual(['Paste text', 'Write with AI']);
     expect(links.map((link) => link.getAttribute('href'))).toEqual(['/add', '/generate']);
+  });
+
+  it('leads the masthead to what the learner can read once the shelf has content', async () => {
+    repository.readings = [reading('a', 'imported', 1_000)];
+    const fixture = await render();
+
+    expect(
+      [...element(fixture).querySelectorAll<HTMLAnchorElement>('.destinations a')].map((link) =>
+        link.getAttribute('href'),
+      ),
+    ).toEqual(['/reading-level', '/settings']);
+    expect(element(fixture).querySelector('mn-library-standing')).not.toBeNull();
+    expect(element(fixture).querySelector('h1')?.textContent).toBe('Library');
   });
 
   it('hides the filter chips until the shelf is large enough to need them', async () => {

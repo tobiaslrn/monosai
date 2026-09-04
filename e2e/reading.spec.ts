@@ -130,22 +130,28 @@ async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
  */
 test.describe('scenario 1 — paste, save, inspect', () => {
   /**
-   * An empty library is the first screen, not a form nobody asked for. It says
-   * both starting paths and keeps the New reading action available.
+   * A first visit is the one screen that has to say what Monosai is: it is what
+   * a stranger opening the public address sees. Both starting paths are on it,
+   * Anki first.
    */
-  test('a first visit lands on an empty library and needs no setup', async ({ page }) => {
+  test('a first visit explains Monosai and needs no setup', async ({ page }) => {
     await page.goto('./');
 
     await expect(page).toHaveURL(/#\/library/);
-    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Add Japanese you already have' })).toBeVisible();
     await expect(
-      page.getByRole('link', { name: 'Generate from reviewed Anki vocabulary' }),
+      page.getByRole('heading', { name: /Japanese you can actually read/, level: 1 }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'New reading' })).toBeVisible();
+    await expect(page.getByText('Everything stays on this device.')).toBeVisible();
+    await expect(page.getByRole('link', { name: /Connect your Anki/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Paste Japanese text/ })).toBeVisible();
   });
 
   test('New reading offers both ways in, and Paste text reaches the reader', async ({ page }) => {
+    // New reading appears once the shelf has something on it; a first visit
+    // offers its two starting paths as cards instead.
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
     await page.goto('./#/library');
 
     await page.getByRole('button', { name: 'New reading' }).click();
@@ -1029,7 +1035,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 test.describe('scenario 2 — pasted text validation', () => {
   test('guards an unsaved import when navigating back', async ({ page }) => {
     await page.goto('./#/library');
-    await page.getByRole('link', { name: 'Add Japanese you already have' }).click();
+    await page.getByRole('link', { name: /Paste Japanese text/ }).click();
     await page.getByLabel('Japanese text').fill(SAMPLE_TEXT);
 
     await page.getByRole('button', { name: 'Back to library' }).click();
@@ -1040,7 +1046,7 @@ test.describe('scenario 2 — pasted text validation', () => {
 
   test('replaces the import form after saving', async ({ page }) => {
     await page.goto('./#/library');
-    await page.getByRole('link', { name: 'Add Japanese you already have' }).click();
+    await page.getByRole('link', { name: /Paste Japanese text/ }).click();
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
     await page.goBack();
@@ -1092,7 +1098,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
   test('replaces a deleted reader so browser Back cannot reopen it', async ({ page }) => {
     await page.goto('./#/library');
-    await page.getByRole('link', { name: 'Add Japanese you already have' }).click();
+    await page.getByRole('link', { name: /Paste Japanese text/ }).click();
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
     const deletedUrl = page.url();
@@ -1166,7 +1172,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
     await dialog.getByRole('button', { name: 'Delete permanently' }).click();
 
-    await expect(page.getByRole('link', { name: 'Add Japanese you already have' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Paste Japanese text/ })).toBeVisible();
     const counts = await countOwnedRows(page);
     for (const [store, count] of Object.entries(counts)) {
       expect(count, `rows left in ${store}`).toBe(0);
