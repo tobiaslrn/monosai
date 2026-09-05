@@ -30,7 +30,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
           <li class="check" [attr.data-check]="check.id">
             <mn-icon name="warning" [size]="18" />
             <p class="detail">
-              <span class="mn-visually-hidden">{{ check.label }}: </span>{{ check.detail }}
+              <strong>{{ check.label }}: </strong>{{ check.detail }}
             </p>
             @if (check.route !== '') {
               <a
@@ -94,7 +94,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       gap: var(--space-2);
       align-items: flex-start;
       margin: 0;
-      color: var(--status-warning);
+      color: var(--text-secondary);
       font-size: var(--text-sm);
     }
   `,

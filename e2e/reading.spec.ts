@@ -139,10 +139,10 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
     await expect(page).toHaveURL(/#\/library/);
     await expect(
-      page.getByRole('heading', { name: /Japanese you can actually read/, level: 1 }),
+      page.getByRole('heading', { name: /Japanese you can actually read/, level: 2 }),
     ).toBeVisible();
     await expect(page.getByText('Everything stays on this device.')).toBeVisible();
-    await expect(page.getByRole('link', { name: /Connect your Anki/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Add a word list/ })).toBeVisible();
     await expect(page.getByRole('link', { name: /Paste Japanese text/ })).toBeVisible();
   });
 

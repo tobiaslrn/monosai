@@ -379,8 +379,8 @@ Four exceptions:
 - **Help is a prose surface.** Its job is explanation: static, local English
   guidance uses one readable column, section headings, short paragraphs, and
   links close to the actions they explain. It needs no cards around each topic.
-  A compact first-use dialog offers the guide after startup on a non-reader
-  surface. Every dismissal records the preference for this local installation;
+  A quiet, non-modal first-use banner offers Help on a non-reader
+  surface without moving focus or covering the app. Dismissal records the preference for this local installation;
   the guide remains in the utility bar. Reader deep links are never interrupted.
 
 - **Empty states teach.** An empty surface has nothing but words to work with,

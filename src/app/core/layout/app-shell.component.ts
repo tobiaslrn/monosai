@@ -28,6 +28,15 @@ import { HelpIntroService } from './help-intro.service';
       <mn-app-bar />
       <mn-app-update-banner />
       <mn-vocabulary-sync-banner />
+      @if (intro.visible()) {
+        <aside class="intro-error intro-offer" aria-label="A little help getting started">
+          <p class="mn-hint">Help explains word lists, stories, and reading aids.</p>
+          <button type="button" class="mn-button" (click)="intro.finish('dismiss')">Got it</button>
+          <button type="button" class="mn-button" (click)="intro.finish('guide')">
+            Read the guide
+          </button>
+        </aside>
+      }
       @if (intro.saveFailed()) {
         <div class="intro-error" role="alert">
           <p>Your Help preference could not be saved. The introduction may appear next time.</p>
@@ -61,6 +70,16 @@ import { HelpIntroService } from './help-intro.service';
       max-width: var(--layout-measure);
       margin: var(--space-4) auto;
       padding-inline: var(--space-4);
+    }
+    .intro-offer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+    }
+    .intro-offer p {
+      margin: 0;
+      flex: 1 1 15rem;
     }
 
     @media (min-width: 960px) {

@@ -3,6 +3,10 @@
 Date: 2026-09-04
 Status: Accepted
 
+Amended by the first-run review: the Library heading and New story action remain
+visible when the shelf is empty. Welcome prose fills the shelf body and names
+all three word sources. It never replaces the action that creates a story.
+
 ## Context
 
 [ADR 0025](0025-reader-as-the-centre.md) deleted Monosai's navigation outright:

@@ -22,11 +22,10 @@ paths, reader controls, AI cost and compatibility, audio limitations, and
 practical generation guidance. It works locally without provider calls.
 
 After successful bootstrap and a completed non-reader navigation, the shell
-offers a compact CDK dialog once. Reader deep links defer the offer until a
-non-reader route is reached. Both buttons, Escape, and backdrop dismissal mark
-`AppSettings.helpIntroSeen`; Read the guide also navigates to Help. CDK manages
-focus trapping and restores focus to Help. Failed preference writes offer a
-retry without reopening the dialog during the current shell lifetime.
+offers a compact, non-modal Help banner once. Reader deep links defer the offer until a
+non-reader route is reached. Both buttons mark
+`AppSettings.helpIntroSeen`; Read the guide also navigates to Help. The banner leaves focus where it is and never covers the Library. Failed preference writes offer a
+retry without reopening the banner during the current shell lifetime.
 
 Schema v9 adds the field transactionally to the existing app settings row with
 `false`, preserving its other fields and all other rows. Missing rows use the

@@ -14,8 +14,8 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
  * stretches — and the one surface where the fact that a person made this is
  * allowed to show.
  *
- * Anki comes first. The empty state this replaced led with pasting text, which
- * sells the half of the application that any dictionary site can do.
+ * Word sources come first, with Anki the first suggested source. The shelf's
+ * New story action stays above this empty body, so setup never hides writing.
  *
  * It ends the moment the library has a reading in it.
  */
@@ -25,13 +25,13 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
   imports: [RouterLink, IconComponent],
   template: `
     <section class="welcome" aria-labelledby="mn-welcome-heading">
-      <h1 id="mn-welcome-heading">Monosai writes Japanese you can actually read.</h1>
+      <h2 id="mn-welcome-heading">Monosai writes Japanese you can actually read.</h2>
 
       <p class="lede">
         I made this while studying a frequency deck, because I could not find anything simple enough
-        to read yet. Monosai builds stories from the words you have reviewed in Anki — starting from
-        about {{ minimumWords }} — and adds readings, spacing and a dictionary to anything else you
-        paste.
+        to read yet. Monosai builds stories from your word list — at least
+        {{ minimumWords }} words from Anki, an Anki package, or a pasted list — and adds readings,
+        spacing and a dictionary to anything else you paste.
       </p>
 
       <p class="local">Everything stays on this device.</p>
@@ -40,7 +40,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
         <a class="choice" routerLink="/reading-level" fragment="words" [state]="libraryOriginState">
           <mn-icon name="vocabulary" [size]="20" />
           <span>
-            <strong>Connect your Anki</strong>
+            <strong>Add a word list</strong>
             <small>Stories get written from words you know.</small>
           </span>
         </a>
@@ -62,7 +62,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       max-width: 42rem;
     }
 
-    h1 {
+    h2 {
       margin: 0;
       font-family: var(--font-ui);
       font-size: 28px;
@@ -130,7 +130,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     }
 
     @media (max-width: 599px) {
-      h1 {
+      h2 {
         font-size: 24px;
       }
 

@@ -8,6 +8,7 @@ import {
   input,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
 import {
@@ -90,12 +91,6 @@ function formatList(items: readonly string[]): string {
         learner finished long ago is a permanent header on a screen they came to
         write on.
       -->
-      @if (!missingJob() && state().kind === 'idle' && hasBlockers()) {
-        <section class="mn-panel" aria-labelledby="mn-generate-checks-heading">
-          <h2 id="mn-generate-checks-heading" class="mn-visually-hidden">Before you generate</h2>
-          <mn-prerequisite-panel [checks]="checks()" [preset]="presetLine()" />
-        </section>
-      }
 
       @if (missingJob()) {
         <!--
@@ -182,6 +177,7 @@ function formatList(items: readonly string[]): string {
           <h2 id="mn-generate-form-heading" class="mn-visually-hidden">Your story</h2>
           <mn-story-form
             [canGenerate]="canGenerate()"
+            [disabledReason]="disabledReason()"
             [disabled]="isBusy()"
             [atGenerationLimit]="!jobs.canStart()"
             [snapshotSummary]="snapshotSummary()"
@@ -196,6 +192,13 @@ function formatList(items: readonly string[]): string {
             (generate)="generate()"
           >
             <mn-exception-policy-field text-fields-extra />
+            @if (hasBlockers()) {
+              <mn-prerequisite-panel
+                generation-blockers
+                [checks]="checks()"
+                [preset]="presetLine()"
+              />
+            }
           </mn-story-form>
         </section>
       }
@@ -254,6 +257,7 @@ export class GeneratePageComponent {
   protected readonly tts = inject(TtsStore);
   private readonly grammar = inject(GrammarProfileStore);
   private readonly snapshots = inject(SnapshotHistoryStore);
+  private readonly network = inject(NETWORK_STATUS);
   private readonly router = inject(Router);
   protected readonly navigation = inject(NavigationHistoryService);
   protected readonly generateOriginState = navigationOriginState('/generate');
@@ -294,6 +298,7 @@ export class GeneratePageComponent {
     const failure = this.textModel.testFailure();
     return prerequisiteChecks({
       hasSources: this.wordSources.sources().length > 0,
+      online: this.network.isOnline(),
       textModelFailure: failure === null ? null : aiErrorCopy(failure).whatFailed,
       textModelReadiness: this.textModel.readiness(),
       structuredOutput: this.textModel.structuredOutput(),
@@ -308,13 +313,17 @@ export class GeneratePageComponent {
 
   protected readonly snapshotSummary = computed(() => {
     const active = this.snapshots.active();
-    return active === null
-      ? 'vocabulary snapshot'
-      : `${String(active.uniqueEntryCount)} reviewed words`;
+    return active === null ? 'No words yet' : `${String(active.uniqueEntryCount)} reviewed words`;
   });
 
   protected readonly canGenerate = computed(
     () => allPrerequisitesMet(this.checks()) && this.draft.isValid() && this.jobs.canStart(),
+  );
+  protected readonly disabledReason = computed(() =>
+    this.checks()
+      .filter((check) => !check.satisfied)
+      .map((check) => check.detail)
+      .join(' '),
   );
 
   /**
@@ -446,6 +455,7 @@ export class GeneratePageComponent {
   }
 
   private async startGeneration(): Promise<void> {
+    if (!this.canGenerate()) return;
     const started = this.jobs.start(
       this.draft.sentenceCount(),
       this.draft.input(),
