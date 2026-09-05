@@ -125,6 +125,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
               (click)="packageInput.click()"
             >
               <strong>Anki package</strong>
+              <span class="mn-hint">Import an .apkg file</span>
             </button>
             <button
               type="button"
@@ -133,6 +134,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
               data-testid="add-text-source"
             >
               <strong>Pasted list</strong>
+              <span class="mn-hint">Type or paste words yourself</span>
             </button>
           }
         </div>

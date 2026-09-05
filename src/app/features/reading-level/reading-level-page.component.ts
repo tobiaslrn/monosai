@@ -173,6 +173,17 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
     </div>
   `,
   styles: `
+    /*
+     * A deep link used to put a section heading flush at y=0, scrolling the page
+     * title, the back link, and the standing summary out of view — so a learner
+     * arriving from Generate could not tell what page they had landed on. The
+     * margin is the height of that chrome.
+     */
+    #words,
+    #grammar {
+      scroll-margin-top: 12rem;
+    }
+
     .standing {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -241,8 +252,14 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
       margin-left: auto;
     }
 
+    /*
+     * The heading and its Add source control share a line only while there is
+     * nothing to put below them. An open editor asks for a full row of its own
+     * (flex-basis: 100%), which nowrap silently refused — so opening
+     * Add source → Pasted list drew the editor over the "Words" heading.
+     */
     @media (min-width: 560px) {
-      .section-heading {
+      .section-heading:not(:has(mn-provider-selection.is-editor)) {
         flex-wrap: nowrap;
         align-items: flex-start;
       }

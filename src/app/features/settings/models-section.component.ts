@@ -91,6 +91,22 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
               role="dialog"
               aria-label="OpenRouter connection"
             >
+              <!--
+                What OpenRouter is and where a key comes from, on the one screen
+                a first-run blocker sends people to. Money and an external
+                account are at stake, which is what standing prose is for.
+              -->
+              <p class="mn-hint">
+                OpenRouter is the one service Monosai sends text to. It bills your account per
+                request; Monosai stores the key on this device only.
+              </p>
+              <a
+                class="mn-hint"
+                href="https://openrouter.ai/settings/keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Get a key on openrouter.ai (opens in a new tab)</a
+              >
               <label class="mn-field">
                 <span>{{ credential.isConfigured() ? 'Replace API key' : 'API key' }}</span>
                 <input
@@ -133,20 +149,32 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
           [attr.data-readiness]="text.readiness()"
         >
           <div class="node-head">
-            <h3 id="mn-text-model-label">Text</h3>
-            @if (retestable(text.readiness())) {
-              <button
-                type="button"
-                class="status status--action"
-                data-testid="test-text-model"
-                [disabled]="text.action() !== 'idle'"
-                (click)="text.test()"
+            <h3 class="mn-section-label" id="mn-text-model-label">Text</h3>
+            <!--
+              Where this stands and the press that moves it on, in the slot the
+              Audio head puts them in. Text used to show one or the other, so
+              the two cards said different kinds of thing in the same place.
+            -->
+            <div class="head-status">
+              <span
+                class="status"
+                [class.status--ok]="text.readiness() === 'ready'"
+                [class.status--bad]="text.readiness() === 'failed'"
+                data-testid="text-readiness"
+                >{{ readinessLabel(text.readiness(), text.action() === 'testing') }}</span
               >
-                {{ statusLabel(text.readiness(), text.action() === 'testing') }}
-              </button>
-            } @else if (text.readiness() === 'ready') {
-              <span class="status status--ok">Ready</span>
-            }
+              @if (retestable(text.readiness())) {
+                <button
+                  type="button"
+                  class="status status--action"
+                  data-testid="test-text-model"
+                  [disabled]="text.action() !== 'idle'"
+                  (click)="text.test()"
+                >
+                  {{ statusLabel(text.readiness(), text.action() === 'testing') }}
+                </button>
+              }
+            </div>
           </div>
 
           <mn-model-picker
@@ -281,7 +309,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
           [attr.data-readiness]="tts.readiness()"
         >
           <div class="node-head">
-            <h3 id="mn-audio-model-label">Audio</h3>
+            <h3 class="mn-section-label" id="mn-audio-model-label">Audio</h3>
             <!--
               The same two answers the Text head gives — where this stands, and
               the press that moves it on — because a speech model that has never
@@ -488,6 +516,10 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     .tree {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+      /* Each card is as tall as its own contents. Opening the separate
+         translation and grammar models grew TEXT and left AUDIO with a card of
+         empty space beside it. */
+      align-items: start;
       gap: var(--space-3);
     }
     .node {
@@ -517,11 +549,9 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     }
     .node-head h3 {
       overflow: hidden;
-      font-size: var(--text-sm);
+      color: var(--text-primary);
       font-weight: 700;
-      letter-spacing: 0.06em;
       text-overflow: ellipsis;
-      text-transform: uppercase;
     }
     /* A branch is subordinate to its node, and its label says so. */
     .node-head h4 {
@@ -934,6 +964,22 @@ export class ModelsSectionComponent {
   protected retestable(readiness: ConfigurationReadiness): boolean {
     return readiness === 'untested' || readiness === 'stale' || readiness === 'failed';
   }
+  /** Where a capability stands, as a badge. Never an instruction — that is the
+   * button beside it. */
+  protected readinessLabel(readiness: ConfigurationReadiness, busy = false): string {
+    if (busy) {
+      return 'Testing…';
+    }
+    return {
+      ready: 'Ready',
+      untested: 'Not tested',
+      stale: 'Needs testing',
+      failed: 'Test failed',
+      'no-credential': 'No key',
+      incomplete: 'No model',
+    }[readiness];
+  }
+
   protected statusLabel(readiness: ConfigurationReadiness, busy = false): string {
     if (busy) {
       return 'Testing…';

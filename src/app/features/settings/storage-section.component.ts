@@ -38,7 +38,7 @@ function formatBytes(bytes: number | null): string {
     <section class="mn-panel" aria-labelledby="mn-storage-heading">
       <h2 id="mn-storage-heading">Storage</h2>
 
-      <dl>
+      <dl class="mn-facts">
         <div>
           <dt>Browser storage protection</dt>
           <!--
@@ -121,28 +121,6 @@ function formatBytes(bytes: number | null): string {
     </section>
   `,
   styles: `
-    dl {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      margin: 0;
-    }
-
-    dl div {
-      display: grid;
-      grid-template-columns: minmax(12rem, 20rem) minmax(0, 1fr);
-      gap: var(--space-2);
-      align-items: baseline;
-    }
-
-    dt {
-      color: var(--text-secondary);
-    }
-
-    dd {
-      margin: 0;
-    }
-
     .danger {
       display: flex;
       flex-direction: column;
@@ -171,13 +149,6 @@ function formatBytes(bytes: number | null): string {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-2);
-    }
-
-    @media (max-width: 36rem) {
-      dl div {
-        grid-template-columns: 1fr;
-        gap: var(--space-1);
-      }
     }
 
     .confirm,

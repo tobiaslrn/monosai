@@ -113,7 +113,7 @@ function formatList(items: readonly string[]): string {
       } @else if (savedReading(); as reading) {
         <section class="result-screen" aria-label="Saved story details">
           <div class="ready-mark" aria-hidden="true">✓</div>
-          <p class="eyebrow">Saved to your library</p>
+          <p class="mn-eyebrow eyebrow">Saved to your library</p>
           <p class="story-title" lang="ja" data-testid="saved-title">{{ reading.title }}</p>
           @if (preparingLabel(); as label) {
             <p class="mn-hint" data-testid="saved-preparation">{{ label }}</p>
@@ -162,7 +162,7 @@ function formatList(items: readonly string[]): string {
         </section>
       } @else if (state().kind === 'cancelled') {
         <section class="result-screen" aria-labelledby="mn-generate-cancelled-heading">
-          <p class="eyebrow">Nothing was saved</p>
+          <p class="mn-eyebrow eyebrow">Nothing was saved</p>
           <h2 id="mn-generate-cancelled-heading">Generation stopped</h2>
           <p class="mn-hint">Your premise and instructions are still here.</p>
           <div class="actions">

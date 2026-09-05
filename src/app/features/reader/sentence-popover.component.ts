@@ -66,7 +66,7 @@ export interface UnknownWord {
       -->
       @if (unknownWords().length > 0) {
         <section class="vocabulary" aria-labelledby="mn-sentence-vocabulary">
-          <h3 id="mn-sentence-vocabulary">Words you may not know</h3>
+          <h3 class="mn-section-label" id="mn-sentence-vocabulary">Words you may not know</h3>
           <ul class="words">
             @for (word of unknownWords(); track word.surface) {
               <li>
@@ -80,7 +80,7 @@ export interface UnknownWord {
 
       @if (concerns().length > 0) {
         <section class="grammar" aria-labelledby="mn-sentence-grammar">
-          <h3 id="mn-sentence-grammar">Grammar</h3>
+          <h3 class="mn-section-label" id="mn-sentence-grammar">Grammar</h3>
           @for (finding of concerns(); track $index) {
             <p class="finding-label">{{ finding.label }}</p>
             <p class="finding-text" lang="en">{{ finding.explanationEn }}</p>
@@ -284,12 +284,7 @@ export interface UnknownWord {
 
     /* A quiet section label rather than a heading competing with the answer. */
     h3 {
-      margin: 0 0 var(--space-2);
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      margin-bottom: var(--space-2);
     }
 
     .finding-label {

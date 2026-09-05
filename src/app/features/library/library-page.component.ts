@@ -1,4 +1,5 @@
 import type { ElementRef, TemplateRef } from '@angular/core';
+import { formatList, startSentence } from '../../domain/shared/locale';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -176,8 +177,12 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     </ng-template>
   `,
   styles: `
+    /*
+     * The shared rail, not a wider one of its own: above ~1200px a 1120px shelf
+     * overhung the app bar by 80px on both sides, so the wordmark, the shelf
+     * heading, and New story each started at a different x.
+     */
     .library-page {
-      max-width: 1120px;
       gap: var(--space-7);
     }
 
@@ -418,7 +423,7 @@ export class LibraryPageComponent {
       title: `Delete ${plan.title}?`,
       message: 'This cannot be undone. It permanently removes:',
       details: plan.removes,
-      footnote: `${plan.preserves.join(', ')} are not affected.`,
+      footnote: `${startSentence(formatList(plan.preserves))} are not affected.`,
       confirmLabel: 'Delete permanently',
       cancelLabel: 'Keep it',
       tone: 'danger',

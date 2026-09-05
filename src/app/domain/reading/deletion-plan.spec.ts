@@ -77,8 +77,12 @@ describe('describeDeletion', () => {
 
   it('states that vocabulary and settings survive', () => {
     const plan = describeDeletion(reading());
-    expect(plan.preserves.join(' ')).toContain('vocabulary');
+    expect(plan.preserves.join(' ')).toContain('your words');
     expect(plan.preserves.join(' ')).toContain('settings');
+    // Joined into one sentence at render time, so no phrase carries a capital.
+    expect(
+      plan.preserves.every((phrase) => phrase === phrase.replace(/^./, (c) => c.toLowerCase())),
+    ).toBe(true);
   });
 });
 

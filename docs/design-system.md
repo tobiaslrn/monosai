@@ -368,6 +368,13 @@ that an error occurred.
 Sentence case everywhere: page titles, section headings, buttons, menu items,
 labels. Title case is not a rank and is not used to mark one.
 
+**One exception, named:** a small-caps label may rank a fragment below the heading
+above it where adding another heading level would be worse. There are two, both in
+`_controls.scss`, and no third is written inline: `.mn-eyebrow` (accented, above a
+result or a group) and `.mn-section-label` (quiet, over a list inside a card). The
+markup stays sentence case; only the rendering is capitalised. Anything that could be
+an ordinary heading is one instead.
+
 ### The prose budget
 
 Standing explanatory text exists only where **money, network, or data loss is at

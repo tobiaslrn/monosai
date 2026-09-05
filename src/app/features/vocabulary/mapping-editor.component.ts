@@ -1,3 +1,4 @@
+import { formatList, startSentence } from '../../domain/shared/locale';
 import { Dialog } from '@angular/cdk/dialog';
 import { FormsModule } from '@angular/forms';
 import { ANKI_PROVIDER_FACTORY } from '../../application/shared/anki-tokens';
@@ -46,9 +47,22 @@ const STALE_REASONS: Record<StaleReason, string> = {
               <span class="kind">{{ kindLabel(source) }}</span>
             </div>
             <div class="source-actions">
-              @if (source.kind !== 'anki-package' || canConfigure(source)) {
-                <button type="button" class="mn-button" (click)="toggleEdit(source.id)">
-                  {{ editingId() === source.id ? 'Close' : 'Edit' }}
+              <!--
+                Only while the editor is shut. An open editor carries its own
+                Cancel beside the Save it abandons, and offering Close up here
+                as well gave one action two unlabelled ways to be taken back.
+              -->
+              @if (
+                editingId() !== source.id &&
+                (source.kind !== 'anki-package' || canConfigure(source))
+              ) {
+                <button
+                  type="button"
+                  class="mn-button"
+                  aria-expanded="false"
+                  (click)="toggleEdit(source.id)"
+                >
+                  Edit
                 </button>
               }
               <button
@@ -490,7 +504,7 @@ export class MappingEditorComponent {
       title: plan.title,
       message: 'This cannot be undone. It permanently removes:',
       details: plan.removes,
-      footnote: `${plan.preserves.join(' and ')} are not affected. To keep the source but leave its words out, clear "Include in vocabulary" instead.`,
+      footnote: `${startSentence(formatList(plan.preserves))} are not affected. To keep the source but leave its words out, clear "Include in vocabulary" instead.`,
       confirmLabel: 'Remove permanently',
       cancelLabel: 'Keep it',
       tone: 'danger',

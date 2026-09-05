@@ -1,4 +1,5 @@
 import type { ElementRef, TemplateRef } from '@angular/core';
+import { formatList, startSentence } from '../../domain/shared/locale';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -1517,7 +1518,7 @@ export class ReaderPageComponent {
       title: `Delete ${plan.title}?`,
       message: 'This cannot be undone. It permanently removes:',
       details: plan.removes,
-      footnote: `${plan.preserves.join(', ')} are not affected.`,
+      footnote: `${startSentence(formatList(plan.preserves))} are not affected.`,
       confirmLabel: 'Delete permanently',
       cancelLabel: 'Keep it',
       tone: 'danger',

@@ -87,7 +87,7 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
   template: `
     @for (message of [copy()]; track message.key) {
       <div class="copy" data-testid="generation-copy">
-        <p class="eyebrow">Creating your story</p>
+        <p class="mn-eyebrow eyebrow">Creating your story</p>
         <h2>
           <span class="status-title">{{ message.title }}</span
           ><span class="loading-dots" aria-hidden="true"
