@@ -36,7 +36,7 @@ test.describe('the model tree', () => {
     await stubOpenRouter(page);
     await page.goto('./#/settings');
     await saveApiKey(page);
-    await expectReadiness(textModelReadiness(page), 'not-configured');
+    await expectReadiness(textModelReadiness(page), 'incomplete');
 
     // No Test button is pressed anywhere here: choosing the model is what runs
     // the compatibility test, and readiness is the whole of the answer.
@@ -156,7 +156,7 @@ test.describe('the model tree', () => {
     // The preview plays itself; it never leaves a player for the learner to operate.
     await expect(page.locator('audio')).toHaveCount(1);
     await expect(page.locator('audio')).not.toHaveAttribute('controls', /.*/);
-    await expectReadiness(textModelReadiness(page), 'not-configured');
+    await expectReadiness(textModelReadiness(page), 'incomplete');
   });
 
   test('shows offline failure without losing the chosen model', async ({ page, context }) => {

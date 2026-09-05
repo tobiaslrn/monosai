@@ -601,7 +601,7 @@ async function chooseModel(page: Page, picker: string, modelId: string): Promise
  */
 export async function addTextModel(page: Page, modelId: string): Promise<void> {
   await chooseModel(page, 'text-model-picker', modelId);
-  await expect(textModelReadiness(page)).not.toHaveAttribute('data-readiness', 'not-configured');
+  await expect(textModelReadiness(page)).not.toHaveAttribute('data-readiness', 'incomplete');
 }
 
 /** Opens the translation and grammar branches of the text node. */
