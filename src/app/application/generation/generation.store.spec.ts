@@ -56,6 +56,17 @@ describe('GenerationStore strict pass', () => {
     expect(state.reading.validationOutcome).toEqual({ kind: 'strict' });
   });
 
+  it('generates from an empty premise, which leaves the topic to the model', async () => {
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    await bed.store.generate(5, { premise: '   ' });
+
+    expect(bed.provider.generationCalls.story).toBe(1);
+    expect(bed.store.state().kind).toBe('saved');
+    const saved = bed.readings.readings[0];
+    expect(saved.kind === 'generated' ? saved.premise : null).toBe('');
+  });
+
   it('writes the text, the frozen validation, and the provenance together', async () => {
     bed.provider.storyQueue.push(ok(strictStory()));
 
@@ -462,8 +473,8 @@ describe('GenerationStore failures', () => {
     expect(state.error.code).toBe('capability-unsupported');
   });
 
-  it('refuses an empty premise before spending a request', async () => {
-    await bed.store.generate(5, { premise: '   ' });
+  it('refuses a premise past the limit before spending a request', async () => {
+    await bed.store.generate(5, { premise: 'あ'.repeat(1_001) });
 
     expect(bed.provider.generationCalls.story).toBe(0);
     expect(bed.store.state().kind).toBe('failed');

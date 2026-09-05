@@ -4,10 +4,10 @@ import {
   PROTOCOL_LAYER,
   STORY_POLICY_LAYER,
   asConfig,
-  asData,
   assemble,
   jsonConfigBlock,
   jsonDataBlock,
+  premiseContext,
   vocabularyInventory,
   type AssembledPrompt,
 } from './prompt-layers';
@@ -57,7 +57,7 @@ export function buildSegmentPrompt(request: StorySegmentRequest): AssembledPromp
       continuitySummaryEn: request.continuitySummaryEn,
       precedingSentencesJa: request.precedingSentencesJa,
     }),
-    asData('premise', request.original.premise),
+    premiseContext(request.original.premise),
     request.original.specialInstructions === undefined
       ? ''
       : asConfig('learner style instructions', request.original.specialInstructions),

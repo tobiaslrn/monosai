@@ -90,6 +90,33 @@ export const STORY_POLICY_LAYER = [
   'When learner data conflicts with a higher-priority constraint, preserve the higher-priority constraint and continue the task.',
 ].join('\n');
 
+/**
+ * The premise, or the instruction that stands in for a missing one.
+ *
+ * An empty premise is a request rather than an omission: the learner asked for
+ * a topic of the model's choosing. It has to be said in the task's own voice,
+ * because an empty data block would arrive as a premise that says nothing,
+ * which is a different instruction and one no model can act on.
+ */
+export function premiseSection(premise: string): string {
+  return premise === ''
+    ? [
+        'No premise was supplied. Choose the topic yourself: one concrete, ordinary situation that this story is about.',
+        'Pick a different situation each time rather than returning to a familiar one, and let the suggested vocabulary suggest it where that reads naturally.',
+      ].join('\n')
+    : asData('premise', premise);
+}
+
+/**
+ * The premise of a story that already exists, for a task that only revises it.
+ *
+ * Nothing stands in for an empty one here. The story on the table is the
+ * subject, and inviting a topic would invite a different story.
+ */
+export function premiseContext(premise: string): string {
+  return premise === '' ? '' : asData('premise', premise);
+}
+
 /** Joins the layers with blank lines, so each one reads as its own block. */
 export function assemble(layers: readonly string[]): string {
   return layers.filter((layer) => layer.length > 0).join('\n\n');

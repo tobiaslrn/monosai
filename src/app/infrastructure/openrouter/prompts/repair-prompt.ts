@@ -10,10 +10,10 @@ import {
   PROTOCOL_LAYER,
   STORY_POLICY_LAYER,
   asConfig,
-  asData,
   assemble,
   jsonConfigBlock,
   jsonDataBlock,
+  premiseContext,
   vocabularyInventory,
   type AssembledPrompt,
 } from './prompt-layers';
@@ -74,7 +74,7 @@ export function buildRepairPrompt(request: StoryRepairRequest): AssembledPrompt 
       attempt: request.attempt,
       disallowedReason: DISALLOWED_REASON,
     }),
-    asData('premise', request.original.premise),
+    premiseContext(request.original.premise),
     request.original.specialInstructions === undefined
       ? ''
       : asConfig('learner style instructions', request.original.specialInstructions),
@@ -114,7 +114,7 @@ export function buildScopedRepairPrompt(
       titleIndex: TITLE_INDEX,
       targetIndexes: scopedRepairTargets(entries).map((entry) => entry.index),
     }),
-    asData('premise', request.original.premise),
+    premiseContext(request.original.premise),
     request.original.specialInstructions === undefined
       ? ''
       : asConfig('learner style instructions', request.original.specialInstructions),

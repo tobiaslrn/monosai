@@ -4,9 +4,9 @@ import {
   PROTOCOL_LAYER,
   STORY_POLICY_LAYER,
   asConfig,
-  asData,
   assemble,
   jsonConfigBlock,
+  premiseSection,
   vocabularyInventory,
   type AssembledPrompt,
 } from './prompt-layers';
@@ -53,7 +53,7 @@ export function buildStoryPrompt(request: StoryGenerationRequest): AssembledProm
     jsonConfigBlock('story requirements', {
       requestedSentenceCount: request.requestedSentenceCount,
     }),
-    asData('premise', request.premise),
+    premiseSection(request.premise),
     request.specialInstructions === undefined
       ? ''
       : asConfig('learner style instructions', request.specialInstructions),

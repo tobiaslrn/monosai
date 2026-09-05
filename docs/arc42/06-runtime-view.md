@@ -92,7 +92,7 @@ sequenceDiagram
     participant Worker as Language worker
     participant Repo as Reading repository
 
-    Learner->>Store: premise, length
+    Learner->>Store: premise (optional), length
     Store->>Store: check prerequisites, then capture<br/>snapshot, profile, policy, and model
     Store->>Provider: write the story
     Provider-->>Store: a structured story
@@ -111,6 +111,11 @@ sequenceDiagram
     Repo-->>Store: saved
     Note over Store,Repo: The saved story's declared aid layers<br/>are queued for the preparation lane (§6.4).
 ```
+
+A premise is optional. An empty one is a request rather than an omission: the story prompt says in
+its own voice that no premise was supplied and that the model chooses the situation, because an
+empty premise block would arrive as a premise that says nothing. Only the character limits are
+validated before anything is spent.
 
 Generation writes Japanese and stops. The aid layers the story declares are produced afterwards by
 the preparation lane described in [§6.4](#the-preparation-lane), so a story reaches the library as

@@ -124,8 +124,7 @@ export interface StoryCandidate {
   readonly sentences: readonly CandidateSentence[];
 }
 
-export type StoryInputIssueCode =
-  'premise-empty' | 'premise-too-long' | 'special-instructions-too-long';
+export type StoryInputIssueCode = 'premise-too-long' | 'special-instructions-too-long';
 
 export interface StoryInputIssue {
   readonly code: StoryInputIssueCode;
@@ -135,6 +134,7 @@ export interface StoryInputIssue {
 
 /** The learner's own text, trimmed and proven to fit the documented limits. */
 export interface ValidatedStoryInput {
+  /** Empty when the learner left the topic to the model. */
   readonly premise: string;
   readonly specialInstructions?: string;
 }
@@ -174,13 +174,9 @@ export function validateStoryInput(
   const premise = draft.premise.trim();
   const instructions = draft.specialInstructions?.trim() ?? '';
 
-  if (premise === '') {
-    issues.push({
-      code: 'premise-empty',
-      field: 'premise',
-      message: 'Describe what the story should be about.',
-    });
-  } else if (countCodePoints(premise) > MAX_PREMISE_LENGTH) {
+  // An empty premise is a choice, not an omission: it asks the model for a
+  // topic of its own. Only the limits are enforced here.
+  if (countCodePoints(premise) > MAX_PREMISE_LENGTH) {
     issues.push({
       code: 'premise-too-long',
       field: 'premise',

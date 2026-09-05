@@ -69,14 +69,14 @@ describe('validateStoryInput', () => {
     expect('specialInstructions' in result.value).toBe(false);
   });
 
-  it('rejects a premise that is empty once trimmed', () => {
+  it('accepts a premise that is empty, which asks for a topic of its own', () => {
     const result = validateStoryInput({ premise: '\n  \t ' });
 
-    expect(result.ok).toBe(false);
-    if (result.ok) {
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
       return;
     }
-    expect(result.error.map((issue) => issue.code)).toEqual(['premise-empty']);
+    expect(result.value.premise).toBe('');
   });
 
   it('measures the limit in characters, so a surrogate pair counts once', () => {
@@ -100,7 +100,7 @@ describe('validateStoryInput', () => {
 
   it('reports every failing field at once rather than one at a time', () => {
     const result = validateStoryInput({
-      premise: '',
+      premise: 'あ'.repeat(MAX_PREMISE_LENGTH + 1),
       specialInstructions: 'x'.repeat(MAX_SPECIAL_INSTRUCTIONS_LENGTH + 1),
     });
 
