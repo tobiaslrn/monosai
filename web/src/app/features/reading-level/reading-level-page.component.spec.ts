@@ -151,11 +151,9 @@ describe('ReadingLevelPageComponent', () => {
   it('counts the words in the learner-facing noun once a source has been read', async () => {
     const { element, fixture } = await render();
 
-    element.querySelector<HTMLButtonElement>('[data-testid="add-source"]')?.click();
+    element.querySelector<HTMLButtonElement>('[data-testid="add-words"]')?.click();
     await settle(fixture);
-    element.querySelector<HTMLButtonElement>('[data-testid="choose-ankiconnect"]')?.click();
-    await settle(fixture);
-    element.querySelector<HTMLButtonElement>('[data-testid="connect-ankiconnect"]')?.click();
+    element.querySelector<HTMLButtonElement>('[data-testid="choose-anki"]')?.click();
     await settle(fixture);
     await vi.waitFor(async () => {
       await settle(fixture);
@@ -182,7 +180,8 @@ describe('ReadingLevelPageComponent', () => {
       await settle(fixture);
       expect(text(element, '[data-testid="words-standing"]')).toMatch(/\bwords?$/);
     });
-    expect(text(element, '.fact .detail')).toContain('From Anki');
+    expect(text(element, '[data-testid="source-standing"]')).toContain('from Anki');
+    expect(element.querySelectorAll('[data-testid="source-row"]')).toHaveLength(1);
   });
 
   it('says how many words a story needs while there are too few', async () => {
@@ -211,7 +210,7 @@ describe('ReadingLevelPageComponent', () => {
     await settle(fixture);
 
     expect(text(element, '[data-testid="words-standing"]')).toBe('12 words');
-    expect(text(element, '.fact .detail')).toContain('at least 50 words');
+    expect(element.querySelector('#words')?.textContent).toContain('at least 50 words');
   });
 
   it('names the current value of every closed disclosure', async () => {
@@ -244,20 +243,33 @@ describe('ReadingLevelPageComponent', () => {
     expect(scrolled).toContain('wording');
   });
 
-  it('reports a source failure with a recovery and an escape', async () => {
-    const { element, fixture, refresh } = await render();
+  /**
+   * The failure belongs where the learner is standing when it happens: in the
+   * sheet they just pressed Anki in, with the code and the way to look it up.
+   */
+  it('reports a failed connection in the sheet, with its code and a way to look it up', async () => {
+    TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, {
+      useValue: () =>
+        new FakeAnkiProvider(CONTRACT_COLLECTION, {
+          probeError: { domain: 'anki', code: 'not-running', message: 'nothing answered' },
+        }),
+    });
+    const { element, fixture } = await render();
 
-    await refresh.connect(
-      new FakeAnkiProvider(CONTRACT_COLLECTION, {
-        probeError: { domain: 'anki', code: 'origin-not-allowed', message: 'blocked' },
-      }),
-    );
+    element.querySelector<HTMLButtonElement>('[data-testid="add-words"]')?.click();
     await settle(fixture);
-    const alert = element.querySelector('[role="alert"]');
+    element.querySelector<HTMLButtonElement>('[data-testid="choose-anki"]')?.click();
+    await vi.waitFor(async () => {
+      await settle(fixture);
+      expect(element.querySelector('[data-testid="anki-connect-failed"]')).not.toBeNull();
+    });
 
-    expect(alert?.textContent).toContain('Anki refused this address');
-    expect(alert?.textContent).toContain('still current');
-    expect(alert?.textContent).toContain('anki/origin-not-allowed');
+    const alert = element.querySelector('[data-testid="anki-connect-failed"]');
+    expect(alert?.getAttribute('role')).toBe('alert');
+    expect(alert?.textContent).toContain('Nothing is listening on 8765');
+    expect(alert?.textContent).toContain('AnkiConnect add-on');
+    expect(alert?.textContent).toContain('anki/not-running');
+    expect(alert?.querySelector('a[href*="troubleshooting"]')).not.toBeNull();
   });
 
   it('keeps the language failure surface and its retry', async () => {
@@ -289,19 +301,35 @@ describe('ReadingLevelPageComponent', () => {
     expect(text(element, '[data-testid="words-standing"]')).toMatch(/\bwords?$/);
   });
 
-  it('saves the chosen AnkiConnect port before connecting', async () => {
+  /**
+   * The port is only ever touched when a connection fails, so that is the only
+   * place it is offered — behind a disclosure, beside the retry it changes.
+   */
+  it('offers the port only after a failure, and saves it on the retry', async () => {
+    TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, {
+      useValue: () =>
+        new FakeAnkiProvider(CONTRACT_COLLECTION, {
+          probeError: { domain: 'anki', code: 'not-running', message: 'nothing answered' },
+        }),
+    });
     const { element, fixture } = await render();
     const settings = TestBed.inject(AppSettingsStore);
 
-    element.querySelector<HTMLButtonElement>('[data-testid="add-source"]')?.click();
+    element.querySelector<HTMLButtonElement>('[data-testid="add-words"]')?.click();
     await settle(fixture);
-    element.querySelector<HTMLButtonElement>('[data-testid="choose-ankiconnect"]')?.click();
-    await settle(fixture);
+    expect(element.querySelector('[data-testid="anki-connect-port"]')).toBeNull();
+
+    element.querySelector<HTMLButtonElement>('[data-testid="choose-anki"]')?.click();
+    await vi.waitFor(async () => {
+      await settle(fixture);
+      expect(element.querySelector('[data-testid="anki-connect-port"]')).not.toBeNull();
+    });
+
     const port = element.querySelector<HTMLInputElement>('[data-testid="anki-connect-port"]');
     if (port === null) throw new Error('missing AnkiConnect port input');
     port.value = '9999';
     port.dispatchEvent(new Event('input'));
-    element.querySelector<HTMLButtonElement>('[data-testid="connect-ankiconnect"]')?.click();
+    element.querySelector<HTMLButtonElement>('[data-testid="anki-retry"]')?.click();
 
     await vi.waitFor(() => {
       expect(settings.ankiConnectPort()).toBe(9_999);

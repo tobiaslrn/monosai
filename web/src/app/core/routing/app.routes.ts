@@ -85,6 +85,14 @@ export const APP_ROUTES: Routes = [
         (m) => m.ReadingLevelPageComponent,
       ),
   },
+  {
+    // One source, and everything it can be configured to do. A page rather
+    // than a row, because the list is for choosing what to open.
+    path: 'reading-level/source/:sourceId',
+    title: 'Source · Monosai',
+    loadComponent: () =>
+      import('../../features/vocabulary/source-page.component').then((m) => m.SourcePageComponent),
+  },
   // The two routes this screen replaced. Links live in bookmarks, in the
   // service worker's share redirect, and in anything Android saved, so each
   // keeps working and lands on the half of the merged page it meant, carrying

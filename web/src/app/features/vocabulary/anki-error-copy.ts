@@ -1,4 +1,6 @@
 import type { AnkiErrorCode } from '../../domain/anki/anki-error';
+import type { HostPlatform } from '../../domain/platform/host-platform';
+import { ANKI_LINKS } from './anki-links';
 
 /**
  * What the learner is told about one failure.
@@ -227,4 +229,113 @@ export function copyForFailure(error: {
   // came from a runtime value and may name a variant this table predates.
   const table: Partial<Record<string, AnkiErrorCopy>> = ANKI_ERROR_COPY;
   return table[error.code] ?? ANKI_ERROR_COPY.unknown;
+}
+
+/** A sentence that may carry one link, so prose and its link stay one thought. */
+export interface FailureParagraph {
+  readonly before: string;
+  readonly link?: { readonly href: string; readonly text: string };
+  readonly after?: string;
+}
+
+/**
+ * What a failed connection attempt says, on the platform it failed on.
+ *
+ * Separate from `ANKI_ERROR_COPY` because that table answers "what does this
+ * code mean" for every surface, and this answers the narrower question the
+ * connect panel asks: the learner has just pressed Anki, nothing happened, and
+ * there is exactly one thing to go and fix.
+ */
+export interface ConnectFailureCopy {
+  readonly headline: string;
+  readonly paragraphs: readonly FailureParagraph[];
+  /**
+   * Whether to offer the port.
+   *
+   * Only where a port is a thing the learner can have wrong: the bridge fixes
+   * its own, and no other failure is a question of where to knock.
+   */
+  readonly offersPort: boolean;
+}
+
+/** Beside the "reads, never writes" claim, which is worth little unchecked. */
+const BRIDGE_IS_READ_ONLY: FailureParagraph = {
+  before: 'It reads your collection and never writes to it — ',
+  link: { href: ANKI_LINKS.bridgeSource, text: 'see the source' },
+  after: '.',
+};
+
+export function connectFailureCopy(
+  platform: HostPlatform,
+  error: { readonly domain: string; readonly code: string },
+  port: number,
+): ConnectFailureCopy {
+  if (platform === 'android' && error.code === 'bridge-not-running') {
+    return {
+      headline: 'The bridge is not running.',
+      paragraphs: [
+        {
+          before: 'Open the Monosai bridge and press Start. Do not have it? ',
+          link: { href: ANKI_LINKS.bridgeReleases, text: 'Download the app' },
+          after: '.',
+        },
+        BRIDGE_IS_READ_ONLY,
+      ],
+      offersPort: false,
+    };
+  }
+  if (platform === 'android' && error.code === 'ankidroid-not-installed') {
+    return {
+      headline: 'AnkiDroid was not found on this device.',
+      paragraphs: [
+        { before: 'Install AnkiDroid 2.24 or newer, open your collection, then try again.' },
+        BRIDGE_IS_READ_ONLY,
+      ],
+      offersPort: false,
+    };
+  }
+  if (platform === 'android' && error.code === 'ankidroid-permission-denied') {
+    return {
+      headline: 'The bridge cannot read AnkiDroid yet.',
+      paragraphs: [
+        { before: 'Open the Monosai bridge, grant it access to AnkiDroid, then try again.' },
+        BRIDGE_IS_READ_ONLY,
+      ],
+      offersPort: false,
+    };
+  }
+  if (platform === 'desktop' && error.code === 'not-running') {
+    return {
+      headline: `Nothing is listening on ${String(port)}.`,
+      paragraphs: [
+        {
+          before: 'Open Anki. If it is already open, it needs the ',
+          link: { href: ANKI_LINKS.ankiConnectAddon, text: 'AnkiConnect add-on' },
+          after: ' — install it, then restart Anki.',
+        },
+      ],
+      offersPort: true,
+    };
+  }
+  if (platform === 'desktop' && error.code === 'addon-missing-or-unreachable') {
+    return {
+      headline: 'Anki answered, but AnkiConnect did not.',
+      paragraphs: [
+        {
+          before: 'Check that the ',
+          link: { href: ANKI_LINKS.ankiConnectAddon, text: 'AnkiConnect add-on' },
+          after: ' is installed and enabled, then restart Anki.',
+        },
+      ],
+      offersPort: true,
+    };
+  }
+  // Everything else already has words that fit here: what failed, then the one
+  // thing to do about it.
+  const copy = copyForFailure(error);
+  return {
+    headline: copy.whatFailed,
+    paragraphs: [{ before: copy.primaryAction }],
+    offersPort: platform === 'desktop',
+  };
 }
