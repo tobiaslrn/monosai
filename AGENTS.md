@@ -70,9 +70,25 @@ Commands:
 - `npm run e2e:full` — full browser regression; use for shared E2E changes
 - `npm run e2e:pwa` — production-build PWA and offline suite
 
+Keep the local feedback loop staged:
+
+- During implementation, run only the directly affected test files, for example
+  `npm test -- --include src/app/example/example.spec.ts`.
+- After the focused tests pass, run `npm test` once before committing a code
+  change. Do not repeatedly run the complete suite while iterating.
+- Do not run `npm run test:coverage` locally by default. CI owns the coverage
+  thresholds and reports. Run coverage locally only when changing its
+  thresholds, exclusions, reporters, or CI integration, or when CI is unavailable.
+- Run smoke E2E checks for browser-visible or cross-layer behavior, narrowing
+  them with `--grep` while iterating when possible. Reserve `e2e:full` for shared
+  E2E infrastructure or broad browser behavior, and `e2e:pwa` for PWA changes.
+- Reserve `npm run verify` for CI/build-pipeline changes and unusually broad or
+  high-risk work; it is not the default inner-loop command.
+
 Before finishing, run checks proportional to the risk, including lint, type
-checks, and the production build when relevant. `npm run verify` runs exactly
-CI's blocking gates; when you add a gate to one, add it to the other.
+checks, the production build when relevant, and the smoke E2E lane when the
+change affects browser-visible or cross-layer behavior. `npm run verify` runs
+exactly CI's blocking gates; when you add a gate to one, add it to the other.
 
 ## Build and CI
 
