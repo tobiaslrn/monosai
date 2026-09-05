@@ -72,10 +72,36 @@ prevent.
 
 ## Android bridge
 
-On Android, Monosai speaks the same read-only AnkiConnect protocol to a bridge
-app running alongside AnkiDroid, rather than to desktop Anki. Install and
-configure that bridge outside Monosai; once it is answering on the device,
-the connection test in Vocabulary behaves identically to the desktop case.
+Packages are the recommended simple setup on Android and the only Anki path
+on iOS. For optional live access, use Android 16+ and AnkiDroid 2.24+:
+
+1. Install AnkiDroid and the signed Monosai Anki bridge APK from a `bridge-v*`
+   [GitHub release](https://github.com/tobiaslrn/monosai/releases?q=bridge-v).
+2. Open AnkiDroid with your collection. In the bridge, choose **Grant AnkiDroid
+   access**, then **Start bridge**. AnkiDroid calls this database read/write
+   access because it has no read-only permission; the bridge only exposes reads.
+3. In Monosai, choose **Add source → AnkiDroid bridge → Connect to AnkiDroid**.
+   Review the suggested deck, note type, Japanese field and words, then confirm.
+
+This is two native installs plus the PWA and a permission grant. Port 8765 is
+fixed, independent of the desktop port setting. The Pages origin and
+`http://localhost:4200` work by default; other origins can be added in the bridge.
+AnkiDroid 2.23 and older cannot supply the required searchable card review data.
+An incompatible third-party bridge is reported as unsupported, not as a missing
+desktop permission setting.
+
+The bridge stays available without polling or wake locks and can restart after
+reboot while enabled. It does not request notification permission, so its service
+notification stays out of the drawer; Android still lists it under Active apps.
+Force stop and device battery policies can stop it. Open it and press Start if
+it stops answering. **Stop bridge** disables automatic restart.
+
+Bridge updates are checked once when you open it. Downloaded APKs must match the
+installed signer. Android requires allowing installs from this app and confirming
+the update in the system installer; silent installation is not supported. Debug
+builds cannot update to release builds signed with a different key. The PWA keeps
+its existing service-worker updates independently. See the
+[bridge guide](../android-bridge/README.md) for builds and device verification.
 
 ## The package fallback
 

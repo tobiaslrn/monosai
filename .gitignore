@@ -31,3 +31,11 @@ npm-debug.log
 Thumbs.db
 /web/.asset-cache
 .claude/settings.local.json
+
+# Android bridge build and local signing material
+/android-bridge/.gradle/
+/android-bridge/.kotlin/
+/android-bridge/**/build/
+/android-bridge/local.properties
+*.jks
+*.keystore

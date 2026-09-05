@@ -1,4 +1,4 @@
-* text=auto eol=lf
-*.ico binary
-*.png binary
-*.woff2 binary
+# The Gradle wrapper batch script relies on CRLF: cmd.exe mis-parses `goto`
+# targets in a LF-terminated batch file.
+gradlew.bat text eol=crlf
+gradlew text eol=lf

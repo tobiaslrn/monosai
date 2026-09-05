@@ -8,7 +8,7 @@ renamed, the layer a concern belongs to does not.
 ### Overview diagram
 
 An arrow means "may import". The linter enforces exactly these arrows, from the `layerZones` list in
-[`eslint.config.js`](../../eslint.config.js), which is the authority for them. Any other import fails
+[`eslint.config.js`](../../web/eslint.config.js), which is the authority for them. Any other import fails
 the build.
 
 ```mermaid
@@ -64,7 +64,7 @@ the providers, and owns the shell and the router, so it must be allowed to see e
 ## 5.2 Level 2: how each layer is divided
 
 The vocabulary application layer owns an unsaved Anki connection draft. The
-domain scores bounded visible field samples; the desktop adapter obtains them
+domain scores bounded visible field samples; both live adapters obtain them
 through validated read-only requests. Features render the mapping and preview,
 and confirmation uses the existing atomic vocabulary commit boundary.
 
@@ -98,6 +98,19 @@ to `enrichment`. And `shared` is not a catch-all: it holds only the primitives e
 needs, and everything in it is either a type or a pure function.
 
 ## 5.3 Level 3
+
+### Whitebox: the Android bridge
+
+`android-bridge/app/` is a separate native artifact, never a wrapper for `web/`.
+Its Activity owns Start/Stop, permission, exact allowed origins and update UI.
+The foreground service owns Ktor CIO and optional boot restart. HTTP owns origin
+and PNA handling, input limits and envelope serialization. Its router can call
+only the eight `AllowedReads` through the read-only `AnkiReads` port. Query
+classes join cards, decks, notes and model fields through ContentProvider queries.
+The update boundary makes bounded HTTPS requests to GitHub only on app launch or
+explicit download and verifies the APK signer before system installation.
+`protocol/fixtures/` is consumed by both JVM and web tests. See
+[ADR 0056](../decisions/0056-first-party-ankidroid-bridge.md).
 
 ### Whitebox: the reader page and its audio
 

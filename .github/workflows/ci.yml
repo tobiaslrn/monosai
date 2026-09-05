@@ -16,6 +16,35 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  bridge:
+    name: Android bridge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - run: node --test scripts/bridge/release-version.test.mjs
+      - run: node scripts/bridge/icons.mjs --check
+      - name: Test, assemble, lint and resolve production licences
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug :app:runtimeLicenses
+        working-directory: android-bridge
+      - name: Check the resolved APK dependency graph and licences
+        run: node scripts/licenses/check-licenses.mjs --check --gradle-report android-bridge/app/build/reports/runtime-dependencies.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: bridge-debug
+          path: |
+            android-bridge/app/build/outputs/apk/debug/*.apk
+            android-bridge/app/build/reports
+          if-no-files-found: ignore
+
   # Cheap checks first so an obvious break reports in seconds. Ordered by cost:
   # the advisory formatting check runs last because it cannot fail the job.
   static:
@@ -178,7 +207,7 @@ jobs:
   gate:
     name: All checks
     if: always()
-    needs: [static, unit, build, e2e, e2e-pwa]
+    needs: [static, unit, build, bridge, e2e, e2e-pwa]
     runs-on: ubuntu-latest
     steps:
       - name: Report each job's result
@@ -186,6 +215,7 @@ jobs:
           echo "static:  ${{ needs.static.result }}"
           echo "unit:    ${{ needs.unit.result }}"
           echo "build:   ${{ needs.build.result }}"
+          echo "bridge:  ${{ needs.bridge.result }}"
           echo "e2e:     ${{ needs.e2e.result }}"
           echo "e2e-pwa: ${{ needs.e2e-pwa.result }}"
       - name: Fail unless every job succeeded

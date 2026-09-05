@@ -15,3 +15,6 @@ README.md
 /web/public/assets/language
 /web/data/language
 /web/.asset-cache
+/protocol/fixtures
+/android-bridge/**/build
+/android-bridge/.gradle

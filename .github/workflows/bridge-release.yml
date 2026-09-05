@@ -1,0 +1,59 @@
+name: Release Android bridge
+
+on:
+  push:
+    tags: ['bridge-v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bridge-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Validate and derive release version
+        run: |
+          node --test scripts/bridge/release-version.test.mjs
+          node scripts/bridge/icons.mjs --check
+          node scripts/bridge/release-version.mjs
+      - name: Verify before accessing signing material
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:runtimeLicenses
+        working-directory: android-bridge
+      - run: node scripts/licenses/check-licenses.mjs --check --gradle-report android-bridge/app/build/reports/runtime-dependencies.json
+      - name: Sign release APK
+        working-directory: android-bridge
+        env:
+          BRIDGE_KEYSTORE_BASE64: ${{ secrets.BRIDGE_KEYSTORE_BASE64 }}
+          BRIDGE_STORE_PASSWORD: ${{ secrets.BRIDGE_STORE_PASSWORD }}
+          BRIDGE_KEY_ALIAS: ${{ secrets.BRIDGE_KEY_ALIAS }}
+          BRIDGE_KEY_PASSWORD: ${{ secrets.BRIDGE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          export BRIDGE_KEYSTORE="$RUNNER_TEMP/bridge-release.jks"
+          trap 'rm -f "$BRIDGE_KEYSTORE"' EXIT
+          printf '%s' "$BRIDGE_KEYSTORE_BASE64" | base64 --decode > "$BRIDGE_KEYSTORE"
+          ./gradlew :app:assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/monosai-anki-bridge.apk"
+      - name: Publish signed APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" "$RUNNER_TEMP/monosai-anki-bridge.apk" \
+            --verify-tag --title "Monosai Anki bridge $BRIDGE_VERSION_NAME" \
+            --notes-file android-bridge/release-notes.md --latest=false
