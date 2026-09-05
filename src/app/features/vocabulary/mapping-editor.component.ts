@@ -404,7 +404,11 @@ export class MappingEditorComponent {
     this.editingId.update((current) => (current === id ? null : id));
     const source = this.store.sources().find((candidate) => candidate.id === id);
     if (this.editingId() === id && source?.kind === 'anki-connect' && !this.canConfigure(source)) {
-      await this.refresh.connect(this.createConnection(source.providerKind));
+      await this.refresh.connect(
+        this.createConnection(
+          source.providerKind === 'android-connect' ? 'android-connect' : 'desktop-connect',
+        ),
+      );
     }
   }
 
