@@ -12,6 +12,7 @@ import {
   SOURCE_MAPPING_REPOSITORY,
   VOCABULARY_REPOSITORY,
 } from '../app/application/shared/repository-tokens';
+import { HOST_PLATFORM, type HostPlatform } from '../app/domain/platform/host-platform';
 import { SnapshotBuilder } from '../app/application/vocabulary/snapshot-builder';
 import { SourceMappingStore } from '../app/application/vocabulary/source-mapping.store';
 import { VocabularyRefreshStore } from '../app/application/vocabulary/vocabulary-refresh.store';
@@ -336,6 +337,9 @@ export function configureVocabularyTestBed(): VocabularyTestBed {
       { provide: ID_GENERATOR, useValue: sequentialIds() },
       { provide: SHARED_PACKAGE_INBOX, useValue: sharedInbox },
       { provide: LanguageStore, useValue: { initialize: () => Promise.resolve(true) } },
+      // Pinned rather than sniffed: a suite that ran under a different user
+      // agent would silently exercise a different Anki adapter.
+      { provide: HOST_PLATFORM, useValue: 'desktop' satisfies HostPlatform },
     ],
   });
 

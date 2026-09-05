@@ -11,6 +11,7 @@ import { FormsModule } from '@angular/forms';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { technicalCode } from '../../domain/shared/errors';
 import { vocabularySourceId } from '../../domain/shared/ids';
+import { ANKI_LINKS } from './anki-links';
 
 /**
  * The incoming Anki package: quiet while it works, a chooser only when the
@@ -51,10 +52,18 @@ import { vocabularySourceId } from '../../domain/shared/ids';
               Your current vocabulary and other sources are unchanged.
               @if (!current.canRetry) {
                 Export the deck from Anki or AnkiDroid with scheduling information included, then
-                add it again.
+                add it again —
+                <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
+                  >how to export (opens in a new tab)</a
+                >.
               }
             </p>
-            <p class="mn-hint code">{{ code() }}</p>
+            <p class="mn-hint code">
+              {{ code() }} ·
+              <a [href]="links.troubleshooting" target="_blank" rel="noopener noreferrer"
+                >what this means (opens in a new tab)</a
+              >
+            </p>
             <div class="actions">
               @if (current.canRetry) {
                 <button
@@ -228,6 +237,7 @@ import { vocabularySourceId } from '../../domain/shared/ids';
 export class PackageImportComponent {
   protected readonly store = inject(PackageImportStore);
   protected readonly state = this.store.state;
+  protected readonly links = ANKI_LINKS;
   private readonly selectionHeading = viewChild<ElementRef<HTMLElement>>('selectionHeading');
 
   protected readonly progress = computed(() => {

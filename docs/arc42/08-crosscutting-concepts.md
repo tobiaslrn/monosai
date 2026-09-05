@@ -194,7 +194,7 @@ surface are decided separately, in the paragraph gesture directive: a short tap 
 to whatever it landed on, and a press held for 450ms opens sentence details from the
 pressed word, punctuation, furigana, or line leading. That press is why the reading
 surface — and only the reading surface, and only under a finger — gives up native text
-selection and the platform's long-press callout ([ADR 0057](../decisions/0057-one-gesture-per-meaning-on-touch.md)).
+selection and the platform's long-press callout ([ADR 0058](../decisions/0058-one-gesture-per-meaning-on-touch.md)).
 A gesture that fired consumes its own release and click by pointer id, so the popover's
 outside-press rule cannot dismiss the surface that press just opened. Focus is set and
 returned with `preventScroll`, and replacing one surface with another skips the

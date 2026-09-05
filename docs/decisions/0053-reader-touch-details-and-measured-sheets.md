@@ -2,7 +2,7 @@
 
 Date: 2026-09-04
 Status: Superseded for touch gestures, detail-surface content, and the sheet viewport cap by
-[0057](0057-one-gesture-per-meaning-on-touch.md); retained for the measured player boundary
+[0058](0058-one-gesture-per-meaning-on-touch.md); retained for the measured player boundary
 Supersedes: the reader touch gesture and sheet-sizing rules in [0031](0031-touch-reading-gestures-and-docked-details.md) and [0032](0032-touch-word-taps-and-one-selection-colour.md)
 
 ## Context

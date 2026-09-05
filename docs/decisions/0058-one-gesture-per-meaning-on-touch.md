@@ -1,4 +1,4 @@
-# 0057 — On touch, a tap opens a word and a held press opens its sentence
+# 0058 — On touch, a tap opens a word and a held press opens its sentence
 
 Date: 2026-09-05
 Status: Accepted
