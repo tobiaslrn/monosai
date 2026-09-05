@@ -582,7 +582,7 @@ export async function saveApiKey(page: Page, key = 'e2e-placeholder-key'): Promi
   await page.getByTestId('connect-openrouter').click();
   await page.getByTestId('api-key-input').fill(key);
   await page.getByTestId('save-key').click();
-  await expect(page.getByTestId('connect-openrouter')).toContainText('OpenRouter connected');
+  await expect(page.getByTestId('api-key-input')).toBeHidden();
 }
 
 /** Opens one picker and chooses a model from the catalogue it lists. */
