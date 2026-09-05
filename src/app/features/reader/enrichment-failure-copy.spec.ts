@@ -3,7 +3,11 @@ import { ALL_AI_ERROR_CODES, aiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import { storageError } from '../../domain/storage/storage-error';
 import { AI_TASK_COPY, aiErrorAction } from '../../shared-ui/ai-error/ai-error-copy';
-import { describeEnrichmentFailure } from './enrichment-failure-copy';
+import {
+  describeEnrichmentFailure,
+  enrichmentCanRetry,
+  enrichmentNeedsSettings,
+} from './enrichment-failure-copy';
 
 /**
  * The three aids a reader can watch fail, and the surface each one appears on.
@@ -75,5 +79,26 @@ describe('describeEnrichmentFailure', () => {
     });
 
     expect(message).toContain('The sentence itself is unchanged.');
+  });
+});
+
+describe('enrichmentCanRetry', () => {
+  it('offers another attempt when a model answered in the wrong shape', () => {
+    const failure = {
+      source: 'provider',
+      error: aiError('malformed-response', 'translation', 'x'),
+    } as const;
+
+    expect(enrichmentCanRetry(failure)).toBe(true);
+    // A better-suited model is still worth offering alongside the retry.
+    expect(enrichmentNeedsSettings(failure)).toBe(true);
+  });
+
+  it('refuses a retry that cannot change its own answer', () => {
+    for (const code of ['authentication', 'model-not-found', 'credit-exhausted'] as const) {
+      const failure = { source: 'provider', error: aiError(code, 'translation', 'x') } as const;
+
+      expect(enrichmentCanRetry(failure), code).toBe(false);
+    }
   });
 });
