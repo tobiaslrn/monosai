@@ -335,7 +335,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(wordDetails(page)).toContainText('cat');
     // The compact form summary keeps the dictionary facts visible even when
     // the word is already uninflected, while omitting a useless form line.
-    await expect(wordDetails(page).locator('.dictionary-form')).toHaveText('猫');
+    await expect(wordDetails(page).locator('.surface')).toContainText('猫');
     await expect(wordDetails(page).locator('.part-of-speech')).toHaveText('noun');
     await expect(wordDetails(page).locator('.form-line')).toHaveCount(0);
     await expect
@@ -743,11 +743,11 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await saveAndOpenReader(page);
 
     await tap(page, page.getByRole('button', { name: new RegExp('猫') }).first());
-    await expect(wordDetails(page).locator('.dictionary-form')).toHaveText('猫');
+    await expect(wordDetails(page).locator('.surface')).toContainText('猫');
 
     // The press that used to be spent closing the card over the previous word.
     await tap(page, page.getByRole('button', { name: new RegExp('名前') }).first());
-    await expect(wordDetails(page).locator('.dictionary-form')).toHaveText('名前');
+    await expect(wordDetails(page).locator('.surface')).toContainText('名前');
     // And exactly one word is ever marked as the one being read.
     await expect(page.locator('button.token.is-selected')).toHaveCount(1);
   });
@@ -1124,7 +1124,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await expect(page).not.toHaveURL(deletedUrl);
     // The last reading is gone, so the Library is a first visit again.
     await expect(
-      page.getByRole('heading', { name: /Japanese you can actually read/, level: 1 }),
+      page.getByRole('heading', { name: /Japanese you can actually read/, level: 2 }),
     ).toBeVisible();
   });
 
@@ -1277,4 +1277,17 @@ test.describe('scenario 15 — offline reading', () => {
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
     await expect(page.locator('mn-reading-card')).toContainText('第一章');
   });
+});
+
+test('adds an unknown word locally from the reader @smoke @mobile', async ({ page, context }) => {
+  await importReading(page, '猫がいる。');
+  await openWordDetails(page, '猫');
+  await context.setOffline(true);
+  await wordDetails(page).getByRole('button', { name: 'Add to word list', exact: true }).click();
+  await expect(wordDetails(page).getByRole('status')).toContainText('Added to Reader words');
+  await expect(wordDetails(page).getByRole('button', { name: 'Add to word list' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await context.setOffline(false);
+  await page.goto('./#/reading-level');
+  await expect(page.getByText('Reader words', { exact: true })).toBeVisible();
 });

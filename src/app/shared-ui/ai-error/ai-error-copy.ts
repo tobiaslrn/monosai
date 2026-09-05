@@ -160,9 +160,9 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     heading: 'The audio could not be played',
     whatFailed: 'The clip that came back was empty, in an unsupported format, or undecodable.',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: 'Try a different TTS model or voice.',
-    retryAction: 'Choose a different TTS model or voice in Settings, then try again.',
-    escape: 'Text-to-speech is optional and never blocks reading or generation.',
+    primaryAction: 'Try a different audio model or voice.',
+    retryAction: 'Choose a different audio model or voice in Settings, then try again.',
+    escape: 'Audio is optional and never blocks reading or generation.',
   },
   unknown: {
     heading: 'Something unexpected went wrong',
@@ -204,9 +204,9 @@ export function aiErrorCopy(error: AiError): AiErrorCopy {
   ) {
     return {
       ...AI_ERROR_COPY['capability-unsupported'],
-      primaryAction: 'Check the exact TTS model and voice IDs, then test again.',
-      retryAction: 'Check the TTS model and voice IDs in Settings, then try again.',
-      escape: 'Voice names are model-specific and case sensitive. Text-to-speech is optional.',
+      primaryAction: 'Check the exact audio model and voice IDs, then test again.',
+      retryAction: 'Check the audio model and voice IDs in Settings, then try again.',
+      escape: 'Voice names are model-specific and case sensitive. Audio is optional.',
     };
   }
   return AI_ERROR_COPY[error.code];

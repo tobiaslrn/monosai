@@ -1,3 +1,4 @@
+import { isRetryable } from '../../domain/storage/storage-error';
 import type { EnrichmentFailure } from '../../application/enrichment/sentence-enrichment.service';
 import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
 
@@ -22,4 +23,34 @@ export function describeEnrichmentFailure(failure: EnrichmentFailure | null): st
     return `Saving failed: ${failure.error.message} The sentence itself is unchanged.`;
   }
   return aiFailureMessage(failure.error, 'reader');
+}
+
+/** Configuration failures need a changed setting before another request can help. */
+export function enrichmentNeedsSettings(failure: EnrichmentFailure | null): boolean {
+  if (failure?.source !== 'provider')
+    return failure?.source === 'storage' && !isRetryable(failure.error);
+  switch (failure.error.code) {
+    case 'authentication':
+    case 'model-not-found':
+    case 'capability-unsupported':
+    case 'malformed-response':
+    case 'context-budget-exceeded':
+    case 'audio-invalid':
+      return true;
+    case 'offline':
+    case 'timeout':
+    case 'cancelled':
+    case 'rate-limited':
+    case 'provider-unavailable':
+    case 'unknown':
+    case 'credit-exhausted':
+      return false;
+  }
+}
+
+export function enrichmentCanRetry(failure: EnrichmentFailure | null): boolean {
+  return (
+    !enrichmentNeedsSettings(failure) &&
+    !(failure?.source === 'provider' && failure.error.code === 'credit-exhausted')
+  );
 }

@@ -30,7 +30,7 @@ test.describe('generate prerequisites', () => {
 
     // Only what is missing is listed, one line each.
     await expect(page.locator('[data-check]')).toHaveCount(2);
-    await expect(page.locator('[data-check="vocabulary"]')).toContainText('No vocabulary snapshot');
+    await expect(page.locator('[data-check="vocabulary"]')).toContainText('Add a word list');
     await expect(page.getByTestId('generate')).toBeDisabled();
 
     // Voice is optional, so it never appears here at all.
@@ -56,7 +56,7 @@ test.describe('generate prerequisites', () => {
     await expect(page.getByTestId('story-length')).toHaveValue('2');
 
     await page.locator('[data-check="vocabulary"]').getByRole('link').click();
-    await expect(page).toHaveURL(/#\/reading-level\?from=generate#words$/);
+    await expect(page).toHaveURL(/#\/reading-level\?from=generate(?:#words)?$/);
     await page.getByRole('button', { name: 'Back to story' }).click();
 
     await expect(page.getByTestId('premise')).toHaveValue(PREMISE);

@@ -80,6 +80,7 @@ function aidsWith(overrides: Partial<SentenceAids>): SentenceAids {
     [canAnalyze]="canAnalyze()"
     [translationModelConfigured]="translationModelConfigured()"
     [grammarModelConfigured]="grammarModelConfigured()"
+    [audioModelConfigured]="audioModelConfigured()"
     [unknownWords]="unknownWords()"
     (translate)="requests = requests + 1"
     (analyzeGrammar)="analyses = analyses + 1"
@@ -93,6 +94,7 @@ class HostComponent {
   readonly canAnalyze = signal(true);
   readonly translationModelConfigured = signal(true);
   readonly grammarModelConfigured = signal(true);
+  readonly audioModelConfigured = signal(true);
   readonly unknownWords = signal<readonly UnknownWord[]>([]);
   requests = 0;
   analyses = 0;
@@ -282,7 +284,7 @@ describe('SentencePopoverComponent', () => {
     expect(alert).toContain('out of credit');
     expect(alert).toContain('Add credit on openrouter.ai');
     expect(alert.toLowerCase()).not.toContain('save it again');
-    expect(translateButton(rendered)?.textContent).toContain('Translate again');
+    expect(translateButton(rendered)).toBeUndefined();
   });
 
   it('offers Settings when translation has no configured model', () => {
@@ -431,6 +433,35 @@ describe('SentencePopoverComponent', () => {
         button.textContent.includes(label),
       );
     }
+
+    it('offers Settings after Audio is requested without a voice, with no pointless retry', () => {
+      const fixture = render();
+      fixture.componentInstance.audioModelConfigured.set(false);
+      audioButton(host(fixture), 'Audio')?.click();
+      expect(fixture.componentInstance.syntheses).toBe(1);
+      fixture.componentInstance.aids.set(
+        aidsWith({
+          audioAction: {
+            state: 'failed',
+            error: {
+              source: 'provider',
+              error: aiError('capability-unsupported', 'tts-synthesis', 'No voice'),
+            },
+          },
+        }),
+      );
+      fixture.detectChanges();
+      const rendered = host(fixture);
+      expect(rendered.querySelector('[role="alert"]')?.textContent).toContain(
+        'No voice is configured.',
+      );
+      expect(rendered.textContent).toContain('Your reading and saved aids are unchanged.');
+      expect(rendered.querySelector('a[routerlink="/settings"]')?.textContent).toContain(
+        'Open Settings',
+      );
+      expect(audioButton(rendered, 'Audio')).toBeUndefined();
+      expect(rendered.textContent).not.toContain('This model cannot');
+    });
 
     it('offers to generate audio, as a label and nothing more', () => {
       const fixture = render();

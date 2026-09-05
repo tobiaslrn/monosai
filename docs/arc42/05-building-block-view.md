@@ -181,3 +181,12 @@ flowchart TB
 This is one client rather than one per task because of
 [ADR 0018](../decisions/0018-openrouter-request-boundary.md): the credential boundary, the retry
 limits, and the error model are single concerns, and duplicating them is how one of them drifts.
+
+### Reader additions to word lists
+
+Word details calls `ReaderWordListService` only after **Add to word list** is pressed.
+It appends to the first included pasted list, or creates **Reader words** when there is none.
+`VocabularySyncService` prepares the changed source and cache, then commits source, cache,
+snapshot, provenance and activation in one transaction. Failure leaves the previous vocabulary
+intact. Successful writes reload source/history stores and invalidate local classification.
+The entire path works locally; Anki access remains read-only.

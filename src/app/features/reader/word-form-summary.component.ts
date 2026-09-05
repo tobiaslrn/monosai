@@ -8,9 +8,13 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
   template: `
     <section class="form-summary" aria-label="Word form">
       <p class="dictionary-line" aria-label="Dictionary form and part of speech">
-        <strong class="dictionary-form" lang="ja">{{ summary().dictionaryForm }}</strong>
+        @if (summary().dictionaryForm !== surface()) {
+          <strong class="dictionary-form" lang="ja">{{ summary().dictionaryForm }}</strong>
+        }
         @if (summary().partOfSpeech; as partOfSpeech) {
-          <span class="separator" aria-hidden="true">·</span>
+          @if (summary().dictionaryForm !== surface()) {
+            <span class="separator" aria-hidden="true">·</span>
+          }
           <span class="part-of-speech">{{ partOfSpeech }}</span>
         }
       </p>
@@ -64,5 +68,6 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
   `,
 })
 export class WordFormSummaryComponent {
+  readonly surface = input('');
   readonly summary = input.required<WordFormSummary>();
 }

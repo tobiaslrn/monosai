@@ -8,10 +8,10 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import type { SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { describeEnrichmentFailure } from './enrichment-failure-copy';
+import { enrichmentCanRetry } from './enrichment-failure-copy';
+import { AidFailureComponent } from './aid-failure.component';
 
 /** One word in this sentence that the learner's vocabulary does not cover. */
 export interface UnknownWord {
@@ -45,7 +45,7 @@ export interface UnknownWord {
 @Component({
   selector: 'mn-sentence-popover',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [IconComponent, AidFailureComponent],
   template: `
     <div class="sentence-popover">
       @if (aids().translation; as translation) {
@@ -54,14 +54,10 @@ export interface UnknownWord {
         <p class="mn-hint" role="status">Translating…</p>
       }
 
-      @if (translationSetupNeeded()) {
-        <div class="setup-message" role="alert">
-          <p class="mn-error">No translation model is configured.</p>
-          <a class="mn-button" routerLink="/settings">Open Settings</a>
-        </div>
-      } @else if (failure(); as failure) {
-        <p class="mn-error" role="alert">{{ failure }}</p>
-      }
+      <mn-aid-failure
+        [failure]="aids().translationAction.error"
+        [setupMessage]="translationSetupNeeded() ? 'No translation model is configured.' : null"
+      />
 
       <!--
         The two warnings the page marks, said in words. A learner who pressed a
@@ -95,21 +91,18 @@ export interface UnknownWord {
       @if (grammarRunning()) {
         <p class="mn-hint" role="status">Analyzing…</p>
       }
-      @if (grammarSetupNeeded()) {
-        <div class="setup-message" role="alert">
-          <p class="mn-error">No grammar model is configured.</p>
-          <a class="mn-button" routerLink="/settings">Open Settings</a>
-        </div>
-      } @else if (grammarFailure(); as failure) {
-        <p class="mn-error" role="alert">{{ failure }}</p>
-      }
+      <mn-aid-failure
+        [failure]="aids().grammarAction.error"
+        [setupMessage]="grammarSetupNeeded() ? 'No grammar model is configured.' : null"
+      />
 
       @if (audioRunning()) {
         <p class="mn-hint" role="status">Generating…</p>
       }
-      @if (audioFailure(); as failure) {
-        <p class="mn-error" role="alert">{{ failure }}</p>
-      }
+      <mn-aid-failure
+        [failure]="aids().audioAction.error"
+        [setupMessage]="audioSetupNeeded() ? 'No voice is configured.' : null"
+      />
 
       <!--
         The sentence's actions as one tray: an icon, a label, and nothing else.
@@ -344,6 +337,7 @@ export class SentencePopoverComponent {
   readonly translationModelConfigured = input(true);
   /** Whether a tested model is available for the grammar action. */
   readonly grammarModelConfigured = input(true);
+  readonly audioModelConfigured = input(true);
   /** Words in this sentence carrying the vocabulary warning, in reading order. */
   readonly unknownWords = input<readonly UnknownWord[]>([]);
 
@@ -362,6 +356,7 @@ export class SentencePopoverComponent {
     if (aids.translation !== null || aids.translationAction.state === 'running') {
       return null;
     }
+    if (!enrichmentCanRetry(aids.translationAction.error)) return null;
     return aids.translationAction.state === 'failed' ? 'Translate again' : 'Translate';
   });
 
@@ -380,6 +375,7 @@ export class SentencePopoverComponent {
     if (aids.grammarAction.state === 'running') {
       return null;
     }
+    if (!enrichmentCanRetry(aids.grammarAction.error)) return null;
     if (aids.grammarAction.state === 'failed') {
       return 'Grammar again';
     }
@@ -403,14 +399,9 @@ export class SentencePopoverComponent {
     if (aids.audio !== null) {
       return 'Play';
     }
+    if (!enrichmentCanRetry(aids.audioAction.error)) return null;
     return aids.audioAction.state === 'failed' ? 'Audio again' : 'Audio';
   });
-
-  protected readonly failure = computed(() =>
-    this.translationSetupNeeded()
-      ? null
-      : describeEnrichmentFailure(this.aids().translationAction.error),
-  );
 
   protected readonly translationSetupNeeded = computed(() => {
     const failure = this.aids().translationAction.error;
@@ -421,13 +412,14 @@ export class SentencePopoverComponent {
     );
   });
 
-  protected readonly audioFailure = computed(() =>
-    describeEnrichmentFailure(this.aids().audioAction.error),
-  );
-
-  protected readonly grammarFailure = computed(() =>
-    this.grammarSetupNeeded() ? null : describeEnrichmentFailure(this.aids().grammarAction.error),
-  );
+  protected readonly audioSetupNeeded = computed(() => {
+    const failure = this.aids().audioAction.error;
+    return (
+      !this.audioModelConfigured() &&
+      failure?.source === 'provider' &&
+      failure.error.code === 'capability-unsupported'
+    );
+  });
 
   protected readonly grammarSetupNeeded = computed(() => {
     const failure = this.aids().grammarAction.error;
