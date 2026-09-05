@@ -27,6 +27,8 @@ export interface PrerequisiteCheck {
 }
 
 export interface PrerequisiteInput {
+  readonly hasSources?: boolean;
+  readonly textModelFailure?: string | null;
   readonly textModelReadiness: ConfigurationReadiness;
   readonly structuredOutput: StructuredOutputMode | null;
   readonly snapshot: VocabularySnapshot | null;
@@ -38,27 +40,31 @@ function textModelDetail(input: PrerequisiteInput): string {
       return input.structuredOutput === null
         ? 'Run the model test once more so Monosai knows how this model returns structured replies.'
         : 'Your text model has passed its compatibility test.';
-    case 'not-configured':
-      return 'Add an OpenRouter key and an exact text-model ID.';
+    case 'no-credential':
+      return 'Add an OpenRouter key.';
+    case 'incomplete':
+      return 'Choose a text model.';
     case 'untested':
       return 'This model has not been tested yet.';
     case 'stale':
       return 'Your key or model changed since the last successful test.';
     case 'failed':
-      return 'The last test of this model failed.';
+      return input.textModelFailure ?? 'The last test of this model failed.';
   }
 }
 
-function vocabularyDetail(snapshot: VocabularySnapshot | null): string {
+function vocabularyDetail(snapshot: VocabularySnapshot | null, hasSources: boolean): string {
   if (snapshot === null) {
-    return 'No vocabulary snapshot yet. Connect Anki and refresh to build one.';
+    return hasSources
+      ? 'Your word list has not been read yet. Open your word sources and sync the list.'
+      : 'Add a word list — from Anki, an Anki package, or a pasted list.';
   }
   if (snapshot.uniqueEntryCount < GENERATION_SNAPSHOT_MINIMUM) {
-    return `Your snapshot has ${String(snapshot.uniqueEntryCount)} unique entries. Generation needs at least ${String(
+    return `Your word list has ${String(snapshot.uniqueEntryCount)} words. Stories need at least ${String(
       GENERATION_SNAPSHOT_MINIMUM,
     )}.`;
   }
-  return `${String(snapshot.uniqueEntryCount)} unique reviewed entries are available.`;
+  return `${String(snapshot.uniqueEntryCount)} words are available.`;
 }
 
 /**
@@ -83,12 +89,12 @@ export function prerequisiteChecks(input: PrerequisiteInput): readonly Prerequis
     },
     {
       id: 'vocabulary',
-      label: 'Vocabulary snapshot',
+      label: 'Word list',
       satisfied:
         input.snapshot !== null && input.snapshot.uniqueEntryCount >= GENERATION_SNAPSHOT_MINIMUM,
-      detail: vocabularyDetail(input.snapshot),
-      route: '/vocabulary',
-      actionLabel: 'Open Vocabulary',
+      detail: vocabularyDetail(input.snapshot, input.hasSources ?? false),
+      route: '/reading-level',
+      actionLabel: 'Open word sources',
     },
   ];
 }

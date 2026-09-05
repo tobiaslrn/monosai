@@ -262,6 +262,20 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
       await settings.put(row);
     },
   },
+  {
+    version: 10,
+    stores: V8_STORES,
+    upgrade: async (transaction) => {
+      const settings = transaction.table('settings');
+      for (const key of ['text-model', 'tts']) {
+        const row = (await settings.get(key)) as Record<string, unknown> | undefined;
+        if (row === undefined) continue;
+        const value = requireRecord(row['value'], 'model settings');
+        value['failedTests'] = [];
+        await settings.put(row);
+      }
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].version;

@@ -156,6 +156,27 @@ describe('ReadingLevelPageComponent', () => {
     element.querySelector<HTMLButtonElement>('[data-testid="choose-ankiconnect"]')?.click();
     await settle(fixture);
     element.querySelector<HTMLButtonElement>('[data-testid="connect-ankiconnect"]')?.click();
+    await settle(fixture);
+    await vi.waitFor(async () => {
+      await settle(fixture);
+      expect(element.querySelectorAll('mn-anki-mapping-draft select')).toHaveLength(3);
+    });
+    const selects = element.querySelectorAll<HTMLSelectElement>('mn-anki-mapping-draft select');
+    for (const [index, value] of ['Core Japanese', 'Basic', 'Expression'].entries()) {
+      selects[index].value = value;
+      selects[index].dispatchEvent(new Event('change'));
+      await settle(fixture);
+    }
+    [...element.querySelectorAll<HTMLButtonElement>('mn-anki-mapping-draft button')]
+      .find((button) => button.textContent.includes('Preview vocabulary'))
+      ?.click();
+    await vi.waitFor(async () => {
+      await settle(fixture);
+      expect(element.textContent).toContain('Confirm vocabulary');
+    });
+    [...element.querySelectorAll<HTMLButtonElement>('mn-anki-mapping-draft button')]
+      .find((button) => button.textContent.includes('Confirm vocabulary'))
+      ?.click();
 
     await vi.waitFor(async () => {
       await settle(fixture);

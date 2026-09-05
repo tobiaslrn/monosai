@@ -62,10 +62,28 @@ describe('TextModelStore', () => {
   }
 
   describe('readiness', () => {
+    it('retains a failed test in a new store and forgets it after a successful retry', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      provider.result = {
+        ok: false,
+        error: aiError('authentication', 'text-model-test', 'The provider rejected the saved key.'),
+      };
+      await store.test();
+      const reloaded = TestBed.runInInjectionContext(() => new TextModelStore());
+      await reloaded.load();
+      expect(reloaded.readiness()).toBe('failed');
+      expect(reloaded.testFailure()?.message).toContain('rejected the saved key');
+      provider.result = ok(modelTest(MODEL));
+      await reloaded.test();
+      expect(reloaded.readiness()).toBe('ready');
+      expect(settings.textModel.failedTests).toEqual([]);
+    });
+
     it('is not configured on a fresh install', async () => {
       const store = await ready();
 
-      expect(store.readiness()).toBe('not-configured');
+      expect(store.readiness()).toBe('incomplete');
       expect(provider.calls).toBe(0);
     });
 
@@ -75,7 +93,7 @@ describe('TextModelStore', () => {
       store.setDraftModelId(MODEL);
       await store.save();
 
-      expect(store.readiness()).toBe('not-configured');
+      expect(store.readiness()).toBe('no-credential');
     });
 
     it('is untested once a model is saved', async () => {
@@ -129,7 +147,7 @@ describe('TextModelStore', () => {
 
       await TestBed.inject(CredentialStore).remove();
 
-      expect(store.readiness()).toBe('not-configured');
+      expect(store.readiness()).toBe('no-credential');
       expect(settings.textModel.lastTestFingerprint).not.toBeNull();
     });
   });
@@ -248,7 +266,7 @@ describe('TextModelStore', () => {
         modelId: '',
         activePresetId: null,
       });
-      expect(store.readiness()).toBe('not-configured');
+      expect(store.readiness()).toBe('incomplete');
     });
 
     it('removes a default without silently choosing a replacement', async () => {
@@ -274,7 +292,7 @@ describe('TextModelStore', () => {
         activePresetId: null,
         modelId: '',
       });
-      expect(store.readiness()).toBe('not-configured');
+      expect(store.readiness()).toBe('incomplete');
     });
 
     it('keeps compatibility evidence on the tested preset', async () => {

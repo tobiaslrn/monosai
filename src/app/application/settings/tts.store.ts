@@ -1,3 +1,7 @@
+import {
+  configurationTestFailure,
+  recordConfigurationFailure,
+} from '../../domain/ai/failed-configuration-test';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
 import { ttsFingerprint } from '../../domain/ai/configuration-fingerprint';
@@ -60,6 +64,7 @@ export class TtsStore {
   });
   private readonly actionSignal = signal<TtsAction>('idle');
   private readonly testFailureSignal = signal<AiError | null>(null);
+  private readonly failureFingerprint = signal<string | null>(null);
   private readonly storageFailureSignal = signal<StorageError | null>(null);
   private readonly speedAppliedSignal = signal<boolean | null>(null);
   private readonly instructionsAppliedSignal = signal<boolean | null>(null);
@@ -71,7 +76,13 @@ export class TtsStore {
   readonly settings = this.settingsSignal.asReadonly();
   readonly draft = this.draftSignal.asReadonly();
   readonly action = this.actionSignal.asReadonly();
-  readonly testFailure = this.testFailureSignal.asReadonly();
+  readonly testFailure = computed(() => {
+    const fingerprint = this.fingerprintFor(this.settingsSignal());
+    return (
+      (this.failureFingerprint() === fingerprint ? this.testFailureSignal() : null) ??
+      configurationTestFailure(this.settingsSignal().failedTests, fingerprint, 'tts-test')
+    );
+  });
   readonly storageFailure = this.storageFailureSignal.asReadonly();
   /** False when the provider ignored the requested speed, so the UI can say so. */
   readonly speedApplied = this.speedAppliedSignal.asReadonly();
@@ -127,7 +138,7 @@ export class TtsStore {
       hasCredential: this.credential.isConfigured(),
       savedFingerprint: settings.lastTestFingerprint,
       currentFingerprint: this.fingerprintFor(settings),
-      lastAttemptFailed: this.testFailureSignal() !== null,
+      lastAttemptFailed: this.testFailure() !== null,
     });
   });
 
@@ -413,6 +424,7 @@ export class TtsStore {
 
     if (!result.ok) {
       this.testFailureSignal.set(result.error);
+      await this.persistTestFailure(result.error, this.fingerprintFor(settings));
       return;
     }
 
@@ -425,6 +437,9 @@ export class TtsStore {
     const saved = await this.repository.updateTtsSettings({
       speedSupported: result.value.speedApplied,
       speechInstructions: result.value.speechInstructionsApplied ? 'supported' : 'unsupported',
+      failedTests: (this.settingsSignal().failedTests ?? []).filter(
+        (test) => test.fingerprint !== this.fingerprintFor(settings),
+      ),
       lastTestFingerprint: this.fingerprintFor(settings),
       lastTestedAt: this.clock.now(),
     });
@@ -466,6 +481,7 @@ export class TtsStore {
 
     if (!result.ok) {
       this.testFailureSignal.set(result.error);
+      await this.persistTestFailure(result.error, this.fingerprintFor(preset));
       return;
     }
 
@@ -482,6 +498,9 @@ export class TtsStore {
     const isDefault = this.settingsSignal().activePresetId === id;
     const becomesDefault = this.settingsSignal().activePresetId === null;
     const saved = await this.repository.updateTtsSettings({
+      failedTests: (this.settingsSignal().failedTests ?? []).filter(
+        (test) => test.fingerprint !== fingerprint,
+      ),
       presets,
       ...(isDefault || becomesDefault
         ? {
@@ -513,6 +532,21 @@ export class TtsStore {
   }
 
   /** Stops a test that is still waiting, and says so rather than reporting a failure. */
+  private async persistTestFailure(error: AiError, fingerprint: string): Promise<void> {
+    this.failureFingerprint.set(fingerprint);
+    if (error.code === 'cancelled') return;
+    const saved = await this.repository.updateTtsSettings({
+      failedTests: recordConfigurationFailure(
+        this.settingsSignal().failedTests,
+        fingerprint,
+        this.clock.now(),
+        error,
+      ),
+    });
+    if (saved.ok) this.settingsSignal.set(saved.value);
+    else this.storageFailureSignal.set(saved.error);
+  }
+
   cancelTest(): void {
     const wasTesting = this.actionSignal() === 'testing';
     this.controller?.abort();

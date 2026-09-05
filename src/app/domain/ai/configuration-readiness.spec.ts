@@ -15,11 +15,11 @@ describe('readinessOf', () => {
   });
 
   it('is not configured when a field is missing', () => {
-    expect(readinessOf({ ...BASE, complete: false })).toBe('not-configured');
+    expect(readinessOf({ ...BASE, complete: false })).toBe('incomplete');
   });
 
   it('is not configured when no key is saved, whatever was tested before', () => {
-    expect(readinessOf({ ...BASE, hasCredential: false })).toBe('not-configured');
+    expect(readinessOf({ ...BASE, hasCredential: false })).toBe('no-credential');
   });
 
   it('is untested when nothing has been tried', () => {
@@ -35,8 +35,6 @@ describe('readinessOf', () => {
   });
 
   it('prefers missing configuration over a failure', () => {
-    expect(readinessOf({ ...BASE, complete: false, lastAttemptFailed: true })).toBe(
-      'not-configured',
-    );
+    expect(readinessOf({ ...BASE, complete: false, lastAttemptFailed: true })).toBe('incomplete');
   });
 });

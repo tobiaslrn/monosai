@@ -1,3 +1,7 @@
+import {
+  configurationTestFailure,
+  recordConfigurationFailure,
+} from '../../domain/ai/failed-configuration-test';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
 import { textModelFingerprint } from '../../domain/ai/configuration-fingerprint';
@@ -39,6 +43,7 @@ export class TextModelStore {
   );
   private readonly actionSignal = signal<TextModelAction>('idle');
   private readonly testFailureSignal = signal<AiError | null>(null);
+  private readonly failureFingerprint = signal<string | null>(null);
   private readonly storageFailureSignal = signal<StorageError | null>(null);
 
   private controller: AbortController | null = null;
@@ -47,7 +52,13 @@ export class TextModelStore {
   readonly draftModelId = this.draftSignal.asReadonly();
   readonly storyTokenBudgetDraft = this.storyTokenBudgetDraftSignal.asReadonly();
   readonly action = this.actionSignal.asReadonly();
-  readonly testFailure = this.testFailureSignal.asReadonly();
+  readonly testFailure = computed(() => {
+    const fingerprint = this.fingerprintFor(this.settingsSignal().modelId);
+    return (
+      (this.failureFingerprint() === fingerprint ? this.testFailureSignal() : null) ??
+      configurationTestFailure(this.settingsSignal().failedTests, fingerprint, 'text-model-test')
+    );
+  });
   readonly storageFailure = this.storageFailureSignal.asReadonly();
   /**
    * The mode the stored test proved, or null when no test currently vouches
@@ -89,7 +100,7 @@ export class TextModelStore {
       hasCredential: this.credential.isConfigured(),
       savedFingerprint: settings.lastTestFingerprint,
       currentFingerprint: this.fingerprintFor(settings.modelId),
-      lastAttemptFailed: this.testFailureSignal() !== null,
+      lastAttemptFailed: this.testFailure() !== null,
     });
   });
 
@@ -228,7 +239,12 @@ export class TextModelStore {
       hasCredential: this.credential.isConfigured(),
       savedFingerprint: preset.lastTestFingerprint ?? null,
       currentFingerprint: this.fingerprintForConfig(preset.modelId, preset.reasoningEffort),
-      lastAttemptFailed: this.testFailureSignal() !== null,
+      lastAttemptFailed:
+        configurationTestFailure(
+          this.settingsSignal().failedTests,
+          this.fingerprintForConfig(preset.modelId, preset.reasoningEffort),
+          'text-model-test',
+        ) !== null,
     });
   }
 
@@ -499,10 +515,14 @@ export class TextModelStore {
 
     if (!result.ok) {
       this.testFailureSignal.set(result.error);
+      await this.persistTestFailure(result.error, this.fingerprintFor(modelId));
       return;
     }
 
     const saved = await this.repository.updateTextModelSettings({
+      failedTests: (this.settingsSignal().failedTests ?? []).filter(
+        (test) => test.fingerprint !== this.fingerprintFor(modelId),
+      ),
       lastTestFingerprint: this.fingerprintFor(modelId),
       lastTestedAt: this.clock.now(),
       structuredOutput: result.value.structuredOutput,
@@ -536,6 +556,10 @@ export class TextModelStore {
     this.actionSignal.set('idle');
     if (!result.ok) {
       this.testFailureSignal.set(result.error);
+      await this.persistTestFailure(
+        result.error,
+        this.fingerprintForConfig(preset.modelId, preset.reasoningEffort),
+      );
       return;
     }
     const fingerprint = this.fingerprintForConfig(preset.modelId, preset.reasoningEffort);
@@ -553,6 +577,9 @@ export class TextModelStore {
     const isDefault = this.settingsSignal().activePresetId === id;
     const becomesDefault = this.settingsSignal().activePresetId === null && !id.startsWith('task-');
     const saved = await this.repository.updateTextModelSettings({
+      failedTests: (this.settingsSignal().failedTests ?? []).filter(
+        (test) => test.fingerprint !== fingerprint,
+      ),
       presets,
       ...(isDefault || becomesDefault
         ? {
@@ -616,6 +643,21 @@ export class TextModelStore {
           storyTokenBudget: settings.storyTokenBudget,
         }
       : null;
+  }
+
+  private async persistTestFailure(error: AiError, fingerprint: string): Promise<void> {
+    this.failureFingerprint.set(fingerprint);
+    if (error.code === 'cancelled') return;
+    const saved = await this.repository.updateTextModelSettings({
+      failedTests: recordConfigurationFailure(
+        this.settingsSignal().failedTests,
+        fingerprint,
+        this.clock.now(),
+        error,
+      ),
+    });
+    if (saved.ok) this.settingsSignal.set(saved.value);
+    else this.storageFailureSignal.set(saved.error);
   }
 
   cancelTest(): void {

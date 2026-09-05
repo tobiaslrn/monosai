@@ -6,7 +6,8 @@
  * says "this has never been tried". Both block generation, and neither deletes
  * anything that was already produced.
  */
-export type ConfigurationReadiness = 'not-configured' | 'untested' | 'stale' | 'ready' | 'failed';
+export type ConfigurationReadiness =
+  'no-credential' | 'incomplete' | 'untested' | 'stale' | 'ready' | 'failed';
 
 export interface ReadinessInput {
   /** Every field the configuration needs has a value. */
@@ -21,9 +22,8 @@ export interface ReadinessInput {
 }
 
 export function readinessOf(input: ReadinessInput): ConfigurationReadiness {
-  if (!input.complete || !input.hasCredential) {
-    return 'not-configured';
-  }
+  if (!input.hasCredential) return 'no-credential';
+  if (!input.complete) return 'incomplete';
   if (input.lastAttemptFailed) {
     return 'failed';
   }

@@ -52,9 +52,11 @@ export class AudioConfigurationService {
         aiError(
           'capability-unsupported',
           task,
-          readiness === 'not-configured'
+          readiness === 'incomplete'
             ? 'No text-to-speech model and voice are set up.'
-            : 'The saved text-to-speech configuration has not passed its test as it stands.',
+            : readiness === 'no-credential'
+              ? 'Add an OpenRouter key.'
+              : 'The saved text-to-speech configuration has not passed its test as it stands.',
           { detail: { capability: 'text-to-speech' } },
         ),
       );

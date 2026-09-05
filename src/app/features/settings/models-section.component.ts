@@ -63,8 +63,11 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
             aria-haspopup="dialog"
             (click)="toggleConnectionMenu()"
           >
-            <span class="connection-dot" [class.connected]="credential.isConfigured()"></span>
-            {{ credential.isConfigured() ? 'OpenRouter connected' : 'Connect OpenRouter' }}
+            <span
+              class="connection-dot"
+              [class.connected]="connectionLabel() === 'OpenRouter connected'"
+            ></span>
+            {{ connectionLabel() }}
             <svg
               class="chevron"
               [class.chevron--up]="connectionMenuOpen()"
@@ -633,6 +636,14 @@ export class ModelsSectionComponent {
   protected readonly text = inject(TextModelStore);
   protected readonly tts = inject(TtsStore);
   protected readonly keyDraft = signal('');
+  protected readonly connectionLabel = computed(() => {
+    if (!this.credential.isConfigured()) return 'Connect OpenRouter';
+    if (this.text.readiness() === 'failed' || this.tts.readiness() === 'failed')
+      return 'Connection needs attention';
+    return this.text.readiness() === 'ready' || this.tts.readiness() === 'ready'
+      ? 'OpenRouter connected'
+      : 'Key saved';
+  });
   protected readonly connectionMenuOpen = signal(false);
   protected readonly textModels = signal<readonly ModelCapabilities[]>([]);
   protected readonly speechModels = signal<readonly ModelCapabilities[]>([]);
@@ -708,7 +719,8 @@ export class ModelsSectionComponent {
         untested: 'Not tested',
         stale: 'Settings changed',
         failed: 'Failed',
-        'not-configured': 'No model',
+        'no-credential': 'No key',
+        incomplete: 'No model',
       })[this.audioStatus()],
   );
 
@@ -721,7 +733,8 @@ export class ModelsSectionComponent {
         untested: 'Preview this model before generating audio.',
         stale: 'The model, voice or speed changed since the last preview.',
         failed: 'The last preview failed.',
-        'not-configured': 'Choose a speech model and a voice.',
+        'no-credential': 'Add an OpenRouter key.',
+        incomplete: 'Choose a speech model and a voice.',
       })[this.audioStatus()],
   );
 
@@ -745,7 +758,8 @@ export class ModelsSectionComponent {
       case 'testing':
       case 'ready':
       case 'failed':
-      case 'not-configured':
+      case 'no-credential':
+      case 'incomplete':
         return null;
     }
   });
@@ -929,7 +943,8 @@ export class ModelsSectionComponent {
       untested: 'Test now',
       stale: 'Test again',
       failed: 'Failed — retry',
-      'not-configured': 'No model',
+      'no-credential': 'No key',
+      incomplete: 'No model',
     }[readiness];
   }
   private modelById(modelId: string): ModelCapabilities | null {
