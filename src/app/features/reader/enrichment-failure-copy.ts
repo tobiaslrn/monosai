@@ -48,9 +48,33 @@ export function enrichmentNeedsSettings(failure: EnrichmentFailure | null): bool
   }
 }
 
+/**
+ * Whether repeating the same request could plausibly succeed.
+ *
+ * Deliberately not the negation of {@link enrichmentNeedsSettings}: a model that
+ * answered in prose may well answer in the required shape next time, so a
+ * malformed response earns both a retry and the settings link that offers a
+ * model better suited to the task. What is refused, missing, unsupported, over
+ * budget, or unpaid cannot change until something else does.
+ */
 export function enrichmentCanRetry(failure: EnrichmentFailure | null): boolean {
-  return (
-    !enrichmentNeedsSettings(failure) &&
-    !(failure?.source === 'provider' && failure.error.code === 'credit-exhausted')
-  );
+  if (failure === null) return true;
+  if (failure.source === 'storage') return isRetryable(failure.error);
+  switch (failure.error.code) {
+    case 'malformed-response':
+    case 'offline':
+    case 'timeout':
+    case 'cancelled':
+    case 'rate-limited':
+    case 'provider-unavailable':
+    case 'unknown':
+      return true;
+    case 'authentication':
+    case 'model-not-found':
+    case 'capability-unsupported':
+    case 'context-budget-exceeded':
+    case 'audio-invalid':
+    case 'credit-exhausted':
+      return false;
+  }
 }
