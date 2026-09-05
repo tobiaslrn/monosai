@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="data/brand/monosai-mark.svg" alt="Monosai logo" width="128" height="128" />
+  <img src="web/data/brand/monosai-mark.svg" alt="Monosai logo" width="128" height="128" />
   <h1>Monosai</h1>
   <p>
     <a href="https://tobiaslrn.github.io/monosai/"><b>Open Monosai</b></a> ·

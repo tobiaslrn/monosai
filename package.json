@@ -17,16 +17,12 @@
     "url": "https://github.com/tobiaslrn/monosai/issues"
   },
   "scripts": {
-    "ng": "npm --prefix web run ng --",
     "start": "npm --prefix web run start",
     "build": "npm --prefix web run build",
     "build:pages": "npm --prefix web run build:pages --",
-    "watch": "npm --prefix web run watch",
-    "test": "npm --prefix web run test",
+    "test": "npm --prefix web run test --",
     "test:coverage": "npm --prefix web run test:coverage",
     "typecheck": "npm --prefix web run typecheck",
-    "typecheck:app": "npm --prefix web run typecheck:app",
-    "typecheck:e2e": "npm --prefix web run typecheck:e2e",
     "lint": "npm --prefix web run lint",
     "format": "node web/node_modules/prettier/bin/prettier.cjs --config web/.prettierrc --write .",
     "format:check": "node web/node_modules/prettier/bin/prettier.cjs --config web/.prettierrc --check .",
@@ -46,9 +42,7 @@
     "icons:verify": "npm --prefix web run icons:verify",
     "docs:verify": "node scripts/docs/verify-decision-index.mjs",
     "verify-dist": "npm --prefix web run verify-dist",
-    "report-bundle": "npm --prefix web run report-bundle",
     "report-bundle:check": "npm --prefix web run report-bundle:check",
-    "serve-dist": "npm --prefix web run serve-dist",
     "licenses:build": "node scripts/licenses/check-licenses.mjs",
     "licenses:check": "node scripts/licenses/check-licenses.mjs --check",
     "test:manual": "npm --prefix web run test:manual"
