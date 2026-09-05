@@ -17,18 +17,13 @@ import { Dialog } from '@angular/cdk/dialog';
 import { Router, RouterLink } from '@angular/router';
 import { ReadingAudioMaintenanceStore } from '../../application/enrichment/reading-audio-maintenance.store';
 import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
+import { ReaderPreparationStore } from '../../application/reading/reader-preparation.store';
 import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
-import { PreparationStore } from '../../application/enrichment/preparation.store';
 import { PREPARATION_ORDER, type PreparationLayer } from '../../domain/enrichment/preparation';
-import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { readerContentState } from './reader-content-state';
-import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
-import { LanguageStore } from '../../application/language/language.store';
-import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
-import { TextModelStore } from '../../application/settings/text-model.store';
 import { LibraryStore } from '../../application/reading/library.store';
 import { ViewportService } from '../../core/platform/viewport.service';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
@@ -130,6 +125,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     SentenceAidsStore,
     ReadingAudioMaintenanceStore,
     ReaderAudioStore,
+    ReaderPreparationStore,
   ],
   template: `
     <div
@@ -500,11 +496,10 @@ export class ReaderPageComponent {
 
   protected readonly store = inject(ReaderStore);
   protected readonly aids = inject(SentenceAidsStore);
-  protected readonly translationJob = inject(TranslationJobStore);
-  protected readonly preparation = inject(PreparationStore);
-  private readonly network = inject(NETWORK_STATUS);
-  protected readonly contentPending = signal<PreparationLayer | null>(null);
-  protected readonly contentError = signal<string | null>(null);
+  protected readonly preparation = inject(ReaderPreparationStore);
+  protected readonly contentPending = this.preparation.pending;
+  protected readonly contentError = this.preparation.lastError;
+  /** The only part of preparation that is about this page: what a menu draws. */
   protected readonly contentRows = computed(() => {
     const reading = this.store.reading();
     return reading === null
@@ -514,8 +509,8 @@ export class ReaderPageComponent {
             reading,
             layer,
             this.preparation.progressFor(reading.id, layer),
-            layer === 'audio' ? this.audio.tts.readiness() : this.textModel.readiness(),
-            this.network.isOnline(),
+            this.preparation.readiness(layer),
+            this.preparation.online(),
           ),
         );
   });
@@ -524,9 +519,6 @@ export class ReaderPageComponent {
   protected readonly inspector = inject(WordInspectorStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly library = inject(LibraryStore);
-  private readonly textModel = inject(TextModelStore);
-  private readonly grammarProfile = inject(GrammarProfileStore);
-  private readonly language = inject(LanguageStore);
   protected readonly popover = inject(PopoverService);
   private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
@@ -557,9 +549,7 @@ export class ReaderPageComponent {
 
   protected readonly preferences = this.settings.readerPreferences;
   private readonly currentReadingId = computed(() => readingId(this.id()));
-  protected readonly translationProgress = computed(() =>
-    this.translationJob.progressFor(this.currentReadingId()),
-  );
+  protected readonly translationProgress = this.preparation.translationProgress;
 
   /** Clamped here too: a stored row is external data like any other. */
   protected readonly textScale = computed(() => clampTextScale(this.preferences().textScale));
@@ -678,11 +668,8 @@ export class ReaderPageComponent {
     document.getElementById('mn-after-story')?.focus();
   }
 
-  protected readonly hasTranslationModel = computed(() =>
-    this.textModel.hasModelForTask('translation'),
-  );
-
-  protected readonly hasGrammarModel = computed(() => this.textModel.hasModelForTask('grammar'));
+  protected readonly hasTranslationModel = this.preparation.hasTranslationModel;
+  protected readonly hasGrammarModel = this.preparation.hasGrammarModel;
 
   private scrollWindowFrame: number | null = null;
   private lastScrollY = window.scrollY;
@@ -711,14 +698,6 @@ export class ReaderPageComponent {
   private previewRef: PopoverRef | null = null;
 
   constructor() {
-    // Model and credential settings are ready from bootstrap. The remaining
-    // local state below is specific to the reader route.
-    void this.grammarProfile.load();
-    // The bundle the live grammar profile is resolved against. Already started
-    // at bootstrap; asking again is idempotent and keeps a reading opened
-    // straight after startup from showing an unresolved profile.
-    void this.language.initialize();
-
     effect(() => {
       const nextReadingId = readingId(this.id());
       // Untracked, like every store call below it. An effect tracks the signals
@@ -812,7 +791,7 @@ export class ReaderPageComponent {
     });
 
     effect(() => {
-      if (this.preparation.progressFor(this.currentReadingId(), 'grammar').kind !== 'idle') {
+      if (this.preparation.grammarRunning()) {
         untracked(() => {
           void this.store.refreshSummaries();
         });
@@ -937,7 +916,7 @@ export class ReaderPageComponent {
       if (this.scrollWindowFrame !== null) {
         cancelAnimationFrame(this.scrollWindowFrame);
       }
-      this.preparation.setOpenReading(null);
+      this.preparation.leftReader();
       this.store.close();
     });
   }
@@ -958,41 +937,19 @@ export class ReaderPageComponent {
     if (this.currentReadingId() !== id || this.store.status() !== 'ready' || reading === null) {
       return;
     }
-    this.preparation.setOpenReading(id);
-    await this.preparation.reconcile(reading);
+    await this.preparation.openedReading(id);
   }
 
   /** An explicit request fills the missing content with the current settings. */
   protected prepareContent(layer: PreparationLayer): void {
     const row = this.contentRows().find((entry) => entry.layer === layer);
     if (row?.action !== 'prepare' || row.disabled) return;
-    this.contentError.set(null);
     if (layer === 'audio') this.audio.acknowledgeMaintenance();
-    void this.preparation.retry(this.currentReadingId(), layer);
+    this.preparation.prepare(layer);
   }
 
   protected async stopContent(layer: PreparationLayer): Promise<void> {
-    const reading = this.store.reading();
-    if (reading === null || this.contentPending() !== null) return;
-    this.contentPending.set(layer);
-    this.contentError.set(null);
-    try {
-      await this.store.setPreparationTargets(
-        reading.preparationTargets.filter((target) => target !== layer),
-      );
-      if (this.store.lastError() !== null) {
-        this.contentError.set(
-          'Could not save the stop request. Try again. Saved content is unchanged.',
-        );
-        return;
-      }
-      const stopped = await this.preparation.stopLayer(reading.id, layer);
-      if (!stopped.ok)
-        this.contentError.set(`Could not stop preparation: ${stopped.error.message}`);
-      await this.store.refreshSummaries();
-    } finally {
-      this.contentPending.set(null);
-    }
+    await this.preparation.stop(layer);
   }
 
   protected showAudioPlayer(): void {
@@ -1411,7 +1368,7 @@ export class ReaderPageComponent {
       return;
     }
     const plan = describeDeletion(reading, {
-      translationRunning: this.translationJob.isRunningFor(reading.id),
+      translationRunning: this.preparation.translationRunningFor(reading.id),
       audioRunning: this.audio.running(),
     });
     const confirmed = await openConfirmDialog(this.dialog, {
@@ -1429,7 +1386,7 @@ export class ReaderPageComponent {
     // Before the rows go: a job still writing to them would fail against
     // storage and report that failure on whatever reading is opened next.
     await Promise.all([
-      this.translationJob.readingDeleted(reading.id),
+      this.preparation.readingDeleted(reading.id),
       this.audio.readingDeleted(reading.id),
     ]);
     if (await this.library.delete(reading.id)) {

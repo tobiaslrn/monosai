@@ -117,6 +117,12 @@ The component keeps only what is about the page: the player card's measured heig
 which anything else docked to the bottom edge reads, and the confirmation before
 clips are deleted.
 
+The second is done too. `application/reading/reader-preparation.store.ts` answers, for
+the open reading, what each aid has, what is being made, what a configuration would
+allow, and what a stop request did. The page keeps the projection — turning a reading,
+a progress, a readiness, and a connection into the row the Story options menu draws —
+and nothing else about the lane.
+
 ### Whitebox: non-reader shell and Help
 
 `core/layout/` owns the utility bar and first-use CDK dialog. The shell only
