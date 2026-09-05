@@ -25,8 +25,12 @@ import { TextInputStepComponent } from './text-input-step.component';
 
       <p class="mn-hint">Paste Japanese text to create a reading.</p>
 
-      <!-- Plain: a panel wrapping the whole of a page separates it from nothing. -->
-      <section class="mn-panel mn-panel--plain">
+      <!--
+        A card, like every other surface a learner types into: the Generate
+        composer cards its textareas, and this one sat bare on the page
+        background beside it.
+      -->
+      <section class="mn-panel">
         <mn-text-input-step />
 
         @if (busyMessage(); as message) {

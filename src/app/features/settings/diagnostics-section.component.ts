@@ -36,24 +36,24 @@ import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnosti
       }
       <details class="mn-disclosure advanced">
         <summary>Advanced technical details</summary>
-        <dl>
-          <div class="detail-row">
+        <dl class="mn-facts">
+          <div>
             <dt>App version</dt>
             <dd>{{ build.appVersion }}</dd>
           </div>
-          <div class="detail-row">
+          <div>
             <dt>Build commit</dt>
             <dd>{{ build.buildCommit }}</dd>
           </div>
-          <div class="detail-row">
+          <div>
             <dt>Database schema version</dt>
             <dd>{{ schemaVersion }}</dd>
           </div>
-          <div class="detail-row">
+          <div>
             <dt>Provider protocol</dt>
             <dd>{{ endpointVersion }}</dd>
           </div>
-          <div class="detail-row">
+          <div>
             <dt>Prompt versions</dt>
             <dd>{{ promptVersions }}</dd>
           </div>
@@ -83,25 +83,10 @@ import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnosti
     }
 
     dl {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      margin: var(--space-3) 0 0;
-    }
-
-    .detail-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      justify-content: space-between;
-    }
-
-    dt {
-      color: var(--text-secondary);
+      margin-top: var(--space-3);
     }
 
     dd {
-      margin: 0;
       font-variant-numeric: tabular-nums;
     }
   `,

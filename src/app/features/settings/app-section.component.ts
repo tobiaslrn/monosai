@@ -16,7 +16,7 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
     <section class="mn-panel" aria-labelledby="mn-app-heading">
       <h2 id="mn-app-heading">App</h2>
 
-      <dl>
+      <dl class="mn-facts">
         <div>
           <dt>Installed</dt>
           <dd>{{ install.isStandalone() ? 'Yes' : 'No' }}</dd>
@@ -52,39 +52,11 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
     </section>
   `,
   styles: `
-    dl {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      margin: 0;
-    }
-
-    dl div {
-      display: grid;
-      grid-template-columns: minmax(10rem, 16rem) minmax(0, 1fr);
-      gap: var(--space-2);
-      align-items: baseline;
-    }
-
-    dt {
-      color: var(--text-secondary);
-    }
-
-    dd {
-      margin: 0;
-    }
-
     .actions {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-2);
       margin-top: var(--space-4);
-    }
-
-    @media (max-width: 32rem) {
-      dl div {
-        grid-template-columns: 1fr auto;
-      }
     }
   `,
 })

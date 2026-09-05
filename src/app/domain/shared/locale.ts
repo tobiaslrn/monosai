@@ -70,3 +70,22 @@ function startOfDay(value: number): number {
   date.setHours(0, 0, 0, 0);
   return date.getTime();
 }
+
+const LIST_FORMAT = new Intl.ListFormat(APP_LOCALE, { style: 'long', type: 'conjunction' });
+
+/** Phrases as one English list: `a`, `a and b`, `a, b, and c`. */
+export function formatList(parts: readonly string[]): string {
+  return LIST_FORMAT.format(parts);
+}
+
+/**
+ * A stored phrase used to start a sentence.
+ *
+ * Phrases are stored lowercase so they can be joined into a list without
+ * capitals appearing mid-sentence — "your reviewed vocabulary, Your grammar
+ * profile" was one dialog's actual wording. Only the first character is
+ * touched, so a phrase that begins with a proper noun keeps it.
+ */
+export function startSentence(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}

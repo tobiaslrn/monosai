@@ -72,7 +72,7 @@ describe('describeSourceRemoval', () => {
     const plan = describeSourceRemoval(target, { sources: [target, OTHER], storyCount: 0 });
 
     expect(plan.emptiesVocabulary).toBe(false);
-    expect(plan.removes.join(' ')).toContain('1 remaining source');
+    expect(plan.removes.join(' ')).toContain('your 1 other source');
   });
 
   it('states how many stories were generated from the vocabulary', () => {
@@ -98,7 +98,7 @@ describe('describeSourceRemoval', () => {
   it('promises the Anki collection is untouched for an Anki source', () => {
     const plan = describeSourceRemoval(ANKI, { sources: [ANKI], storyCount: 0 });
 
-    expect(plan.preserves).toContain('Your Anki collection');
-    expect(plan.preserves).toContain('Your stories');
+    expect(plan.preserves).toContain('your Anki collection');
+    expect(plan.preserves).toContain('your stories');
   });
 });

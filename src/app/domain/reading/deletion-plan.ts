@@ -23,11 +23,16 @@ export const OWNED_READING_STORES = [
 
 export type OwnedReadingStore = (typeof OWNED_READING_STORES)[number];
 
-/** Data a reading never owns, which deletion must leave alone. */
+/**
+ * Data a reading never owns, which deletion must leave alone.
+ *
+ * Lowercase: these are joined into one sentence, and stored capitals put a
+ * capital letter in the middle of it.
+ */
 export const PRESERVED_ON_DELETE: readonly string[] = [
-  'Your reviewed vocabulary',
-  'Your grammar profile',
-  'Your settings and saved key',
+  'your words',
+  'your grammar profile',
+  'your settings and saved key',
 ];
 
 export interface DeletionPlan {

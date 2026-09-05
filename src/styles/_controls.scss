@@ -27,9 +27,19 @@
   background: var(--surface-sunken);
 }
 
-.mn-button:disabled {
+/*
+ * A disabled control is drawn, not dimmed. Opacity alone read as "greyed out"
+ * only in the light theme, where the primary fill is a dark green; in the dark
+ * theme it is a light sage on a near-black page, so a disabled primary stayed
+ * the loudest thing on the screen and the one thing that could not be pressed.
+ * Both themes now give it the sunken surface and secondary text.
+ */
+.mn-button:disabled,
+.mn-button[aria-disabled='true'] {
+  border-color: var(--border-subtle);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
   cursor: not-allowed;
-  opacity: 0.55;
 }
 
 .mn-button:active:not(:disabled) {
@@ -242,4 +252,64 @@ input[type='range'] {
 
 .mn-icon-button:active:not(:disabled) {
   transform: translateY(1px);
+}
+
+/*
+ * The two small-caps labels the application uses to rank a fragment below a
+ * heading without adding another heading level. They are defined here because
+ * they were seven near-identical copies, and named here because uppercase is a
+ * deliberate exception to sentence case — see `docs/design-system.md`.
+ */
+.mn-eyebrow {
+  margin: 0;
+  color: var(--action-primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mn-section-label {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/*
+ * A read-only fact list: a label column and its values. One definition, because
+ * Settings alone rendered three — a 320px label column, a 256px one, and a
+ * right-aligned auto column — for the same pattern on one screen. Below the
+ * narrow breakpoint the label column collapses and the value follows it.
+ */
+.mn-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.mn-facts > div {
+  display: grid;
+  grid-template-columns: minmax(10rem, 18rem) minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.mn-facts dt {
+  color: var(--text-secondary);
+}
+
+.mn-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 32rem) {
+  .mn-facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
 }

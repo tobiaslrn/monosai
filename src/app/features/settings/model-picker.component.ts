@@ -70,7 +70,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 
           @if (favorites().length > 0) {
             <div class="favorites" aria-label="Favourite models">
-              <p>Favourites</p>
+              <p class="mn-eyebrow">Favourites</p>
               @for (model of favorites(); track model.modelId) {
                 <ng-container
                   [ngTemplateOutlet]="modelRow"
@@ -123,7 +123,12 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
           (click)="choose(model)"
         >
           <strong>{{ model.name }}</strong>
-          <small>{{ meta(model) }}</small>
+          <!--
+            The identifier is what the row exists to show, so it is never the
+            half that is cut: only the numbers after it truncate.
+          -->
+          <small class="model-id">{{ model.modelId }}</small>
+          <small class="model-meta">{{ meta(model) }}</small>
         </button>
         <button
           type="button"
@@ -172,10 +177,16 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       transform: rotate(180deg);
     }
     small {
-      overflow: hidden;
       color: var(--text-secondary);
       font-size: 12px;
       font-weight: 400;
+    }
+    .model-id {
+      color: var(--text-primary);
+      overflow-wrap: anywhere;
+    }
+    .model-meta {
+      overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
@@ -211,11 +222,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       margin: 0;
       padding: var(--space-2) var(--space-3) var(--space-1);
       background: var(--action-primary-soft);
-      color: var(--action-primary);
       font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
     }
     .results {
       min-height: 3rem;
@@ -353,7 +360,7 @@ export class ModelPickerComponent {
       ? `${Math.round(model.contextLength / 1_000)}k context`
       : '';
     const reasoning = model.reasoning ? 'reasoning' : '';
-    return [model.modelId, context, reasoning, this.pace(model)].filter(Boolean).join(' · ');
+    return [context, reasoning, this.pace(model)].filter(Boolean).join(' · ');
   }
 
   private pace(model: ModelCapabilities): string {

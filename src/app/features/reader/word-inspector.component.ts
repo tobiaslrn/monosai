@@ -108,7 +108,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         </button>
 
         <section class="dictionary-section" aria-labelledby="mn-inspector-dictionary">
-          <h3 id="mn-inspector-dictionary">Meanings</h3>
+          <h3 class="mn-section-label" id="mn-inspector-dictionary">Meanings</h3>
           @switch (store.dictionary().kind) {
             @case ('looking-up') {
               <p class="mn-hint" role="status">Looking up…</p>
@@ -156,7 +156,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 
         @if (hasNotes() || grammar().stale) {
           <section class="grammar-section" aria-labelledby="mn-inspector-grammar">
-            <h3 id="mn-inspector-grammar">Grammar here</h3>
+            <h3 class="mn-section-label" id="mn-inspector-grammar">Grammar here</h3>
 
             @if (grammar().stale) {
               <p class="mn-hint">
@@ -199,7 +199,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 
         @if (warningPresentation(); as presentation) {
           <section class="status" aria-labelledby="mn-inspector-status">
-            <h3 id="mn-inspector-status">
+            <h3 class="mn-section-label" id="mn-inspector-status">
               <span class="badge">{{ presentation.label }}</span>
             </h3>
             @if (presentation.structuralForm; as form) {
@@ -295,12 +295,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 
     /* The same quiet section label the sentence card uses, so the two match. */
     h3 {
-      margin: 0 0 var(--space-2);
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      margin-bottom: var(--space-2);
     }
 
     /* Except this one, which is a status badge rather than a label. */

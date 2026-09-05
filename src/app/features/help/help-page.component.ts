@@ -122,7 +122,13 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
     </div>
   `,
   styles: `
-    .help-page {
+    /*
+     * Prose is held to a readable measure by the paragraphs themselves rather
+     * than by narrowing the page: narrowing it indented every heading 121px
+     * past the wordmark above them.
+     */
+    .help-page p,
+    .help-page li {
       max-width: 44rem;
     }
     .lead {

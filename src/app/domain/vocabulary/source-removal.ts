@@ -40,7 +40,9 @@ export function describeSourceRemoval(
     `${source.label}, and the words it contributes to your vocabulary`,
     ...(emptiesVocabulary
       ? ['Every word in your vocabulary: no other source is included, so it drops to none']
-      : [`The words only this source contributed, from a vocabulary of ${countLabel(others)}`]),
+      : [
+          `The words no other source has. Your vocabulary keeps everything ${countLabel(others)} still provides`,
+        ]),
     ...(context.storyCount > 0
       ? [
           `The vocabulary ${storyLabel(context.storyCount)} generated from, so their words are remarked`,
@@ -51,16 +53,19 @@ export function describeSourceRemoval(
   return {
     title: `Remove ${source.label}?`,
     removes,
+    // Lowercase: these are joined into one sentence when rendered.
     preserves: [
-      'Your stories',
-      source.kind === 'text-list' ? 'Nothing else on this device' : 'Your Anki collection',
+      'your stories',
+      source.kind === 'text-list' ? 'nothing else on this device' : 'your Anki collection',
     ],
     emptiesVocabulary,
   };
 }
 
 function countLabel(others: readonly VocabularySource[]): string {
-  return others.length === 1 ? '1 remaining source' : `${String(others.length)} remaining sources`;
+  return others.length === 1
+    ? 'your 1 other source'
+    : `your ${String(others.length)} other sources`;
 }
 
 function storyLabel(count: number): string {

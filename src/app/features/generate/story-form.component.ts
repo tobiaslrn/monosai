@@ -201,7 +201,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         }
 
         <div class="generation-sources" data-testid="form-sources">
-          <p class="setting-section-title">Uses</p>
+          <p class="mn-section-label setting-section-title">Uses</p>
           <a
             routerLink="/reading-level"
             fragment="words"
@@ -285,7 +285,9 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       display: grid;
       grid-template-columns: minmax(0, 1.85fr) minmax(280px, 1fr);
       gap: var(--space-5);
-      align-items: stretch;
+      /* Each card is as tall as what is in it: stretching the shorter one left
+         a third of a card empty below its last control. */
+      align-items: start;
     }
 
     .text-fields,
@@ -519,12 +521,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     }
 
     .setting-section-title {
-      margin: 0 0 var(--space-1);
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      margin-bottom: var(--space-1);
     }
 
     .generation-sources a {
