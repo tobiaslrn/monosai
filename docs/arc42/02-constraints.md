@@ -19,7 +19,7 @@ in fact a decision Monosai made for itself, the table says so and links to the r
 ## 2.2 Technology constraints
 
 The stack is fixed. A replacement is a decision, not a preference. Versions are not repeated here;
-`package.json` is the authority for them.
+`web/package.json` is the authority for them.
 
 | Technology | Role |
 | --- | --- |
@@ -49,7 +49,7 @@ Styling is SCSS with CSS custom properties. There is no runtime CSS framework.
 | --- | --- |
 | Layer dependency rule, enforced by the linter | `layerZones` in [`eslint.config.js`](../../eslint.config.js) |
 | Design language for every visual and interactive change | [`docs/design-system.md`](../design-system.md) |
-| Values behind the design language | `src/styles/_tokens.scss` and `src/styles/_controls.scss` |
+| Values behind the design language | `web/src/styles/_tokens.scss` and `web/src/styles/_controls.scss` |
 | Commit message format, Conventional Commits with a required scope | [`AGENTS.md`](../../AGENTS.md) |
 | Prettier formatting, checked in CI | `npm run format:check` |
 | English-only user interface, Japanese-only content, one fixed locale for dates and numbers | `domain/shared/`, and [ADR 0042](../decisions/0042-cross-tab-reading-mutations.md) |

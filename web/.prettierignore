@@ -1,0 +1,13 @@
+dist
+coverage
+.angular
+playwright-report
+test-results
+package-lock.json
+
+# Generated language assets and their reviewed sources: byte-for-byte output of
+# scripts/assets/build-language-assets.mjs, whose digests are recorded in the
+# shipped manifest. Reformatting them would break every integrity check.
+public/assets/language
+data/language
+.asset-cache

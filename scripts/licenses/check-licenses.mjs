@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from 'node:fs/promises';
 
-const LOCK_PATH = 'package-lock.json';
+const LOCK_PATH = 'web/package-lock.json';
 const OUTPUT_PATH = 'docs/third-party-licenses.md';
 const CHECK = process.argv.includes('--check');
 

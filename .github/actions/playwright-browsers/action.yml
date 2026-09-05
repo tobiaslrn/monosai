@@ -13,10 +13,12 @@ runs:
       uses: actions/cache@v6
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+        key: playwright-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
     - if: steps.cache.outputs.cache-hit == 'true'
       run: npx playwright install-deps chromium
+      working-directory: web
       shell: bash
     - if: steps.cache.outputs.cache-hit != 'true'
       run: npx playwright install --with-deps chromium
+      working-directory: web
       shell: bash

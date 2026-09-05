@@ -26,8 +26,8 @@ list.
 Both datasets are **authored for Monosai** and dedicated to the public domain
 under CC0-1.0. They live as reviewable JSON sources under `data/language/` and are
 validated and compacted into the shipped bundle by
-`scripts/assets/build-grammar-catalog.mjs` and
-`scripts/assets/build-structural-baseline.mjs`.
+`web/scripts/assets/build-grammar-catalog.mjs` and
+`web/scripts/assets/build-structural-baseline.mjs`.
 
 - Grammar catalog: 256 rules — N5 58, N4 55, N3 50, N2 48, N1 45. Ids follow
   `mn-<level>-<slug>` and are stable; the level records where a pattern is

@@ -129,7 +129,7 @@ component, taking the slot the catalog vacated.
 intended.
 
 Source of truth is `data/language/grammar-presets.source.json`, validated and
-compacted by `scripts/assets/build-grammar-presets.mjs` (named
+compacted by `web/scripts/assets/build-grammar-presets.mjs` (named
 `build-grammar-catalog.mjs` until 0014), which checks that guidance is present,
 within its length bound, free of unsafe HTML, and that no preset name contains a
 JLPT level. The soft lint that warned when a quoted Japanese pattern appeared

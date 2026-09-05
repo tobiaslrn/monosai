@@ -36,6 +36,7 @@ jobs:
         run: npm run licenses:check
       - name: Dependency audit (production)
         run: npm audit --omit=dev --audit-level=high
+        working-directory: web
       - run: npm run typecheck
       - run: npm run lint
       - name: Formatting check (advisory)
@@ -54,7 +55,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: coverage
-          path: coverage
+          path: web/coverage
           retention-days: 7
           if-no-files-found: ignore
 
@@ -79,7 +80,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: pages-dist
-          path: dist/monosai/browser
+          path: web/dist/monosai/browser
           retention-days: 7
 
   e2e:
@@ -97,7 +98,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: pages-dist
-          path: dist/monosai/browser
+          path: web/dist/monosai/browser
       - uses: ./.github/actions/playwright-browsers
       - name: Critical journeys
         if: github.event_name == 'pull_request'
@@ -114,7 +115,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: blob-report-${{ matrix.shard }}
-          path: blob-report
+          path: web/blob-report
           retention-days: 1
           if-no-files-found: ignore
 
@@ -131,9 +132,10 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           pattern: blob-report-*
-          path: blob-report
+          path: web/blob-report
           merge-multiple: true
       - name: Merge the shard reports
+        working-directory: web
         run: |
           if [ -z "$(ls -A blob-report 2>/dev/null)" ]; then
             echo "No shard reports were produced; nothing to merge."
@@ -143,7 +145,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: playwright-report
-          path: playwright-report
+          path: web/playwright-report
           retention-days: 7
           if-no-files-found: ignore
 
@@ -157,7 +159,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: pages-dist
-          path: dist/monosai/browser
+          path: web/dist/monosai/browser
       - uses: ./.github/actions/playwright-browsers
       - name: Offline reload, installability, and base path
         run: npm run e2e:pwa
@@ -167,7 +169,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report-pwa
-          path: playwright-report
+          path: web/playwright-report
           retention-days: 7
           if-no-files-found: ignore
 
@@ -220,11 +222,11 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: pages-dist
-          path: dist/monosai/browser
+          path: web/dist/monosai/browser
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: dist/monosai/browser
+          path: web/dist/monosai/browser
       - id: deployment
         uses: actions/deploy-pages@v5
       - name: Post-deploy smoke test

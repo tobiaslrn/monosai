@@ -1,23 +1,24 @@
 # Compiled output
-/dist
+/web/dist
 /tmp
-/out-tsc
-/coverage
+/web/out-tsc
+/web/coverage
 
 # Node
 /node_modules
+/web/node_modules
 npm-debug.log
 
 # Angular
-/.angular/cache
+/web/.angular/cache
 .sass-cache/
 
 # Playwright
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-/playwright/.auth/
+/web/test-results/
+/web/playwright-report/
+/web/blob-report/
+/web/playwright/.cache/
+/web/playwright/.auth/
 /.playwright-cli/
 
 # IDEs and editors
@@ -28,5 +29,5 @@ npm-debug.log
 # System files
 .DS_Store
 Thumbs.db
-/.asset-cache
+/web/.asset-cache
 .claude/settings.local.json

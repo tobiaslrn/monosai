@@ -35,7 +35,7 @@ export function vocabularySyncedLabel(createdAt: number, now: number): string {
  *
  * Derived from the preset's own name, so there is no second difficulty
  * taxonomy to drift from the first, and still no JLPT level in it
- * ([ADR 0008](../../../../docs/decisions/0008-grammar-profile-presets.md)).
+ * ([ADR 0008](../../../../../docs/decisions/0008-grammar-profile-presets.md)).
  */
 const LEVEL_PHRASES: Readonly<Record<string, string>> = {
   'mn-preset-starter': 'a starter level',

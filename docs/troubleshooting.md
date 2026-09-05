@@ -2,11 +2,11 @@
 
 Monosai's error screens show a copyable technical code shaped `domain/code`
 (e.g. `ai/authentication`), produced by `technicalCode()`
-([src/app/domain/shared/errors.ts](../src/app/domain/shared/errors.ts)). This
+([src/app/domain/shared/errors.ts](../web/src/app/domain/shared/errors.ts)). This
 page is keyed by those codes, so a code seen on screen can be looked up
 directly. The on-screen wording for `ai/*` and `anki/*` codes comes from
-[ai-error-copy.ts](../src/app/shared-ui/ai-error/ai-error-copy.ts) and
-[anki-error-copy.ts](../src/app/features/vocabulary/anki-error-copy.ts) — this
+[ai-error-copy.ts](../web/src/app/shared-ui/ai-error/ai-error-copy.ts) and
+[anki-error-copy.ts](../web/src/app/features/vocabulary/anki-error-copy.ts) — this
 page summarizes it rather than duplicating it, and adds the cause and next
 step in more depth than fits on screen.
 

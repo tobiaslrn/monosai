@@ -5,6 +5,7 @@
       "name": "monosai",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["start"],
+      "cwd": "web",
       "port": 4200
     }
   ]

@@ -19,7 +19,7 @@ Use **JMdict, English, common words only**, taken from the
 `jmdict-simplified` JSON conversion, release `3.6.2+20260817122448`.
 
 The release archive is pinned by URL and SHA-256 in
-`scripts/assets/sources.json`. `npm run assets:build` downloads it into the
+`web/scripts/assets/sources.json`. `npm run assets:build` downloads it into the
 gitignored `.asset-cache/`, verifies the digest, and compacts it into
 `public/assets/language/1/dictionary.json`, which is committed.
 

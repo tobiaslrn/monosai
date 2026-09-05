@@ -35,8 +35,8 @@ flowchart TB
 | Infrastructure element | Building blocks it runs | Why here |
 | --- | --- | --- |
 | **Main thread** | `core/`, `features/`, `application/`, most of `infrastructure/` | The user interface and every use case |
-| **Language worker** | `src/workers/language/` | The tokenizer is WebAssembly and the dictionary index is large. Neither may block the reader. See [ADR 0005](../decisions/0005-tokenizer-selection.md) |
-| **Package worker** | `src/workers/package/` | Reading a package means unzipping and then querying SQLite. Both are slow, and both handle untrusted input. See [ADR 0016](../decisions/0016-anki-package-parsing.md) |
+| **Language worker** | `web/src/workers/language/` | The tokenizer is WebAssembly and the dictionary index is large. Neither may block the reader. See [ADR 0005](../decisions/0005-tokenizer-selection.md) |
+| **Package worker** | `web/src/workers/package/` | Reading a package means unzipping and then querying SQLite. Both are slow, and both handle untrusted input. See [ADR 0016](../decisions/0016-anki-package-parsing.md) |
 | **Service worker** | Monosai's own worker, wrapping the framework's | Offline shell, asset caching, and the Android share target. Monosai's worker handles the share `POST` and hands everything else to the framework's worker unchanged. See [ADR 0036](../decisions/0036-android-package-share-target.md) |
 | **IndexedDB** | Every Dexie repository | All learner data. Survives a reload and a reinstall of the shell |
 | **Cache Storage** | Shell, icons, language assets, share inbox | Makes the offline start possible, and is where a shared package waits |

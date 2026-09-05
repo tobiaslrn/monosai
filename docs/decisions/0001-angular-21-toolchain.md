@@ -25,7 +25,7 @@ worker, and the CDK.
   behaviour with Playwright end-to-end tests.
 - Use hash-based routing and a `/monosai/` base href for GitHub Pages.
 - Compute build identity from a source constant (kept in sync with
-  `package.json` by a unit test) plus a `--define MONOSAI_BUILD_COMMIT` value
+  `web/package.json` by a unit test) plus a `--define MONOSAI_BUILD_COMMIT` value
   supplied by CI.
 
 ## Consequences

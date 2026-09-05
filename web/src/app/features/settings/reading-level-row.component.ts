@@ -11,7 +11,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
  *
  * What the learner can read has its own page and its own way in from the
  * Library, which is where it belongs: filing it under a gear is what made it
- * invisible ([ADR 0049](../../../../docs/decisions/0049-one-page-for-what-you-can-read.md)).
+ * invisible ([ADR 0049](../../../../../docs/decisions/0049-one-page-for-what-you-can-read.md)).
  * But connecting an external application is something people come to Settings
  * looking for, so this points at that page from here rather than leaving anyone
  * who searched the obvious place concluding it does not exist.

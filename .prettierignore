@@ -1,17 +1,17 @@
-dist
-coverage
-.angular
-playwright-report
-test-results
-package-lock.json
+/web/dist
+/web/coverage
+/web/.angular
+/web/playwright-report
+/web/test-results
+/web/package-lock.json
 docs
 .claude
 .agents
 README.md
 
 # Generated language assets and their reviewed sources: byte-for-byte output of
-# scripts/assets/build-language-assets.mjs, whose digests are recorded in the
-# shipped manifest. Reformatting them would break every integrity check.
-public/assets/language
-data/language
-.asset-cache
+# web/scripts/assets/build-language-assets.mjs, whose digests are recorded in
+# the shipped manifest. Reformatting them would break every integrity check.
+/web/public/assets/language
+/web/data/language
+/web/.asset-cache
