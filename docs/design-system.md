@@ -505,6 +505,13 @@ a wording preference.
 
 ## 10. Accessibility floor
 
+The Android bridge is a native utility surface: one vertically scrolling column
+of Android platform controls, light/dark system themes, scalable `sp` text and
+`dp` spacing. It has no web renderer or independent decorative palette. Native
+focus, touch targets, system-bar insets and permission/installer dialogs supply
+the equivalent semantics. Start/Stop and permission are visible; origins live in
+one labelled disclosure, and update status appears beside its action.
+
 These are not aspirations; a change that breaks one of them is a regression.
 
 - Text is resizable by browser zoom **and** by font-size preference, to 200%,

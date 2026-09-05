@@ -79,6 +79,11 @@ CI's blocking gates; when you add a gate to one, add it to the other.
 - One application build per run. The `build` job produces the Pages artifact;
   the browser shards, the PWA job, and the deployment all consume that same
   artifact with `MONOSAI_PREBUILT_DIST=true`. Nothing else rebuilds.
+- That rule concerns the Pages artifact. The Android bridge is a separate APK
+  with an independent lifecycle. Its `bridge` gate uses Java 21 for Gradle tests,
+  debug assembly, Android lint and the resolved runtime licence check. Local
+  `npm run bridge:verify` runs those checks; `npm run verify` includes it.
+  Signing secrets are used only by the separate `bridge-v*` release workflow.
 - `static`, `unit`, and `build` start together. Add `needs` only for a real
   artifact dependency, never for ordering alone.
 - The browser lane is sharded three ways; `e2e-report` merges the shard blob
