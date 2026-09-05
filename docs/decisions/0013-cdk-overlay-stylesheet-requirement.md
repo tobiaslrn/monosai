@@ -26,7 +26,7 @@ overlay.
 
 ## Decision
 
-Both stylesheets are imported in `src/styles.scss`, the one global stylesheet
+Both stylesheets are imported in `web/src/styles.scss`, the one global stylesheet
 already responsible for design tokens and base element styling, rather than
 per-component. This is a hard, non-optional build requirement, not a
 per-feature choice: any future use of `@angular/cdk/dialog` or
@@ -46,7 +46,7 @@ every future dialog author has to remember.
   standalone regression test for "the stylesheet is imported," because the
   failure mode it prevents is exactly the one those tests already exercise.
 - Any future stylesheet reorganization that moves global styles out of
-  `src/styles.scss` must carry this import with it; it is called out here so
+  `web/src/styles.scss` must carry this import with it; it is called out here so
   that move does not silently drop it the way the original omission went
   unnoticed.
 

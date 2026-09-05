@@ -30,7 +30,7 @@ exists in one language.
 
 ### One locale, declared once
 
-**Everything is formatted in `en`, explicitly.** `src/app/domain/shared/locale.ts`
+**Everything is formatted in `en`, explicitly.** `web/src/app/domain/shared/locale.ts`
 holds `APP_LOCALE` and the four formatters every screen uses — counts,
 count-with-noun, date, date and time, relative days — and nothing anywhere
 calls a `toLocale*` method with no locale argument. The rule is written into

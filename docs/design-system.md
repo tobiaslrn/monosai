@@ -6,8 +6,8 @@ choice applies when, and what each rule rules out. It is the authority for
 
 It deliberately carries **no values**. There are no hex codes, no pixel counts,
 no type scale, and no component API here, because a document that repeats them
-goes stale the first time one is tuned. Values live in `src/styles/_tokens.scss`
-and the shared control classes in `src/styles/_controls.scss`; this document
+goes stale the first time one is tuned. Values live in `web/src/styles/_tokens.scss`
+and the shared control classes in `web/src/styles/_controls.scss`; this document
 names the *roles* those tokens fill and the rules that govern their use. When
 the two disagree, this document describes the intent and the tokens describe the
 current state — reconcile by changing the tokens.
@@ -414,7 +414,7 @@ the other is what produced `31.8.2026, 17:26:40` beside `72 unique expressions`
 on the same page, and a `50,000` character limit on a browser that writes
 `50.000`.
 
-The formatters live in `src/app/domain/shared/locale.ts` and nothing else
+The formatters live in `web/src/app/domain/shared/locale.ts` and nothing else
 formats a number or a date:
 
 - **A count** is grouped: `3,118 characters`, `50,000 characters`. The singular

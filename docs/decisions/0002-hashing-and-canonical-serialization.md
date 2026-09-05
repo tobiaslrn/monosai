@@ -18,7 +18,7 @@ on insecure origins.
 
 - The documented algorithm is SHA-256, exposed through the `Hasher` port.
 - The implementation is a dependency-free synchronous SHA-256 in
-  `src/app/infrastructure/hashing/sha256.ts`, verified against published
+  `web/src/app/infrastructure/hashing/sha256.ts`, verified against published
   FIPS 180-4 vectors and Node's `crypto` output, including multi-block,
   non-ASCII, and surrogate-pair input.
 - Canonical serialization (`canonicalJson`) sorts object keys, omits

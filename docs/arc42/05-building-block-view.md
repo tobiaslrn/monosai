@@ -18,7 +18,7 @@ flowchart TB
     sharedui["shared-ui/<br/>reusable presentation"]
     application["application/<br/>use cases, stores, ports"]
     infrastructure["infrastructure/<br/>adapters"]
-    workers["src/workers/<br/>tokenizer, package reader"]
+    workers["web/src/workers/<br/>tokenizer, package reader"]
     domain["domain/<br/>types, rules, port interfaces"]
 
     core --> features
@@ -59,7 +59,7 @@ the providers, and owns the shell and the router, so it must be allowed to see e
 | **`features/`** | One folder per screen, lazily loaded | Route definitions in `core/routing/` |
 | **`core/`** | Composition root, ordered startup, application shell, routing, platform services | The application config, which is the only place the layers are wired together |
 | **`shared-ui/`** | Presentation components used by more than one screen. Holds no use case | Component selectors |
-| **`src/workers/`** | Work that must not block the main thread | A versioned message protocol, validated on both sides |
+| **`web/src/workers/`** | Work that must not block the main thread | A versioned message protocol, validated on both sides |
 
 ## 5.2 Level 2: how each layer is divided
 

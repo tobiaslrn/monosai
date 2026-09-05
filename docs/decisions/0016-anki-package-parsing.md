@@ -122,7 +122,7 @@ about 3.4x — so a legitimate package never meets one.
 - Two new runtime dependencies, both worker-only and lazily imported.
 - Fixtures must be committed rather than generated at test time: zstd has no
   compressor in `fzstd` or in `CompressionStream`, and `node:sqlite` does not
-  exist in the browser test bundle. `scripts/fixtures/build-anki-fixtures.mjs`
+  exist in the browser test bundle. `web/scripts/fixtures/build-anki-fixtures.mjs`
   builds them reproducibly using only Node built-ins.
 - The package pipeline runs in its own worker, terminated after use. A `close`
   message frees the database, but only terminating the worker returns the

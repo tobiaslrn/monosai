@@ -19,7 +19,7 @@ config), and the language bundle already has its own cache: `LanguageAssetSource
 verifies every file's SHA-256 digest against `manifest.json` before use and
 caches it under an immutable versioned URL (`monosai-language-<version>`),
 per the lineage in
-[language-asset-cache.ts](../../src/app/infrastructure/language/language-asset-cache.ts).
+[language-asset-cache.ts](../../web/src/app/infrastructure/language/language-asset-cache.ts).
 
 Two reasons both had to hold before excluding `/assets/language/**` and
 `/assets/sqlite/**` from the generic `assets` group in `ngsw-config.json`:
@@ -59,16 +59,16 @@ criteria (`testing-and-delivery.md` §10) name explicitly.
 
 ### Icons are verified structurally, not by digest
 
-`scripts/icons/build-icons.mjs` rasterises `data/brand/monosai-mark.svg`
+`web/scripts/icons/build-icons.mjs` rasterises `web/data/brand/monosai-mark.svg`
 using the Chromium already installed for Playwright. Chromium's PNG encoder
 is not guaranteed byte-identical across platforms, versions, or even repeated
 runs on the same machine — unlike the language bundle's source files, which
 are fetched bytes with a canonical digest to verify against.
-`scripts/icons/verify-icons.mjs` therefore checks what actually matters for
+`web/scripts/icons/verify-icons.mjs` therefore checks what actually matters for
 correctness — every declared file exists, is a real PNG (signature + IHDR),
 has exactly the declared pixel dimensions, and is non-trivially sized — and
 separately checks that the *source* SVG has not drifted from what was last
-built, via a digest recorded in `scripts/icons/icons.lock.json` by the build
+built, via a digest recorded in `web/scripts/icons/icons.lock.json` by the build
 script. A CI run on Linux against icons built on Windows would fail a
 byte-equality check for a reason that has nothing to do with whether the
 icons are correct; it does not fail this one.

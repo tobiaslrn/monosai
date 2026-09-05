@@ -90,7 +90,7 @@ component" reasoning without changing the count**: 0008 declined a fifth
 component, and removing the catalog means presets simply take the slot it
 vacated. `LanguageAssetSettings` still records four component versions.
 
-The build script becomes `scripts/assets/build-grammar-presets.mjs`, keeping
+The build script becomes `web/scripts/assets/build-grammar-presets.mjs`, keeping
 0008's preset and register-guidance validation verbatim and replacing the corpus
 cross-check with the structural check described above.
 

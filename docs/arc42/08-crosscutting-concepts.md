@@ -157,7 +157,7 @@ learner activates the new version from a banner. See
 
 [`docs/design-system.md`](../design-system.md) is the authority for structure, controls, colour,
 units, motion, voice, and state. It holds rules and intent. The values live in
-`src/styles/_tokens.scss` and `src/styles/_controls.scss`. A change that departs from the design
+`web/src/styles/_tokens.scss` and `web/src/styles/_controls.scss`. A change that departs from the design
 system changes that document first, in the same commit.
 
 Two rules from it reach into the code directly: colour is never the only carrier of meaning, and

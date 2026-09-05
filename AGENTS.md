@@ -34,7 +34,7 @@ over speculative abstractions.
 - Read [the design system](docs/design-system.md) before changing anything
   visual or interactive, and follow it. It is the authority for structure,
   controls, colour, units, motion, voice, and state. It holds rules and intent;
-  values live in `src/styles/_tokens.scss` and `src/styles/_controls.scss`. A
+  values live in `web/src/styles/_tokens.scss` and `web/src/styles/_controls.scss`. A
   change that departs from it changes that document first, in the same commit.
 - Keep screens quiet, intentional, responsive, and task-focused. Hide genuinely
   useful technical detail behind a compact advanced disclosure.

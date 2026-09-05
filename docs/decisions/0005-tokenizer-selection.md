@@ -20,7 +20,7 @@ Use **`lindera-wasm-web-ipadic` 2.0.0** (Lindera compiled to WebAssembly with
 IPADIC embedded), wrapped behind the domain `Tokenizer` port.
 
 The library is imported by exactly one file,
-`src/workers/language/lindera-tokenizer.ts`, which converts its output into the
+`web/src/workers/language/lindera-tokenizer.ts`, which converts its output into the
 library-neutral `RawToken`. No domain or feature file can see its types, and the
 ESLint zone rules keep it that way.
 

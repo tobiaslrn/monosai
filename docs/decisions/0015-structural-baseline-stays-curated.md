@@ -81,7 +81,7 @@ B: 201 of 22629 dictionary entries are free-pass
 ### C — the tokenizer that actually decides
 
 A and B read part-of-speech from JMdict. Classification at runtime reads it from
-Lindera/IPADIC through `src/workers/language/ipadic-mapping.ts`, and **the two
+Lindera/IPADIC through `web/src/workers/language/ipadic-mapping.ts`, and **the two
 taggers disagree**, so A and B cannot settle the question on their own. C runs
 the shipped Lindera build with the app's builder settings and mapping, over
 candidate words embedded in ordinary sentences.
@@ -94,7 +94,7 @@ await init({
   module_or_path: readFileSync('node_modules/lindera-wasm-web-ipadic/lindera_wasm_bg.wasm'),
 });
 
-// Same three settings as `src/workers/language/lindera-tokenizer.ts`.
+// Same three settings as `web/src/workers/language/lindera-tokenizer.ts`.
 const builder = new TokenizerBuilder();
 builder.setDictionary('embedded://ipadic');
 builder.setMode('normal');
