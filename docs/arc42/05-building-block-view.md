@@ -99,6 +99,24 @@ needs, and everything in it is either a type or a pure function.
 
 ## 5.3 Level 3
 
+### Whitebox: the reader page and its audio
+
+The reader page is being taken apart along three seams — audio, the aids and
+preparation lane, and word and sentence inspection — because it had grown to
+1,675 lines and 22 injected dependencies wiring all three
+([chapter 11](11-risks-and-technical-debt.md)).
+
+The first is done. `application/reading/reader-audio.store.ts` holds everything the
+reader knows about the open reading's audio: generation progress and its start,
+retry and dismissal, whether a voice is configured, the spoken state of the header
+button, the floating player's open state and the sentence it captured, and clearing
+this reading's clips. It is provided by the reader, so the player's open state dies
+with the screen while playback, which is application-wide, outlives it.
+
+The component keeps only what is about the page: the player card's measured height,
+which anything else docked to the bottom edge reads, and the confirmation before
+clips are deleted.
+
 ### Whitebox: non-reader shell and Help
 
 `core/layout/` owns the utility bar and first-use CDK dialog. The shell only
