@@ -15,10 +15,8 @@ import {
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { Router, RouterLink } from '@angular/router';
-import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
-import { AudioConfigurationService } from '../../application/enrichment/audio-configuration.service';
-import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { ReadingAudioMaintenanceStore } from '../../application/enrichment/reading-audio-maintenance.store';
+import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
 import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
 import { PreparationStore } from '../../application/enrichment/preparation.store';
 import { PREPARATION_ORDER, type PreparationLayer } from '../../domain/enrichment/preparation';
@@ -31,7 +29,6 @@ import { AppSettingsStore } from '../../application/settings/app-settings.store'
 import { LanguageStore } from '../../application/language/language.store';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
-import { TtsStore } from '../../application/settings/tts.store';
 import { LibraryStore } from '../../application/reading/library.store';
 import { ViewportService } from '../../core/platform/viewport.service';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
@@ -42,7 +39,6 @@ import {
   paragraphSpacers,
   windowContains,
 } from '../../domain/reading/paragraph-window';
-import type { Reading } from '../../domain/reading/reading';
 import { findingsCoveringToken, sentenceWideFindings } from '../../domain/enrichment/finding-spans';
 import { readingId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
 import { presentStatus } from '../../domain/reading/token-presentation';
@@ -128,11 +124,17 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     WordPreviewComponent,
     NotFoundPanelComponent,
   ],
-  providers: [ReaderStore, WordInspectorStore, SentenceAidsStore, ReadingAudioMaintenanceStore],
+  providers: [
+    ReaderStore,
+    WordInspectorStore,
+    SentenceAidsStore,
+    ReadingAudioMaintenanceStore,
+    ReaderAudioStore,
+  ],
   template: `
     <div
       class="reader"
-      [class.has-audio-player]="audioPlayerOpen()"
+      [class.has-audio-player]="audio.playerOpen()"
       [style.--reader-scale]="textScale()"
     >
       <header #readerBar class="bar">
@@ -155,11 +157,11 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
               <button
                 type="button"
                 class="mn-icon-button audio-button"
-                [class.is-busy]="audioRunning()"
-                [class.is-playing]="playback.isActive()"
-                [attr.aria-expanded]="audioPlayerOpen()"
+                [class.is-busy]="audio.running()"
+                [class.is-playing]="audio.playback.isActive()"
+                [attr.aria-expanded]="audio.playerOpen()"
                 aria-controls="reading-audio-player"
-                [attr.aria-label]="audioButtonLabel()"
+                [attr.aria-label]="audio.buttonLabel()"
                 (click)="toggleAudioPlayer()"
               >
                 <mn-icon name="audio" />
@@ -167,7 +169,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
               @if (store.reading(); as reading) {
                 <mn-reader-menu
                   [rows]="contentRows()"
-                  [hasAudio]="reading.audioSummary.completed > 0 || audioRunning()"
+                  [hasAudio]="reading.audioSummary.completed > 0 || audio.running()"
                   [pending]="contentPending()"
                   [error]="contentError()"
                   (prepare)="prepareContent($event)"
@@ -183,11 +185,11 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
         </div>
 
         @if (store.status() === 'ready') {
-          @if (readingAudioMaintenance.state() === 'cleared') {
+          @if (audio.maintenanceState() === 'cleared') {
             <p class="audio-maintenance-message mn-hint" role="status">
               Audio deleted. You can generate it again from scratch.
             </p>
-          } @else if (readingAudioMaintenance.error(); as error) {
+          } @else if (audio.maintenanceError(); as error) {
             <p class="audio-maintenance-message mn-error" role="alert">
               Deleting audio failed: {{ error.message }}
             </p>
@@ -195,7 +197,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
         }
       </header>
 
-      @if (audioPlayerOpen() && store.status() === 'ready') {
+      @if (audio.playerOpen() && store.status() === 'ready') {
         <div
           #audioPlayerShell
           id="reading-audio-player"
@@ -204,13 +206,13 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           aria-label="Story audio"
         >
           <mn-reading-player
-            [progress]="audioProgress()"
-            [selectedSentenceId]="audioPlayerSentenceId()"
-            [modelConfigured]="hasAudioModel()"
-            (generate)="startWholeReadingAudio()"
-            (retryGeneration)="retryWholeReadingAudio()"
+            [progress]="audio.progress()"
+            [selectedSentenceId]="audio.playerSentenceId()"
+            [modelConfigured]="audio.hasModel()"
+            (generate)="audio.start()"
+            (retryGeneration)="audio.retry()"
             (cancelGeneration)="cancelAudioJob()"
-            (dismissGeneration)="dismissAudioJob()"
+            (dismissGeneration)="audio.dismiss()"
           />
         </div>
       }
@@ -258,7 +260,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                   [tokenSpacing]="preferences().tokenSpacing"
                   [markers]="preferences().warningMarkers"
                   [selectedSentenceId]="selectedSentenceId()"
-                  [playingSentenceId]="playback.currentSentenceId()"
+                  [playingSentenceId]="audio.playback.currentSentenceId()"
                   [selectedWord]="selectedWord()"
                   [previewedWord]="previewedWord()"
                   (activated)="inspect($event)"
@@ -300,7 +302,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           [canAnalyze]="canAnalyzeGrammar()"
           [translationModelConfigured]="hasTranslationModel()"
           [grammarModelConfigured]="hasGrammarModel()"
-          [audioModelConfigured]="tts.settings().modelId !== '' && tts.settings().voiceId !== ''"
+          [audioModelConfigured]="audio.voiceChosen()"
           [unknownWords]="selectedUnknownWords()"
           (translate)="translateSelectedSentence()"
           (analyzeGrammar)="analyzeSelectedSentence()"
@@ -512,21 +514,17 @@ export class ReaderPageComponent {
             reading,
             layer,
             this.preparation.progressFor(reading.id, layer),
-            layer === 'audio' ? this.tts.readiness() : this.textModel.readiness(),
+            layer === 'audio' ? this.audio.tts.readiness() : this.textModel.readiness(),
             this.network.isOnline(),
           ),
         );
   });
-  protected readonly audioJob = inject(AudioJobStore);
-  protected readonly playback = inject(AudioPlaybackStore);
-  protected readonly readingAudioMaintenance = inject(ReadingAudioMaintenanceStore);
+  protected readonly audio = inject(ReaderAudioStore);
   protected readonly viewport = inject(ViewportService);
   protected readonly inspector = inject(WordInspectorStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly library = inject(LibraryStore);
   private readonly textModel = inject(TextModelStore);
-  protected readonly tts = inject(TtsStore);
-  private readonly audioConfig = inject(AudioConfigurationService);
   private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly language = inject(LanguageStore);
   protected readonly popover = inject(PopoverService);
@@ -562,13 +560,6 @@ export class ReaderPageComponent {
   protected readonly translationProgress = computed(() =>
     this.translationJob.progressFor(this.currentReadingId()),
   );
-  protected readonly audioProgress = computed(() =>
-    this.audioJob.progressFor(this.currentReadingId()),
-  );
-  protected readonly audioRunning = computed(() => {
-    const kind = this.audioProgress().kind;
-    return kind === 'preparing' || kind === 'running';
-  });
 
   /** Clamped here too: a stored row is external data like any other. */
   protected readonly textScale = computed(() => clampTextScale(this.preferences().textScale));
@@ -678,54 +669,6 @@ export class ReaderPageComponent {
    * is never re-analysed: that would judge frozen text by a profile it was
    * never written for.
    */
-  private readonly audioPlayerOpenSignal = signal(false);
-  protected readonly audioPlayerOpen = this.audioPlayerOpenSignal.asReadonly();
-
-  /**
-   * The sentence that was selected when the audio player was opened. The
-   * player is independent from sentence and word popovers, so the selection
-   * remains visible while this captured value powers Start from this sentence.
-   */
-  private readonly audioPlayerSentenceIdSignal = signal<SentenceId | null>(null);
-  protected readonly audioPlayerSentenceId = this.audioPlayerSentenceIdSignal.asReadonly();
-  /**
-   * Whether generation would be refused for want of a configuration.
-   *
-   * Resolved through the same service the job itself gates on rather than
-   * through saved presets: a tested model and voice with no preset saved is an
-   * ordinary state, and it was being offered "Set up audio model" beside a
-   * Generate button that worked perfectly.
-   */
-  protected readonly hasAudioModel = computed(() => this.audioConfig.resolve('tts-synthesis').ok);
-
-  /**
-   * The audio button says its state out loud, because its icon never changes.
-   *
-   * Playback is named before generation, not after it: the two now run at the
-   * same time, and what the learner is hearing is the more useful of the two to
-   * be told about.
-   */
-  protected readonly audioButtonLabel = computed(() => {
-    switch (this.playback.status()) {
-      case 'playing':
-        return 'Audio, playing';
-      case 'paused':
-        return 'Audio, paused';
-      case 'waiting':
-        return 'Audio, waiting for the next sentence';
-      case 'stepped':
-        return 'Audio, ready for the next sentence';
-      case 'ended':
-        return 'Audio, finished';
-      default:
-        break;
-    }
-    if (this.audioRunning()) {
-      return 'Audio, being generated';
-    }
-    return this.playback.hasPlayableAudio() ? 'Audio, ready' : 'Audio';
-  });
-
   protected readonly canAnalyzeGrammar = computed(
     () => (this.store.reading()?.kind ?? 'imported') === 'imported',
   );
@@ -784,6 +727,7 @@ export class ReaderPageComponent {
       // effect its own trigger and it never stops running.
       untracked(() => {
         this.closeReaderSurfaces();
+        this.audio.setReading(nextReadingId);
         void this.openReading(nextReadingId);
       });
     });
@@ -849,18 +793,18 @@ export class ReaderPageComponent {
       // what lets a session waiting at the frontier read on, since the clip it
       // is waiting for becomes available here (ADR 0034).
       const reading = this.store.reading();
-      this.audioProgress();
-      this.tts.settings();
+      this.audio.progress();
+      this.audio.tts.settings();
       if (reading !== null) {
         untracked(() => {
-          void this.playback.prepare(reading);
+          void this.audio.playback.prepare(reading);
         });
       }
     });
 
     effect(() => {
       // The audio job writes rows the menu counts, exactly as translation does.
-      if (this.audioProgress().kind !== 'idle') {
+      if (this.audio.progress().kind !== 'idle') {
         untracked(() => {
           void this.store.refreshSummaries();
         });
@@ -887,11 +831,11 @@ export class ReaderPageComponent {
       // The wait is still watched too — one sentence at a time can start one
       // *after* the run has stopped, and a release that only fired on the job's
       // own transition would leave it waiting for something already called off.
-      const kind = this.audioProgress().kind;
-      this.playback.status();
+      const kind = this.audio.progress().kind;
+      this.audio.playback.status();
       if (kind === 'failed' || kind === 'cancelled') {
         untracked(() => {
-          this.playback.stopExpectingClips();
+          this.audio.playback.stopExpectingClips();
         });
       }
     });
@@ -899,12 +843,12 @@ export class ReaderPageComponent {
     effect(() => {
       // Follow the sentence being read, but only into view and only while the
       // learner has not scrolled away themselves.
-      const navigation = this.playback.explicitNavigation();
+      const navigation = this.audio.playback.explicitNavigation();
       if (navigation !== this.lastNavigation) {
         this.lastNavigation = navigation;
         this.followPlayback = true;
       }
-      const sentenceId = this.playback.currentSentenceId();
+      const sentenceId = this.audio.playback.currentSentenceId();
       if (sentenceId !== null && this.followPlayback) {
         queueMicrotask(() => {
           this.revealSentence(sentenceId);
@@ -913,7 +857,7 @@ export class ReaderPageComponent {
     });
 
     effect(() => {
-      if (!this.audioPlayerOpenSignal()) {
+      if (!this.audio.playerOpen()) {
         return;
       }
       // The conditional wrapper is rendered immediately after the header, so
@@ -922,7 +866,7 @@ export class ReaderPageComponent {
       this.audioPlayerShell();
       queueMicrotask(() => {
         const shell = this.audioPlayerShell()?.nativeElement;
-        if (this.audioPlayerOpenSignal() && shell !== undefined) {
+        if (this.audio.playerOpen() && shell !== undefined) {
           this.trackPlayerHeight(shell);
         }
       });
@@ -980,7 +924,7 @@ export class ReaderPageComponent {
       // in the application (ADR 0041). Being backgrounded is a different thing
       // and stops nothing: the reader is still open, and the media notification
       // is the control there.
-      this.playback.stop();
+      this.audio.playback.stop();
       this.endPreview();
       this.releaseSheetClearance();
       this.popover.close();
@@ -1023,7 +967,7 @@ export class ReaderPageComponent {
     const row = this.contentRows().find((entry) => entry.layer === layer);
     if (row?.action !== 'prepare' || row.disabled) return;
     this.contentError.set(null);
-    if (layer === 'audio') this.readingAudioMaintenance.acknowledge();
+    if (layer === 'audio') this.audio.acknowledgeMaintenance();
     void this.preparation.retry(this.currentReadingId(), layer);
   }
 
@@ -1052,36 +996,17 @@ export class ReaderPageComponent {
   }
 
   protected showAudioPlayer(): void {
-    if (!this.audioPlayerOpenSignal()) this.toggleAudioPlayer();
-  }
-
-  /**
-   * Reads aloud everything in the reading that has no clip for the current
-   * voice. The only whole-reading audio request, and it starts here.
-   */
-  protected startWholeReadingAudio(): void {
-    this.readingAudioMaintenance.acknowledge();
-    void this.audioJob.start(this.currentReadingId());
-  }
-
-  protected retryWholeReadingAudio(): void {
-    this.readingAudioMaintenance.acknowledge();
-    void this.audioJob.retry(this.currentReadingId());
+    this.audio.openPlayer(this.selectedSentenceIdSignal());
   }
 
   protected cancelAudioJob(): void {
     void this.stopContent('audio');
   }
 
-  /** Puts a settled audio report away without asking for the work again. */
-  protected dismissAudioJob(): void {
-    this.audioJob.acknowledge(this.currentReadingId());
-  }
-
   /** Confirms the destructive reading-level action selected from the More menu. */
   protected async confirmClearReadingAudio(): Promise<void> {
     const reading = this.store.reading();
-    if (reading === null || this.readingAudioMaintenance.state() === 'clearing') {
+    if (reading === null || this.audio.clearing()) {
       return;
     }
     const confirmed = await openConfirmDialog(this.dialog, {
@@ -1094,41 +1019,18 @@ export class ReaderPageComponent {
       tone: 'danger',
     });
     if (confirmed) {
-      await this.clearReadingAudioFromStorage(reading);
+      await this.audio.clear(reading);
     }
   }
 
-  /** Deletes only this reading's clips and jobs, then refreshes every local view. */
-  private async clearReadingAudioFromStorage(reading: Reading): Promise<void> {
-    await this.readingAudioMaintenance.clear(reading);
-    this.audioJob.acknowledge(reading.id);
-    await this.store.refreshSummaries();
-  }
-
-  /**
-   * Toggles the independent floating player. Both directions are local and
-   * silent: opening loads nothing, closing stops neither playback nor a
-   * generation run. Playback is application-wide and outlives this card.
-   */
+  /** Shows or hides the independent floating player, releasing its docked height. */
   protected toggleAudioPlayer(): void {
-    if (
-      this.store.status() !== 'ready' ||
-      !this.store.paragraphs().some((paragraph) => paragraph.sentences.length > 0)
-    ) {
-      return;
-    }
-    if (this.audioPlayerOpenSignal()) {
+    if (this.audio.playerOpen()) {
       this.releasePlayerHeight();
-      // Deliberately not a stop. Hiding the card to read the text underneath is
-      // not "stop reading to me", and the transport has its own Stop now; the
-      // header button keeps saying that a reading is playing, and reopening
-      // lands back on the live session.
-      this.audioPlayerSentenceIdSignal.set(null);
-      this.audioPlayerOpenSignal.set(false);
+      this.audio.closePlayer();
       return;
     }
-    this.audioPlayerSentenceIdSignal.set(this.selectedSentenceIdSignal());
-    this.audioPlayerOpenSignal.set(true);
+    this.audio.openPlayer(this.selectedSentenceIdSignal());
   }
 
   /** Clears every surface whose content belongs to the current reading. */
@@ -1137,9 +1039,7 @@ export class ReaderPageComponent {
     this.releaseSheetClearance();
     this.popover.close();
     this.releasePlayerHeight();
-    this.playback.stop();
-    this.audioPlayerSentenceIdSignal.set(null);
-    this.audioPlayerOpenSignal.set(false);
+    this.audio.endPlayback();
     this.selectedSentenceIdSignal.set(null);
   }
 
@@ -1249,7 +1149,7 @@ export class ReaderPageComponent {
       await this.store.refreshSummaries();
       const reading = this.store.reading();
       if (reading !== null) {
-        await this.playback.prepare(reading);
+        await this.audio.playback.prepare(reading);
       }
     });
   }
@@ -1258,7 +1158,7 @@ export class ReaderPageComponent {
   protected playSelectedSentence(): void {
     const sentenceId = this.selectedSentenceIdSignal();
     if (sentenceId !== null) {
-      void this.playback.playSentence(sentenceId);
+      void this.audio.playback.playSentence(sentenceId);
     }
   }
 
@@ -1512,7 +1412,7 @@ export class ReaderPageComponent {
     }
     const plan = describeDeletion(reading, {
       translationRunning: this.translationJob.isRunningFor(reading.id),
-      audioRunning: this.audioJob.isRunningFor(reading.id),
+      audioRunning: this.audio.running(),
     });
     const confirmed = await openConfirmDialog(this.dialog, {
       title: `Delete ${plan.title}?`,
@@ -1530,11 +1430,11 @@ export class ReaderPageComponent {
     // storage and report that failure on whatever reading is opened next.
     await Promise.all([
       this.translationJob.readingDeleted(reading.id),
-      this.audioJob.readingDeleted(reading.id),
+      this.audio.readingDeleted(reading.id),
     ]);
     if (await this.library.delete(reading.id)) {
       // Before navigating: a deleted reading must not go on being read aloud.
-      this.playback.readingDeleted(reading.id);
+      this.audio.playback.readingDeleted(reading.id);
       await this.router.navigate(['/library'], { replaceUrl: true });
     }
   }
@@ -1555,7 +1455,7 @@ export class ReaderPageComponent {
    */
   private readableBand(): { readonly top: number; readonly bottom: number } {
     const bar = this.readerBar()?.nativeElement.getBoundingClientRect();
-    const player = this.audioPlayerOpenSignal()
+    const player = this.audio.playerOpen()
       ? this.audioPlayerShell()?.nativeElement.getBoundingClientRect()
       : undefined;
     return {
