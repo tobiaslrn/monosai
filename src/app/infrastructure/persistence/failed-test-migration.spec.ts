@@ -14,13 +14,11 @@ describe('schema v10 failed configuration tests', () => {
     const db = new MonosaiDatabase(name);
     try {
       await old.open();
-      await old
-        .table('settings')
-        .put({
-          key: 'text-model',
-          v: 1,
-          value: corrupt ? null : { ...DEFAULT_TEXT_MODEL_SETTINGS, modelId: 'saved/model' },
-        });
+      await old.table('settings').put({
+        key: 'text-model',
+        v: 1,
+        value: corrupt ? null : { ...DEFAULT_TEXT_MODEL_SETTINGS, modelId: 'saved/model' },
+      });
       old.close();
       if (corrupt) {
         await expect(db.open()).rejects.toThrow('model settings');
