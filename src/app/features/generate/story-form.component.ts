@@ -221,32 +221,35 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <strong>{{ presetName() }}</strong>
           </a>
         </div>
-        <ng-content select="[generation-blockers]" />
-        <div class="actions">
-          <button
-            type="button"
-            class="mn-button mn-button--primary"
-            data-testid="generate"
-            [disabled]="disabled() || !canGenerate()"
-            [attr.aria-describedby]="!canGenerate() ? 'mn-generate-disabled-reason' : null"
-            (click)="generate.emit()"
-          >
-            <mn-icon name="generate" [size]="18" />
-            <span>Generate story</span>
-          </button>
-          @if (!canGenerate()) {
-            <p id="mn-generate-disabled-reason" class="mn-hint">
-              {{ disabledReason() || 'Enter a premise within the character limits to generate.' }}
-            </p>
-          }
-          @if (atGenerationLimit()) {
-            <p class="mn-hint" data-testid="generation-limit">
-              You already have as many stories being written as Monosai runs at once. This one can
-              start when one of them finishes.
-            </p>
-          }
-        </div>
       </aside>
+    </div>
+
+    <div class="actions">
+      <ng-content select="[generation-blockers]" />
+      <div class="actions-row">
+        <button
+          type="button"
+          class="mn-button mn-button--primary"
+          data-testid="generate"
+          [disabled]="disabled() || !canGenerate()"
+          [attr.aria-describedby]="!canGenerate() ? 'mn-generate-disabled-reason' : null"
+          (click)="generate.emit()"
+        >
+          <mn-icon name="generate" [size]="18" />
+          <span>Generate story</span>
+        </button>
+        @if (!canGenerate()) {
+          <p id="mn-generate-disabled-reason" class="mn-hint">
+            {{ disabledReason() || 'Enter a premise within the character limits to generate.' }}
+          </p>
+        }
+      </div>
+      @if (atGenerationLimit()) {
+        <p class="mn-hint" data-testid="generation-limit">
+          You already have as many stories being written as Monosai runs at once. This one can start
+          when one of them finishes.
+        </p>
+      }
     </div>
   `,
   styles: `
@@ -552,13 +555,28 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       white-space: nowrap;
     }
 
+    /*
+     * Generate belongs to the whole composer, not to the defaults card it used
+     * to sit at the foot of, where a laptop-height viewport hid it below both
+     * columns. Sticking it to the bottom edge keeps it reachable at any height
+     * while whatever blocks it stays beside it.
+     */
     .actions {
+      position: sticky;
+      bottom: 0;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding: var(--space-4) 0;
+      background: var(--surface-canvas);
+    }
+
+    .actions-row {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-3);
       align-items: center;
-      justify-content: flex-end;
-      padding-top: var(--space-5);
     }
   `,
 })
