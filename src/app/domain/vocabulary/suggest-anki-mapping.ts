@@ -29,7 +29,7 @@ export function suggestAnkiMapping(
       for (const field of noteType.fieldNames) {
         const score =
           notes.reduce((total, note) => {
-          const characters = Array.from(note.fields[field] ?? '').filter((character) =>
+            const characters = Array.from(note.fields[field] ?? '').filter((character) =>
               /[\p{L}\p{N}]/u.test(character),
             );
             return (
