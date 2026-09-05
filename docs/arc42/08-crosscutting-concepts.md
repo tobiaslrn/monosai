@@ -191,3 +191,22 @@ clicked word becomes its sentence's next tab entry. **Skip past story** reaches 
 Library action after the text. Paragraphs retain native `p` semantics.
 This focus model does not intercept touch pointers or change native text selection.
 Story titles carry Japanese language metadata in the Library and reader header.
+
+### One presentation for a link that addresses nothing
+
+Three routes can conclude that what a link named is not here: a `/reader/` segment
+that is not an id, a well-formed id with no reading behind it, and a generation run
+that ended with the tab that owned it. All three render `mn-not-found-panel` — the
+same alert panel, the same explanation shape, and the application's ordinary primary
+and secondary buttons — so a dead link never looks like a different product.
+
+Application chrome follows the same rule. The shell drops its masthead only for the
+reader itself, which is decided by classifying the URL's id rather than by matching
+the `/reader/` prefix: a segment that is not an id never reaches the reader, and that
+screen previously lost every way out of the application to the prefix match.
+
+The reader's own not-found state keeps the reader's bar rather than the masthead: it
+is reached only after a reading has begun loading, and swapping the chrome in when a
+load fails would make the masthead appear and disappear as a reading opens. Its bar
+carries the same back control and names what was not found, so the two differ in
+identity row alone.

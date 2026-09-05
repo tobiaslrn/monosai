@@ -202,7 +202,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.getByRole('button', { name: 'Story options', exact: true })).toHaveCount(0);
     await expect(page.getByRole('alert')).toContainText('This story is no longer here');
     await expect(
-      page.getByRole('alert').getByRole('link', { name: 'Back to library' }),
+      page.getByRole('alert').getByRole('link', { name: 'Go to library' }),
     ).toBeVisible();
   });
 
@@ -1160,7 +1160,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await page.goto('./#/library');
 
     const toggle = page.getByRole('button', { name: 'Actions for 第一章' });
-    const menu = page.getByRole('menu', { name: '第一章 actions' });
+    const menu = page.getByRole('menu', { name: 'Actions for 第一章' });
 
     await toggle.click();
     await expect(menu).toBeVisible();
@@ -1321,4 +1321,35 @@ test('uses one keyboard stop per sentence and returns from word details @smoke',
   );
   await page.locator('#mn-after-story').click();
   await expect(page.getByRole('link', { name: '動物', exact: true })).toHaveAttribute('lang', 'ja');
+});
+
+test('renames a pasted reading from the library @smoke', async ({ page }) => {
+  // A pasted reading is titled with its own first sentence, so its name and the
+  // first line of its text are the same string until it can be renamed.
+  await importReading(page, '猫がいる。犬が来た。', '猫がいる。');
+  await page.goto('./#/library');
+
+  await page.getByRole('button', { name: 'Actions for 猫がいる。' }).click();
+  await page.getByRole('menuitem', { name: 'Rename' }).click();
+  await page.getByLabel('Title').fill('猫の一日');
+  await page.getByRole('button', { name: 'Save name' }).click();
+
+  const renamed = page.getByRole('link', { name: '猫の一日', exact: true });
+  await expect(renamed).toBeVisible();
+  await expect(renamed).toHaveAttribute('lang', 'ja');
+
+  // The name is stored, not just repainted, and the reading still opens.
+  await page.reload();
+  await page.getByRole('link', { name: '猫の一日', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '猫の一日' })).toBeVisible();
+  await expect(page.getByRole('button', { name: new RegExp('猫') }).first()).toBeVisible();
+});
+
+test('gives an unrecognised reading link the app chrome and a way back', async ({ page }) => {
+  await page.goto('./#/reader/not-a-real-id');
+
+  await expect(page.getByRole('link', { name: 'Monosai' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Link not recognised' })).toBeVisible();
+  await page.getByRole('link', { name: 'Go to library' }).click();
+  await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();
 });

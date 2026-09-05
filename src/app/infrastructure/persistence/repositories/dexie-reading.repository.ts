@@ -361,6 +361,24 @@ export class DexieReadingRepository implements ReadingRepository {
     );
   }
 
+  renameReading(id: ReadingId, title: string): Promise<Result<Reading, StorageError>> {
+    return runStorageWithRules('readings.rename', () =>
+      this.db.transaction('rw', this.db.readings, async () => {
+        const row = await this.db.readings.get(id);
+        if (row === undefined) {
+          throw new StorageRuleViolation(
+            storageError('not-found', 'That reading no longer exists.'),
+          );
+        }
+        const next = { ...row, title, updatedAt: this.clock.now() };
+        const parsed = parseRecord(readingRowSchema, next, 'readings');
+        if (!parsed.ok) throw new StorageRuleViolation(parsed.error);
+        await this.db.readings.put(parsed.value);
+        return toReading(parsed.value);
+      }),
+    );
+  }
+
   deleteReading(id: ReadingId): Promise<Result<void, StorageError>> {
     return runStorage('readings.delete', async () => {
       await this.db.transaction(

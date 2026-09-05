@@ -20,6 +20,7 @@ import { CLOCK } from '../../application/shared/repository-tokens';
 import { describeDeletion } from '../../domain/reading/deletion-plan';
 import type { LibraryFilter, Reading } from '../../domain/reading/reading';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
+import { openRenameDialog } from '../../shared-ui/rename-dialog/rename-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PopoverService } from '../../shared-ui/popover/popover.service';
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
@@ -143,6 +144,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
                       <mn-reading-card
                         [reading]="reading"
                         (deleteRequested)="confirmDelete($event)"
+                        (renameRequested)="promptRename($event)"
                       />
                     </li>
                   }
@@ -396,6 +398,17 @@ export class LibraryPageComponent {
    * before the rows it writes to are removed, so nothing survives the delete
    * looking for them.
    */
+  /**
+   * Renaming touches the title and nothing else, so it needs no warning and no
+   * confirmation beyond the learner pressing Save on what they typed.
+   */
+  protected async promptRename(reading: Reading): Promise<void> {
+    const title = await openRenameDialog(this.dialog, { currentTitle: reading.title });
+    if (title !== null && title !== reading.title) {
+      await this.store.rename(reading.id, title);
+    }
+  }
+
   protected async confirmDelete(reading: Reading): Promise<void> {
     const plan = describeDeletion(reading, {
       translationRunning: this.translationJob.isRunningFor(reading.id),

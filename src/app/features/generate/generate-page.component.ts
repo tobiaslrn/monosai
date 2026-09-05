@@ -36,6 +36,7 @@ import {
 import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+import { NotFoundPanelComponent } from '../../shared-ui/not-found/not-found-panel.component';
 import { GenerationWaitComponent } from './generation-wait.component';
 import { PrerequisitePanelComponent } from './prerequisite-panel.component';
 import { StoryFormComponent } from './story-form.component';
@@ -78,6 +79,7 @@ function formatList(items: readonly string[]): string {
     PrerequisitePanelComponent,
     StoryFormComponent,
     ExceptionPolicyFieldComponent,
+    NotFoundPanelComponent,
   ],
   template: `
     <div class="mn-page">
@@ -99,17 +101,15 @@ function formatList(items: readonly string[]): string {
           link arrives here with nothing to show. It says that, rather than
           quietly presenting an empty form as though nothing had been started.
         -->
-        <section class="mn-panel" data-testid="missing-job">
-          <h2>This generation is no longer running</h2>
-          <p class="mn-hint">
-            Stories are written in the tab you start them in, and reloading ends them. Nothing was
-            saved.
-          </p>
-          <div class="actions">
-            <a class="mn-button mn-button--primary" routerLink="/generate">Start a new story</a>
-            <a class="mn-button" routerLink="/library">Back to library</a>
-          </div>
-        </section>
+        <mn-not-found-panel
+          data-testid="missing-job"
+          heading="This generation is no longer running"
+          [explanation]="missingJobExplanation"
+          primaryLink="/generate"
+          primaryLabel="Start a new story"
+          secondaryLink="/library"
+          secondaryLabel="Go to library"
+        />
       } @else if (savedReading(); as reading) {
         <section class="result-screen" aria-label="Saved story details">
           <div class="ready-mark" aria-hidden="true">✓</div>
@@ -308,6 +308,10 @@ export class GeneratePageComponent {
 
   /** A job was addressed and there is no such run in this tab. */
   protected readonly missingJob = computed(() => this.jobId() !== undefined && this.job() === null);
+
+  protected readonly missingJobExplanation = [
+    'Stories are written in the tab you start them in, and reloading ends them. Nothing was saved.',
+  ];
 
   protected readonly state = computed<GenerationState>(() => this.job()?.store.state() ?? IDLE);
   protected readonly isBusy = computed(() => this.job()?.store.isBusy() ?? false);

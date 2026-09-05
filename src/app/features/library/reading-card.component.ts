@@ -97,6 +97,10 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
             [attr.aria-label]="'Actions for ' + reading().title"
             (toggle)="onMenuToggle($event)"
           >
+            <button type="button" role="menuitem" (click)="requestRename()">
+              <mn-icon name="rename" [size]="18" />
+              <span>Rename</span>
+            </button>
             <button type="button" role="menuitem" class="danger" (click)="requestDelete()">
               <mn-icon name="delete" [size]="18" />
               <span>Delete</span>
@@ -269,6 +273,7 @@ export class ReadingCardComponent {
   private readonly clock = inject(CLOCK);
   readonly reading = input.required<Reading>();
   readonly deleteRequested = output<Reading>();
+  readonly renameRequested = output<Reading>();
 
   private readonly menuOpenSignal = signal(false);
   protected readonly menuOpen = this.menuOpenSignal.asReadonly();
@@ -343,6 +348,11 @@ export class ReadingCardComponent {
       return;
     }
     this.hideMenu();
+  }
+
+  protected requestRename(): void {
+    this.hideMenu();
+    this.renameRequested.emit(this.reading());
   }
 
   protected requestDelete(): void {

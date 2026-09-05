@@ -1,8 +1,8 @@
 /**
- * Title derivation for imported readings.
+ * Reading titles: what an import is prefilled with, and what a rename accepts.
  *
- * The learner may always override the result; these rules only decide what the
- * title field is prefilled with.
+ * The learner may always override a derived title; these rules only decide what
+ * the title field starts as and what is small enough to store.
  */
 
 export const FALLBACK_READING_TITLE = 'Untitled reading';
@@ -57,4 +57,16 @@ export function resolveTitle(entered: string, derived: string): string {
     return meaningful(normalizedDerived) ? normalizedDerived : FALLBACK_READING_TITLE;
   }
   return truncate(trimmed, MAXIMUM_TITLE_LENGTH);
+}
+
+/**
+ * The title a rename would store, or null when the entry names nothing.
+ *
+ * A rename has no derived suggestion to fall back on the way an import does, so
+ * an emptied field is refused rather than quietly reverted: a learner who
+ * cleared the box has not asked for the old title back.
+ */
+export function renamedTitle(entered: string): string | null {
+  const trimmed = normalizeTitle(entered);
+  return meaningful(trimmed) ? truncate(trimmed, MAXIMUM_TITLE_LENGTH) : null;
 }

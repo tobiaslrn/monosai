@@ -4,6 +4,7 @@ import { NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/r
 import { filter, map, tap } from 'rxjs';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../../application/shared/diagnostics';
 import { safeErrorTypeOf } from '../../domain/shared/errors';
+import { classifyReadingLink } from '../../domain/reading/reading-link';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AppUpdateBannerComponent } from './app-update-banner.component';
 import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.component';
@@ -120,7 +121,22 @@ export class AppShellComponent {
     { initialValue: { url: this.router.url, completed: this.router.navigated } },
   );
 
-  protected readonly isReaderRoute = computed(() => this.url().url.startsWith('/reader/'));
+  /**
+   * Only the reader itself goes without application chrome.
+   *
+   * A `/reader/` URL whose segment is not an id never reaches the reader: it
+   * falls through to the broken-link screen, which is an ordinary page and was
+   * losing the masthead — and with it every way out of the application — to a
+   * prefix match.
+   */
+  protected readonly isReaderRoute = computed(() => {
+    const url = this.url().url;
+    if (!url.startsWith('/reader/')) return false;
+    // Not decoded: an id needs no escaping, so anything that carries some is
+    // already not one.
+    const segment = url.slice('/reader/'.length).split(/[/?#]/)[0];
+    return classifyReadingLink(segment).kind === 'well-formed';
+  });
 
   constructor() {
     effect(() => {
