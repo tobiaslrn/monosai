@@ -15,7 +15,7 @@ import { parseTextList } from '../../domain/vocabulary/text-list-parser';
 import type { TextListVocabularySource } from '../../domain/vocabulary/vocabulary-source';
 import { textListPreviewLabel } from './text-list-preview';
 
-/** Focused editor shared by the add-source flow and existing source rows. */
+/** Focused editor shared by the Add words sheet and a pasted list's own page. */
 @Component({
   selector: 'mn-text-list-source',
   changeDetection: ChangeDetectionStrategy.OnPush,

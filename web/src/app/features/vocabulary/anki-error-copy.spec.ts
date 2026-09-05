@@ -3,7 +3,13 @@ import { ALL_ANKI_ERROR_CODES } from '../../domain/anki/anki-error';
 import { ankiError } from '../../domain/anki/anki-error';
 import { languageError } from '../../domain/language/language-error';
 import { storageError } from '../../domain/storage/storage-error';
-import { ANKI_ERROR_COPY, NOTHING_SAVED, copyForFailure } from './anki-error-copy';
+import { ANKI_LINKS } from './anki-links';
+import {
+  ANKI_ERROR_COPY,
+  NOTHING_SAVED,
+  connectFailureCopy,
+  copyForFailure,
+} from './anki-error-copy';
 
 describe('ANKI_ERROR_COPY', () => {
   it('has words for every error variant', () => {
@@ -80,5 +86,62 @@ describe('copyForFailure', () => {
     expect(copyForFailure({ domain: 'anki', code: 'not-a-real-code' })).toBe(
       ANKI_ERROR_COPY.unknown,
     );
+  });
+});
+
+/**
+ * The connect panel asks a narrower question than the table above: the learner
+ * has just pressed Anki, nothing happened, and there is exactly one thing to go
+ * and fix. What that thing is depends on the platform, which is the whole
+ * reason a single Anki entry can exist at all.
+ */
+describe('connectFailureCopy', () => {
+  it('names the port that was tried, and the add-on, on a desktop', () => {
+    const copy = connectFailureCopy('desktop', ankiError('not-running', 'x'), 9999);
+
+    expect(copy.headline).toContain('9999');
+    expect(copy.paragraphs[0].link?.href).toBe(ANKI_LINKS.ankiConnectAddon);
+    expect(copy.offersPort).toBe(true);
+  });
+
+  it('sends Android to the bridge, never to the add-on', () => {
+    const copy = connectFailureCopy('android', ankiError('bridge-not-running', 'x'), 8765);
+
+    const links = copy.paragraphs.flatMap((paragraph) =>
+      paragraph.link === undefined ? [] : [paragraph.link.href],
+    );
+    expect(links).toContain(ANKI_LINKS.bridgeReleases);
+    expect(links).not.toContain(ANKI_LINKS.ankiConnectAddon);
+  });
+
+  /** A claim about reading is worth little if the reader cannot check it. */
+  it('backs the read-only promise with the bridge source on every Android failure', () => {
+    for (const code of [
+      'bridge-not-running',
+      'ankidroid-not-installed',
+      'ankidroid-permission-denied',
+    ] as const) {
+      const copy = connectFailureCopy('android', ankiError(code, 'x'), 8765);
+      const links = copy.paragraphs.flatMap((paragraph) =>
+        paragraph.link === undefined ? [] : [paragraph.link.href],
+      );
+      expect(links, code).toContain(ANKI_LINKS.bridgeSource);
+    }
+  });
+
+  /** The bridge fixes its own port, so offering one would be a dead end. */
+  it('never offers a port on Android', () => {
+    for (const code of ALL_ANKI_ERROR_CODES) {
+      expect(connectFailureCopy('android', ankiError(code, 'x'), 8765).offersPort, code).toBe(
+        false,
+      );
+    }
+  });
+
+  it('still says something specific for a failure with no panel of its own', () => {
+    const copy = connectFailureCopy('desktop', ankiError('origin-not-allowed', 'x'), 8765);
+
+    expect(copy.headline).toBe(ANKI_ERROR_COPY['origin-not-allowed'].whatFailed);
+    expect(copy.paragraphs[0].before).toBe(ANKI_ERROR_COPY['origin-not-allowed'].primaryAction);
   });
 });

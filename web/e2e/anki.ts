@@ -8,11 +8,16 @@ const FIXTURE_DIR = join(process.cwd(), 'src', 'testing', 'fixtures', 'anki');
 const CONNECT_ENDPOINTS = 'http://127.0.0.1:8765/**';
 const CONNECT_ENDPOINTS_ALT = 'http://localhost:8765/**';
 
-/** Select the Android provider explicitly; its traffic shares desktop's loopback addresses. */
-export async function connectAndroidBridge(page: Page): Promise<void> {
-  await page.getByTestId('add-source').click();
-  await page.getByRole('button', { name: 'AnkiDroid bridge', exact: false }).click();
-  await page.getByRole('button', { name: 'Connect to AnkiDroid', exact: true }).click();
+/**
+ * Presses Anki in the Add words sheet.
+ *
+ * There is one Anki entry and the platform picks the adapter behind it, so this
+ * helper reaches the desktop add-on on `desktop-chrome` and the Android bridge
+ * on `android-chrome` without the caller saying which.
+ */
+export async function connectAnki(page: Page): Promise<void> {
+  await page.getByTestId('add-words').click();
+  await page.getByTestId('choose-anki').click();
 }
 
 export async function stubAndroidBridge(page: Page): Promise<void> {
@@ -44,7 +49,7 @@ export function ankiFixture(name: string): Buffer {
 /** Uploads one of the committed package fixtures through the real file input. */
 export async function choosePackage(page: Page, name: string): Promise<void> {
   if ((await page.getByTestId('package-input').count()) === 0) {
-    await page.getByTestId('add-source').click();
+    await page.getByTestId('add-words').click();
   }
   await page.getByTestId('package-input').setInputFiles({
     name,

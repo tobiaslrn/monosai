@@ -306,7 +306,7 @@ test.describe('Android share target', () => {
     await expect(importState).toBeVisible({ timeout: 120_000 });
     await expect(importState).toHaveAttribute('data-testid', 'package-import-complete');
     await expect(importState).toContainText('Replaced Core Japanese');
-    await expect(page.locator('li.source')).toHaveCount(1);
+    await expect(page.getByTestId('source-row')).toHaveCount(1);
 
     await context.setOffline(false);
   });

@@ -1,7 +1,8 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import {
   choosePackage,
+  connectAnki,
   connectPackage,
   openVocabulary,
   readSnapshots,
@@ -12,13 +13,31 @@ import { importReading } from './reading';
 
 const CONTRACT_PACKAGE = 'contract-schema18-zstd.apkg';
 
-async function openAddSource(page: Page): Promise<void> {
-  await page.getByTestId('add-source').click();
-  await expect(page.getByRole('dialog', { name: 'Add vocabulary source' })).toBeVisible();
+async function openAddWords(page: Page): Promise<void> {
+  await page.getByTestId('add-words').click();
+  await expect(page.getByRole('dialog', { name: 'Add words' })).toBeVisible();
+}
+
+function row(page: Page, name: string): Locator {
+  return page.getByTestId('source-row').filter({ hasText: name });
+}
+
+/** Opens one source's own page, which is where every setting for it lives. */
+async function openSource(page: Page, name: string): Promise<void> {
+  await row(page, name).click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(name);
+}
+
+async function backToWords(page: Page): Promise<void> {
+  await page
+    .getByRole('button', { name: 'Back to words' })
+    .or(page.getByRole('link', { name: 'Back to words' }))
+    .click();
+  await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
 }
 
 async function addTextList(page: Page, name: string, content: string): Promise<void> {
-  await openAddSource(page);
+  await openAddWords(page);
   await page.getByTestId('add-text-source').click();
   const editor = page.getByTestId('text-source-editor');
   await editor.getByRole('textbox', { name: 'List name' }).fill(name);
@@ -27,9 +46,7 @@ async function addTextList(page: Page, name: string, content: string): Promise<v
 }
 
 async function addLiveAnki(page: Page, confirm = true): Promise<void> {
-  await openAddSource(page);
-  await page.getByTestId('choose-ankiconnect').click();
-  await page.getByTestId('connect-ankiconnect').click();
+  await connectAnki(page);
   if (confirm) await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
 }
 
@@ -56,24 +73,29 @@ function ankiAnswers(expressions: readonly string[]) {
 }
 
 test.describe('vocabulary', () => {
-  test('uses one add-source menu and one unified empty list @mobile', async ({ page }) => {
+  test('offers three ways in and one unified empty list @mobile', async ({ page }) => {
     await openVocabulary(page);
 
-    await expect(page.getByTestId('add-source')).toHaveCount(1);
-    await expect(page.getByTestId('mapping-locked')).toContainText('No sources yet');
+    await expect(page.getByTestId('add-words')).toHaveCount(1);
+    await expect(page.getByTestId('no-sources')).toContainText('No sources yet');
     await expect(page.getByTestId('words-standing')).toHaveText('No words yet');
-    await openAddSource(page);
-    await expect(page.getByTestId('choose-ankiconnect')).toBeVisible();
+
+    await openAddWords(page);
+    // One Anki entry, not two: the platform picks the adapter behind it.
+    await expect(page.getByTestId('choose-anki')).toHaveCount(1);
+    await expect(page.getByTestId('choose-package')).toBeVisible();
     await expect(page.getByTestId('package-input')).toBeAttached();
     await expect(page.getByTestId('add-text-source')).toBeVisible();
     await expect(page.getByTestId('start-refresh')).toHaveCount(0);
+    // The port is only ever touched when a connection fails.
+    await expect(page.getByTestId('anki-connect-port')).toHaveCount(0);
 
     await expectNoSeriousAccessibilityViolations(page);
   });
 
   test('counts pasted entries grammatically and offers one exit @mobile', async ({ page }) => {
     await openVocabulary(page);
-    await openAddSource(page);
+    await openAddWords(page);
     await page.getByTestId('add-text-source').click();
 
     const editor = page.getByTestId('text-source-editor');
@@ -92,19 +114,19 @@ test.describe('vocabulary', () => {
     ).toBeVisible();
   });
 
-  test('dismisses the add-source menu without triggering another action', async ({ page }) => {
+  test('dismisses the Add words sheet without triggering another action', async ({ page }) => {
     await openVocabulary(page);
-    const toggle = page.getByTestId('add-source');
-    const menu = page.getByRole('dialog', { name: 'Add vocabulary source' });
+    const toggle = page.getByTestId('add-words');
+    const sheet = page.getByRole('dialog', { name: 'Add words' });
 
-    await openAddSource(page);
+    await openAddWords(page);
     await page.getByRole('heading', { name: 'Words', level: 2 }).click();
-    await expect(menu).toBeHidden();
+    await expect(sheet).toBeHidden();
 
     await toggle.click();
-    await expect(menu).toBeVisible();
+    await expect(sheet).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(menu).toBeHidden();
+    await expect(sheet).toBeHidden();
     await expect(toggle).toBeFocused();
   });
 
@@ -123,23 +145,19 @@ test.describe('vocabulary', () => {
       page.getByRole('button', { name: 'Confirm vocabulary', exact: true }),
     ).toBeVisible();
     expect((await readSnapshots(page))[0].uniqueEntryCount).toBe(3);
-    await expect(page.locator('li.source')).toHaveCount(1);
+    await expect(page.getByTestId('source-row')).toHaveCount(1);
     await expect(page.getByRole('region', { name: 'Review Anki source' })).toContainText('食べる');
     await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
     await expect(page.getByTestId('words-standing')).toHaveText('4 words', {
       timeout: 60_000,
     });
-    const rows = page.locator('li.source');
+
+    const rows = page.getByTestId('source-row');
     await expect(rows).toHaveCount(2);
     await expect(rows.nth(0)).toContainText('My textbook');
     await expect(rows.nth(1)).toContainText('Anki');
-    await expect(rows.nth(1).getByRole('checkbox', { name: 'Sync automatically' })).toBeChecked();
-    await expect(
-      rows.nth(0).getByRole('checkbox', { name: 'Include in vocabulary' }),
-    ).toBeChecked();
-    await expect(
-      rows.nth(1).getByRole('checkbox', { name: 'Include in vocabulary' }),
-    ).toBeChecked();
+    // The standing says where the words came from, once, above the rows.
+    await expect(page.getByTestId('source-standing')).toContainText('from Pasted list + Anki');
 
     const snapshots = await readSnapshots(page);
     expect(snapshots).toHaveLength(1);
@@ -179,150 +197,169 @@ test.describe('vocabulary', () => {
     await expect(page.getByTestId('words-standing')).toHaveText('5 words', {
       timeout: 60_000,
     });
-    await expect(page.locator('li.source')).toHaveCount(2);
+    await expect(page.getByTestId('source-row')).toHaveCount(2);
 
     // The same deck again: one source, replaced in place, and the pasted list
-    // is still enabled and still counted.
+    // is still there and still counted.
     await connectPackage(page, CONTRACT_PACKAGE);
     await expect(page.getByTestId('package-import-complete')).toContainText('Replaced');
     await expect(page.getByTestId('words-standing')).toHaveText('5 words', {
       timeout: 60_000,
     });
 
-    const rows = page.locator('li.source');
+    const rows = page.getByTestId('source-row');
     await expect(rows).toHaveCount(2);
-    await expect(rows.filter({ hasText: 'Anki package' })).toHaveCount(1);
+    await expect(rows.filter({ hasText: 'File' })).toHaveCount(1);
     await expect(rows.filter({ hasText: 'My textbook' })).toHaveCount(1);
     const snapshots = await readSnapshots(page);
     expect(snapshots).toHaveLength(1);
     await expectNoSeriousAccessibilityViolations(page);
   });
 
-  test('uses the same inclusion and remove controls for every source kind', async ({ page }) => {
+  /** A row is for choosing what to open; the settings are on the page it opens. */
+  test('keeps every setting on the source page rather than on the row', async ({ page }) => {
     await openVocabulary(page);
     await addTextList(page, 'Course words', '猫\n犬');
-    const source = page.locator('li.source').filter({ hasText: 'Course words' });
-
-    await source.getByRole('checkbox', { name: 'Include in vocabulary' }).uncheck();
-    await expect(page.getByTestId('words-standing')).toHaveText('0 words', {
-      timeout: 60_000,
-    });
-    // Excluding is reversible: the source and everything read from it stay.
-    await expect(source).toHaveCount(1);
-    await source.getByRole('checkbox', { name: 'Include in vocabulary' }).check();
     await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
       timeout: 60_000,
     });
 
-    await source.getByRole('button', { name: 'Remove Course words' }).click();
+    await expect(row(page, 'Course words').getByRole('checkbox')).toHaveCount(0);
+    await expect(page.getByTestId('remove-source')).toHaveCount(0);
+
+    await openSource(page, 'Course words');
+    const counted = page.getByTestId('include-source');
+    await expect(counted).toBeChecked();
+
+    await counted.uncheck();
+    await backToWords(page);
+    await expect(page.getByTestId('words-standing')).toHaveText('0 words', {
+      timeout: 60_000,
+    });
+    // Not counting is reversible: the source and everything read from it stay.
+    await expect(row(page, 'Course words')).toContainText('not counted');
+
+    await openSource(page, 'Course words');
+    await page.getByTestId('include-source').check();
+    await backToWords(page);
+    await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
+      timeout: 60_000,
+    });
+
+    await openSource(page, 'Course words');
+    await page.getByTestId('remove-source').click();
     await page.getByRole('button', { name: 'Remove permanently' }).click();
-    await expect(source).toHaveCount(0);
+    await expect(page.getByTestId('no-sources')).toBeVisible({ timeout: 60_000 });
+    await expectNoSeriousAccessibilityViolations(page);
   });
 
   test('asks before removing a source and says what goes with it', async ({ page }) => {
     await openVocabulary(page);
     await addTextList(page, 'Course words', '猫\n犬');
-    const source = page.locator('li.source').filter({ hasText: 'Course words' });
     await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
       timeout: 60_000,
     });
+    await openSource(page, 'Course words');
 
-    await source.getByRole('button', { name: 'Remove Course words' }).click();
+    await page.getByTestId('remove-source').click();
     const dialog = page.getByRole('alertdialog');
     await expect(dialog).toContainText('Remove Course words?');
     await expect(dialog).toContainText('drops to none');
-    await expect(dialog).toContainText('Include in vocabulary');
+    await expect(dialog).toContainText('Count these words');
     // The safe answer is the one a stray Enter or Space would press.
     await expect(dialog.getByRole('button', { name: 'Keep it' })).toBeFocused();
 
     await dialog.getByRole('button', { name: 'Keep it' }).click();
     await expect(dialog).toBeHidden();
-    await expect(source).toHaveCount(1);
-    await expect(page.getByTestId('words-standing')).toHaveText('2 words');
+    await expect(page.getByTestId('include-source')).toBeVisible();
     await expectNoSeriousAccessibilityViolations(page);
   });
 
   test('escapes the removal dialog without destroying the source', async ({ page }) => {
     await openVocabulary(page);
     await addTextList(page, 'Course words', '猫\n犬');
-    const source = page.locator('li.source').filter({ hasText: 'Course words' });
+    await openSource(page, 'Course words');
 
-    await source.getByRole('button', { name: 'Remove Course words' }).click();
+    await page.getByTestId('remove-source').click();
     await expect(page.getByRole('alertdialog')).toBeVisible();
     await page.keyboard.press('Escape');
 
     await expect(page.getByRole('alertdialog')).toBeHidden();
-    await expect(source).toHaveCount(1);
+    await backToWords(page);
+    await expect(row(page, 'Course words')).toHaveCount(1);
   });
 
-  test('separates including a source from syncing it automatically', async ({ page }) => {
+  test('separates counting a source from keeping it up to date', async ({ page }) => {
     test.setTimeout(120_000);
     await stubAnkiConnect(page, ankiAnswers(['ねこ', '食べる']));
     await openVocabulary(page);
     await addLiveAnki(page);
-    const source = page.locator('li.source').filter({ hasText: 'Anki' });
     await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
       timeout: 60_000,
     });
 
-    // Turning off automatic syncing is not a way to lose your vocabulary.
-    await source.getByRole('checkbox', { name: 'Sync automatically' }).uncheck();
-    await expect(source.getByRole('checkbox', { name: 'Include in vocabulary' })).toBeChecked();
+    await openSource(page, 'Anki');
+    // Turning off automatic reading is not a way to lose your vocabulary.
+    await page.getByTestId('automatic-sync').uncheck();
+    await expect(page.getByTestId('include-source')).toBeChecked();
+    await backToWords(page);
     await expect(page.getByTestId('words-standing')).toHaveText('2 words');
     expect((await readSnapshots(page))[0].uniqueEntryCount).toBe(2);
     await expectNoSeriousAccessibilityViolations(page);
   });
 
-  test('syncs one source by hand after automatic syncing is off', async ({ page }) => {
+  test('refreshes one source by hand after automatic reading is off', async ({ page }) => {
     test.setTimeout(120_000);
     await stubAnkiConnect(page, ankiAnswers(['ねこ']));
     await openVocabulary(page);
     await addLiveAnki(page);
-    const source = page.locator('li.source').filter({ hasText: 'Anki' });
     await expect(page.getByTestId('words-standing')).toHaveText('1 word', {
       timeout: 60_000,
     });
-    await source.getByRole('checkbox', { name: 'Sync automatically' }).uncheck();
+    await openSource(page, 'Anki');
+    await page.getByTestId('automatic-sync').uncheck();
 
     await page.unrouteAll({ behavior: 'wait' });
     await stubAnkiConnect(page, ankiAnswers(['ねこ', '犬']));
-    await source.getByTestId('sync-now').click();
+    await page.getByTestId('sync-now').click();
 
-    await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
-      timeout: 60_000,
-    });
     await expect
       .poll(async () => (await readSnapshots(page))[0]?.uniqueEntryCount, { timeout: 60_000 })
       .toBe(2);
+    await backToWords(page);
+    await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
+      timeout: 60_000,
+    });
   });
 
-  test('keeps the last good vocabulary when a manual sync cannot reach Anki', async ({ page }) => {
+  test('keeps the last good vocabulary when a manual refresh cannot reach Anki', async ({
+    page,
+  }) => {
     test.setTimeout(120_000);
     await stubAnkiConnect(page, ankiAnswers(['ねこ', '食べる']));
     await openVocabulary(page);
     await addLiveAnki(page);
-    const source = page.locator('li.source').filter({ hasText: 'Anki' });
     await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
       timeout: 60_000,
     });
+    await openSource(page, 'Anki');
 
     await page.unrouteAll({ behavior: 'wait' });
     await refuseAnkiConnect(page);
-    await source.getByTestId('sync-now').click();
+    await page.getByTestId('sync-now').click();
 
-    const failure = source.getByTestId('sync-failed');
+    const failure = page.getByTestId('source-attention');
     await expect(failure).toBeVisible({ timeout: 60_000 });
     await expect(failure).toContainText('unchanged');
-    await expect(page.getByTestId('words-standing')).toHaveText('2 words');
     expect((await readSnapshots(page))[0].uniqueEntryCount).toBe(2);
 
     // Retry is the same control, and it works once Anki answers again.
     await page.unrouteAll({ behavior: 'wait' });
     await stubAnkiConnect(page, ankiAnswers(['ねこ', '食べる', '犬']));
-    await source.getByTestId('sync-now').click();
-    await expect(page.getByTestId('words-standing')).toHaveText('3 words', {
-      timeout: 60_000,
-    });
+    await page.getByTestId('sync-now').click();
+    await expect
+      .poll(async () => (await readSnapshots(page))[0]?.uniqueEntryCount, { timeout: 60_000 })
+      .toBe(3);
   });
 
   test('explains in the reader why every word is suddenly marked', async ({ page }) => {
@@ -336,8 +373,8 @@ test.describe('vocabulary', () => {
       timeout: 60_000,
     });
 
-    const source = page.locator('li.source').filter({ hasText: 'Course words' });
-    await source.getByRole('button', { name: 'Remove Course words' }).click();
+    await openSource(page, 'Course words');
+    await page.getByTestId('remove-source').click();
     await page.getByRole('button', { name: 'Remove permanently' }).click();
     await expect(page.getByTestId('words-standing')).toHaveText('0 words', {
       timeout: 60_000,
@@ -361,17 +398,30 @@ test.describe('vocabulary', () => {
     });
     await expect(alert).toContainText('current vocabulary and other sources are unchanged');
     await expect(alert).toContainText('anki/package-review-data-missing');
+    // The code is printed with a way to look it up, and the export it asks for
+    // with a way to do it.
+    await expect(alert.getByRole('link', { name: /what this means/ })).toBeVisible();
+    await expect(alert.getByRole('link', { name: /how to export/ })).toBeVisible();
     await expectNoSeriousAccessibilityViolations(page);
   });
 
-  test('keeps the current vocabulary when local Anki is unavailable', async ({ page }) => {
+  test('says what to install when local Anki is unavailable', async ({ page }) => {
+    test.skip(
+      test.info().project.name === 'android-chrome',
+      'the desktop add-on is not what Android is missing',
+    );
     await refuseAnkiConnect(page);
     await openVocabulary(page);
-    await addLiveAnki(page, false);
+    await connectAnki(page);
 
-    const alert = page.getByRole('alert');
-    await expect(alert).toContainText('Anki', { timeout: 30_000 });
-    await expect(alert).toContainText('still current');
+    const failure = page.getByTestId('anki-connect-failed');
+    await expect(failure).toBeVisible({ timeout: 30_000 });
+    await expect(failure).toContainText('Nothing is listening on 8765');
+    await expect(failure.getByRole('link', { name: /AnkiConnect add-on/ })).toBeVisible();
+    await expect(failure).toContainText('anki/not-running');
+    // The port lives here, behind a fold, beside the retry it changes.
+    await expect(page.getByTestId('anki-connect-port')).toBeAttached();
+    await expect(page.getByTestId('anki-retry')).toBeVisible();
     expect(await readSnapshots(page)).toHaveLength(0);
   });
 

@@ -61,14 +61,15 @@ It never writes to your collection.
    ```
 
    Restart Anki after editing the config.
-3. In Monosai, open **Vocabulary → Anki connection** and test the connection.
-   A successful test lists your decks and note types; choose the ones that
-   hold your reviewed vocabulary.
+3. In Monosai, open **What you can read → Add words → Anki**. Pressing it just
+   tries; a successful connection lists your decks and note types, and Monosai
+   suggests which field holds the Japanese.
 
-If the test fails, the error names which of these it was —
+If it cannot connect, the panel names the one thing to fix and prints the code —
 [troubleshooting.md](troubleshooting.md) lists Anki's codes and what each one
 means. `anki/origin-not-allowed` is the one this config step exists to
-prevent.
+prevent. AnkiConnect's port is asked for only there, behind **Different port**,
+because it is only ever wrong when a connection has already failed.
 
 ## Android bridge
 
@@ -80,7 +81,8 @@ on iOS. For optional live access, use Android 16+ and AnkiDroid 2.24+:
 2. Open AnkiDroid with your collection. In the bridge, choose **Grant AnkiDroid
    access**, then **Start bridge**. AnkiDroid calls this database read/write
    access because it has no read-only permission; the bridge only exposes reads.
-3. In Monosai, choose **Add source → AnkiDroid bridge → Connect to AnkiDroid**.
+3. In Monosai, choose **Add words → Anki**. On Android that one entry reaches the
+   bridge; there is no separate row to pick, and no port to set.
    Review the suggested deck, note type, Japanese field and words, then confirm.
 
 This is two native installs plus the PWA and a permission grant. Port 8765 is
@@ -108,7 +110,7 @@ its existing service-worker updates independently. See the
 Without a live Anki connection — a different device, a bridge that will not
 cooperate, or simply not wanting to keep Anki open — export a package
 (`.apkg` or `.colpkg`) from Anki (`File → Export`, "Include scheduling
-information" checked) and open it from **Vocabulary → Import a package**
+information" checked) and open it from **What you can read → Add words → A file**
 instead. Monosai reads the package fully offline; nothing is uploaded. A
 package without scheduling information cannot tell Monosai which cards you
 have actually reviewed, so export with it included.

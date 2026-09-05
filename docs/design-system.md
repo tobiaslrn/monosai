@@ -98,8 +98,11 @@ inside a control do not change.
 
 A shelf is for choosing what to open, so a row answers that and nothing else. It
 carries the name, one line saying what is inside, and — opposite the name — how
-big the thing is and when it was last used. The row is one link; the actions on
-it live in an overflow menu, because a row is not a place to configure anything.
+big the thing is and when it was last used. The row is one link, because a row
+is not a place to configure anything. Where a row has a handful of things to do
+to it, they live in an overflow menu; where what it opens is a surface of its
+own, they live there and the row carries none
+([ADR 0057](decisions/0057-one-anki-entry-and-a-page-per-source.md)).
 
 The line saying what is inside prefers **what the content already says about
 itself** over anything counted about it: a generated story states the premise
@@ -168,11 +171,23 @@ content status and explicit actions in Story options. It does not go into a list
 row's action menu. That menu is a short list of things to do to a row, and a
 shelf is for choosing what to open rather than for configuring each entry.
 
+A switch is also the control for a **single standing decision** that changes
+something the moment it is flipped — whether a vocabulary source counts. That is
+not a group and carries no fieldset, but it is the same control: one appearance,
+`mn-switch` in [`_controls.scss`](../web/src/styles/_controls.scss), wherever an
+independent outcome is turned on or off.
+
 The track uses the sunken surface at rest and the action colour when selected.
 A disabled switch stays visible and names, below the group, the exact state
 that prevents it; generic setup advice is never substituted for an untested,
 stale, or failed configuration. The whole labelled row meets the touch-target
 floor while the switch itself stays compact.
+
+**A surface never shows a control the thing in front of it cannot answer.** A
+file has no freshness to configure, so it does not get a disabled refresh
+switch — it gets the sentence saying what it does instead ("A file never
+changes"). A disabled control invites a learner to work out why; a sentence
+tells them.
 
 ### Disclosures
 
@@ -502,6 +517,14 @@ The same failure is classified identically wherever it appears, and the action
 is the one **this** surface can offer. A message that names a control the screen
 does not have — the settings test, quoted mid-reading — is a broken action, not
 a wording preference.
+
+**A link lives beside the thing it unblocks, and nowhere else.** There is no help
+section, no list of further reading, and nothing in a picker row that is working:
+a link on a screen where nothing is wrong is a symptom. The exceptions are
+narrow and stated — a claim the reader is entitled to check, such as an app
+saying it only reads a collection, may carry the link that lets them check it.
+Where a failure prints a technical code, the code carries the link that looks it
+up. Every one of these opens in a new tab and says so.
 
 ## 10. Accessibility floor
 

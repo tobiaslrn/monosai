@@ -10,22 +10,15 @@ import { SourceMappingStore } from '../../application/vocabulary/source-mapping.
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
-import { technicalCode } from '../../domain/shared/errors';
-import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { GuidanceSectionComponent } from '../grammar/guidance-section.component';
 import { PresetPickerComponent } from '../grammar/preset-picker.component';
 import { REGISTER_LABELS } from '../grammar/register-labels';
 import { StructuralBaselineSectionComponent } from '../grammar/structural-baseline-section.component';
-import { copyForFailure } from '../vocabulary/anki-error-copy';
-import { MappingEditorComponent } from '../vocabulary/mapping-editor.component';
+import { AddWordsComponent } from '../vocabulary/add-words.component';
 import { PackageImportComponent } from '../vocabulary/package-import.component';
-import { ProviderSelectionComponent } from '../vocabulary/provider-selection.component';
-import {
-  generationShortfallLabel,
-  vocabularyCountLabel,
-  vocabularyProvenanceLabel,
-} from '../../shared-ui/vocabulary-standing/vocabulary-standing';
+import { SourceListComponent } from '../vocabulary/source-list.component';
+import { generationShortfallLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
 /** Appended to every confirmation; changing the profile is what makes analyses stale. */
 const STALE_NOTICE = 'Existing grammar analyses are now out of date.';
@@ -55,11 +48,10 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
   // refresh in flight and releases the provider it was reading from.
   providers: [VocabularyRefreshStore, PackageImportStore],
   imports: [
-    ErrorScreenComponent,
     PageHeaderComponent,
-    MappingEditorComponent,
+    AddWordsComponent,
     PackageImportComponent,
-    ProviderSelectionComponent,
+    SourceListComponent,
     PresetPickerComponent,
     GuidanceSectionComponent,
     StructuralBaselineSectionComponent,
@@ -81,55 +73,25 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
         {{ announcement() }}
       </p>
 
-      <dl class="standing" data-testid="reading-level-standing">
-        <div class="fact">
-          <dt>Words</dt>
-          <dd class="value" data-testid="words-standing">{{ wordsValue() }}</dd>
-          <dd class="detail">{{ wordsDetail() }}</dd>
-        </div>
-        <div class="fact fact--end">
-          <dt>Grammar</dt>
-          <dd class="value" data-testid="grammar-standing">{{ grammarValue() }}</dd>
-          <dd class="detail">{{ grammarDetail() }}</dd>
-        </div>
-      </dl>
-
       <section id="words" class="mn-panel" aria-labelledby="mn-words-heading">
         <div class="section-heading">
           <h2 id="mn-words-heading">Words</h2>
-          @if (syncStatus(); as status) {
-            <span class="sync-status" [class.needs-attention]="status.attention">
-              {{ status.message }}
-            </span>
-          }
-          <mn-provider-selection />
+          <mn-add-words />
         </div>
 
-        @if (failure(); as copy) {
-          <mn-error-screen
-            [heading]="copy.heading"
-            [description]="copy.whatFailed"
-            [dataStatus]="copy.whatDidNot"
-            [code]="failureCode()"
-          >
-            <div data-actions class="recovery">
-              <p>{{ copy.primaryAction }}</p>
-              <p class="mn-hint">{{ copy.escape }}</p>
-            </div>
-          </mn-error-screen>
+        <mn-source-list />
+        @if (shortfall(); as note) {
+          <p class="mn-hint">{{ note }}</p>
         }
-
-        <div class="source-groups">
-          <mn-package-import />
-          <mn-mapping-editor />
-        </div>
-        @for (warning of sourceWarnings(); track $index) {
-          <p class="mn-hint">{{ warning }}</p>
-        }
+        <mn-package-import />
       </section>
 
       <section id="grammar" class="mn-panel" aria-labelledby="mn-grammar-heading">
-        <h2 id="mn-grammar-heading">Grammar</h2>
+        <div class="section-heading">
+          <h2 id="mn-grammar-heading">Grammar</h2>
+          <span class="grammar-standing" data-testid="grammar-standing">{{ grammarValue() }}</span>
+        </div>
+        <p class="mn-hint">{{ grammarDetail() }}</p>
 
         <!--
           Announced rather than shown as a toast: the change has already been
@@ -187,58 +149,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
       scroll-margin-top: 12rem;
     }
 
-    .standing {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--space-4);
-      margin: 0;
-    }
-
-    .fact {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-1);
-      min-width: 0;
-    }
-
-    .fact dt {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .fact dd {
-      min-width: 0;
-      margin: 0;
-    }
-
-    .fact .value {
-      font-family: var(--font-ui);
-      font-size: 26px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-    }
-
-    .fact .detail {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    /* Two facts read as a pair on a wide screen and as two lines below that. */
-    @media (min-width: 720px) {
-      .fact--end {
-        align-items: flex-end;
-        text-align: end;
-      }
-    }
-
-    @media (max-width: 719px) {
-      .standing {
-        grid-template-columns: minmax(0, 1fr);
-        gap: var(--space-3);
-      }
-    }
-
     .section-heading {
       display: flex;
       flex-wrap: wrap;
@@ -251,8 +161,13 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
       margin: 0;
     }
 
-    .section-heading mn-provider-selection {
+    .section-heading mn-add-words {
       margin-left: auto;
+    }
+
+    .grammar-standing {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
     }
 
     /*
@@ -262,30 +177,10 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
      * Add source → Pasted list drew the editor over the "Words" heading.
      */
     @media (min-width: 560px) {
-      .section-heading:not(:has(mn-provider-selection.is-editor)) {
+      .section-heading:not(:has(mn-add-words.is-editor)) {
         flex-wrap: nowrap;
         align-items: flex-start;
       }
-    }
-
-    .sync-status {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .sync-status.needs-attention {
-      color: var(--status-warning);
-    }
-
-    .source-groups {
-      display: grid;
-      gap: var(--space-3);
-      min-width: 0;
-    }
-
-    .recovery p {
-      margin: 0 0 var(--space-1);
     }
 
     .assets-failed {
@@ -396,59 +291,16 @@ export class ReadingLevelPageComponent {
       : this.packageImport.announcement(),
   );
 
-  protected readonly syncStatus = computed(() => {
-    if (this.refresh.isBusy()) {
-      return { message: 'Updating…', attention: false };
-    }
-    const status = this.automatic?.status();
-    switch (status?.kind) {
-      case undefined:
-      case 'idle':
-        return null;
-      case 'checking':
-        return { message: 'Checking Anki…', attention: false };
-      case 'updated':
-        return { message: 'Up to date', attention: false };
-      case 'waiting':
-        return { message: 'Anki is unavailable · current words kept', attention: false };
-      case 'attention':
-        return { message: 'A source needs attention', attention: true };
-    }
-  });
-
-  protected readonly failure = computed(() => {
-    const state = this.state();
-    return state.kind === 'failed' ? copyForFailure(state.error) : null;
-  });
-
-  protected readonly failureCode = computed(() => {
-    const state = this.state();
-    return state.kind === 'failed' ? technicalCode(state.error) : null;
-  });
-
-  /** The words fact, in every state the snapshot read can be in. */
-  protected readonly wordsValue = computed(() => {
-    if (this.history.lastFailure() !== null) {
-      return 'Words unavailable';
-    }
+  /**
+   * What a learner below the generation floor needs to know.
+   *
+   * The only thing the section says about the vocabulary beyond the list's own
+   * standing line, and it disappears the moment there are enough words rather
+   * than congratulating anyone for passing a threshold they never saw.
+   */
+  protected readonly shortfall = computed(() => {
     const snapshot = this.history.active();
-    return snapshot === null ? 'No words yet' : vocabularyCountLabel(snapshot.uniqueEntryCount);
-  });
-
-  protected readonly wordsDetail = computed(() => {
-    if (this.history.lastFailure() !== null) {
-      return 'Your saved words could not be read. Nothing was changed.';
-    }
-    const snapshot = this.history.active();
-    if (snapshot === null) {
-      return 'Add a source below and Monosai reads your words from it.';
-    }
-    if (snapshot.uniqueEntryCount === 0) {
-      return 'A source is connected but has no words in it yet.';
-    }
-    const provenance = vocabularyProvenanceLabel(snapshot, this.clock.now());
-    const shortfall = generationShortfallLabel(snapshot.uniqueEntryCount);
-    return shortfall === null ? provenance : `${provenance} · ${shortfall}`;
+    return snapshot === null ? null : generationShortfallLabel(snapshot.uniqueEntryCount);
   });
 
   protected readonly grammarValue = computed(
