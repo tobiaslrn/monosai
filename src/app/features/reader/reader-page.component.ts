@@ -18,7 +18,8 @@ import { Router, RouterLink } from '@angular/router';
 import { ReadingAudioMaintenanceStore } from '../../application/enrichment/reading-audio-maintenance.store';
 import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
 import { ReaderPreparationStore } from '../../application/reading/reader-preparation.store';
-import { NO_AIDS, SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
+import { ReaderSelectionStore } from '../../application/reading/reader-selection.store';
+import { SentenceAidsStore } from '../../application/enrichment/sentence-aids.store';
 import { PREPARATION_ORDER, type PreparationLayer } from '../../domain/enrichment/preparation';
 import { readerContentState } from './reader-content-state';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
@@ -126,6 +127,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     ReadingAudioMaintenanceStore,
     ReaderAudioStore,
     ReaderPreparationStore,
+    ReaderSelectionStore,
   ],
   template: `
     <div
@@ -300,10 +302,10 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           [grammarModelConfigured]="hasGrammarModel()"
           [audioModelConfigured]="audio.voiceChosen()"
           [unknownWords]="selectedUnknownWords()"
-          (translate)="translateSelectedSentence()"
-          (analyzeGrammar)="analyzeSelectedSentence()"
-          (generateAudio)="synthesizeSelectedSentence()"
-          (playAudio)="playSelectedSentence()"
+          (translate)="selection.translateSentence()"
+          (analyzeGrammar)="selection.analyzeSentence()"
+          (generateAudio)="selection.synthesizeSentence()"
+          (playAudio)="selection.playSentence()"
         />
       </mn-reader-popover>
     </ng-template>
@@ -542,10 +544,10 @@ export class ReaderPageComponent {
     ),
   );
 
-  private readonly selectedSentenceIdSignal = signal<SentenceId | null>(null);
+  protected readonly selection = inject(ReaderSelectionStore);
   private inspectedActivation: TokenActivation | null = null;
   /** The open sentence, tinted so its anchored details stay related to it. */
-  protected readonly selectedSentenceId = this.selectedSentenceIdSignal.asReadonly();
+  protected readonly selectedSentenceId = this.selection.sentenceId;
 
   protected readonly preferences = this.settings.readerPreferences;
   private readonly currentReadingId = computed(() => readingId(this.id()));
@@ -568,12 +570,7 @@ export class ReaderPageComponent {
     }
   });
 
-  protected readonly selectedWord = computed<SelectedWord | null>(() => {
-    const selected = this.inspector.selected();
-    return selected === null
-      ? null
-      : { sentenceId: selected.sentence.id, tokenId: selected.token.id };
-  });
+  protected readonly selectedWord = this.selection.inspectedWord;
 
   /** The whole word currently under the pointer or keyboard focus. */
   private readonly previewedWordSignal = signal<SelectedWord | null>(null);
@@ -590,13 +587,10 @@ export class ReaderPageComponent {
     return byId;
   });
 
-  protected readonly selectedSentenceAids = computed(() => {
-    const sentenceId = this.selectedSentenceIdSignal();
-    return sentenceId === null ? NO_AIDS : (this.aids.aids().get(sentenceId) ?? NO_AIDS);
-  });
+  protected readonly selectedSentenceAids = this.selection.sentenceAids;
 
   protected readonly selectedSentenceText = computed(() => {
-    const sentenceId = this.selectedSentenceIdSignal();
+    const sentenceId = this.selection.sentenceId();
     return sentenceId === null
       ? ''
       : (this.sentencesById().get(sentenceId)?.sentence.japaneseText ?? '');
@@ -610,7 +604,7 @@ export class ReaderPageComponent {
    * know says nothing more the second time.
    */
   protected readonly selectedUnknownWords = computed<readonly UnknownWord[]>(() => {
-    const sentenceId = this.selectedSentenceIdSignal();
+    const sentenceId = this.selection.sentenceId();
     const sentence = sentenceId === null ? undefined : this.sentencesById().get(sentenceId);
     const statuses = sentence?.statuses;
     if (sentence === undefined || statuses === null || statuses === undefined) {
@@ -644,7 +638,7 @@ export class ReaderPageComponent {
     if (selected === null) {
       return NO_WORD_GRAMMAR;
     }
-    const aids = this.aids.aids().get(selected.sentence.id) ?? NO_AIDS;
+    const aids = this.selection.inspectedSentenceAids();
     const grammar = aids.grammar;
     return {
       findings: grammar === null ? [] : findingsCoveringToken(grammar.findings, selected.token),
@@ -953,7 +947,7 @@ export class ReaderPageComponent {
   }
 
   protected showAudioPlayer(): void {
-    this.audio.openPlayer(this.selectedSentenceIdSignal());
+    this.audio.openPlayer(this.selection.sentenceId());
   }
 
   protected cancelAudioJob(): void {
@@ -987,7 +981,7 @@ export class ReaderPageComponent {
       this.audio.closePlayer();
       return;
     }
-    this.audio.openPlayer(this.selectedSentenceIdSignal());
+    this.audio.openPlayer(this.selection.sentenceId());
   }
 
   /** Clears every surface whose content belongs to the current reading. */
@@ -997,7 +991,7 @@ export class ReaderPageComponent {
     this.popover.close();
     this.releasePlayerHeight();
     this.audio.endPlayback();
-    this.selectedSentenceIdSignal.set(null);
+    this.selection.clearSentence();
   }
 
   /**
@@ -1041,7 +1035,7 @@ export class ReaderPageComponent {
     if (sentence === undefined) {
       return;
     }
-    if (this.selectedSentenceIdSignal() === sentence.sentence.id) {
+    if (this.selection.sentenceId() === sentence.sentence.id) {
       // The same gesture on the same sentence, for the same reason as a word.
       this.popover.close();
       return;
@@ -1061,7 +1055,7 @@ export class ReaderPageComponent {
     // For the same reason as a word: the closing surface clears the selection,
     // so whatever is open goes first and the new sentence is set after it.
     this.popover.close();
-    this.selectedSentenceIdSignal.set(sentenceId);
+    this.selection.selectSentence(sentenceId);
     this.popover.open({
       origin,
       template: this.sentencePopover(),
@@ -1073,7 +1067,7 @@ export class ReaderPageComponent {
       retargetSelector: WORD_TARGET,
       onClosed: () => {
         this.releaseSheetClearance();
-        this.selectedSentenceIdSignal.set(null);
+        this.selection.clearSentence();
       },
     });
     this.keepClearOfSheet(
@@ -1081,51 +1075,6 @@ export class ReaderPageComponent {
         ? origin
         : document.querySelector<HTMLElement>(`[data-sentence-id="${CSS.escape(sentenceId)}"]`),
     );
-  }
-
-  protected translateSelectedSentence(): void {
-    const sentenceId = this.selectedSentenceIdSignal();
-    if (sentenceId === null) {
-      return;
-    }
-    void this.aids.translateSentence(sentenceId).then(() => this.store.refreshSummaries());
-  }
-
-  /**
-   * Synthesizes the open sentence, because it was asked for.
-   *
-   * Producing a clip never plays it: the popover then offers Play, which is a
-   * second explicit action.
-   */
-  protected synthesizeSelectedSentence(): void {
-    const sentenceId = this.selectedSentenceIdSignal();
-    if (sentenceId === null) {
-      return;
-    }
-    void this.aids.synthesizeSentence(sentenceId).then(async () => {
-      await this.store.refreshSummaries();
-      const reading = this.store.reading();
-      if (reading !== null) {
-        await this.audio.playback.prepare(reading);
-      }
-    });
-  }
-
-  /** Plays the open sentence and stops at its end. */
-  protected playSelectedSentence(): void {
-    const sentenceId = this.selectedSentenceIdSignal();
-    if (sentenceId !== null) {
-      void this.audio.playback.playSentence(sentenceId);
-    }
-  }
-
-  /** Analyses the open sentence, because it was asked for. */
-  protected analyzeSelectedSentence(): void {
-    const sentenceId = this.selectedSentenceIdSignal();
-    if (sentenceId === null) {
-      return;
-    }
-    void this.aids.analyzeGrammar(sentenceId).then(() => this.store.refreshSummaries());
   }
 
   /**
@@ -1157,7 +1106,7 @@ export class ReaderPageComponent {
     // clears the selection, and a close that ran afterwards would clear this.
     this.popover.close();
     this.inspectedActivation = activation;
-    void this.inspector.inspect({
+    this.selection.openWord({
       token: activation.token,
       word: activation.word,
       sentence: activation.sentence.sentence,
@@ -1176,7 +1125,7 @@ export class ReaderPageComponent {
       onClosed: () => {
         this.releaseSheetClearance();
         this.inspectedActivation = null;
-        this.inspector.close();
+        this.selection.closeWord();
       },
     });
     this.keepClearOfSheet(activation.origin);
@@ -1324,7 +1273,7 @@ export class ReaderPageComponent {
    * deliberately opened.
    */
   protected previewWord(activation: TokenActivation): void {
-    if (this.inspector.isOpen() || this.selectedSentenceIdSignal() !== null) {
+    if (this.selection.anythingOpen()) {
       return;
     }
     this.previewedWordSignal.set({
@@ -1334,7 +1283,7 @@ export class ReaderPageComponent {
     this.cancelPreviewTimer();
     this.previewTimer = setTimeout(() => {
       this.previewTimer = null;
-      void this.inspector.previewWord(activation.word);
+      this.selection.previewWord(activation.word);
       this.previewRef = this.popover.open({
         origin: activation.origin,
         template: this.wordPreview(),
@@ -1352,7 +1301,7 @@ export class ReaderPageComponent {
     this.previewedWordSignal.set(null);
     this.previewRef?.close();
     this.previewRef = null;
-    this.inspector.clearPreview();
+    this.selection.clearPreview();
   }
 
   private cancelPreviewTimer(): void {

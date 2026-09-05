@@ -123,6 +123,13 @@ allow, and what a stop request did. The page keeps the projection — turning a 
 a progress, a readiness, and a connection into the row the Story options menu draws —
 and nothing else about the lane.
 
+The third is `application/reading/reader-selection.store.ts`: which sentence is open,
+which word is looked up, and the four things that can be asked for either of them —
+translate, analyse, synthesize, play — each of which re-reads the reading's summaries
+afterwards. What stays in the component is the half that is genuinely about the page:
+where a popover opens, which element it returns focus to, and how a bottom sheet is
+kept clear of the docked player.
+
 ### Whitebox: non-reader shell and Help
 
 `core/layout/` owns the utility bar and first-use CDK dialog. The shell only
