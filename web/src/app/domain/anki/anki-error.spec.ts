@@ -54,7 +54,7 @@ describe('ankiError', () => {
 describe('ALL_ANKI_ERROR_CODES', () => {
   it('lists every variant exactly once', () => {
     expect(new Set(ALL_ANKI_ERROR_CODES).size).toBe(ALL_ANKI_ERROR_CODES.length);
-    expect(ALL_ANKI_ERROR_CODES).toHaveLength(20);
+    expect(ALL_ANKI_ERROR_CODES).toHaveLength(22);
   });
 });
 

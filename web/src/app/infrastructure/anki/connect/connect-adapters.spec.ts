@@ -146,7 +146,7 @@ describe('DesktopConnectAdapter', () => {
 
     expect(discovered.ok).toBe(false);
     if (discovered.ok) return;
-    expect(discovered.error.code).toBe('deck-discovery-failed');
+    expect(discovered.error.code).toBe('query-failed');
   });
 });
 

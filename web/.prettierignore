@@ -3,6 +3,8 @@ coverage
 .angular
 playwright-report
 test-results
+playwright/.auth
+out-tsc
 package-lock.json
 
 # Generated language assets and their reviewed sources: byte-for-byte output of

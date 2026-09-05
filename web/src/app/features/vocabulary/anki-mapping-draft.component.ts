@@ -60,6 +60,9 @@ import { AnkiConnectionStore } from '../../application/vocabulary/anki-connectio
           </select>
         </label>
         @if (store.preview()) {
+          @for (warning of store.preview()?.stats?.sourceWarnings; track $index) {
+            <p class="mn-hint" role="status">{{ warning }}</p>
+          }
           <p class="mn-hint">Words from this source:</p>
           <p lang="ja">{{ store.sampleWords().join(' · ') || 'No reviewed words found.' }}</p>
           <p class="mn-hint">Your vocabulary stays unchanged until you confirm.</p>

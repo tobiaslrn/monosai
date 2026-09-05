@@ -18,6 +18,55 @@ function clientWith(
 }
 
 describe('AnkiConnectClient', () => {
+  it('classifies an unrecognised error after version as an unsupported action', async () => {
+    const client = clientWith((_input, init) => {
+      const body = JSON.parse(init?.body as string) as { action: string };
+      return Promise.resolve(
+        new Response(
+          JSON.stringify(
+            body.action === 'version'
+              ? { result: 6, error: null }
+              : {
+                  result: null,
+                  error: 'java.lang.IllegalStateException: Expected BEGIN_OBJECT but was STRING',
+                },
+          ),
+        ),
+      );
+    });
+    await client.version();
+    const result = await client.requestPermission();
+    expect(!result.ok && result.error.code).toBe('unsupported-action');
+  });
+
+  it('reports a killed Android bridge as unavailable even after a successful read on Pages', async () => {
+    let running = true;
+    const client = clientWith(
+      () => {
+        if (!running) return Promise.reject(new TypeError('Failed to fetch'));
+        return Promise.resolve(new Response(JSON.stringify({ result: 6, error: null })));
+      },
+      { unreachableCode: 'bridge-not-running', pageOrigin: 'https://tobiaslrn.github.io' },
+    );
+    await client.version();
+    running = false;
+    const result = await client.deckNames();
+    expect(!result.ok && result.error.code).toBe('bridge-not-running');
+  });
+
+  it.each([
+    'ankidroid-not-installed',
+    'ankidroid-permission-denied',
+    'review-evidence-unsupported',
+    'origin-not-allowed',
+  ] as const)('preserves the bridge error %s', async (code) => {
+    const client = clientWith(() =>
+      Promise.resolve(new Response(JSON.stringify({ result: null, error: code }))),
+    );
+    const result = await client.requestPermission();
+    expect(!result.ok && result.error.code).toBe(code);
+  });
+
   it('builds only loopback endpoints for a custom port', () => {
     expect(desktopEndpoints(9_999)).toEqual(['http://127.0.0.1:9999', 'http://localhost:9999']);
   });
@@ -205,7 +254,7 @@ describe('AnkiConnectClient', () => {
       const result = await client.deckNames();
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe('deck-discovery-failed');
+      expect(result.error.code).toBe('query-failed');
     });
 
     it('reports a denied permission rather than treating it as a failure to reach Anki', async () => {
@@ -218,7 +267,7 @@ describe('AnkiConnectClient', () => {
       const result = await client.requestPermission();
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error.code).toBe('permission-denied');
+      expect(result.error.code).toBe('query-failed');
     });
 
     it('rejects a response that is not JSON', async () => {

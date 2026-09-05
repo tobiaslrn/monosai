@@ -123,6 +123,9 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
           <mn-package-import />
           <mn-mapping-editor />
         </div>
+        @for (warning of sourceWarnings(); track $index) {
+          <p class="mn-hint">{{ warning }}</p>
+        }
       </section>
 
       <section id="grammar" class="mn-panel" aria-labelledby="mn-grammar-heading">
@@ -334,6 +337,9 @@ export class ReadingLevelPageComponent {
   private readonly mappings = inject(SourceMappingStore);
   private readonly packageImport = inject(PackageImportStore);
   private readonly history = inject(SnapshotHistoryStore);
+  protected readonly sourceWarnings = computed(
+    () => this.history.active()?.stats.sourceWarnings ?? [],
+  );
   private readonly automatic = inject(AutomaticAnkiSyncCoordinator, { optional: true });
   private readonly clock = inject(CLOCK);
   private readonly router = inject(Router);

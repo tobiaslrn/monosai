@@ -1,4 +1,10 @@
 import { fieldValueOf, type FixtureCollection, type FixtureNote } from './anki-collection';
+import { PROTOCOL_COLLECTION } from './connect-protocol-collection';
+import { protocolResult } from './connect-protocol';
+import {
+  permissionSchema,
+  versionSchema,
+} from '../app/infrastructure/anki/connect/connect-response.schema';
 
 /** Actions the fake refuses to answer, so unsupported-action can be exercised. */
 export interface FakeServerOptions {
@@ -39,7 +45,7 @@ export class FakeAnkiConnectServer {
   private readonly cards: readonly ServerCard[];
 
   constructor(
-    private readonly collection: FixtureCollection,
+    private readonly collection: FixtureCollection = PROTOCOL_COLLECTION,
     private readonly options: FakeServerOptions = {},
   ) {
     const cards: ServerCard[] = [];
@@ -105,10 +111,13 @@ export class FakeAnkiConnectServer {
       return this.envelope(null, 'unsupported action');
     }
     if (this.options.failingActions?.includes(action) === true) {
-      return this.envelope(null, 'collection is not open');
+      return this.envelope(null, 'query-failed: collection is not open');
     }
 
-    return this.envelope(this.answer(action, params), null);
+    const result = this.answer(action, params);
+    return result === undefined
+      ? this.envelope(null, `unsupported action: ${action}`)
+      : this.envelope(result, null);
   };
 
   private envelope(result: unknown, error: string | null): Response {
@@ -121,9 +130,10 @@ export class FakeAnkiConnectServer {
   private answer(action: string, params: Record<string, unknown>): unknown {
     switch (action) {
       case 'version':
-        return this.options.version ?? 6;
+        return this.options.version ?? versionSchema.parse(protocolResult('version'));
       case 'requestPermission':
         return {
+          ...permissionSchema.parse(protocolResult('requestPermission')),
           permission: this.options.permission ?? 'granted',
           requireApiKey: this.options.requireApiKey ?? false,
           version: this.options.version ?? 6,
@@ -173,7 +183,7 @@ export class FakeAnkiConnectServer {
         });
       }
       default:
-        return null;
+        return undefined;
     }
   }
 
