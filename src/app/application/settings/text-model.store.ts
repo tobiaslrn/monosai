@@ -618,6 +618,16 @@ export class TextModelStore {
     };
   }
 
+  hasModelForTask(task: 'translation' | 'grammar'): boolean {
+    const settings = this.settingsSignal();
+    const id =
+      (task === 'grammar' ? settings.grammarPresetId : settings.translationPresetId) ??
+      settings.activePresetId;
+    return id === null
+      ? settings.modelId !== ''
+      : settings.presets.some((preset) => preset.id === id && preset.modelId !== '');
+  }
+
   configForTask(task: 'text' | 'translation' | 'grammar'): {
     readonly modelId: string;
     readonly reasoningEffort: string | null;
@@ -631,10 +641,7 @@ export class TextModelStore {
         : task === 'translation'
           ? (settings.translationPresetId ?? settings.activePresetId)
           : settings.activePresetId;
-    const preset = this.configForPreset(presetId);
-    if (preset !== null) {
-      return preset;
-    }
+    if (presetId !== null) return this.configForPreset(presetId);
     return settings.modelId !== '' && settings.structuredOutput !== null
       ? {
           modelId: settings.modelId,
@@ -679,6 +686,10 @@ export class TextModelStore {
 
   private isPresetReady(preset: TextModelPreset): boolean {
     return (
+      !(this.settingsSignal().failedTests ?? []).some(
+        (test) =>
+          test.fingerprint === this.fingerprintForConfig(preset.modelId, preset.reasoningEffort),
+      ) &&
       preset.structuredOutput != null &&
       preset.lastTestFingerprint ===
         this.fingerprintForConfig(preset.modelId, preset.reasoningEffort)

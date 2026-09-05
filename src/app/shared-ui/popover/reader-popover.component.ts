@@ -65,6 +65,10 @@ const DISMISS_DISTANCE_PX = 80;
         >
           <span class="grip" aria-hidden="true"></span>
         </button>
+      } @else {
+        <button type="button" class="mn-button mn-button--secondary" (click)="closed.emit()">
+          Close
+        </button>
       }
       <div class="body">
         <ng-content />

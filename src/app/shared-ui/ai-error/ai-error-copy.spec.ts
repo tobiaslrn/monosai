@@ -48,8 +48,8 @@ describe('AI_ERROR_COPY', () => {
   it('does not describe a TTS capability failure as a structured-text failure', () => {
     const copy = aiErrorCopy(aiError('capability-unsupported', 'tts-test', 'x'));
 
-    expect(copy.primaryAction).toContain('TTS model and voice');
-    expect(copy.retryAction).toContain('TTS model and voice');
+    expect(copy.primaryAction).toContain('audio model and voice');
+    expect(copy.retryAction).toContain('audio model and voice');
     expect(copy.escape).not.toContain('structured replies');
   });
 

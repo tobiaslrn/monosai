@@ -8,6 +8,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { ReaderWordListService } from '../../application/vocabulary/reader-word-list.service';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import type { GrammarFinding } from '../../domain/enrichment/records';
 import type { DictionaryEntry } from '../../domain/language/dictionary';
@@ -67,9 +68,10 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 /**
  * Word details.
  *
- * Read-only, and entirely local: the bundled dictionary, the stored analysis,
+ * Entirely local: the bundled dictionary, the stored analysis,
  * and locally computed status all read from disk, so opening a word costs
- * nothing, works offline, and can never spend a request by accident. Everything
+ * nothing and works offline. Adding a word is an explicit transactional local write.
+ * Everything
  * that does spend one is on the sentence.
  */
 @Component({
@@ -94,15 +96,10 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
               }
             </h2>
           </div>
-          <div class="header-actions">
-            <button type="button" class="close" aria-label="Close word details" (click)="onClose()">
-              <mn-icon name="close" />
-            </button>
-          </div>
         </header>
 
         @if (store.formSummary(); as formSummary) {
-          <mn-word-form-summary [summary]="formSummary" />
+          <mn-word-form-summary [summary]="formSummary" [surface]="word.word.surface" />
         }
 
         <button type="button" class="sentence-route" (click)="sentenceActions.emit()">
@@ -132,8 +129,8 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
               <ol class="senses">
                 @for (entry of visibleEntries(); track entry.id) {
                   <li>
-                    @if (entry.writtenForms.length > 0) {
-                      <p class="entry-forms" lang="ja">{{ entry.writtenForms.join('、') }}</p>
+                    @if (otherForms(entry).length > 0) {
+                      <p class="entry-forms" lang="ja">{{ otherForms(entry).join('、') }}</p>
                     }
                     <ol class="glosses">
                       @for (sense of entry.senses; track $index) {
@@ -212,12 +209,24 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
                 <p class="form-example" lang="ja">{{ example }}</p>
               }
             }
-            <p>{{ presentation.explanation }}</p>
           </section>
         }
 
-        @if (nextAction(); as action) {
-          <p class="next-action">{{ action }}</p>
+        @if (canAdd()) {
+          <button
+            type="button"
+            class="next-action mn-button mn-button--secondary"
+            [disabled]="adding()"
+            (click)="addWord()"
+          >
+            {{ adding() ? 'Adding…' : 'Add to word list' }}
+          </button>
+        }
+        @if (addedTo(); as label) {
+          <p role="status" class="mn-hint">Added to {{ label }}.</p>
+        }
+        @if (addFailure(); as failure) {
+          <p role="alert" class="mn-error">{{ failure }} Your word lists are unchanged.</p>
         }
       </div>
     }
@@ -471,6 +480,10 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
   `,
 })
 export class WordInspectorComponent {
+  private readonly wordList = inject(ReaderWordListService);
+  protected readonly adding = signal(false);
+  protected readonly addedTo = signal<string | null>(null);
+  protected readonly addFailure = signal<string | null>(null);
   protected readonly store = inject(WordInspectorStore);
 
   private readonly expandedSignal = signal(false);
@@ -480,13 +493,14 @@ export class WordInspectorComponent {
     effect(() => {
       this.store.selected();
       this.expandedSignal.set(false);
+      this.addedTo.set(null);
+      this.addFailure.set(null);
     });
   }
 
   /** The grammar around this word, and whether it can still be analysed. */
   readonly grammar = input<WordGrammarState>(NO_WORD_GRAMMAR);
 
-  readonly closed = output<void>();
   /** Opens the request-spending actions for this word's sentence. */
   readonly sentenceActions = output<void>();
 
@@ -542,18 +556,41 @@ export class WordInspectorComponent {
    * saying the word is readable, and printing them here would just move the
    * clutter the reader already keeps off the page into the inspector instead.
    */
+  protected readonly canAdd = computed(
+    () =>
+      this.addedTo() === null &&
+      (this.store.selected()?.status == null || this.warningPresentation() !== null),
+  );
+
   protected readonly warningPresentation = computed(() => {
     const presentation = this.store.presentation();
-    return presentation?.marker === 'warning-vocabulary' ? presentation : null;
+    return this.addedTo() === null && presentation?.marker === 'warning-vocabulary'
+      ? presentation
+      : null;
   });
 
-  protected readonly nextAction = computed(() => this.warningPresentation()?.nextAction ?? null);
+  protected otherForms(entry: DictionaryEntry): readonly string[] {
+    const surface = this.store.selected()?.word.surface;
+    const dictionaryForm = this.store.formSummary()?.dictionaryForm;
+    return entry.writtenForms.filter((form) => form !== surface && form !== dictionaryForm);
+  }
+
+  protected async addWord(): Promise<void> {
+    const selected = this.store.selected();
+    if (selected === null || this.adding()) return;
+    this.adding.set(true);
+    this.addFailure.set(null);
+    try {
+      const result = await this.wordList.add(selected.word.head.lemma ?? selected.word.surface);
+      if (this.store.selected() !== selected) return;
+      if (result.ok) this.addedTo.set(result.value);
+      else this.addFailure.set(result.error.message);
+    } finally {
+      this.adding.set(false);
+    }
+  }
 
   protected expand(): void {
     this.expandedSignal.set(true);
-  }
-
-  protected onClose(): void {
-    this.closed.emit();
   }
 }

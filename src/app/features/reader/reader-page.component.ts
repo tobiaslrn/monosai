@@ -283,6 +283,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           [canAnalyze]="canAnalyzeGrammar()"
           [translationModelConfigured]="hasTranslationModel()"
           [grammarModelConfigured]="hasGrammarModel()"
+          [audioModelConfigured]="tts.settings().modelId !== '' && tts.settings().voiceId !== ''"
           [unknownWords]="selectedUnknownWords()"
           (translate)="translateSelectedSentence()"
           (analyzeGrammar)="analyzeSelectedSentence()"
@@ -298,11 +299,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
 
     <ng-template #wordPopover>
       <mn-reader-popover label="Word details" (closed)="popover.close()">
-        <mn-word-inspector
-          [grammar]="wordGrammar()"
-          (sentenceActions)="openInspectedSentence()"
-          (closed)="closeInspector()"
-        />
+        <mn-word-inspector [grammar]="wordGrammar()" (sentenceActions)="openInspectedSentence()" />
       </mn-reader-popover>
     </ng-template>
   `,
@@ -717,11 +714,11 @@ export class ReaderPageComponent {
   );
 
   protected readonly hasTranslationModel = computed(
-    () => this.textModel.configForTask('translation') !== null,
+    () => this.textModel.hasModelForTask('translation'),
   );
 
   protected readonly hasGrammarModel = computed(
-    () => this.textModel.configForTask('grammar') !== null,
+    () => this.textModel.hasModelForTask('grammar'),
   );
 
   private scrollWindowFrame: number | null = null;

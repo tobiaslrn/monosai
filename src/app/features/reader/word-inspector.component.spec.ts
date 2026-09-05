@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageStore } from '../../application/language/language.store';
+import { ReaderWordListService } from '../../application/vocabulary/reader-word-list.service';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import { LANGUAGE_RUNTIME } from '../../application/shared/language-tokens';
 import type { GrammarFinding } from '../../domain/enrichment/records';
@@ -20,6 +21,8 @@ import {
   WordInspectorComponent,
   type WordGrammarState,
 } from './word-inspector.component';
+
+const addWord = vi.fn(() => Promise.resolve(ok('Reader words')));
 
 const TOKEN: Token = {
   id: 't1',
@@ -119,9 +122,14 @@ describe('WordInspectorComponent', () => {
 
   beforeEach(() => {
     entries = [];
+    addWord.mockClear();
     TestBed.configureTestingModule({
       providers: [
         WordInspectorStore,
+        {
+          provide: ReaderWordListService,
+          useValue: { add: addWord },
+        },
         {
           provide: LANGUAGE_RUNTIME,
           useValue: { lookup: () => Promise.resolve(ok({ matchedBy: 'surface', entries })) },
@@ -155,6 +163,25 @@ describe('WordInspectorComponent', () => {
     fixture.detectChanges();
     return fixture;
   }
+
+  it('adds an unknown word and updates its panel without reloading', async () => {
+    const fixture = await render(NO_WORD_GRAMMAR, TOKEN, {
+      tokenId: TOKEN.id,
+      validation: { category: 'unknown', reason: 'not-in-vocabulary' },
+    });
+    const element = fixture.nativeElement as HTMLElement;
+    const button = element.querySelector<HTMLButtonElement>('button.next-action');
+    expect(button?.textContent).toContain('Add to word list');
+    button?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(addWord).toHaveBeenCalledWith('猫');
+    expect(element.querySelector('[role="status"]')?.textContent).toContain(
+      'Added to Reader words',
+    );
+    expect(element.querySelector('.status')).toBeNull();
+    expect(element.querySelector('button.next-action')).toBeNull();
+  });
 
   it('shows the grammar covering this word, where the reader stopped', async () => {
     const element = (await render(grammarWith({ findings: [FINDING], analyzed: true })))
@@ -292,7 +319,7 @@ describe('WordInspectorComponent', () => {
     ).nativeElement as HTMLElement;
 
     expect(element.querySelector('.status')?.textContent).toContain('Unknown vocabulary');
-    expect(element.textContent).toContain('Add this expression to one of your vocabulary sources');
+    expect(element.textContent).toContain('Add to word list');
   });
 
   it('keeps the lookup content in surface, form, dictionary, grammar, status order', async () => {
@@ -346,11 +373,12 @@ describe('WordInspectorComponent', () => {
       expect(element.querySelector('.part-of-speech')?.textContent).toBe('noun');
     });
 
-    it('still shows the dictionary form and part of speech for an uninflected word', async () => {
+    it('shows the headword once and keeps its part of speech for an uninflected word', async () => {
       const element = (await render(NO_WORD_GRAMMAR, { ...TOKEN, lemma: TOKEN.surface }))
         .nativeElement as HTMLElement;
 
-      expect(element.querySelector('.dictionary-form')?.textContent).toBe('猫');
+      expect(element.querySelector('.dictionary-form')).toBeNull();
+      expect(element.textContent.match(/猫/g)).toHaveLength(1);
       expect(element.querySelector('.part-of-speech')?.textContent).toBe('noun');
       expect(element.querySelector('.form-line')).toBeNull();
     });

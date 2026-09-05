@@ -216,7 +216,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     // correctly absent (0 findings shows no notes, by design). The word lookup
     // remains a compact local dictionary/form lookup.
     await openWord(page, '猫');
-    await expect(wordDetails(page).locator('.dictionary-form')).toHaveText('猫');
+    await expect(wordDetails(page).locator('.surface')).toContainText('猫');
     await expect(wordDetails(page).locator('.form-line')).toHaveCount(0);
     await dismissPopover(page);
 
