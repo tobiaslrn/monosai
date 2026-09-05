@@ -30,6 +30,8 @@ jobs:
         run: npm run icons:verify
       - name: Anki fixture reproducibility check
         run: npm run fixtures:verify
+      - name: Decision index completeness check
+        run: npm run docs:verify
       - name: Third-party licence check
         run: npm run licenses:check
       - name: Dependency audit (production)

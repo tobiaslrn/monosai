@@ -1,3 +1,5 @@
+import { formatCount } from '../../domain/shared/locale';
+import { GENERATION_SNAPSHOT_MINIMUM } from '../../domain/vocabulary/snapshot';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
@@ -18,18 +20,20 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
           <a routerLink="/add">Add text</a> by pasting Japanese from something you want to read.
           Save it as a story and tap words to look them up. No AI key is needed.
         </p>
-        <h3>Bring your Anki vocabulary</h3>
+        <h3>Tell Monosai which words you know</h3>
         <p>
-          Open <a routerLink="/reading-level" fragment="words">What you can read</a> to connect Anki
-          or import an Anki package. Choose the decks and fields containing Japanese. Monosai uses
-          reviewed vocabulary and reads Anki without changing your cards.
+          Open <a routerLink="/reading-level" fragment="words">What you can read</a> and add a word
+          source: connect Anki, import an Anki package, or paste a list of your own. For Anki,
+          choose the decks and fields containing Japanese; Monosai takes the words you have reviewed
+          and never changes your cards.
         </p>
         <h3>Make a story for your level</h3>
         <p>
           Choose your <a routerLink="/reading-level" fragment="grammar">grammar level</a>, set up
           and test a text model in <a routerLink="/settings">Settings</a>, then
-          <a routerLink="/generate">Generate a story</a> about a topic you enjoy. More reviewed
-          vocabulary gives the model more room to write a useful story.
+          <a routerLink="/generate">Generate a story</a> about a topic you enjoy. The more words you
+          have added, the more room the model has to write a useful story. Stories are written from
+          at least {{ minimumWords }} words.
         </p>
         <h3>Add optional reading aids</h3>
         <p>
@@ -51,18 +55,19 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
             on this device.
           </li>
           <li>
-            <strong>Markers:</strong> underlines flag unreviewed vocabulary and unfamiliar grammar.
-            They are guidance, not proof that a sentence is wrong. You can hide them in Story
-            options.
+            <strong>Markers:</strong> underlines flag words that are not in your lists, and grammar
+            beyond your level. They are guidance, not proof that a sentence is wrong. You can hide
+            them in Story options.
           </li>
           <li>
             <strong>Translation and grammar:</strong> select a sentence to open its details; on a
-            phone, long-press it. English stays in the details so the page stays Japanese. Use
+            phone, tap it twice. English stays in the details so the page stays Japanese. Use
             Translate story or Add notes in Story options to prepare missing aids.
           </li>
           <li>
-            <strong>Audio:</strong> use Listen and the playback controls to hear a story. Generate
-            audio in Story options first if it is missing. Leaving the reader stops playback.
+            <strong>Audio:</strong> open the reader's Audio control for the playback controls, or
+            press Listen in Story options. Generate the audio there first if it is missing. Leaving
+            the reader stops playback.
           </li>
         </ul>
       </section>
@@ -172,4 +177,7 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
     }
   `,
 })
-export class HelpPageComponent {}
+export class HelpPageComponent {
+  /** Read from the rule, so the three screens that state it cannot disagree. */
+  protected readonly minimumWords = formatCount(GENERATION_SNAPSHOT_MINIMUM);
+}
