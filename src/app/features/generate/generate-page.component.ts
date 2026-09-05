@@ -6,6 +6,7 @@ import {
   effect,
   inject,
   input,
+  signal,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
@@ -178,20 +179,39 @@ function formatList(items: readonly string[]): string {
           <mn-story-form
             [canGenerate]="canGenerate()"
             [disabledReason]="disabledReason()"
-            [disabled]="isBusy()"
+            [disabled]="isBusy() || savingDefault()"
+            [defaultFeedback]="defaultFeedback()"
             [atGenerationLimit]="!jobs.canStart()"
             [snapshotSummary]="snapshotSummary()"
             [presetName]="presetLine().presetName"
             [ankiWordPriorityMode]="appSettings.ankiWordPriorityMode()"
-            (ankiWordPriorityModeChanged)="appSettings.setAnkiWordPriorityMode($event)"
+            (ankiWordPriorityModeChanged)="
+              saveDefault(
+                appSettings.setAnkiWordPriorityMode($event),
+                appSettings.lastFailure,
+                'Word selection'
+              )
+            "
             [vocabularyStrictness]="generationSettings.vocabularyStrictness()"
-            (vocabularyStrictnessChanged)="generationSettings.setVocabularyStrictness($event)"
+            (vocabularyStrictnessChanged)="
+              saveDefault(
+                generationSettings.setVocabularyStrictness($event),
+                generationSettings.failure,
+                'Strictness'
+              )
+            "
             [preparationTargets]="generationSettings.defaultPreparationTargets()"
             [audioReadiness]="tts.readiness()"
-            (preparationTargetsChanged)="generationSettings.setDefaultPreparationTargets($event)"
+            (preparationTargetsChanged)="
+              saveDefault(
+                generationSettings.setDefaultPreparationTargets($event),
+                generationSettings.failure,
+                'Preparation choices'
+              )
+            "
             (generate)="generate()"
           >
-            <mn-exception-policy-field text-fields-extra />
+            <mn-exception-policy-field story-defaults />
             @if (hasBlockers()) {
               <mn-prerequisite-panel
                 generation-blockers
@@ -245,6 +265,24 @@ function formatList(items: readonly string[]): string {
   styleUrl: './generate-page.component.scss',
 })
 export class GeneratePageComponent {
+  protected readonly savingDefault = signal(false);
+  protected readonly defaultFeedback = signal('');
+
+  protected async saveDefault(
+    work: Promise<void>,
+    failure: () => { message: string } | null,
+    label: string,
+  ): Promise<void> {
+    this.savingDefault.set(true);
+    this.defaultFeedback.set('Saving default…');
+    try {
+      await work;
+      this.defaultFeedback.set(failure()?.message ?? `${label} saved as a default.`);
+    } finally {
+      this.savingDefault.set(false);
+    }
+  }
+
   /** The run this screen is showing, from `generate/:jobId`. */
   readonly jobId = input<string | undefined>(undefined);
 

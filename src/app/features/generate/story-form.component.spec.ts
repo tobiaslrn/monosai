@@ -65,6 +65,27 @@ describe('StoryFormComponent', () => {
     field.dispatchEvent(new Event('input'));
   }
 
+  it('clears story fields while keeping defaults and one primary action', () => {
+    const { element, fixture, host } = render();
+    draft.setPremise('ねこ');
+    draft.setSpecialInstructions('Dialogue');
+    draft.setSentenceCount(50);
+    host.priorityMode.set('recent');
+    host.strictness.set('strict');
+    draft.clear();
+    fixture.detectChanges();
+    expect(draft.premise()).toBe('');
+    expect(draft.specialInstructions()).toBe('');
+    expect(draft.sentenceCount()).toBe(15);
+    expect(host.priorityMode()).toBe('recent');
+    expect(host.strictness()).toBe('strict');
+    expect(element.querySelector('.text-fields')?.textContent).toContain('This story');
+    expect(element.querySelector('.story-settings')?.textContent).toContain(
+      'Defaults for every story',
+    );
+    expect(element.querySelectorAll('.mn-button--primary')).toHaveLength(1);
+  });
+
   it('writes the premise into the shared draft, so it survives a trip to Settings', () => {
     const { element } = render();
 
@@ -117,7 +138,7 @@ describe('StoryFormComponent', () => {
   it('offers more length stops up to 800 sentences without adding length names', () => {
     const { element } = render();
 
-    const text = element.querySelector('.story-settings')?.textContent ?? '';
+    const text = element.querySelector('.text-fields')?.textContent ?? '';
     expect(text).toContain('Tiny');
     expect(text).toContain('Short');
     expect(text).toContain('Medium');
@@ -176,7 +197,7 @@ describe('StoryFormComponent', () => {
     expect(select?.textContent).toContain('Recently learned');
     expect(select?.textContent).toContain('Difficult');
     expect(element.querySelector('.word-selection')?.textContent).not.toContain('Inspiration only');
-    expect(select?.getAttribute('aria-describedby')).toBeNull();
+    expect(select?.getAttribute('aria-describedby')).toBe('mn-priority-scope');
   });
 
   it('emits a changed mode and locks the select during generation', () => {

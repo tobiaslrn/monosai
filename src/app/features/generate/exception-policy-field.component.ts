@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import {
   ExceptionPolicyStore,
   MAX_POLICY_LENGTH,
@@ -11,6 +11,7 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
  * It only ever applies while a story is being generated, and each story keeps
  * the wording that was in force when it was made: editing this changes what
  * future stories are judged against and never rewrites an existing one.
+ * The composer groups this with saved defaults and explicitly labels its scope.
  */
 @Component({
   selector: 'mn-exception-policy-field',
@@ -30,6 +31,7 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
           [value]="policy.draft()"
           (input)="onInput($event)"
         ></textarea>
+        <p class="mn-hint">Saved exceptions apply to future stories too.</p>
         <p id="mn-policy-count" class="mn-hint">{{ countLabel() }}</p>
       </div>
 
@@ -42,7 +44,7 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
       <div class="actions-row">
         <button
           type="button"
-          class="mn-button mn-button--primary"
+          class="mn-button mn-button--secondary"
           data-testid="save-policy"
           [disabled]="
             policy.action() !== 'idle' || policy.isTooLong() || !policy.hasUnsavedChanges()
@@ -53,6 +55,9 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
         </button>
       </div>
 
+      @if (saved() && !policy.hasUnsavedChanges()) {
+        <p class="mn-hint" role="status">Exceptions saved as a default.</p>
+      }
       @if (policy.failure(); as failure) {
         <p role="alert" class="warning">{{ failure.message }}</p>
       }
@@ -77,6 +82,7 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
   `,
 })
 export class ExceptionPolicyFieldComponent {
+  protected readonly saved = signal(false);
   protected readonly policy = inject(ExceptionPolicyStore);
 
   protected readonly countLabel = computed(
@@ -95,7 +101,9 @@ export class ExceptionPolicyFieldComponent {
     this.policy.setDraft((event.target as HTMLTextAreaElement).value);
   }
 
-  protected save(): void {
-    void this.policy.save();
+  protected async save(): Promise<void> {
+    this.saved.set(false);
+    await this.policy.save();
+    this.saved.set(this.policy.failure() === null);
   }
 }
