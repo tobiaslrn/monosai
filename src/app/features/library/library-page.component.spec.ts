@@ -191,10 +191,10 @@ describe('LibraryPageComponent', () => {
   it('explains what Monosai is when nothing is saved yet, Anki first', async () => {
     const fixture = await render();
 
-    expect(element(fixture).querySelector('h1')?.textContent).toContain(
+    expect(element(fixture).querySelector('mn-library-welcome h2')?.textContent).toContain(
       'Japanese you can actually read',
     );
-    expect(element(fixture).textContent).toContain('reviewed in Anki');
+    expect(element(fixture).textContent).toContain('an Anki package, or a pasted list');
     expect(element(fixture).textContent).toContain('Everything stays on this device.');
     expect(
       [...element(fixture).querySelectorAll<HTMLAnchorElement>('.choice')].map((link) =>
@@ -208,10 +208,11 @@ describe('LibraryPageComponent', () => {
    * Nothing about a shelf until there is one. The standing line describes words
    * the learner does not have yet, and there is no shelf to add to.
    */
-  it('holds back the shelf apparatus until there is something on the shelf', async () => {
+  it('keeps New story above the empty shelf', async () => {
     const fixture = await render();
 
-    expect(newReadingButton(fixture)).toBeNull();
+    expect(newReadingButton(fixture)).not.toBeNull();
+    expect(element(fixture).querySelector('mn-library-welcome')).not.toBeNull();
     expect(element(fixture).querySelector('mn-library-standing')).toBeNull();
   });
 

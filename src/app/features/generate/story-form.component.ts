@@ -208,17 +208,24 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <strong>{{ presetName() }}</strong>
           </a>
         </div>
+        <ng-content select="[generation-blockers]" />
         <div class="actions">
           <button
             type="button"
             class="mn-button mn-button--primary"
             data-testid="generate"
             [disabled]="disabled() || !canGenerate()"
+            [attr.aria-describedby]="!canGenerate() ? 'mn-generate-disabled-reason' : null"
             (click)="generate.emit()"
           >
             <mn-icon name="generate" [size]="18" />
             <span>Generate story</span>
           </button>
+          @if (!canGenerate()) {
+            <p id="mn-generate-disabled-reason" class="mn-hint">
+              {{ disabledReason() || 'Enter a premise within the character limits to generate.' }}
+            </p>
+          }
           @if (atGenerationLimit()) {
             <p class="mn-hint" data-testid="generation-limit">
               You already have as many stories being written as Monosai runs at once. This one can
@@ -538,6 +545,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
   `,
 })
 export class StoryFormComponent {
+  readonly disabledReason = input('');
   protected readonly generateOriginState = navigationOriginState('/generate');
   protected readonly draft = inject(GenerationDraftStore);
 

@@ -13,7 +13,7 @@ import type { GrammarPreset, GrammarPresetId } from '../../domain/grammar/preset
  * it can never block generation. It is reported separately as a read-only line
  * that may carry a warning.
  */
-export type PrerequisiteId = 'text-model' | 'vocabulary';
+export type PrerequisiteId = 'text-model' | 'vocabulary' | 'network';
 
 export interface PrerequisiteCheck {
   readonly id: PrerequisiteId;
@@ -27,6 +27,7 @@ export interface PrerequisiteCheck {
 }
 
 export interface PrerequisiteInput {
+  readonly online?: boolean;
   readonly hasSources?: boolean;
   readonly textModelFailure?: string | null;
   readonly textModelReadiness: ConfigurationReadiness;
@@ -79,6 +80,18 @@ export function isTextModelReady(input: PrerequisiteInput): boolean {
 
 export function prerequisiteChecks(input: PrerequisiteInput): readonly PrerequisiteCheck[] {
   return [
+    ...(input.online === false
+      ? [
+          {
+            id: 'network' as const,
+            label: 'Connection',
+            satisfied: false,
+            detail: 'You are offline. Connect to the internet to generate; your draft stays here.',
+            route: '',
+            actionLabel: '',
+          },
+        ]
+      : []),
     {
       id: 'text-model',
       label: 'Text AI',

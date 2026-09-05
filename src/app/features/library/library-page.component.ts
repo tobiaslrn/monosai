@@ -74,10 +74,10 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           <p class="mn-hint">Nothing was changed or deleted.</p>
           <button type="button" class="mn-button" (click)="reload()">Try again</button>
         </section>
-      } @else if (isFirstRun()) {
-        <mn-library-welcome />
       } @else {
-        <mn-library-standing />
+        @if (!isFirstRun()) {
+          <mn-library-standing />
+        }
 
         <div class="shelf-head">
           <h1 class="shelf-heading">Library</h1>
@@ -128,7 +128,9 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           </section>
         }
 
-        @if (store.isEmpty() && generationJobs().length === 0) {
+        @if (isFirstRun()) {
+          <mn-library-welcome />
+        } @else if (store.isEmpty() && generationJobs().length === 0) {
           <p class="mn-hint">No {{ store.filter() }} stories yet.</p>
         } @else {
           <div class="date-groups">

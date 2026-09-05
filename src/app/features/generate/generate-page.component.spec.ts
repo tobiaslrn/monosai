@@ -6,6 +6,7 @@ import { GenerationJobsStore } from '../../application/generation/generation-job
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
+import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { configureGenerationTestBed } from '../../../testing/generation-fakes';
 import { buildReading } from '../../../testing/reading-repository-fake';
 import {
@@ -19,15 +20,18 @@ const JOB_ID = '22222222-2222-4222-8222-222222222222';
 
 describe('GeneratePageComponent', () => {
   let jobs: FakeGenerationJobsStore;
+  const online = signal(true);
 
   beforeEach(() => {
     jobs = new FakeGenerationJobsStore();
+    online.set(true);
     configureGenerationTestBed({
       extraProviders: [
         // Every route the screen navigates to resolves to nothing in
         // particular: what is under test is which address it goes to.
         provideRouter([{ path: '**', children: [] }]),
         { provide: GenerationJobsStore, useValue: jobs },
+        { provide: NETWORK_STATUS, useValue: { isOnline: online } },
         {
           provide: SourceMappingStore,
           useValue: { sources: signal([]), load: () => Promise.resolve() },
@@ -77,6 +81,19 @@ describe('GeneratePageComponent', () => {
     expect(page.querySelector('mn-story-form')).not.toBeNull();
     expect(page.querySelector('[data-testid="generation-screen"]')).toBeNull();
     expect(page.querySelector('[data-testid="missing-job"]')).toBeNull();
+  });
+  it('places labelled offline blockers beside the disabled Generate action', async () => {
+    online.set(false);
+    const page = await render();
+    const button = page.querySelector<HTMLButtonElement>('[data-testid="generate"]');
+    expect(button?.disabled).toBe(true);
+    expect(button?.getAttribute('aria-describedby')).toBe('mn-generate-disabled-reason');
+    expect(page.querySelector('.story-settings mn-prerequisite-panel')?.textContent).toContain(
+      'You are offline',
+    );
+    expect(page.querySelector('[data-check="network"] strong')?.textContent).toContain(
+      'Connection',
+    );
   });
 
   it('shows the progress of the addressed run and says it can be left', async () => {

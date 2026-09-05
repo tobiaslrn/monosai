@@ -87,7 +87,7 @@ test.describe('settings persistence', () => {
     await page.getByRole('button', { name: 'Delete all Monosai data' }).click();
     await page.getByRole('button', { name: 'Yes, delete everything' }).click();
 
-    const intro = page.getByRole('dialog', { name: 'A little help getting started' });
+    const intro = page.getByRole('complementary', { name: 'A little help getting started' });
     await expect(intro).toBeVisible();
     await intro.getByRole('button', { name: 'Got it' }).click();
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
