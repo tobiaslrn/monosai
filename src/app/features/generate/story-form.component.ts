@@ -16,7 +16,8 @@ import { PreparationTargetsComponent } from '../../shared-ui/preparation-targets
 const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
 
 /**
- * The premise, the story form, and optional style instructions.
+ * Option A: premise, instructions and length belong to this draft. Persisted
+ * controls live in a separate defaults region and report when a default is saved.
  *
  * There is deliberately no genre picker, no topic suggestions, no visible
  * target-vocabulary list, no temperature control, and no prompt editor: the
@@ -32,7 +33,8 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
   imports: [RouterLink, IconComponent, PreparationTargetsComponent],
   template: `
     <div class="composer-grid">
-      <div class="text-fields">
+      <div class="text-fields" role="region" aria-labelledby="mn-this-story">
+        <h3 id="mn-this-story">This story</h3>
         <div class="mn-field">
           <label for="mn-premise">What should the story be about?</label>
           <textarea
@@ -81,19 +83,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           }
         </div>
 
-        <ng-content select="[text-fields-extra]" />
-
-        <mn-preparation-targets
-          class="preparation-targets"
-          legend="Prepare after generation"
-          [targets]="preparationTargets()"
-          [audioReadiness]="audioReadiness()"
-          [disabled]="disabled()"
-          (targetsChanged)="preparationTargetsChanged.emit($event)"
-        />
-      </div>
-
-      <aside class="story-settings" aria-label="Story settings">
         <div class="setting-heading">
           <div>
             <label for="mn-story-length">Length</label>
@@ -134,12 +123,28 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             </span>
           </p>
         }
+      </div>
+
+      <aside class="story-settings" aria-label="Story settings">
+        <h3>Defaults for every story</h3>
+        <ng-content select="[story-defaults]" />
+
+        <mn-preparation-targets
+          class="preparation-targets"
+          legend="Prepare after generation"
+          [targets]="preparationTargets()"
+          [audioReadiness]="audioReadiness()"
+          [disabled]="disabled()"
+          (targetsChanged)="preparationTargetsChanged.emit($event)"
+        />
+        <p class="mn-hint">Preparation choices apply to future stories too.</p>
 
         <div class="mn-field word-selection">
           <label for="mn-word-selection">Anki word selection</label>
           <select
             id="mn-word-selection"
             data-testid="word-priority-select"
+            aria-describedby="mn-priority-scope"
             [value]="ankiWordPriorityMode()"
             [disabled]="disabled()"
             (change)="onWordPriorityMode($event)"
@@ -148,10 +153,14 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <option value="recent">Recently learned</option>
             <option value="difficult">Difficult</option>
           </select>
+          <p id="mn-priority-scope" class="mn-hint">
+            Word selection applies to future stories too.
+          </p>
         </div>
 
         <details class="mn-disclosure strictness">
           <summary>Vocabulary strictness</summary>
+          <p class="mn-hint">Strictness applies to future stories too.</p>
           <fieldset [disabled]="disabled()">
             <legend class="mn-visually-hidden">Vocabulary strictness</legend>
             <label>
@@ -186,6 +195,10 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             </label>
           </fieldset>
         </details>
+
+        @if (defaultFeedback()) {
+          <p class="mn-hint" role="status">{{ defaultFeedback() }}</p>
+        }
 
         <div class="generation-sources" data-testid="form-sources">
           <p class="setting-section-title">Uses</p>
@@ -241,6 +254,11 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       display: flex;
       flex-direction: column;
       gap: var(--space-4);
+    }
+
+    h3 {
+      margin: 0 0 var(--space-4);
+      font-size: var(--text-lg);
     }
 
     .counter {
@@ -545,6 +563,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
   `,
 })
 export class StoryFormComponent {
+  readonly defaultFeedback = input('');
   readonly disabledReason = input('');
   protected readonly generateOriginState = navigationOriginState('/generate');
   protected readonly draft = inject(GenerationDraftStore);
