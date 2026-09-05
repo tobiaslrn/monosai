@@ -134,6 +134,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       class="reader"
       [class.has-audio-player]="audio.playerOpen()"
       [style.--reader-scale]="textScale()"
+      [style.--sheet-scroll-reserve]="sheetScrollReserve()"
     >
       <header #readerBar class="bar">
         <div class="bar-row">
@@ -360,7 +361,18 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
      * measurement lands.
      */
     .reader.has-audio-player {
-      padding-bottom: calc(var(--mn-docked-player-height, 7rem) + var(--space-4));
+      padding-bottom: calc(
+        var(--mn-docked-player-height, 7rem) + var(--space-4) + var(--sheet-scroll-reserve, 0px)
+      );
+    }
+
+    /*
+     * Temporary room below the last line, so a sheet opened over the end of a
+     * reading still has somewhere to scroll the pressed line to. Zero at every
+     * other moment: it is scaffolding for one gesture, not layout.
+     */
+    .reader:not(.has-audio-player) {
+      padding-bottom: var(--sheet-scroll-reserve, 0px);
     }
 
     /*
@@ -687,8 +699,13 @@ export class ReaderPageComponent {
   /** Watches an open sheet, so a growing one never covers its own subject. */
   private sheetClearance: ResizeObserver | null = null;
   private sheetAnchor: HTMLElement | null = null;
+  /** Where the press landed, so a wrapped sentence clears the pressed line. */
+  private sheetAnchorY: number | null = null;
   private sheetClearanceCheck: (() => void) | null = null;
   private sheetClearanceFrame: number | null = null;
+  private sheetScrollFrame: number | null = null;
+  private readonly sheetReserveSignal = signal(0);
+  protected readonly sheetScrollReserve = computed(() => `${String(this.sheetReserveSignal())}px`);
   private previewRef: PopoverRef | null = null;
 
   constructor() {
@@ -851,6 +868,7 @@ export class ReaderPageComponent {
       // itself off.
       if (!this.scrollingProgrammatically) {
         this.followPlayback = false;
+        this.stopFollowingSheetAnchor();
         if (window.scrollY > this.lastScrollY + 1) {
           this.lastScrollDirection = 'forward';
         } else if (window.scrollY < this.lastScrollY - 1) {
@@ -1036,7 +1054,15 @@ export class ReaderPageComponent {
       return;
     }
     if (this.selection.sentenceId() === sentence.sentence.id) {
-      // The same gesture on the same sentence, for the same reason as a word.
+      if (selection.modality === 'touch') {
+        // Holding the same line again is a reader confirming where they are,
+        // not asking for the sheet in front of them to disappear. A finger
+        // dismisses by tapping the page, which is one short gesture rather
+        // than half a second of holding still.
+        return;
+      }
+      // A mouse click on the open sentence puts it away, as a click on the
+      // open word does.
       this.popover.close();
       return;
     }
@@ -1044,6 +1070,8 @@ export class ReaderPageComponent {
     this.openSentence(
       sentence.sentence.id,
       this.sentenceElement(sentence.sentence.id) ?? { x: selection.x, y: selection.y },
+      undefined,
+      selection.y,
     );
   }
 
@@ -1051,10 +1079,12 @@ export class ReaderPageComponent {
     sentenceId: SentenceId,
     origin: { x: number; y: number } | HTMLElement,
     returnFocusTo?: HTMLElement | null,
+    pressedAtY?: number,
   ): void {
     // For the same reason as a word: the closing surface clears the selection,
     // so whatever is open goes first and the new sentence is set after it.
-    this.popover.close();
+    // Without returning focus, because another surface is opening in its place.
+    this.popover.close(false);
     this.selection.selectSentence(sentenceId);
     this.popover.open({
       origin,
@@ -1071,9 +1101,8 @@ export class ReaderPageComponent {
       },
     });
     this.keepClearOfSheet(
-      origin instanceof HTMLElement
-        ? origin
-        : document.querySelector<HTMLElement>(`[data-sentence-id="${CSS.escape(sentenceId)}"]`),
+      origin instanceof HTMLElement ? origin : this.sentenceElement(sentenceId),
+      pressedAtY,
     );
   }
 
@@ -1090,21 +1119,25 @@ export class ReaderPageComponent {
       open.sentence.id === activation.sentence.sentence.id &&
       open.token.id === activation.token.id
     ) {
-      if ((activation.clickCount ?? 1) > 1) {
-        // The first click opened the lookup; the rest of the double-click
-        // belongs to that same intent and must not toggle it closed again.
+      if (activation.modality === 'touch' || (activation.clickCount ?? 1) > 1) {
+        // Touch: tapping the word already open changes nothing. A finger is
+        // imprecise and a reader often lands on the same word twice on the way
+        // to reading about it; taking the sheet away underneath them was the
+        // single most confusing thing a tap could do. The rest of a mouse
+        // double-click belongs to the intent that opened the lookup.
         return;
       }
-      // Pressing the open word again puts it away. Reopening it would replay
-      // the sheet's entrance over the same word and leave a reader who meant
-      // to dismiss it exactly where they started.
+      // A mouse click on the open word puts it away. Reopening it would replay
+      // the card's entrance over the same word and leave a reader who meant to
+      // dismiss it exactly where they started.
       this.popover.close();
       return;
     }
     this.endPreview();
     // Before the new word is set, because closing the surface over the old one
     // clears the selection, and a close that ran afterwards would clear this.
-    this.popover.close();
+    // Focus is not returned: the next surface is already on its way.
+    this.popover.close(false);
     this.inspectedActivation = activation;
     this.selection.openWord({
       token: activation.token,
@@ -1163,9 +1196,10 @@ export class ReaderPageComponent {
    * happens on a desktop, where the card is anchored beside its word, or when
    * the subject is already clear of the sheet.
    */
-  private keepClearOfSheet(anchor: HTMLElement | null): void {
+  private keepClearOfSheet(anchor: HTMLElement | null, pressedAtY?: number): void {
     this.releaseSheetClearance();
     this.sheetAnchor = anchor;
+    this.sheetAnchorY = pressedAtY ?? null;
     this.armSheetClearance();
   }
 
@@ -1185,13 +1219,15 @@ export class ReaderPageComponent {
       if (sheet === null) {
         return;
       }
+      // A sentence can wrap across half a screen, and only the line that was
+      // actually pressed has to stay visible. Held as an index rather than a
+      // coordinate, so it survives the scrolling this is about to do.
+      const line = lineIndexAt(anchor, this.sheetAnchorY);
       let scrolled = false;
       let target = window.scrollY;
       const clear = (): void => {
         const overlap =
-          anchor.getBoundingClientRect().bottom -
-          sheet.getBoundingClientRect().top +
-          SHEET_CLEARANCE;
+          lineBottom(anchor, line) - sheet.getBoundingClientRect().top + SHEET_CLEARANCE;
         // Resolved to a position rather than a distance, so a measurement taken
         // while a smooth scroll is still running does not ask for the same
         // distance twice.
@@ -1200,17 +1236,26 @@ export class ReaderPageComponent {
           return;
         }
         target = wanted;
-        this.scrollingProgrammatically = true;
-        window.scrollTo({
-          top: target,
+        // At the end of a reading there is nothing left to scroll into, so the
+        // room the pressed line needs is reserved temporarily and handed back
+        // when the sheet closes.
+        const reachable =
+          document.documentElement.scrollHeight - window.innerHeight - this.sheetReserveSignal();
+        this.sheetReserveSignal.set(Math.max(0, Math.ceil(target - reachable)));
+        const behavior = scrolled || this.viewport.prefersReducedMotion() ? 'auto' : 'smooth';
+        scrolled = true;
+        // After the reserve has been laid out: scrolling to a position the
+        // document does not have yet simply lands short of it.
+        this.sheetScrollFrame = requestAnimationFrame(() => {
+          this.sheetScrollFrame = null;
+          this.scrollingProgrammatically = true;
           // The first move is the one the reader sees answer their press. A
           // correction after the sheet has grown is not a second journey.
-          behavior: scrolled || this.viewport.prefersReducedMotion() ? 'auto' : 'smooth',
+          window.scrollTo({ top: target, behavior });
+          setTimeout(() => {
+            this.scrollingProgrammatically = false;
+          }, SCROLL_SETTLE_MS);
         });
-        scrolled = true;
-        setTimeout(() => {
-          this.scrollingProgrammatically = false;
-        }, SCROLL_SETTLE_MS);
       };
       this.sheetClearanceCheck = clear;
       // A sheet is as tall as what it has to say, and it has nothing to say
@@ -1229,6 +1274,20 @@ export class ReaderPageComponent {
   private releaseSheetClearance(): void {
     this.clearSheetClearanceObserver();
     this.sheetAnchor = null;
+    this.sheetAnchorY = null;
+  }
+
+  /**
+   * Stops correcting the scroll position once the reader has moved it.
+   *
+   * The sheet stays exactly where it is; only the correction ends. Left armed,
+   * a reader who scrolled back a paragraph with a sheet open was pulled
+   * forwards again to the line they had pressed, over and over.
+   */
+  private stopFollowingSheetAnchor(): void {
+    if (this.sheetAnchor !== null) {
+      this.releaseSheetClearance();
+    }
   }
 
   private rearmSheetClearance(): void {
@@ -1244,6 +1303,11 @@ export class ReaderPageComponent {
       cancelAnimationFrame(this.sheetClearanceFrame);
       this.sheetClearanceFrame = null;
     }
+    if (this.sheetScrollFrame !== null) {
+      cancelAnimationFrame(this.sheetScrollFrame);
+      this.sheetScrollFrame = null;
+    }
+    this.sheetReserveSignal.set(0);
     this.sheetClearance?.disconnect();
     this.sheetClearance = null;
     this.sheetClearanceCheck = null;
@@ -1478,4 +1542,19 @@ export class ReaderPageComponent {
       });
     });
   }
+}
+
+/** Which line box of a wrapped element a press landed in, or -1 for none. */
+function lineIndexAt(element: HTMLElement, pressedAtY: number | null): number {
+  const rects = [...element.getClientRects()];
+  if (pressedAtY === null || rects.length < 2) {
+    return -1;
+  }
+  return rects.findIndex((rect) => pressedAtY >= rect.top && pressedAtY <= rect.bottom);
+}
+
+/** The bottom of that line, or of the whole element when no one line applies. */
+function lineBottom(element: HTMLElement, line: number): number {
+  const rect = line >= 0 ? element.getClientRects()[line] : undefined;
+  return rect?.bottom ?? element.getBoundingClientRect().bottom;
 }

@@ -47,7 +47,7 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
         <ul>
           <li>
             <strong>Word lookup:</strong> tap or click a word for its dictionary meaning and word
-            form. Close the details to return to reading.
+            form. Tap elsewhere in the text, or press Escape, to return to reading.
           </li>
           <li>
             <strong>Furigana and spacing:</strong> open Story options to show readings above kanji,
@@ -60,9 +60,10 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
             them in Story options.
           </li>
           <li>
-            <strong>Translation and grammar:</strong> select a sentence to open its details; on a
-            phone, tap it twice. English stays in the details so the page stays Japanese. Use
-            Translate story or Add notes in Story options to prepare missing aids.
+            <strong>Translation and grammar:</strong> click a sentence to open its details; on a
+            phone, press and hold it. The arrow beside a word also leads there. English stays in the
+            details so the page stays Japanese. Use Translate story or Add notes in Story options to
+            prepare missing aids.
           </li>
           <li>
             <strong>Audio:</strong> open the reader's Audio control for the playback controls, or

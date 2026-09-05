@@ -189,7 +189,16 @@ words (wrapping at the ends); Home/End choose its first/last word. Enter and Spa
 native button activation, and closing details returns focus to that word. A focused or
 clicked word becomes its sentence's next tab entry. **Skip past story** reaches the
 Library action after the text. Paragraphs retain native `p` semantics.
-This focus model does not intercept touch pointers or change native text selection.
+This focus model does not intercept touch pointers. Touch gestures on the reading
+surface are decided separately, in the paragraph gesture directive: a short tap belongs
+to whatever it landed on, and a press held for 450ms opens sentence details from the
+pressed word, punctuation, furigana, or line leading. That press is why the reading
+surface — and only the reading surface, and only under a finger — gives up native text
+selection and the platform's long-press callout ([ADR 0057](../decisions/0057-one-gesture-per-meaning-on-touch.md)).
+A gesture that fired consumes its own release and click by pointer id, so the popover's
+outside-press rule cannot dismiss the surface that press just opened. Focus is set and
+returned with `preventScroll`, and replacing one surface with another skips the
+intermediate focus return.
 Story titles carry Japanese language metadata in the Library and reader header.
 
 ### One presentation for a link that addresses nothing

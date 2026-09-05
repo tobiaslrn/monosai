@@ -16,6 +16,7 @@ import {
   type TemplateRef,
   type ViewContainerRef,
 } from '@angular/core';
+import { isPointerGestureConsumed } from '../../core/platform/pointer-gestures';
 import { ViewportService } from '../../core/platform/viewport.service';
 
 /** What a floating surface is anchored to: an element, or a pointer position. */
@@ -121,6 +122,16 @@ function panelClasses(modal: boolean, sheet: boolean): string[] {
 /** How far an outside press may travel and still count as a tap, not a scroll. */
 const OUTSIDE_TAP_TOLERANCE_PX = 10;
 
+function travelled(
+  origin: { readonly x: number; readonly y: number },
+  event: PointerEvent,
+): boolean {
+  return (
+    Math.abs(event.clientX - origin.x) > OUTSIDE_TAP_TOLERANCE_PX ||
+    Math.abs(event.clientY - origin.y) > OUTSIDE_TAP_TOLERANCE_PX
+  );
+}
+
 const BELOW_FIRST_POSITIONS: readonly ConnectedPosition[] = [
   { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 8 },
   { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -8 },
@@ -150,7 +161,7 @@ export class PopoverService {
   private readonly viewport = inject(ViewportService);
 
   private overlayRef: OverlayRef | null = null;
-  private closeCurrent: (() => void) | null = null;
+  private closeCurrent: ((returnFocus: boolean) => void) | null = null;
   private currentMode: {
     readonly overlay: OverlayRef;
     readonly options: PopoverOptions;
@@ -171,7 +182,9 @@ export class PopoverService {
   }
 
   open(options: PopoverOptions): PopoverRef {
-    this.close();
+    // Whatever is open is replaced rather than dismissed, so focus never lands
+    // back on the word being moved away from on its way to the next surface.
+    this.closeCurrent?.(false);
 
     const modal = options.modal ?? true;
     const sheet = modal && options.mobileSheet !== false && this.viewport.isMobile();
@@ -195,7 +208,7 @@ export class PopoverService {
 
     overlayRef.attach(new TemplatePortal(options.template, options.viewContainerRef));
 
-    const close = (): void => {
+    const close = (returnFocus = true): void => {
       if (this.overlayRef !== overlayRef) {
         return;
       }
@@ -203,7 +216,12 @@ export class PopoverService {
       this.currentMode = null;
       this.closeCurrent = null;
       overlayRef.dispose();
-      options.returnFocusTo?.focus();
+      // Without `preventScroll` the browser scrolls the trigger back into view
+      // as it takes focus, which on a phone undoes the clearance the sheet had
+      // just made for it and jerks the reading under the reader's finger.
+      if (returnFocus && options.returnFocusTo?.isConnected === true) {
+        options.returnFocusTo.focus({ preventScroll: true });
+      }
       options.onClosed?.();
     };
 
@@ -222,7 +240,7 @@ export class PopoverService {
        * scroll and leaves the surface alone; one that stays put is a tap and
        * closes it.
        */
-      let origin: { x: number; y: number } | null = null;
+      let press: { pointerId: number; x: number; y: number; travelled: boolean } | null = null;
       const isOutside = (event: Event): boolean => {
         const target = event.target;
         if (!(target instanceof Node) || overlayRef.overlayElement.contains(target)) {
@@ -232,18 +250,35 @@ export class PopoverService {
         return element?.closest('.audio-button') === null;
       };
       const onPointerDown = (event: PointerEvent): void => {
-        origin = isOutside(event) ? { x: event.clientX, y: event.clientY } : null;
+        press = isOutside(event)
+          ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY, travelled: false }
+          : null;
+      };
+      const onPointerMove = (event: PointerEvent): void => {
+        // Travel is judged over the whole press rather than from its endpoints:
+        // a finger that wandered away and came back was still scrolling.
+        if (press !== null && press.pointerId === event.pointerId && travelled(press, event)) {
+          press.travelled = true;
+        }
+      };
+      const onPointerCancel = (event: PointerEvent): void => {
+        if (press?.pointerId === event.pointerId) {
+          press = null;
+        }
       };
       const onPointerUp = (event: PointerEvent): void => {
-        const start = origin;
-        origin = null;
-        if (start === null || !isOutside(event)) {
+        const start = press;
+        press = null;
+        // A gesture the application already answered — a long press that opened
+        // this very sheet — owns its own release. Reading it as an outside tap
+        // would close the surface on the finger that asked for it.
+        if (isPointerGestureConsumed(event.pointerId)) {
           return;
         }
-        const travelled =
-          Math.abs(event.clientX - start.x) > OUTSIDE_TAP_TOLERANCE_PX ||
-          Math.abs(event.clientY - start.y) > OUTSIDE_TAP_TOLERANCE_PX;
-        if (travelled) {
+        if (start?.pointerId !== event.pointerId || !isOutside(event)) {
+          return;
+        }
+        if (start.travelled || travelled(start, event)) {
           return;
         }
         if (retargets(event, options.retargetSelector)) {
@@ -265,9 +300,13 @@ export class PopoverService {
         });
       };
       document.addEventListener('pointerdown', onPointerDown, true);
+      document.addEventListener('pointermove', onPointerMove, true);
+      document.addEventListener('pointercancel', onPointerCancel, true);
       document.addEventListener('pointerup', onPointerUp, true);
       overlayRef.detachments().subscribe(() => {
         document.removeEventListener('pointerdown', onPointerDown, true);
+        document.removeEventListener('pointermove', onPointerMove, true);
+        document.removeEventListener('pointercancel', onPointerCancel, true);
         document.removeEventListener('pointerup', onPointerUp, true);
       });
     }
@@ -294,7 +333,9 @@ export class PopoverService {
       });
     }
 
-    overlayRef.backdropClick().subscribe(close);
+    overlayRef.backdropClick().subscribe(() => {
+      close();
+    });
     overlayRef.keydownEvents().subscribe((event) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -306,12 +347,22 @@ export class PopoverService {
     this.currentMode = { overlay: overlayRef, options, modal };
     this.closeCurrent = close;
     this.syncViewportMode(overlayRef, options, modal);
-    return { close };
+    return {
+      close: () => {
+        close();
+      },
+    };
   }
 
-  /** Closes whatever is open. Safe to call when nothing is. */
-  close(): void {
-    this.closeCurrent?.();
+  /**
+   * Closes whatever is open. Safe to call when nothing is.
+   *
+   * `returnFocus` is false only when the caller is about to open another
+   * surface and has to clear this one's state first: focusing the old trigger
+   * in between would scroll the page back to a word the reader has left.
+   */
+  close(returnFocus = true): void {
+    this.closeCurrent?.(returnFocus);
   }
 
   private isSheet(options: PopoverOptions, modal: boolean): boolean {

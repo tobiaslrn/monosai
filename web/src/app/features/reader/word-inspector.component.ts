@@ -96,16 +96,27 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
               }
             </h2>
           </div>
+          <!--
+            The route on to everything the sentence can be asked for. An arrow
+            that branches off and turns up rather than a labelled row: the
+            sentence is the level this word sits inside, not the next thing
+            along, and that is the one relationship an icon can actually draw.
+            The tooltip and accessible name carry the word.
+          -->
+          <button
+            type="button"
+            class="mn-icon-button sentence-details"
+            title="Sentence details"
+            aria-label="Sentence details"
+            (click)="sentenceActions.emit()"
+          >
+            <mn-icon name="sentence-details" />
+          </button>
         </header>
 
         @if (store.formSummary(); as formSummary) {
           <mn-word-form-summary [summary]="formSummary" [surface]="word.word.surface" />
         }
-
-        <button type="button" class="sentence-route" (click)="sentenceActions.emit()">
-          <span>Sentence</span>
-          <mn-icon name="chevron-right" [size]="18" />
-        </button>
 
         <section class="dictionary-section" aria-labelledby="mn-inspector-dictionary">
           <h3 class="mn-section-label" id="mn-inspector-dictionary">Meanings</h3>
@@ -164,35 +175,25 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
               </p>
             }
 
-            @if (grammarLabels().length > 0) {
-              <div class="grammar-labels" aria-label="Grammar findings">
-                @for (finding of grammar().findings; track $index) {
-                  <span class="finding-label">{{ finding.label }}</span>
-                }
-                @for (finding of grammar().sentenceFindings; track $index) {
-                  <span class="finding-label">
-                    {{ finding.label }} <span class="scope">whole sentence</span>
-                  </span>
-                }
+            <!--
+              Every rule once, in full. The fold used to print each label twice
+              — a row of chips and then the same labels again inside a
+              disclosure — so the explanation a reader stopped for was the one
+              thing they had to ask for a second time.
+            -->
+            @for (finding of grammar().findings; track $index) {
+              <div class="finding">
+                <p class="finding-label">{{ finding.label }}</p>
+                <p class="finding-text" lang="en">{{ finding.explanationEn }}</p>
               </div>
-
-              <details class="grammar-details mn-disclosure">
-                <summary>Details</summary>
-                <div class="grammar-explanations">
-                  @for (finding of grammar().findings; track $index) {
-                    <p lang="en">
-                      <strong>{{ finding.label }}</strong> — {{ finding.explanationEn }}
-                    </p>
-                  }
-                  @for (finding of grammar().sentenceFindings; track $index) {
-                    <p lang="en">
-                      <strong>{{ finding.label }}</strong>
-                      <span class="scope">whole sentence</span> —
-                      {{ finding.explanationEn }}
-                    </p>
-                  }
-                </div>
-              </details>
+            }
+            @for (finding of grammar().sentenceFindings; track $index) {
+              <div class="finding">
+                <p class="finding-label">
+                  {{ finding.label }} <span class="scope">whole sentence</span>
+                </p>
+                <p class="finding-text" lang="en">{{ finding.explanationEn }}</p>
+              </div>
             }
           </section>
         }
@@ -243,23 +244,34 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       gap: var(--space-2);
       align-items: flex-start;
       justify-content: space-between;
+      /* Clear of the card's own corner control, and nothing on a sheet. */
+      padding-inline-end: var(--mn-popover-close-inset, 0px);
     }
 
-    .header-actions {
-      display: flex;
-      flex: none;
-      gap: var(--space-2);
-      align-items: flex-start;
-    }
-
+    /* Long words wrap inside their own column rather than pushing the route
+     * off the card. */
     .headword {
+      flex: 1;
       min-width: 0;
+    }
+
+    .sentence-details {
+      flex: none;
+    }
+
+    .sentence-details mn-icon {
+      color: var(--text-secondary);
+    }
+
+    .sentence-details:hover mn-icon {
+      color: var(--text-primary);
     }
 
     .surface {
       margin: 0;
       font-family: var(--font-japanese);
-      font-size: 28px;
+      /* In rem, so the headword follows the reader's own text size. */
+      font-size: 1.75rem;
       font-weight: 700;
       line-height: 1.15;
       overflow-wrap: anywhere;
@@ -278,19 +290,6 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 
     .ruby-base {
       white-space: nowrap;
-    }
-
-    .close {
-      display: inline-flex;
-      flex: none;
-      align-items: center;
-      justify-content: center;
-      width: var(--touch-target);
-      height: var(--touch-target);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-control);
-      background: var(--surface-raised);
-      cursor: pointer;
     }
 
     /* The same quiet section label the sentence card uses, so the two match. */
@@ -373,31 +372,21 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       cursor: pointer;
     }
 
+    /* The same shape the sentence card gives a finding, so one rule reads the
+     * same whichever way the reader arrived at it. */
+    .finding + .finding {
+      margin-top: var(--space-3);
+    }
+
     .finding-label {
-      display: inline-block;
-      padding: var(--space-1) var(--space-2);
-      border-radius: var(--radius-pill);
-      background: var(--surface-sunken);
+      margin: 0;
       font-weight: 600;
     }
 
-    .grammar-labels {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-1) var(--space-2);
-    }
-
-    .grammar-details {
-      margin-top: var(--space-2);
-    }
-
-    .grammar-explanations {
+    .finding-text {
+      margin: 0;
       color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .grammar-explanations p {
-      margin: var(--space-2) 0 0;
+      line-height: 1.6;
     }
 
     /* Ruled in the marker's own colour, so the section names the underline. */
@@ -431,41 +420,6 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       border-radius: var(--radius-control);
       background: var(--surface-sunken);
       font-size: var(--text-sm);
-    }
-
-    .sentence-route {
-      display: inline-flex;
-      align-items: center;
-      align-self: flex-start;
-      gap: var(--space-1);
-      min-height: var(--touch-target);
-      padding: 0;
-      border: 0;
-      border-radius: var(--radius-control);
-      background: none;
-      color: var(--text-secondary);
-      font: inherit;
-      font-size: var(--text-sm);
-      cursor: pointer;
-    }
-
-    .sentence-route:hover {
-      color: var(--text-primary);
-      text-decoration: underline;
-    }
-
-    .sentence-route:focus-visible {
-      outline: 2px solid var(--action-primary);
-      outline-offset: 2px;
-    }
-
-    .sentence-route mn-icon {
-      color: currentColor;
-    }
-
-    /* Keep the quiet route near the form, rather than visually promoting it. */
-    .sentence-route + .dictionary-section {
-      margin-top: calc(-1 * var(--space-1));
     }
 
     .mn-error {
@@ -503,11 +457,6 @@ export class WordInspectorComponent {
   protected readonly hasNotes = computed(() => {
     const grammar = this.grammar();
     return grammar.findings.length > 0 || grammar.sentenceFindings.length > 0;
-  });
-
-  protected readonly grammarLabels = computed(() => {
-    const grammar = this.grammar();
-    return [...grammar.findings, ...grammar.sentenceFindings].map((finding) => finding.label);
   });
 
   /** Presentation-only ruby, derived from the token readings of the tapped form. */

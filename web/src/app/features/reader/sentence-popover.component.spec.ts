@@ -205,8 +205,18 @@ describe('SentencePopoverComponent', () => {
     fixture.detectChanges();
 
     const alert = rendered.querySelector('[role="alert"]');
-    expect(alert?.textContent).toContain('select it in the reader and copy it instead');
+    expect(alert?.textContent).toContain('select it here, or try Copy again');
     expect(alert?.textContent).not.toContain('private platform detail');
+    // The way out is here rather than in the reader: the source is printed as
+    // plain, selectable Japanese inside the card that failed to copy it.
+    expect(rendered.querySelector('.copy-source')?.textContent).toContain('猫が寝た。');
+    // And Copy is still offered, because a clipboard that refused once often
+    // works on the next press.
+    expect(
+      [...rendered.querySelectorAll('button')].some(
+        (button) => button.textContent.trim() === 'Copy',
+      ),
+    ).toBe(true);
   });
 
   it('reports a run in flight without offering a second one', () => {

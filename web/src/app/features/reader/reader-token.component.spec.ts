@@ -136,10 +136,29 @@ describe('ReaderTokenComponent', () => {
     button?.dispatchEvent(new FocusEvent('focus'));
 
     expect(fixture.componentInstance.previews).toHaveLength(0);
-    // The tap itself still opens the word.
-    button?.click();
+    // The tap itself still opens the word. A real tap carries a click count,
+    // which is what separates it from a keyboard activation.
+    button?.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
     expect(fixture.componentInstance.activations).toHaveLength(1);
     expect(fixture.componentInstance.activations[0].clickCount).toBe(1);
+    expect(fixture.componentInstance.activations[0].modality).toBe('touch');
+  });
+
+  /**
+   * A keyboard has no click count at all, which is how it is told apart from a
+   * finger even on a device that has both.
+   */
+  it('reports a keyboard activation as one, whatever the last pointer was', () => {
+    TestBed.inject(PointerModalityService);
+    document.body.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }),
+    );
+    const fixture = render();
+    const button = (fixture.nativeElement as HTMLElement).querySelector('button');
+
+    button?.click();
+
+    expect(fixture.componentInstance.activations[0].modality).toBe('keyboard');
   });
 
   it('renders ruby only for a reading that adds information', () => {

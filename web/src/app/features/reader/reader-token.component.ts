@@ -6,6 +6,16 @@ import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
 
 /**
+ * Which instrument made an activation.
+ *
+ * A repeat means different things per device: clicking the open word again is
+ * a mouse putting it away, while tapping it again is a finger landing on the
+ * word it is already reading about, and closing under it would be a surface
+ * disappearing for no reason the reader asked for.
+ */
+export type ActivationModality = 'touch' | 'mouse' | 'keyboard';
+
+/**
  * A token and the element it was activated from.
  *
  * The element travels with the event because word details are anchored to the
@@ -16,6 +26,7 @@ export interface TokenActivationSource {
   readonly origin: HTMLElement;
   /** Native click count; absent for hover/focus previews. */
   readonly clickCount?: number;
+  readonly modality: ActivationModality;
 }
 
 /**
@@ -116,6 +127,17 @@ export interface TokenActivationSource {
 
     .is-plain {
       cursor: text;
+    }
+
+    /*
+     * On touch the whole reading surface belongs to the application's gestures,
+     * and a word is the smallest thing a press can land on. Selection stays
+     * native for a mouse, and everywhere outside the reading surface.
+     */
+    :host-context(html[data-pointer='touch']) .token {
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
 
     /*
@@ -248,12 +270,17 @@ export class ReaderTokenComponent {
       event.preventDefault();
       return;
     }
+    // A keyboard activation carries no click count at all, which is what
+    // separates it from a pointer without having to guess at coordinates.
+    const modality: ActivationModality =
+      event.detail === 0 ? 'keyboard' : this.pointerModality.isTouch() ? 'touch' : 'mouse';
     this.activated.emit({
       token: this.token(),
       origin: event.currentTarget as HTMLElement,
-      // Chromium increments detail across rapid taps too. Touch owns a
-      // different contract: a second tap on the open word puts it away.
-      clickCount: this.pointerModality.isTouch() ? 1 : event.detail,
+      // Chromium increments detail across rapid taps too, and on touch a
+      // repeat is deliberately inert rather than a second activation.
+      clickCount: modality === 'touch' ? 1 : event.detail,
+      modality,
     });
   }
 
@@ -268,7 +295,11 @@ export class ReaderTokenComponent {
     if (this.pointerModality.isTouch()) {
       return;
     }
-    this.previewed.emit({ token: this.token(), origin: event.currentTarget as HTMLElement });
+    this.previewed.emit({
+      token: this.token(),
+      origin: event.currentTarget as HTMLElement,
+      modality: event.type === 'focus' ? 'keyboard' : 'mouse',
+    });
   }
 
   protected readonly ruby = computed(() => (this.showFurigana() ? rubyFor(this.token()) : null));
