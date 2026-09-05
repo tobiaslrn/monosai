@@ -55,6 +55,7 @@ files are already linked from code comments and from other records.
 | [0036](../decisions/0036-android-package-share-target.md) | Android package sharing uses a service-worker inbox |
 | [0055](../decisions/0055-anki-mapping-is-suggested-then-confirmed.md) | An Anki mapping is suggested from Japanese samples, then confirmed |
 | [0056](../decisions/0056-first-party-ankidroid-bridge.md) | First-party read-only AnkiDroid bridge and shared wire contract |
+| [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md) | One Anki entry chosen by platform, and a page per source |
 
 ### AI providers and generation
 
@@ -87,7 +88,8 @@ files are already linked from code comments and from other records.
 | [0050](../decisions/0050-the-library-wears-the-navigation.md) | The Library standing line is the way to the learner's level |
 | [0051](../decisions/0051-non-reader-utilities-and-first-use-help.md) | Non-reader utilities and first-use Help; amends 0050 and 0025 |
 | [0053](../decisions/0053-reader-touch-details-and-measured-sheets.md) | Native touch selection, sentence double taps, and measured detail sheets |
-| [0057](../decisions/0057-one-gesture-per-meaning-on-touch.md) | On touch, a tap opens a word and a held press opens its sentence |
+| [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md) | One Anki entry chosen by platform, and a page per source |
+| [0058](../decisions/0058-one-gesture-per-meaning-on-touch.md) | On touch, a tap opens a word and a held press opens its sentence |
 
 ### Audio
 

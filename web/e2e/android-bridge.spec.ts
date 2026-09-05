@@ -1,36 +1,70 @@
 import { expect, test } from '@playwright/test';
-import { connectAndroidBridge, openVocabulary, refuseAnkiConnect, stubAndroidBridge } from './anki';
+import { connectAnki, openVocabulary, refuseAnkiConnect, stubAndroidBridge } from './anki';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 
+/**
+ * The bridge is the Android adapter behind the one Anki entry, so these
+ * journeys only exist on the Android project: on a desktop the same entry
+ * reaches AnkiConnect instead, and there is no second row to choose.
+ */
+function androidOnly(): void {
+  test.skip(
+    test.info().project.name !== 'android-chrome',
+    'the bridge is only reachable from Android',
+  );
+}
+
 test('connects, persists and refreshes the Android provider @smoke @mobile', async ({ page }) => {
+  androidOnly();
   await stubAndroidBridge(page);
   await openVocabulary(page);
-  await connectAndroidBridge(page);
+  await connectAnki(page);
   await expect(page.getByRole('region', { name: 'Review Anki source' })).toContainText('ねこ');
   await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
   await expect(page.getByTestId('words-standing')).toHaveText('1 word');
-  const source = page.locator('li.source').filter({ hasText: 'AnkiDroid bridge' });
-  await expect(source).toHaveCount(1);
+
+  const row = page.getByTestId('source-row').filter({ hasText: 'Anki' });
+  await expect(row).toHaveCount(1);
   await page.reload();
-  await expect(source).toHaveCount(1);
-  await source.getByTestId('sync-now').click();
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('Anki on this device');
+
+  await row.click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Anki');
+  // The one link that earns its place on a screen where nothing is broken.
+  await expect(page.getByRole('link', { name: /see the source/ })).toBeVisible();
+
+  await page.getByTestId('sync-now').click();
+  await page.goBack();
   await expect(page.getByTestId('words-standing')).toHaveText('1 word');
+
   await page.unrouteAll({ behavior: 'wait' });
   await refuseAnkiConnect(page);
-  await source.getByTestId('sync-now').click();
-  await expect(source).toContainText('bridge-not-running');
+  await row.click();
+  await page.getByTestId('sync-now').click();
+  await expect(page.getByTestId('source-attention')).toContainText('bridge-not-running');
+  await page.goBack();
   await expect(page.getByTestId('words-standing')).toHaveText('1 word');
 });
 
-test('Android setup fits both themes and returns focus @smoke @mobile', async ({ page }) => {
+test('says what to install when the bridge is not running @smoke @mobile', async ({ page }) => {
+  androidOnly();
+  await refuseAnkiConnect(page);
   await openVocabulary(page);
+
   for (const colorScheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme });
-    await page.getByTestId('add-source').click();
-    await page.getByRole('button', { name: 'AnkiDroid bridge', exact: false }).click();
-    const dialog = page.getByRole('dialog', { name: 'Add vocabulary source' });
-    await expect(dialog).toContainText('AnkiDroid 2.24');
-    await expect(dialog.getByRole('button', { name: 'Connect to AnkiDroid' })).toBeVisible();
+    await connectAnki(page);
+    const dialog = page.getByRole('dialog', { name: 'Add words' });
+    const failure = page.getByTestId('anki-connect-failed');
+    await expect(failure).toBeVisible({ timeout: 30_000 });
+    await expect(failure).toContainText('bridge is not running');
+    await expect(failure.getByRole('link', { name: /Download the app/ })).toBeVisible();
+    await expect(failure.getByRole('link', { name: /see the source/ })).toBeVisible();
+    await expect(failure).toContainText('anki/bridge-not-running');
+    // No port on Android: the bridge fixes its own, so offering one is a dead end.
+    await expect(page.getByTestId('anki-connect-port')).toHaveCount(0);
+
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
@@ -38,8 +72,9 @@ test('Android setup fits both themes and returns focus @smoke @mobile', async ({
     await page.screenshot({
       path: `test-results/bridge-${test.info().project.name}-${colorScheme}.png`,
     });
+
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
-    await expect(page.getByTestId('add-source')).toBeFocused();
+    await expect(page.getByTestId('add-words')).toBeFocused();
   }
 });

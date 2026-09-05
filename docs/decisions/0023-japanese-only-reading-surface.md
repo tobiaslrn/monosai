@@ -43,7 +43,7 @@ the learner opened deliberately.
   paragraph and on no sentence element at all. On touch, a press held anywhere
   in the sentence, including on a word, its furigana, or the leading, opens
   details, and a short tap belongs to whatever it landed on
-  ([ADR 0057](0057-one-gesture-per-meaning-on-touch.md)). The leading is
+  ([ADR 0058](0058-one-gesture-per-meaning-on-touch.md)). The leading is
   deliberately
   loose — it is the target.
 - **A word's target is the word.** The token button is the ruby base rather than

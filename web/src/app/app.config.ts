@@ -1,4 +1,4 @@
-import { isDevMode, provideAppInitializer, inject } from '@angular/core';
+import { DOCUMENT, isDevMode, provideAppInitializer, inject } from '@angular/core';
 import { provideServiceWorker } from '@angular/service-worker';
 import type { ApplicationConfig } from '@angular/core';
 import {
@@ -14,6 +14,7 @@ import { provideInitializationSteps } from './core/bootstrap/initialization-step
 import { NetworkStatusService } from './core/platform/network-status.service';
 import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
 import { NETWORK_STATUS } from './domain/platform/network-status.port';
+import { HOST_PLATFORM, detectHostPlatform } from './domain/platform/host-platform';
 import { APP_ROUTES } from './core/routing/app.routes';
 import { provideAnki } from './infrastructure/anki/anki.providers';
 import { provideDiagnosticsLogging } from './infrastructure/diagnostics/diagnostics.providers';
@@ -39,6 +40,17 @@ export const appConfig: ApplicationConfig = {
     ),
     // The shell owns the browser events; the application layer sees a signal.
     { provide: NETWORK_STATUS, useExisting: NetworkStatusService },
+    // Decided once, at the edge, so nothing below reads `navigator` itself.
+    {
+      provide: HOST_PLATFORM,
+      useFactory: () => {
+        const view = inject(DOCUMENT).defaultView;
+        return detectHostPlatform({
+          userAgent: view?.navigator.userAgent ?? '',
+          maxTouchPoints: view?.navigator.maxTouchPoints ?? 0,
+        });
+      },
+    },
     providePersistence(),
     provideLanguage(),
     provideAnki(),
