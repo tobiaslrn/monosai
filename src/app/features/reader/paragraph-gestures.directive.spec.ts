@@ -151,7 +151,7 @@ describe('ParagraphGesturesDirective', () => {
     expect(activations).toBe(1);
   });
 
-  it('delays one touch word tap until the double-tap window expires', () => {
+  it('activates a touch word tap immediately', () => {
     vi.useFakeTimers();
     let activations = 0;
     word().addEventListener('click', () => {
@@ -159,13 +159,11 @@ describe('ParagraphGesturesDirective', () => {
     });
 
     touchTap(word(), 50, 150);
-    expect(activations).toBe(0);
-
-    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS - 1);
-    expect(activations).toBe(0);
-    vi.advanceTimersByTime(1);
 
     expect(activations).toBe(1);
+    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS + 1);
+    expect(activations).toBe(1);
+    expect(selections()).toHaveLength(0);
   });
 
   it('opens sentence details on two touch taps on the same sentence word', () => {
@@ -178,7 +176,9 @@ describe('ParagraphGesturesDirective', () => {
     touchTap(word(), 60, 151);
 
     expect(selections()).toEqual([{ sentenceId: 's2', x: 60, y: 151 }]);
-    expect(activations).toBe(0);
+    // The word opened on the first tap; the second belongs to the sentence and
+    // must not reach the word again to put it away.
+    expect(activations).toBe(1);
   });
 
   it('recognizes two taps in sentence whitespace', () => {
@@ -202,48 +202,52 @@ describe('ParagraphGesturesDirective', () => {
     expect(selections()).toHaveLength(0);
   });
 
-  it('flushes a first word tap before starting a tap on another sentence', () => {
-    vi.useFakeTimers();
+  it('keeps a word tap on another sentence out of the gesture window', () => {
     let activations = 0;
     word().addEventListener('click', () => {
       activations += 1;
     });
 
-    touchTap(word(), 50, 150);
     touchTap(paragraph(), 50, 110);
+    touchTap(word(), 50, 150);
 
     expect(activations).toBe(1);
-    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS);
     expect(selections()).toHaveLength(0);
   });
 
-  it.each(['scroll', 'selectionchange'] as const)('cancels a pending tap on %s', (eventName) => {
-    vi.useFakeTimers();
-    let activations = 0;
-    word().addEventListener('click', () => {
-      activations += 1;
-    });
+  it.each(['scroll', 'selectionchange'] as const)('disarms the gesture on %s', (eventName) => {
     touchTap(word(), 50, 150);
 
     if (eventName === 'selectionchange') {
       vi.spyOn(window, 'getSelection').mockReturnValue({ isCollapsed: false } as Selection);
+      (fixture.nativeElement as HTMLElement).ownerDocument.dispatchEvent(new Event(eventName));
+      vi.restoreAllMocks();
+    } else {
+      window.dispatchEvent(new Event(eventName));
     }
-    (eventName === 'scroll' ? window : document).dispatchEvent(new Event(eventName));
-    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS + 1);
+    touchTap(word(), 55, 151);
 
-    expect(activations).toBe(0);
     expect(selections()).toHaveLength(0);
   });
 
-  it('cancels a pending tap on pointer cancellation', () => {
-    vi.useFakeTimers();
+  it('disarms the gesture on pointer cancellation', () => {
+    touchTap(word(), 50, 150);
+    pointer('pointercancel', word(), 'touch', 50, 150);
+    touchTap(word(), 55, 151);
+
+    expect(selections()).toHaveLength(0);
+  });
+
+  it('suppresses a word tap that a scroll interrupted', () => {
     let activations = 0;
     word().addEventListener('click', () => {
       activations += 1;
     });
-    touchTap(word(), 50, 150);
-    pointer('pointercancel', word(), 'touch', 50, 150);
-    vi.advanceTimersByTime(SENTENCE_DOUBLE_TAP_WINDOW_MS + 1);
+
+    pointer('pointerdown', word(), 'touch', 50, 150);
+    pointer('pointerup', word(), 'touch', 50, 150);
+    window.dispatchEvent(new Event('scroll'));
+    click(word(), 50, 150);
 
     expect(activations).toBe(0);
   });

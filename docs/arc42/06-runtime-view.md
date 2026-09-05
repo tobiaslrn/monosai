@@ -190,10 +190,10 @@ storage failures, and Stop, Continue, and Retry actions are reported in the affe
 row. The row is an accessible live status; closing the panel never cancels work. Only Listen and
 Story options remain beside the title. Generation retains its target switches.
 
-The reading surface leaves native touch selection and copying to the browser. A touch double tap
-within the same sentence opens details, while a single word tap waits briefly to see whether it is
-the first half of that gesture; mouse and keyboard activation remain immediate. The visible Sentence
-route below a word's form summary is the equivalent keyboard and touch path. On a small viewport,
+The reading surface leaves native touch selection and copying to the browser. A touch tap on a word
+opens it at once; a second tap in the same sentence within the gesture window replaces it with
+sentence details, and mouse and keyboard activation remain immediate. The visible Sentence route
+below a word's form summary is the equivalent keyboard and touch path. On a small viewport,
 word and sentence details are independently scrollable sheets whose bottom edge is the measured
 docked-player boundary. Their height uses the smaller of the viewport cap and the remaining space
 above that boundary, and the page remeasures when the player or viewport changes
