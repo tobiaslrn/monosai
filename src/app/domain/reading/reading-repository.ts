@@ -86,6 +86,12 @@ export interface ReadingRepository {
     id: ReadingId,
     targets: readonly PreparationLayer[],
   ): Promise<Result<Reading, StorageError>>;
+  /**
+   * Renames a reading. The title is the only thing a learner may change about
+   * stored text, so nothing else in the row is rewritten: the Japanese, its
+   * analyses, and its aids are untouched by a rename.
+   */
+  renameReading(id: ReadingId, title: string): Promise<Result<Reading, StorageError>>;
   listLibraryPage(request: LibraryPageRequest): Promise<Result<LibraryPage, StorageError>>;
   countReadings(filter: LibraryFilter): Promise<Result<number, StorageError>>;
   loadGraph(id: ReadingId, window?: ParagraphWindow): Promise<Result<ReadingGraph, StorageError>>;

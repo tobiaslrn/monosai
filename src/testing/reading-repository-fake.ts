@@ -225,6 +225,22 @@ export class FakeReadingRepository implements ReadingRepository {
     return Promise.resolve(ok(updated));
   }
 
+  /** Set to make the next rename fail, the way a storage fault would. */
+  failRenameWith: StorageError | null = null;
+
+  renameReading(id: ReadingId, title: string): Promise<Result<Reading, StorageError>> {
+    if (this.failRenameWith !== null) {
+      return Promise.resolve(err(this.failRenameWith));
+    }
+    const reading = this.readings.find((item) => item.id === id);
+    if (reading === undefined) {
+      return Promise.resolve(err(storageError('not-found', 'That reading no longer exists.')));
+    }
+    const updated = { ...reading, title };
+    this.readings = this.readings.map((item) => (item.id === id ? updated : item));
+    return Promise.resolve(ok(updated));
+  }
+
   listLibraryPage(request: LibraryPageRequest): Promise<Result<LibraryPage, StorageError>> {
     if (this.failListWith !== null) {
       return Promise.resolve(err(this.failListWith));

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { NotFoundPanelComponent } from '../../shared-ui/not-found/not-found-panel.component';
+import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 
 /**
  * What a `/reader/:id` link that could never have named a reading gets.
@@ -8,30 +9,28 @@ import { RouterLink } from '@angular/router';
  * or shared broken — nothing was ever stored under it. The reader's not-found
  * screen says "no longer here" and "may have been deleted", and neither is a
  * claim the application can make about an id that never existed. This screen
- * says only what is true and offers the same one way on.
+ * says only what is true, in the same panel every other dead link gets.
+ *
+ * It is not the reader, so it keeps the application's chrome: the masthead the
+ * shell renders, and a page header naming what was not found.
  */
 @Component({
   selector: 'mn-broken-reading-link',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [PageHeaderComponent, NotFoundPanelComponent],
   template: `
     <div class="mn-page">
-      <section class="mn-panel" role="alert">
-        <h1>That link does not point to a reading</h1>
-        <p class="mn-hint">
-          The address is not one Monosai issues, so there is nothing to open. It was probably
-          mistyped or cut short on the way here.
-        </p>
-        <p class="mn-hint">Nothing in your library was changed.</p>
-        <a class="mn-button" routerLink="/library">Back to library</a>
-      </section>
+      <mn-page-header heading="Link not recognised" backTo="/library" backLabel="Back to library" />
+      <mn-not-found-panel
+        heading="That link does not point to a reading"
+        [explanation]="explanation"
+      />
     </div>
   `,
-  styles: `
-    h1 {
-      margin: 0;
-      font-size: var(--text-lg);
-    }
-  `,
 })
-export class BrokenReadingLinkComponent {}
+export class BrokenReadingLinkComponent {
+  protected readonly explanation = [
+    'The address is not one Monosai issues, so there is nothing to open. It was probably mistyped or cut short on the way here.',
+    'Nothing in your library was changed.',
+  ];
+}

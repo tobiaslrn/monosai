@@ -267,7 +267,10 @@ describe('StoryFormComponent', () => {
     expect(sources?.textContent).toContain('200 reviewed words');
     expect(sources?.textContent).toContain('Starter forms');
     expect(sources?.querySelectorAll('a')).toHaveLength(2);
-    expect(element.querySelector('.story-settings [data-testid="generate"]')).not.toBeNull();
+    // Generate acts on the whole composer, so it is the action bar's rather
+    // than the defaults card's.
+    expect(element.querySelector('.story-settings [data-testid="generate"]')).toBeNull();
+    expect(element.querySelector('.actions [data-testid="generate"]')).not.toBeNull();
   });
 
   /**

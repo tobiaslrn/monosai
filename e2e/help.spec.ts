@@ -13,17 +13,13 @@ test.describe('first-use Help', () => {
     await expect(page.getByRole('button', { name: 'New story', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'New story', exact: true }).click();
     await page.getByRole('link', { name: 'Write with AI', exact: true }).click();
-    await expect(page.locator('.story-settings [data-check="text-model"] strong')).toHaveText(
-      'Text AI:',
-    );
-    await expect(page.locator('.story-settings [data-check="vocabulary"] strong')).toHaveText(
+    await expect(page.locator('.actions [data-check="text-model"] strong')).toHaveText('Text AI:');
+    await expect(page.locator('.actions [data-check="vocabulary"] strong')).toHaveText(
       'Word list:',
     );
     await expect(page.getByTestId('generate')).toBeDisabled();
     await page.context().setOffline(true);
-    await expect(page.locator('.story-settings [data-check="network"]')).toContainText(
-      'You are offline',
-    );
+    await expect(page.locator('.actions [data-check="network"]')).toContainText('You are offline');
     await expect(page.getByTestId('generate')).toHaveAttribute(
       'aria-describedby',
       'mn-generate-disabled-reason',
@@ -34,7 +30,7 @@ test.describe('first-use Help', () => {
   test('defers on a Reader deep link and persists dismissal across reloads @smoke', async ({
     page,
   }) => {
-    await page.goto('./#/reader/not-a-reading');
+    await page.goto('./#/reader/2f8d3f4e-1b6a-4f7c-9c2e-0d5a6b7c8d9e');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('mn-app-bar')).toHaveCount(0);
 

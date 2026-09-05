@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   FALLBACK_READING_TITLE,
   MAXIMUM_DERIVED_TITLE_LENGTH,
+  MAXIMUM_TITLE_LENGTH,
+  renamedTitle,
   resolveTitle,
   titleFromPastedText,
 } from './import-title';
@@ -44,5 +46,24 @@ describe('resolveTitle', () => {
 
   it('falls back from an invisible or punctuation-only entered title', () => {
     expect(resolveTitle('\u200b。。。', '猫が寝た。')).toBe('猫が寝た。');
+  });
+});
+
+describe('renamedTitle', () => {
+  it('stores what the learner typed, trimmed and normalized', () => {
+    expect(renamedTitle('  わたしの章 ')).toBe('わたしの章');
+  });
+
+  it('refuses an entry that names nothing rather than reverting silently', () => {
+    expect(renamedTitle('   ')).toBeNull();
+    expect(renamedTitle('​。。。')).toBeNull();
+  });
+
+  it('holds a very long title to the stored bound', () => {
+    const renamed = renamedTitle('あ'.repeat(MAXIMUM_TITLE_LENGTH + 40));
+
+    // eslint-disable-next-line @typescript-eslint/no-misused-spread -- code-point counting is the bound being asserted
+    expect([...(renamed ?? '')]).toHaveLength(MAXIMUM_TITLE_LENGTH);
+    expect(renamed?.endsWith('…')).toBe(true);
   });
 });

@@ -693,4 +693,35 @@ describe('DexieReadingRepository', () => {
       expect(await db.readings.count()).toBe(0);
     });
   });
+
+  describe('renaming a reading', () => {
+    it('writes the new title and leaves the stored text alone', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+
+      const renamed = await repository.renameReading(draft.reading.id, '猫の一日');
+
+      expect(renamed.ok).toBe(true);
+      if (!renamed.ok) {
+        return;
+      }
+      expect(renamed.value.title).toBe('猫の一日');
+      expect(renamed.value.updatedAt).toBe(1_700_100_000_000);
+      expect(renamed.value.characterCount).toBe(draft.reading.characterCount);
+      expect(await db.sentences.count()).toBe(draft.sentences.length);
+      const stored = await db.readings.get(draft.reading.id);
+      expect(stored?.title).toBe('猫の一日');
+    });
+
+    it('reports a reading that no longer exists rather than creating one', async () => {
+      const missing = await repository.renameReading(
+        readingId('3f6d2c1a-9b4e-4a7d-8f21-0c5e7a9b1d33'),
+        '猫の一日',
+      );
+
+      expect(missing.ok).toBe(false);
+      expect(!missing.ok && missing.error.code).toBe('not-found');
+      expect(await db.readings.count()).toBe(0);
+    });
+  });
 });

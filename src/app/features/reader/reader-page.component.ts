@@ -63,6 +63,7 @@ import {
   type WordGrammarState,
 } from './word-inspector.component';
 import { WordPreviewComponent } from './word-preview.component';
+import { NotFoundPanelComponent } from '../../shared-ui/not-found/not-found-panel.component';
 
 /**
  * The word buttons, which a press reaches even while a surface is open.
@@ -124,6 +125,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     SentencePopoverComponent,
     WordInspectorComponent,
     WordPreviewComponent,
+    NotFoundPanelComponent,
   ],
   providers: [ReaderStore, WordInspectorStore, SentenceAidsStore, ReadingAudioMaintenanceStore],
   template: `
@@ -218,11 +220,12 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
             <p class="mn-hint" role="status">Opening…</p>
           }
           @case ('not-found') {
-            <section class="mn-panel" role="alert">
-              <h2>This story is no longer here</h2>
-              <p class="mn-hint">It may have been deleted. Nothing else was affected.</p>
-              <a class="mn-button" routerLink="/library">Back to library</a>
-            </section>
+            <mn-not-found-panel
+              heading="This story is no longer here"
+              [explanation]="[
+                'It may have been deleted. Nothing else in your library was affected.',
+              ]"
+            />
           }
           @case ('failed') {
             <section class="mn-panel" role="alert">
@@ -275,7 +278,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
               class="mn-button mn-button--secondary"
               routerLink="/library"
               (click)="backToLibrary($event)"
-              >Back to library</a
+              >Go to library</a
             >
 
             @if (store.hasMoreBelow()) {

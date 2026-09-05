@@ -149,6 +149,29 @@ export class LibraryStore {
   }
 
   /**
+   * Renames a reading and shows the new name on the shelf.
+   *
+   * The listed row is replaced rather than the page re-read: a rename changes
+   * one field of one row, and reloading would scroll a learner's paged shelf
+   * back to its first page to show a title they are looking at.
+   */
+  async rename(id: ReadingId, title: string): Promise<boolean> {
+    const previous = await this.titleOf(id);
+    const renamed = await this.readings.renameReading(id, title);
+    if (!renamed.ok) {
+      this.errorSignal.set(renamed.error);
+      this.announce(`${previous} could not be renamed. It is still called ${previous}.`);
+      return false;
+    }
+    const updated = renamed.value;
+    this.itemsSignal.update((items) =>
+      items.map((reading) => (reading.id === id ? updated : reading)),
+    );
+    this.announce(`${previous} is now called ${updated.title}.`);
+    return true;
+  }
+
+  /**
    * Announces something that happened to the shelf from outside it.
    *
    * The shelf owns the only live region on the Library, so a change made

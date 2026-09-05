@@ -336,7 +336,7 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
 
     const dialog = document.querySelector('mn-confirm-dialog');
@@ -352,7 +352,7 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
 
     const confirm = [
@@ -372,13 +372,67 @@ describe('LibraryPageComponent', () => {
     expect(playback.stopped).toEqual([readingId('a')]);
   });
 
-  it('leaves playback alone when the confirmation is declined', async () => {
+  /**
+   * A pasted reading is auto-titled from its own first sentence, so the title
+   * and the opening words are the same string until a learner can change it.
+   */
+  it('renames a reading from the card menu and shows the new title', async () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
     fixture.detectChanges();
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    await settle(fixture);
+
+    const field = document.querySelector<HTMLInputElement>('#mn-rename-input');
+    expect(field?.value).toBe(repository.readings[0].title);
+    field!.value = '  猫の一日  ';
+    field?.dispatchEvent(new Event('input'));
+    await settle(fixture);
+
+    [...document.querySelectorAll<HTMLButtonElement>('mn-rename-dialog button')]
+      .find((button) => button.textContent.includes('Save name'))
+      ?.click();
+    await settle(fixture);
+
+    expect(element(fixture).querySelector('mn-reading-card h3')?.textContent.trim()).toBe(
+      '猫の一日',
+    );
+    expect(element(fixture).querySelector('[aria-live="polite"]')?.textContent).toContain(
+      'is now called 猫の一日',
+    );
+    // Renaming is not deleting: the row is still there and still readable.
+    expect(repository.deleted).toEqual([]);
+  });
+
+  it('refuses to save a title that names nothing', async () => {
+    repository.readings = [reading('a', 'imported', 1_000)];
+    const fixture = await render();
+
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    fixture.detectChanges();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    await settle(fixture);
+
+    const field = document.querySelector<HTMLInputElement>('#mn-rename-input');
+    field!.value = '   ';
+    field?.dispatchEvent(new Event('input'));
+    await settle(fixture);
+
+    const save = [...document.querySelectorAll<HTMLButtonElement>('mn-rename-dialog button')].find(
+      (button) => button.textContent.includes('Save name'),
+    );
+    expect(save?.disabled).toBe(true);
+  });
+
+  it('leaves playback alone when the confirmation is declined', async () => {
+    repository.readings = [reading('a', 'imported', 1_000)];
+    const fixture = await render();
+
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    fixture.detectChanges();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
 
     const keep = [...document.querySelectorAll<HTMLButtonElement>('mn-confirm-dialog button')].find(
@@ -397,7 +451,7 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
 
     const dialog = document.querySelector('mn-confirm-dialog');
@@ -422,7 +476,7 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
 
     [...document.querySelectorAll<HTMLButtonElement>('mn-confirm-dialog button')]
@@ -440,7 +494,7 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
 
     const cancel = [

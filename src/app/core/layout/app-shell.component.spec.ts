@@ -58,12 +58,26 @@ describe('AppShellComponent', () => {
   });
 
   it('defers the intro and hides utilities on a reader deep link, then offers on exit', async () => {
-    const { fixture, element, intro, router } = await render('/reader/example');
+    const { fixture, element, intro, router } = await render(
+      '/reader/2f8d3f4e-1b6a-4f7c-9c2e-0d5a6b7c8d9e',
+    );
     expect(element.querySelector('mn-app-bar')).toBeNull();
     expect(intro.offer).not.toHaveBeenCalled();
     await router.navigateByUrl('/help');
     fixture.detectChanges();
     expect(element.querySelector('mn-app-bar')).not.toBeNull();
     expect(intro.offer).toHaveBeenCalledOnce();
+  });
+
+  /**
+   * Only the reader goes without chrome. A `/reader/` segment that is not an id
+   * never reaches it, and that screen was losing the masthead — and with it
+   * every way out of the application — to a prefix match on the URL.
+   */
+  it('keeps the masthead on a reader link that names no reading', async () => {
+    const { element, intro } = await render('/reader/example');
+
+    expect(element.querySelector('mn-app-bar')).not.toBeNull();
+    expect(intro.offer).toHaveBeenCalled();
   });
 });

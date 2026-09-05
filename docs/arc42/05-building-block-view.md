@@ -75,7 +75,7 @@ altitude.
 
 | Area | In `domain/` | In `application/` | Adapter area in `infrastructure/` |
 | --- | --- | --- | --- |
-| **reading** | Readings, paragraphs, sentences, tokens, the paragraph window, token status, the declared preparation targets | Import, open, list, delete, declare targets. Classification against the current snapshot | Persistence |
+| **reading** | Readings, paragraphs, sentences, tokens, the paragraph window, token status, the declared preparation targets | Import, open, list, rename, delete, declare targets. Classification against the current snapshot | Persistence |
 | **vocabulary** | Snapshots, sources, mappings, deduplication of expressions | Read a source and build one replacement snapshot | Anki, persistence |
 | **language** | Tokenizer and runtime interfaces, segmentation, dictionary, kana, the structural baseline | Prepare the tokenizer and the assets, and report readiness | The language worker client and asset loader |
 | **ai** | Provider interfaces, tasks, prompt versions, configuration fingerprints, story structure | Run a generation as a job. Test and select models | The AI provider adapters |
