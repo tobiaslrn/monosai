@@ -25,7 +25,7 @@ import { AnkiConnectionStore } from '../../application/vocabulary/anki-connectio
           <select
             [ngModel]="store.selection().deckName"
             (ngModelChange)="store.change({ deckName: $event })"
-            [disabled]="store.refresh.isBusy()"
+            [disabled]="store.refresh.isBusy() && !store.preview()"
           >
             <option value="">Choose a deck</option>
             @for (deck of store.refresh.catalog()?.decks; track deck.name) {
@@ -38,7 +38,7 @@ import { AnkiConnectionStore } from '../../application/vocabulary/anki-connectio
           <select
             [ngModel]="store.selection().noteTypeName"
             (ngModelChange)="store.change({ noteTypeName: $event, expressionFieldName: '' })"
-            [disabled]="store.refresh.isBusy()"
+            [disabled]="store.refresh.isBusy() && !store.preview()"
           >
             <option value="">Choose a note type</option>
             @for (type of store.refresh.catalog()?.noteTypes; track type.name) {
@@ -51,7 +51,7 @@ import { AnkiConnectionStore } from '../../application/vocabulary/anki-connectio
           <select
             [ngModel]="store.selection().expressionFieldName"
             (ngModelChange)="store.change({ expressionFieldName: $event })"
-            [disabled]="store.refresh.isBusy()"
+            [disabled]="store.refresh.isBusy() && !store.preview()"
           >
             <option value="">Choose the Japanese field</option>
             @for (field of fields(); track field) {
