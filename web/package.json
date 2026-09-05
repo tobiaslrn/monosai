@@ -17,18 +17,15 @@
     "url": "https://github.com/tobiaslrn/monosai/issues"
   },
   "scripts": {
-    "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "build:pages": "ng build --configuration pages --stats-json",
-    "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:coverage": "ng test --coverage",
     "typecheck": "npm run typecheck:app && npm run typecheck:e2e",
     "typecheck:app": "tsc -b tsconfig.json --pretty false",
     "typecheck:e2e": "tsc -p e2e/tsconfig.json --pretty false && tsc -p e2e-pwa/tsconfig.json --pretty false",
     "lint": "eslint .",
-    "format": "prettier --write .",
     "format:check": "prettier --check .",
     "e2e": "playwright test",
     "e2e:full": "playwright test --config=playwright.full.config.ts",
