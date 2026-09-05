@@ -1,4 +1,7 @@
+import { containsJapanese } from '../reading/import-text';
+
 export interface ParsedTextList {
+  readonly nonJapaneseLines: number;
   readonly normalizedContent: string;
   readonly entries: readonly string[];
   readonly ignoredBlankLines: number;
@@ -33,5 +36,6 @@ export function parseTextList(content: string): ParsedTextList {
     entries,
     ignoredBlankLines,
     duplicateLines,
+    nonJapaneseLines: entries.filter((entry) => !containsJapanese(entry)).length,
   };
 }

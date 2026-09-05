@@ -26,10 +26,11 @@ async function addTextList(page: Page, name: string, content: string): Promise<v
   await page.getByTestId('save-text-source').click();
 }
 
-async function addLiveAnki(page: Page): Promise<void> {
+async function addLiveAnki(page: Page, confirm = true): Promise<void> {
   await openAddSource(page);
   await page.getByTestId('choose-ankiconnect').click();
   await page.getByTestId('connect-ankiconnect').click();
+  if (confirm) await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
 }
 
 function ankiAnswers(expressions: readonly string[]) {
@@ -107,7 +108,7 @@ test.describe('vocabulary', () => {
     await expect(toggle).toBeFocused();
   });
 
-  test('combines pasted and Anki sources automatically in the same list', async ({ page }) => {
+  test('previews Anki before combining it with pasted sources @smoke @mobile', async ({ page }) => {
     test.setTimeout(120_000);
     await stubAnkiConnect(page, ankiAnswers(['ねこ', '食べる']));
     await openVocabulary(page);
@@ -117,7 +118,14 @@ test.describe('vocabulary', () => {
       timeout: 60_000,
     });
 
-    await addLiveAnki(page);
+    await addLiveAnki(page, false);
+    await expect(
+      page.getByRole('button', { name: 'Confirm vocabulary', exact: true }),
+    ).toBeVisible();
+    expect((await readSnapshots(page))[0].uniqueEntryCount).toBe(3);
+    await expect(page.locator('li.source')).toHaveCount(1);
+    await expect(page.getByRole('region', { name: 'Review Anki source' })).toContainText('食べる');
+    await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
     await expect(page.getByTestId('words-standing')).toHaveText('4 words', {
       timeout: 60_000,
     });
@@ -359,7 +367,7 @@ test.describe('vocabulary', () => {
   test('keeps the current vocabulary when local Anki is unavailable', async ({ page }) => {
     await refuseAnkiConnect(page);
     await openVocabulary(page);
-    await addLiveAnki(page);
+    await addLiveAnki(page, false);
 
     const alert = page.getByRole('alert');
     await expect(alert).toContainText('Anki', { timeout: 30_000 });

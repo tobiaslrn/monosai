@@ -101,6 +101,11 @@ describe('MappingEditorComponent', () => {
       new FakeAnkiProvider(CONTRACT_COLLECTION, { kind: 'desktop-connect' }),
     );
     await settle(fixture);
+    cards(element)
+      .find((card) => card.textContent.includes('Anki'))
+      ?.querySelector<HTMLButtonElement>('button')
+      ?.click();
+    await settle(fixture);
     expect(element.querySelector<HTMLSelectElement>('select[aria-label="Deck"]')?.value).toBe(
       'Unused',
     );

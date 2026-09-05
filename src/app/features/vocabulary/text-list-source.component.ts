@@ -47,6 +47,12 @@ import { textListPreviewLabel } from './text-list-preview';
       @if (editorError(); as error) {
         <p class="error" role="alert">{{ error }}</p>
       }
+      @if (preview().nonJapaneseLines > 0) {
+        <p class="mn-hint" role="status">
+          {{ preview().nonJapaneseLines }} lines do not appear to contain Japanese. Check that these
+          are the words you intended; they can still be added.
+        </p>
+      }
       <div class="actions">
         <button
           type="submit"

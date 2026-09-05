@@ -76,6 +76,12 @@ export class SourceMappingStore {
   }
 
   async add(mapping: NewMapping): Promise<SourceMapping | null> {
+    const created = this.draft(mapping);
+    return this.write(created, (current) => [...current, created]);
+  }
+
+  /** Build an unsaved source for a transactional preview and confirmation. */
+  draft(mapping: NewMapping): SourceMapping {
     const now = this.clock.now();
     const common = {
       id: vocabularySourceId(this.ids.nextId()),
@@ -98,7 +104,7 @@ export class SourceMappingStore {
             providerKind: mapping.providerKind,
             automaticSync: true,
           };
-    return this.write(created, (current) => [...current, created]);
+    return created;
   }
 
   async update(id: VocabularySourceId, edit: MappingEdit): Promise<SourceMapping | null> {

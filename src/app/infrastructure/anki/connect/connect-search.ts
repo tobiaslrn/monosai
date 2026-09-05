@@ -8,7 +8,7 @@ import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
  * they are not attacker-controlled, but a deck called `Grammar "notes"` is
  * perfectly legal and would otherwise end the term early.
  */
-function escapeTerm(value: string): string {
+export function escapeTerm(value: string): string {
   return value.replace(/[\\"]/gu, (match) => `\\${match}`);
 }
 

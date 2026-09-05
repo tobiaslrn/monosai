@@ -10,6 +10,7 @@ import {
   type MappingResolution,
 } from '../../domain/anki/mapping-validation';
 import type { SourceMappingId } from '../../domain/shared/ids';
+import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { SnapshotStats, VocabularySnapshot } from '../../domain/vocabulary/snapshot';
 import { SourceMappingStore } from './source-mapping.store';
@@ -186,7 +187,7 @@ export class VocabularyRefreshStore {
    * against a list the editor is not showing. Nothing is stored here — the
    * result waits in `awaiting-confirmation` until the learner accepts it.
    */
-  async refresh(): Promise<void> {
+  async refresh(pendingSources?: readonly SourceMapping[]): Promise<void> {
     const provider = this.provider;
     const capabilities = this.capabilitiesSignal();
     if (provider === null || capabilities === null) {
@@ -205,7 +206,11 @@ export class VocabularyRefreshStore {
 
     const signal = this.beginRun('validating');
 
-    const resolution = this.resolution();
+    const catalog = this.catalog();
+    const resolution =
+      pendingSources === undefined || catalog === null
+        ? this.resolution()
+        : resolveMappings(pendingSources, catalog);
     if (resolution === null || !canRefreshMappings(resolution)) {
       this.fail(
         ankiError(
@@ -282,7 +287,7 @@ export class VocabularyRefreshStore {
     }));
 
     const built = await this.sync.prepare(
-      { caches },
+      { caches, sources: pendingSources },
       (progress) => {
         this.stateSignal.set({
           kind: 'analyzing',
@@ -346,6 +351,7 @@ export class VocabularyRefreshStore {
     }
 
     this.stateSignal.set({ kind: 'complete', snapshot: committed.value });
+    await this.sources.load();
     this.announce(
       `Updated vocabulary with ${String(committed.value.uniqueEntryCount)} unique expressions.`,
     );

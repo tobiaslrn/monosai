@@ -1,5 +1,7 @@
 # 9. Architecture Decisions
 
+- [0055: Anki mapping is suggested, then confirmed](../decisions/0055-anki-mapping-is-suggested-then-confirmed.md)
+
 ## 9.1 How decisions are recorded
 
 Every architecturally significant decision has one record in [`docs/decisions/`](../decisions/). A
