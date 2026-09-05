@@ -35,21 +35,20 @@ interface TouchClickCandidate {
   readonly at: number;
 }
 
-/** A first tap waiting to see whether it is part of a sentence double tap. */
-interface PendingTouchTap extends TouchClickCandidate {
-  readonly wordTarget: HTMLButtonElement | null;
-}
-
 /**
  * Resolves paragraph gestures without taking over the browser's text
  * selection.
  *
  * A mouse click on prose still selects its sentence immediately. A touch tap
  * has two possible meanings: a single tap opens a word, while two taps close
- * together on one sentence open sentence details. The paragraph captures
- * synthesized touch clicks so a word click can wait for that decision; if the
- * window expires it dispatches one ordinary click back to the word. Native
- * keyboard activation never has a touch pointer candidate and therefore stays
+ * together on one sentence open sentence details. A word tap is answered at
+ * once — the tap is the whole of what most reading asks for, and holding it
+ * back made every word feel like it had to be asked for twice. The paragraph
+ * instead remembers where the tap landed: a second tap inside the gesture
+ * window replaces the word with its sentence, and the click that would have
+ * put the word away again is consumed. Taps in the whitespace between words
+ * have nothing to activate and are captured as before. Native keyboard
+ * activation never has a touch pointer candidate and therefore stays
  * immediate.
  *
  * Listening at paragraph level is deliberate. A tap in the leading between
@@ -68,18 +67,13 @@ export class ParagraphGesturesDirective {
   private ignoredTouchPointerId: number | null = null;
   private touchClickCandidate: TouchClickCandidate | null = null;
   private touchCandidateTimer: ReturnType<typeof setTimeout> | null = null;
-  private pendingTap: PendingTouchTap | null = null;
+  private pendingTap: TouchClickCandidate | null = null;
   private pendingTapTimer: ReturnType<typeof setTimeout> | null = null;
   private touchClicksToSuppress = 0;
   private mousePressOrigin: { x: number; y: number } | null = null;
   private mouseDragged = false;
-  private readonly releasedClicks = new WeakSet<MouseEvent>();
 
   private readonly onClickCapture = (event: MouseEvent): void => {
-    if (this.releasedClicks.has(event)) {
-      this.releasedClicks.delete(event);
-      return;
-    }
     const candidate = this.touchClickCandidate;
     if (candidate === null || Date.now() - candidate.at > TOUCH_CLICK_CANDIDATE_WINDOW_MS) {
       if (this.touchClicksToSuppress > 0) {
@@ -107,15 +101,16 @@ export class ParagraphGesturesDirective {
       return;
     }
 
-    event.preventDefault();
-    event.stopPropagation();
-    this.handleTouchTap({
-      sentenceId,
-      target,
-      x: candidate.x,
-      y: candidate.y,
-      at: candidate.at,
-    });
+    this.handleTouchTap(
+      {
+        sentenceId,
+        target,
+        x: candidate.x,
+        y: candidate.y,
+        at: candidate.at,
+      },
+      event,
+    );
   };
 
   private readonly onWindowPointerDown = (event: PointerEvent): void => {
@@ -323,7 +318,16 @@ export class ParagraphGesturesDirective {
     );
   }
 
-  private handleTouchTap(candidate: TouchClickCandidate): void {
+  /**
+   * Decides what one synthesized touch click means.
+   *
+   * The second tap of a gesture is the only one this consumes: it turns into
+   * sentence details, and swallowing its click is what keeps the word it
+   * landed on from being toggled shut underneath the sheet that replaces it.
+   * A first tap on a word is left entirely alone, so the word opens on the
+   * press the reader actually made.
+   */
+  private handleTouchTap(candidate: TouchClickCandidate, event: MouseEvent): void {
     if (candidate.sentenceId === null) {
       return;
     }
@@ -334,6 +338,8 @@ export class ParagraphGesturesDirective {
       withinDistance(pending, candidate)
     ) {
       this.clearPendingTap();
+      event.preventDefault();
+      event.stopPropagation();
       this.sentenceSelected.emit({
         sentenceId: candidate.sentenceId,
         x: candidate.x,
@@ -342,35 +348,20 @@ export class ParagraphGesturesDirective {
       return;
     }
 
-    // A tap on another sentence should not discard a valid first word tap.
-    // Resolve it before arming the new sentence's double-tap window.
-    if (pending !== null) {
-      this.flushPendingTap();
-    }
-    const wordTarget = candidate.target?.closest<HTMLButtonElement>('button.token') ?? null;
-    this.pendingTap = { ...candidate, wordTarget };
+    this.pendingTap = candidate;
     this.clearPendingTapTimer();
     this.pendingTapTimer = setTimeout(() => {
-      this.flushPendingTap();
+      this.clearPendingTap();
     }, SENTENCE_DOUBLE_TAP_WINDOW_MS);
-  }
 
-  /** Lets one delayed word tap take its ordinary, already-tested route. */
-  private flushPendingTap(): void {
-    const pending = this.pendingTap;
-    this.clearPendingTap();
-    if (pending?.wordTarget?.isConnected !== true) {
+    if (isWordTarget(candidate.target)) {
       return;
     }
-    const click = new MouseEvent('click', {
-      bubbles: true,
-      cancelable: true,
-      clientX: pending.x,
-      clientY: pending.y,
-      detail: 1,
-    });
-    this.releasedClicks.add(click);
-    pending.wordTarget.dispatchEvent(click);
+    // Whitespace, punctuation, and furigana have nothing of their own to open.
+    // Their click must not reach the paragraph's mouse route, which would
+    // select the sentence on a single tap.
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   private select(x: number, y: number): void {
@@ -389,12 +380,18 @@ export class ParagraphGesturesDirective {
     this.clearPendingTap();
   }
 
+  /**
+   * True while a touch is still owed a click.
+   *
+   * An armed gesture window is deliberately not part of this. Its tap has
+   * already had its click, and counting it would have a scroll swallow the
+   * next unrelated tap.
+   */
   private hasTouchGesture(): boolean {
     return (
       this.touchPointerIds.size > 0 ||
       this.activeTouch !== null ||
-      this.touchClickCandidate !== null ||
-      this.pendingTap !== null
+      this.touchClickCandidate !== null
     );
   }
 
@@ -436,6 +433,10 @@ function withinDistance(first: TouchClickCandidate, second: TouchClickCandidate)
     Math.hypot(second.x - first.x, second.y - first.y) <= SENTENCE_DOUBLE_TAP_DISTANCE_PX &&
     second.at - first.at <= SENTENCE_DOUBLE_TAP_WINDOW_MS
   );
+}
+
+function isWordTarget(target: HTMLElement | null): boolean {
+  return (target?.closest('button.token') ?? null) !== null;
 }
 
 function elementTarget(target: EventTarget | null): HTMLElement | null {

@@ -57,13 +57,18 @@ export async function importReading(page: Page, text: string, title?: string): P
   await expect(page).toHaveURL(/#\/reader\//, { timeout: 60_000 });
 }
 
-/** The reader's touch double-tap window, with a small settling allowance. */
+/** The reader's sentence gesture window, with a small settling allowance. */
 const TOUCH_TAP_WINDOW_MS = 300;
 
 /** The width at which the reader is driven by a mouse rather than a finger. */
 const DESKTOP_WIDTH_PX = 960;
 
-/** Taps an element with a finger, allowing the delayed word decision to settle. */
+/**
+ * Taps an element with a finger.
+ *
+ * The word opens on the tap itself; the wait afterwards keeps the next tap out
+ * of the sentence gesture window, so consecutive taps stay separate gestures.
+ */
 export async function tap(page: Page, target: Locator): Promise<void> {
   const box = await target.boundingBox();
   if (box === null) {

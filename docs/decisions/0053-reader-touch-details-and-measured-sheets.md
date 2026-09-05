@@ -27,8 +27,8 @@ within the short reader gesture window and the small same-sentence movement
 threshold. The sentence is resolved from the tapped word or from the paragraph's
 line geometry, so whitespace and words follow the same rule. A first touch word
 tap is held until that window expires; if no second tap arrives, one ordinary
-word click is dispatched. A matching second tap opens sentence details and does
-not activate a word. Mouse and keyboard activation do not enter the touch
+word click is dispatched (superseded by the first amendment below). A matching
+second tap opens sentence details and does not activate a word. Mouse and keyboard activation do not enter the touch
 candidate path and remain immediate.
 
 Scrolling, pointer cancellation, multiple active touches, and native selection
@@ -51,7 +51,8 @@ owned by the shared popover service.
 
 - Android and other touch browsers retain native long-press selection and copy.
 - A touch word tap has a deliberate short delay, while mouse, keyboard, and the
-  visible sentence route have no gesture delay.
+  visible sentence route have no gesture delay. (Superseded by the amendment
+  below: no gesture delays a word tap.)
 - Sentence details never trigger translation or grammar work merely by opening;
   those remain explicit actions in the detail surface.
 - The player and detail sheets can coexist without one covering the other, even
@@ -74,6 +75,30 @@ the word.
 twice when the player is short. The player is a bottom boundary; the available
 height and the viewport cap are two independent limits.
 
+## Amendment — a word tap is answered on the tap
+
+Date: 2026-09-05
+
+Holding the first touch word tap for the gesture window was the wrong side of the
+trade-off. Reading is mostly single word taps, and every one of them arrived late
+enough to feel unanswered; readers learned to tap twice, which is the gesture this
+decision reserved for the sentence.
+
+A touch tap on a word now activates it immediately, exactly as a mouse click does.
+The paragraph keeps the tap's sentence and release point instead of its click: a
+second tap in the same sentence within the same window and distance still opens
+sentence details, and its click is consumed so the word underneath is not put away
+by the gesture that replaced it. Taps that land on whitespace, punctuation, or
+furigana have nothing to activate and are captured as before, so the two-tap
+sentence gesture over prose is unchanged.
+
+This reverses the rejected alternative above. The double activation it feared was
+the second tap re-toggling the open word, and consuming that one click is enough to
+prevent it. What is given up is narrower: opening a word and then tapping the
+*whitespace* of the same sentence dismisses the word sheet rather than opening the
+sentence, because dismissal owns that press. Tapping the word again, the sentence
+whitespace twice, or the visible **Sentence** route all still open it.
+
 ## Amendment — a roving tab stop per sentence
 
 Words stay ordinary buttons, so the touch rules above are unchanged, but only one
@@ -81,8 +106,8 @@ word per sentence is reachable by <kbd>Tab</kbd>. Arrow keys move focus within t
 sentence and the last word focused there becomes its tab entry.
 
 The amendment touches focus only. Nothing here observes a pointer, cancels a tap, or
-alters native selection, so the gesture window and the first-tap hold described above
-continue to decide what a touch means. Focus returning to the activating word when
+alters native selection, so the gesture window described above continues to decide what
+a touch means. Focus returning to the activating word when
 details close is the same `returnFocusTo` the sheet already used.
 
 [Chapter 8](../arc42/08-crosscutting-concepts.md) describes the resulting key map.
