@@ -53,6 +53,7 @@ files are already linked from code comments and from other records.
 | [0016](../decisions/0016-anki-package-parsing.md) | Anki package parsing |
 | [0017](../decisions/0017-anki-connect-origin-policy.md) | What an opaque AnkiConnect failure is called |
 | [0036](../decisions/0036-android-package-share-target.md) | Android package sharing uses a service-worker inbox |
+| [0055](../decisions/0055-anki-mapping-is-suggested-then-confirmed.md) | An Anki mapping is suggested from Japanese samples, then confirmed |
 
 ### AI providers and generation
 
@@ -81,6 +82,7 @@ files are already linked from code comments and from other records.
 | [0028](../decisions/0028-word-form-summary-popup.md) | Word details use a compact form summary |
 | [0031](../decisions/0031-touch-reading-gestures-and-docked-details.md) | On touch, a long press selects a sentence and details dock as a sheet |
 | [0032](../decisions/0032-touch-word-taps-and-one-selection-colour.md) | A tap on a phone is one press, one colour, and one open thing |
+| [0049](../decisions/0049-one-page-for-what-you-can-read.md) | Vocabulary and Grammar are one page: what you can read |
 | [0050](../decisions/0050-the-library-wears-the-navigation.md) | The Library standing line is the way to the learner's level |
 | [0051](../decisions/0051-non-reader-utilities-and-first-use-help.md) | Non-reader utilities and first-use Help; amends 0050 and 0025 |
 | [0053](../decisions/0053-reader-touch-details-and-measured-sheets.md) | Native touch selection, sentence double taps, and measured detail sheets |
