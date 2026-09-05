@@ -167,6 +167,17 @@ function mpeg(name: string): { readonly blob: Blob; readonly mimeType: 'audio/mp
 }
 
 describe('createAudioPlayer', () => {
+  it('starts a standalone clip at the requested sentence-relative position', async () => {
+    const element = new FakeAudioElement();
+    const fake = fakeView(element);
+    const player = createAudioPlayer(fake.view);
+
+    await player.play(new Blob(['sentence']), { startSeconds: 0.6 });
+
+    expect(element.currentTime).toBe(0.6);
+    expect(element.played).toBe(1);
+  });
+
   it('combines compatible WAV clips and records exact sentence boundaries', async () => {
     const combined = await combineWaveClips([wave([1, 2]), wave([3, 4, 5, 6])]);
 

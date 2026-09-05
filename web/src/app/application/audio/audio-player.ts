@@ -11,6 +11,8 @@ export interface PlayOptions {
    * silenced a frame later.
    */
   readonly startPaused?: boolean;
+  /** Position in the newly loaded resource at which playback should begin. */
+  readonly startSeconds?: number;
 }
 
 export interface SequencePlayOptions extends PlayOptions {
@@ -433,8 +435,10 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       loadBlob(clip);
       if (options?.startPaused === true) {
         element.load();
+        element.currentTime = Math.max(options.startSeconds ?? 0, 0);
         return;
       }
+      element.currentTime = Math.max(options?.startSeconds ?? 0, 0);
       await element.play();
     },
     async playSequence(
@@ -481,7 +485,7 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       }
       trackDuration = timeline.duration;
       const startIndex = Math.min(Math.max(options?.startIndex ?? 0, 0), clips.length - 1);
-      element.currentTime = timeline.starts[startIndex];
+      element.currentTime = Math.max(options?.startSeconds ?? timeline.starts[startIndex], 0);
       if (options?.startPaused === true) {
         return timeline;
       }

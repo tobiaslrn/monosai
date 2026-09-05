@@ -102,6 +102,10 @@ interface LoadOptions {
    * any press that landed in the window.
    */
   readonly keepStatus?: boolean;
+  /** Offset within the sentence clip, used when leaving a continuous resource. */
+  readonly startSeconds?: number;
+  /** Keeps a paused continuous session paused while its current clip is loaded. */
+  readonly startPaused?: boolean;
 }
 
 /**
@@ -450,19 +454,63 @@ export class AudioPlaybackStore {
   /**
    * Turns one-sentence-at-a-time on or off.
    *
-   * Takes effect at the next seam. A session already held at one is left there
-   * rather than read on from, because turning the mode off is not a request to
-   * hear anything — continuing is still a press.
+   * An active continuous resource is replaced with the current sentence clip
+   * at the same position. Its native end is then the exact seam, instead of a
+   * later `timeupdate` noticing the boundary after part of the next sentence
+   * has already played. A session already held at a seam is left there, because
+   * changing the mode is not a request to hear anything.
    */
   setStepMode(enabled: boolean): void {
-    this.modeSignal.set(enabled ? 'sentence' : 'continuous');
+    this.setMode(enabled ? 'sentence' : 'continuous');
   }
 
   /** Moves to the next posture in `PLAYBACK_MODES`, wrapping at the end. */
   cycleMode(): void {
-    this.modeSignal.update((mode) => {
-      const next = PLAYBACK_MODES.indexOf(mode) + 1;
-      return PLAYBACK_MODES[next % PLAYBACK_MODES.length];
+    const next = PLAYBACK_MODES.indexOf(this.modeSignal()) + 1;
+    this.setMode(PLAYBACK_MODES[next % PLAYBACK_MODES.length]);
+  }
+
+  private setMode(mode: PlaybackMode): void {
+    if (mode === this.modeSignal()) {
+      return;
+    }
+    // Resolve the current sentence while this is still continuous. In sentence
+    // mode the fallback boundary guard deliberately keeps the old cursor.
+    if (mode === 'sentence' && this.sequence !== null) {
+      this.followSequencePosition();
+    }
+    this.modeSignal.set(mode);
+    if (mode === 'sentence') {
+      void this.useCurrentSentenceClip();
+    }
+  }
+
+  /**
+   * Leaves a continuous resource without restarting the sentence being heard.
+   *
+   * Pausing first closes the IndexedDB read window in which the old resource
+   * could otherwise cross the seam. The single clip resumes at the equivalent
+   * sentence-relative offset and its native `ended` event stops exactly there.
+   */
+  private async useCurrentSentenceClip(): Promise<void> {
+    const sequence = this.sequence;
+    const current = this.currentSignal();
+    const status = this.statusSignal();
+    if (sequence === null || current === null || (status !== 'playing' && status !== 'paused')) {
+      return;
+    }
+    const refIndex = this.refsSignal().findIndex((ref) => ref.id === current);
+    const offset = refIndex - sequence.baseIndex;
+    if (offset < 0 || offset >= sequence.timeline.starts.length) {
+      return;
+    }
+    const start = sequence.timeline.starts[offset];
+    const end = sequence.timeline.starts[offset + 1] ?? sequence.timeline.duration;
+    const elapsed = Math.min(Math.max(this.player.elapsed() - start, 0), Math.max(end - start, 0));
+    this.player.pause();
+    await this.load(current, {
+      startSeconds: elapsed,
+      startPaused: status === 'paused',
     });
   }
 
@@ -991,6 +1039,14 @@ export class AudioPlaybackStore {
       if (token !== this.loadToken) {
         return;
       }
+      if (!this.canUseSequence()) {
+        // The learner selected sentence mode while the native resource was
+        // being assembled. Replace the just-started resource before it can run
+        // across its first boundary.
+        this.loading = false;
+        await this.load(sentenceId);
+        return;
+      }
       this.sequence = { timeline, baseIndex: startIndex, keys };
     } catch {
       if (token === this.loadToken) {
@@ -1218,9 +1274,12 @@ export class AudioPlaybackStore {
       return;
     }
 
-    const startPaused = this.pauseRequested;
+    const startPaused = this.pauseRequested || options?.startPaused === true;
     try {
-      await this.player.play(clip.value.blob, { startPaused });
+      await this.player.play(clip.value.blob, {
+        startPaused,
+        startSeconds: options?.startSeconds,
+      });
     } catch {
       if (token === this.loadToken) {
         this.loading = false;
@@ -1266,6 +1325,11 @@ export class AudioPlaybackStore {
         this.statusSignal.set('stepped');
         this.mediaSession.setPlaybackState('paused');
         this.player.seek(timeline.starts[index]);
+        // Keep the cursor on the sentence that was actually heard. Continuing
+        // advances from it to `ref`; moving the cursor here skipped `ref` on the
+        // next press and made the player jump straight to the sentence after it.
+        this.publishMediaPosition();
+        return;
       }
       this.currentSignal.set(ref.id);
       this.publishMediaMetadata(sequence.baseIndex + index);
