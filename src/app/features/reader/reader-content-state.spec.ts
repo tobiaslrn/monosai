@@ -118,7 +118,7 @@ describe('reader content state', () => {
         { ...READING, grammarSummary: { state: 'complete', concernCount: 0 } },
         'grammar',
         IDLE,
-        'not-configured',
+        'incomplete',
         false,
       ),
     ).toMatchObject({

@@ -73,7 +73,7 @@ describe('PreparationTargetsComponent', () => {
   });
 
   it.each([
-    ['not-configured' as const, 'Set up a voice to prepare audio.'],
+    ['incomplete' as const, 'Set up a voice to prepare audio.'],
     ['untested' as const, 'Test your voice setup to prepare audio.'],
     ['stale' as const, 'Retest your changed voice setup to prepare audio.'],
     ['failed' as const, 'Fix and test your voice setup to prepare audio.'],
@@ -96,10 +96,10 @@ describe('PreparationTargetsComponent', () => {
   });
 
   it('gives each mounted group its own description id', () => {
-    const first = render(['english'], 'not-configured');
+    const first = render(['english'], 'incomplete');
     const other = TestBed.createComponent(PreparationTargetsComponent);
     other.componentRef.setInput('targets', ['english']);
-    other.componentRef.setInput('audioReadiness', 'not-configured');
+    other.componentRef.setInput('audioReadiness', 'incomplete');
     other.detectChanges();
 
     const firstId = switchFor(first, 'audio').getAttribute('aria-describedby');

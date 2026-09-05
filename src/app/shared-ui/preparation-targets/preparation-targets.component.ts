@@ -14,7 +14,9 @@ export function audioPreparationUnavailableReason(
   readiness: Exclude<ConfigurationReadiness, 'ready'>,
 ): string {
   switch (readiness) {
-    case 'not-configured':
+    case 'no-credential':
+      return 'Add an OpenRouter key to prepare audio.';
+    case 'incomplete':
       return 'Set up a voice to prepare audio.';
     case 'untested':
       return 'Test your voice setup to prepare audio.';
@@ -153,7 +155,7 @@ export function audioPreparationUnavailableReason(
 })
 export class PreparationTargetsComponent {
   readonly targets = input.required<readonly PreparationLayer[]>();
-  readonly audioReadiness = input<ConfigurationReadiness>('not-configured');
+  readonly audioReadiness = input<ConfigurationReadiness>('incomplete');
   readonly legend = input('Prepare for this reading');
   readonly disabled = input(false);
   readonly targetsChanged = output<readonly PreparationLayer[]>();

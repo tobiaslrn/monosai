@@ -118,7 +118,8 @@ export function readerContentState(
   if (readiness !== 'ready') {
     const subject = layer === 'audio' ? 'voice' : 'text model';
     const messages = {
-      'not-configured': `Set up a ${subject}.`,
+      'no-credential': 'Add an OpenRouter key.',
+      incomplete: `Set up a ${subject}.`,
       untested: `Test your ${subject}.`,
       stale: `Retest your changed ${subject}.`,
       failed: `Fix and test your ${subject}.`,

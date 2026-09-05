@@ -40,7 +40,7 @@ interface SynthesisBed {
   readonly enrichment: DexieEnrichmentRepository;
   readonly draft: ImportedReadingDraft;
   readonly settings: WritableSignal<TtsSettings>;
-  readonly readiness: WritableSignal<'ready' | 'not-configured' | 'stale-test'>;
+  readonly readiness: WritableSignal<'ready' | 'incomplete' | 'stale-test'>;
 }
 
 async function configure(): Promise<SynthesisBed> {
@@ -63,7 +63,7 @@ async function configure(): Promise<SynthesisBed> {
     activePresetId: null,
     presets: [],
   });
-  const readiness = signal<'ready' | 'not-configured' | 'stale-test'>('ready');
+  const readiness = signal<'ready' | 'incomplete' | 'stale-test'>('ready');
 
   let counter = 0;
   TestBed.configureTestingModule({
@@ -349,7 +349,7 @@ describe('AudioConfigurationService', () => {
   });
 
   it('refuses, and says so differently, when nothing is configured at all', () => {
-    bed.readiness.set('not-configured');
+    bed.readiness.set('incomplete');
 
     const config = bed.config.resolve('tts-synthesis');
 
@@ -361,7 +361,7 @@ describe('AudioConfigurationService', () => {
   });
 
   it('reports the refusal against the task that asked', () => {
-    bed.readiness.set('not-configured');
+    bed.readiness.set('incomplete');
 
     expect(bed.config.resolve('tts-test').ok).toBe(false);
     const config = bed.config.resolve('tts-test');

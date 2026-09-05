@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
+import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { configureGenerationTestBed } from '../../../testing/generation-fakes';
 import { buildReading } from '../../../testing/reading-repository-fake';
 import {
@@ -28,6 +29,10 @@ describe('GeneratePageComponent', () => {
         provideRouter([{ path: '**', children: [] }]),
         { provide: GenerationJobsStore, useValue: jobs },
         {
+          provide: SourceMappingStore,
+          useValue: { sources: signal([]), load: () => Promise.resolve() },
+        },
+        {
           // The form asks the voice configuration one question: whether audio
           // can be prepared at all. The real store reaches a speech provider,
           // which writing a story has no business opening.
@@ -39,7 +44,8 @@ describe('GeneratePageComponent', () => {
           // not the screen's.
           provide: TextModelStore,
           useValue: {
-            readiness: signal({ state: 'ready' as const }),
+            readiness: signal('ready' as const),
+            testFailure: signal(null),
             structuredOutput: signal('native-schema' as const),
             activePresetId: signal<string | null>('preset'),
           },

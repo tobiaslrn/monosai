@@ -36,7 +36,29 @@ export const generationSettingsSchema = z.object({
   updatedAt: timestampSchema,
 });
 
+const failedTestSchema = z.object({
+  fingerprint: z.string(),
+  testedAt: timestampSchema,
+  code: z.enum([
+    'offline',
+    'timeout',
+    'cancelled',
+    'authentication',
+    'credit-exhausted',
+    'model-not-found',
+    'capability-unsupported',
+    'rate-limited',
+    'provider-unavailable',
+    'malformed-response',
+    'context-budget-exceeded',
+    'audio-invalid',
+    'unknown',
+  ]),
+  message: z.string(),
+});
+
 export const textModelSettingsSchema = z.object({
+  failedTests: z.array(failedTestSchema).max(20).readonly().default([]),
   modelId: z.string(),
   reasoningEffort: z.string().nullable().default(null),
   storyTokenBudget: z
@@ -82,6 +104,7 @@ export const textModelSettingsSchema = z.object({
 });
 
 export const ttsSettingsSchema = z.object({
+  failedTests: z.array(failedTestSchema).max(20).readonly().default([]),
   modelId: z.string(),
   voiceId: z.string(),
   speed: z.number().positive().max(4),

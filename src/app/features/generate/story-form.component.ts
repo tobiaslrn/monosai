@@ -550,7 +550,7 @@ export class StoryFormComponent {
   readonly ankiWordPriorityMode = input<AnkiWordPriorityMode>('uniform');
   readonly vocabularyStrictness = input<VocabularyStrictness>('standard');
   readonly preparationTargets = input<readonly PreparationLayer[]>(['english', 'grammar']);
-  readonly audioReadiness = input<ConfigurationReadiness>('not-configured');
+  readonly audioReadiness = input<ConfigurationReadiness>('incomplete');
 
   readonly generate = output<void>();
   readonly ankiWordPriorityModeChanged = output<AnkiWordPriorityMode>();

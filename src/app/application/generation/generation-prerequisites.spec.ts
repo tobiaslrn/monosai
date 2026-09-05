@@ -57,6 +57,30 @@ function checkFor(
 }
 
 describe('prerequisiteChecks', () => {
+  it('names missing keys, models, unread sources, and saved failure reasons precisely', () => {
+    expect(checkFor('text-model', { textModelReadiness: 'no-credential' }).detail).toBe(
+      'Add an OpenRouter key.',
+    );
+    expect(checkFor('text-model', { textModelReadiness: 'incomplete' }).detail).toBe(
+      'Choose a text model.',
+    );
+    expect(
+      checkFor('text-model', {
+        textModelReadiness: 'failed',
+        textModelFailure: 'The provider rejected the saved key.',
+      }).detail,
+    ).toContain('rejected the saved key');
+    expect(checkFor('vocabulary', { snapshot: null, hasSources: false }).detail).toContain(
+      'pasted list',
+    );
+    expect(checkFor('vocabulary', { snapshot: null, hasSources: true }).detail).toContain(
+      'has not been read',
+    );
+    expect(checkFor('vocabulary', { snapshot: snapshot(73) }).detail).toBe(
+      '73 words are available.',
+    );
+  });
+
   it('lists exactly the two external setup checks', () => {
     expect(prerequisiteChecks(input()).map((check) => check.id)).toEqual([
       'text-model',
@@ -69,7 +93,13 @@ describe('prerequisiteChecks', () => {
   });
 
   it('fails the text model for every readiness that is not ready', () => {
-    for (const readiness of ['not-configured', 'untested', 'stale', 'failed'] as const) {
+    for (const readiness of [
+      'no-credential',
+      'incomplete',
+      'untested',
+      'stale',
+      'failed',
+    ] as const) {
       expect(checkFor('text-model', { textModelReadiness: readiness }).satisfied).toBe(false);
     }
   });
@@ -83,7 +113,7 @@ describe('prerequisiteChecks', () => {
 
   it('sends each failing check to the screen that fixes it', () => {
     expect(checkFor('text-model', { textModelReadiness: 'untested' }).route).toBe('/settings');
-    expect(checkFor('vocabulary', { snapshot: null }).route).toBe('/vocabulary');
+    expect(checkFor('vocabulary', { snapshot: null }).route).toBe('/reading-level');
   });
 
   it('fails the vocabulary check below the documented minimum and names the count', () => {

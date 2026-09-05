@@ -24,6 +24,7 @@ import { GenerationSettingsStore } from '../../application/settings/generation-s
 import { TtsStore } from '../../application/settings/tts.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
+import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { technicalCode } from '../../domain/shared/errors';
 import { jobId } from '../../domain/shared/ids';
 import {
@@ -289,17 +290,21 @@ export class GeneratePageComponent {
     }
   });
 
-  protected readonly checks = computed(() =>
-    prerequisiteChecks({
+  protected readonly checks = computed(() => {
+    const failure = this.textModel.testFailure();
+    return prerequisiteChecks({
+      hasSources: this.wordSources.sources().length > 0,
+      textModelFailure: failure === null ? null : aiErrorCopy(failure).whatFailed,
       textModelReadiness: this.textModel.readiness(),
       structuredOutput: this.textModel.structuredOutput(),
       snapshot: this.snapshots.active(),
-    }),
-  );
+    });
+  });
 
   protected readonly presetLine = computed(() =>
     grammarPresetLine(this.grammar.selectedPreset(), this.snapshots.active()),
   );
+  private readonly wordSources = inject(SourceMappingStore);
 
   protected readonly snapshotSummary = computed(() => {
     const active = this.snapshots.active();
@@ -406,6 +411,7 @@ export class GeneratePageComponent {
   });
 
   constructor() {
+    void this.wordSources.load();
     void this.policy.load();
     void this.grammar.load();
     void this.snapshots.load();

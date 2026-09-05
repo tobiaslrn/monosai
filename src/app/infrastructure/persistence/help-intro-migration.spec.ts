@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
-import { SCHEMA_VERSIONS } from './migrations';
+import { CURRENT_SCHEMA_VERSION, SCHEMA_VERSIONS } from './migrations';
 import { MonosaiDatabase } from './monosai-db';
 import { appSettingsSchema } from './schemas/settings.schema';
 
@@ -36,7 +36,7 @@ describe('schema v9 Help introduction', () => {
           expect(old.verno).toBe(8);
         } else {
           await upgraded.open();
-          expect(upgraded.verno).toBe(9);
+          expect(upgraded.verno).toBe(CURRENT_SCHEMA_VERSION);
           const row = await upgraded.settings.get('app');
           if (kind === 'present') {
             expect(row?.value).toEqual({ ...value, helpIntroSeen: false });

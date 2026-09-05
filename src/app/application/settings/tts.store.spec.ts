@@ -66,7 +66,7 @@ describe('TtsStore', () => {
 
     store.setDraft({ modelId: FAKE_OPENROUTER.ttsModel });
     await store.save();
-    expect(store.readiness()).toBe('not-configured');
+    expect(store.readiness()).toBe('incomplete');
 
     store.setDraft({ voiceId: FAKE_OPENROUTER.voice });
     await store.save();
@@ -111,7 +111,7 @@ describe('TtsStore', () => {
       modelId: '',
       activePresetId: null,
     });
-    expect(store.readiness()).toBe('not-configured');
+    expect(store.readiness()).toBe('incomplete');
   });
 
   it('clears voice configuration when the last registered preset is removed', async () => {
@@ -128,7 +128,7 @@ describe('TtsStore', () => {
 
     expect(store.presets()).toEqual([]);
     expect(settings.tts).toMatchObject({ activePresetId: null, modelId: '', voiceId: '' });
-    expect(store.readiness()).toBe('not-configured');
+    expect(store.readiness()).toBe('incomplete');
   });
 
   it('keeps audio compatibility evidence on the tested preset', async () => {
@@ -449,7 +449,7 @@ describe('TtsStore edge paths', () => {
     await store.load();
 
     expect(store.storageFailure()?.code).toBe('corrupt-record');
-    expect(store.readiness()).toBe('not-configured');
+    expect(store.readiness()).toBe('no-credential');
   });
 
   it('makes no request when the draft cannot be stored', async () => {

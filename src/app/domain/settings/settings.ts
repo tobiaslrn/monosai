@@ -1,3 +1,4 @@
+import type { FailedConfigurationTest } from '../ai/failed-configuration-test';
 import type { StructuredOutputMode } from '../ai/model-test';
 import type { SpeechInstructionsSupport } from '../ai/speech-instructions';
 import type { SnapshotId } from '../shared/ids';
@@ -116,6 +117,7 @@ export function isValidStoryTokenBudget(value: number): boolean {
 }
 
 export interface TextModelSettings {
+  readonly failedTests?: readonly FailedConfigurationTest[];
   readonly modelId: string;
   readonly reasoningEffort: string | null;
   readonly storyTokenBudget: number;
@@ -152,6 +154,7 @@ export interface TextModelPreset {
 }
 
 export const DEFAULT_TEXT_MODEL_SETTINGS: TextModelSettings = {
+  failedTests: [],
   modelId: '',
   reasoningEffort: null,
   storyTokenBudget: DEFAULT_STORY_TOKEN_BUDGET,
@@ -166,6 +169,7 @@ export const DEFAULT_TEXT_MODEL_SETTINGS: TextModelSettings = {
 };
 
 export interface TtsSettings {
+  readonly failedTests?: readonly FailedConfigurationTest[];
   readonly modelId: string;
   readonly voiceId: string;
   readonly speed: number;
@@ -197,6 +201,7 @@ export interface TtsPreset {
 }
 
 export const DEFAULT_TTS_SETTINGS: TtsSettings = {
+  failedTests: [],
   modelId: '',
   voiceId: '',
   speed: 1,

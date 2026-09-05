@@ -98,6 +98,14 @@ Other tabs learn about a deleted or changed reading through a `BroadcastChannel`
 
 ## 8.6 Caching of AI results
 
+AI readiness distinguishes missing credentials from incomplete model configuration.
+Text and speech settings keep up to twenty failed test attempts, with a configuration
+fingerprint, timestamp, typed failure code, and redacted reason. Matching failures
+survive reloads and take precedence over old successful tests; a successful retry
+removes that configuration's failure. Schema version 10 initializes this history
+transactionally. Invalid settings abort the upgrade and reach the existing storage
+recovery screen with the original data retained.
+
 Every AI result is stored under a **configuration fingerprint**: a stable hash of everything that
 could change the answer. If the fingerprint matches, the stored result is used and no request is
 made. If it does not match, the stored result is not shown as current.
