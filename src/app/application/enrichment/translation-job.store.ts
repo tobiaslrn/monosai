@@ -157,6 +157,9 @@ export class TranslationJobStore {
     return kind === 'preparing' || kind === 'running';
   });
 
+  /** What "nothing is happening" looks like, for a caller with no reading yet. */
+  readonly idleProgress: TranslationJobProgress = IDLE;
+
   progressFor(readingId: ReadingId): TranslationJobProgress {
     const progress = this.progressSignal();
     return progress.kind !== 'idle' && progress.readingId === readingId ? progress : IDLE;
