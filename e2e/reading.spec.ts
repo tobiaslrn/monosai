@@ -1291,3 +1291,34 @@ test('adds an unknown word locally from the reader @smoke @mobile', async ({ pag
   await page.goto('./#/reading-level');
   await expect(page.getByText('Reader words', { exact: true })).toBeVisible();
 });
+
+test('uses one keyboard stop per sentence and returns from word details @smoke', async ({
+  page,
+}) => {
+  await importReading(page, '猫がいる。犬が来た。\n\n鳥が飛ぶ。', '動物');
+  const sentences = page.locator('.sentence');
+  await expect(sentences).toHaveCount(3);
+  expect(await page.locator('article.text button.token').count()).toBeGreaterThan(3);
+  await expect(page.locator('article.text button.token[tabindex="0"]')).toHaveCount(3);
+  await expect(page.locator('mn-reader-paragraph p.paragraph')).toHaveCount(2);
+  const first = sentences.first().locator('button.token');
+  await first.first().focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(first.nth(1)).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Word details', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(first.nth(1)).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(sentences.nth(1).locator('button.token[tabindex="0"]')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(sentences.nth(2).locator('button.token[tabindex="0"]')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#mn-after-story')).toBeFocused();
+  await expect(page.getByRole('heading', { name: '動物', exact: true })).toHaveAttribute(
+    'lang',
+    'ja',
+  );
+  await page.locator('#mn-after-story').click();
+  await expect(page.getByRole('link', { name: '動物', exact: true })).toHaveAttribute('lang', 'ja');
+});
