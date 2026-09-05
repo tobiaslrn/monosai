@@ -1,4 +1,5 @@
 import type { Result } from '../shared/result';
+import type { AnkiFieldSample } from '../vocabulary/suggest-anki-mapping';
 import type { SourceMappingId } from '../shared/ids';
 import type { AnkiProviderKind } from '../vocabulary/snapshot';
 import type { SourceMapping } from '../vocabulary/source-mapping';
@@ -66,6 +67,11 @@ export interface AnkiVocabularyProvider {
   readonly kind: AnkiProviderKind;
   probe(signal?: AbortSignal): Promise<Result<AnkiCapabilities, AnkiError>>;
   discover(signal?: AbortSignal): Promise<Result<AnkiCatalog, AnkiError>>;
+  /** Optional, bounded read used only to suggest a mapping before confirmation. */
+  sampleFields?(
+    catalog: AnkiCatalog,
+    signal?: AbortSignal,
+  ): Promise<Result<readonly AnkiFieldSample[], AnkiError>>;
   extractReviewed(
     mappings: readonly SourceMapping[],
     signal?: AbortSignal,

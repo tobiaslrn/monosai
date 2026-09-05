@@ -8,6 +8,7 @@ describe('parseTextList', () => {
       entries: [],
       ignoredBlankLines: 0,
       duplicateLines: 0,
+      nonJapaneseLines: 0,
     });
   });
 
@@ -17,6 +18,7 @@ describe('parseTextList', () => {
       entries: ['猫', '犬', '青い 空'],
       ignoredBlankLines: 2,
       duplicateLines: 0,
+      nonJapaneseLines: 0,
     });
   });
 
@@ -24,5 +26,11 @@ describe('parseTextList', () => {
     const parsed = parseTextList('する／やる\n猫・ねこ\n猫・ねこ');
     expect(parsed.entries).toEqual(['する／やる', '猫・ねこ', '猫・ねこ']);
     expect(parsed.duplicateLines).toBe(1);
+  });
+
+  it('counts non-Japanese lines without rejecting a mixed list', () => {
+    const parsed = parseTextList('猫\ncat\n123\n犬');
+    expect(parsed.nonJapaneseLines).toBe(2);
+    expect(parsed.entries).toHaveLength(4);
   });
 });

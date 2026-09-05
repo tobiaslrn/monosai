@@ -39,7 +39,8 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
     heading: 'Anki is not answering',
     whatFailed: 'Monosai could not reach AnkiConnect on this computer.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Open Anki on this computer, then test the connection again.',
+    primaryAction:
+      'Install and enable the AnkiConnect add-on in Anki, keep Anki open on this computer, then connect again.',
     escape: USE_PACKAGE,
   },
   'bridge-not-running': {

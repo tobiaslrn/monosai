@@ -188,6 +188,7 @@ export async function buildSnapshot(page: Page): Promise<void> {
   await expect(page.getByRole('dialog', { name: 'Add vocabulary source' })).toBeVisible();
   await page.getByTestId('choose-ankiconnect').click();
   await page.getByTestId('connect-ankiconnect').click();
+  await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
   await expect(page.getByTestId('words-standing')).toHaveText(
     `${String(REVIEWED_EXPRESSIONS.length)} words`,
     {

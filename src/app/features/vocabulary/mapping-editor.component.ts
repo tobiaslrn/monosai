@@ -1,5 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { FormsModule } from '@angular/forms';
+import { ANKI_PROVIDER_FACTORY } from '../../application/shared/anki-tokens';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { ManualSourceSyncStore } from '../../application/vocabulary/manual-source-sync.store';
@@ -45,7 +46,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
               <span class="kind">{{ kindLabel(source) }}</span>
             </div>
             <div class="source-actions">
-              @if (source.kind === 'text-list') {
+              @if (source.kind !== 'anki-package' || canConfigure(source)) {
                 <button type="button" class="mn-button" (click)="toggleEdit(source.id)">
                   {{ editingId() === source.id ? 'Close' : 'Edit' }}
                 </button>
@@ -89,7 +90,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
             } @else {
               <p class="details">{{ textEntryCount(source) }} entries</p>
             }
-          } @else if (canConfigure(source)) {
+          } @else if (canConfigure(source) && editingId() === source.id) {
             <div class="fields">
               <label class="mn-field">
                 <span>Deck</span>
@@ -311,6 +312,7 @@ export class MappingEditorComponent {
   private readonly sync = inject(VocabularySyncService);
   private readonly history = inject(SnapshotHistoryStore);
   private readonly dialog = inject(Dialog);
+  private readonly createConnection = inject(ANKI_PROVIDER_FACTORY);
 
   protected readonly editingId = signal<VocabularySourceId | null>(null);
   protected readonly sourceChangeError = signal<string | null>(null);
@@ -398,8 +400,12 @@ export class MappingEditorComponent {
     return source.content.split('\n').filter((line) => line.trim().length > 0).length;
   }
 
-  protected toggleEdit(id: VocabularySourceId): void {
+  protected async toggleEdit(id: VocabularySourceId): Promise<void> {
     this.editingId.update((current) => (current === id ? null : id));
+    const source = this.store.sources().find((candidate) => candidate.id === id);
+    if (this.editingId() === id && source?.kind === 'anki-connect' && !this.canConfigure(source)) {
+      await this.refresh.connect(this.createConnection(source.providerKind));
+    }
   }
 
   protected finishEdit(): void {

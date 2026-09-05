@@ -10,10 +10,9 @@ import {
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { ANKI_PROVIDER_FACTORY } from '../../application/shared/anki-tokens';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
-import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
-import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
+import { AnkiConnectionStore } from '../../application/vocabulary/anki-connection.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
-import type { AnkiProviderKind } from '../../domain/vocabulary/snapshot';
+import { AnkiMappingDraftComponent } from './anki-mapping-draft.component';
 import { isValidAnkiConnectPort } from '../../domain/settings/settings';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { TextListSourceComponent } from './text-list-source.component';
@@ -25,11 +24,12 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
   selector: 'mn-provider-selection',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '[class.is-editor]': "mode() === 'text'",
+    '[class.is-editor]': "mode() === 'text' || connection.selecting() || connection.sampling()",
     '(document:pointerdown)': 'onDocumentPointerDown($event)',
     '(document:keydown.escape)': 'closeMenuOnEscape($event)',
   },
-  imports: [IconComponent, TextListSourceComponent],
+  providers: [AnkiConnectionStore],
+  imports: [IconComponent, TextListSourceComponent, AnkiMappingDraftComponent],
   template: `
     <div class="add-source">
       @if (mode() !== 'text') {
@@ -60,7 +60,16 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
               <div class="connection-head">
                 <div>
                   <h3>Connect to Anki</h3>
-                  <p class="mn-hint">Keep Anki open while Monosai connects.</p>
+                  <p class="mn-hint">
+                    Install the
+                    <a
+                      href="https://ankiweb.net/shared/info/2055492159"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      >AnkiConnect add-on</a
+                    >
+                    in Anki first, then keep Anki open while Monosai connects.
+                  </p>
                 </div>
               </div>
 
@@ -146,6 +155,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
         <mn-text-list-source (saved)="close()" (cancelled)="mode.set('choices')" />
       }
     </div>
+    <mn-anki-mapping-draft />
   `,
   styles: `
     :host {
@@ -261,8 +271,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
 })
 export class ProviderSelectionComponent {
   protected readonly refresh = inject(VocabularyRefreshStore);
-  private readonly mappings = inject(SourceMappingStore);
-  private readonly history = inject(SnapshotHistoryStore);
+  protected readonly connection = inject(AnkiConnectionStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly createConnection = inject(ANKI_PROVIDER_FACTORY);
   private readonly packageImport = inject(PackageImportStore);
@@ -329,7 +338,8 @@ export class ProviderSelectionComponent {
     }
     await this.settings.setAnkiConnectPort(port);
     this.hideMenu();
-    await this.connectAndAdd('desktop-connect', this.createConnection('desktop-connect'));
+    await this.connection.connect(this.createConnection('desktop-connect'));
+    this.close();
   }
 
   protected chooseAnkiConnect(): void {
@@ -368,34 +378,5 @@ export class ProviderSelectionComponent {
     if (typeof menu.hidePopover === 'function' && menu.matches(':popover-open')) {
       menu.hidePopover();
     }
-  }
-
-  private async connectAndAdd(
-    providerKind: AnkiProviderKind,
-    provider: Parameters<VocabularyRefreshStore['connect']>[0],
-  ): Promise<void> {
-    await this.refresh.connect(provider);
-    const catalog = this.refresh.catalog();
-    const deck =
-      catalog?.decks.find((candidate) => candidate.name !== 'Default')?.name ??
-      catalog?.decks.at(0)?.name;
-    const noteType = catalog?.noteTypes.at(0);
-    const expressionFieldName = noteType?.fieldNames.at(0);
-    if (deck === undefined || noteType === undefined || expressionFieldName === undefined) {
-      return;
-    }
-    const source = await this.mappings.add({
-      providerKind,
-      deckName: deck,
-      deckScope: 'deck-only',
-      noteTypeName: noteType.name,
-      expressionFieldName,
-    });
-    if (source === null) {
-      return;
-    }
-    await this.refresh.refreshAndCommit();
-    await this.history.load();
-    this.close();
   }
 }

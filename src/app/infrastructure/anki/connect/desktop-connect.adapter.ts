@@ -11,6 +11,9 @@ import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
 import type { AnkiConnectClient } from './connect-client';
 import { DEFAULT_BATCH_SIZE, extractMapping } from './connect-extraction';
 import { buildCatalog } from './connect-catalog';
+import { escapeTerm } from './connect-search';
+import type { AnkiFieldSample } from '../../../domain/vocabulary/suggest-anki-mapping';
+import { DomMarkupTextExtractor } from '../dom-markup-text';
 
 /**
  * Desktop AnkiConnect.
@@ -75,6 +78,44 @@ export class DesktopConnectAdapter implements AnkiVocabularyProvider {
 
   discover(signal?: AbortSignal): Promise<Result<AnkiCatalog, AnkiError>> {
     return buildCatalog(this.client, signal);
+  }
+
+  async sampleFields(
+    catalog: AnkiCatalog,
+    signal?: AbortSignal,
+  ): Promise<Result<readonly AnkiFieldSample[], AnkiError>> {
+    const samples: AnkiFieldSample[] = [];
+    const extractor = new DomMarkupTextExtractor();
+    // Cap both request count and note bodies, even for a collection with hundreds of types.
+    for (const noteType of catalog.noteTypes.slice(0, 20)) {
+      const found = await this.client.findCards(`"note:${escapeTerm(noteType.name)}"`, signal);
+      if (!found.ok) return found;
+      const cards = await this.client.cardsInfo(found.value.slice(0, 8), signal);
+      if (!cards.ok) return cards;
+      const notes = await this.client.notesInfo(
+        [...new Set(cards.value.map((card) => card.note))],
+        signal,
+      );
+      if (!notes.ok) return notes;
+      for (const note of notes.value) {
+        if (note.modelName !== noteType.name) continue;
+        for (const deckName of new Set(
+          cards.value.filter((card) => card.note === note.noteId).map((card) => card.deckName),
+        )) {
+          samples.push({
+            deckName,
+            noteTypeName: note.modelName,
+            fields: Object.fromEntries(
+              Object.entries(note.fields).map(([name, field]) => [
+                name,
+                extractor.toVisibleText(field.value),
+              ]),
+            ),
+          });
+        }
+      }
+    }
+    return ok(samples);
   }
 
   async *extractReviewed(

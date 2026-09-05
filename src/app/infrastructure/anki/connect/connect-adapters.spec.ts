@@ -24,6 +24,22 @@ function serverAnd(options: FakeServerOptions = {}, collection = CONTRACT_COLLEC
 }
 
 describe('DesktopConnectAdapter', () => {
+  it('samples visible fields through bounded read requests', async () => {
+    const { server, client } = serverAnd();
+    const adapter = new DesktopConnectAdapter(client);
+    const catalog = await adapter.discover();
+    expect(catalog.ok).toBe(true);
+    if (!catalog.ok) return;
+    const samples = await adapter.sampleFields(catalog.value);
+    expect(samples.ok).toBe(true);
+    if (!samples.ok) return;
+    expect(samples.value.some((sample) => sample.fields['Expression'] === 'ねこ')).toBe(true);
+    const reads = server.requests.filter((request) => request.action === 'notesInfo');
+    expect(reads.length).toBeLessThanOrEqual(20);
+    for (const read of reads)
+      expect((read.params['notes'] as number[]).length).toBeLessThanOrEqual(8);
+  });
+
   it('reports the AnkiConnect version it probed', async () => {
     const { server, client } = serverAnd({ version: 6 });
     const probed = await new DesktopConnectAdapter(client).probe();

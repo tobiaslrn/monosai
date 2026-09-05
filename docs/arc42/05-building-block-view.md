@@ -63,6 +63,11 @@ the providers, and owns the shell and the router, so it must be allowed to see e
 
 ## 5.2 Level 2: how each layer is divided
 
+The vocabulary application layer owns an unsaved Anki connection draft. The
+domain scores bounded visible field samples; the desktop adapter obtains them
+through validated read-only requests. Features render the mapping and preview,
+and confirmation uses the existing atomic vocabulary commit boundary.
+
 Every layer is divided by domain area, and the same area name recurs across layers. `reading`
 appears in `domain/`, in `application/`, and as a screen in `features/`; the layer rule decides which
 of those may import which. Reading across a row below therefore shows where one concern lives at each

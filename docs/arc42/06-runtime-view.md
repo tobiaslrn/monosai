@@ -36,6 +36,13 @@ route cannot overwrite a selection that was written while the learner was naviga
 
 ## 6.2 Import a text
 
+Connecting desktop Anki discovers its catalogue and reads bounded field samples.
+A Japanese mapping is suggested or the learner chooses it explicitly. Extraction
+and analysis prepare a preview without writing a source or changing the active
+vocabulary. Confirmation atomically stores the source, its cache, and the combined
+snapshot; cancellation or navigation discards the draft. See
+[ADR 0055](../decisions/0055-anki-mapping-is-suggested-then-confirmed.md).
+
 ```mermaid
 sequenceDiagram
     actor Learner
