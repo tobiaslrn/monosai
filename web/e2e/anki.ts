@@ -8,6 +8,35 @@ const FIXTURE_DIR = join(process.cwd(), 'src', 'testing', 'fixtures', 'anki');
 const CONNECT_ENDPOINTS = 'http://127.0.0.1:8765/**';
 const CONNECT_ENDPOINTS_ALT = 'http://localhost:8765/**';
 
+/** Select the Android provider explicitly; its traffic shares desktop's loopback addresses. */
+export async function connectAndroidBridge(page: Page): Promise<void> {
+  await page.getByTestId('add-source').click();
+  await page.getByRole('button', { name: 'AnkiDroid bridge', exact: false }).click();
+  await page.getByRole('button', { name: 'Connect to AnkiDroid', exact: true }).click();
+}
+
+export async function stubAndroidBridge(page: Page): Promise<void> {
+  const fixtures = join(process.cwd(), '..', 'protocol', 'fixtures');
+  const actions = [
+    'version',
+    'requestPermission',
+    'deckNames',
+    'modelNames',
+    'modelFieldNames',
+    'findCards',
+    'cardsInfo',
+    'notesInfo',
+  ];
+  const answers: Record<string, unknown> = {};
+  for (const action of actions) {
+    const envelope = JSON.parse(readFileSync(join(fixtures, action, 'response.json'), 'utf8')) as {
+      result: unknown;
+    };
+    answers[action] = envelope.result;
+  }
+  await stubAnkiConnect(page, answers);
+}
+
 export function ankiFixture(name: string): Buffer {
   return readFileSync(join(FIXTURE_DIR, name));
 }

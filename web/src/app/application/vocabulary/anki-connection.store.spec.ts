@@ -18,10 +18,10 @@ describe('AnkiConnectionStore', () => {
     store = TestBed.inject(AnkiConnectionStore);
   });
 
-  it('previews the suggestion without storing anything, then commits on confirmation', async () => {
-    const provider = Object.assign(
-      new FakeAnkiProvider(CONTRACT_COLLECTION, { kind: 'desktop-connect' }),
-      {
+  it.each(['desktop-connect', 'android-connect'] as const)(
+    'previews and commits %s without changing its kind',
+    async (kind) => {
+      const provider = Object.assign(new FakeAnkiProvider(CONTRACT_COLLECTION, { kind }), {
         sampleFields: () =>
           Promise.resolve(
             ok([
@@ -32,17 +32,19 @@ describe('AnkiConnectionStore', () => {
               },
             ]),
           ),
-      },
-    );
-    await store.connect(provider);
-    expect(store.refresh.state().kind).toBe('awaiting-confirmation');
-    expect(store.sampleWords()).toContain('ねこ');
-    expect(beds.vocabulary.commitCount).toBe(0);
-    expect(beds.mappings.stored.size).toBe(0);
-    await store.confirm();
-    expect(beds.vocabulary.commitCount).toBe(1);
-    expect(beds.mappings.stored.size).toBe(1);
-  });
+      });
+      await store.connect(provider);
+      expect(store.refresh.state().kind).toBe('awaiting-confirmation');
+      expect(store.sampleWords()).toContain('ねこ');
+      expect(beds.vocabulary.commitCount).toBe(0);
+      expect(beds.mappings.stored.size).toBe(0);
+      await store.confirm();
+      expect(beds.vocabulary.commitCount).toBe(1);
+      expect(beds.mappings.stored.size).toBe(1);
+      const source = [...beds.mappings.stored.values()][0];
+      expect(source.kind !== 'text-list' && source.providerKind).toBe(kind);
+    },
+  );
 
   it('leaves all choices empty when sampling is unavailable and cancels without a write', async () => {
     await store.connect(new FakeAnkiProvider(CONTRACT_COLLECTION, { kind: 'desktop-connect' }));

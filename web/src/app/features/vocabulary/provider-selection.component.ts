@@ -17,7 +17,7 @@ import { isValidAnkiConnectPort } from '../../domain/settings/settings';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { TextListSourceComponent } from './text-list-source.component';
 
-type AddMode = 'closed' | 'choices' | 'anki' | 'text';
+type AddMode = 'closed' | 'choices' | 'anki' | 'android' | 'text';
 
 /** One entry point for every kind of vocabulary source. */
 @Component({
@@ -39,7 +39,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
           class="mn-button mn-button--primary"
           aria-haspopup="dialog"
           aria-controls="mn-add-source-menu"
-          [attr.aria-expanded]="mode() === 'choices' || mode() === 'anki'"
+          [attr.aria-expanded]="mode() === 'choices' || mode() === 'anki' || mode() === 'android'"
           popovertarget="mn-add-source-menu"
           data-testid="add-source"
         >
@@ -107,6 +107,34 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
                 </button>
               </div>
             </div>
+          } @else if (mode() === 'android') {
+            <div class="connection-panel">
+              <div class="connection-head">
+                <h3>Connect to AnkiDroid</h3>
+                <p class="mn-hint">
+                  Install AnkiDroid 2.24 or newer and the
+                  <a
+                    href="https://github.com/tobiaslrn/monosai/releases?q=bridge-v"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >Monosai Anki bridge</a
+                  >. In the bridge, grant access to AnkiDroid and start it, then connect here. The
+                  bridge uses port 8765.
+                </p>
+                <p class="mn-hint">For simpler setup, import an Anki package instead.</p>
+              </div>
+              <div class="connection-actions">
+                <button type="button" class="mn-button" (click)="mode.set('choices')">Back</button>
+                <button
+                  type="button"
+                  class="mn-button mn-button--primary"
+                  [disabled]="refresh.isBusy()"
+                  (click)="connectAndroidBridge()"
+                >
+                  Connect to AnkiDroid
+                </button>
+              </div>
+            </div>
           } @else {
             <button
               type="button"
@@ -135,6 +163,15 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
             >
               <strong>Pasted list</strong>
               <span class="mn-hint">Type or paste words yourself</span>
+            </button>
+            <button
+              type="button"
+              class="menu-item"
+              [disabled]="refresh.isBusy()"
+              (click)="mode.set('android')"
+            >
+              <strong>AnkiDroid bridge</strong>
+              <span class="mn-hint">Live connection on Android · advanced setup</span>
             </button>
           }
         </div>
@@ -316,6 +353,7 @@ export class ProviderSelectionComponent {
     }
     event.preventDefault();
     this.hideMenu();
+    this.toggleButton()?.nativeElement.focus();
   }
 
   protected onDocumentPointerDown(event: PointerEvent): void {
@@ -346,6 +384,12 @@ export class ProviderSelectionComponent {
 
   protected chooseAnkiConnect(): void {
     this.mode.set('anki');
+  }
+
+  protected async connectAndroidBridge(): Promise<void> {
+    this.hideMenu();
+    await this.connection.connect(this.createConnection('android-connect'));
+    this.close();
   }
 
   protected setAnkiPortDraft(event: Event): void {

@@ -26,7 +26,7 @@ export function desktopEndpoints(port: number): readonly string[] {
 
 export const DESKTOP_ENDPOINTS = desktopEndpoints(8_765);
 
-/** The unofficial Android bridge listens on the same port by convention. */
+/** The first-party Android bridge has a fixed port, independent of desktop settings. */
 export const ANDROID_ENDPOINTS = ['http://127.0.0.1:8765', 'http://localhost:8765'] as const;
 
 /** AnkiConnect's request format version, unrelated to the add-on's own version. */
@@ -96,6 +96,7 @@ function isLocalPageOrigin(pageOrigin: string): boolean {
 export class AnkiConnectClient {
   private readonly timeoutMs: number;
   private activeEndpoint: string | null = null;
+  private versionVerified = false;
 
   constructor(private readonly options: ConnectClientOptions) {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -215,6 +216,7 @@ export class AnkiConnectClient {
         );
       }
       this.options.logger?.info('anki.operation.succeeded', { action });
+      if (action === 'version') this.versionVerified = true;
       return ok(parsed.data);
     }
 
@@ -234,6 +236,17 @@ export class AnkiConnectClient {
     failureCode: AnkiErrorCode,
   ): AnkiError {
     const lowered = message.toLowerCase();
+    for (const code of [
+      'ankidroid-not-installed',
+      'ankidroid-permission-denied',
+      'review-evidence-unsupported',
+      'origin-not-allowed',
+      'query-failed',
+    ] as const) {
+      if (lowered === code || lowered.startsWith(`${code}:`)) {
+        return ankiError(code, 'The Anki bridge could not complete the read.', action);
+      }
+    }
     if (lowered.includes('unsupported action') || lowered.includes('unknown action')) {
       return ankiError(
         'unsupported-action',
@@ -255,7 +268,11 @@ export class AnkiConnectClient {
         action,
       );
     }
-    return ankiError(failureCode, 'Anki could not answer that request.', `${action}: ${message}`);
+    return ankiError(
+      this.versionVerified ? 'unsupported-action' : failureCode,
+      'Anki could not answer that request.',
+      `${action}: ${message}`,
+    );
   }
 
   private async post(
@@ -350,7 +367,10 @@ export class AnkiConnectClient {
     if (thrown instanceof DOMException && thrown.name === 'AbortError') {
       return cancelled();
     }
-    if (!isLocalPageOrigin(this.options.pageOrigin) || this.activeEndpoint !== null) {
+    if (
+      this.options.unreachableCode !== 'bridge-not-running' &&
+      (!isLocalPageOrigin(this.options.pageOrigin) || this.activeEndpoint !== null)
+    ) {
       // Either this page is served from an address AnkiConnect does not allow
       // by default, or something answered here before and is now refusing the
       // request. Both are the origin list, not an absent add-on.

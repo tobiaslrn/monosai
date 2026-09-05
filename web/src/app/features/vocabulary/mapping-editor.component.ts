@@ -371,7 +371,7 @@ export class MappingEditorComponent {
   protected kindLabel(source: VocabularySource): string {
     switch (source.kind) {
       case 'anki-connect':
-        return 'Anki';
+        return source.providerKind === 'android-connect' ? 'AnkiDroid bridge' : 'Anki';
       case 'anki-package':
         return 'Anki package';
       case 'text-list':

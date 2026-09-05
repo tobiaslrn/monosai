@@ -35,6 +35,20 @@ const TRY_AGAIN = 'Try again.';
  * saying otherwise would be a promise the browser cannot keep.
  */
 export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
+  'ankidroid-not-installed': {
+    heading: 'AnkiDroid was not found',
+    whatFailed: 'The bridge could not find AnkiDroid on this device.',
+    whatDidNot: NOTHING_SAVED,
+    primaryAction: 'Get AnkiDroid 2.24 or newer, open your collection, then connect again.',
+    escape: USE_PACKAGE,
+  },
+  'ankidroid-permission-denied': {
+    heading: 'The bridge needs access to AnkiDroid',
+    whatFailed: 'AnkiDroid has not granted the bridge access to your collection.',
+    whatDidNot: NOTHING_SAVED,
+    primaryAction: 'Open the Monosai Anki bridge and grant AnkiDroid access, then connect again.',
+    escape: USE_PACKAGE,
+  },
   'not-running': {
     heading: 'Anki is not answering',
     whatFailed: 'Monosai could not reach AnkiConnect on this computer.',
@@ -70,7 +84,7 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
       'AnkiConnect answers on this device but does not accept requests from the address this page is served from.',
     whatDidNot: NOTHING_SAVED,
     primaryAction:
-      "Add this page's address to AnkiConnect's allowed origins, then restart Anki and test again.",
+      "Add this page's address to the allowed origins in AnkiConnect or the Monosai Anki bridge, then connect again.",
     escape: USE_PACKAGE,
   },
   timeout: {

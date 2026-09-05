@@ -12,6 +12,8 @@ import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
 import { buildCatalog } from './connect-catalog';
 import type { AnkiConnectClient } from './connect-client';
 import { extractMapping } from './connect-extraction';
+import { sampleConnectFields } from './connect-samples';
+import type { AnkiFieldSample } from '../../../domain/vocabulary/suggest-anki-mapping';
 
 /** Smaller batches than desktop: the bridge runs on a phone. */
 const ANDROID_BATCH_SIZE = 50;
@@ -46,6 +48,12 @@ export class AndroidConnectAdapter implements AnkiVocabularyProvider {
     const version = await this.client.version(signal);
     if (!version.ok) {
       return version;
+    }
+
+    const permission = await this.client.requestPermission(signal);
+    if (!permission.ok) return permission;
+    if (permission.value.permission !== 'granted' || permission.value.requireApiKey === true) {
+      return err(ankiError('ankidroid-permission-denied', 'Grant AnkiDroid access in the bridge.'));
     }
 
     const limitations: CapabilityLimitation[] = [];
@@ -145,6 +153,14 @@ export class AndroidConnectAdapter implements AnkiVocabularyProvider {
       return ready;
     }
     return buildCatalog(this.client, signal);
+  }
+
+  async sampleFields(
+    catalog: AnkiCatalog,
+    signal?: AbortSignal,
+  ): Promise<Result<readonly AnkiFieldSample[], AnkiError>> {
+    const ready = await this.ensureProbed(signal);
+    return ready.ok ? sampleConnectFields(this.client, catalog, signal) : ready;
   }
 
   async *extractReviewed(

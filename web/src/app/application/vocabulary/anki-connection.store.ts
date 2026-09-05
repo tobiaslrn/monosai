@@ -1,5 +1,6 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import type { AnkiVocabularyProvider } from '../../domain/anki/anki-provider';
+import type { AnkiProviderKind } from '../../domain/vocabulary/snapshot';
 import {
   suggestAnkiMapping,
   type AnkiMappingSuggestion,
@@ -15,6 +16,7 @@ export class AnkiConnectionStore {
   private readonly sources = inject(SourceMappingStore);
   private readonly history = inject(SnapshotHistoryStore);
   private controller: AbortController | null = null;
+  private readonly pendingKind = signal<AnkiProviderKind>('desktop-connect');
   readonly selecting = signal(false);
   readonly sampling = signal(false);
   readonly suggested = signal(false);
@@ -63,6 +65,8 @@ export class AnkiConnectionStore {
     const controller = new AbortController();
     const cancelled = () => controller.signal.aborted;
     this.controller = controller;
+    this.pendingKind.set(provider.kind);
+    this.sampling.set(false);
     this.selecting.set(false);
     await this.refresh.connect(provider);
     const catalog = this.refresh.catalog();
@@ -87,7 +91,7 @@ export class AnkiConnectionStore {
     if (!this.valid() || this.refresh.isBusy()) return;
     const source = this.sources.draft({
       ...this.selection(),
-      providerKind: 'desktop-connect',
+      providerKind: this.pendingKind(),
       deckScope: 'deck-only',
     });
     await this.refresh.refresh([source]);
