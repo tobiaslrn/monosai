@@ -15,7 +15,7 @@ There are two ways to put a reading into the library. Both end in the same reade
 | Use case | Actor and input | Preconditions | Result |
 | --- | --- | --- | --- |
 | **Import a text** | The learner pastes Japanese, or opens a UTF-8 `.txt` file | None. No Anki, no key, no network after the first visit | A saved reading, segmented into paragraphs and sentences, with tokens |
-| **Generate a story** | The learner writes a premise | An OpenRouter key, and about 50 reviewed expressions | A saved story that uses only known words, plus the evidence it was judged against |
+| **Generate a story** | The learner writes a premise, or leaves it empty for a topic of the model's choosing | An OpenRouter key, and about 50 reviewed expressions | A saved story that uses only known words, plus the evidence it was judged against |
 | **Refresh vocabulary** | The learner connects Anki, or opens a package file | Anki running with AnkiConnect, an Android bridge, or an `.apkg` / `.colpkg` file | One current vocabulary snapshot, which replaces the previous one |
 | **Read with aids** | The learner opens a saved reading | The reading exists | Furigana, glosses, and word markers. Translation, grammar review, and speech on request |
 

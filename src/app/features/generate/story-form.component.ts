@@ -36,12 +36,12 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       <div class="text-fields" role="region" aria-labelledby="mn-this-story">
         <h3 id="mn-this-story">This story</h3>
         <div class="mn-field">
-          <label for="mn-premise">What should the story be about?</label>
+          <label for="mn-premise">What should the story be about? (optional)</label>
           <textarea
             id="mn-premise"
             rows="5"
             data-testid="premise"
-            placeholder="Describe what the story should be about (up to 1,000 characters)"
+            placeholder="Describe what the story should be about, or leave it empty for a topic of the model's choosing"
             [value]="draft.premise()"
             [attr.aria-describedby]="premiseDescriptionIds()"
             [attr.aria-invalid]="premiseTooLong()"
@@ -240,7 +240,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         </button>
         @if (!canGenerate()) {
           <p id="mn-generate-disabled-reason" class="mn-hint">
-            {{ disabledReason() || 'Enter a premise within the character limits to generate.' }}
+            {{ disabledReason() || 'Keep both fields within the character limits to generate.' }}
           </p>
         }
       </div>

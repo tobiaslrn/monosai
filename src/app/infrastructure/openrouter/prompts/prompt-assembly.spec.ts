@@ -96,4 +96,21 @@ ${CONFIG_OPEN} vocabulary inventory
     expect(prompt.user).toContain(`>>>
 <<< vocabulary inventory`);
   });
+
+  it('asks the model to choose a topic when no premise was written', () => {
+    const prompt = buildStoryPrompt(request({ premise: '' }));
+
+    expect(prompt.user).toContain('No premise was supplied');
+    // The absence has to arrive as an instruction, not as a premise that is
+    // blank: an empty data block says nothing a model can act on.
+    expect(prompt.user).not.toContain(`${DATA_OPEN} premise`);
+  });
+
+  it('keeps a written premise inside its data block', () => {
+    const prompt = buildStoryPrompt(request());
+
+    expect(prompt.user).toContain(`${DATA_OPEN} premise
+猫が旅に出る話。`);
+    expect(prompt.user).not.toContain('No premise was supplied');
+  });
 });

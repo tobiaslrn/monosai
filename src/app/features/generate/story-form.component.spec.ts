@@ -248,12 +248,24 @@ describe('StoryFormComponent', () => {
     );
   });
 
+  it('leaves the draft valid with no premise, which asks for a random topic', () => {
+    const { element } = render();
+
+    expect(draft.isValid()).toBe(true);
+    expect(
+      element.querySelector<HTMLLabelElement>('label[for="mn-premise"]')?.textContent,
+    ).toContain('optional');
+
+    type(element, 'premise', 'ねこ');
+    expect(draft.isValid()).toBe(true);
+  });
+
   it('keeps premise and instruction guidance inside the text boxes', () => {
     const { element } = render();
 
     expect(
       element.querySelector<HTMLTextAreaElement>('[data-testid="premise"]')?.placeholder,
-    ).toContain('up to 1,000 characters');
+    ).toContain('leave it empty');
     expect(
       element.querySelector<HTMLTextAreaElement>('[data-testid="special-instructions"]')
         ?.placeholder,

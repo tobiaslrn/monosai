@@ -456,7 +456,9 @@ export class TranslationJobStore {
 
     return {
       registerPreference,
-      ...(story === null ? {} : { titleJa: story.title, premiseJa: story.premise }),
+      ...(story === null ? {} : { titleJa: story.title }),
+      // A story whose topic was left to the model has no premise to pass on.
+      ...(story === null || story.premise === '' ? {} : { premiseJa: story.premise }),
       ...(consistencyTermsJa.length === 0 ? {} : { consistencyTermsJa }),
     };
   }
