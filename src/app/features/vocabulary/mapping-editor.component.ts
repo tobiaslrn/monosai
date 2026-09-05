@@ -1,4 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
+import { FormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { ManualSourceSyncStore } from '../../application/vocabulary/manual-source-sync.store';
@@ -33,7 +34,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
 @Component({
   selector: 'mn-mapping-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, TextListSourceComponent],
+  imports: [FormsModule, IconComponent, TextListSourceComponent],
   template: `
     <ul class="sources">
       @for (source of store.sources(); track source.id) {
@@ -95,7 +96,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
                 <select
                   aria-label="Deck"
                   [disabled]="refresh.isBusy()"
-                  [value]="source.deckName"
+                  [ngModel]="source.deckName"
                   (change)="setDeck(source, $event)"
                 >
                   @for (deck of deckNames(); track deck) {
@@ -108,7 +109,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
                 <select
                   aria-label="Note type"
                   [disabled]="refresh.isBusy()"
-                  [value]="source.noteTypeName"
+                  [ngModel]="source.noteTypeName"
                   (change)="setNoteType(source, $event)"
                 >
                   @for (noteType of noteTypeNames(); track noteType) {
@@ -121,7 +122,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
                 <select
                   aria-label="Expression field"
                   [disabled]="refresh.isBusy()"
-                  [value]="source.expressionFieldName"
+                  [ngModel]="source.expressionFieldName"
                   (change)="setField(source, $event)"
                 >
                   @for (field of fieldsFor(source.noteTypeName); track field) {

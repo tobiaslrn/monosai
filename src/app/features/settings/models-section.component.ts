@@ -1,5 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { DOCUMENT } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import type { ElementRef } from '@angular/core';
 import {
   ChangeDetectionStrategy,
@@ -42,7 +43,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
 @Component({
   selector: 'mn-models-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ModelPickerComponent, SpeedFieldComponent, TokenBudgetFieldComponent],
+  imports: [FormsModule, ModelPickerComponent, SpeedFieldComponent, TokenBudgetFieldComponent],
   host: {
     '(document:pointerdown)': 'closeConnectionMenuFromOutside($event)',
     '(document:keydown.escape)': 'connectionMenuOpen.set(false)',
@@ -167,7 +168,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
               <select
                 class="mn-control"
                 [disabled]="!credential.isConfigured()"
-                [value]="text.settings().reasoningEffort ?? ''"
+                [ngModel]="text.settings().reasoningEffort ?? ''"
                 (change)="setStoryReasoning($event)"
               >
                 <option value="">Automatic</option>
@@ -246,7 +247,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                       <span>Reasoning</span>
                       <select
                         class="mn-control"
-                        [value]="text.routePreset(task.id)?.reasoningEffort ?? ''"
+                        [ngModel]="text.routePreset(task.id)?.reasoningEffort ?? ''"
                         (change)="setTaskReasoning(task.id, $event)"
                       >
                         <option value="">Automatic</option>
@@ -341,7 +342,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                   class="mn-control"
                   aria-labelledby="mn-voice-label"
                   [disabled]="!credential.isConfigured()"
-                  [value]="tts.draft().voiceId"
+                  [ngModel]="tts.draft().voiceId"
                   (change)="setVoice($event)"
                 >
                   @for (voice of selectedSpeechModel()?.supportedVoices ?? []; track voice) {
