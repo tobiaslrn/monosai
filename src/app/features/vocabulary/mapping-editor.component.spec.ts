@@ -10,6 +10,7 @@ import {
 } from '../../../testing/vocabulary-fakes';
 import { ANKI_PROVIDER_FACTORY } from '../../application/shared/anki-tokens';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
+import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import { vocabularySourceId } from '../../domain/shared/ids';
 import type { TextListVocabularySource } from '../../domain/vocabulary/vocabulary-source';
 import { MappingEditorComponent } from './mapping-editor.component';
@@ -89,6 +90,20 @@ describe('MappingEditorComponent', () => {
     for (const card of cards(element)) {
       expect(labelOf(includeBox(card))).toBe('Include in vocabulary');
     }
+  });
+
+  it('shows the stored deck when the catalogue arrives after initial rendering', async () => {
+    const store = TestBed.inject(SourceMappingStore);
+    const source = store.mappings()[0];
+    await store.update(source.id, { deckName: 'Unused' });
+    const { element, fixture } = await render();
+    await TestBed.inject(VocabularyRefreshStore).connect(
+      new FakeAnkiProvider(CONTRACT_COLLECTION, { kind: 'desktop-connect' }),
+    );
+    await settle(fixture);
+    expect(element.querySelector<HTMLSelectElement>('select[aria-label="Deck"]')?.value).toBe(
+      'Unused',
+    );
   });
 
   /**

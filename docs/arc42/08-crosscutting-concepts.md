@@ -158,6 +158,10 @@ dates and numbers format in one fixed locale, which
 
 ## 8.10 Testing seams
 
+Selects with catalogue-driven options use Angular's `ngModel` select value accessor.
+It reapplies the saved value when options arrive or change; direct DOM `[value]`
+binding cannot synchronize asynchronous options. Static selects need no change.
+
 The architecture is shaped so that tests do not need the outside world.
 
 | Seam | What it makes testable |

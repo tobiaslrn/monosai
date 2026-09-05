@@ -7,6 +7,7 @@ import {
   viewChild,
 } from '@angular/core';
 import type { ElementRef } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { technicalCode } from '../../domain/shared/errors';
 import { vocabularySourceId } from '../../domain/shared/ids';
@@ -17,6 +18,7 @@ import { vocabularySourceId } from '../../domain/shared/ids';
  */
 @Component({
   selector: 'mn-package-import',
+  imports: [FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (state(); as current) {
@@ -82,7 +84,7 @@ import { vocabularySourceId } from '../../domain/shared/ids';
                   <span>Deck</span>
                   <select
                     aria-label="Deck to import"
-                    [value]="current.plan.selection.deckName"
+                    [ngModel]="current.plan.selection.deckName"
                     (change)="store.chooseDeck(value($event))"
                     data-testid="package-import-deck"
                   >
@@ -97,7 +99,7 @@ import { vocabularySourceId } from '../../domain/shared/ids';
                   <span>Note type</span>
                   <select
                     aria-label="Note type to import"
-                    [value]="current.plan.selection.noteTypeName"
+                    [ngModel]="current.plan.selection.noteTypeName"
                     (change)="store.chooseNoteType(value($event))"
                     data-testid="package-import-note-type"
                   >
@@ -111,7 +113,7 @@ import { vocabularySourceId } from '../../domain/shared/ids';
                 <span>Expression field</span>
                 <select
                   aria-label="Expression field"
-                  [value]="current.plan.selection.expressionFieldName"
+                  [ngModel]="current.plan.selection.expressionFieldName"
                   (change)="store.chooseExpressionField(value($event))"
                   data-testid="package-import-field"
                 >
@@ -125,7 +127,7 @@ import { vocabularySourceId } from '../../domain/shared/ids';
                   <span>Replaces</span>
                   <select
                     aria-label="Source to replace"
-                    [value]="current.plan.replaces?.id"
+                    [ngModel]="current.plan.replaces?.id"
                     (change)="chooseReplacement($event)"
                     data-testid="package-import-replaces"
                   >

@@ -143,6 +143,51 @@ describe('ModelsSectionComponent audio readiness', () => {
     expect(note(element)).toBe('');
   });
 
+  it('restores saved reasoning for the main model and override after the catalogue arrives', async () => {
+    let resolveModels!: (value: Result<readonly ModelCapabilities[], never>) => void;
+    const pending = new Promise<Result<readonly ModelCapabilities[], never>>((resolve) => {
+      resolveModels = resolve;
+    });
+    TestBed.overrideProvider(MODEL_CATALOG, {
+      useValue: {
+        list: (output: string) => (output === 'text' ? pending : Promise.resolve(ok([]))),
+      },
+    });
+    settings.textModel = { ...settings.textModel, modelId: 'test/text', reasoningEffort: 'medium' };
+    await connect();
+    const { element, fixture } = await render();
+    await TestBed.inject(TextModelStore).setTaskModel('translation', {
+      modelId: 'test/text',
+      name: 'Text',
+      reasoningEffort: 'medium',
+    });
+    fixture.detectChanges();
+    resolveModels(
+      ok([
+        {
+          ...SPEECH_MODEL,
+          modelId: 'test/text',
+          outputModalities: ['text'],
+          reasoning: {
+            supportedEfforts: ['low', 'medium', 'high'],
+            defaultEffort: null,
+            defaultEnabled: null,
+            mandatory: false,
+            supportsMaxTokens: false,
+          },
+        },
+      ]),
+    );
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const selects = [...element.querySelectorAll<HTMLSelectElement>('select')].filter((select) =>
+      [...select.options].some((option) => option.value === 'medium'),
+    );
+    expect(selects).toHaveLength(2);
+    expect(selects.map((select) => select.value)).toEqual(['medium', 'medium']);
+  });
+
   it('says a chosen model has not been tested, and why the preview is a press', async () => {
     await connect();
     const { element, tts, detect } = await render();
