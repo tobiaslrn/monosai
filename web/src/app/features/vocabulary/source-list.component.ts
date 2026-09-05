@@ -87,10 +87,16 @@ import {
       min-width: 0;
     }
 
+    /*
+     * The count and its detail are two type sizes on one line, so they are
+     * aligned on the baseline they share. Flex's default stretch centred each
+     * item in its own box instead, and the smaller half rode high.
+     */
     .standing {
       display: flex;
       flex-wrap: wrap;
       gap: 0 var(--space-2);
+      align-items: baseline;
       margin: 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);
@@ -231,7 +237,15 @@ export class SourceListComponent {
       return 'Words unavailable';
     }
     const snapshot = this.history.active();
-    return snapshot === null ? 'No words yet' : vocabularyCountLabel(snapshot.uniqueEntryCount);
+    // Removing the last source leaves an empty snapshot behind, which is the
+    // same standing as a fresh install and says so. Counting it as "0 words"
+    // contradicted the row underneath saying there were no sources at all.
+    // A snapshot that still has words keeps its count whatever the list shows:
+    // a number that exists is never hidden.
+    if (snapshot === null || (snapshot.uniqueEntryCount === 0 && this.sources().length === 0)) {
+      return 'No words yet';
+    }
+    return vocabularyCountLabel(snapshot.uniqueEntryCount);
   });
 
   /** `from Anki + Pasted list · checked today`, or what to do when there is nothing. */
@@ -242,6 +256,10 @@ export class SourceListComponent {
     const snapshot = this.history.active();
     if (snapshot === null) {
       return this.sources().length === 0 ? null : '· nothing has been read yet';
+    }
+    // Nothing left to be provenance for: the count above already said so.
+    if (snapshot.uniqueEntryCount === 0 && this.sources().length === 0) {
+      return null;
     }
     const checked = this.standings.lastReadAt();
     const from = `· from ${vocabularySourceSummary(snapshot.sourceKinds)}`;

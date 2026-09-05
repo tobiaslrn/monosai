@@ -376,7 +376,9 @@ test.describe('vocabulary', () => {
     await openSource(page, 'Course words');
     await page.getByTestId('remove-source').click();
     await page.getByRole('button', { name: 'Remove permanently' }).click();
-    await expect(page.getByTestId('words-standing')).toHaveText('0 words', {
+    // The last source is gone, so this is the standing of a fresh install
+    // rather than a source that happens to contribute nothing.
+    await expect(page.getByTestId('words-standing')).toHaveText('No words yet', {
       timeout: 60_000,
     });
 
