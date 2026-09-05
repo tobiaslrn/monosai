@@ -181,3 +181,13 @@ The architecture is shaped so that tests do not need the outside world.
 | Fake IndexedDB with real Dexie | Repository tests run real transactions and real migrations |
 
 [Chapter 10](10-quality-requirements.md) lists the suites and the thresholds.
+
+### Keyboard access to reading text
+
+Each sentence has one tab stop. Left/Right arrows move focus through its inspectable
+words (wrapping at the ends); Home/End choose its first/last word. Enter and Space use
+native button activation, and closing details returns focus to that word. A focused or
+clicked word becomes its sentence's next tab entry. **Skip past story** reaches the
+Library action after the text. Paragraphs retain native `p` semantics.
+This focus model does not intercept touch pointers or change native text selection.
+Story titles carry Japanese language metadata in the Library and reader header.

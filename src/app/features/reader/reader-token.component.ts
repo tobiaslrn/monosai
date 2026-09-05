@@ -54,10 +54,12 @@ export interface TokenActivationSource {
         type="button"
         class="token"
         [class]="markerClass()"
+        [attr.tabindex]="keyboardTabIndex()"
+        [attr.data-token-id]="token().id"
         [class.is-selected]="selected()"
         [class.is-previewed]="previewedState()"
         (click)="onActivate($event)"
-        (focus)="onPreview($event)"
+        (focus)="focused.emit(); onPreview($event)"
         (pointerenter)="onPreview($event)"
         (blur)="previewEnded.emit()"
         (pointerleave)="previewEnded.emit()"
@@ -219,6 +221,8 @@ export interface TokenActivationSource {
 export class ReaderTokenComponent {
   private readonly pointerModality = inject(PointerModalityService);
 
+  readonly keyboardTabIndex = input(0);
+  readonly focused = output<void>();
   readonly token = input.required<Token>();
   readonly status = input<TokenStatusAssignment | null>(null);
   readonly showFurigana = input(true);

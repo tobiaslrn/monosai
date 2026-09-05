@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import type { ReaderSentence } from '../../application/reading/reader.store';
 import { tokensCoveredByConcerns } from '../../domain/enrichment/finding-spans';
@@ -8,6 +8,7 @@ import {
   wordAt,
   type WordGroup,
 } from '../../domain/reading/token-grouping';
+import { isInspectable } from '../../domain/reading/token-presentation';
 import { ReaderTokenComponent, type TokenActivationSource } from './reader-token.component';
 
 /**
@@ -63,12 +64,15 @@ export interface TokenActivation {
       [class.is-playing]="playing()"
       [attr.data-sentence-id]="entry().sentence.id"
       tabindex="-1"
+      (keydown)="onWordKeydown($event)"
     >
       @for (group of groups(); track group.span.startTokenIndex) {
         <span class="bunsetsu-group">
           @for (token of group.tokens; track token.id) {
             <mn-reader-token
               [token]="token"
+              [keyboardTabIndex]="tabTokenId() === token.id ? 0 : -1"
+              (focused)="focusedTokenId.set(token.id)"
               [status]="entry().statuses?.get(token.id) ?? null"
               [showFurigana]="furigana()"
               [showMarkers]="markers()"
@@ -203,6 +207,31 @@ export interface TokenActivation {
   `,
 })
 export class ReaderSentenceComponent {
+  protected readonly focusedTokenId = signal<string | null>(null);
+  protected readonly tabTokenId = computed(() => {
+    const tokens = this.entry().tokens.filter(isInspectable);
+    const focused = tokens.find((token) => token.id === this.focusedTokenId());
+    return (focused ?? tokens.at(0))?.id ?? null;
+  });
+
+  protected onWordKeydown(event: KeyboardEvent): void {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const sentence = event.currentTarget as HTMLElement;
+    const buttons = [...sentence.querySelectorAll<HTMLButtonElement>('button.token')];
+    const current = buttons.indexOf(event.target as HTMLButtonElement);
+    if (current < 0) return;
+    const next =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? buttons.length - 1
+          : (current + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
+    event.preventDefault();
+    event.stopPropagation();
+    buttons[next]?.focus();
+  }
+
   readonly entry = input.required<ReaderSentence>();
   readonly aids = input<SentenceAids>(NO_AIDS);
   readonly furigana = input(true);

@@ -73,3 +73,16 @@ the word.
 **Subtract the player from the viewport cap.** Rejected: it shrinks a sheet
 twice when the player is short. The player is a bottom boundary; the available
 height and the viewport cap are two independent limits.
+
+## Amendment — a roving tab stop per sentence
+
+Words stay ordinary buttons, so the touch rules above are unchanged, but only one
+word per sentence is reachable by <kbd>Tab</kbd>. Arrow keys move focus within the
+sentence and the last word focused there becomes its tab entry.
+
+The amendment touches focus only. Nothing here observes a pointer, cancels a tap, or
+alters native selection, so the gesture window and the first-tap hold described above
+continue to decide what a touch means. Focus returning to the activating word when
+details close is the same `returnFocusTo` the sheet already used.
+
+[Chapter 8](../arc42/08-crosscutting-concepts.md) describes the resulting key map.

@@ -54,7 +54,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
         <div class="copy">
           <div class="title-row">
             <h3>
-              <a [routerLink]="['/reader', reading().id]" [state]="libraryOriginState">
+              <a lang="ja" [routerLink]="['/reader', reading().id]" [state]="libraryOriginState">
                 {{ reading().title }}
               </a>
             </h3>
@@ -94,7 +94,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
             role="menu"
             [id]="menuId()"
             [style.position-anchor]="anchorName()"
-            [attr.aria-label]="reading().title + ' actions'"
+            [attr.aria-label]="'Actions for ' + reading().title"
             (toggle)="onMenuToggle($event)"
           >
             <button type="button" role="menuitem" class="danger" (click)="requestDelete()">

@@ -142,7 +142,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           >
             <mn-icon name="back" />
           </a>
-          <h1>{{ readerHeading() }}</h1>
+          <h1 [attr.lang]="store.status() === 'ready' ? 'ja' : 'en'">{{ readerHeading() }}</h1>
           @if (store.status() === 'ready') {
             <div class="bar-actions">
               <!--
@@ -233,7 +233,13 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
             </section>
           }
           @case ('ready') {
-            <article class="text">
+            <a class="mn-skip-link" href="#mn-after-story" (click)="skipStory($event)"
+              >Skip past story</a
+            >
+            <p class="mn-visually-hidden" id="mn-word-keyboard-help">
+              Use Left and Right arrows to move between words. Enter opens word details.
+            </p>
+            <article class="text" aria-describedby="mn-word-keyboard-help">
               <div
                 class="virtual-spacer"
                 aria-hidden="true"
@@ -264,6 +270,13 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                 [style.height.px]="spacers().after"
               ></div>
             </article>
+            <a
+              id="mn-after-story"
+              class="mn-button mn-button--secondary"
+              routerLink="/library"
+              (click)="backToLibrary($event)"
+              >Back to library</a
+            >
 
             @if (store.hasMoreBelow()) {
               <p class="mn-hint" role="status">
@@ -713,13 +726,16 @@ export class ReaderPageComponent {
     () => (this.store.reading()?.kind ?? 'imported') === 'imported',
   );
 
-  protected readonly hasTranslationModel = computed(
-    () => this.textModel.hasModelForTask('translation'),
+  protected skipStory(event: Event): void {
+    event.preventDefault();
+    document.getElementById('mn-after-story')?.focus();
+  }
+
+  protected readonly hasTranslationModel = computed(() =>
+    this.textModel.hasModelForTask('translation'),
   );
 
-  protected readonly hasGrammarModel = computed(
-    () => this.textModel.hasModelForTask('grammar'),
-  );
+  protected readonly hasGrammarModel = computed(() => this.textModel.hasModelForTask('grammar'));
 
   private scrollWindowFrame: number | null = null;
   private lastScrollY = window.scrollY;
