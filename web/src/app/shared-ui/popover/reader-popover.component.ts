@@ -11,6 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ViewportService } from '../../core/platform/viewport.service';
+import { IconComponent } from '../icon/icon.component';
 
 /** How far a sheet must be dragged down before letting go dismisses it. */
 const DISMISS_DISTANCE_PX = 80;
@@ -34,7 +35,7 @@ const DISMISS_DISTANCE_PX = 80;
 @Component({
   selector: 'mn-reader-popover',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [A11yModule],
+  imports: [A11yModule, IconComponent],
   host: { '[class.is-sheet]': 'isSheet()' },
   template: `
     <div
@@ -66,8 +67,14 @@ const DISMISS_DISTANCE_PX = 80;
           <span class="grip" aria-hidden="true"></span>
         </button>
       } @else {
-        <button type="button" class="mn-button mn-button--secondary" (click)="closed.emit()">
-          Close
+        <!--
+          An anchored card closes from its own top corner, the way every card
+          does. A full-size labelled button was taking a row of its own at the
+          head of the content, so the first thing in a word lookup was a control
+          rather than the word.
+        -->
+        <button type="button" class="close" aria-label="Close" (click)="closed.emit()">
+          <mn-icon name="close" [size]="16" />
         </button>
       }
       <div class="body">
@@ -77,6 +84,7 @@ const DISMISS_DISTANCE_PX = 80;
   `,
   styles: `
     .popover {
+      position: relative;
       box-sizing: border-box;
       width: min(23rem, calc(100vw - 2 * var(--space-4)));
       max-height: min(28rem, calc(100dvh - 6rem));
@@ -105,10 +113,15 @@ const DISMISS_DISTANCE_PX = 80;
       /*
        * The sheet gets the smaller of its normal viewport cap and the space
        * that actually remains above the measured player boundary. The player
-       * height is not subtracted from the 60dvh cap itself: doing that made a
-       * short player needlessly shrink an otherwise comfortable sheet.
+       * height is not subtracted from the cap itself: doing that made a short
+       * player needlessly shrink an otherwise comfortable sheet.
+       *
+       * Half the viewport rather than more. A sheet is read against the
+       * sentence it is about, and one that took most of the screen left the
+       * reading it explains as a strip above it — which is the same failure as
+       * covering the line outright, reached politely.
        */
-      max-height: min(60dvh, calc(100dvh - var(--mn-docked-player-height, 0px) - var(--space-4)));
+      max-height: min(50dvh, calc(100dvh - var(--mn-docked-player-height, 0px) - var(--space-4)));
       /*
        * The reader's audio player docks to the same edge, and publishes its
        * height on the document root. The global pane uses that value as its
@@ -127,6 +140,67 @@ const DISMISS_DISTANCE_PX = 80;
       @starting-style {
         opacity: 1;
         transform: translateY(100%);
+      }
+    }
+
+    /*
+     * In the corner rather than in the flow: it overlaps the card's own padding,
+     * so it costs no vertical space and the content still starts at the top.
+     * Quiet until it is wanted, and never on a sheet, where the grab handle is
+     * both the affordance and the way out.
+     */
+    .close {
+      position: absolute;
+      z-index: 2;
+      /*
+       * Aligned to the card's own padding and as tall as the controls a card
+       * puts on its first row, so the two share a centre line instead of the
+       * close floating above and beside whatever it sits next to.
+       */
+      top: var(--space-4);
+      right: var(--space-4);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: var(--touch-target);
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-control);
+      background: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background-color var(--motion-fast) ease-out;
+    }
+
+    .close:hover {
+      background: var(--surface-sunken);
+      color: var(--text-primary);
+    }
+
+    .close:focus-visible {
+      outline: 2px solid var(--action-primary);
+      outline-offset: 2px;
+    }
+
+    /*
+     * How much room the card's leading row has to leave for that control.
+     * Published rather than applied here: only the row the button actually
+     * overlaps should be inset, and padding the whole body would pull the
+     * sentence card's full-bleed action tray off its own edge.
+     */
+    .popover {
+      /* The control's own width, and a gap the size of the card's other gaps. */
+      --mn-popover-close-inset: calc(1.75rem + var(--space-3));
+    }
+
+    :host(.is-sheet) .popover {
+      --mn-popover-close-inset: 0px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .close {
+        transition: none;
       }
     }
 
@@ -221,7 +295,9 @@ export class ReaderPopoverComponent implements AfterViewInit {
    * focus trap then keeps focus here until the popover closes.
    */
   ngAfterViewInit(): void {
-    this.card().nativeElement.focus();
+    // Without `preventScroll` the browser scrolls the docked card into view as
+    // it takes focus, which on a phone moves the reading behind it.
+    this.card().nativeElement.focus({ preventScroll: true });
   }
 
   protected onDragStart(event: PointerEvent): void {

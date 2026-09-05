@@ -157,9 +157,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
       .toBeGreaterThan(0);
   });
 
-  test('keeps grammar labels compact and opens their Details disclosure by keyboard', async ({
-    page,
-  }) => {
+  test('shows each grammar rule once, in full, with nothing to open', async ({ page }) => {
     await stubOpenRouter(page, { generation: { grammar: ['finding'] } });
     await importReading(page, SAMPLE_TEXT);
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
@@ -173,12 +171,13 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
 
     await openWord(page, '吾輩');
     const details = wordDetails(page);
-    await expect(details.locator('.grammar-labels')).toContainText('te-form');
-    const disclosure = details.locator('.grammar-details summary');
-    await disclosure.focus();
-    await disclosure.press('Enter');
-    await expect(details.locator('.grammar-details')).toHaveAttribute('open', '');
-    await expect(details.locator('.grammar-explanations')).toBeVisible();
+    const findings = details.locator('.grammar-section .finding');
+    // Title and explanation together, visible on arrival: the explanation is
+    // the reason a reader stopped at this word, so it is never behind a fold.
+    await expect(findings.locator('.finding-label')).toHaveCount(1);
+    await expect(findings.locator('.finding-label')).toContainText('te-form');
+    await expect(findings.locator('.finding-text')).toBeVisible();
+    await expect(details.locator('details')).toHaveCount(0);
   });
 
   test('translates one sentence and analyzes another, then serves both from cache @smoke', async ({
@@ -333,7 +332,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await prepareReading(page, SAMPLE_TEXT);
 
     await openWord(page, '猫');
-    const route = wordDetails(page).getByRole('button', { name: 'Sentence', exact: true });
+    const route = wordDetails(page).getByRole('button', { name: 'Sentence details', exact: true });
     await expect(route).toBeVisible();
     await route.click();
     await expect(sentencePopover(page)).toBeVisible();

@@ -4,6 +4,7 @@ import { expectSettingPersisted } from './storage';
 import {
   countOwnedRows,
   importReading,
+  longPress,
   openSentence,
   pasteAndContinue,
   saveAndOpenReader,
@@ -470,7 +471,10 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     const openFromKeyboard = async (): Promise<void> => {
       await token.focus();
       await token.press('Enter');
-      const route = wordDetails(page).getByRole('button', { name: 'Sentence', exact: true });
+      const route = wordDetails(page).getByRole('button', {
+        name: 'Sentence details',
+        exact: true,
+      });
       await route.focus();
       await route.press('Enter');
       await expect(page.locator('mn-sentence-popover')).toBeVisible();
@@ -716,7 +720,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       .toBe('吾輩は猫である。');
   });
 
-  test('a tap dismisses what is open instead of opening the next sentence @mobile', async ({
+  test('a tap dismisses what is open instead of opening the next sentence @mobile @smoke', async ({
     page,
     isMobile,
   }) => {
@@ -733,7 +737,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('mn-sentence-popover')).toHaveCount(0);
   });
 
-  test('a tap opens a word, and one more tap moves on to the next @mobile', async ({
+  test('a tap opens a word, and one more tap moves on to the next @mobile @smoke', async ({
     page,
     isMobile,
   }) => {
@@ -742,6 +746,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
 
+    // Deliberately without a pause between them: a tap is answered by what it
+    // landed on, so a reader moving quickly along a line is not fighting a
+    // gesture window.
     await tap(page, page.getByRole('button', { name: new RegExp('猫') }).first());
     await expect(wordDetails(page).locator('.surface')).toContainText('猫');
 
@@ -752,8 +759,11 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('button.token.is-selected')).toHaveCount(1);
   });
 
-  test('a tap on the open word puts it away @mobile', async ({ page, isMobile }) => {
-    test.skip(!isMobile, 'a phone is where a word is opened and closed by tapping');
+  test('a tap on the open word leaves its details exactly as they were @mobile @smoke', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'a finger is what lands on the same word twice');
     await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
@@ -761,11 +771,69 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     const word = page.getByRole('button', { name: new RegExp('猫') }).first();
     await tap(page, word);
     await expect(wordDetails(page)).toBeVisible();
+    // The whole word is tinted, which for 猫である is more than one token.
+    const tinted = await page.locator('button.token.is-selected').count();
+    expect(tinted).toBeGreaterThan(0);
 
     await tap(page, word);
 
+    // Nothing happens. Taking the sheet away under a reader who tapped where
+    // they were already reading was the least predictable thing a tap could do.
+    await expect(wordDetails(page).locator('.surface')).toContainText('猫');
+    await expect(page.locator('button.token.is-selected')).toHaveCount(tinted);
+  });
+
+  test('holding a line opens its sentence, and holding again keeps it @mobile @smoke', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'the long press is the touch sentence gesture');
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    const sentence = page.locator('.sentence').first();
+    await longPress(page, sentence);
+    await expect(page.locator('mn-sentence-popover')).toBeVisible();
+    // The release that ends the press must not be read as a tap outside the
+    // sheet the same press had just opened.
+    await expect(page.locator('.mn-popover-pane')).toHaveCount(1);
+
+    await longPress(page, sentence);
+
+    await expect(page.locator('mn-sentence-popover')).toBeVisible();
+    await expect(page.locator('.mn-popover-pane')).toHaveCount(1);
+  });
+
+  test('holding a word opens its sentence rather than the word @mobile @smoke', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'only touch has a press that is not a click');
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    await longPress(page, page.getByRole('button', { name: new RegExp('猫') }).first());
+
+    await expect(page.locator('mn-sentence-popover')).toBeVisible();
+    // The click the release produces belongs to the gesture, not to the word
+    // that happened to be underneath the finger.
     await expect(wordDetails(page)).toHaveCount(0);
-    await expect(page.locator('button.token.is-selected')).toHaveCount(0);
+  });
+
+  test('the sentence arrow in word details opens the same sentence @mobile @smoke', async ({
+    page,
+  }) => {
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    await openWordDetails(page, '猫');
+    await page.getByRole('button', { name: 'Sentence details' }).click();
+
+    await expect(page.locator('mn-sentence-popover')).toBeVisible();
+    await expect(wordDetails(page)).toHaveCount(0);
   });
 
   test('a tap leaves no hover behind on a phone @mobile', async ({ page, isMobile }) => {
@@ -885,7 +953,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     });
     expect(placement.card.top).toBeGreaterThanOrEqual(0);
     expect(placement.card.bottom).toBeLessThanOrEqual(placement.player.top + 1);
-    expect(placement.card.height).toBeLessThanOrEqual(placement.viewportHeight * 0.6 + 1);
+    expect(placement.card.height).toBeLessThanOrEqual(placement.viewportHeight * 0.5 + 1);
   });
 
   test('places an open player before the reading in keyboard order', async ({ page }) => {

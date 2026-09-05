@@ -57,8 +57,8 @@ export async function importReading(page: Page, text: string, title?: string): P
   await expect(page).toHaveURL(/#\/reader\//, { timeout: 60_000 });
 }
 
-/** The reader's sentence gesture window, with a small settling allowance. */
-const TOUCH_TAP_WINDOW_MS = 300;
+/** How long the reader asks a finger to rest on a line, plus a settling margin. */
+const LONG_PRESS_MS = 450;
 
 /** The width at which the reader is driven by a mouse rather than a finger. */
 const DESKTOP_WIDTH_PX = 960;
@@ -66,8 +66,10 @@ const DESKTOP_WIDTH_PX = 960;
 /**
  * Taps an element with a finger.
  *
- * The word opens on the tap itself; the wait afterwards keeps the next tap out
- * of the sentence gesture window, so consecutive taps stay separate gestures.
+ * Nothing is waited for afterwards. A tap is answered by whatever it landed on,
+ * with no gesture window to sit out, so a journey asserts on the result it
+ * expects rather than on a fixed pause — which is also what makes a fast
+ * sequence of taps a thing these tests can actually run.
  */
 export async function tap(page: Page, target: Locator): Promise<void> {
   const box = await target.boundingBox();
@@ -75,27 +77,65 @@ export async function tap(page: Page, target: Locator): Promise<void> {
     throw new Error('nothing to tap: the target has no box');
   }
   await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
-  await page.waitForTimeout(TOUCH_TAP_WINDOW_MS + 25);
 }
 
-/** Taps twice within the reader's sentence gesture window. */
-export async function doubleTap(page: Page, target: Locator): Promise<void> {
+/**
+ * Holds a finger on an element until the reader's sentence gesture fires.
+ *
+ * Dispatched as a real pointer sequence — press, the wait the gesture actually
+ * asks for, release, and the click a browser makes from it — because that is
+ * the whole of what the paragraph directive decides against. Playwright's
+ * touchscreen can only tap, and a tap is now a different gesture entirely.
+ */
+export async function longPress(page: Page, target: Locator): Promise<void> {
   const box = await target.boundingBox();
   if (box === null) {
-    throw new Error('nothing to double tap: the target has no box');
+    throw new Error('nothing to press: the target has no box');
   }
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
-  await page.touchscreen.tap(x, y);
-  await page.waitForTimeout(60);
-  await page.touchscreen.tap(x, y);
+  await dispatchTouchPointer(page, 'pointerdown', x, y);
+  await page.waitForTimeout(LONG_PRESS_MS + 120);
+  await dispatchTouchPointer(page, 'pointerup', x, y);
+  await dispatchTouchPointer(page, 'click', x, y);
+}
+
+async function dispatchTouchPointer(
+  page: Page,
+  type: 'pointerdown' | 'pointerup' | 'click',
+  x: number,
+  y: number,
+): Promise<void> {
+  await page.evaluate(
+    ({ type, x, y }) => {
+      const target = document.elementFromPoint(x, y) ?? document.body;
+      const init = {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        clientX: x,
+        clientY: y,
+      };
+      target.dispatchEvent(
+        type === 'click'
+          ? new MouseEvent('click', { ...init, detail: 1 })
+          : new PointerEvent(type, {
+              ...init,
+              pointerId: 1,
+              pointerType: 'touch',
+              isPrimary: true,
+            }),
+      );
+    },
+    { type, x, y },
+  );
 }
 
 /**
  * Opens a sentence the way the device in use opens one.
  *
  * The two gestures are deliberately different: a mouse clicks prose, while a
- * finger taps twice. A helper keeps every journey that needs an open sentence
+ * finger holds it. A helper keeps every journey that needs an open sentence
  * from having to know which gesture it is running.
  */
 export async function openSentence(page: Page, index = 0): Promise<void> {
@@ -104,7 +144,7 @@ export async function openSentence(page: Page, index = 0): Promise<void> {
   if ((page.viewportSize()?.width ?? 0) >= DESKTOP_WIDTH_PX) {
     await sentence.locator('.token.is-plain').first().click();
   } else {
-    await doubleTap(page, sentence);
+    await longPress(page, sentence);
   }
   await expect(page.locator('mn-sentence-popover')).toBeVisible({ timeout: 5_000 });
   await expect

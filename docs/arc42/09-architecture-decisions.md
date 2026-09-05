@@ -87,6 +87,7 @@ files are already linked from code comments and from other records.
 | [0050](../decisions/0050-the-library-wears-the-navigation.md) | The Library standing line is the way to the learner's level |
 | [0051](../decisions/0051-non-reader-utilities-and-first-use-help.md) | Non-reader utilities and first-use Help; amends 0050 and 0025 |
 | [0053](../decisions/0053-reader-touch-details-and-measured-sheets.md) | Native touch selection, sentence double taps, and measured detail sheets |
+| [0057](../decisions/0057-one-gesture-per-meaning-on-touch.md) | On touch, a tap opens a word and a held press opens its sentence |
 
 ### Audio
 

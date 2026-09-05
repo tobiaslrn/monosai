@@ -186,28 +186,25 @@ describe('WordInspectorComponent', () => {
   it('shows the grammar covering this word, where the reader stopped', async () => {
     const element = (await render(grammarWith({ findings: [FINDING], analyzed: true })))
       .nativeElement as HTMLElement;
+    const findings = [...element.querySelectorAll('.grammar-section .finding')];
 
-    expect(element.querySelector('.grammar-labels')?.textContent).toContain('が as subject marker');
-    const details = element.querySelector<HTMLDetailsElement>('.grammar-details');
-    expect(details?.open).toBe(false);
-    expect(details?.querySelector('.grammar-explanations')?.textContent).toContain(
-      'Marks who performs the action.',
-    );
+    // One entry per rule, title and explanation together. There is nothing to
+    // open: the explanation is the reason the reader stopped at this word.
+    expect(findings).toHaveLength(1);
+    expect(findings[0].textContent).toContain('が as subject marker');
+    expect(findings[0].textContent).toContain('Marks who performs the action.');
+    expect(element.querySelector('details')).toBeNull();
   });
 
-  it('keeps grammar explanations behind one Details disclosure', async () => {
-    const fixture = await render(grammarWith({ findings: [FINDING], analyzed: true }));
-    const details = (fixture.nativeElement as HTMLElement).querySelector<HTMLDetailsElement>(
-      '.grammar-details',
+  it('names each rule exactly once', async () => {
+    const element = (await render(grammarWith({ findings: [FINDING], analyzed: true })))
+      .nativeElement as HTMLElement;
+
+    const labels = [...element.querySelectorAll('.grammar-section .finding-label')].map((label) =>
+      label.textContent.trim(),
     );
 
-    details?.querySelector('summary')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    fixture.detectChanges();
-
-    expect(details?.open).toBe(true);
-    expect(details?.querySelector('.grammar-explanations')?.textContent).toContain(
-      'Marks who performs the action.',
-    );
+    expect(labels).toEqual(['が as subject marker']);
   });
 
   /**
@@ -273,10 +270,14 @@ describe('WordInspectorComponent', () => {
   it('offers a native keyboard route to the sentence actions', async () => {
     const fixture = await render();
     const element = fixture.nativeElement as HTMLElement;
-    const route = element.querySelector<HTMLButtonElement>('.sentence-route');
+    const route = element.querySelector<HTMLButtonElement>('header .sentence-details');
 
     expect(route?.tagName).toBe('BUTTON');
-    expect(route?.textContent).toContain('Sentence');
+    // No visible text: an icon with an accessible name and a tooltip, beside
+    // the headword rather than in a labelled row of its own.
+    expect(route?.textContent.trim()).toBe('');
+    expect(route?.getAttribute('aria-label')).toBe('Sentence details');
+    expect(route?.getAttribute('title')).toBe('Sentence details');
     route?.click();
 
     expect(fixture.componentInstance.sentenceActionRequests).toBe(1);
@@ -334,7 +335,7 @@ describe('WordInspectorComponent', () => {
     const inspector = element.querySelector('.inspector')!;
     const surface = inspector.querySelector('.surface');
     const form = inspector.querySelector('.form-summary');
-    const route = inspector.querySelector('.sentence-route');
+    const route = inspector.querySelector('header .sentence-details');
     const dictionary = inspector.querySelector('#mn-inspector-dictionary');
     const grammar = inspector.querySelector('.grammar-section');
     const status = inspector.querySelector('.status');
@@ -347,10 +348,14 @@ describe('WordInspectorComponent', () => {
     expect(grammar).not.toBeNull();
     expect(status).not.toBeNull();
     expect(nextAction).not.toBeNull();
-    expect(surface!.compareDocumentPosition(form!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(form!.compareDocumentPosition(route!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The route sits beside the headword now, so it comes before the form
+    // summary rather than after it.
     expect(
-      route!.compareDocumentPosition(dictionary!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      surface!.compareDocumentPosition(route!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(route!.compareDocumentPosition(form!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      form!.compareDocumentPosition(dictionary!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
       dictionary!.compareDocumentPosition(grammar!) & Node.DOCUMENT_POSITION_FOLLOWING,

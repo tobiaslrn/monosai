@@ -9,6 +9,7 @@ import type { ElementRef, TemplateRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/match-media';
+import { consumePointerGesture, releasePointerGesture } from '../../core/platform/pointer-gestures';
 import { PopoverService, type PopoverRef } from './popover.service';
 import { ReaderPopoverComponent } from './reader-popover.component';
 
@@ -75,6 +76,10 @@ describe('PopoverService', () => {
 
   function release(target: HTMLElement, clientX: number, clientY: number): void {
     target.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX, clientY }));
+  }
+
+  function move(target: HTMLElement, clientX: number, clientY: number): void {
+    target.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX, clientY }));
   }
 
   beforeEach(() => {
@@ -212,6 +217,88 @@ describe('PopoverService', () => {
 
     expect(pane()).toBeNull();
     expect(clicked).toBe(0);
+  });
+
+  /**
+   * A long press opens sentence details while the finger is still down, so the
+   * release that ends it belongs to the gesture that asked for the sheet.
+   * Read as an outside tap, it closed the surface it had just opened.
+   */
+  it('ignores the release of a gesture the application already answered', () => {
+    const fixture = render();
+    fixture.componentInstance.open();
+    fixture.detectChanges();
+    consumePointerGesture(0);
+
+    press(document.body, 40, 200);
+    release(document.body, 40, 200);
+    fixture.detectChanges();
+
+    expect(pane()).not.toBeNull();
+    expect(fixture.componentInstance.closedCount).toBe(0);
+    releasePointerGesture(0);
+  });
+
+  /** A finger that wandered away and came back was scrolling, not tapping. */
+  it('leaves a press that travelled and returned alone', () => {
+    const fixture = render();
+    fixture.componentInstance.open();
+    fixture.detectChanges();
+
+    press(document.body, 40, 200);
+    move(document.body, 40, 120);
+    release(document.body, 40, 201);
+    fixture.detectChanges();
+
+    expect(pane()).not.toBeNull();
+  });
+
+  it('forgets a press the platform took away', () => {
+    const fixture = render();
+    fixture.componentInstance.open();
+    fixture.detectChanges();
+
+    press(document.body, 40, 200);
+    document.body.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true }));
+    release(document.body, 40, 200);
+    fixture.detectChanges();
+
+    expect(pane()).not.toBeNull();
+  });
+
+  it('matches a release to the press it belongs to', () => {
+    const fixture = render();
+    fixture.componentInstance.open();
+    fixture.detectChanges();
+
+    press(document.body, 40, 200);
+    document.body.dispatchEvent(
+      new PointerEvent('pointerup', { bubbles: true, pointerId: 7, clientX: 40, clientY: 200 }),
+    );
+    fixture.detectChanges();
+
+    expect(pane()).not.toBeNull();
+  });
+
+  /**
+   * Replacing one surface with another must not put focus back on the word
+   * being left behind: the browser scrolls a focused element into view, which
+   * undid the room the next sheet had just made for itself.
+   */
+  it('does not return focus when one surface replaces another', () => {
+    const fixture = render();
+    const anchor = fixture.componentInstance.anchor().nativeElement;
+    const word = fixture.componentInstance.word().nativeElement;
+    anchor.focus();
+    fixture.componentInstance.open();
+    fixture.detectChanges();
+
+    word.focus();
+    fixture.componentInstance.open();
+    fixture.detectChanges();
+
+    expect(document.activeElement).not.toBe(anchor);
+    expect(fixture.componentInstance.closedCount).toBe(1);
   });
 
   it('leaves a press inside the popover alone', () => {

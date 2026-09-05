@@ -9,7 +9,11 @@ import {
   type WordGroup,
 } from '../../domain/reading/token-grouping';
 import { isInspectable } from '../../domain/reading/token-presentation';
-import { ReaderTokenComponent, type TokenActivationSource } from './reader-token.component';
+import {
+  ReaderTokenComponent,
+  type ActivationModality,
+  type TokenActivationSource,
+} from './reader-token.component';
 
 /**
  * The open word, identified by its sentence as well as itself.
@@ -37,6 +41,8 @@ export interface TokenActivation {
   readonly origin: HTMLElement;
   /** Native click count, so a double-click stays one open lookup. */
   readonly clickCount?: number;
+  /** Which instrument activated the word, so a repeat can mean one thing each. */
+  readonly modality: ActivationModality;
 }
 
 /**

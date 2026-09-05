@@ -8,6 +8,7 @@ import {
   LucideChevronUp,
   LucideCircleAlert,
   LucideCopy,
+  LucideCornerRightUp,
   LucideEllipsisVertical,
   LucidePencil,
   LucideFileText,
@@ -83,6 +84,7 @@ export const ICON_SET = {
   step: LucideStepForward,
   retry: LucideRotateCcw,
   'sentence-start': LucideListStart,
+  'sentence-details': LucideCornerRightUp,
   prepare: LucideListChecks,
 } as const satisfies Record<string, LucideIcon>;
 

@@ -210,26 +210,59 @@ panel carries no standing cost note.
 
 ### Reader gestures and details
 
-The reading surface remains native text. A long press belongs to the browser's
-selection and copy behaviour; Monosai does not replace it with a timer, haptic,
-context-menu rule, or selection lock. On touch, two short taps close together on
-one sentence open sentence details, including when either tap lands on a word.
-A single word tap waits for that gesture to resolve, then opens the word; mouse
-and keyboard activation remain immediate. Scrolling, cancellation, multiple
-touches, and native selection cancel the pending application action.
+One gesture means one thing, and it is decided while it is being made.
 
-Sentence details also have a visible route from a word lookup: a quiet labelled
-text button with a chevron sits directly below the tapped form and its form
-summary. It keeps the ordinary touch target even though it is visually
-secondary.
+| On a touch device | What happens |
+| --- | --- |
+| Short tap on a word | Its details open at once |
+| Tap the same word again | The details stay exactly as they are |
+| Tap a different word | Its details replace the open ones |
+| Hold a sentence for 450ms | Sentence details open, under the finger |
+| Hold the same sentence again | The details stay open |
+| Short tap on anything else | Whatever is open is dismissed |
+| Drag on the reading | The page scrolls; an open sheet stays |
+
+The held press applies to words, furigana, punctuation, and the leading around
+them alike. There is no double tap. A press is cancelled by movement past 10
+CSS pixels, a second finger, a scroll before it fires, cancellation, or the
+window losing focus. A press that fired consumes only its own release and the
+click made from it. Mouse clicks, native desktop text selection, and keyboard
+navigation are unchanged.
+
+Because that press is the application's gesture, the reading surface gives up
+native text selection and the platform's long-press callout **on touch and
+nowhere else**. Text in details stays selectable, and scrolling and pinch-zoom
+stay native. Copying a sentence with a finger is the sentence card's Copy
+action; when the clipboard is unavailable, the card prints the Japanese source
+as selectable text and keeps offering Copy.
+
+Sentence details also have a visible route from a word lookup: an unlabelled
+arrow that branches off and turns up sits on the headword's own row, at the
+ordinary touch target, with a tooltip and the accessible name "Sentence
+details". No icon draws a sentence, so it draws the relationship instead: the
+sentence is the level the word sits inside, not the next thing along. Grammar in
+word details is always readable — each rule once, title and full explanation
+together, with no fold to open.
+
+An anchored card closes from a small control in its own top corner, overlapping
+the card's padding so it costs no vertical space and the content still leads with
+what the reader asked for. Only the card's leading row is inset to clear it. A
+docked sheet carries no such control: its grab handle is both the affordance and
+the way out.
 
 On a small screen, word and sentence details are independently scrollable
-bottom sheets. Their bottom edge is the measured top edge of the docked audio
-player, and their height is the smaller of the normal viewport cap and the
-remaining space above that boundary with the standard top gap. The player and
-the sheet account for the safe-area inset once. Opening or closing the player,
-resizing it, and changing the viewport remeasure that boundary; an open sheet
-never covers the word or line it explains.
+bottom sheets, at most half the viewport tall. Their bottom edge is the measured
+top edge of the docked audio player, and their height is the smaller of that cap
+and the remaining space above that boundary with the standard top gap. The
+player and the sheet account for the safe-area inset once. Opening or closing
+the player, resizing it, and changing the viewport remeasure that boundary. A
+sentence card keeps its grab handle and its action tray visible while the
+translation, warnings, and grammar scroll between them.
+
+An open sheet never covers the line it explains: the reading scrolls just far
+enough to clear the pressed line, reserving temporary room when the press was at
+the end of the document, and stops correcting as soon as the reader scrolls
+themselves.
 
 ## 4. Colour
 

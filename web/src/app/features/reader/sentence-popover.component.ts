@@ -114,6 +114,21 @@ export interface UnknownWord {
         the width evenly and reach the touch target without stretching into
         full-width bars.
       -->
+      <!--
+        The way out when the clipboard is not available or refuses. The
+        sentence is printed as plain, selectable Japanese so it can be taken by
+        hand, and the Copy button above stays exactly as it was, because a
+        clipboard that failed once often works on the next press.
+      -->
+      @if (copyStatus() === 'failed') {
+        <section class="copy-fallback" aria-labelledby="mn-sentence-copy-fallback">
+          <p class="mn-error" id="mn-sentence-copy-fallback" role="alert">
+            Copy failed. The sentence is unchanged — select it here, or try Copy again.
+          </p>
+          <p class="copy-source" lang="ja">{{ sentenceText() }}</p>
+        </section>
+      }
+
       <div class="actions">
         <button type="button" class="action" (click)="copySentence()">
           <mn-icon [name]="copyStatus() === 'copied' ? 'check' : 'copy'" [size]="18" />
@@ -149,10 +164,6 @@ export interface UnknownWord {
 
       @if (copyStatus() === 'copied') {
         <p class="mn-visually-hidden" role="status" aria-live="polite">Sentence copied.</p>
-      } @else if (copyStatus() === 'failed') {
-        <p class="mn-error" role="alert">
-          Copy failed. The sentence is unchanged; select it in the reader and copy it instead.
-        </p>
       }
     </div>
   `,
@@ -162,6 +173,14 @@ export interface UnknownWord {
       flex-direction: column;
       gap: var(--space-4);
       align-items: flex-start;
+    }
+
+    /*
+     * Whatever leads the card shares its top line with the card's own corner
+     * control, so that one row is inset and nothing else is.
+     */
+    .sentence-popover > :first-child {
+      padding-inline-end: var(--mn-popover-close-inset, 0px);
     }
 
     /*
@@ -192,12 +211,27 @@ export interface UnknownWord {
      * card rather than three loose buttons among the notes.
      */
     .actions {
+      /*
+       * Sticky, so the sentence's actions stay reachable while a long
+       * translation, its warnings, and its grammar scroll past between the
+       * grab handle and this tray. Full-bleed and opaque for the same reason
+       * the handle is: content passing underneath must not show at the edges.
+       *
+       * A zero bottom offset parks it at the scrollport bottom until the card's
+       * own content ends, where it settles into its natural place.
+       */
+      position: sticky;
+      bottom: 0;
+      z-index: 1;
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--space-2);
       align-self: stretch;
-      padding-top: var(--space-3);
+      width: calc(100% + 2 * var(--space-4));
+      margin-inline: calc(-1 * var(--space-4));
+      padding: var(--space-3) var(--space-4) 0;
       border-top: 1px solid var(--border-subtle);
+      background: var(--surface-panel);
     }
 
     .action {
@@ -302,6 +336,23 @@ export interface UnknownWord {
     .mn-error {
       margin: 0;
       font-size: var(--text-sm);
+    }
+
+    /* Plain, selectable Japanese: the manual way out of a failed copy. */
+    .copy-source {
+      align-self: stretch;
+      margin: var(--space-2) 0 0;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-control);
+      background: var(--surface-sunken);
+      font-family: var(--font-japanese);
+      font-size: var(--text-lg);
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .copy-fallback {
+      align-self: stretch;
     }
 
     .setup-message {

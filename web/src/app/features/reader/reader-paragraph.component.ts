@@ -14,9 +14,9 @@ import {
  *
  * Paragraphs are the unit the reader mounts and unmounts, so keeping them a
  * component of their own is what lets a long reading render a window rather
- * than the whole document. It is also where a touch double tap is resolved to
- * a sentence, because the whitespace a reader aims at — the leading between
- * two lines — belongs to the paragraph and to no sentence element.
+ * than the whole document. It is also where a touch long press is resolved to a
+ * sentence, because the whitespace a reader aims at — the leading between two
+ * lines — belongs to the paragraph and to no sentence element.
  */
 @Component({
   selector: 'mn-reader-paragraph',
@@ -58,8 +58,21 @@ import {
       */
       line-height: var(--reader-line-height-ruby);
       /* Keep scrolling and pinch-zoom native while the directive recognizes
-       * the reader's two-tap sentence gesture. */
+       * the reader's long-press sentence gesture. */
       touch-action: manipulation;
+    }
+
+    /*
+     * A finger's press on the reading surface is the sentence gesture, so the
+     * platform's own selection callout cannot also own it. Narrowly scoped: it
+     * is off on the reading surface and on a touch device only, so details,
+     * every other screen, and every mouse keep native selection and copy.
+     * The sentence's own Copy action is what a finger uses instead.
+     */
+    :host-context(html[data-pointer='touch']) .paragraph {
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
   `,
 })
