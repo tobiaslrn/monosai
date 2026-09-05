@@ -42,6 +42,8 @@ class FakeAudioPlayer implements AudioPlayer {
   readonly played: Blob[] = [];
   /** Whether each clip was asked for already paused, in the order they arrived. */
   readonly startedPaused: boolean[] = [];
+  /** Sentence-relative position at which each standalone clip was started. */
+  readonly startedAt: number[] = [];
   stops = 0;
   pauses = 0;
   resumes = 0;
@@ -71,6 +73,8 @@ class FakeAudioPlayer implements AudioPlayer {
     }
     this.played.push(clip);
     this.startedPaused.push(options?.startPaused === true);
+    this.position = Math.max(options?.startSeconds ?? 0, 0);
+    this.startedAt.push(this.position);
     return Promise.resolve();
   }
 
@@ -1341,6 +1345,48 @@ describe('AudioPlaybackStore', () => {
 
       expect(bed.player.sequences).toEqual([]);
       expect(bed.player.played).toHaveLength(1);
+    });
+
+    it('changes a live continuous track without leaking into or skipping the next sentence', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+      await bed.store.play();
+      bed.player.moveTo(0.6);
+
+      bed.store.setStepMode(true);
+      await settle();
+
+      expect(bed.player.pauses).toBe(1);
+      expect(bed.player.played).toHaveLength(1);
+      expect(bed.player.startedAt).toEqual([0.6]);
+      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+
+      bed.player.finishClip();
+      await settle();
+      expect(bed.store.status()).toBe('stepped');
+      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+
+      await bed.store.continueReading();
+      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.player.startedAt).toEqual([0.6, 0]);
+    });
+
+    it('keeps a paused track paused at the same point when sentence mode is selected', async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+      await bed.store.play();
+      bed.player.moveTo(0.4);
+      bed.store.pause();
+
+      bed.store.setStepMode(true);
+      await settle();
+
+      expect(bed.store.status()).toBe('paused');
+      expect(bed.player.startedPaused).toEqual([false, true]);
+      expect(bed.player.startedAt).toEqual([0.4]);
     });
   });
 
