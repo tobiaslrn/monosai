@@ -91,13 +91,20 @@ test.describe('generate prerequisites', () => {
 test.describe('generating a story', () => {
   test.use({ storageState: GENERATION_READY_STATE });
 
-  test('keeps the action discoverable and explains over-limit fields at laptop and phone sizes @mobile', async ({
+  test('keeps the action reachable and explains over-limit fields at laptop and phone sizes @mobile', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 700 });
     await openGenerate(page);
 
     const generate = page.getByTestId('generate');
+    await expect(generate).toBeAttached();
+    await expect
+      .poll(() =>
+        generate.evaluate((element) => getComputedStyle(element.closest('.actions')!).position),
+      )
+      .toBe('static');
+    await generate.scrollIntoViewIfNeeded();
     await expect(generate).toBeInViewport();
     await expect(page.getByText('0 of 1,000 characters')).toHaveCount(2);
     await expect(page.getByText('0 of 2,000 characters')).toBeVisible();

@@ -233,9 +233,12 @@ test.describe('vocabulary', () => {
 
     await counted.uncheck();
     await backToWords(page);
-    await expect(page.getByTestId('words-standing')).toHaveText('0 words', {
-      timeout: 60_000,
-    });
+    await expect(page.getByTestId('words-standing')).toHaveText(
+      '0 counted words · 2 words in 1 source',
+      {
+        timeout: 60_000,
+      },
+    );
     // Not counting is reversible: the source and everything read from it stay.
     await expect(row(page, 'Course words')).toContainText('not counted');
 
@@ -418,11 +421,11 @@ test.describe('vocabulary', () => {
 
     const failure = page.getByTestId('anki-connect-failed');
     await expect(failure).toBeVisible({ timeout: 30_000 });
-    await expect(failure).toContainText('Nothing is listening on 8765');
+    await expect(failure).toContainText('Anki is not answering');
     await expect(failure.getByRole('link', { name: /AnkiConnect add-on/ })).toBeVisible();
     await expect(failure).toContainText('anki/not-running');
     // The port lives here, behind a fold, beside the retry it changes.
-    await expect(page.getByTestId('anki-connect-port')).toBeAttached();
+    await expect(page.getByTestId('anki-connect-port')).toHaveValue('8765');
     await expect(page.getByTestId('anki-retry')).toBeVisible();
     expect(await readSnapshots(page)).toHaveLength(0);
   });
