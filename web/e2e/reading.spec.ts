@@ -243,7 +243,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
   test('drags the mobile story-options sheet without moving its trigger @mobile @smoke', async ({
     page,
+    isMobile,
   }) => {
+    test.skip(!isMobile, 'the drag handle only exists on the docked mobile sheet');
     await importReading(page, SAMPLE_TEXT, 'Mobile story options');
 
     const toggle = page.getByRole('button', { name: 'Story options', exact: true });
@@ -310,6 +312,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
   test('keeps one main landmark, a sticky header, and no horizontal overflow @mobile @smoke', async ({
     page,
+    isMobile,
   }) => {
     await importReading(
       page,
@@ -323,9 +326,14 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight))
       .toBeGreaterThan(500);
-    await expect
-      .poll(() => page.locator('.bar').evaluate((element) => element.getBoundingClientRect().top))
-      .toBeCloseTo(0, 0);
+    // A phone pulls the reader into the shell's top padding so the bar owns the
+    // viewport edge from the start. A desktop keeps that padding, and the bar
+    // only reaches the edge once the reading scrolls underneath it.
+    if (isMobile) {
+      await expect
+        .poll(() => page.locator('.bar').evaluate((element) => element.getBoundingClientRect().top))
+        .toBeCloseTo(0, 0);
+    }
     await page.evaluate(() => {
       window.scrollTo(0, 500);
     });
