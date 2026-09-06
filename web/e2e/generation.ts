@@ -145,6 +145,7 @@ export async function stubReviewedCollection(page: Page): Promise<void> {
       cardId: index + 1,
       note: 1_000 + index,
       reps: 3,
+      queue: 2,
       deckName: 'Core Japanese',
     })),
     notesInfo: REVIEWED_EXPRESSIONS.map((expression, index) => ({

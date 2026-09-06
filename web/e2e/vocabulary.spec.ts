@@ -62,6 +62,7 @@ function ankiAnswers(expressions: readonly string[]) {
       cardId: index + 1,
       note: index + 10,
       reps: 2,
+      queue: 2,
       deckName: 'Core Japanese',
     })),
     notesInfo: expressions.map((expression, index) => ({
