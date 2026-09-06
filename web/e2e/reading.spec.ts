@@ -241,6 +241,37 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(toggle).toBeFocused();
   });
 
+  test('drags the mobile story-options sheet without moving its trigger @mobile @smoke', async ({
+    page,
+  }) => {
+    await importReading(page, SAMPLE_TEXT, 'Mobile story options');
+
+    const toggle = page.getByRole('button', { name: 'Story options', exact: true });
+    await toggle.click();
+    const panel = page.getByRole('dialog', { name: 'Story options', exact: true });
+    const handle = panel.locator('.handle');
+    await expect(handle).toBeVisible();
+
+    const anchorBefore = await toggle.boundingBox();
+    const handleBox = await handle.boundingBox();
+    expect(anchorBefore).not.toBeNull();
+    expect(handleBox).not.toBeNull();
+
+    const x = (handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2;
+    const y = (handleBox?.y ?? 0) + (handleBox?.height ?? 0) / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y + 40);
+
+    await expect(panel).toHaveCSS('transform', /matrix\(1, 0, 0, 1, 0, 40\)/);
+    await expect
+      .poll(() => toggle.boundingBox())
+      .toEqual(expect.objectContaining({ x: anchorBefore?.x, y: anchorBefore?.y }));
+
+    await page.mouse.up();
+    await expect(panel).toBeVisible();
+  });
+
   test('reading text carries Japanese language metadata and whole-token ruby', async ({ page }) => {
     await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);
@@ -292,6 +323,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight))
       .toBeGreaterThan(500);
+    await expect
+      .poll(() => page.locator('.bar').evaluate((element) => element.getBoundingClientRect().top))
+      .toBeCloseTo(0, 0);
     await page.evaluate(() => {
       window.scrollTo(0, 500);
     });

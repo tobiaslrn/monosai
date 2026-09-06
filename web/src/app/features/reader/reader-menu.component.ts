@@ -31,8 +31,6 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
       type="button"
       class="mn-icon-button anchor-button"
       aria-label="Story options"
-      [style.transform]="dragTransform()"
-      [class.is-dragging]="dragOffset() > 0"
       title="Story options"
       aria-haspopup="dialog"
       aria-controls="mn-reader-menu-panel"
@@ -49,6 +47,8 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
       role="dialog"
       aria-label="Story options"
       [cdkTrapFocus]="menuOpen()"
+      [style.transform]="dragTransform()"
+      [class.is-dragging]="dragOffset() > 0"
       (toggle)="onToggle()"
     >
       @if (isMobile()) {

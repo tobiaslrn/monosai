@@ -361,6 +361,18 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     }
 
     /*
+     * Reader routes keep their own controls, so the shell's top padding must
+     * not leave a strip of canvas above the sticky bar on a phone. Pull the
+     * reader back into that padding; the bar can then start and remain at the
+     * viewport edge while the reading keeps the shell's horizontal inset.
+     */
+    @media (max-width: breakpoints.$wide-max) {
+      .reader {
+        margin-top: calc(-1 * var(--space-5));
+      }
+    }
+
+    /*
      * Clearance for the floating player, so the last line of a reading is never
      * parked permanently underneath it. Its published height rather than an
      * estimate of it, with a fallback for the frame before the first
