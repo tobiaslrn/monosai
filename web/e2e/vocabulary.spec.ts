@@ -173,16 +173,16 @@ test.describe('vocabulary', () => {
     await openVocabulary(page);
     await connectPackage(page, CONTRACT_PACKAGE);
 
-    // The parent deck's four reviewed expressions plus one reviewed expression
-    // from Core Japanese::Verbs: package roots include their subdecks.
-    await expect(page.getByTestId('words-standing')).toHaveText('5 words', {
+    // The parent deck's three eligible reviewed expressions plus one reviewed
+    // expression from Core Japanese::Verbs: package roots include subdecks.
+    await expect(page.getByTestId('words-standing')).toHaveText('4 words', {
       timeout: 60_000,
     });
     await expect(page.getByTestId('start-refresh')).toHaveCount(0);
     await expect(page.getByTestId('confirm-refresh')).toHaveCount(0);
     const snapshots = await readSnapshots(page);
     expect(snapshots).toHaveLength(1);
-    expect(snapshots[0].uniqueEntryCount).toBe(5);
+    expect(snapshots[0].uniqueEntryCount).toBe(4);
     await expectNoSeriousAccessibilityViolations(page);
   });
 
@@ -195,7 +195,7 @@ test.describe('vocabulary', () => {
     });
 
     await connectPackage(page, CONTRACT_PACKAGE);
-    await expect(page.getByTestId('words-standing')).toHaveText('5 words', {
+    await expect(page.getByTestId('words-standing')).toHaveText('4 words', {
       timeout: 60_000,
     });
     await expect(page.getByTestId('source-row')).toHaveCount(2);
@@ -204,7 +204,7 @@ test.describe('vocabulary', () => {
     // is still there and still counted.
     await connectPackage(page, CONTRACT_PACKAGE);
     await expect(page.getByTestId('package-import-complete')).toContainText('Replaced');
-    await expect(page.getByTestId('words-standing')).toHaveText('5 words', {
+    await expect(page.getByTestId('words-standing')).toHaveText('4 words', {
       timeout: 60_000,
     });
 
@@ -460,14 +460,14 @@ test.describe('vocabulary', () => {
       .toBe(2);
   });
 
-  test('leaves known words unmarked in the reader once vocabulary is ready', async ({ page }) => {
+  test('marks suspended words as new in the reader', async ({ page }) => {
     test.setTimeout(180_000);
     await importReading(page, 'ねこを見る。');
     const readerUrl = page.url();
 
     await openVocabulary(page);
     await connectPackage(page, CONTRACT_PACKAGE);
-    await expect(page.getByTestId('words-standing')).toHaveText('5 words', {
+    await expect(page.getByTestId('words-standing')).toHaveText('4 words', {
       timeout: 60_000,
     });
 
@@ -476,6 +476,6 @@ test.describe('vocabulary', () => {
     await expect(known).toBeVisible({ timeout: 60_000 });
     await expect
       .poll(() => page.locator('.is-warning-vocabulary').count(), { timeout: 60_000 })
-      .toBe(0);
+      .toBe(1);
   });
 });
