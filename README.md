@@ -87,3 +87,9 @@ help and new text imports work without a connection. New AI requests and a
 live Anki connection still need a connection.
 
 If something does not work, see the [troubleshooting guide](docs/troubleshooting.md).
+
+## License
+
+Monosai is source-available under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). Commercial use is not
+permitted without a separate license from the licensor.

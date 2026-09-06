@@ -4,7 +4,7 @@
   "description": "Local-first Japanese reading application for learners.",
   "private": true,
   "type": "module",
-  "license": "ISC",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "engines": {
     "node": ">=24"
   },
