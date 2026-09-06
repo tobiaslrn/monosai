@@ -21,6 +21,7 @@ import type {
 import { DEFAULT_STORY_TOKEN_BUDGET } from '../../domain/settings/settings';
 import { STORY_BLUEPRINT_TEMPERATURE } from '../../domain/ai/sampling';
 import { err, ok, type Result } from '../../domain/shared/result';
+import type { StructuredOutputMemo } from '../../domain/ai/structured-output-memo';
 import type { OpenRouterClient } from './openrouter-client';
 import {
   applyScopedRepair,
@@ -81,8 +82,8 @@ const PRECEDING_SENTENCES = 6;
 export class OpenRouterStoryGenerator {
   private readonly runner: StructuredTaskRunner;
 
-  constructor(client: OpenRouterClient) {
-    this.runner = new StructuredTaskRunner(client);
+  constructor(client: OpenRouterClient, memo?: StructuredOutputMemo) {
+    this.runner = new StructuredTaskRunner(client, memo);
   }
 
   async generateStory(

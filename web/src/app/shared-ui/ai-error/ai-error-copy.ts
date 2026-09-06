@@ -1,4 +1,4 @@
-import type { AiError, AiErrorCode } from '../../domain/ai/ai-error';
+import { isTruncatedReply, type AiError, type AiErrorCode } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 
 /**
@@ -198,6 +198,17 @@ export const AI_TASK_COPY: Record<AiTask, string> = {
 };
 
 export function aiErrorCopy(error: AiError): AiErrorCopy {
+  // The output ran out of room, not the input. The shared row's "the request
+  // was too large" would send the learner to shorten something that was fine.
+  if (isTruncatedReply(error)) {
+    return {
+      ...AI_ERROR_COPY['context-budget-exceeded'],
+      heading: 'The reply was cut off',
+      whatFailed: 'The model stopped mid-answer because it ran out of room to reply.',
+      primaryAction: 'Choose a model with more reply room and test again.',
+      retryAction: 'Try again — if it keeps happening, choose a different model in Settings.',
+    };
+  }
   if (
     error.code === 'capability-unsupported' &&
     (error.task === 'tts-test' || error.task === 'tts-synthesis')

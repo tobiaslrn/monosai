@@ -26,6 +26,7 @@ import {
   READING_REPOSITORY,
 } from '../shared/repository-tokens';
 import { TextModelStore } from '../settings/text-model.store';
+import { fakeTextModelStore } from '../../../testing/text-model-store-fake';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import type { GrammarProfileSelection } from '../../domain/grammar/profile';
 import { TranslationJobStore } from './translation-job.store';
@@ -103,7 +104,7 @@ async function configure(): Promise<JobTestBed> {
           },
         },
       },
-      { provide: TextModelStore, useValue: { settings } },
+      { provide: TextModelStore, useValue: fakeTextModelStore(settings) },
       {
         provide: GrammarProfileStore,
         useValue: {

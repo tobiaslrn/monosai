@@ -65,7 +65,11 @@ describe('OpenRouterEnricher grammar review', () => {
 
     expect(result).toEqual({ ok: true, value: { findings: [] } });
     expect(context.server.callCount).toBe(1);
-    expect(context.server.requests[0]?.body['max_tokens']).toBe(4_096);
+    // Sized from the batch: 512 plus 180 per sentence, so a large batch is not
+    // asked to answer in a budget that fits a small one.
+    expect(context.server.requests[0]?.body['max_tokens']).toBe(
+      512 + 180 * GRAMMAR_REQUEST.sentences.length,
+    );
   });
 
   it('recovers once from a malformed reply, and does not retry again', async () => {

@@ -80,6 +80,70 @@ export function planBatches<T>(
   return batches;
 }
 
+/** What one reply settled, and what it left for a smaller second question. */
+export interface TranslationPartition {
+  /** Requested, returned exactly once, and non-blank — in requested order. */
+  readonly matched: readonly TranslationResult[];
+  /** Requested ids the reply did not settle, in requested order. */
+  readonly unresolved: readonly SentenceId[];
+}
+
+/**
+ * Splits a reply into what is usable and what still has to be asked for.
+ *
+ * The all-or-nothing rule {@link matchTranslations} applies is right where
+ * there is no way to ask again — one bad id there means the reply cannot be
+ * trusted. A caller that *can* re-ask does better by keeping the nine good
+ * translations and re-requesting the tenth, rather than throwing away nine
+ * requests the learner already paid for.
+ *
+ * One case still voids the whole batch, and is reported by returning every
+ * requested id as unresolved: an id that was never sent. A model returning an
+ * id from nowhere has lost track of which request it is answering, so nothing
+ * in that reply can be attributed to a sentence with confidence.
+ */
+export function partitionTranslations(
+  requested: readonly { readonly id: SentenceId; readonly textJa: string }[],
+  returned: readonly TranslationResult[],
+): TranslationPartition {
+  const requestedIds = new Set(requested.map((sentence) => sentence.id));
+  const voided: TranslationPartition = {
+    matched: [],
+    unresolved: requested.map((sentence) => sentence.id),
+  };
+
+  const byId = new Map<SentenceId, TranslationResult>();
+  const duplicated = new Set<SentenceId>();
+  for (const result of returned) {
+    if (!requestedIds.has(result.id)) {
+      return voided;
+    }
+    if (byId.has(result.id) || duplicated.has(result.id)) {
+      // A second answer for one sentence says the model was not tracking which
+      // it had already done, so neither answer is preferred over the other.
+      byId.delete(result.id);
+      duplicated.add(result.id);
+      continue;
+    }
+    if (result.textEn.trim() === '') {
+      continue;
+    }
+    byId.set(result.id, result);
+  }
+
+  const matched: TranslationResult[] = [];
+  const unresolved: SentenceId[] = [];
+  for (const sentence of requested) {
+    const match = byId.get(sentence.id);
+    if (match === undefined) {
+      unresolved.push(sentence.id);
+    } else {
+      matched.push(match);
+    }
+  }
+  return { matched, unresolved };
+}
+
 /**
  * Matches a provider's returned translations back to what was requested.
  *

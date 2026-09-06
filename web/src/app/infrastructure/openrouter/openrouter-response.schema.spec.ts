@@ -29,11 +29,16 @@ describe('request-specific provider JSON schemas', () => {
     expect(exceptionDecisionsJsonSchema(6)).toMatchObject({
       schema: { properties: { decisions: { minItems: 6, maxItems: 6 } } },
     });
-    expect(grammarReviewJsonSchema(8)).toMatchObject({
-      schema: { properties: { findings: { maxItems: 8 } } },
-    });
-    expect(translationsJsonSchema(9)).toMatchObject({
-      schema: { properties: { translations: { minItems: 9, maxItems: 9 } } },
-    });
+    // The enrichment contracts say their count in words. Strict Structured
+    // Outputs rejects `minItems`/`maxItems`, and a rejected `response_format`
+    // costs a second full-price request on every batch.
+    expect(JSON.stringify(grammarReviewJsonSchema(8))).toContain('At most 8 of them.');
+    expect(JSON.stringify(translationsJsonSchema(9))).toContain('exactly 9 of them.');
+  });
+
+  it('sends no array bounds in the contracts strict mode refuses', () => {
+    for (const contract of [grammarReviewJsonSchema(8), translationsJsonSchema(9)]) {
+      expect(JSON.stringify(contract)).not.toMatch(/minItems|maxItems/);
+    }
   });
 });

@@ -10,6 +10,7 @@ import { ExceptionPolicyStore } from '../app/application/settings/exception-poli
 import { GenerationSettingsStore } from '../app/application/settings/generation-settings.store';
 import { AppSettingsStore } from '../app/application/settings/app-settings.store';
 import { TextModelStore } from '../app/application/settings/text-model.store';
+import { fakeTextModelStore } from './text-model-store-fake';
 import { TEXT_GENERATION_PROVIDER } from '../app/application/shared/ai-tokens';
 import { LANGUAGE_RUNTIME } from '../app/application/shared/language-tokens';
 import {
@@ -443,8 +444,8 @@ export function configureGenerationTestBed(
       },
       {
         provide: TextModelStore,
-        useValue: {
-          settings: signal({
+        useValue: fakeTextModelStore(
+          signal({
             modelId: options.modelId ?? 'vendor/text-model',
             lastTestFingerprint: 'fingerprint',
             lastTestedAt: FIXED_NOW,
@@ -454,7 +455,7 @@ export function configureGenerationTestBed(
             structuredOutput:
               'structuredOutput' in options ? options.structuredOutput : 'native-schema',
           }),
-        },
+        ),
       },
       ...(options.extraProviders ?? []),
     ],

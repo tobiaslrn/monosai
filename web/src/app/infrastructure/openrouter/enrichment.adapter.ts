@@ -3,6 +3,7 @@ import type {
   GrammarReviewRequest,
   GrammarReviewResult,
 } from '../../domain/ai/grammar-review-request';
+import type { StructuredOutputMemo } from '../../domain/ai/structured-output-memo';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import {
   matchTranslations,
@@ -13,6 +14,7 @@ import {
 import { sentenceId } from '../../domain/shared/ids';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { OpenRouterClient } from './openrouter-client';
+import { ENRICHMENT_REQUEST_TIMEOUT_MS } from './openrouter-endpoints';
 import {
   grammarReviewJsonSchema,
   grammarReviewSchema,
@@ -24,13 +26,26 @@ import { buildTranslationPrompt, translationWireId } from './prompts/translation
 import { StructuredTaskRunner } from './structured-request';
 
 /**
- * Reply budgets.
+ * Reply budgets, sized from the request rather than fixed.
  *
- * Reviewing or translating a handful of sentences never needs the room a
- * whole story does, but still needs more than a single-word answer.
+ * Reviewing or translating a handful of sentences never needs the room a whole
+ * story does, but a constant sized for a small batch is a budget a large one
+ * runs out of — and a reply that stops at the limit reaches the learner as a
+ * malformed answer rather than as the truncation it is. The per-entry figures
+ * are generous for the English one sentence or one finding needs; the ceilings
+ * exist so a miscounted batch cannot ask for a story-sized reply.
  */
-const MAX_GRAMMAR_TOKENS = 4_096;
-const MAX_TRANSLATION_TOKENS = 2_048;
+const TRANSLATION_BASE_TOKENS = 512;
+const TRANSLATION_TOKENS_PER_SENTENCE = 120;
+const MAX_TRANSLATION_TOKENS = 4_096;
+
+const GRAMMAR_BASE_TOKENS = 512;
+const GRAMMAR_TOKENS_PER_SENTENCE = 180;
+const MAX_GRAMMAR_TOKENS = 8_192;
+
+function replyBudget(base: number, perEntry: number, entries: number, ceiling: number): number {
+  return Math.min(base + perEntry * Math.max(entries, 1), ceiling);
+}
 
 /**
  * Grammar review and translation over the shared client.
@@ -49,8 +64,8 @@ const MAX_TRANSLATION_TOKENS = 2_048;
 export class OpenRouterEnricher {
   private readonly runner: StructuredTaskRunner;
 
-  constructor(client: OpenRouterClient) {
-    this.runner = new StructuredTaskRunner(client);
+  constructor(client: OpenRouterClient, memo?: StructuredOutputMemo) {
+    this.runner = new StructuredTaskRunner(client, memo);
   }
 
   reviewGrammar(
@@ -63,7 +78,13 @@ export class OpenRouterEnricher {
       config,
       prompt: buildGrammarPrompt(request),
       jsonSchema: grammarReviewJsonSchema(request.sentences.length),
-      maxTokens: MAX_GRAMMAR_TOKENS,
+      maxTokens: replyBudget(
+        GRAMMAR_BASE_TOKENS,
+        GRAMMAR_TOKENS_PER_SENTENCE,
+        request.sentences.length,
+        MAX_GRAMMAR_TOKENS,
+      ),
+      timeoutMs: ENRICHMENT_REQUEST_TIMEOUT_MS,
       read: readGrammarReview,
       ...(signal === undefined ? {} : { signal }),
     });
@@ -74,12 +95,19 @@ export class OpenRouterEnricher {
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<readonly TranslationResult[], AiError>> {
+    const targetCount = translationTargets(request).length;
     return this.runner.run<readonly TranslationResult[]>({
       task: 'translation',
       config,
       prompt: buildTranslationPrompt(request),
-      jsonSchema: translationsJsonSchema(translationTargets(request).length),
-      maxTokens: MAX_TRANSLATION_TOKENS,
+      jsonSchema: translationsJsonSchema(targetCount),
+      maxTokens: replyBudget(
+        TRANSLATION_BASE_TOKENS,
+        TRANSLATION_TOKENS_PER_SENTENCE,
+        targetCount,
+        MAX_TRANSLATION_TOKENS,
+      ),
+      timeoutMs: ENRICHMENT_REQUEST_TIMEOUT_MS,
       read: readTranslations(request),
       ...(signal === undefined ? {} : { signal }),
     });

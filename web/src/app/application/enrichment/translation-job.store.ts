@@ -342,9 +342,11 @@ export class TranslationJobStore {
     scope: JobScope,
     initialState: JobState,
   ): Promise<PlanOutcome> {
-    const settings = this.textModel.settings();
-    const structuredOutput = settings.structuredOutput;
-    if (settings.modelId === '' || structuredOutput === null) {
+    // The task's configuration, not the default one: with a translation preset
+    // configured, reading `settings()` directly asks a different model than the
+    // reader's popover does and writes cache keys neither path can read back.
+    const configured = this.textModel.configForTask('translation');
+    if (configured === null) {
       return unavailable({
         source: 'provider',
         error: aiError(
@@ -363,20 +365,16 @@ export class TranslationJobStore {
 
     const context: JobContext = {
       readingId,
-      modelId: settings.modelId,
-      taskConfig: {
-        modelId: settings.modelId,
-        structuredOutput,
-        reasoningEffort: settings.reasoningEffort,
-      },
+      modelId: configured.modelId,
+      taskConfig: configured,
       cacheKeys: this.keys.translationKeys(
         refs.value,
-        settings.modelId,
+        configured.modelId,
         PROMPT_VERSIONS.translation,
       ),
       fingerprint: translationConfigFingerprint(
         this.hasher,
-        settings.modelId,
+        configured.modelId,
         PROMPT_VERSIONS.translation,
       ),
       total: refs.value.length,

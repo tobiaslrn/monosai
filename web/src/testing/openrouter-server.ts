@@ -49,6 +49,17 @@ export interface FakeOpenRouterOptions {
   readonly knownVoices?: readonly string[];
   /** When false, a request carrying `response_format` is refused with a 400. */
   readonly supportsJsonSchema?: boolean;
+  /**
+   * Refuses a `response_format` whose schema uses `minItems` or `maxItems`.
+   *
+   * What OpenAI-family strict Structured Outputs actually does. The refusal
+   * names `response_format`, so it reaches the adapters as
+   * `capability-unsupported` and costs a second full-price request on every
+   * batch — which is the whole reason the enrichment contracts carry no bounds.
+   */
+  readonly rejectsArrayBounds?: boolean;
+  /** Stops the reply at the token limit instead of at the end of the answer. */
+  readonly truncatesReply?: boolean;
   /** Parameter named by that rejection; null simulates a generic upstream error. */
   readonly jsonSchemaErrorParam?: string | null;
   /** When false, a request carrying `speed` is refused with a 400. */
@@ -92,6 +103,13 @@ const DEFAULT_KEY = 'sk-test-key';
 const DEFAULT_TEXT_MODEL = 'vendor/text-model';
 const DEFAULT_TTS_MODEL = 'vendor/tts-model';
 const DEFAULT_VOICE = 'sakura';
+
+/** Whether a `response_format` carries an array bound strict mode refuses. */
+function usesArrayBounds(responseFormat: unknown): boolean {
+  return (
+    responseFormat !== undefined && /"(minItems|maxItems)"/.test(JSON.stringify(responseFormat))
+  );
+}
 
 /** Builds a story payload with contiguous indexes, which is the valid shape. */
 function story(sentences: readonly string[], titleJa = 'ねこの一日'): string {
@@ -147,12 +165,15 @@ function decisions(decision: 'approved' | 'rejected'): string {
   });
 }
 
+/** The compatibility probe's exact answer: a nested array with a nullable field. */
+const PROBE_ANSWER = '{"items": [{"id": "a", "note": "ok"}, {"id": "b", "note": null}]}';
+
 const CHAT_CONTENT: Record<ChatContentKind, string> = {
-  valid: '{"ok": true, "language": "ja"}',
-  fenced: '```json\n{"ok": true, "language": "ja"}\n```',
+  valid: PROBE_ANSWER,
+  fenced: `\`\`\`json\n${PROBE_ANSWER}\n\`\`\``,
   prose: 'Sure! I can do that for you.',
-  'invalid-json': '{"ok": true, "language": ',
-  'wrong-shape': '{"ok": "yes", "language": "en"}',
+  'invalid-json': '{"items": [{"id": "a", ',
+  'wrong-shape': '{"items": [{"id": "a"}]}',
   empty: '',
   story: story(MICRO_SENTENCES),
   'story-repaired': story([
@@ -364,6 +385,14 @@ export class FakeOpenRouterServer {
           : (this.options.jsonSchemaErrorParam ?? 'response_format'),
       );
     }
+    if (this.options.rejectsArrayBounds === true && usesArrayBounds(body['response_format'])) {
+      return this.providerError(
+        400,
+        "Invalid schema: 'minItems' is not permitted",
+        {},
+        'response_format',
+      );
+    }
 
     const sequence = this.options.contentSequence;
     const requestIndex = this.chatRequestCount() - 1;
@@ -375,7 +404,12 @@ export class FakeOpenRouterServer {
           'valid')
         : (sequence[Math.min(requestIndex, sequence.length - 1)] ?? 'valid');
     const payload = JSON.stringify({
-      choices: [{ finish_reason: 'stop', message: { content: CHAT_CONTENT[kind] } }],
+      choices: [
+        {
+          finish_reason: this.options.truncatesReply === true ? 'length' : 'stop',
+          message: { content: CHAT_CONTENT[kind] },
+        },
+      ],
     });
 
     const headers: Record<string, string> = {

@@ -1,10 +1,13 @@
-import { DOCUMENT, inject, type Provider } from '@angular/core';
+import { DOCUMENT, Injector, inject, type Provider } from '@angular/core';
 import { LOGGER, type Logger } from '../../application/shared/diagnostics';
 import {
   MODEL_CATALOG,
+  STRUCTURED_OUTPUT_MEMO,
   TEXT_GENERATION_PROVIDER,
   TEXT_TO_SPEECH_PROVIDER,
 } from '../../application/shared/ai-tokens';
+import { StructuredOutputMemoService } from '../../application/settings/structured-output-memo.service';
+import type { StructuredOutputMemo } from '../../domain/ai/structured-output-memo';
 import { CREDENTIAL_REPOSITORY } from '../../application/shared/repository-tokens';
 import { createAudioDecoder } from './audio-decode';
 import { OpenRouterClient } from './openrouter-client';
@@ -41,6 +44,10 @@ export function provideOpenRouter(): Provider[] {
 
   return [
     {
+      provide: STRUCTURED_OUTPUT_MEMO,
+      useExisting: StructuredOutputMemoService,
+    },
+    {
       provide: MODEL_CATALOG,
       useFactory: () => new OpenRouterModelCatalog(client()),
     },
@@ -48,14 +55,23 @@ export function provideOpenRouter(): Provider[] {
       provide: TEXT_GENERATION_PROVIDER,
       useFactory: () => {
         const shared = client();
+        // Resolved inside the loaders rather than here: the memo reads the
+        // text-model settings, and that store injects this very token. By the
+        // time an adapter is loaded the provider is already constructed, so the
+        // lookup is a plain read rather than a cycle.
+        const injector = inject(Injector);
+        const memo = (): StructuredOutputMemo => injector.get(STRUCTURED_OUTPUT_MEMO);
         return new OpenRouterTextProvider(
           new OpenRouterTextModelTester(shared),
           // Loaded on the first generation, so the prompt assets stay out of
           // the initial bundle for a learner who only imports their own text.
           async () =>
-            new (await import('./story-generation.adapter')).OpenRouterStoryGenerator(shared),
+            new (await import('./story-generation.adapter')).OpenRouterStoryGenerator(
+              shared,
+              memo(),
+            ),
           // Loaded on the first review or translation, for the same reason.
-          async () => new (await import('./enrichment.adapter')).OpenRouterEnricher(shared),
+          async () => new (await import('./enrichment.adapter')).OpenRouterEnricher(shared, memo()),
         );
       },
     },

@@ -90,6 +90,40 @@ same answer.
 The bound on format recovery is separate and lives in the text adapter: at most
 one recovery request per test, so a failing model costs at most two calls.
 
+### A refused native schema is remembered, not rediscovered (added 2026-09-06)
+
+The one-recovery bound is right per request and wrong per model. A provider that
+refuses `response_format` refuses it for every request, so a run that
+rediscovered the refusal per batch paid for a second full-price request on every
+batch, indefinitely.
+
+`StructuredTaskRunner` therefore consults a `StructuredOutputMemo` port before
+its first attempt and records `json-contract` for the model before spending the
+recovery. The implementation persists the downgrade through the stored
+text-model settings, so it survives a reload. Only downgrades are remembered: a
+native schema that worked once is not a promise about the next request, and that
+verdict stays with the model test, which actually asked.
+
+The enrichment contracts also stopped sending `minItems`/`maxItems`. Strict
+Structured Outputs rejects those keywords outright, which was making every
+translation and grammar batch pay the recovery. The counts are stated in the
+array descriptions, and enforced where they were always enforced — in
+`domain/ai` and `domain/enrichment`.
+
+### A reply cut off at the token limit is its own verdict (added 2026-09-06)
+
+`finish_reason: 'length'` used to reach the learner as `malformed-response`,
+because the reply was read the same way whether the model had finished or run
+out of room. Both the wording and the next action were wrong, and the format
+recovery was spent on a request whose shape was never the problem.
+
+It is now a `context-budget-exceeded` carrying the issue code `reply-truncated`,
+returned before the content is parsed and never eligible for recovery: a
+differently wrapped question asks for the same number of tokens. Enrichment
+budgets are sized from the batch rather than fixed, and translation and grammar
+review ask for minimal reasoning by default, so a reasoning model does not spend
+the reply budget on hidden tokens for a judgement pinned to temperature 0.1.
+
 ### Fingerprints use a key generation, never the key
 
 Configuration tests are stored in ordinary settings rows. A fingerprint

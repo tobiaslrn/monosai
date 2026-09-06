@@ -1,8 +1,9 @@
-import { aiError, type AiError } from '../../domain/ai/ai-error';
+import { aiError, TRUNCATED_REPLY_ISSUE_CODE, type AiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import { estimateTokens, MAX_REQUEST_TOKENS } from '../../domain/ai/context-budget';
 import type { StructuredOutputMode } from '../../domain/ai/model-test';
 import { temperatureForTask } from '../../domain/ai/sampling';
+import type { StructuredOutputMemo } from '../../domain/ai/structured-output-memo';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import { isGeminiModel } from '../../domain/ai/tts-configuration';
 import { err, ok, type Result } from '../../domain/shared/result';
@@ -24,6 +25,14 @@ export interface StructuredRequest<T> {
   readonly maxTokens: number;
   /** Overrides the task default when one task contains both creative and judgement calls. */
   readonly temperature?: number;
+  /**
+   * Deadline for one attempt, so a task gets the deadline its work deserves.
+   *
+   * Enrichment batches are far shorter jobs than writing a story, and a
+   * story-sized deadline applied to them is one the learner waits out three
+   * times over before anything is reported.
+   */
+  readonly timeoutMs?: number;
   readonly read: (parsed: unknown) => Result<T, string>;
   readonly signal?: AbortSignal;
 }
@@ -40,7 +49,10 @@ export interface StructuredRequest<T> {
  * multiply into six.
  */
 export class StructuredTaskRunner {
-  constructor(private readonly client: OpenRouterClient) {}
+  constructor(
+    private readonly client: OpenRouterClient,
+    private readonly memo?: StructuredOutputMemo,
+  ) {}
 
   /**
    * One task request, with at most one format recovery.
@@ -49,10 +61,17 @@ export class StructuredTaskRunner {
    * actually fix: the provider refusing the schema parameter, and the model
    * answering in the wrong shape. Everything else returns immediately, because
    * repeating it would spend the learner money to reproduce the same answer.
+   *
+   * A refusal of the schema parameter is remembered before the recovery runs,
+   * so the second request is paid once per model rather than once per batch.
    */
   async run<T>(request: StructuredRequest<T>): Promise<Result<T, AiError>> {
-    const first = await this.attempt(request, request.config.structuredOutput);
-    if (first.ok || request.config.structuredOutput === 'json-contract') {
+    const modelId = request.config.modelId;
+    const known = this.memo?.modeFor(modelId) ?? null;
+    const mode = known === 'json-contract' ? 'json-contract' : request.config.structuredOutput;
+
+    const first = await this.attempt(request, mode);
+    if (first.ok || mode === 'json-contract') {
       return first;
     }
 
@@ -60,7 +79,9 @@ export class StructuredTaskRunner {
     // not consistently name `response_format` in 400 responses, so a generic
     // capability rejection is also eligible for the one bounded recovery.
     const refusedSchema = first.error.code === 'capability-unsupported';
-    if (!refusedSchema && first.error.code !== 'malformed-response') {
+    if (refusedSchema) {
+      this.memo?.rememberDowngrade(modelId);
+    } else if (first.error.code !== 'malformed-response') {
       return first;
     }
 
@@ -98,13 +119,13 @@ export class StructuredTaskRunner {
         path: CHAT_COMPLETIONS_PATH,
         task: request.task,
         modelId: request.config.modelId,
-        timeoutMs: GENERATION_REQUEST_TIMEOUT_MS,
+        timeoutMs: request.timeoutMs ?? GENERATION_REQUEST_TIMEOUT_MS,
         ...(request.signal === undefined ? {} : { signal: request.signal }),
         body: {
           model: request.config.modelId,
           max_tokens: request.maxTokens,
           ...(temperature === undefined ? {} : { temperature }),
-          ...reasoningRequest(request.config.modelId, request.config.reasoningEffort),
+          ...reasoningRequest(request.task, request.config.modelId, request.config.reasoningEffort),
           messages: [
             {
               role: 'system',
@@ -133,11 +154,27 @@ export class StructuredTaskRunner {
    *
    * The issue code names which step failed and is derived from the step, never
    * from the content, so it can be shown and logged safely.
+   *
+   * A reply the provider stopped for `length` is separated out first. It is not
+   * a malformed answer and the format recovery cannot help it: the model ran
+   * out of room, and asking the same question in a different wrapper asks for
+   * the same number of tokens.
    */
   private readContent<T>(
     completion: ChatCompletion,
     request: StructuredRequest<T>,
   ): Result<T, AiError> {
+    if (completion.choices[0]?.finish_reason === 'length') {
+      return err(
+        aiError(
+          'context-budget-exceeded',
+          request.task,
+          'The model ran out of reply room before it finished answering.',
+          { detail: { issueCode: TRUNCATED_REPLY_ISSUE_CODE } },
+        ),
+      );
+    }
+
     const content = completion.choices[0]?.message.content ?? null;
     if (content === null || content.trim() === '') {
       return err(this.unusable(request.task, 'empty-content'));
@@ -169,7 +206,24 @@ export class StructuredTaskRunner {
   }
 }
 
-function reasoningRequest(modelId: string, configured: string | null | undefined): object {
-  const effort = configured ?? (isGeminiModel(modelId) ? 'minimal' : null);
+/**
+ * Tasks whose reply budget hidden reasoning would eat for nothing.
+ *
+ * Translation and grammar review are judgement calls over sentences that
+ * already exist, pinned to a low temperature. A reasoning model left to its own
+ * defaults spends the whole budget thinking and returns a truncated or empty
+ * reply, which reaches the learner as "the model answered wrongly" when it
+ * actually ran out of room. Writing a story is the opposite case and keeps
+ * whatever the provider defaults to.
+ */
+const MINIMAL_REASONING_TASKS: readonly AiTask[] = ['translation', 'grammar-review'];
+
+function reasoningRequest(
+  task: AiTask,
+  modelId: string,
+  configured: string | null | undefined,
+): object {
+  const wantsMinimal = MINIMAL_REASONING_TASKS.includes(task) || isGeminiModel(modelId);
+  const effort = configured ?? (wantsMinimal ? 'minimal' : null);
   return effort === null ? {} : { reasoning: { effort, exclude: true } };
 }

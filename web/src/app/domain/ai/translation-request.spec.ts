@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { sentenceId } from '../shared/ids';
 import { isErr, isOk } from '../shared/result';
-import { MAX_TRANSLATION_BATCH, matchTranslations, planBatches } from './translation-request';
+import {
+  MAX_TRANSLATION_BATCH,
+  matchTranslations,
+  partitionTranslations,
+  planBatches,
+} from './translation-request';
 
 describe('planBatches', () => {
   it('produces no batches for an empty input', () => {
@@ -109,5 +114,93 @@ describe('matchTranslations', () => {
     if (isErr(result)) {
       expect(result.error).toBe('blank');
     }
+  });
+});
+
+describe('partitionTranslations', () => {
+  const requested = [
+    { id: sentenceId('s1'), textJa: '一' },
+    { id: sentenceId('s2'), textJa: '二' },
+    { id: sentenceId('s3'), textJa: '三' },
+  ];
+
+  it('keeps every entry a complete reply settled', () => {
+    const returned = requested.map((sentence) => ({ id: sentence.id, textEn: 'EN.' }));
+
+    expect(partitionTranslations(requested, returned)).toEqual({
+      matched: returned,
+      unresolved: [],
+    });
+  });
+
+  it('keeps what came back and leaves a missing id for a second question', () => {
+    const returned = [
+      { id: sentenceId('s1'), textEn: 'One.' },
+      { id: sentenceId('s3'), textEn: 'Three.' },
+    ];
+
+    const partition = partitionTranslations(requested, returned);
+
+    expect(partition.matched).toEqual(returned);
+    expect(partition.unresolved).toEqual([sentenceId('s2')]);
+  });
+
+  it('treats a blank translation as unanswered rather than as an answer', () => {
+    const returned = [
+      { id: sentenceId('s1'), textEn: 'One.' },
+      { id: sentenceId('s2'), textEn: '   ' },
+      { id: sentenceId('s3'), textEn: 'Three.' },
+    ];
+
+    const partition = partitionTranslations(requested, returned);
+
+    expect(partition.matched.map((result) => result.id)).toEqual([
+      sentenceId('s1'),
+      sentenceId('s3'),
+    ]);
+    expect(partition.unresolved).toEqual([sentenceId('s2')]);
+  });
+
+  it('drops both answers when one sentence was answered twice', () => {
+    const returned = [
+      { id: sentenceId('s1'), textEn: 'One.' },
+      { id: sentenceId('s1'), textEn: 'One again.' },
+      { id: sentenceId('s2'), textEn: 'Two.' },
+      { id: sentenceId('s3'), textEn: 'Three.' },
+    ];
+
+    const partition = partitionTranslations(requested, returned);
+
+    expect(partition.matched.map((result) => result.id)).toEqual([
+      sentenceId('s2'),
+      sentenceId('s3'),
+    ]);
+    expect(partition.unresolved).toEqual([sentenceId('s1')]);
+  });
+
+  it('voids the whole reply when an id was never sent', () => {
+    const returned = [
+      { id: sentenceId('s1'), textEn: 'One.' },
+      { id: sentenceId('nowhere'), textEn: 'From nowhere.' },
+    ];
+
+    const partition = partitionTranslations(requested, returned);
+
+    expect(partition.matched).toEqual([]);
+    expect(partition.unresolved).toEqual(requested.map((sentence) => sentence.id));
+  });
+
+  it('returns matches in the order they were requested', () => {
+    const returned = [
+      { id: sentenceId('s3'), textEn: 'Three.' },
+      { id: sentenceId('s1'), textEn: 'One.' },
+      { id: sentenceId('s2'), textEn: 'Two.' },
+    ];
+
+    expect(partitionTranslations(requested, returned).matched.map((result) => result.id)).toEqual([
+      sentenceId('s1'),
+      sentenceId('s2'),
+      sentenceId('s3'),
+    ]);
   });
 });

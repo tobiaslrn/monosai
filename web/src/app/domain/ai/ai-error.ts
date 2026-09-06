@@ -119,3 +119,20 @@ const AUTOMATICALLY_RETRYABLE: readonly AiErrorCode[] = [
 export function isAutomaticallyRetryable(error: AiError): boolean {
   return AUTOMATICALLY_RETRYABLE.includes(error.code);
 }
+
+/**
+ * The reply stopped at the token limit rather than at the end of the answer.
+ *
+ * A `context-budget-exceeded` that is about the *output*, not the input. The
+ * two need different words and different next actions — a smaller batch or a
+ * model with more reply room, rather than a smaller request — so the
+ * distinction is a named code rather than something each screen re-derives.
+ */
+export const TRUNCATED_REPLY_ISSUE_CODE = 'reply-truncated';
+
+export function isTruncatedReply(error: AiError): boolean {
+  return (
+    error.code === 'context-budget-exceeded' &&
+    error.detail?.issueCode === TRUNCATED_REPLY_ISSUE_CODE
+  );
+}

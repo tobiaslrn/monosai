@@ -68,13 +68,22 @@ export type ChatCompletion = z.infer<typeof chatCompletionSchema>;
 /**
  * The payload the compatibility test asks the model to produce.
  *
- * It is deliberately tiny and unambiguous: the test proves the model can be
- * driven to an exact structure, and a larger probe would only make failures
- * harder to attribute.
+ * Deliberately the *shape* production sends rather than the smallest shape that
+ * proves anything: an object wrapping an array of objects, one of whose fields
+ * is nullable. A flat two-field probe passed for models that then failed on
+ * every real translation and grammar request, which made the recorded
+ * `native-schema` verdict a promise the model could not keep. It is still small
+ * enough that a failure is unambiguous.
  */
 export const compatibilityProbeSchema = z.object({
-  ok: z.literal(true),
-  language: z.literal('ja'),
+  items: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        note: z.string().nullable(),
+      }),
+    )
+    .length(2),
 });
 
 export type CompatibilityProbe = z.infer<typeof compatibilityProbeSchema>;
@@ -86,10 +95,24 @@ export const COMPATIBILITY_PROBE_JSON_SCHEMA = {
   schema: {
     type: 'object',
     additionalProperties: false,
-    required: ['ok', 'language'],
+    required: ['items'],
     properties: {
-      ok: { type: 'boolean', enum: [true] },
-      language: { type: 'string', enum: ['ja'] },
+      items: {
+        type: 'array',
+        description: 'Exactly the two entries the request names, in the order it names them.',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id', 'note'],
+          properties: {
+            id: { type: 'string', description: 'The supplied id, copied exactly.' },
+            note: {
+              type: ['string', 'null'],
+              description: 'The supplied note, copied exactly, or null when the request says null.',
+            },
+          },
+        },
+      },
     },
   },
 } as const;
@@ -398,6 +421,12 @@ export function exceptionDecisionsJsonSchema(candidateCount: number): Record<str
  * and what to do when either fails are all judgements `domain/enrichment` makes
  * with context this schema does not have (ai-pipelines section on grammar
  * review).
+ *
+ * The JSON Schema below carries no array bounds. OpenAI-family strict
+ * Structured Outputs rejects `minItems`/`maxItems` outright, and a rejected
+ * `response_format` costs a second full-price request on every batch. The count
+ * is stated in the array's description instead, where it is guidance to the
+ * model, and enforced where it is actually a rule: in `domain/enrichment`.
  */
 export const grammarReviewSchema = z.object({
   findings: z
@@ -427,8 +456,7 @@ export function grammarReviewJsonSchema(sentenceCount: number): Record<string, u
       properties: {
         findings: {
           type: 'array',
-          maxItems: sentenceCount,
-          description: 'At most one useful finding per sentence, with above-ceiling grammar first.',
+          description: `At most one useful finding per sentence, with above-ceiling grammar first. At most ${sentenceCount} of them.`,
           items: {
             type: 'object',
             additionalProperties: false,
@@ -477,6 +505,10 @@ export function grammarReviewJsonSchema(sentenceCount: number): Record<string, u
  * duplicate, or blank translation — is `matchTranslations` in
  * `domain/ai/translation-request`, not this schema: this only checks that the
  * reply is shaped like a list of `{ id, textEn }` pairs.
+ *
+ * For the same reason the JSON Schema below states its entry count in the
+ * array's description rather than in `minItems`/`maxItems`: strict Structured
+ * Outputs rejects those keywords, and the count was never enforced here anyway.
  */
 export const translationsSchema = z.object({
   translations: z
@@ -502,9 +534,7 @@ export function translationsJsonSchema(targetCount: number): Record<string, unkn
       properties: {
         translations: {
           type: 'array',
-          minItems: targetCount,
-          maxItems: targetCount,
-          description: 'One entry per requested target id, and no entry for any other id.',
+          description: `One entry per requested target id, and no entry for any other id — exactly ${targetCount} of them.`,
           items: {
             type: 'object',
             additionalProperties: false,

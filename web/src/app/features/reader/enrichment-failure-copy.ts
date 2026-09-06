@@ -1,3 +1,4 @@
+import { isTruncatedReply } from '../../domain/ai/ai-error';
 import { isRetryable } from '../../domain/storage/storage-error';
 import type { EnrichmentFailure } from '../../application/enrichment/sentence-enrichment.service';
 import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
@@ -60,6 +61,10 @@ export function enrichmentNeedsSettings(failure: EnrichmentFailure | null): bool
 export function enrichmentCanRetry(failure: EnrichmentFailure | null): boolean {
   if (failure === null) return true;
   if (failure.source === 'storage') return isRetryable(failure.error);
+  // A reply cut off at the token limit is about the size of one answer, not
+  // about the model's input ceiling: the same aid asked for on its own has room
+  // the interrupted batch did not, so retrying is a real offer.
+  if (isTruncatedReply(failure.error)) return true;
   switch (failure.error.code) {
     case 'malformed-response':
     case 'offline':

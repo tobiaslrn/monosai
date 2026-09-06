@@ -21,7 +21,16 @@ const TASK = 'text-model-test';
 const PROBE_SYSTEM_PROMPT =
   'You are a formatting compatibility probe. Reply with one JSON object and nothing else.';
 
-const PROBE_USER_PROMPT = 'Reply with exactly {"ok": true, "language": "ja"} and no other text.';
+/**
+ * The exact answer, spelled out.
+ *
+ * It mirrors the nested array and the nullable field every enrichment request
+ * sends, so passing this probe means the model can be held to the shapes
+ * translation and grammar review actually use, not merely to a flat pair.
+ */
+const PROBE_ANSWER = '{"items": [{"id": "a", "note": "ok"}, {"id": "b", "note": null}]}';
+
+const PROBE_USER_PROMPT = `Reply with exactly ${PROBE_ANSWER} and no other text.`;
 
 /**
  * Added only when the model could not be driven by a provider-native schema.
@@ -31,8 +40,7 @@ const PROBE_USER_PROMPT = 'Reply with exactly {"ok": true, "language": "ja"} and
  * parameter outright, and telling a model its last answer was malformed when it
  * never gave one is a claim about a history that did not happen.
  */
-const PROBE_CONTRACT_REMINDER =
-  'Reply with exactly {"ok": true, "language": "ja"} and nothing else: no prose, no code fences.';
+const PROBE_CONTRACT_REMINDER = `Reply with exactly ${PROBE_ANSWER} and nothing else: no prose, no code fences.`;
 
 /** A compatibility probe needs a handful of tokens; a runaway reply is a failure. */
 const MAX_PROBE_TOKENS = 512;

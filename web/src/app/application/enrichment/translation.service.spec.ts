@@ -312,7 +312,8 @@ describe('TranslationService', () => {
 
   it('rejects a batch whose returned ids do not match what was requested', async () => {
     const list = sentences(1);
-    provider.translationQueue.push(ok([{ id: sentenceId('not-requested'), textEn: 'EN.' }]));
+    const extra = ok([{ id: sentenceId('not-requested'), textEn: 'EN.' }]);
+    provider.translationQueue.push(extra, extra);
 
     const outcome = await service.run(
       list,
@@ -326,6 +327,61 @@ describe('TranslationService', () => {
 
     expect(outcome.records).toHaveLength(0);
     expect(outcome.failures).toEqual([list[0].id]);
+  });
+
+  it('keeps what a partial reply settled and re-asks only for the rest', async () => {
+    const list = sentences(3);
+    provider.translationQueue.push(
+      ok([
+        { id: list[0].id, textEn: 'EN one.' },
+        { id: list[1].id, textEn: '   ' },
+      ]),
+      ok([
+        { id: list[1].id, textEn: 'EN two.' },
+        { id: list[2].id, textEn: 'EN three.' },
+      ]),
+    );
+
+    const outcome = await service.run(
+      list,
+      READING_ID,
+      keysFor(list),
+      'vendor/model',
+      'translation/1',
+      { modelId: 'vendor/model', structuredOutput: 'native-schema' },
+      new AbortController().signal,
+    );
+
+    expect(outcome.failures).toHaveLength(0);
+    expect(outcome.records.map((record) => record.textEn)).toEqual([
+      'EN one.',
+      'EN two.',
+      'EN three.',
+    ]);
+    // Two requests, not two batches: the salvage asks only for what was left.
+    expect(provider.generationCalls.translate).toBe(2);
+  });
+
+  it('re-asks only once, and fails whatever is still unresolved', async () => {
+    const list = sentences(2);
+    provider.translationQueue.push(
+      ok([{ id: list[0].id, textEn: 'EN one.' }]),
+      ok([{ id: list[1].id, textEn: '' }]),
+    );
+
+    const outcome = await service.run(
+      list,
+      READING_ID,
+      keysFor(list),
+      'vendor/model',
+      'translation/1',
+      { modelId: 'vendor/model', structuredOutput: 'native-schema' },
+      new AbortController().signal,
+    );
+
+    expect(outcome.records).toHaveLength(1);
+    expect(outcome.failures).toEqual([list[1].id]);
+    expect(provider.generationCalls.translate).toBe(2);
   });
 
   it('stops issuing batches once the signal is aborted, without throwing', async () => {

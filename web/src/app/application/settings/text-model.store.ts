@@ -652,6 +652,52 @@ export class TextModelStore {
       : null;
   }
 
+  /**
+   * Whether a stored verdict already says this model refuses native schemas.
+   *
+   * Read before the first request of a batch, so a model that was downgraded in
+   * an earlier session does not pay for the discovery again.
+   */
+  requiresJsonContract(modelId: string): boolean {
+    const settings = this.settingsSignal();
+    if (settings.modelId === modelId && settings.structuredOutput === 'json-contract') {
+      return true;
+    }
+    return settings.presets.some(
+      (preset) => preset.modelId === modelId && preset.structuredOutput === 'json-contract',
+    );
+  }
+
+  /**
+   * Records that the provider refused a native JSON schema for this model.
+   *
+   * Written against every place the model is configured — the active settings
+   * and any preset naming it — because the refusal is a fact about the model,
+   * not about whichever lane happened to meet it. Nothing is upgraded here: a
+   * verdict of `native-schema` is only ever produced by a test that asked.
+   */
+  async recordStructuredOutputDowngrade(modelId: string): Promise<void> {
+    const settings = this.settingsSignal();
+    const downgradesActive =
+      settings.modelId === modelId && settings.structuredOutput === 'native-schema';
+    const presets = settings.presets.map((preset) =>
+      preset.modelId === modelId && preset.structuredOutput === 'native-schema'
+        ? { ...preset, structuredOutput: 'json-contract' as const }
+        : preset,
+    );
+    const downgradesPreset = presets.some((preset, index) => preset !== settings.presets[index]);
+    if (!downgradesActive && !downgradesPreset) {
+      return;
+    }
+    const saved = await this.repository.updateTextModelSettings({
+      ...(downgradesPreset ? { presets } : {}),
+      ...(downgradesActive ? { structuredOutput: 'json-contract' as const } : {}),
+    });
+    if (saved.ok) {
+      this.settingsSignal.set(saved.value);
+    }
+  }
+
   private async persistTestFailure(error: AiError, fingerprint: string): Promise<void> {
     this.failureFingerprint.set(fingerprint);
     if (error.code === 'cancelled') return;

@@ -3,10 +3,11 @@ import { Injectable, inject } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import {
-  matchTranslations,
+  partitionTranslations,
   planBatches,
   translationTargets,
   type EstablishedRendering,
+  type TranslationResult,
   type TranslationWindowEntry,
 } from '../../domain/ai/translation-request';
 import type { TranslationRecord } from '../../domain/enrichment/records';
@@ -41,8 +42,33 @@ export interface TranslationContext {
   readonly establishedRenderings?: readonly EstablishedRendering[];
 }
 
+/** Reads the flag through a call, so an earlier check never narrows a later one. */
+function isAborted(signal: AbortSignal): boolean {
+  return signal.aborted;
+}
+
 /** Keeps terminology context useful without letting it become another story-sized payload. */
 const MAX_ESTABLISHED_RENDERINGS = 20;
+
+/** Everything one request needs that does not change between the two asks. */
+interface BatchRun {
+  readonly sentences: readonly Sentence[];
+  readonly positionById: ReadonlyMap<SentenceId, number>;
+  readonly englishByPosition: ReadonlyMap<number, string>;
+  readonly establishedBySurface: ReadonlyMap<string, EstablishedRendering>;
+  readonly promptVersion: string;
+  readonly config: TextTaskConfig;
+  readonly signal: AbortSignal;
+  readonly context: TranslationContext;
+}
+
+/** What one request settled, and what it left over. */
+interface BatchAnswer {
+  readonly matched: readonly TranslationResult[];
+  readonly unresolved: readonly Sentence[];
+  /** The refusal, when nothing came back at all. Null for a partial answer. */
+  readonly error: AiError | null;
+}
 
 export interface TranslationRunOutcome {
   readonly records: readonly TranslationRecord[];
@@ -152,44 +178,45 @@ export class TranslationService {
       if (signal.aborted) {
         break;
       }
-      const window = buildWindow(sentences, batch, positionById, englishByPosition);
-      const requested = translationTargets({ window, promptVersion });
-      const targetText = requested.map((target) => target.textJa).join('\n');
-      const establishedRenderings = [...establishedBySurface.values()]
-        .filter((rendering) => targetText.includes(rendering.surfaceJa))
-        .slice(0, MAX_ESTABLISHED_RENDERINGS);
-      const answered = await this.provider.translate(
-        {
-          window,
+      const ask = (targets: readonly Sentence[]): Promise<BatchAnswer> =>
+        this.askBatch(targets, {
+          sentences,
+          positionById,
+          englishByPosition,
+          establishedBySurface,
           promptVersion,
-          ...(context.titleJa === undefined ? {} : { titleJa: context.titleJa }),
-          ...(context.registerPreference === undefined
-            ? {}
-            : { registerPreference: context.registerPreference }),
-          ...(context.premiseJa === undefined ? {} : { premiseJa: context.premiseJa }),
-          ...(establishedRenderings.length === 0 ? {} : { establishedRenderings }),
-        },
-        config,
-        signal,
-      );
-      if (!answered.ok) {
-        failures.push(...batch.map((sentence) => sentence.id));
-        error ??= answered.error;
-        continue;
+          config,
+          signal,
+          context,
+        });
+
+      let answer = await ask(batch);
+      let settled = answer.matched;
+      // One smaller second question for whatever the reply left out. A batch
+      // is not spoiled by one missing id, and re-asking for the two sentences
+      // that are actually missing is far cheaper than discarding the eight
+      // that came back — but only once, and never after a refusal, which says
+      // nothing came back to salvage.
+      if (answer.error === null && answer.unresolved.length > 0 && !isAborted(signal)) {
+        const retry = await ask(answer.unresolved);
+        settled = [...settled, ...retry.matched];
+        answer = { matched: settled, unresolved: retry.unresolved, error: retry.error };
       }
-      const matched = matchTranslations(requested, answered.value);
-      if (!matched.ok) {
-        failures.push(...batch.map((sentence) => sentence.id));
-        error ??= aiError(
-          'malformed-response',
-          'translation',
-          'The translations did not match the sentences that were sent.',
-          { detail: { issueCode: matched.error } },
-        );
-        continue;
+
+      if (answer.unresolved.length > 0) {
+        failures.push(...answer.unresolved.map((sentence) => sentence.id));
+        error ??=
+          answer.error ??
+          aiError(
+            'malformed-response',
+            'translation',
+            'The translations did not match the sentences that were sent.',
+            { detail: { issueCode: 'missing' } },
+          );
       }
+
       const sentenceById = new Map(batch.map((sentence) => [sentence.id, sentence]));
-      for (const result of matched.value) {
+      for (const result of settled) {
         const sentence = sentenceById.get(result.id);
         if (sentence === undefined) {
           continue;
@@ -227,6 +254,47 @@ export class TranslationService {
       failures,
       error,
       establishedRenderings: [...establishedBySurface.values()],
+    };
+  }
+
+  /**
+   * One translation request, read as "what this settled" rather than
+   * "did the whole batch succeed".
+   *
+   * The window, the glossary, and the reading-level context are assembled here
+   * so that a first ask and a salvage ask are built the same way — the second
+   * question is the first one with fewer targets, not a different request.
+   */
+  private async askBatch(targets: readonly Sentence[], run: BatchRun): Promise<BatchAnswer> {
+    const window = buildWindow(run.sentences, targets, run.positionById, run.englishByPosition);
+    const requested = translationTargets({ window, promptVersion: run.promptVersion });
+    const targetText = requested.map((target) => target.textJa).join('\n');
+    const establishedRenderings = [...run.establishedBySurface.values()]
+      .filter((rendering) => targetText.includes(rendering.surfaceJa))
+      .slice(0, MAX_ESTABLISHED_RENDERINGS);
+    const answered = await this.provider.translate(
+      {
+        window,
+        promptVersion: run.promptVersion,
+        ...(run.context.titleJa === undefined ? {} : { titleJa: run.context.titleJa }),
+        ...(run.context.registerPreference === undefined
+          ? {}
+          : { registerPreference: run.context.registerPreference }),
+        ...(run.context.premiseJa === undefined ? {} : { premiseJa: run.context.premiseJa }),
+        ...(establishedRenderings.length === 0 ? {} : { establishedRenderings }),
+      },
+      run.config,
+      run.signal,
+    );
+    if (!answered.ok) {
+      return { matched: [], unresolved: targets, error: answered.error };
+    }
+    const partitioned = partitionTranslations(requested, answered.value);
+    const outstanding = new Set(partitioned.unresolved);
+    return {
+      matched: partitioned.matched,
+      unresolved: targets.filter((sentence) => outstanding.has(sentence.id)),
+      error: null,
     };
   }
 
