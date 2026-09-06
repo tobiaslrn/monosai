@@ -3,10 +3,12 @@ import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import { expectSettingPersisted } from './storage';
 import {
   countOwnedRows,
+  holdLine,
   importReading,
   longPress,
   openSentence,
   pasteAndContinue,
+  releaseHold,
   saveAndOpenReader,
   tap,
   SAMPLE_TEXT,
@@ -742,6 +744,33 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     const selected = await page.evaluate(() => window.getSelection()?.toString() ?? '');
     expect(selected.replace(/\s+/g, '')).toBe('吾輩は猫である。名前はまだ無い。');
     await expect(page.locator('.mn-popover-pane')).toHaveCount(0);
+  });
+
+  /**
+   * The sheet opens under the finger that is still holding the line, and the
+   * platform would finish that same press as a text selection over whatever it
+   * now finds there. Synthetic pointer events cannot ask Chromium for a native
+   * selection, so what is checked is the rule that decides one: the sheet's
+   * Japanese refuses selection until the opening press has ended.
+   */
+  test('opens a sentence without letting the press that opened it select the sheet @mobile @smoke', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'only a finger opens a sheet underneath itself');
+    await importReading(page, SAMPLE_TEXT, 'Held sentence selection');
+
+    const source = page.locator('mn-sentence-popover .source');
+    const selectability = () => source.evaluate((element) => getComputedStyle(element).userSelect);
+
+    const held = await holdLine(page, page.locator('.sentence').first());
+    await expect(source).toBeVisible();
+    expect(await selectability()).toBe('none');
+
+    await releaseHold(page, held);
+
+    // A second, deliberate hold now has selectable text to work on.
+    await expect.poll(selectability).toBe('text');
   });
 
   test('the sentence Copy action writes only its Japanese source @smoke', async ({

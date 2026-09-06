@@ -88,16 +88,37 @@ export async function tap(page: Page, target: Locator): Promise<void> {
  * touchscreen can only tap, and a tap is now a different gesture entirely.
  */
 export async function longPress(page: Page, target: Locator): Promise<void> {
+  await releaseHold(page, await holdLine(page, target));
+}
+
+/** Where a press is being held, so its release can be aimed at the same point. */
+export interface HeldPress {
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * Presses past the gesture's threshold and keeps holding.
+ *
+ * Split out of {@link longPress} because the surface a press opens arrives
+ * while that press is still down, and what it may do in that moment is its own
+ * behavior rather than an implementation detail of the release that follows.
+ */
+export async function holdLine(page: Page, target: Locator): Promise<HeldPress> {
   const box = await target.boundingBox();
   if (box === null) {
     throw new Error('nothing to press: the target has no box');
   }
-  const x = box.x + box.width / 2;
-  const y = box.y + box.height / 2;
-  await dispatchTouchPointer(page, 'pointerdown', x, y);
+  const held: HeldPress = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await dispatchTouchPointer(page, 'pointerdown', held.x, held.y);
   await page.waitForTimeout(LONG_PRESS_MS + 120);
-  await dispatchTouchPointer(page, 'pointerup', x, y);
-  await dispatchTouchPointer(page, 'click', x, y);
+  return held;
+}
+
+/** Ends a held press, with the click a browser makes from its release. */
+export async function releaseHold(page: Page, held: HeldPress): Promise<void> {
+  await dispatchTouchPointer(page, 'pointerup', held.x, held.y);
+  await dispatchTouchPointer(page, 'click', held.x, held.y);
 }
 
 async function dispatchTouchPointer(

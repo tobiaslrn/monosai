@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentence-aids.store';
+import { PointerModalityService } from '../../core/platform/pointer-modality.service';
 import { aiError } from '../../domain/ai/ai-error';
 import type {
   AudioAssetSummary,
@@ -537,6 +538,62 @@ describe('SentencePopoverComponent', () => {
 
       expect(rendered.textContent).toContain('Audio again');
       expect(rendered.querySelector('[role="alert"]')).not.toBeNull();
+    });
+  });
+
+  /**
+   * A held line opens this sheet while the finger is still down, and the sheet
+   * arrives under that finger. Left selectable, the platform finishes that same
+   * press as a text selection, so asking for a sentence also handed back a
+   * selection nobody asked for.
+   */
+  describe('text selection under the press that opened it', () => {
+    /** Puts the service in touch mode the way a real finger does. */
+    function pressWithFinger(): void {
+      TestBed.inject(PointerModalityService);
+      document.body.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }),
+      );
+    }
+
+    function sheet(fixture: ReturnType<typeof render>): HTMLElement | null {
+      return host(fixture).querySelector('.sentence-popover');
+    }
+
+    it('opens inert under a finger, so the opening press selects nothing', () => {
+      pressWithFinger();
+
+      expect(sheet(render())?.classList.contains('is-selectable')).toBe(false);
+    });
+
+    it('arms itself once that press ends, leaving selection a second hold', () => {
+      pressWithFinger();
+      const fixture = render();
+
+      window.dispatchEvent(new PointerEvent('pointerup', { pointerType: 'touch' }));
+      fixture.detectChanges();
+
+      expect(sheet(fixture)?.classList.contains('is-selectable')).toBe(true);
+    });
+
+    it('arms itself when the opening press is cancelled rather than released', () => {
+      pressWithFinger();
+      const fixture = render();
+
+      window.dispatchEvent(new PointerEvent('pointercancel', { pointerType: 'touch' }));
+      fixture.detectChanges();
+
+      expect(sheet(fixture)?.classList.contains('is-selectable')).toBe(true);
+    });
+
+    /** A mouse selects by dragging, which was already a separate gesture. */
+    it('leaves a mouse free to select from the moment it opens', () => {
+      TestBed.inject(PointerModalityService);
+      document.body.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }),
+      );
+
+      expect(sheet(render())?.classList.contains('is-selectable')).toBe(true);
     });
   });
 });

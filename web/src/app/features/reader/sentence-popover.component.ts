@@ -2,12 +2,14 @@ import { DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   inject,
   input,
   output,
   signal,
 } from '@angular/core';
+import { PointerModalityService } from '../../core/platform/pointer-modality.service';
 import type { SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { enrichmentCanRetry } from './enrichment-failure-copy';
@@ -47,7 +49,7 @@ export interface UnknownWord {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent, AidFailureComponent],
   template: `
-    <div class="sentence-popover">
+    <div class="sentence-popover" [class.is-selectable]="selectionArmed()">
       <p class="source" lang="ja">{{ sentenceText() }}</p>
       @if (aids().translation; as translation) {
         <p class="translation" lang="en">{{ translation.textEn }}</p>
@@ -203,6 +205,24 @@ export interface UnknownWord {
       line-height: 1.7;
       user-select: text;
       -webkit-user-select: text;
+    }
+
+    /*
+     * A held line opens this sheet while the finger is still down, and the
+     * sheet arrives under that finger. The platform would finish the very same
+     * press as a text selection over whatever it now finds there, so asking for
+     * a sentence also handed back a selection nobody asked for.
+     *
+     * On touch the sheet therefore starts inert and arms itself once that press
+     * ends, which leaves selecting its Japanese a deliberate second hold. Named
+     * on the sheet and repeated on the source, because a descendant that opts
+     * into selectable text stays selectable under an ancestor that is not.
+     */
+    :host-context(html[data-pointer='touch']) .sentence-popover:not(.is-selectable),
+    :host-context(html[data-pointer='touch']) .sentence-popover:not(.is-selectable) .source {
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
 
     /* Ruled in each marker's own colour, so a section names its underline. */
@@ -381,6 +401,8 @@ export interface UnknownWord {
 })
 export class SentencePopoverComponent {
   private readonly documentRef = inject(DOCUMENT);
+  private readonly pointerModality = inject(PointerModalityService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly aids = input.required<SentenceAids>();
   /** The immutable Japanese source, copied without any rendered annotations. */
@@ -405,6 +427,37 @@ export class SentencePopoverComponent {
   readonly generateAudio = output<void>();
   readonly playAudio = output<void>();
   protected readonly copyStatus = signal<'idle' | 'copied' | 'failed'>('idle');
+
+  /**
+   * Whether this sheet's text answers the platform's selection gesture yet.
+   *
+   * A finger opens the sheet mid-press, so the press that asked for the
+   * sentence must not also select the text it put on screen. A mouse never had
+   * that problem — it selects by dragging, which is already a separate
+   * gesture — so only touch starts disarmed.
+   */
+  protected readonly selectionArmed = signal(!this.pointerModality.isTouch());
+
+  constructor() {
+    if (this.selectionArmed()) {
+      return;
+    }
+    // The opening press was already down before this sheet existed, so the
+    // first release to reach it is that press ending. Arming there rather than
+    // on the sheet's own next press means the second hold begins against text
+    // that is already selectable, instead of becoming so underneath it.
+    const view = this.documentRef.defaultView;
+    const arm = (): void => {
+      this.selectionArmed.set(true);
+    };
+    const options = { capture: true, once: true, passive: true } as const;
+    view?.addEventListener('pointerup', arm, options);
+    view?.addEventListener('pointercancel', arm, options);
+    this.destroyRef.onDestroy(() => {
+      view?.removeEventListener('pointerup', arm, { capture: true });
+      view?.removeEventListener('pointercancel', arm, { capture: true });
+    });
+  }
 
   protected readonly isRunning = computed(() => this.aids().translationAction.state === 'running');
 

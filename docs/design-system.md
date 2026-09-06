@@ -247,10 +247,14 @@ navigation are unchanged.
 
 Because that press is the application's gesture, the reading surface gives up
 native text selection and the platform's long-press callout **on touch and
-nowhere else**. Text in details stays selectable, and scrolling and pinch-zoom
-stay native. Copying a sentence with a finger is the sentence card's Copy
-action; when the clipboard is unavailable, the card prints the Japanese source
-as selectable text and keeps offering Copy.
+nowhere else**. Text in details stays selectable — but never to the press that
+opened them. A sheet arrives under the finger still holding the line, and the
+platform would finish that same press as a selection over whatever it now finds
+there, so on touch a sheet starts inert and accepts selection only once that
+press has ended: selecting its text is a second, deliberate hold. Scrolling and
+pinch-zoom stay native. Copying a sentence with a finger is the sentence card's
+Copy action; when the clipboard is unavailable, the card prints the Japanese
+source as selectable text and keeps offering Copy.
 
 Sentence details also have a visible route from a word lookup: an unlabelled
 arrow that branches off and turns up sits on the headword's own row, at the

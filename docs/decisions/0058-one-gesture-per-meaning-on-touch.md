@@ -65,6 +65,13 @@ other screen; `touch-action: manipulation` stays, so scrolling and pinch-zoom
 remain the browser's. Copying a sentence on a phone is the sentence card's
 **Copy** action, which already existed.
 
+The same rule reaches the surface that press opens. A sheet is raised while the
+finger is still down and arrives under it, so the platform finished the opening
+press as a text selection over the sheet's own Japanese — one press carrying two
+meanings again, one step further along. On touch a sheet therefore starts inert
+and arms itself when that press ends, which leaves selecting its text a second,
+deliberate hold rather than something a reader is handed for asking to read.
+
 **Details are quieter and shorter.**
 
 - Word details lead with the word and an unlabelled icon button on the same row
