@@ -16,6 +16,7 @@ import {
 import { Dialog } from '@angular/cdk/dialog';
 import { Router, RouterLink } from '@angular/router';
 import { ReadingAudioMaintenanceStore } from '../../application/enrichment/reading-audio-maintenance.store';
+import { ReadingTextAidMaintenanceStore } from '../../application/enrichment/reading-text-aid-maintenance.store';
 import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
 import { ReaderPreparationStore } from '../../application/reading/reader-preparation.store';
 import { ReaderSelectionStore } from '../../application/reading/reader-selection.store';
@@ -125,6 +126,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     WordInspectorStore,
     SentenceAidsStore,
     ReadingAudioMaintenanceStore,
+    ReadingTextAidMaintenanceStore,
     ReaderAudioStore,
     ReaderPreparationStore,
     ReaderSelectionStore,
@@ -169,6 +171,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                 <mn-reader-menu
                   [rows]="contentRows()"
                   [hasAudio]="reading.audioSummary.completed > 0 || audio.running()"
+                  [savedLayers]="savedTextLayers()"
                   [pending]="contentPending()"
                   [error]="contentError()"
                   (prepare)="prepareContent($event)"
@@ -176,6 +179,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                   (stopRequested)="stopContent($event)"
                   (listen)="showAudioPlayer()"
                   (deleteAudioRequested)="confirmClearReadingAudio()"
+                  (clearAidRequested)="confirmClearTextAid($event)"
                   (deleteRequested)="confirmDelete()"
                 />
               }
@@ -322,6 +326,8 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     </ng-template>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     /*
      * One column at every width. Word and sentence details float over the text
      * rather than taking a column of their own, so the reading measure never
@@ -344,7 +350,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
        * the one in pixels and large text already has it.
        */
       --reader-line-height-ruby: clamp(2.05, calc(2.6 - (var(--reader-scale) - 1) * 0.35), 2.8);
-      --reader-paragraph-gap: clamp(28px, calc(36px * var(--reader-scale)), 96px);
+      --reader-paragraph-gap: clamp(1.75rem, calc(2.25rem * var(--reader-scale)), 6rem);
 
       display: grid;
       grid-template-rows: auto 1fr;
@@ -477,7 +483,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
      * none to spare, and left the controls hovering over the text they are
      * about; docked, the reading ends where the player begins.
      */
-    @media (max-width: 959px) {
+    @media (max-width: breakpoints.$wide-max) {
       .audio-player-shell {
         right: 0;
         bottom: 0;
@@ -488,6 +494,15 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
         border-block-end: 0;
         border-radius: var(--radius-card) var(--radius-card) 0 0;
         transform: none;
+      }
+    }
+
+    @media (max-width: breakpoints.$narrow-max) {
+      h1 {
+        display: -webkit-box;
+        white-space: normal;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
       }
     }
 
@@ -511,8 +526,13 @@ export class ReaderPageComponent {
   protected readonly store = inject(ReaderStore);
   protected readonly aids = inject(SentenceAidsStore);
   protected readonly preparation = inject(ReaderPreparationStore);
-  protected readonly contentPending = this.preparation.pending;
-  protected readonly contentError = this.preparation.lastError;
+  private readonly textAidMaintenance = inject(ReadingTextAidMaintenanceStore);
+  protected readonly contentPending = computed(
+    () => this.textAidMaintenance.pending() ?? this.preparation.pending(),
+  );
+  protected readonly contentError = computed(
+    () => this.textAidMaintenance.error()?.message ?? this.preparation.lastError(),
+  );
   /** The only part of preparation that is about this page: what a menu draws. */
   protected readonly contentRows = computed(() => {
     const reading = this.store.reading();
@@ -527,6 +547,16 @@ export class ReaderPageComponent {
             this.preparation.online(),
           ),
         );
+  });
+  protected readonly savedTextLayers = computed<readonly PreparationLayer[]>(() => {
+    const reading = this.store.reading();
+    if (reading === null) return [];
+    return [
+      ...(reading.translationSummary.completed > 0 ? (['english'] as const) : []),
+      ...(reading.grammarSummary.state === 'partial' || reading.grammarSummary.state === 'complete'
+        ? (['grammar'] as const)
+        : []),
+    ];
   });
   protected readonly audio = inject(ReaderAudioStore);
   protected readonly viewport = inject(ViewportService);
@@ -990,6 +1020,22 @@ export class ReaderPageComponent {
     if (confirmed) {
       await this.audio.clear(reading);
     }
+  }
+
+  protected async confirmClearTextAid(layer: 'english' | 'grammar'): Promise<void> {
+    if (this.textAidMaintenance.pending() !== null) return;
+    const grammar = layer === 'grammar';
+    const noun = grammar ? 'grammar notes' : 'translation';
+    const confirmed = await openConfirmDialog(this.dialog, {
+      title: `Clear ${noun} for this reading?`,
+      message: `This permanently deletes the saved ${noun} for this reading.`,
+      details: ['The Japanese text and its other reading aids stay saved.'],
+      footnote: `You can prepare ${grammar ? 'the notes' : 'a translation'} again from scratch.`,
+      confirmLabel: grammar ? 'Clear grammar notes' : 'Clear translation',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (confirmed) await this.textAidMaintenance.clear(layer);
   }
 
   /** Shows or hides the independent floating player, releasing its docked height. */

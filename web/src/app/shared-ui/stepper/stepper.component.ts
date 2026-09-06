@@ -65,6 +65,8 @@ const STATUS_LABELS: Record<StepStatus, string> = {
     </ol>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     .steps {
       display: flex;
       flex-direction: column;
@@ -146,7 +148,7 @@ const STATUS_LABELS: Record<StepStatus, string> = {
     }
 
     /* Wide viewports lay the stages out in a row; the text stays under each. */
-    @media (min-width: 900px) {
+    @media (min-width: breakpoints.$wide) {
       .steps {
         flex-direction: row;
         flex-wrap: wrap;

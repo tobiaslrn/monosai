@@ -6,8 +6,9 @@ choice applies when, and what each rule rules out. It is the authority for
 
 It deliberately carries **no values**. There are no hex codes, no pixel counts,
 no type scale, and no component API here, because a document that repeats them
-goes stale the first time one is tuned. Values live in `web/src/styles/_tokens.scss`
-and the shared control classes in `web/src/styles/_controls.scss`; this document
+goes stale the first time one is tuned. Values live in `web/src/styles/_tokens.scss`,
+the named thresholds in `web/src/styles/_breakpoints.scss`, and the shared control
+classes in `web/src/styles/_controls.scss`; this document
 names the *roles* those tokens fill and the rules that govern their use. When
 the two disagree, this document describes the intent and the tokens describe the
 current state — reconcile by changing the tokens.

@@ -31,7 +31,6 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
           [value]="policy.draft()"
           (input)="onInput($event)"
         ></textarea>
-        <p class="mn-hint">Saved exceptions apply to future stories too.</p>
         <p id="mn-policy-count" class="mn-hint">{{ countLabel() }}</p>
       </div>
 

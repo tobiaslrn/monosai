@@ -48,6 +48,8 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     </header>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     :host {
       display: block;
       padding: var(--space-5) var(--space-4) 0;
@@ -95,7 +97,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     .current {
       background: var(--surface-sunken);
     }
-    @media (max-width: 29.9375em) {
+    @media (max-width: breakpoints.$narrow-max) {
       nav {
         gap: var(--space-3);
       }
@@ -103,7 +105,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
         display: none;
       }
     }
-    @media (min-width: 60em) {
+    @media (min-width: breakpoints.$wide) {
       :host {
         padding: var(--space-6) var(--space-6) 0;
       }

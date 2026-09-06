@@ -444,6 +444,8 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     </section>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     .models {
       gap: var(--space-3);
     }
@@ -578,11 +580,11 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     }
     .option > span {
       color: var(--text-secondary);
-      font-size: 12px;
+      font-size: 0.75rem;
     }
     .hint {
       color: var(--text-secondary);
-      font-size: 12px;
+      font-size: 0.75rem;
     }
     .status {
       flex: none;
@@ -646,7 +648,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       background: var(--status-danger-soft);
       color: var(--status-danger);
     }
-    @media (max-width: 40rem) {
+    @media (max-width: breakpoints.$narrow-max) {
       .connection,
       .connection-button {
         width: 100%;

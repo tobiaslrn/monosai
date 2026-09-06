@@ -10,6 +10,7 @@
 npm-debug.log
 
 # Angular
+/.angular/
 /web/.angular/cache
 .sass-cache/
 

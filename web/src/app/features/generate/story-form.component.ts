@@ -127,6 +127,9 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
 
       <aside class="story-settings" aria-label="Story settings">
         <h3>Defaults for every story</h3>
+        <p id="mn-defaults-scope" class="mn-hint defaults-scope">
+          Changes here apply to future stories.
+        </p>
         <ng-content select="[story-defaults]" />
 
         <mn-preparation-targets
@@ -137,14 +140,13 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           [disabled]="disabled()"
           (targetsChanged)="preparationTargetsChanged.emit($event)"
         />
-        <p class="mn-hint">Preparation choices apply to future stories too.</p>
 
         <div class="mn-field word-selection">
           <label for="mn-word-selection">Anki word selection</label>
           <select
             id="mn-word-selection"
             data-testid="word-priority-select"
-            aria-describedby="mn-priority-scope"
+            aria-describedby="mn-defaults-scope"
             [value]="ankiWordPriorityMode()"
             [disabled]="disabled()"
             (change)="onWordPriorityMode($event)"
@@ -153,14 +155,10 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <option value="recent">Recently learned</option>
             <option value="difficult">Difficult</option>
           </select>
-          <p id="mn-priority-scope" class="mn-hint">
-            Word selection applies to future stories too.
-          </p>
         </div>
 
         <details class="mn-disclosure strictness">
           <summary>Vocabulary strictness</summary>
-          <p class="mn-hint">Strictness applies to future stories too.</p>
           <fieldset [disabled]="disabled()">
             <legend class="mn-visually-hidden">Vocabulary strictness</legend>
             <label>
@@ -253,6 +251,8 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     </div>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     :host {
       display: flex;
       flex-direction: column;
@@ -283,7 +283,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
 
     .composer-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.85fr) minmax(280px, 1fr);
+      grid-template-columns: minmax(0, 1.85fr) minmax(17.5rem, 1fr);
       gap: var(--space-5);
       /* Each card is as tall as what is in it: stretching the shorter one left
          a third of a card empty below its last control. */
@@ -302,6 +302,10 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     .story-settings {
       display: flex;
       flex-direction: column;
+    }
+
+    .defaults-scope {
+      margin: calc(-1 * var(--space-3)) 0 var(--space-4);
     }
 
     .text-fields {
@@ -330,15 +334,15 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-width: 76px;
+      min-width: 4.75rem;
       padding: var(--space-2) var(--space-3);
-      border-radius: 4px;
+      border-radius: 0.25rem;
       background: var(--action-primary-soft);
       color: var(--action-primary);
     }
 
     output strong {
-      font-size: 24px;
+      font-size: 1.5rem;
       line-height: 1;
     }
 
@@ -500,7 +504,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       color: var(--text-primary);
     }
 
-    @media (max-width: 719px) {
+    @media (max-width: breakpoints.$wide-max) {
       .composer-grid {
         grid-template-columns: minmax(0, 1fr);
       }
@@ -529,7 +533,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       gap: var(--space-3);
       align-items: baseline;
       justify-content: space-between;
-      min-height: 32px;
+      min-height: var(--touch-target);
       color: var(--text-primary);
       font-size: var(--text-sm);
       text-decoration: none;
@@ -553,20 +557,14 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     }
 
     /*
-     * Generate belongs to the whole composer, not to the defaults card it used
-     * to sit at the foot of, where a laptop-height viewport hid it below both
-     * columns. Sticking it to the bottom edge keeps it reachable at any height
-     * while whatever blocks it stays beside it.
+     * Generate belongs to the whole composer. It remains in document flow so
+     * its prerequisite copy never covers the fields it explains.
      */
     .actions {
-      position: sticky;
-      bottom: 0;
-      z-index: 1;
       display: flex;
       flex-direction: column;
       gap: var(--space-2);
-      padding: var(--space-4) 0;
-      background: var(--surface-canvas);
+      padding-block: var(--space-2);
     }
 
     .actions-row {

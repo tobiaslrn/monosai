@@ -22,7 +22,7 @@ import { textListPreviewLabel } from './text-list-preview';
   template: `
     <form class="editor" (submit)="save($event)" data-testid="text-source-editor">
       <label class="mn-field">
-        <span>List name</span>
+        <span>List name (required)</span>
         <input
           type="text"
           maxlength="80"
@@ -32,7 +32,7 @@ import { textListPreviewLabel } from './text-list-preview';
         />
       </label>
       <label class="mn-field">
-        <span>Vocabulary</span>
+        <span>Vocabulary (required)</span>
         <textarea
           rows="7"
           [value]="content()"
@@ -44,6 +44,11 @@ import { textListPreviewLabel } from './text-list-preview';
       <p class="preview" aria-live="polite">
         {{ previewLabel() }}
       </p>
+      @if (!canSave()) {
+        <p id="mn-text-source-requirements" class="mn-hint">
+          {{ requirements() }}
+        </p>
+      }
       @if (editorError(); as error) {
         <p class="error" role="alert">{{ error }}</p>
       }
@@ -58,6 +63,7 @@ import { textListPreviewLabel } from './text-list-preview';
           type="submit"
           class="mn-button mn-button--primary"
           [disabled]="saving() || preview().entries.length === 0 || label().trim().length === 0"
+          [attr.aria-describedby]="!canSave() ? 'mn-text-source-requirements' : null"
           data-testid="save-text-source"
         >
           {{
@@ -120,6 +126,16 @@ export class TextListSourceComponent {
   protected readonly saving = signal(false);
   protected readonly editorError = signal<string | null>(null);
   protected readonly preview = computed(() => parseTextList(this.content()));
+  protected readonly canSave = computed(
+    () => this.label().trim().length > 0 && this.preview().entries.length > 0,
+  );
+  protected readonly requirements = computed(() => {
+    const needsName = this.label().trim().length === 0;
+    const needsWord = this.preview().entries.length === 0;
+    if (needsName && needsWord) return 'Add a list name and at least one word to continue.';
+    if (needsName) return 'Add a list name to continue.';
+    return 'Add at least one word to continue.';
+  });
   protected readonly previewLabel = computed(() => textListPreviewLabel(this.preview()));
 
   constructor() {

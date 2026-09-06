@@ -197,7 +197,7 @@ describe('StoryFormComponent', () => {
     expect(select?.textContent).toContain('Recently learned');
     expect(select?.textContent).toContain('Difficult');
     expect(element.querySelector('.word-selection')?.textContent).not.toContain('Inspiration only');
-    expect(select?.getAttribute('aria-describedby')).toBe('mn-priority-scope');
+    expect(select?.getAttribute('aria-describedby')).toBe('mn-defaults-scope');
   });
 
   it('emits a changed mode and locks the select during generation', () => {

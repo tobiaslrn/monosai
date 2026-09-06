@@ -1,0 +1,10 @@
+/**
+ * The complete viewport breakpoint set.
+ *
+ * Narrow changes compact placement; wide changes docked/stacked placement.
+ * Components should otherwise fit their own box or use a container query.
+ */
+$narrow: 32em;
+$narrow-max: 31.999em;
+$wide: 60em;
+$wide-max: 59.999em;

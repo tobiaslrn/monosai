@@ -1,3 +1,5 @@
+@use '../../../styles/breakpoints';
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -22,7 +24,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 540px;
+  min-height: 33.75rem;
 }
 
 .leave-hint {
@@ -40,37 +42,37 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  min-height: 420px;
+  min-height: 26.25rem;
   justify-content: center;
   text-align: center;
 }
 
 .result-screen h2 {
   margin: 0;
-  font-size: clamp(28px, 5vw, 38px);
+  font-size: 2rem;
   letter-spacing: -0.025em;
 }
 
 .ready-mark {
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 22px;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1.375rem;
   background: var(--status-success-soft);
   color: var(--status-success);
-  font-size: 30px;
+  font-size: 1.875rem;
   font-weight: 700;
 }
 
 .story-title {
   margin: var(--space-1) 0;
   font-family: var(--font-japanese);
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 600;
 }
 
-@media (max-width: 600px) {
+@media (max-width: breakpoints.$narrow-max) {
   .wait-screen,
   .result-screen {
     min-height: 0;

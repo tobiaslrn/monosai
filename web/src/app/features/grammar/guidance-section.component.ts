@@ -83,6 +83,8 @@ import { REGISTER_LABELS } from './register-labels';
     </fieldset>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     fieldset {
       display: flex;
       flex-direction: column;
@@ -157,7 +159,7 @@ import { REGISTER_LABELS } from './register-labels';
       gap: var(--space-2);
     }
 
-    @media (max-width: 32rem) {
+    @media (max-width: breakpoints.$narrow-max) {
       .options {
         display: grid;
         grid-template-columns: 1fr;

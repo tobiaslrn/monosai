@@ -1,7 +1,9 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   type ElementRef,
+  inject,
   input,
   output,
   signal,
@@ -13,6 +15,9 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ReaderAidsComponent } from './reader-aids.component';
 import type { ReaderContentState } from './reader-content-state';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
+import { ViewportService } from '../../core/platform/viewport.service';
+
+const SHEET_DISMISS_DISTANCE_PX = 80;
 
 /** One reader options surface: appearance, saved content, and maintenance. */
 @Component({
@@ -26,6 +31,8 @@ import type { PreparationLayer } from '../../domain/enrichment/preparation';
       type="button"
       class="mn-icon-button anchor-button"
       aria-label="Story options"
+      [style.transform]="dragTransform()"
+      [class.is-dragging]="dragOffset() > 0"
       title="Story options"
       aria-haspopup="dialog"
       aria-controls="mn-reader-menu-panel"
@@ -44,18 +51,35 @@ import type { PreparationLayer } from '../../domain/enrichment/preparation';
       [cdkTrapFocus]="menuOpen()"
       (toggle)="onToggle()"
     >
+      @if (isMobile()) {
+        <button
+          #handle
+          type="button"
+          class="handle"
+          aria-label="Close story options"
+          (pointerdown)="onDragStart($event)"
+          (pointermove)="onDragMove($event)"
+          (pointerup)="onDragEnd()"
+          (pointercancel)="onDragEnd()"
+          (click)="onHandleClick()"
+        >
+          <span class="grip" aria-hidden="true"></span>
+        </button>
+      }
       <header>
         <h2>Story options</h2>
-        <button
-          #closeButton
-          type="button"
-          class="mn-icon-button"
-          aria-label="Close story options"
-          title="Close story options"
-          (click)="close()"
-        >
-          <mn-icon name="close" />
-        </button>
+        @if (!isMobile()) {
+          <button
+            #closeButton
+            type="button"
+            class="mn-icon-button"
+            aria-label="Close story options"
+            title="Close story options"
+            (click)="close()"
+          >
+            <mn-icon name="close" />
+          </button>
+        }
       </header>
       <mn-reader-aids />
       <section class="content" aria-label="Content for this story">
@@ -104,10 +128,12 @@ import type { PreparationLayer } from '../../domain/enrichment/preparation';
             @if (row.error) {
               <p class="mn-error" role="alert">{{ row.error }}</p>
             }
-            @if (row.layer === 'audio' && hasAudio()) {
+            @if (hasSavedLayer(row.layer)) {
               <details class="mn-disclosure maintenance">
-                <summary>Audio options</summary>
-                <button type="button" class="delete" (click)="deleteAudio()">Delete audio…</button>
+                <summary>{{ row.name }} options</summary>
+                <button type="button" class="delete" (click)="clearLayer(row.layer)">
+                  {{ clearLabel(row.layer) }}
+                </button>
               </details>
             }
           </section>
@@ -126,6 +152,7 @@ import type { PreparationLayer } from '../../domain/enrichment/preparation';
 export class ReaderMenuComponent {
   readonly rows = input.required<readonly ReaderContentState[]>();
   readonly hasAudio = input(false);
+  readonly savedLayers = input<readonly PreparationLayer[]>([]);
   readonly pending = input<PreparationLayer | null>(null);
   readonly error = input<string | null>(null);
   readonly prepare = output<PreparationLayer>();
@@ -133,11 +160,23 @@ export class ReaderMenuComponent {
   readonly stopRequested = output<PreparationLayer>();
   readonly listen = output<void>();
   readonly deleteAudioRequested = output<void>();
+  readonly clearAidRequested = output<'english' | 'grammar'>();
   readonly deleteRequested = output<void>();
   private readonly anchor = viewChild.required<ElementRef<HTMLButtonElement>>('anchor');
   private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
-  private readonly closeButton = viewChild.required<ElementRef<HTMLButtonElement>>('closeButton');
+  private readonly closeButton = viewChild<ElementRef<HTMLButtonElement>>('closeButton');
+  private readonly handle = viewChild<ElementRef<HTMLButtonElement>>('handle');
+  private readonly viewport = inject(ViewportService);
+  protected readonly isMobile = this.viewport.isMobile;
   protected readonly menuOpen = signal(false);
+  private readonly dragOffsetSignal = signal(0);
+  protected readonly dragOffset = this.dragOffsetSignal.asReadonly();
+  protected readonly dragTransform = computed(() => {
+    const offset = this.dragOffsetSignal();
+    return offset === 0 ? null : `translateY(${String(offset)}px)`;
+  });
+  private dragStartY: number | null = null;
+  private dragged = false;
 
   open(): void {
     this.panel().nativeElement.showPopover();
@@ -151,7 +190,7 @@ export class ReaderMenuComponent {
     this.menuOpen.set(open);
     if (open) {
       this.opened.emit();
-      this.closeButton().nativeElement.focus();
+      (this.isMobile() ? this.handle() : this.closeButton())?.nativeElement.focus();
     }
   }
   protected onEscape(event: Event): void {
@@ -168,8 +207,56 @@ export class ReaderMenuComponent {
     this.close();
     this.deleteAudioRequested.emit();
   }
+  protected hasSavedLayer(layer: PreparationLayer): boolean {
+    return layer === 'audio' ? this.hasAudio() : this.savedLayers().includes(layer);
+  }
+  protected clearLabel(layer: PreparationLayer): string {
+    switch (layer) {
+      case 'english':
+        return 'Clear translation…';
+      case 'grammar':
+        return 'Clear grammar notes…';
+      case 'audio':
+        return 'Delete audio…';
+    }
+  }
+  protected clearLayer(layer: PreparationLayer): void {
+    if (layer === 'audio') {
+      this.deleteAudio();
+      return;
+    }
+    this.close();
+    this.clearAidRequested.emit(layer);
+  }
   protected deleteStory(): void {
     this.close();
     this.deleteRequested.emit();
+  }
+
+  protected onDragStart(event: PointerEvent): void {
+    this.dragStartY = event.clientY;
+    (event.currentTarget as Element).setPointerCapture(event.pointerId);
+  }
+
+  protected onDragMove(event: PointerEvent): void {
+    if (this.dragStartY === null) return;
+    const offset = Math.max(0, event.clientY - this.dragStartY);
+    if (offset > 0) this.dragged = true;
+    this.dragOffsetSignal.set(offset);
+  }
+
+  protected onDragEnd(): void {
+    const dismissed = this.dragOffsetSignal() >= SHEET_DISMISS_DISTANCE_PX;
+    this.dragStartY = null;
+    this.dragOffsetSignal.set(0);
+    if (dismissed) this.close();
+  }
+
+  protected onHandleClick(): void {
+    if (this.dragged) {
+      this.dragged = false;
+      return;
+    }
+    this.close();
   }
 }

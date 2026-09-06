@@ -96,10 +96,10 @@ describe('copyForFailure', () => {
  * reason a single Anki entry can exist at all.
  */
 describe('connectFailureCopy', () => {
-  it('names the port that was tried, and the add-on, on a desktop', () => {
+  it('leads with recovery and offers the port as an advanced detail on desktop', () => {
     const copy = connectFailureCopy('desktop', ankiError('not-running', 'x'), 9999);
 
-    expect(copy.headline).toContain('9999');
+    expect(copy.headline).toBe('Anki is not answering.');
     expect(copy.paragraphs[0].link?.href).toBe(ANKI_LINKS.ankiConnectAddon);
     expect(copy.offersPort).toBe(true);
   });

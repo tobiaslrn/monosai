@@ -5,7 +5,7 @@ import type { PreparationLayer } from '../../domain/enrichment/preparation';
 let instanceCount = 0;
 
 const LABELS: Readonly<Record<PreparationLayer, string>> = {
-  english: 'English',
+  english: 'English translation',
   grammar: 'Grammar notes',
   audio: 'Audio',
 };

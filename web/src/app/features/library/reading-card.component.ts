@@ -113,7 +113,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
   styles: `
     .reading-row {
       position: relative;
-      min-height: 76px;
+      min-height: 4.75rem;
       padding: var(--space-3) var(--space-1) var(--space-3) var(--space-3);
       border-bottom: 1px solid var(--border-subtle);
       transition: background-color var(--motion-fast) ease-out;
@@ -149,7 +149,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       min-width: 0;
       margin: 0;
       font-family: var(--font-japanese);
-      font-size: 20px;
+      font-size: 1.25rem;
       line-height: 1.35;
       overflow-wrap: anywhere;
     }

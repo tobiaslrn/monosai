@@ -29,9 +29,9 @@ describe('normalizeImportedText', () => {
 
 describe('importAdvisories', () => {
   it('warns when meaningful text has no Japanese script', () => {
-    expect(importAdvisories('Hello world.').map((advisory) => advisory.code)).toEqual([
-      'little-japanese',
-    ]);
+    const advisories = importAdvisories('Hello world.');
+    expect(advisories.map((advisory) => advisory.code)).toEqual(['little-japanese']);
+    expect(advisories[0].message).toContain('continue only if');
   });
 
   it('allows legitimate mixed Japanese text without that warning', () => {

@@ -193,7 +193,9 @@ also closes its queued work and removes that layer's standing target without del
 Queued work, the first outstanding grammar request, completed sentence counts, provider failures,
 storage failures, and Stop, Continue, and Retry actions are reported in the affected Story options
 row. The row is an accessible live status; closing the panel never cancels work. Only Listen and
-Story options remain beside the title. Generation retains its target switches.
+Story options remain beside the title. Each persisted aid can be cleared independently after an
+explicit confirmation; the maintenance transaction removes that aid's rows and resumable job while
+preserving the reading and its other aids. Generation retains its target switches.
 
 The reading surface leaves native touch selection and copying to the browser. A touch tap on a word
 opens it at once; a second tap in the same sentence within the gesture window replaces it with

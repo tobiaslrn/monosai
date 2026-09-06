@@ -23,7 +23,7 @@ import { TextInputStepComponent } from './text-input-step.component';
     <div class="mn-page">
       <mn-page-header heading="Add text" backTo="/library" backLabel="Back to library" />
 
-      <p class="mn-hint">Paste Japanese text to create a reading.</p>
+      <p class="mn-hint">Paste Japanese text to add a story.</p>
 
       <!--
         A card, like every other surface a learner types into: the Generate

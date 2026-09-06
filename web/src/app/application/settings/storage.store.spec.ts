@@ -40,6 +40,10 @@ class StubMaintenance implements StorageMaintenance {
     return Promise.resolve(ok(undefined));
   }
 
+  clearReadingAid(): Promise<Result<void, StorageError>> {
+    return Promise.resolve(ok(undefined));
+  }
+
   resetAllData(): Promise<Result<void, StorageError>> {
     return Promise.resolve(ok(undefined));
   }

@@ -71,7 +71,7 @@ export interface RenameDialogData {
 
     h2 {
       margin: 0;
-      font-size: 20px;
+      font-size: 1.25rem;
     }
 
     .actions {

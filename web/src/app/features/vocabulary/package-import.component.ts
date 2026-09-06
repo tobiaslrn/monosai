@@ -192,6 +192,8 @@ import { ANKI_LINKS } from './anki-links';
     }
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     .panel {
       display: grid;
       gap: var(--space-2);
@@ -215,7 +217,7 @@ import { ANKI_LINKS } from './anki-links';
       gap: var(--space-2);
     }
 
-    @media (min-width: 40rem) {
+    @media (min-width: breakpoints.$narrow) {
       .fields {
         grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
       }

@@ -39,6 +39,8 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
     </a>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     /*
      * A panel like every other section on this page, so a signpost among boxes
      * does not read as something that fell out of one. It is a single link, so
@@ -65,7 +67,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
       text-decoration: underline;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: breakpoints.$narrow-max) {
       .row {
         padding: var(--space-4);
       }

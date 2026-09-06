@@ -266,7 +266,8 @@ describe('ReadingLevelPageComponent', () => {
 
     const alert = element.querySelector('[data-testid="anki-connect-failed"]');
     expect(alert?.getAttribute('role')).toBe('alert');
-    expect(alert?.textContent).toContain('Nothing is listening on 8765');
+    expect(alert?.textContent).toContain('Anki is not answering');
+    expect(alert?.querySelector('details')?.open).toBe(false);
     expect(alert?.textContent).toContain('AnkiConnect add-on');
     expect(alert?.textContent).toContain('anki/not-running');
     expect(alert?.querySelector('a[href*="troubleshooting"]')).not.toBeNull();

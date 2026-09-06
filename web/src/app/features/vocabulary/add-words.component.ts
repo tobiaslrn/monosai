@@ -93,9 +93,9 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
                     {{ paragraph.after }}
                   </p>
                 }
-                @if (copy.offersPort) {
-                  <details class="mn-disclosure">
-                    <summary><span class="summary-label">Different port</span></summary>
+                <details class="mn-disclosure advanced-details">
+                  <summary><span class="summary-label">Advanced details</span></summary>
+                  @if (copy.offersPort) {
                     <label class="mn-field port">
                       <span>Port</span>
                       <input
@@ -111,14 +111,14 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
                         data-testid="anki-connect-port"
                       />
                     </label>
-                  </details>
-                }
-                <p class="code-line">
-                  {{ failureCode() }} ·
-                  <a [href]="links.troubleshooting" target="_blank" rel="noopener noreferrer"
-                    >what this means (opens in a new tab)</a
-                  >
-                </p>
+                  }
+                  <p class="code-line">
+                    {{ failureCode() }} ·
+                    <a [href]="links.troubleshooting" target="_blank" rel="noopener noreferrer"
+                      >troubleshooting (opens in a new tab)</a
+                    >
+                  </p>
+                </details>
               </div>
               <div class="sheet-foot">
                 <button
@@ -298,8 +298,13 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
     }
 
     .code-line {
+      margin-top: var(--space-2);
       color: var(--text-secondary);
       font-size: var(--text-sm);
+    }
+
+    .advanced-details {
+      border-top: 1px solid var(--border-subtle);
     }
 
     .aside {

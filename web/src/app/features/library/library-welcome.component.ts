@@ -55,6 +55,8 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     </section>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     .welcome {
       display: flex;
       flex-direction: column;
@@ -65,7 +67,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     h2 {
       margin: 0;
       font-family: var(--font-ui);
-      font-size: 28px;
+      font-size: 1.75rem;
       font-weight: 700;
       letter-spacing: -0.02em;
       line-height: 1.25;
@@ -129,9 +131,9 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       line-height: 1.45;
     }
 
-    @media (max-width: 599px) {
+    @media (max-width: breakpoints.$narrow-max) {
       h2 {
-        font-size: 24px;
+        font-size: 1.5rem;
       }
 
       .choices {

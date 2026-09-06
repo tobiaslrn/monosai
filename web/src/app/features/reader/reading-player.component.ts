@@ -302,6 +302,12 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     </div>
   `,
   styles: `
+    :host {
+      display: block;
+      min-width: 0;
+      container-type: inline-size;
+    }
+
     .player {
       display: flex;
       flex-direction: column;
@@ -566,6 +572,19 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       font-weight: 600;
       text-decoration: none;
       white-space: nowrap;
+    }
+
+    /* A labelled setup action gets its own row when six full touch targets no longer fit. */
+    @container (max-width: 23rem) {
+      .controls:has(.primary--wide) {
+        flex-wrap: wrap;
+      }
+
+      .controls:has(.primary--wide) .primary--wide {
+        order: -1;
+        flex-basis: 100%;
+        inline-size: 100%;
+      }
     }
 
     /*

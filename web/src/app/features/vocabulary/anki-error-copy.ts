@@ -268,7 +268,7 @@ const BRIDGE_IS_READ_ONLY: FailureParagraph = {
 export function connectFailureCopy(
   platform: HostPlatform,
   error: { readonly domain: string; readonly code: string },
-  port: number,
+  _port: number,
 ): ConnectFailureCopy {
   if (platform === 'android' && error.code === 'bridge-not-running') {
     return {
@@ -306,7 +306,7 @@ export function connectFailureCopy(
   }
   if (platform === 'desktop' && error.code === 'not-running') {
     return {
-      headline: `Nothing is listening on ${String(port)}.`,
+      headline: 'Anki is not answering.',
       paragraphs: [
         {
           before: 'Open Anki. If it is already open, it needs the ',

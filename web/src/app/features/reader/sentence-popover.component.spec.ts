@@ -160,6 +160,15 @@ describe('SentencePopoverComponent', () => {
     expect(fixture.componentInstance.requests).toBe(1);
   });
 
+  it('always leads with the selectable Japanese source sentence', () => {
+    const rendered = host(render());
+    const source = rendered.querySelector('.source');
+
+    expect(source?.textContent).toBe('猫が寝た。');
+    expect(source?.getAttribute('lang')).toBe('ja');
+    expect(rendered.querySelector('.sentence-popover')?.firstElementChild).toBe(source);
+  });
+
   it('requests nothing merely by being opened', () => {
     // Opening a sentence is free: a stray press on a line must never cost a
     // request, so the component only ever asks when its button is pressed.

@@ -56,7 +56,7 @@ export function describeSourceRemoval(
     // Lowercase: these are joined into one sentence when rendered.
     preserves: [
       'your stories',
-      source.kind === 'text-list' ? 'nothing else on this device' : 'your Anki collection',
+      source.kind === 'text-list' ? 'all other settings on this device' : 'your Anki collection',
     ],
     emptiesVocabulary,
   };

@@ -80,6 +80,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
         </div>
 
         <mn-source-list />
+        <p class="draft-status mn-hint" role="status">This list is not saved yet.</p>
         @if (shortfall(); as note) {
           <p class="mn-hint">{{ note }}</p>
         }
@@ -138,6 +139,8 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
     </div>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     /*
      * A deep link used to put a section heading flush at y=0, scrolling the page
      * title, the back link, and the standing summary out of view — so a learner
@@ -170,13 +173,26 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
       font-size: var(--text-sm);
     }
 
+    .draft-status {
+      display: none;
+      margin: 0;
+    }
+
+    #words:has(mn-add-words.is-editor) mn-source-list {
+      display: none;
+    }
+
+    #words:has(mn-add-words.is-editor) .draft-status {
+      display: block;
+    }
+
     /*
      * The heading and its Add source control share a line only while there is
      * nothing to put below them. An open editor asks for a full row of its own
      * (flex-basis: 100%), which nowrap silently refused — so opening
      * Add source → Pasted list drew the editor over the "Words" heading.
      */
-    @media (min-width: 560px) {
+    @media (min-width: breakpoints.$narrow) {
       .section-heading:not(:has(mn-add-words.is-editor)) {
         flex-wrap: nowrap;
         align-items: flex-start;

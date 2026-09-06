@@ -140,6 +140,20 @@ describe('Story options', () => {
     expect(deleted).toHaveBeenCalledOnce();
   });
 
+  it('gives saved translation and grammar rows the same clear lifecycle', () => {
+    const { fixture, element, hide, press } = render();
+    fixture.componentRef.setInput('savedLayers', ['english']);
+    fixture.detectChanges();
+    const cleared = vi.fn();
+    fixture.componentInstance.clearAidRequested.subscribe(cleared);
+
+    expect(element.querySelector('details')?.textContent).toContain('English translation options');
+    press('Clear translation…');
+
+    expect(hide).toHaveBeenCalledOnce();
+    expect(cleared).toHaveBeenCalledWith('english');
+  });
+
   it('shows saving errors and links unavailable preparation to settings', () => {
     const { fixture, element } = render({
       ...ROW,

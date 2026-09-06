@@ -129,7 +129,9 @@ The preparation lane writes each accepted grammar record before advancing its
 job row. Story options therefore reports the real queue/request/save outcome:
 completed analyses survive a provider failure, cancellation, reload, or a
 retry, while a storage failure leaves the job recoverable without counting an
-unwritten record.
+unwritten record. Per-reading maintenance clears translation, grammar, or audio
+atomically with that layer's resumable job and denormalized summary, leaving the
+Japanese text and every other aid untouched.
 
 ## 8.7 Offline and update behaviour
 

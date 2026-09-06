@@ -393,7 +393,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
     }
 
     .flag .mn-button {
-      min-height: 34px;
+      min-height: var(--touch-target);
       padding: 0 var(--space-3);
       border-color: currentcolor;
       color: inherit;

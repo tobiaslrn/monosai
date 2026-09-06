@@ -51,6 +51,8 @@ import { HelpIntroService } from './help-intro.service';
     </main>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     :host {
       display: block;
       min-height: 100dvh;
@@ -83,7 +85,7 @@ import { HelpIntroService } from './help-intro.service';
       flex: 1 1 15rem;
     }
 
-    @media (min-width: 960px) {
+    @media (min-width: breakpoints.$wide) {
       .main {
         padding: var(--space-6);
       }

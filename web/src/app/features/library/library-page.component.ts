@@ -177,6 +177,8 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     </ng-template>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     /*
      * The shared rail, not a wider one of its own: above ~1200px a 1120px shelf
      * overhung the app bar by 80px on both sides, so the wordmark, the shelf
@@ -255,7 +257,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       list-style: none;
     }
 
-    @media (max-width: 959px) {
+    @media (max-width: breakpoints.$wide-max) {
       .library-page {
         gap: var(--space-5);
       }

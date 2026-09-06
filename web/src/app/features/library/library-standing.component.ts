@@ -47,6 +47,8 @@ import {
     </a>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     :host {
       display: block;
       min-width: 0;
@@ -72,7 +74,7 @@ import {
       gap: var(--space-1);
       align-items: center;
       font-family: var(--font-ui);
-      font-size: 22px;
+      font-size: 1.375rem;
       font-weight: 700;
       letter-spacing: -0.02em;
       line-height: 1.25;
@@ -116,9 +118,9 @@ import {
       font-size: var(--text-sm);
     }
 
-    @media (max-width: 599px) {
+    @media (max-width: breakpoints.$narrow-max) {
       .headline {
-        font-size: 20px;
+        font-size: 1.25rem;
       }
     }
   `,

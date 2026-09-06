@@ -104,7 +104,7 @@ export function importAdvisories(text: string): readonly ImportAdvisory[] {
     advisories.push({
       code: 'little-japanese',
       message:
-        'This text does not appear to contain Japanese. Check that you pasted the intended text before adding it.',
+        'No Japanese was detected. Check what you pasted; continue only if this mixed or non-Japanese text is intentional.',
     });
   }
   if (longestUnpunctuatedRun(text) > MAXIMUM_UNPUNCTUATED_CHARACTERS) {

@@ -7,6 +7,8 @@ import {
 } from '../../domain/storage/persistence-status';
 import type { StorageMaintenance } from '../../domain/storage/storage-maintenance';
 import type { StorageError } from '../../domain/storage/storage-error';
+import type { ClearableReadingAid } from '../../domain/storage/storage-maintenance';
+import { NO_GRAMMAR_REVIEW } from '../../domain/reading/summaries';
 import { DATABASE_NAME, type MonosaiDatabase } from './monosai-db';
 import {
   runStorage,
@@ -114,6 +116,28 @@ export class BrowserStorageMaintenance implements StorageMaintenance {
           });
         },
       );
+    });
+  }
+
+  clearReadingAid(
+    readingId: ReadingId,
+    layer: ClearableReadingAid,
+  ): Promise<Result<void, StorageError>> {
+    return runStorage(`storage.clearReadingAid.${layer}`, async () => {
+      const aidTable = layer === 'english' ? this.db.translations : this.db.grammarAnalyses;
+      const jobKind = layer === 'english' ? 'translate-reading' : 'analyze-reading';
+      await this.db.transaction('rw', [aidTable, this.db.assetJobs, this.db.readings], async () => {
+        const reading = await this.db.readings.get(readingId);
+        if (reading === undefined) return;
+        await aidTable.where('readingId').equals(readingId).delete();
+        await this.db.assetJobs.where('[readingId+kind]').equals([readingId, jobKind]).delete();
+        await this.db.readings.update(
+          readingId,
+          layer === 'english'
+            ? { translationSummary: { total: reading.sentenceCount, completed: 0, failed: 0 } }
+            : { grammarSummary: NO_GRAMMAR_REVIEW },
+        );
+      });
     });
   }
 

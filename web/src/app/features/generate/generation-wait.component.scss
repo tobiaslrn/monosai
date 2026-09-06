@@ -1,14 +1,16 @@
+@use '../../../styles/breakpoints';
+
 :host {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 390px;
+  min-height: 24.375rem;
   text-align: center;
 }
 
 .copy {
-  max-width: 600px;
+  max-width: 37.5rem;
   animation: copy-in var(--motion-medium) ease-out;
 }
 
@@ -18,7 +20,7 @@
 
 h2 {
   margin: 0;
-  font-size: clamp(26px, 5vw, 38px);
+  font-size: 2rem;
   letter-spacing: -0.025em;
 }
 
@@ -53,7 +55,7 @@ h2 {
 @keyframes copy-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(0.375rem);
   }
 }
 
@@ -68,8 +70,8 @@ h2 {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: breakpoints.$narrow-max) {
   :host {
-    min-height: 340px;
+    min-height: 21.25rem;
   }
 }

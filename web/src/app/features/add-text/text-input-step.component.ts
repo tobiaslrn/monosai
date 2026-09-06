@@ -19,7 +19,7 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
       <label for="mn-import-text">Japanese text</label>
       <textarea
         id="mn-import-text"
-        rows="12"
+        [rows]="editorRows()"
         lang="ja"
         required
         [attr.aria-invalid]="store.rejection() !== null || isOverLimit() ? 'true' : null"
@@ -125,6 +125,8 @@ export class TextInputStepComponent {
     }
     return ids.join(' ');
   });
+  /** Keep the empty form and its action together; grow once there is real prose to work with. */
+  protected readonly editorRows = computed(() => (this.store.characterCount() >= 500 ? 12 : 4));
 
   protected isOverLimit(): boolean {
     return this.store.characterCount() > MAXIMUM_IMPORT_CHARACTERS;

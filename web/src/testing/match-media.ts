@@ -14,18 +14,22 @@ interface ManagedList {
 }
 
 function evaluate(query: string, widthPx: number, prefersDark: boolean): boolean {
-  const min = /\(min-width:\s*(\d+)px\)/.exec(query);
+  const min = /\(min-width:\s*(\d+(?:\.\d+)?)(px|em)\)/.exec(query);
   if (min) {
-    return widthPx >= Number(min[1]);
+    return widthPx >= toPixels(Number(min[1]), min[2]);
   }
-  const max = /\(max-width:\s*(\d+)px\)/.exec(query);
+  const max = /\(max-width:\s*(\d+(?:\.\d+)?)(px|em)\)/.exec(query);
   if (max) {
-    return widthPx <= Number(max[1]);
+    return widthPx <= toPixels(Number(max[1]), max[2]);
   }
   if (query.includes('prefers-color-scheme: dark')) {
     return prefersDark;
   }
   return false;
+}
+
+function toPixels(value: number, unit: string): number {
+  return unit === 'em' ? value * 16 : value;
 }
 
 export function installFakeMatchMedia(

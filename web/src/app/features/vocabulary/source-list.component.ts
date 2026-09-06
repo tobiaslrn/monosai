@@ -6,7 +6,12 @@ import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-hist
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { SourceStandingStore } from '../../application/vocabulary/source-standing.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
-import { formatCount, formatDate, formatRelativeDay } from '../../domain/shared/locale';
+import {
+  formatCount,
+  formatCountOf,
+  formatDate,
+  formatRelativeDay,
+} from '../../domain/shared/locale';
 import type { VocabularySource } from '../../domain/vocabulary/vocabulary-source';
 import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-source';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
@@ -126,7 +131,7 @@ import {
       gap: var(--space-3);
       align-items: center;
       width: 100%;
-      min-height: 56px;
+      min-height: 3.5rem;
       padding: var(--space-2) 0;
       color: inherit;
       text-decoration: none;
@@ -200,7 +205,7 @@ import {
     }
 
     .flag .mn-button {
-      min-height: 34px;
+      min-height: var(--touch-target);
       padding: 0 var(--space-3);
       border-color: currentcolor;
       color: inherit;
@@ -245,6 +250,13 @@ export class SourceListComponent {
     if (snapshot === null || (snapshot.uniqueEntryCount === 0 && this.sources().length === 0)) {
       return 'No words yet';
     }
+    const sourceTotal = this.sources().reduce(
+      (total, source) => total + (this.standings.standingFor(source.id)?.entryCount ?? 0),
+      0,
+    );
+    if (this.sources().some((source) => !this.included(source))) {
+      return `${formatCountOf(snapshot.uniqueEntryCount, 'counted word')} · ${formatCountOf(sourceTotal, 'word')} in ${formatCountOf(this.sources().length, 'source')}`;
+    }
     return vocabularyCountLabel(snapshot.uniqueEntryCount);
   });
 
@@ -262,7 +274,10 @@ export class SourceListComponent {
       return null;
     }
     const checked = this.standings.lastReadAt();
-    const from = `· from ${vocabularySourceSummary(snapshot.sourceKinds)}`;
+    const from =
+      snapshot.sourceKinds.length === 0
+        ? '· counted from included sources'
+        : `· from ${vocabularySourceSummary(snapshot.sourceKinds)}`;
     return checked === null
       ? from
       : `${from} · checked ${formatRelativeDay(checked, this.clock.now())}`;

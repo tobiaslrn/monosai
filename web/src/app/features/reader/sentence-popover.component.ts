@@ -48,6 +48,7 @@ export interface UnknownWord {
   imports: [IconComponent, AidFailureComponent],
   template: `
     <div class="sentence-popover">
+      <p class="source" lang="ja">{{ sentenceText() }}</p>
       @if (aids().translation; as translation) {
         <p class="translation" lang="en">{{ translation.textEn }}</p>
       } @else if (isRunning()) {
@@ -191,6 +192,17 @@ export interface UnknownWord {
       margin: 0;
       font-size: var(--text-lg);
       line-height: 1.55;
+    }
+
+    .source {
+      align-self: stretch;
+      margin: 0;
+      padding-inline-end: var(--mn-popover-close-inset, 0px);
+      font-family: var(--font-japanese);
+      font-size: var(--reader-font-size, 1.25rem);
+      line-height: 1.7;
+      user-select: text;
+      -webkit-user-select: text;
     }
 
     /* Ruled in each marker's own colour, so a section names its underline. */

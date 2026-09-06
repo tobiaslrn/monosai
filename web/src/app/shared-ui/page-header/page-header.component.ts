@@ -38,6 +38,8 @@ import { IconComponent } from '../icon/icon.component';
     </header>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     .head {
       display: flex;
       gap: var(--space-3);
@@ -51,7 +53,7 @@ import { IconComponent } from '../icon/icon.component';
       min-width: 0;
       margin: 0;
       overflow: hidden;
-      font-size: 26px;
+      font-size: 1.625rem;
       white-space: nowrap;
       text-overflow: ellipsis;
     }
@@ -63,13 +65,13 @@ import { IconComponent } from '../icon/icon.component';
       align-items: center;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: breakpoints.$narrow-max) {
       .head {
         gap: var(--space-2);
       }
 
       h1 {
-        font-size: 24px;
+        font-size: 1.5rem;
       }
     }
   `,

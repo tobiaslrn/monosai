@@ -31,6 +31,7 @@ describe('ReadingAudioMaintenanceStore', () => {
       requestPersistence: vi.fn(),
       clearAudioCache: vi.fn(),
       clearReadingAudio,
+      clearReadingAid: vi.fn(),
       resetAllData: vi.fn(),
     };
     jobs = { cancelAndWait: vi.fn(() => Promise.resolve()) };

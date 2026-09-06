@@ -91,21 +91,21 @@
 :root {
   @include light-palette;
 
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
 
-  --radius-control: 12px;
-  --radius-card: 16px;
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
   --radius-pill: 999px;
 
-  --text-sm: 14px;
-  --text-md: 16px;
-  --text-lg: 18px;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
 
   --font-ui: system-ui, 'Segoe UI', roboto, helvetica, arial, sans-serif;
   --font-japanese: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Noto Sans JP', meiryo, sans-serif;
@@ -117,18 +117,18 @@
    * would resolve against this element's scale of 1 and never follow the
    * learner's setting.
    */
-  --reader-base-font-size: 20px;
+  --reader-base-font-size: 1.25rem;
   --reader-scale: 1;
   --reader-font-size: var(--reader-base-font-size);
   --reader-line-height-plain: 2.1;
   --reader-line-height-ruby: 2.6;
-  --reader-paragraph-gap: 36px;
-  --reader-measure: 720px;
-  --layout-measure: 960px;
+  --reader-paragraph-gap: 2.25rem;
+  --reader-measure: 36em;
+  --layout-measure: 60rem;
 
   --motion-fast: 120ms;
   --motion-medium: 200ms;
-  --touch-target: 44px;
+  --touch-target: max(44px, 2.75rem);
 
   color-scheme: light;
 }
@@ -144,11 +144,5 @@
     @include dark-palette;
 
     color-scheme: dark;
-  }
-}
-
-@media (max-width: 959px) {
-  :root {
-    --reader-base-font-size: 19px;
   }
 }

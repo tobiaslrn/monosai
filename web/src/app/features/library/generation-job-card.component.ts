@@ -49,7 +49,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
   styles: `
     .job-row {
       position: relative;
-      min-height: 76px;
+      min-height: 4.75rem;
       padding: var(--space-3) var(--space-1) var(--space-3) var(--space-3);
       border-bottom: 1px solid var(--border-subtle);
       background: var(--surface-sunken);
@@ -83,7 +83,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
       min-width: 0;
       margin: 0;
       font-family: var(--font-ui);
-      font-size: 18px;
+      font-size: 1.125rem;
       font-weight: 600;
       line-height: 1.35;
       overflow-wrap: anywhere;

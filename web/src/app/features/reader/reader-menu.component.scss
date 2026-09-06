@@ -1,3 +1,5 @@
+@use '../../../styles/breakpoints';
+
 .anchor-button {
   anchor-name: --mn-options-anchor;
 }
@@ -46,6 +48,12 @@ footer {
   margin-top: var(--space-3);
   padding-top: var(--space-3);
   border-top: 1px solid var(--border-subtle);
+}
+footer {
+  position: sticky;
+  bottom: calc(-1 * var(--space-4));
+  padding-bottom: var(--space-4);
+  background: var(--surface-panel);
 }
 .content-row {
   padding-block: var(--space-3);
@@ -96,7 +104,7 @@ footer {
   font-size: var(--text-sm);
   margin-bottom: 0;
 }
-@media (max-width: 59.9375em) {
+@media (max-width: breakpoints.$wide-max) {
   .panel {
     position-anchor: auto;
     position-area: none;
@@ -106,5 +114,34 @@ footer {
     max-height: calc(100dvh - var(--space-4));
     padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
     border-radius: var(--radius-card) var(--radius-card) 0 0;
+  }
+
+  .panel.is-dragging {
+    transition: none;
+  }
+
+  .handle {
+    position: sticky;
+    top: calc(-1 * var(--space-4));
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(100% + 2 * var(--space-4));
+    min-height: var(--touch-target);
+    margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+    padding: 0;
+    border: 0;
+    background: var(--surface-panel);
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .grip {
+    width: 2.5rem;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--border-strong);
+    opacity: 0.6;
   }
 }

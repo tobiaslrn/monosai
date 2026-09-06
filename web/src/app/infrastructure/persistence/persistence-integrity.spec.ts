@@ -592,6 +592,67 @@ describe('BrowserStorageMaintenance', () => {
     expect(otherReading.ok && otherReading.value?.audioSummary.completed).toBe(1);
   });
 
+  it('clears one reading translation and its job without touching other aids', async () => {
+    const readings = new DexieReadingRepository(db, clock);
+    const enrichment = new DexieEnrichmentRepository(db);
+    const jobs = new DexieJobRepository(db, clock);
+    const draft = importedReadingFixture({ seed: 35 });
+    await readings.saveImportedReading(draft);
+    await enrichment.storeTranslation(
+      {
+        id: uuid(9500),
+        sentenceId: draft.sentences[0].id,
+        readingId: draft.reading.id,
+        sourceContentHash: draft.sentences[0].contentHash,
+        textEn: 'Saved translation.',
+        modelId: 'vendor/text',
+        promptVersion: 'v1',
+        cacheKey: 'translation-clear-key',
+        createdAt: clock.now(),
+      },
+      new Map([[draft.sentences[0].id, 'translation-clear-key']]),
+    );
+    await enrichment.storeAudio(
+      {
+        id: assetId(uuid(9501)),
+        sentenceId: draft.sentences[0].id,
+        readingId: draft.reading.id,
+        sourceContentHash: draft.sentences[0].contentHash,
+        modelId: 'vendor/tts',
+        voiceId: 'voice-a',
+        optionsFingerprint: 'fingerprint',
+        mimeType: 'audio/mpeg',
+        byteLength: 1,
+        blob: new Blob([new Uint8Array([1])], { type: 'audio/mpeg' }),
+        cacheKey: 'audio-preserved-key',
+        createdAt: clock.now(),
+      },
+      new Map([[draft.sentences[0].id, 'audio-preserved-key']]),
+    );
+    await jobs.create({
+      id: jobId(uuid(9502)),
+      kind: 'translate-reading',
+      readingId: draft.reading.id,
+      state: 'complete',
+      orderedSentenceIds: [draft.sentences[0].id],
+      completedSentenceIds: [draft.sentences[0].id],
+      failedItems: [],
+      configFingerprint: 'fingerprint',
+      createdAt: clock.now(),
+      updatedAt: clock.now(),
+    });
+
+    const cleared = await maintenance.clearReadingAid(draft.reading.id, 'english');
+
+    expect(cleared.ok).toBe(true);
+    expect(await db.translations.where('readingId').equals(draft.reading.id).count()).toBe(0);
+    expect(await db.audioAssets.where('readingId').equals(draft.reading.id).count()).toBe(1);
+    expect(await db.assetJobs.where('readingId').equals(draft.reading.id).count()).toBe(0);
+    const stored = await readings.getReading(draft.reading.id);
+    expect(stored.ok && stored.value?.translationSummary.completed).toBe(0);
+    expect(stored.ok && stored.value?.audioSummary.completed).toBe(1);
+  });
+
   it('requests persistence and reports the refreshed status when a storage manager exists', async () => {
     const persist = vi.fn(() => Promise.resolve(true));
     const navigatorStub = {

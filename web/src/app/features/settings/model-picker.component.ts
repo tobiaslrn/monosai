@@ -178,7 +178,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
     }
     small {
       color: var(--text-secondary);
-      font-size: 12px;
+      font-size: 0.75rem;
       font-weight: 400;
     }
     .model-id {
@@ -222,7 +222,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       margin: 0;
       padding: var(--space-2) var(--space-3) var(--space-1);
       background: var(--action-primary-soft);
-      font-size: 11px;
+      font-size: 0.6875rem;
     }
     .results {
       min-height: 3rem;
@@ -263,7 +263,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
     .star {
       min-width: var(--touch-target);
       color: var(--action-primary);
-      font-size: 20px;
+      font-size: 1.25rem;
     }
     .fallback {
       width: 100%;

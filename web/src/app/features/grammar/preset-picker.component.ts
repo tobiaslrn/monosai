@@ -65,7 +65,7 @@ import type { GrammarPresetId } from '../../domain/grammar/presets';
       display: flex;
       gap: var(--space-3);
       align-items: flex-start;
-      min-height: 44px;
+      min-height: var(--touch-target);
       padding: var(--space-3);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-card);
