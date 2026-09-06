@@ -25,6 +25,7 @@ export const PROTOCOL_COLLECTION: FixtureCollection = {
       .map((card) => ({
         deckName: card.deckName,
         reps: card.reps,
+        queue: card.queue,
         lapses: card.lapses ?? undefined,
         factor: card.factor ?? undefined,
       })),

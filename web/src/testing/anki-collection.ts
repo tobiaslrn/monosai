@@ -20,6 +20,8 @@ export interface FixtureCard {
   readonly reps: number;
   readonly lapses?: number;
   readonly factor?: number;
+  /** Anki's scheduler queue code. `-1` means explicitly suspended. */
+  readonly queue?: number;
   readonly suspended?: boolean;
 }
 
@@ -47,9 +49,10 @@ export interface FixtureCollection {
  * - `n-mainichi` — reviewed zero times, so it must never appear.
  * - `n-empty` — reviewed but empty, so it counts as rejected, not eligible.
  * - `n-miru` — a never-reviewed card and a suspended reviewed card on one note:
- *   one review ever is enough, and suspension does not take it away.
+ *   suspension removes the note from the vocabulary despite its review history.
  * - `n-inu` — script markup that must contribute no text of its own.
- * - `n-onaka` — internal spaces that must survive verbatim.
+ * - `n-onaka` — internal spaces that must survive verbatim; its buried card
+ *   proves that temporary queue states other than suspension stay eligible.
  * - `n-pen` — a different note type, excluded by the mapping.
  * - `n-hashiru` — a subdeck, included only under `deck-and-subdecks`.
  */
@@ -103,7 +106,7 @@ export const CONTRACT_COLLECTION: FixtureCollection = {
       id: 'n-onaka',
       noteTypeName: 'Basic',
       fieldValues: ['お腹 が 空いた', 'hungry'],
-      cards: [{ deckName: 'Core Japanese', reps: 1, lapses: 0, factor: 2_500 }],
+      cards: [{ deckName: 'Core Japanese', reps: 1, lapses: 0, factor: 2_500, queue: -2 }],
     },
     {
       id: 'n-pen',

@@ -1,7 +1,7 @@
 package io.github.tobiaslrn.monosai.bridge.anki
 
 class CardQueries(private val provider: ReadQueries, private val decks: DeckQueries) {
-    private val columns = arrayOf("_id", "note_id", "deck_id", "reps", "lapses", "sm2_factor")
+    private val columns = arrayOf("_id", "note_id", "deck_id", "reps", "lapses", "sm2_factor", "queue")
 
     fun probe() {
         // An impossible id still exercises URI/projection support, even in an empty collection.
@@ -12,8 +12,8 @@ class CardQueries(private val provider: ReadQueries, private val decks: DeckQuer
         if (ids.isEmpty()) return emptyList()
         val names = decks.namesById()
         val found = provider.query("cards", columns, "cid:${ids.joinToString(",")}") {
-            fun count(column: String): Int = it.requiredLong(column).also { n -> require(n <= Int.MAX_VALUE) }.toInt()
-            CardRead(it.requiredLong("_id"), it.requiredLong("note_id"), count("reps"), count("lapses"), count("sm2_factor"),
+            fun count(column: String): Int = it.requiredInt(column)
+            CardRead(it.requiredLong("_id"), it.requiredLong("note_id"), count("reps"), count("lapses"), count("sm2_factor"), count("queue"),
                 names[it.requiredLong("deck_id")] ?: throw AnkiReadException(ReadFailure.QUERY))
         }.associateBy { it.cardId }
         return ids.mapNotNull { found[it] }

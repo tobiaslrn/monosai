@@ -10,7 +10,7 @@ The reading model is one hierarchy. A **reading** holds **paragraphs**, a paragr
 either **imported** or **generated**.
 
 A **vocabulary snapshot** is the one current, deduplicated set of expressions the learner has
-reviewed. A refresh replaces it atomically; a failed or cancelled refresh leaves the previous one
+reviewed and not suspended. A refresh replaces it atomically; a failed or cancelled refresh leaves the previous one
 untouched.
 
 Every token in the reader carries one of three statuses:

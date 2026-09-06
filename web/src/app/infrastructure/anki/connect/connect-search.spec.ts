@@ -21,8 +21,8 @@ describe('searchFor', () => {
   });
 
   it('never asks Anki to filter by queue state', () => {
-    // Eligibility is review evidence, not the current queue: a card that was
-    // studied and later forgotten is new again but still reviewed.
+    // Eligibility is checked from cardsInfo: a card can be newly queued after
+    // being forgotten, while a suspended card must be excluded.
     const query = searchFor(mappingFor());
     expect(query).not.toContain('is:new');
     expect(query).not.toContain('is:review');

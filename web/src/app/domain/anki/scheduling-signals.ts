@@ -13,6 +13,21 @@ export interface AnkiSchedulingSignals {
   readonly easeFactor?: number;
 }
 
+/** Anki's queue code for a card the learner explicitly suspended. */
+export const SUSPENDED_QUEUE = -1;
+
+/**
+ * Decides whether one card makes its note part of the learner's vocabulary.
+ *
+ * A repetition proves that the learner has encountered the card. Suspension is
+ * an explicit exception: it removes that card from Monosai's vocabulary even
+ * though Anki preserves its review history. Other queue states, including
+ * temporary burying and relearning, do not change that evidence.
+ */
+export function isEligibleReviewedCard(reps: number, queue: number): boolean {
+  return Number.isInteger(reps) && reps > 0 && queue !== SUSPENDED_QUEUE;
+}
+
 /** Keeps provider output finite and in the normalized shape persisted by the app. */
 export function normalizeSchedulingSignals(
   signals: Partial<AnkiSchedulingSignals> | null | undefined,

@@ -36,7 +36,7 @@ class Router(private val reads: AnkiReads) {
             AllowedReads.FIND_CARDS -> JsonArray(reads.findCards(params.text("query")).map(::JsonPrimitive))
             AllowedReads.CARDS -> JsonArray(reads.cardsInfo(params.ids("cards")).map { card -> buildJsonObject {
                 put("cardId", card.cardId); put("note", card.note); put("reps", card.reps)
-                put("lapses", card.lapses); put("factor", card.factor); put("deckName", card.deckName)
+                put("lapses", card.lapses); put("factor", card.factor); put("queue", card.queue); put("deckName", card.deckName)
             } })
             AllowedReads.NOTES -> JsonArray(reads.notesInfo(params.ids("notes")).map { note -> buildJsonObject {
                 put("noteId", note.noteId); put("modelName", note.modelName)

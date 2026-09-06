@@ -200,15 +200,22 @@ export function runProviderContract(
         // 毎日 was never reviewed, これはペンです。 is another note type,
         // 走る is in a subdeck this mapping did not select.
         expect([...expressionsOf(collected.entries)].sort()).toEqual(
-          ['ねこ', 'ねこ', '見る', '犬', 'お腹 が 空いた'].sort(),
+          ['ねこ', 'ねこ', '犬', 'お腹 が 空いた'].sort(),
         );
       });
     });
 
-    it('keeps a note whose only review is on a suspended card', async () => {
+    it('excludes a note whose only review is on a suspended card', async () => {
       await standard(async (provider) => {
         const collected = await collectExtraction(provider, [mappingFor()]);
-        expect(expressionsOf(collected.entries)).toContain('見る');
+        expect(expressionsOf(collected.entries)).not.toContain('見る');
+      });
+    });
+
+    it('keeps a note whose reviewed card is temporarily buried', async () => {
+      await standard(async (provider) => {
+        const collected = await collectExtraction(provider, [mappingFor()]);
+        expect(expressionsOf(collected.entries)).toContain('お腹 が 空いた');
       });
     });
 

@@ -7,6 +7,7 @@ import type { AnkiProviderKind } from '../app/domain/vocabulary/snapshot';
 import type { SourceMapping } from '../app/domain/vocabulary/source-mapping';
 import {
   mergeSchedulingSignals,
+  isEligibleReviewedCard,
   schedulingSignalsFromCard,
 } from '../app/domain/anki/scheduling-signals';
 import {
@@ -61,8 +62,12 @@ function isEligible(note: FixtureNote, mapping: SourceMapping): boolean {
       card.deckName === mapping.deckName ||
       (mapping.deckScope === 'deck-and-subdecks' &&
         card.deckName.startsWith(`${mapping.deckName}::`));
-    return scoped && card.reps > 0;
+    return scoped && isEligibleReviewedCard(card.reps, queueOf(card));
   });
+}
+
+function queueOf(card: FixtureNote['cards'][number]): number {
+  return card.queue ?? (card.suspended === true ? -1 : card.reps > 0 ? 2 : 0);
 }
 
 /**
@@ -167,7 +172,7 @@ export class FakeAnkiProvider implements AnkiVocabularyProvider {
                   card.deckName === mapping.deckName ||
                   (mapping.deckScope === 'deck-and-subdecks' &&
                     card.deckName.startsWith(`${mapping.deckName}::`));
-                return scoped && card.reps > 0;
+                return scoped && isEligibleReviewedCard(card.reps, queueOf(card));
               })
               .reduce(
                 (signals, card) =>

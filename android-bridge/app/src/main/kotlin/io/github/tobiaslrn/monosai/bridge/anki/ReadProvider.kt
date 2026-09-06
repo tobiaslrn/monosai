@@ -45,6 +45,11 @@ internal fun Cursor.requiredLong(column: String): Long {
     if (isNull(index)) throw IllegalArgumentException("Missing column")
     return getLong(index).also { require(it in 0..9_007_199_254_740_991L) }
 }
+internal fun Cursor.requiredInt(column: String): Int {
+    val index = getColumnIndexOrThrow(column)
+    if (isNull(index)) throw IllegalArgumentException("Missing column")
+    return getLong(index).also { require(it in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) }.toInt()
+}
 internal fun Cursor.requiredText(column: String): String {
     val index = getColumnIndexOrThrow(column)
     if (isNull(index)) throw IllegalArgumentException("Missing column")

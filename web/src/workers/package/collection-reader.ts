@@ -271,6 +271,7 @@ export function openCollectionReader(
          join cards c on c.nid = n.id
          where n.mid = ?
            and c.reps > 0
+           and c.queue != -1
            and (case when c.odid != 0 then c.odid else c.did end) in (${placeholders})
          group by n.id, n.flds
          order by n.id`,

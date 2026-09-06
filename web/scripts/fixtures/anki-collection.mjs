@@ -58,7 +58,7 @@ export const CONTRACT_COLLECTION = {
       id: 'n-onaka',
       noteTypeName: 'Basic',
       fieldValues: ['お腹 が 空いた', 'hungry'],
-      cards: [{ deckName: 'Core Japanese', reps: 1, lapses: 0, factor: 2500 }],
+      cards: [{ deckName: 'Core Japanese', reps: 1, lapses: 0, factor: 2500, queue: -2 }],
     },
     {
       id: 'n-pen',

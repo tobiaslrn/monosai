@@ -27,13 +27,15 @@ export const cardIdListSchema = z.array(z.number().int());
  *
  * `reps` is the review evidence, `note` links the card to its note, and
  * `deckName` lets the deck scope be confirmed against what Anki actually
- * returned rather than trusted from the search query alone.
+ * returned rather than trusted from the search query alone. `queue` identifies
+ * an explicitly suspended card, which is not vocabulary even if it has reps.
  */
 export const cardsInfoSchema = z.array(
   z.object({
     cardId: z.number().int(),
     note: z.number().int(),
     reps: z.number().int().nonnegative(),
+    queue: z.number().int(),
     /** Scheduling columns are absent from some Anki-compatible bridges. */
     lapses: z.number().int().nonnegative().nullable().optional(),
     factor: z.number().int().nonnegative().nullable().optional(),

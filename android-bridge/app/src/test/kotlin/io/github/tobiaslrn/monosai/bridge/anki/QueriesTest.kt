@@ -18,7 +18,7 @@ class QueriesTest {
         override fun <T> query(path: String, columns: Array<String>, selection: String?, row: (Cursor) -> T): List<T> {
             queries.add(Triple(path, columns.toList(), selection))
             val data: Map<String, Any> = when (path) {
-                "cards" -> mapOf("_id" to 7L, "note_id" to 5L, "deck_id" to 2L, "reps" to 3, "lapses" to 0, "sm2_factor" to 0)
+                "cards" -> mapOf("_id" to 7L, "note_id" to 5L, "deck_id" to 2L, "reps" to 3, "lapses" to 0, "sm2_factor" to 0, "queue" to -1)
                 "decks" -> mapOf("deck_id" to 2L, "deck_name" to "日本語::動詞")
                 "models" -> mapOf("_id" to 4L, "name" to "Basic", "field_names" to "Expression\u001fMeaning")
                 "notes" -> mapOf("_id" to 5L, "mid" to 4L, "flds" to "<b>見る</b>\u001f")
@@ -35,9 +35,9 @@ class QueriesTest {
         assertEquals(Triple("cards", listOf("_id"), "\"deck:日本語\" -is:new"), provider.queries.single())
         assertTrue(provider.cursors.all { it.isClosed })
     }
-    @Test fun joinsDeckNamesAndKeepsZeroSchedulingValues() {
+    @Test fun joinsDeckNamesAndPreservesTheQueueAndZeroSchedulingValues() {
         val provider = Provider()
-        assertEquals(listOf(CardRead(7, 5, 3, 0, 0, "日本語::動詞")), CardQueries(provider, DeckQueries(provider)).info(listOf(7, 99)))
+        assertEquals(listOf(CardRead(7, 5, 3, 0, 0, -1, "日本語::動詞")), CardQueries(provider, DeckQueries(provider)).info(listOf(7, 99)))
         assertEquals("cid:7,99", provider.queries.last().third)
     }
     @Test fun joinsModelFieldsAndPreservesEmptyTrailingValuesAndMarkup() {

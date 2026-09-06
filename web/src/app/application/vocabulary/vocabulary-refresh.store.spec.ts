@@ -168,14 +168,14 @@ describe('VocabularyRefreshStore', () => {
       expect(state.kind).toBe('awaiting-confirmation');
       if (state.kind !== 'awaiting-confirmation') return;
 
-      // ねこ twice, plus 見る, 犬, お腹 が 空いた; the blank value is rejected.
+      // ねこ twice, plus 犬 and お腹 が 空いた; 見る is suspended and the blank value is rejected.
       expect(state.summary.stats).toMatchObject({
         sourcesQueried: 1,
-        entriesRead: 6,
-        nonEmptyValues: 5,
+        entriesRead: 5,
+        nonEmptyValues: 4,
         rejectedEmptyValues: 1,
         duplicateOccurrences: 1,
-        uniqueExpressions: 4,
+        uniqueExpressions: 3,
       });
     });
 
@@ -212,8 +212,8 @@ describe('VocabularyRefreshStore', () => {
       await refreshWith();
 
       const analyzed = beds.runtime.analyzedBatches.flat();
-      expect(analyzed).toHaveLength(4);
-      expect(new Set(analyzed).size).toBe(4);
+      expect(analyzed).toHaveLength(3);
+      expect(new Set(analyzed).size).toBe(3);
     });
 
     it('carries provider warnings into the summary', async () => {
@@ -248,7 +248,7 @@ describe('VocabularyRefreshStore', () => {
       const state = store.state();
       expect(state.kind).toBe('complete');
       if (state.kind !== 'complete') return;
-      expect(state.snapshot.uniqueEntryCount).toBe(4);
+      expect(state.snapshot.uniqueEntryCount).toBe(3);
       expect(beds.vocabulary.activeSnapshotId).toBe(state.snapshot.id);
     });
 
@@ -263,7 +263,7 @@ describe('VocabularyRefreshStore', () => {
 
       expect(beds.vocabulary.snapshots).toHaveLength(1);
       expect(beds.vocabulary.activeSnapshotId).toBe(firstId);
-      expect(beds.vocabulary.items).toHaveLength(4);
+      expect(beds.vocabulary.items).toHaveLength(3);
     });
 
     it('tells the settings store the active snapshot changed', async () => {
@@ -278,7 +278,7 @@ describe('VocabularyRefreshStore', () => {
       await refreshWith();
       await store.confirm();
 
-      expect(beds.vocabulary.items).toHaveLength(4);
+      expect(beds.vocabulary.items).toHaveLength(3);
       expect(beds.vocabulary.provenance.length).toBeGreaterThanOrEqual(4);
     });
 

@@ -262,11 +262,10 @@ describe('PackageWorkerHost', () => {
         '<b>ねこ</b>',
         'ねこ',
         '   ',
-        '見る',
         '<script>alert(1)</script>犬',
         'お腹 が 空いた',
       ]);
-      expect(result.examined).toBe(6);
+      expect(result.examined).toBe(5);
     });
 
     it('includes subdecks only when the mapping asks for them', async () => {
@@ -290,7 +289,7 @@ describe('PackageWorkerHost', () => {
         ...BASIC_EXPRESSION,
         expressionFieldName: 'Meaning',
       });
-      expect(result.fields.map((field) => field.rawFieldValue)).toContain('to see');
+      expect(result.fields.map((field) => field.rawFieldValue)).toContain('dog');
     });
 
     it('returns normalized scheduling signals when package card columns exist', async () => {
@@ -338,7 +337,6 @@ describe('PackageWorkerHost', () => {
         '<b>ねこ</b>',
         'ねこ',
         '   ',
-        '見る',
         '<script>alert(1)</script>犬',
         'お腹 が 空いた',
       ]);

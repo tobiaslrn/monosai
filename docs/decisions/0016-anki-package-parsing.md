@@ -97,8 +97,11 @@ converted in place.
 
 ### Review eligibility
 
-A note is eligible when at least one of its cards is in the selected deck scope
-and has `reps > 0`. A card sitting in a filtered deck records its real deck in
+A note is eligible when at least one of its cards is in the selected deck scope,
+has `reps > 0`, and is not suspended (`queue != -1`). A suspended card keeps
+its review history, but suspension is the learner's explicit instruction not to
+count that material as vocabulary. Buried and other temporary queue states keep
+their review evidence. A card sitting in a filtered deck records its real deck in
 `odid`, so the home deck is `odid !== 0 ? odid : did` — otherwise studying
 through Custom Study would silently move a card out of its mapping.
 

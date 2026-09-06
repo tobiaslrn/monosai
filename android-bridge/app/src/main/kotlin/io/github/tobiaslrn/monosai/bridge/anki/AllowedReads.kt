@@ -7,7 +7,7 @@ enum class AllowedReads(val action: String) {
     CARDS("cardsInfo"), NOTES("notesInfo");
 }
 
-data class CardRead(val cardId: Long, val note: Long, val reps: Int, val lapses: Int, val factor: Int, val deckName: String)
+data class CardRead(val cardId: Long, val note: Long, val reps: Int, val lapses: Int, val factor: Int, val queue: Int, val deckName: String)
 data class NoteRead(val noteId: Long, val modelName: String, val fields: Map<String, String>)
 
 interface AnkiReads {

@@ -5,6 +5,7 @@ import type { AnkiConnectClient } from './connect-client';
 import { batched, searchFor } from './connect-search';
 import {
   mergeSchedulingSignals,
+  isEligibleReviewedCard,
   schedulingSignalsFromCard,
   type AnkiSchedulingSignals,
 } from '../../../domain/anki/scheduling-signals';
@@ -15,11 +16,11 @@ export const DEFAULT_BATCH_SIZE = 200;
 /**
  * Streams the reviewed field values for one mapping.
  *
- * Eligibility is decided from each card's own `reps`, not from a search term
- * like `-is:new`. A card that was studied and later forgotten returns to the new
- * queue while keeping its review count, so the search would drop vocabulary the
- * learner really has reviewed — and the specification's rule is review
- * evidence, not current queue.
+ * Eligibility is decided from each card's own review evidence and queue, not
+ * from a search term like `-is:new`. A card that was studied and later forgotten
+ * returns to the new queue while keeping its review count, so the search would
+ * drop vocabulary the learner really has reviewed. Explicitly suspended cards
+ * are the exception: the learner removed them from this vocabulary on purpose.
  *
  * Deck membership is confirmed against the `deckName` each card reports rather
  * than trusted from the query alone, so a provider whose search semantics
@@ -54,7 +55,7 @@ export async function* extractMapping(
 
     for (const card of cards.value) {
       examined += 1;
-      if (card.reps <= 0 || !inScope(card.deckName, mapping)) {
+      if (!isEligibleReviewedCard(card.reps, card.queue) || !inScope(card.deckName, mapping)) {
         continue;
       }
       const signals = schedulingSignalsFromCard(

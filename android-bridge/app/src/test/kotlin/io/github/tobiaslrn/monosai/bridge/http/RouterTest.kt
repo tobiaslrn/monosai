@@ -18,7 +18,7 @@ internal class FixtureReads : AnkiReads {
     }
     override fun findCards(query: String): List<Long> { require(query == "deck:*"); return listOf(1L) }
     override fun cardsInfo(ids: List<Long>): List<CardRead> {
-        require(ids == listOf(1L)); return listOf(CardRead(1, 1, 3, 1, 2400, "Core Japanese"))
+        require(ids == listOf(1L)); return listOf(CardRead(1, 1, 3, 1, 2400, 2, "Core Japanese"))
     }
     override fun notesInfo(ids: List<Long>): List<NoteRead> {
         require(ids == listOf(1L)); return listOf(NoteRead(1, "Basic", linkedMapOf("Expression" to "<b>ねこ</b>", "Meaning" to "cat")))
