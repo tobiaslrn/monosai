@@ -10,9 +10,10 @@ import {
 import { translationConfigFingerprint } from '../../domain/enrichment/cache-keys';
 import { remainingSentenceIds, type AssetJob, type JobState } from '../../domain/enrichment/jobs';
 import type { SentenceRef } from '../../domain/reading/reading-repository';
+import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { TokenAnalysis } from '../../domain/reading/token';
 import { jobId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
-import type { Result } from '../../domain/shared/result';
+import { ok, type Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import {
   CLOCK,
@@ -24,6 +25,7 @@ import {
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { EnrichmentKeysService } from './enrichment-keys.service';
+import { PreparationPacer, backOffOnRateLimit } from './preparation-pacer';
 import { TranslationService, type TranslationContext } from './translation.service';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 import { NOTHING_TO_DO, QUEUED, type EnqueueOutcome, type LayerError } from './layer-progress';
@@ -74,9 +76,6 @@ export type TranslationJobProgress =
     };
 
 const IDLE: TranslationJobProgress = { kind: 'idle' };
-
-/** Three translation requests plus three grammar requests make the six-request text ceiling. */
-export const TRANSLATION_REQUEST_CONCURRENCY = 3;
 
 /** Reads the flag through a call, so an earlier check never narrows a later one. */
 function isAborted(signal: AbortSignal): boolean {
@@ -137,6 +136,7 @@ export class TranslationJobStore {
   private readonly jobs = inject(JOB_REPOSITORY);
   private readonly translation = inject(TranslationService);
   private readonly keys = inject(EnrichmentKeysService);
+  private readonly pacer = inject(PreparationPacer);
   private readonly textModel = inject(TextModelStore);
   private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly hasher = inject(HASHER);
@@ -544,115 +544,150 @@ export class TranslationJobStore {
     // one batch to the next carrying what the last one settled, because each
     // batch is an independent request and nothing else pins how a name was
     // rendered in the one before it.
-    let translationContext = await this.readingContext(context);
-    let firstError: AiError | null = null;
+    const glossary = new GlossaryLedger(await this.readingContext(context));
+    // A holder rather than three `let`s, so what one batch records is still
+    // visible to the checks that run after every batch has settled.
+    const outcome: {
+      firstError: AiError | null;
+      storage: StorageError | null;
+      configuration: AiError | null;
+    } = { firstError: null, storage: null, configuration: null };
 
-    const batches = planBatches(loaded.value, MAX_TRANSLATION_BATCH);
-    let waveNumber = 0;
-    for (let offset = 0; offset < batches.length;) {
-      waveNumber += 1;
-      if (isAborted(signal)) {
-        await this.markCancelled(job, counts);
+    /** Stops scheduling: a refusal about the setup, or a write that failed. */
+    const stopped = (): boolean => outcome.storage !== null || outcome.configuration !== null;
+
+    const batches = planBatches(orderedByReading(loaded.value), MAX_TRANSLATION_BATCH);
+
+    /**
+     * One batch, from its turn in the queue to its rows on disk.
+     *
+     * Every batch waits for the pacer, so the reading fills front to back
+     * across all three layers rather than in this job's own waves. Results are
+     * stored as they arrive — a paid-for request is never discarded because a
+     * later one is still outstanding.
+     */
+    const runBatch = async (batch: readonly Sentence[]): Promise<void> => {
+      let permit;
+      try {
+        permit = await this.pacer.acquire(batch[0].positionInReading, 'english', signal);
+      } catch {
+        // The run was cancelled while this batch was still queued. Nothing was
+        // requested, so there is nothing to store and nothing to record.
         return;
       }
-      if (this.yieldRequested) {
-        await this.markPaused(job, counts);
-        return;
-      }
-
-      // The first batch establishes the reading's English names and terms.
-      // Later waves share the glossary from every preceding wave, and merge
-      // their own additions in reading order before the next wave starts.
-      const width = offset === 0 ? 1 : TRANSLATION_REQUEST_CONCURRENCY;
-      const wave = batches.slice(offset, offset + width);
-      offset += wave.length;
       const startedAt = this.clock.now();
-      const outcomes = await Promise.all(
-        wave.map((batch) =>
-          this.translation.run(
-            batch,
-            context.readingId,
-            context.cacheKeys,
-            context.modelId,
-            PROMPT_VERSIONS.translation,
-            context.taskConfig,
-            signal,
-            translationContext,
-          ),
-        ),
-      );
-      // Shape only: how much was asked for and how long it took. Never the
+      let result;
+      try {
+        // Checked here rather than before the permit: a batch can wait a long
+        // time for its turn, and what stopped the run may have happened while
+        // it did.
+        if (stopped() || isAborted(signal) || this.yieldRequested) {
+          return;
+        }
+        result = await this.translation.run(
+          batch,
+          context.readingId,
+          context.cacheKeys,
+          context.modelId,
+          PROMPT_VERSIONS.translation,
+          context.taskConfig,
+          signal,
+          glossary.context(),
+        );
+      } finally {
+        permit.release();
+      }
+      // Shape only: where in the reading, how much, and how long. Never the
       // sentences themselves and never the provider's reply.
-      this.logger.info('job.wave', {
+      this.logger.info('job.batch', {
         kind: 'translation',
-        step: waveNumber,
-        worker: wave.length,
-        count: wave.reduce((total, batch) => total + batch.length, 0),
+        step: batch[0].positionInReading,
+        count: batch.length,
         durationMs: this.clock.now() - startedAt,
       });
-      for (const outcome of outcomes) {
-        translationContext = {
-          ...translationContext,
-          establishedRenderings: mergeEstablishedRenderings(
-            translationContext.establishedRenderings ?? [],
-            outcome.establishedRenderings,
-          ),
-        };
+      glossary.merge(result.establishedRenderings);
 
-        // Whatever this wave already returned is stored before cancellation is
-        // honoured: the requests were paid for and each result is independently useful.
-        for (const record of outcome.records) {
-          const stored = await this.translation.store(record, context.cacheKeys);
-          if (!stored.ok) {
-            this.failStorage(context.readingId, stored.error, counts);
-            return;
-          }
-          const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
-          if (!advanced.ok) {
-            this.failStorage(context.readingId, advanced.error, counts);
-            return;
-          }
-          counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
-          this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+      // Whatever came back is stored even if the run has been stopped since:
+      // the requests were paid for and each result is independently useful.
+      for (const record of result.records) {
+        const stored = await this.translation.store(record, context.cacheKeys);
+        if (!stored.ok) {
+          outcome.storage ??= stored.error;
+          return;
         }
-
-        if (outcome.failures.length > 0 && outcome.error?.code !== 'cancelled') {
-          const error =
-            outcome.error ??
-            aiError('unknown', 'translation', 'The translation request failed.', {
-              detail: { correlationId: 'translation-job' },
-            });
-          const recorded = await this.recordFailures(job, outcome.failures, error);
-          if (recorded === null) return;
-          counts = { ...counts, failed: recorded.failedItems.length };
-          firstError ??= error;
-          if (!isSentenceLocalFailure(error)) {
-            const marked = await this.jobs.setState(job.id, 'failed');
-            if (!marked.ok) {
-              this.failStorage(context.readingId, marked.error, counts);
-              return;
-            }
-            this.failProvider(context.readingId, error, counts);
-            return;
-          }
-          this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+        const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
+        if (!advanced.ok) {
+          outcome.storage ??= advanced.error;
+          return;
         }
+        counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
+        this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
       }
 
-      if (isAborted(signal)) {
-        await this.markCancelled(job, counts);
+      if (result.failures.length === 0 || result.error?.code === 'cancelled') {
         return;
       }
-    }
+      const error =
+        result.error ??
+        aiError('unknown', 'translation', 'The translation request failed.', {
+          detail: { correlationId: 'translation-job' },
+        });
+      backOffOnRateLimit(this.pacer, error);
+      const recorded = await this.recordFailures(job, result.failures, error);
+      if (!recorded.ok) {
+        outcome.storage ??= recorded.error;
+        return;
+      }
+      counts = { ...counts, failed: recorded.value.failedItems.length };
+      outcome.firstError ??= error;
+      // A rejected key or an unsupported capability says the same thing about
+      // every remaining batch, so nothing else is scheduled.
+      if (!isSentenceLocalFailure(error)) {
+        outcome.configuration ??= error;
+        return;
+      }
+      this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+    };
 
-    this.controller = null;
-    if (firstError !== null) {
+    // The first batch runs alone so it can settle the reading's English names
+    // before anything else asks. After that every batch is in flight as soon as
+    // the pacer reaches its position, and each one sees whatever the batches
+    // ahead of it have already settled.
+    if (batches.length > 0) {
+      await runBatch(batches[0]);
+    }
+    await Promise.all(batches.slice(1).map((batch) => runBatch(batch)));
+
+    if (outcome.storage !== null) {
+      this.failStorage(context.readingId, outcome.storage, counts);
+      return;
+    }
+    if (outcome.configuration !== null) {
       const marked = await this.jobs.setState(job.id, 'failed');
       if (!marked.ok) {
         this.failStorage(context.readingId, marked.error, counts);
         return;
       }
-      this.failProvider(context.readingId, firstError, counts);
+      this.failProvider(context.readingId, outcome.configuration, counts);
+      return;
+    }
+    if (isAborted(signal)) {
+      await this.markCancelled(job, counts);
+      return;
+    }
+    if (this.yieldRequested) {
+      await this.markPaused(job, counts);
+      return;
+    }
+
+    this.controller = null;
+    if (outcome.firstError !== null) {
+      const marked = await this.jobs.setState(job.id, 'failed');
+      if (!marked.ok) {
+        this.failStorage(context.readingId, marked.error, counts);
+        return;
+      }
+      this.failProvider(context.readingId, outcome.firstError, counts);
       return;
     }
     this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
@@ -663,7 +698,7 @@ export class TranslationJobStore {
     job: AssetJob,
     sentenceIds: readonly SentenceId[],
     error: AiError,
-  ): Promise<AssetJob | null> {
+  ): Promise<Result<AssetJob, StorageError>> {
     let latest = job;
     const failedAt = this.clock.now();
     for (const sentenceId of sentenceIds) {
@@ -673,12 +708,11 @@ export class TranslationJobStore {
         failedAt,
       });
       if (!recorded.ok) {
-        this.failStorage(job.readingId, recorded.error, emptyCounts());
-        return null;
+        return recorded;
       }
       latest = recorded.value;
     }
-    return latest;
+    return ok(latest);
   }
 
   /**
@@ -753,16 +787,48 @@ function emptyCounts(): TranslationJobCounts {
   return { total: 0, requested: 0, completed: 0, failed: 0 };
 }
 
-/** Keeps the earliest English choice when parallel batches discover the same surface. */
-function mergeEstablishedRenderings(
-  established: readonly EstablishedRendering[],
-  additions: readonly EstablishedRendering[],
-): readonly EstablishedRendering[] {
-  const merged = new Map(established.map((rendering) => [rendering.surfaceJa, rendering]));
-  for (const rendering of additions) {
-    if (!merged.has(rendering.surfaceJa)) merged.set(rendering.surfaceJa, rendering);
+/**
+ * How this reading's recurring names have been rendered so far.
+ *
+ * Batches are independent requests, so nothing but this pins 優希 to one
+ * spelling across them. It replaces the wave barrier that used to serve the
+ * same purpose: a batch reads the ledger when its turn comes and writes back
+ * when it returns, so it sees whatever the batches ahead of it have settled —
+ * the same guarantee, without making every batch wait for the slowest of three.
+ *
+ * The first choice for a surface wins. Two batches in flight can discover the
+ * same name, and letting the later one overwrite would make the rendering
+ * depend on which request happened to finish first.
+ */
+class GlossaryLedger {
+  private readonly renderings = new Map<string, EstablishedRendering>();
+
+  constructor(private readonly reading: TranslationContext) {
+    this.merge(reading.establishedRenderings ?? []);
   }
-  return [...merged.values()];
+
+  context(): TranslationContext {
+    return { ...this.reading, establishedRenderings: [...this.renderings.values()] };
+  }
+
+  merge(additions: readonly EstablishedRendering[]): void {
+    for (const rendering of additions) {
+      if (!this.renderings.has(rendering.surfaceJa)) {
+        this.renderings.set(rendering.surfaceJa, rendering);
+      }
+    }
+  }
+}
+
+/**
+ * Reading order, asserted here rather than assumed of the repository.
+ *
+ * Batches are addressed by the position of their first sentence, so a batch
+ * built from whatever order storage returned would be handed to the pacer under
+ * a position that is not its own.
+ */
+function orderedByReading(sentences: readonly Sentence[]): readonly Sentence[] {
+  return [...sentences].sort((left, right) => left.positionInReading - right.positionInReading);
 }
 
 /**

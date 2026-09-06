@@ -60,11 +60,23 @@ schema version can be edited by hand.
 
 Grammar review is a bounded provider interaction: a request covers at most 30
 sentences and 12,000 estimated input tokens, returns at most one useful finding
-per sentence, and has an explicit response allowance. Three independent batches
-may be in flight. One format-recovery request is the most the adapter adds. An
-empty findings array passes validation and completes coverage for every sentence
-in that batch; a truncated or otherwise malformed reply remains a typed provider
-failure.
+per sentence, and has a response allowance sized from the batch. One
+format-recovery request is the most the adapter adds, and a model already known
+to refuse a native schema does not pay for it again. An empty findings array
+passes validation and completes coverage for every sentence in that batch. A
+reply the provider stopped at the token limit is `context-budget-exceeded` with
+the issue code `reply-truncated` — a statement about the output, not the input,
+and never eligible for the format recovery
+([ADR 0018](../decisions/0018-openrouter-request-boundary.md)); anything else
+malformed remains a typed provider failure.
+
+How many such requests are in flight is not this layer's decision. All three
+preparation layers draw permits from one `PreparationPacer`, capped at ten
+together and granted to the lowest waiting sentence position, so a reading fills
+front to back across English, grammar and audio at once
+([ADR 0059](../decisions/0059-preparation-fills-the-reading-in-order.md)). There
+is no client-side rate limit: the only reaction to provider load is a back-off
+driven by a real 429's own `Retry-After`.
 
 ## 8.4 Ports and dependency injection
 

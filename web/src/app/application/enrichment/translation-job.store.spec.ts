@@ -186,40 +186,44 @@ describe('TranslationJobStore', () => {
     });
   });
 
-  it('seeds terminology before running at most three translation requests at once', async () => {
+  /**
+   * The first batch settles the reading's English names before anything else
+   * asks, which is the one ordering constraint translation has of its own.
+   * After that the shared pacer decides, and batches go out from the front of
+   * the reading rather than in this job's own waves (ADR 0059).
+   */
+  it('seeds terminology with the first batch, then runs the rest together in order', async () => {
+    const batches = 5;
     const draft = importedReadingFixture({
       seed: 99,
-      paragraphTexts: [Array.from({ length: 42 }, (_value, index) => `長文${String(index)}です。`)],
+      paragraphTexts: [
+        Array.from(
+          { length: batches * MAX_TRANSLATION_BATCH },
+          (_value, index) => `長文${String(index)}です。`,
+        ),
+      ],
     });
     await bed.readings.saveImportedReading(draft);
+    const askedFor: string[] = [];
     let inFlight = 0;
     let peak = 0;
-    let calls = 0;
-    let release!: () => void;
-    const gate = new Promise<void>((resolve) => {
-      release = resolve;
-    });
     vi.spyOn(bed.provider, 'translate').mockImplementation(async (request) => {
-      calls += 1;
-      if (calls > 1 && calls <= 4) {
-        inFlight += 1;
-        peak = Math.max(peak, inFlight);
-        if (calls === 4) release();
-        await gate;
-        inFlight -= 1;
-      }
-      return ok(
-        translationTargets(request).map((sentence) => ({
-          id: sentence.id,
-          textEn: `EN ${sentence.textJa}`,
-        })),
-      );
+      const targets = translationTargets(request);
+      askedFor.push(targets[0].textJa);
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight -= 1;
+      return ok(targets.map((sentence) => ({ id: sentence.id, textEn: `EN ${sentence.textJa}` })));
     });
 
     await bed.store.start(draft.reading.id);
 
-    expect(calls).toBe(5);
-    expect(peak).toBe(3);
+    // One request alone, then the remaining four together.
+    expect(peak).toBe(batches - 1);
+    expect(askedFor).toEqual(
+      Array.from({ length: batches }, (_value, index) => `長文${String(index * 10)}です。`),
+    );
     expect(bed.store.progress().kind).toBe('complete');
   });
 

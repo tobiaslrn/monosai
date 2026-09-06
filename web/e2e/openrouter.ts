@@ -148,6 +148,15 @@ function silentMp3(): Buffer {
 const STORY_SCHEMA = 'monosai_story';
 const STORY_REPAIR_SCHEMA = 'monosai_story_repair_patch';
 const DECISIONS_SCHEMA = 'monosai_exception_decisions';
+/**
+ * The compatibility probe's exact answer.
+ *
+ * It mirrors the nested array and the nullable field every enrichment request
+ * sends, because a flat probe passed for models that then failed on the real
+ * schemas.
+ */
+const PROBE_ANSWER = '{"items": [{"id": "a", "note": "ok"}, {"id": "b", "note": null}]}';
+
 const GRAMMAR_SCHEMA = 'monosai_grammar_review';
 const TRANSLATIONS_SCHEMA = 'monosai_translations';
 
@@ -432,8 +441,7 @@ export async function stubOpenRouter(
           {
             finish_reason: 'stop',
             message: {
-              content:
-                chat.kind === 'prose' ? 'Sure, happy to help!' : '{"ok": true, "language": "ja"}',
+              content: chat.kind === 'prose' ? 'Sure, happy to help!' : PROBE_ANSWER,
             },
           },
         ],

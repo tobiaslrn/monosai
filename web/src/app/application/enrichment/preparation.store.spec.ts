@@ -417,19 +417,30 @@ describe('PreparationStore', () => {
       expect(beds.runners.audio.started).toEqual([FIRST]);
     });
 
-    it('runs English and grammar together, then starts audio', async () => {
+    /**
+     * Audio used to wait for both text layers to finish the whole reading,
+     * which meant the last sentence's English arrived before the first
+     * sentence's clip. All three now start together and the shared pacer
+     * decides what actually goes out, in sentence order (ADR 0059).
+     */
+    it('starts all three layers together', async () => {
       await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
       await outstandingRow(beds.jobs, FIRST, 'grammar', NOW + 2);
       await outstandingRow(beds.jobs, FIRST, 'audio', NOW + 3);
       const english = beds.runners.english.holdOpen();
       const grammar = beds.runners.grammar.holdOpen();
+      const audio = beds.runners.audio.holdOpen();
 
       const run = beds.store.pump();
-      await Promise.all([english.started, grammar.started]);
+      await Promise.all([english.started, grammar.started, audio.started]);
 
-      expect(beds.runners.audio.started).toEqual([]);
+      expect(beds.store.current()).toEqual({
+        readingId: FIRST,
+        layers: ['english', 'grammar', 'audio'],
+      });
       english.release();
       grammar.release();
+      audio.release();
       await run;
       expect(beds.runners.audio.started).toEqual([FIRST]);
     });

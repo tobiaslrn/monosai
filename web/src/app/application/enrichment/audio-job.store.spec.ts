@@ -26,15 +26,27 @@ import {
 import { TtsStore } from '../settings/tts.store';
 import {
   AUDIO_FRUITLESS_RUN_LIMIT,
-  AUDIO_GENERATION_CONCURRENCY,
   AUDIO_SENTENCE_RETRY_LIMIT,
   AudioJobStore,
 } from './audio-job.store';
+import { PREPARATION_CONCURRENCY } from './preparation-pacer';
 
 const NOW = 1_700_600_000_000;
 const SENTENCE_COUNT = 6;
 
 const TEST_HASHER: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
+
+/** More sentences than the shared pool holds, so queueing can be observed. */
+function longReading(seed = 3): ImportedReadingDraft {
+  const half = PREPARATION_CONCURRENCY;
+  return importedReadingFixture({
+    seed,
+    paragraphTexts: [
+      Array.from({ length: half }, (_, index) => `長${String(index)}です。`),
+      Array.from({ length: half }, (_, index) => `長${String(index + half)}です。`),
+    ],
+  });
+}
 
 /** Six sentences across two paragraphs, so reading order spans a boundary. */
 function reading(seed = 1): ImportedReadingDraft {
@@ -160,13 +172,11 @@ describe('AudioJobStore', () => {
     expect([...bed.provider.synthesized.map((request) => request.text)].sort()).toEqual(
       [...japaneseInOrder(bed.draft)].sort(),
     );
-    // The first batch claimed is the front of the reading, which is what makes
-    // playing a partial set useful rather than arbitrary.
-    expect(
-      bed.provider.synthesized
-        .slice(0, AUDIO_GENERATION_CONCURRENCY)
-        .map((request) => request.text),
-    ).toEqual(japaneseInOrder(bed.draft).slice(0, AUDIO_GENERATION_CONCURRENCY));
+    // Sentences are asked for in reading order, which is what makes playing a
+    // partial set useful rather than arbitrary.
+    expect(bed.provider.synthesized.map((request) => request.text)).toEqual(
+      japaneseInOrder(bed.draft),
+    );
 
     const progress = bed.store.progress();
     expect(progress.kind).toBe('complete');
@@ -195,31 +205,38 @@ describe('AudioJobStore', () => {
   });
 
   /**
-   * The bound is what keeps the front of the reading arriving first. Without
-   * one, a long reading would spread its first completions across the whole
-   * text and leave progressive playback with nothing to start on.
+   * The bound is shared with the two text layers, and is what keeps the front
+   * of the reading arriving first. Without one, a long reading would spread its
+   * first completions across the whole text and leave progressive playback with
+   * nothing to start on.
    */
-  it('keeps at most four requests in flight and refills the queue', async () => {
+  it('never exceeds the shared preparation pool, and refills it', async () => {
+    const long = longReading();
+    await bed.readings.saveImportedReading(long);
     let inFlight = 0;
     let maxInFlight = 0;
-    const observed: number[] = [];
+    const asked: string[] = [];
 
-    bed.provider.synthesizeWith = async () => {
+    bed.provider.synthesizeWith = async (request) => {
       inFlight += 1;
       maxInFlight = Math.max(maxInFlight, inFlight);
-      observed.push(inFlight);
+      asked.push(request.text);
       await hold();
       inFlight -= 1;
       return ok(audioPayload());
     };
 
-    await bed.store.start(bed.draft.reading.id);
+    await bed.store.start(long.reading.id);
 
-    expect(maxInFlight).toBe(AUDIO_GENERATION_CONCURRENCY);
-    // Six sentences through four workers: the queue was refilled rather than
-    // stopping once the first batch was answered.
-    expect(observed).toHaveLength(SENTENCE_COUNT);
-    expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT);
+    expect(maxInFlight).toBe(PREPARATION_CONCURRENCY);
+    // More sentences than the pool holds: it was refilled rather than stopping
+    // once the first requests were answered.
+    expect(asked).toHaveLength(long.sentences.length);
+    // And it was filled from the front of the reading.
+    expect(asked.slice(0, PREPARATION_CONCURRENCY)).toEqual(
+      japaneseInOrder(long).slice(0, PREPARATION_CONCURRENCY),
+    );
+    expect(await bed.db.audioAssets.count()).toBe(long.sentences.length);
     expect(bed.store.progress().kind).toBe('complete');
   });
 
@@ -306,11 +323,10 @@ describe('AudioJobStore', () => {
 
     await bed.store.start(bed.draft.reading.id);
 
-    expect(bed.provider.synthesized.map((request) => request.text)).toEqual([
-      ...order.slice(0, AUDIO_GENERATION_CONCURRENCY),
-      order[0],
-      ...order.slice(AUDIO_GENERATION_CONCURRENCY),
-    ]);
+    // This reading fits inside the pool, so the retry queues behind what is
+    // already in flight — at its own position, which is what the pacer's
+    // comparator guarantees for a longer one.
+    expect(bed.provider.synthesized.map((request) => request.text)).toEqual([...order, order[0]]);
     expect(firstAttempts).toBe(1 + AUDIO_SENTENCE_RETRY_LIMIT);
     expect(bed.store.progress().kind).toBe('complete');
     expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT);
@@ -378,7 +394,7 @@ describe('AudioJobStore', () => {
 
     await bed.store.start(bed.draft.reading.id);
 
-    expect(bed.provider.synthesized).toHaveLength(AUDIO_GENERATION_CONCURRENCY);
+    expect(bed.provider.synthesized).toHaveLength(SENTENCE_COUNT);
     const progress = bed.store.progress();
     expect(progress.kind).toBe('failed');
     if (progress.kind !== 'failed' || progress.error.source !== 'provider') {
@@ -515,25 +531,27 @@ describe('AudioJobStore', () => {
   });
 
   it('keeps completed clips when the run is cancelled', async () => {
+    const long = longReading();
+    await bed.readings.saveImportedReading(long);
     let calls = 0;
     bed.provider.synthesizeWith = async () => {
       calls += 1;
-      if (calls === AUDIO_GENERATION_CONCURRENCY) {
-        bed.store.cancel(bed.draft.reading.id);
+      if (calls === PREPARATION_CONCURRENCY) {
+        bed.store.cancel(long.reading.id);
       }
       await hold();
       return ok(audioPayload());
     };
 
-    await bed.store.start(bed.draft.reading.id);
+    await bed.store.start(long.reading.id);
 
     const progress = bed.store.progress();
     expect(progress.kind).toBe('cancelled');
-    // The first batch was already paid for, so every clip it produced is kept,
-    // and nothing after it was scheduled.
+    // What was already in flight was paid for, so every clip it produced is
+    // kept, and nothing still queued was ever requested.
     const stored = await bed.db.audioAssets.count();
-    expect(stored).toBe(AUDIO_GENERATION_CONCURRENCY);
-    expect(bed.provider.synthesized).toHaveLength(AUDIO_GENERATION_CONCURRENCY);
+    expect(stored).toBe(PREPARATION_CONCURRENCY);
+    expect(bed.provider.synthesized).toHaveLength(PREPARATION_CONCURRENCY);
 
     const rows = await bed.db.assetJobs.toArray();
     expect(rows[0].state).toBe('cancelled');
@@ -551,7 +569,7 @@ describe('AudioJobStore', () => {
     };
 
     const run = bed.store.start(bed.draft.reading.id);
-    while (bed.provider.synthesized.length < AUDIO_GENERATION_CONCURRENCY) {
+    while (bed.provider.synthesized.length < SENTENCE_COUNT) {
       await hold(1);
     }
     let settled = false;
@@ -756,24 +774,26 @@ describe('AudioJobStore', () => {
 
   it('finalizes its run when its reading is deleted, and says nothing to other readings', async () => {
     const deletions: Promise<void>[] = [];
+    const long = longReading();
+    await bed.readings.saveImportedReading(long);
     let calls = 0;
     bed.provider.synthesizeWith = async () => {
       calls += 1;
-      if (calls === AUDIO_GENERATION_CONCURRENCY) {
+      if (calls === PREPARATION_CONCURRENCY) {
         if (deletions.length === 0) {
-          deletions.push(bed.store.readingDeleted(bed.draft.reading.id));
+          deletions.push(bed.store.readingDeleted(long.reading.id));
         }
       }
       await hold();
       return ok(audioPayload());
     };
 
-    await bed.store.start(bed.draft.reading.id);
+    await bed.store.start(long.reading.id);
     await Promise.all(deletions);
 
-    // Nothing was scheduled after the delete, so a reading about to stop
+    // Nothing still queued was ever requested, so a reading about to stop
     // existing costs nothing more.
-    expect(bed.provider.synthesized).toHaveLength(AUDIO_GENERATION_CONCURRENCY);
+    expect(bed.provider.synthesized).toHaveLength(PREPARATION_CONCURRENCY);
     expect(bed.store.progress().kind).toBe('deleted');
     expect(bed.store.progressFor(bed.other.reading.id).kind).toBe('idle');
     expect(bed.store.isRunningFor(bed.draft.reading.id)).toBe(false);

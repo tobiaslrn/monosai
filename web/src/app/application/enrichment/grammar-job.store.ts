@@ -3,10 +3,10 @@ import { aiError, type AiError } from '../../domain/ai/ai-error';
 import { planGrammarBatches } from '../../domain/ai/grammar-review-request';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
-import { planBatches } from '../../domain/ai/translation-request';
 import { grammarConfigFingerprint } from '../../domain/enrichment/cache-keys';
 import { remainingSentenceIds, type AssetJob, type JobState } from '../../domain/enrichment/jobs';
 import type { GrammarProfileSnapshot } from '../../domain/grammar/profile';
+import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { jobId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
 import type { Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
@@ -22,6 +22,7 @@ import {
 } from '../shared/repository-tokens';
 import { TextModelStore } from '../settings/text-model.store';
 import { EnrichmentKeysService } from './enrichment-keys.service';
+import { PreparationPacer, backOffOnRateLimit } from './preparation-pacer';
 import { GrammarAnalysisService } from './grammar-analysis.service';
 import {
   NOTHING_TO_DO,
@@ -64,9 +65,6 @@ export type GrammarJobProgress =
 
 const IDLE: GrammarJobProgress = { kind: 'idle' };
 
-/** Three grammar requests plus three translation requests make the six-request text ceiling. */
-export const GRAMMAR_REQUEST_CONCURRENCY = 3;
-
 function isAborted(signal: AbortSignal): boolean {
   return signal.aborted;
 }
@@ -107,6 +105,7 @@ export class GrammarJobStore {
   private readonly jobs = inject(JOB_REPOSITORY);
   private readonly grammar = inject(GrammarAnalysisService);
   private readonly keys = inject(EnrichmentKeysService);
+  private readonly pacer = inject(PreparationPacer);
   private readonly textModel = inject(TextModelStore);
   private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly language = inject(LanguageStore);
@@ -391,99 +390,93 @@ export class GrammarJobStore {
       counts,
       phase: 'requesting',
     });
-    let firstError: AiError | null = null;
+    // A holder rather than two `let`s, so what one batch records is still
+    // visible to the checks that run after every batch has settled.
+    const outcome: { firstError: AiError | null; storage: StorageError | null } = {
+      firstError: null,
+      storage: null,
+    };
 
     const batches = planGrammarBatches(
-      loaded.value,
+      orderedByReading(loaded.value),
       context.profile.resolvedGuidance,
       context.profile.registerPreference,
       (sentence) => sentence.japaneseText,
     );
-    let waveNumber = 0;
-    for (const wave of planBatches(batches, GRAMMAR_REQUEST_CONCURRENCY)) {
-      waveNumber += 1;
-      if (isAborted(signal)) {
-        await this.markCancelled(job, counts);
+    /**
+     * One batch, from its turn in the queue to its rows on disk.
+     *
+     * Every batch waits for the shared pacer, so grammar for the beginning of
+     * the reading is asked for before English for the end of it, and the three
+     * layers fill the reading together rather than one after another.
+     */
+    const runBatch = async (batch: readonly Sentence[]): Promise<void> => {
+      let permit;
+      try {
+        permit = await this.pacer.acquire(batch[0].positionInReading, 'grammar', signal);
+      } catch {
+        // Cancelled while still queued: nothing was requested, so there is
+        // nothing to store and nothing to record.
         return;
       }
-      if (this.yieldRequested) {
-        await this.markPaused(job, counts);
-        return;
-      }
-      this.progressSignal.set({
-        kind: 'running',
-        readingId: context.readingId,
-        counts,
-        phase: 'requesting',
-      });
       const startedAt = this.clock.now();
-      const settled = await Promise.all(
-        wave.map(async (batch) => ({
+      let result;
+      try {
+        // Checked here rather than before the permit: a batch can wait a long
+        // time for its turn, and what stopped the run may have happened while
+        // it did.
+        if (outcome.storage !== null || isAborted(signal) || this.yieldRequested) {
+          return;
+        }
+        this.progressSignal.set({
+          kind: 'running',
+          readingId: context.readingId,
+          counts,
+          phase: 'requesting',
+        });
+        result = await this.grammar.runBatch(
           batch,
-          outcome: await this.grammar.runBatch(
-            batch,
-            context.readingId,
-            context.cacheKeys,
-            context.profile.profileHash,
-            context.profile.resolvedGuidance,
-            context.profile.registerPreference,
-            context.modelId,
-            PROMPT_VERSIONS.grammar,
-            context.taskConfig,
-            signal,
-          ),
-        })),
-      );
-      // Shape only: how much was asked for and how long it took. Never the
+          context.readingId,
+          context.cacheKeys,
+          context.profile.profileHash,
+          context.profile.resolvedGuidance,
+          context.profile.registerPreference,
+          context.modelId,
+          PROMPT_VERSIONS.grammar,
+          context.taskConfig,
+          signal,
+        );
+      } finally {
+        permit.release();
+      }
+      // Shape only: where in the reading, how much, and how long. Never the
       // sentences themselves and never the provider's reply.
-      this.logger.info('job.wave', {
+      this.logger.info('job.batch', {
         kind: 'grammar',
-        step: waveNumber,
-        worker: wave.length,
-        count: wave.reduce((total, batch) => total + batch.length, 0),
+        step: batch[0].positionInReading,
+        count: batch.length,
         durationMs: this.clock.now() - startedAt,
       });
-      for (const { batch, outcome } of settled) {
-        if (outcome.status === 'complete') {
-          this.progressSignal.set({
-            kind: 'running',
-            readingId: context.readingId,
-            counts,
-            phase: 'saving',
-          });
-          for (const record of outcome.records) {
-            const stored = await this.grammar.store(record, context.cacheKeys);
-            if (!stored.ok) {
-              this.failStorage(context.readingId, stored.error, counts);
-              return;
-            }
-            const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
-            if (!advanced.ok) {
-              this.failStorage(context.readingId, advanced.error, counts);
-              return;
-            }
-            counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
-            this.progressSignal.set({
-              kind: 'running',
-              readingId: context.readingId,
-              counts,
-              phase: 'saving',
-            });
+
+      if (result.status === 'complete') {
+        this.progressSignal.set({
+          kind: 'running',
+          readingId: context.readingId,
+          counts,
+          phase: 'saving',
+        });
+        for (const record of result.records) {
+          const stored = await this.grammar.store(record, context.cacheKeys);
+          if (!stored.ok) {
+            outcome.storage ??= stored.error;
+            return;
           }
-        } else if (outcome.error.code !== 'cancelled') {
-          firstError ??= outcome.error;
-          for (const sentence of batch) {
-            const recorded = await this.jobs.recordFailure(job.id, {
-              sentenceId: sentence.id,
-              errorCode: outcome.error.code,
-              failedAt: this.clock.now(),
-            });
-            if (!recorded.ok) {
-              this.failStorage(context.readingId, recorded.error, counts);
-              return;
-            }
-            counts = { ...counts, failed: recorded.value.failedItems.length };
+          const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
+          if (!advanced.ok) {
+            outcome.storage ??= advanced.error;
+            return;
           }
+          counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
           this.progressSignal.set({
             kind: 'running',
             readingId: context.readingId,
@@ -491,21 +484,56 @@ export class GrammarJobStore {
             phase: 'saving',
           });
         }
-      }
-      if (isAborted(signal)) {
-        await this.markCancelled(job, counts);
         return;
       }
+      if (result.error.code === 'cancelled') {
+        return;
+      }
+      backOffOnRateLimit(this.pacer, result.error);
+      outcome.firstError ??= result.error;
+      for (const sentence of batch) {
+        const recorded = await this.jobs.recordFailure(job.id, {
+          sentenceId: sentence.id,
+          errorCode: result.error.code,
+          failedAt: this.clock.now(),
+        });
+        if (!recorded.ok) {
+          outcome.storage ??= recorded.error;
+          return;
+        }
+        counts = { ...counts, failed: recorded.value.failedItems.length };
+      }
+      this.progressSignal.set({
+        kind: 'running',
+        readingId: context.readingId,
+        counts,
+        phase: 'saving',
+      });
+    };
+
+    await Promise.all(batches.map((batch) => runBatch(batch)));
+
+    if (outcome.storage !== null) {
+      this.failStorage(context.readingId, outcome.storage, counts);
+      return;
+    }
+    if (isAborted(signal)) {
+      await this.markCancelled(job, counts);
+      return;
+    }
+    if (this.yieldRequested) {
+      await this.markPaused(job, counts);
+      return;
     }
 
     this.controller = null;
-    if (firstError !== null) {
+    if (outcome.firstError !== null) {
       const marked = await this.jobs.setState(job.id, 'failed');
       if (!marked.ok) {
         this.failStorage(context.readingId, marked.error, counts);
         return;
       }
-      this.failProvider(context.readingId, firstError, counts);
+      this.failProvider(context.readingId, outcome.firstError, counts);
       return;
     }
     const marked = await this.jobs.setState(job.id, 'complete');
@@ -582,4 +610,15 @@ export class GrammarJobStore {
 
 function emptyCounts(): GrammarJobCounts {
   return { total: 0, requested: 0, completed: 0, failed: 0 };
+}
+
+/**
+ * Reading order, asserted here rather than assumed of the repository.
+ *
+ * Batches are addressed by the position of their first sentence, so a batch
+ * built from whatever order storage returned would be handed to the pacer under
+ * a position that is not its own.
+ */
+function orderedByReading(sentences: readonly Sentence[]): readonly Sentence[] {
+  return [...sentences].sort((left, right) => left.positionInReading - right.positionInReading);
 }

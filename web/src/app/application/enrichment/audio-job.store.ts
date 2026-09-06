@@ -14,6 +14,7 @@ import {
 import { AudioConfigurationService, type ResolvedAudioConfig } from './audio-configuration.service';
 import { AudioSynthesisService, speechContextFor } from './audio-synthesis.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
+import { PreparationPacer, backOffOnRateLimit } from './preparation-pacer';
 import { NOTHING_TO_DO, QUEUED, type EnqueueOutcome, type LayerError } from './layer-progress';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 
@@ -57,17 +58,6 @@ export type AudioJobProgress =
 const IDLE: AudioJobProgress = { kind: 'idle' };
 
 /**
- * How many synthesis requests this job keeps in flight.
- *
- * Four rather than one because a learner waiting for a twenty-sentence reading
- * waits four times as long for no benefit, and four rather than more because
- * the point of a bound is that the beginning of the reading still arrives
- * first: a wide queue would spread the first completions across the reading and
- * leave progressive playback with nothing to start on (ADR 0034).
- */
-export const AUDIO_GENERATION_CONCURRENCY = 4;
-
-/**
  * One queue-level retry when a request returned bytes that did not validate as
  * audio. Transient transport failures already spend their complete retry budget
  * inside the provider; retrying those again here would multiply that limit.
@@ -93,47 +83,6 @@ function isAborted(signal: AbortSignal): boolean {
 type TerminalFailure =
   | { readonly source: 'provider'; readonly sentenceId: SentenceId; readonly error: AiError }
   | { readonly source: 'storage'; readonly error: StorageError };
-
-interface AudioQueueItem {
-  readonly sentence: Sentence;
-  /** Number of provider refusals already received for this sentence. */
-  readonly failures: number;
-}
-
-/**
- * A small stable priority queue keyed by reading position.
- *
- * Retried sentences are inserted back at their original priority, so an early
- * sentence cannot fall behind the rest of a long reading merely because its
- * invalid clip happened to return first.
- */
-class AudioPriorityQueue {
-  private readonly items: AudioQueueItem[];
-
-  constructor(sentences: readonly Sentence[]) {
-    this.items = orderedByReading(sentences).map((sentence) => ({ sentence, failures: 0 }));
-  }
-
-  get length(): number {
-    return this.items.length;
-  }
-
-  take(): AudioQueueItem | null {
-    return this.items.shift() ?? null;
-  }
-
-  retry(item: AudioQueueItem): void {
-    const retried = { ...item, failures: item.failures + 1 };
-    const nextLaterSentence = this.items.findIndex(
-      (candidate) => candidate.sentence.positionInReading > retried.sentence.positionInReading,
-    );
-    if (nextLaterSentence < 0) {
-      this.items.push(retried);
-      return;
-    }
-    this.items.splice(nextLaterSentence, 0, retried);
-  }
-}
 
 /** Runs for one reading that stored nothing, and the voice they were made for. */
 interface FruitlessRuns {
@@ -173,10 +122,12 @@ interface JobContext {
  * The whole-reading audio preparation job.
  *
  * The same machine as `TranslationJobStore`, with two differences the
- * specification insists on. Sentences are **claimed in reading order by at most
- * `AUDIO_GENERATION_CONCURRENCY` workers**, so the beginning of the reading is
- * always the part that exists first and playback can start against a prefix
- * while the rest is still arriving (ADR 0034). Sentence-local failures are
+ * specification insists on. Sentences take their turn from the shared
+ * `PreparationPacer` at their own reading position, so the beginning of the
+ * reading is always the part that exists first and playback can start against a
+ * prefix while the rest is still arriving (ADR 0034) — now interleaved with the
+ * English and grammar for those same sentences rather than waiting for both
+ * (ADR 0059). Sentence-local failures are
  * retried or recorded without abandoning later work, and a job with a hole is
  * reported as failed rather than falsely complete. Configuration-wide and
  * storage failures still stop the workers immediately (ADR 0035).
@@ -198,6 +149,7 @@ export class AudioJobStore {
   private readonly readings = inject(READING_REPOSITORY);
   private readonly jobs = inject(JOB_REPOSITORY);
   private readonly audio = inject(AudioSynthesisService);
+  private readonly pacer = inject(PreparationPacer);
   private readonly audioConfig = inject(AudioConfigurationService);
   private readonly keys = inject(EnrichmentKeysService);
   private readonly clock = inject(CLOCK);
@@ -568,9 +520,7 @@ export class AudioJobStore {
 
     const outstandingSet = new Set(outstanding);
     const allSentences = orderedByReading(loaded.value);
-    const queue = new AudioPriorityQueue(
-      allSentences.filter((sentence) => outstandingSet.has(sentence.id)),
-    );
+    const wanted = allSentences.filter((sentence) => outstandingSet.has(sentence.id));
 
     let completed = counts.completed;
     // What *this* run stored, as against everything the job has ever covered.
@@ -618,23 +568,41 @@ export class AudioJobStore {
       return true;
     };
 
-    const worker = async (): Promise<void> => {
-      while (outcome.failure === null && !isAborted(signal) && !this.yieldRequested) {
-        const item = queue.take();
-        if (item === null) {
-          return;
-        }
-        const sentence = item.sentence;
-        const cacheKey = context.cacheKeys.get(sentence.id);
-        if (cacheKey === undefined) {
-          failFast({
-            source: 'storage',
-            error: missingCacheKeyError(sentence.id),
-          });
-          return;
-        }
+    /**
+     * One sentence, from its turn in the queue to its clip on disk.
+     *
+     * Reading order is the pacer's, not this job's: asking for a permit at the
+     * sentence's own position is what keeps the beginning of the reading the
+     * part that exists first (ADR 0034), and what interleaves clips with the
+     * English and grammar for the same sentences instead of waiting for both.
+     *
+     * A clip that came back invalid is re-requested by calling this again, so
+     * the retry queues at the sentence's original position rather than behind
+     * the rest of a long reading.
+     */
+    const readSentence = async (sentence: Sentence, failures = 0): Promise<void> => {
+      const cacheKey = context.cacheKeys.get(sentence.id);
+      if (cacheKey === undefined) {
+        failFast({ source: 'storage', error: missingCacheKeyError(sentence.id) });
+        return;
+      }
 
-        const produced = await this.audio.run(
+      let permit;
+      try {
+        permit = await this.pacer.acquire(sentence.positionInReading, 'audio', signal);
+      } catch {
+        // Cancelled while still queued: nothing was requested for this sentence.
+        return;
+      }
+      let produced;
+      try {
+        // Checked here rather than before the permit: a sentence can wait a
+        // long time for its turn, and what stopped the run may have happened
+        // while it did.
+        if (outcome.failure !== null || isAborted(signal) || this.yieldRequested) {
+          return;
+        }
+        produced = await this.audio.run(
           sentence,
           context.readingId,
           cacheKey,
@@ -642,52 +610,52 @@ export class AudioJobStore {
           signal,
           speechContextFor(sentence, allSentences),
         );
-        if (!produced.ok) {
-          // Cancelling — the learner's Stop, or another worker's fail-fast —
-          // aborts the request already in flight, and that arrives here as a
-          // refusal. Reporting it as a failure would offer a Retry for
-          // something that was stopped on purpose, so the signal decides which
-          // of the two this is.
-          if (isAborted(signal)) {
-            return;
-          }
-          if (shouldRetryQueueItem(produced.error) && item.failures < AUDIO_SENTENCE_RETRY_LIMIT) {
-            queue.retry(item);
-            continue;
-          }
-          if (isSentenceLocalFailure(produced.error)) {
-            if (!(await recordSentenceFailure(sentence.id, produced.error))) {
-              return;
-            }
-            continue;
-          }
-          failFast({ source: 'provider', sentenceId: sentence.id, error: produced.error });
-          return;
-        }
-        // A clip that did arrive is stored even when the run has been stopped
-        // since: it has already been paid for, and it is exactly as playable on
-        // its own as it would have been.
-
-        const stored = await this.audio.store(produced.value, context.cacheKeys);
-        if (!stored.ok) {
-          failFast({ source: 'storage', error: stored.error });
-          return;
-        }
-        const advanced = await this.jobs.recordCompletion(job.id, sentence.id);
-        if (!advanced.ok) {
-          failFast({ source: 'storage', error: advanced.error });
-          return;
-        }
-        completed += 1;
-        added += 1;
-        counts = { ...counts, completed };
-        this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+      } finally {
+        permit.release();
       }
+
+      if (!produced.ok) {
+        // Cancelling — the learner's Stop, or another sentence's fail-fast —
+        // aborts the request already in flight, and that arrives here as a
+        // refusal. Reporting it as a failure would offer a Retry for something
+        // that was stopped on purpose, so the signal decides which of the two
+        // this is.
+        if (isAborted(signal)) {
+          return;
+        }
+        backOffOnRateLimit(this.pacer, produced.error);
+        if (shouldRetryQueueItem(produced.error) && failures < AUDIO_SENTENCE_RETRY_LIMIT) {
+          await readSentence(sentence, failures + 1);
+          return;
+        }
+        if (isSentenceLocalFailure(produced.error)) {
+          await recordSentenceFailure(sentence.id, produced.error);
+          return;
+        }
+        failFast({ source: 'provider', sentenceId: sentence.id, error: produced.error });
+        return;
+      }
+      // A clip that did arrive is stored even when the run has been stopped
+      // since: it has already been paid for, and it is exactly as playable on
+      // its own as it would have been.
+
+      const stored = await this.audio.store(produced.value, context.cacheKeys);
+      if (!stored.ok) {
+        failFast({ source: 'storage', error: stored.error });
+        return;
+      }
+      const advanced = await this.jobs.recordCompletion(job.id, sentence.id);
+      if (!advanced.ok) {
+        failFast({ source: 'storage', error: advanced.error });
+        return;
+      }
+      completed += 1;
+      added += 1;
+      counts = { ...counts, completed };
+      this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
     };
 
-    await Promise.all(
-      Array.from({ length: Math.min(AUDIO_GENERATION_CONCURRENCY, queue.length) }, () => worker()),
-    );
+    await Promise.all(wanted.map((sentence) => readSentence(sentence)));
 
     // The failure wins over the abort it caused, so a run that stopped because
     // a request was refused is never reported as one the learner stopped.

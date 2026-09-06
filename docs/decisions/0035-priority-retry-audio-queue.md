@@ -4,7 +4,9 @@ Date: 2026-08-27
 Status: Accepted
 
 Supersedes the failure-handling subsection of
-[ADR 0034](0034-progressive-four-way-audio.md).
+[ADR 0034](0034-progressive-four-way-audio.md). The queue itself is superseded by
+[ADR 0059](0059-preparation-fills-the-reading-in-order.md); the retry rules it
+states are unchanged.
 
 ## Context
 

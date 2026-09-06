@@ -95,7 +95,7 @@ export class PreparationStore {
   private draining: Promise<void> | null = null;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private claimed: ReadingId | null = null;
-  /** More than one text layer may be active; audio remains a lane of its own. */
+  /** All three layers run together, so yielding has to reach every one of them. */
   private readonly activeLayers = new Set<PreparationLayer>();
 
   /** Readings with outstanding work, the one being worked first. */
@@ -321,37 +321,23 @@ export class PreparationStore {
       const eligible = layers.filter(
         (layer) => !this.blockedSignal().includes(blockKey(readingId, layer)),
       );
-      const textLayers = eligible.filter(
-        (layer): layer is 'english' | 'grammar' => layer === 'english' || layer === 'grammar',
-      );
-      if (textLayers.length > 0) {
-        if (!this.canStartGroup()) return false;
-        this.currentSignal.set({ readingId, layers: textLayers });
-        textLayers.forEach((layer) => this.activeLayers.add(layer));
-        try {
-          await Promise.all(
-            textLayers.map((layer) => this.runners.runnerFor(layer).start(readingId)),
-          );
-        } finally {
-          textLayers.forEach((layer) => this.activeLayers.delete(layer));
-        }
-        if (!this.handleGroupOutcome(readingId, textLayers, deferred)) {
-          return !this.pausedByLearnerSignal();
-        }
+      if (eligible.length === 0) {
+        return true;
       }
-
-      if (eligible.includes('audio')) {
-        if (!this.canStartGroup()) return false;
-        this.currentSignal.set({ readingId, layers: ['audio'] });
-        this.activeLayers.add('audio');
-        try {
-          await this.runners.runnerFor('audio').start(readingId);
-        } finally {
-          this.activeLayers.delete('audio');
-        }
-        if (!this.handleGroupOutcome(readingId, ['audio'], deferred)) {
-          return !this.pausedByLearnerSignal();
-        }
+      // All three layers start together and the shared pacer decides what
+      // actually goes out, in sentence order. Audio used to wait for both text
+      // layers to finish the whole reading, which meant the last sentence's
+      // English arrived before the first sentence's clip (ADR 0059).
+      if (!this.canStartGroup()) return false;
+      this.currentSignal.set({ readingId, layers: eligible });
+      eligible.forEach((layer) => this.activeLayers.add(layer));
+      try {
+        await Promise.all(eligible.map((layer) => this.runners.runnerFor(layer).start(readingId)));
+      } finally {
+        eligible.forEach((layer) => this.activeLayers.delete(layer));
+      }
+      if (!this.handleGroupOutcome(readingId, eligible, deferred)) {
+        return !this.pausedByLearnerSignal();
       }
       return true;
     } finally {
@@ -360,7 +346,7 @@ export class PreparationStore {
     }
   }
 
-  /** Checks holds only between request waves, preserving paid in-flight work. */
+  /** Checks holds before a group starts, preserving paid in-flight work. */
   private canStartGroup(): boolean {
     const hold = this.currentHold();
     if (hold !== null) {

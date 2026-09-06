@@ -30,6 +30,7 @@ files are already linked from code comments and from other records.
 | [0048](../decisions/0048-the-preparation-lane-yields.md) | The preparation lane yields, and is never busy |
 | [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md) | Grammar preparation uses bounded batches and resumable recovery |
 | [0054](../decisions/0054-parallel-text-preparation.md) | Text preparation uses sparse adaptive batches and bounded waves |
+| [0059](../decisions/0059-preparation-fills-the-reading-in-order.md) | Preparation fills the reading in order, from one shared pool |
 
 ### Language processing
 
@@ -72,6 +73,7 @@ files are already linked from code comments and from other records.
 | [0046](../decisions/0046-length-is-a-guideline.md) | Story length is a guideline, not a contract |
 | [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md) | Grammar preparation uses bounded batches and resumable recovery |
 | [0054](../decisions/0054-parallel-text-preparation.md) | Text preparation uses sparse adaptive batches and bounded waves |
+| [0059](../decisions/0059-preparation-fills-the-reading-in-order.md) | Preparation fills the reading in order, from one shared pool |
 
 ### The reader
 
@@ -99,6 +101,7 @@ files are already linked from code comments and from other records.
 | [0028](../decisions/0028-floating-audio-player.md) | Floating audio player |
 | [0034](../decisions/0034-progressive-four-way-audio.md) | Progressive playback and four-way audio generation |
 | [0035](../decisions/0035-priority-retry-audio-queue.md) | Priority retries for whole-reading audio |
+| [0059](../decisions/0059-preparation-fills-the-reading-in-order.md) | Preparation fills the reading in order, from one shared pool |
 | [0037](../decisions/0037-audio-transport-recovery-and-one-track.md) | Audio transport recovery, navigation, and one track |
 | [0038](../decisions/0038-minimal-audio-player.md) | A player that says nothing and shows its state |
 | [0039](../decisions/0039-continuous-android-audio.md) | Continuous Android audio uses one native media resource |

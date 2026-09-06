@@ -82,7 +82,7 @@ export type LogEventName =
   | 'job.paused'
   | 'job.started'
   | 'job.succeeded'
-  | 'job.wave';
+  | 'job.batch';
 
 export interface LogEntry {
   readonly level: LogLevel;

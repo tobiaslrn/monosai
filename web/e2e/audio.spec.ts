@@ -19,19 +19,24 @@ const TEXT = Array.from(
 ).join('');
 
 /**
- * Eight sentences: two full batches through the four-way queue.
+ * More sentences than the shared preparation pool holds.
  *
- * A reading that fits in one batch can never show a frontier, a refilled
- * queue, or a run that is still going while its beginning is being played.
+ * A reading that fits the pool can never show a frontier, a refilled pool, or a
+ * run that is still going while its beginning is being played.
  */
-const LONG_SENTENCE_COUNT = 8;
+const LONG_SENTENCE_COUNT = 14;
 const LONG_TEXT = Array.from(
   { length: LONG_SENTENCE_COUNT },
   (_value, index) => `これは第${String(index)}の長い文です。`,
 ).join('');
 
-/** How many requests the job keeps open at once. */
-const CONCURRENCY = 4;
+/**
+ * How many requests preparation keeps open at once, across all three layers.
+ *
+ * Mirrors `PREPARATION_CONCURRENCY`. The long reading is deliberately longer
+ * than this, so there is still work waiting behind what is in flight.
+ */
+const CONCURRENCY = 10;
 
 /**
  * The transport's Back control, which names both of the things it does: it
@@ -358,9 +363,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     page,
   }) => {
     // The model compatibility test lives in the setup project, so the sequence
-    // begins at the first synthesis request: the first batch of four is two
-    // clips, a refusal, and a fourth clip. The last entry repeats, which is
-    // what lets the retry finish everything still missing.
+    // begins at the first synthesis request: the requests that fit the pool are
+    // two clips, a refusal, and clips for the rest. The last entry repeats,
+    // which is what lets the retry finish everything still missing.
     //
     // 402 rather than a 5xx deliberately: the client auto-retries outages, so
     // the request that "fails" would otherwise succeed on a transport retry and
@@ -378,20 +383,23 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expect(playerStatus(page)).toContainText(/Stopped with \d+ of 8 sentences ready/, {
-      timeout: 60_000,
-    });
+    await expect(playerStatus(page)).toContainText(
+      new RegExp(`Stopped with \\d+ of ${String(LONG_SENTENCE_COUNT)} sentences ready`),
+      {
+        timeout: 60_000,
+      },
+    );
     // 11.2: whatever the provider refused with, the player reports it in the
     // reader's own terms. There is no model test on this screen to run again.
     await expect(playerStatus(page)).not.toContainText(/\btests?\b/i);
 
     // The clips already produced are kept: they cost money and are exactly as
-    // playable individually as they were. Nothing beyond the first batch was
+    // playable individually as they were. Nothing still waiting for a turn was
     // ever scheduled.
     expect(synthesisCount(calls) - afterSetup, 'the queue was abandoned, not drained').toBe(
       CONCURRENCY,
     );
-    // Between one and three, not exactly three: the abort races the siblings
+    // Fewer than the pool held, not an exact number: the abort races the siblings
     // that had already been sent, so a request that had not answered yet is
     // cancelled rather than paid for. Which of them wins is the provider's
     // timing, and pinning it would be pinning the race.
@@ -405,7 +413,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     //
     // Which sentence the refusal landed on is not asserted. The stub answers
     // in arrival order and four requests are in flight, so the 402 may reach
-    // any of the first batch — including sentence one, which would correctly
+    // any of the requests in flight — including sentence one, which would correctly
     // leave Play disabled while the rest stays playable.
     await expect(audioPlayer(page).getByRole('button', { name: BACK_LABEL })).toBeVisible();
 
@@ -486,7 +494,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(synthesisCount(calls) - afterSetup).toBeGreaterThan(0);
   });
 
-  test('never opens more than four synthesis requests at once', async ({ page }) => {
+  test('never opens more synthesis requests at once than the shared pool holds', async ({
+    page,
+  }) => {
     const calls = await prepareReading(page, LONG_TEXT, { audioDelayMs: 300 });
 
     await openAudioPlayer(page);
@@ -580,15 +590,17 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // Ended rather than held: the reading played every sentence the stopped run
     // had produced, and the card says how far that run got.
     await expect(playerStatus(page)).toContainText('Finished', { timeout: 60_000 });
-    await expect(playerStatus(page)).toContainText(/Stopped with \d+ of 8 sentences ready/);
+    await expect(playerStatus(page)).toContainText(
+      new RegExp(`Stopped with \\d+ of ${String(LONG_SENTENCE_COUNT)} sentences ready`),
+    );
     await expect(audioPlayer(page).getByRole('button', { name: 'Play again' })).toBeVisible();
   });
 
   test('waits where generation has got to, and reads on when the clip arrives', async ({
     page,
   }) => {
-    // The second batch is held long enough that starting at the last sentence
-    // of the first one is guaranteed to reach the frontier.
+    // The requests behind the pool are held long enough that starting at the
+    // last sentence the pool covers is guaranteed to reach the frontier.
     await prepareReading(page, LONG_TEXT, { audioDelayMs: 3_000 });
 
     await openAudioPlayer(page);
@@ -598,7 +610,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     });
 
     // Closing the player does not cancel the run, so the selection can be made
-    // and captured while the first batch is still being prepared. The popover
+    // and captured while the first requests are still being prepared. The popover
     // is dismissed afterwards: the player captured the sentence on open, and a
     // modal popover would swallow the click on the transport beneath it.
     await audioButton(page).click();
@@ -611,28 +623,34 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(startHere).toBeVisible({ timeout: 60_000 });
 
     await startHere.click();
-    await expect(playerStatus(page)).toContainText(`Sentence ${String(CONCURRENCY)} of 8`, {
-      timeout: 15_000,
-    });
+    await expect(playerStatus(page)).toContainText(
+      `Sentence ${String(CONCURRENCY)} of ${String(LONG_SENTENCE_COUNT)}`,
+      {
+        timeout: 15_000,
+      },
+    );
 
     // Playback catches generation and says so rather than stopping.
     await expect(playerStatus(page)).toContainText(
-      `Waiting for sentence ${String(CONCURRENCY + 1)} of 8`,
+      `Waiting for sentence ${String(CONCURRENCY + 1)} of ${String(LONG_SENTENCE_COUNT)}`,
       { timeout: 30_000 },
     );
 
     // And reads on by itself once the clip it was waiting for is stored.
-    await expect(playerStatus(page)).toContainText(`Sentence ${String(CONCURRENCY + 1)} of 8`, {
-      timeout: 30_000,
-    });
+    await expect(playerStatus(page)).toContainText(
+      `Sentence ${String(CONCURRENCY + 1)} of ${String(LONG_SENTENCE_COUNT)}`,
+      {
+        timeout: 30_000,
+      },
+    );
   });
 
   test('keeps completed clips when a run is stopped, and finishes them after a reload', async ({
     page,
   }) => {
-    // Eight sentences through a four-wide queue, so there is a second batch to
-    // stop before: a reading that fits in one batch is finished before a click
-    // on Stop could land.
+    // More sentences than the shared pool holds, so there is still work waiting
+    // when Stop is pressed: a reading that fits the pool is finished before a
+    // click on Stop could land.
     const calls = await prepareReading(page, LONG_TEXT, { audioDelayMs: 2_000 });
 
     await openAudioPlayer(page);
@@ -641,9 +659,12 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // is that finished clips survive rather than that none were made.
     await expect.poll(() => generatedPercent(page), { timeout: 60_000 }).toBeGreaterThan(0);
     await stopGenerating(page);
-    await expect(playerStatus(page)).toContainText(/Stopped with \d+ of 8 sentences ready/, {
-      timeout: 60_000,
-    });
+    await expect(playerStatus(page)).toContainText(
+      new RegExp(`Stopped with \\d+ of ${String(LONG_SENTENCE_COUNT)} sentences ready`),
+      {
+        timeout: 60_000,
+      },
+    );
 
     const stopped = await storedClipCount(page);
     expect(stopped, 'stopping keeps what it produced').toBeGreaterThan(0);
@@ -1021,7 +1042,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // it has reached the end. Both are a session that never stopped.
     await expect
       .poll(async () => (await playerStatus(page).textContent()) ?? '', { timeout: 30_000 })
-      .toMatch(/Sentence [2-8] of 8|Finished/);
+      .toMatch(new RegExp(`Sentence \\d+ of ${String(LONG_SENTENCE_COUNT)}|Finished`));
     await expect(audioPlayer(page).getByRole('button', { name: /Pause|Play again/ })).toBeVisible();
   });
 

@@ -84,8 +84,8 @@ export type LaneHold = 'generation' | 'offline' | 'update' | 'claimed-elsewhere'
 /**
  * What the lane is working on right now.
  *
- * English and grammar run together, so a placement names every layer currently
- * in flight for the one claimed reading rather than a single one.
+ * All three layers run together, so a placement names every layer currently in
+ * flight for the one claimed reading rather than a single one.
  */
 export interface LanePlacement {
   readonly readingId: ReadingId;

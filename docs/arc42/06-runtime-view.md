@@ -226,6 +226,7 @@ sequenceDiagram
     participant Lane as Preparation lane
     participant Rows as Job rows
     participant Runner as Layer producer
+    participant Pacer as Preparation pacer
 
     Moment->>Lane: reconcile this reading
     Lane->>Rows: queue the declared layers it has never had
@@ -235,16 +236,23 @@ sequenceDiagram
             Rows-->>Lane: conflict
             Note over Lane: skip this reading; work another
         else claimed
-            Lane->>Runner: run English and grammar together, then audio
+            Lane->>Runner: start English, grammar and audio together
+            Runner->>Pacer: ask for a turn at this sentence's position
+            Pacer-->>Runner: a permit, lowest position first
             Runner->>Rows: store each result, then record it
         end
     end
     Note over Lane: A generation, an update, or a lost<br/>connection parks the run at a batch<br/>boundary. It never cancels one.
 ```
 
-The lane runs one reading at a time, the open one first. English and grammar each use at most three
-requests, so one reading opens at most six text requests; translation seeds its glossary in one
-batch before its three-way waves. The lane never registers as busy: an update
+The lane runs one reading at a time, the open one first. All three layers start together, and every
+request they want to make takes its turn from one shared `PreparationPacer`: at most ten in flight
+across the three layers, granted to the lowest waiting `(sentence position, layer)`. The reading
+therefore fills front to back — sentence 1's English, grammar and clip before sentence 60's English —
+rather than one whole layer at a time
+([ADR 0059](../decisions/0059-preparation-fills-the-reading-in-order.md)). Translation still runs its
+first batch alone, to settle the reading's English names before anything else asks. The lane never
+registers as busy: an update
 activates while a queue exists, and the rows are picked back up after the reload
 ([ADR 0048](../decisions/0048-the-preparation-lane-yields.md)).
 
@@ -266,7 +274,7 @@ sequenceDiagram
     participant Repo as Enrichment repository
 
     Learner->>Job: generate audio
-    Job->>Repo: store a clip (four requests, reading order)
+    Job->>Repo: store a clip (its turn from the shared pool, reading order)
     Learner->>Playback: play
     Playback->>Repo: read the clips from here on
     Playback->>Player: play them as one open resource
@@ -292,4 +300,5 @@ new clip from its own read of what is stored — it never watches the generation
 
 Reaching the frontier is a stall inside the resource, reported as `waiting` and named by sentence.
 It ends when the next clip is appended. It is the one gap left: a stall long enough for the page to
-be frozen still stops the reading, which is why the bound on concurrent synthesis exists.
+be frozen still stops the reading, which is why the shared concurrency bound — and the position
+ordering that fills the front of the reading first — exists.
