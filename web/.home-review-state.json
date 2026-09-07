@@ -1,0 +1,888 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:4200",
+      "localStorage": [],
+      "indexedDB": [
+        {
+          "name": "monosai",
+          "version": 110,
+          "stores": [
+            {
+              "name": "assetJobs",
+              "autoIncrement": false,
+              "keyPath": "id",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "[readingId+kind]",
+                  "keyPathArray": [
+                    "readingId",
+                    "kind"
+                  ],
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "kind",
+                  "keyPath": "kind",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "readingId",
+                  "keyPath": "readingId",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "state",
+                  "keyPath": "state",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "audioAssets",
+              "autoIncrement": false,
+              "keyPath": "cacheKey",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "id",
+                  "keyPath": "id",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "readingId",
+                  "keyPath": "readingId",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "sentenceId",
+                  "keyPath": "sentenceId",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "credentials",
+              "autoIncrement": false,
+              "keyPath": "key",
+              "records": [],
+              "indexes": []
+            },
+            {
+              "name": "frozenValidations",
+              "autoIncrement": false,
+              "keyPath": "sentenceId",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "readingId",
+                  "keyPath": "readingId",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "snapshotId",
+                  "keyPath": "snapshotId",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "generationProvenance",
+              "autoIncrement": false,
+              "keyPath": "id",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "readingId",
+                  "keyPath": "readingId",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "grammarAnalyses",
+              "autoIncrement": false,
+              "keyPath": "cacheKey",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "profileHash",
+                  "keyPath": "profileHash",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "readingId",
+                  "keyPath": "readingId",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "sentenceId",
+                  "keyPath": "sentenceId",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "grammarProfile",
+              "autoIncrement": false,
+              "keyPath": "key",
+              "records": [],
+              "indexes": []
+            },
+            {
+              "name": "grammarProfileSnapshots",
+              "autoIncrement": false,
+              "keyPath": "id",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "profileHash",
+                  "keyPath": "profileHash",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "paragraphs",
+              "autoIncrement": false,
+              "keyPath": "id",
+              "records": [
+                {
+                  "value": {
+                    "id": "03010285-0e7f-4dc1-a385-ffe5ed9158ed",
+                    "readingId": "fe123051-8fbe-438e-ae43-676980ebb528",
+                    "position": 0,
+                    "sourceText": "猫が好きです。犬も好きです。",
+                    "v": 1
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "name": "[readingId+position]",
+                  "keyPathArray": [
+                    "readingId",
+                    "position"
+                  ],
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "readingId",
+                  "keyPath": "readingId",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "readings",
+              "autoIncrement": false,
+              "keyPath": "id",
+              "records": [
+                {
+                  "value": {
+                    "id": "07f5c8a3-123e-4eb4-a315-4c458ff78fc7",
+                    "kind": "imported",
+                    "title": "The Little Garden",
+                    "createdAt": 1788457247414,
+                    "updatedAt": 1788802847391,
+                    "sentenceCount": 2,
+                    "lastOpenedAt": null,
+                    "characterCount": 14,
+                    "excerpt": "猫が好きです。犬も好きです。",
+                    "translationSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "grammarSummary": {
+                      "state": "not-requested"
+                    },
+                    "audioSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "preparationTargets": [],
+                    "analyzerVersion": "analyzer/3",
+                    "importSource": "paste",
+                    "sourceTextHash": "7a5e998c656235ff9b11306304ed3599e8c3a694666783e1c4eb98a2ac9841c1",
+                    "v": 1
+                  }
+                },
+                {
+                  "value": {
+                    "id": "1a33c782-eed5-4eb1-93f0-07c1ea0d33cc",
+                    "kind": "imported",
+                    "title": "A Walk in the Mountains",
+                    "createdAt": 1788716447414,
+                    "updatedAt": 1788802847391,
+                    "sentenceCount": 2,
+                    "lastOpenedAt": null,
+                    "characterCount": 14,
+                    "excerpt": "猫が好きです。犬も好きです。",
+                    "translationSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "grammarSummary": {
+                      "state": "not-requested"
+                    },
+                    "audioSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "preparationTargets": [],
+                    "analyzerVersion": "analyzer/3",
+                    "importSource": "paste",
+                    "sourceTextHash": "7a5e998c656235ff9b11306304ed3599e8c3a694666783e1c4eb98a2ac9841c1",
+                    "v": 1
+                  }
+                },
+                {
+                  "value": {
+                    "id": "4a3cad17-fe82-45bf-b4a1-8698deae795c",
+                    "kind": "imported",
+                    "title": "A Special Cup of Tea",
+                    "createdAt": 1788457247414,
+                    "updatedAt": 1788802847391,
+                    "sentenceCount": 2,
+                    "lastOpenedAt": null,
+                    "characterCount": 14,
+                    "excerpt": "猫が好きです。犬も好きです。",
+                    "translationSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "grammarSummary": {
+                      "state": "not-requested"
+                    },
+                    "audioSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "preparationTargets": [],
+                    "analyzerVersion": "analyzer/3",
+                    "importSource": "paste",
+                    "sourceTextHash": "7a5e998c656235ff9b11306304ed3599e8c3a694666783e1c4eb98a2ac9841c1",
+                    "v": 1
+                  }
+                },
+                {
+                  "value": {
+                    "id": "77716afe-6ea5-4d0b-823d-dccb7ecd53dc",
+                    "kind": "imported",
+                    "title": "The Library Window",
+                    "createdAt": 1788802847414,
+                    "updatedAt": 1788802847391,
+                    "sentenceCount": 2,
+                    "lastOpenedAt": null,
+                    "characterCount": 14,
+                    "excerpt": "猫が好きです。犬も好きです。",
+                    "translationSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "grammarSummary": {
+                      "state": "not-requested"
+                    },
+                    "audioSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "preparationTargets": [],
+                    "analyzerVersion": "analyzer/3",
+                    "importSource": "paste",
+                    "sourceTextHash": "7a5e998c656235ff9b11306304ed3599e8c3a694666783e1c4eb98a2ac9841c1",
+                    "v": 1
+                  }
+                },
+                {
+                  "value": {
+                    "id": "9d7b7c49-cd68-4bcf-a01b-1aabb8f321ae",
+                    "kind": "imported",
+                    "title": "The Night Sky",
+                    "createdAt": 1788716447414,
+                    "updatedAt": 1788802847391,
+                    "sentenceCount": 2,
+                    "lastOpenedAt": 1788802847414,
+                    "characterCount": 14,
+                    "excerpt": "猫が好きです。犬も好きです。",
+                    "translationSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "grammarSummary": {
+                      "state": "not-requested"
+                    },
+                    "audioSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "preparationTargets": [],
+                    "analyzerVersion": "analyzer/3",
+                    "importSource": "paste",
+                    "sourceTextHash": "7a5e998c656235ff9b11306304ed3599e8c3a694666783e1c4eb98a2ac9841c1",
+                    "v": 1
+                  }
+                },
+                {
+                  "value": {
+                    "id": "a54a326a-0e64-4c13-914d-68e8b63c1867",
+                    "kind": "imported",
+                    "title": "A Rainy Afternoon",
+                    "createdAt": 1788457247414,
+                    "updatedAt": 1788802847391,
+                    "sentenceCount": 2,
+                    "lastOpenedAt": 1788802847414,
+                    "characterCount": 14,
+                    "excerpt": "猫が好きです。犬も好きです。",
+                    "translationSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "grammarSummary": {
+                      "state": "not-requested"
+                    },
+                    "audioSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "preparationTargets": [],
+                    "analyzerVersion": "analyzer/3",
+                    "importSource": "paste",
+                    "sourceTextHash": "7a5e998c656235ff9b11306304ed3599e8c3a694666783e1c4eb98a2ac9841c1",
+                    "v": 1
+                  }
+                },
+                {
+                  "value": {
+                    "id": "bd3753fd-e28c-49d9-a00c-b89ecb8bee62",
+                    "kind": "imported",
+                    "title": "On the Way Home",
+                    "createdAt": 1788457247414,
+                    "updatedAt": 1788802847391,
+                    "sentenceCount": 2,
+                    "lastOpenedAt": null,
+                    "characterCount": 14,
+                    "excerpt": "猫が好きです。犬も好きです。",
+                    "translationSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "grammarSummary": {
+                      "state": "not-requested"
+                    },
+                    "audioSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "preparationTargets": [],
+                    "analyzerVersion": "analyzer/3",
+                    "importSource": "paste",
+                    "sourceTextHash": "7a5e998c656235ff9b11306304ed3599e8c3a694666783e1c4eb98a2ac9841c1",
+                    "v": 1
+                  }
+                },
+                {
+                  "value": {
+                    "id": "fe123051-8fbe-438e-ae43-676980ebb528",
+                    "kind": "imported",
+                    "title": "A New Bicycle",
+                    "createdAt": 1788802847414,
+                    "updatedAt": 1788802847391,
+                    "sentenceCount": 2,
+                    "lastOpenedAt": 1788802847414,
+                    "characterCount": 14,
+                    "excerpt": "猫が好きです。犬も好きです。",
+                    "translationSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "grammarSummary": {
+                      "state": "not-requested"
+                    },
+                    "audioSummary": {
+                      "total": 2,
+                      "completed": 0,
+                      "failed": 0
+                    },
+                    "preparationTargets": [],
+                    "analyzerVersion": "analyzer/3",
+                    "importSource": "paste",
+                    "sourceTextHash": "7a5e998c656235ff9b11306304ed3599e8c3a694666783e1c4eb98a2ac9841c1",
+                    "v": 1
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "name": "[kind+createdAt]",
+                  "keyPathArray": [
+                    "kind",
+                    "createdAt"
+                  ],
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "createdAt",
+                  "keyPath": "createdAt",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "kind",
+                  "keyPath": "kind",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "lastOpenedAt",
+                  "keyPath": "lastOpenedAt",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "sentences",
+              "autoIncrement": false,
+              "keyPath": "id",
+              "records": [
+                {
+                  "value": {
+                    "id": "5044e099-f622-4ac6-aab0-cacfb108db2f",
+                    "readingId": "fe123051-8fbe-438e-ae43-676980ebb528",
+                    "paragraphId": "03010285-0e7f-4dc1-a385-ffe5ed9158ed",
+                    "positionInReading": 1,
+                    "positionInParagraph": 1,
+                    "japaneseText": "犬も好きです。",
+                    "contentHash": "7d68e22854818231fc837718b6c5f7a8bc81359382e750946c8ee1aa0dd5cdb3",
+                    "v": 1
+                  }
+                },
+                {
+                  "value": {
+                    "id": "f3426457-76c5-492c-ad6c-aa3425cd4786",
+                    "readingId": "fe123051-8fbe-438e-ae43-676980ebb528",
+                    "paragraphId": "03010285-0e7f-4dc1-a385-ffe5ed9158ed",
+                    "positionInReading": 0,
+                    "positionInParagraph": 0,
+                    "japaneseText": "猫が好きです。",
+                    "contentHash": "d2d78d6b12844506e4d9ce61ee63dcba596c776cdea69638ab33ff6ccbd6c1f9",
+                    "v": 1
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "name": "[readingId+positionInReading]",
+                  "keyPathArray": [
+                    "readingId",
+                    "positionInReading"
+                  ],
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "paragraphId",
+                  "keyPath": "paragraphId",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "readingId",
+                  "keyPath": "readingId",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "settings",
+              "autoIncrement": false,
+              "keyPath": "key",
+              "records": [
+                {
+                  "value": {
+                    "key": "app",
+                    "v": 1,
+                    "value": {
+                      "helpIntroSeen": true,
+                      "theme": "system",
+                      "activeSnapshotId": null,
+                      "ankiConnectPort": 8765,
+                      "ankiWordPriorityMode": "uniform",
+                      "updatedAt": 1788802341528
+                    }
+                  }
+                },
+                {
+                  "value": {
+                    "key": "language-assets",
+                    "v": 1,
+                    "value": {
+                      "tokenizerVersion": "1.0.0",
+                      "dictionaryVersion": "1.0.0",
+                      "grammarPresetsVersion": "1.0.0",
+                      "structuralBaselineVersion": "1.0.0"
+                    }
+                  }
+                }
+              ],
+              "indexes": []
+            },
+            {
+              "name": "tokenAnalyses",
+              "autoIncrement": false,
+              "keyPathArray": [
+                "sentenceId",
+                "analyzerVersion"
+              ],
+              "records": [
+                {
+                  "value": {
+                    "v": 1,
+                    "sentenceId": "5044e099-f622-4ac6-aab0-cacfb108db2f",
+                    "readingId": "fe123051-8fbe-438e-ae43-676980ebb528",
+                    "analyzerVersion": "analyzer/3",
+                    "tokens": [
+                      {
+                        "id": "t0",
+                        "startUtf16": 0,
+                        "endUtf16": 1,
+                        "surface": "犬",
+                        "lemma": "犬",
+                        "readingHiragana": "いぬ",
+                        "partOfSpeech": "noun",
+                        "dictionaryKeys": [
+                          "犬",
+                          "いぬ"
+                        ],
+                        "isPunctuation": false
+                      },
+                      {
+                        "id": "t1",
+                        "startUtf16": 1,
+                        "endUtf16": 2,
+                        "surface": "も",
+                        "lemma": "も",
+                        "readingHiragana": "も",
+                        "partOfSpeech": "particle",
+                        "dictionaryKeys": [
+                          "も"
+                        ],
+                        "isPunctuation": false
+                      },
+                      {
+                        "id": "t2",
+                        "startUtf16": 2,
+                        "endUtf16": 4,
+                        "surface": "好き",
+                        "lemma": "好き",
+                        "readingHiragana": "すき",
+                        "partOfSpeech": "adjective-na",
+                        "dictionaryKeys": [
+                          "好き",
+                          "すき"
+                        ],
+                        "isPunctuation": false
+                      },
+                      {
+                        "id": "t3",
+                        "startUtf16": 4,
+                        "endUtf16": 6,
+                        "surface": "です",
+                        "lemma": "です",
+                        "readingHiragana": "です",
+                        "partOfSpeech": "auxiliary",
+                        "inflectionForm": "dictionary",
+                        "dictionaryKeys": [
+                          "です"
+                        ],
+                        "isPunctuation": false
+                      },
+                      {
+                        "id": "t4",
+                        "startUtf16": 6,
+                        "endUtf16": 7,
+                        "surface": "。",
+                        "lemma": "。",
+                        "readingHiragana": "。",
+                        "partOfSpeech": "symbol",
+                        "dictionaryKeys": [
+                          "。"
+                        ],
+                        "isPunctuation": true
+                      }
+                    ]
+                  }
+                },
+                {
+                  "value": {
+                    "v": 1,
+                    "sentenceId": "f3426457-76c5-492c-ad6c-aa3425cd4786",
+                    "readingId": "fe123051-8fbe-438e-ae43-676980ebb528",
+                    "analyzerVersion": "analyzer/3",
+                    "tokens": [
+                      {
+                        "id": "t0",
+                        "startUtf16": 0,
+                        "endUtf16": 1,
+                        "surface": "猫",
+                        "lemma": "猫",
+                        "readingHiragana": "ねこ",
+                        "partOfSpeech": "noun",
+                        "dictionaryKeys": [
+                          "猫",
+                          "ねこ"
+                        ],
+                        "isPunctuation": false
+                      },
+                      {
+                        "id": "t1",
+                        "startUtf16": 1,
+                        "endUtf16": 2,
+                        "surface": "が",
+                        "lemma": "が",
+                        "readingHiragana": "が",
+                        "partOfSpeech": "particle",
+                        "dictionaryKeys": [
+                          "が"
+                        ],
+                        "isPunctuation": false
+                      },
+                      {
+                        "id": "t2",
+                        "startUtf16": 2,
+                        "endUtf16": 4,
+                        "surface": "好き",
+                        "lemma": "好き",
+                        "readingHiragana": "すき",
+                        "partOfSpeech": "adjective-na",
+                        "dictionaryKeys": [
+                          "好き",
+                          "すき"
+                        ],
+                        "isPunctuation": false
+                      },
+                      {
+                        "id": "t3",
+                        "startUtf16": 4,
+                        "endUtf16": 6,
+                        "surface": "です",
+                        "lemma": "です",
+                        "readingHiragana": "です",
+                        "partOfSpeech": "auxiliary",
+                        "inflectionForm": "dictionary",
+                        "dictionaryKeys": [
+                          "です"
+                        ],
+                        "isPunctuation": false
+                      },
+                      {
+                        "id": "t4",
+                        "startUtf16": 6,
+                        "endUtf16": 7,
+                        "surface": "。",
+                        "lemma": "。",
+                        "readingHiragana": "。",
+                        "partOfSpeech": "symbol",
+                        "dictionaryKeys": [
+                          "。"
+                        ],
+                        "isPunctuation": true
+                      }
+                    ]
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "name": "readingId",
+                  "keyPath": "readingId",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "sentenceId",
+                  "keyPath": "sentenceId",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "translationPlans",
+              "autoIncrement": false,
+              "keyPath": "readingId",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "inputFingerprint",
+                  "keyPath": "inputFingerprint",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "state",
+                  "keyPath": "state",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "translations",
+              "autoIncrement": false,
+              "keyPath": "cacheKey",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "readingId",
+                  "keyPath": "readingId",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "sentenceId",
+                  "keyPath": "sentenceId",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "vocabularyItems",
+              "autoIncrement": false,
+              "keyPath": "id",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "[snapshotId+expressionHash]",
+                  "keyPathArray": [
+                    "snapshotId",
+                    "expressionHash"
+                  ],
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "snapshotId",
+                  "keyPath": "snapshotId",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "vocabularyProvenance",
+              "autoIncrement": true,
+              "keyPath": "id",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "sourceId",
+                  "keyPath": "sourceId",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "vocabularyItemId",
+                  "keyPath": "vocabularyItemId",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "vocabularySnapshots",
+              "autoIncrement": false,
+              "keyPath": "id",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "createdAt",
+                  "keyPath": "createdAt",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "uniqueEntryCount",
+                  "keyPath": "uniqueEntryCount",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "vocabularySourceCaches",
+              "autoIncrement": false,
+              "keyPath": "sourceId",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "refreshedAt",
+                  "keyPath": "refreshedAt",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            },
+            {
+              "name": "vocabularySources",
+              "autoIncrement": false,
+              "keyPath": "id",
+              "records": [],
+              "indexes": [
+                {
+                  "name": "kind",
+                  "keyPath": "kind",
+                  "multiEntry": false,
+                  "unique": false
+                },
+                {
+                  "name": "providerKind",
+                  "keyPath": "providerKind",
+                  "multiEntry": false,
+                  "unique": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

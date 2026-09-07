@@ -148,9 +148,10 @@ test.describe('generating a story', () => {
     await page.goto('./#/library');
     const card = page.locator('mn-reading-card').first();
     await expect(card).toContainText(STRICT_STORY.titleJa);
-    // The row says what the story is — the premise the learner asked for — and
-    // how long it is, never the Japanese itself or a count of its aids.
-    await expect(card).toContainText(PREMISE);
+    // Home keeps a compact title and character count; the premise belongs to
+    // the story, not the shelf row.
+    await expect(card.locator('.summary')).toContainText(/\d+ characters/);
+    await expect(card).not.toContainText(PREMISE);
     await expect(card).toContainText('Micro');
     await expect(card).not.toContainText('庭で遊びます');
     await expect(card).not.toContainText('Translations:');

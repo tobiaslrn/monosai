@@ -10,8 +10,10 @@ test.describe('first-use Help', () => {
   }) => {
     await page.goto('./#/library');
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'New story', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'New story', exact: true }).click();
+    await expect(
+      page.getByRole('button', { name: 'Create a new story', exact: true }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Create a new story', exact: true }).click();
     await page.getByRole('link', { name: 'Write with AI', exact: true }).click();
     await expect(page.locator('.actions [data-check="text-model"] strong')).toHaveText('Text AI:');
     await expect(page.locator('.actions [data-check="vocabulary"] strong')).toHaveText(

@@ -72,19 +72,19 @@ describe('ReadingCardComponent', () => {
    * The premise is what a learner asked for and the one thing that says what
    * the story is. It sat in the database and was rendered nowhere.
    */
-  it('says what a generated story is about', () => {
-    expect(textOf(generated(), '.summary')).toBe('A girl finds a glowing stone in the river');
+  it('shows the character count even when a generated story has a premise', () => {
+    expect(textOf(generated(), '.summary')).toBe('940 characters');
   });
 
   it('falls back to the size when a generated story has no premise', () => {
     expect(textOf(generated({ premise: '   ' }), '.summary')).toBe('940 characters');
   });
 
-  it('states an imported reading size, and the file when there was one', () => {
+  it('states an imported reading size even when there is a filename', () => {
     expect(textOf(imported(), '.summary')).toBe('940 characters');
     expect(
       textOf(imported({ importSource: 'text-file', sourceFileName: 'kokoro.txt' }), '.summary'),
-    ).toBe('kokoro.txt · 940 characters');
+    ).toBe('940 characters');
   });
 
   /**
@@ -128,6 +128,11 @@ describe('ReadingCardComponent', () => {
       textOf(generated({ audioSummary: { total: 4, completed: 4, failed: 0 } }), '.meta'),
     ).toContain('Audio');
     expect(textOf(generated(), '.meta')).not.toContain('Audio');
+  });
+
+  it('distinguishes opened and unread stories without claiming completion', () => {
+    expect(textOf(imported(), '.status')).toBe('Unread');
+    expect(textOf(imported({ lastOpenedAt: NOW }), '.status')).toBe('Read');
   });
 
   it('keeps the whole row a link to the reader and the actions out of it', () => {

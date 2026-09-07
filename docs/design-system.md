@@ -66,11 +66,28 @@ tooltips. GitHub names its new-tab behavior. Local destinations identify the
 current page. The bar sits in the document flow and uses bare shared icon
 controls with unchanged touch targets and visible keyboard focus.
 
+The Library is the home-screen exception. It uses the mark without the wordmark,
+a Settings destination, and a reserved Search control so the opening surface can
+stay as compact as the reading-first composition it introduces. Search remains a
+no-op until the shelf has a real search interaction; it still keeps its native
+button semantics, accessible name, tooltip, touch target, and focus treatment.
+The home illustration blends into the canvas through an organic crop; the hero
+is not a card and therefore has no panel boundary or elevation.
+The crop follows the illustration's arch and low foreground, preserving the
+whole reading character and books. Its proportions stay fixed as the column
+changes width. The home headline is tightly set beside it, above a quiet sync
+line. The creation action spans the column; filter pills share the available
+width on phones and stay compact on desktop.
+Home's primary action uses the dedicated home action tokens for a clearer green;
+the illustration is gently dimmed in the dark palette. These tokens belong to
+the home composition and do not recolour the other screens.
+
 Below the bar the Library states **where the learner stands** — how many words
 Monosai can write from, and at what level. That line is the screen's lead and
-also the way to the page that explains it, so it carries a chevron: a sentence
-that reads as a statement has to say that it goes somewhere, because its words
-do not. It states current facts and never becomes a control that changes them.
+also the way to the page that explains it. In the image-led home hero it remains
+plain copy without a trailing navigation glyph; hover, focus, and link semantics
+identify the interaction without interrupting the headline. It states current
+facts and never becomes a control that changes them.
 
 **A destination is named once per screen.** A masthead label that repeats the
 sentence beneath it is not navigation, it is a caption, however it is styled.
@@ -114,6 +131,13 @@ than substituting the other date.
 
 Rows on one shelf are the same height, and a row standing in for work still
 running matches the row it will become.
+
+The home Library is a compact shelf exception: date groups share one pair of
+card edges, with quiet flat cards, a small circular mark, a system-sans title,
+and a character count. A short Read or Unread badge and overflow sit opposite.
+Read means opened, not completed; the last-opened date, origin and available
+audio remain accessible metadata. Premises and filenames do not replace the
+character count here. Long titles wrap without colliding with the badge.
 
 ## 3. Controls
 

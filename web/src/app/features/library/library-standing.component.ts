@@ -1,15 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import {
-  generationShortfallLabel,
   readingLevelPhrase,
   vocabularyCountLabel,
-  vocabularySourceSummary,
   vocabularySyncedLabel,
 } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
@@ -29,18 +26,18 @@ import {
 @Component({
   selector: 'mn-library-standing',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink],
   template: `
     <a
       class="standing"
       routerLink="/reading-level"
+      fragment="words"
       [state]="libraryOriginState"
       data-testid="library-standing"
     >
       @if (headline(); as line) {
         <span class="headline">
           <span>{{ line }}</span>
-          <mn-icon name="chevron-right" [size]="20" />
         </span>
         <span class="detail">{{ detail() }}</span>
       }
@@ -62,7 +59,7 @@ import {
     .standing {
       display: flex;
       flex-direction: column;
-      gap: var(--space-1);
+      gap: var(--space-3);
       min-height: 3.4rem;
       min-width: 0;
       color: var(--text-primary);
@@ -74,27 +71,14 @@ import {
       gap: var(--space-1);
       align-items: center;
       font-family: var(--font-ui);
-      font-size: 1.375rem;
+      font-size: 2.5rem;
       font-weight: 700;
-      letter-spacing: -0.02em;
-      line-height: 1.25;
-    }
-
-    /* The chevron is what says this line is a way somewhere, since the words
-       themselves are a statement rather than a label. */
-    .headline mn-icon {
-      flex: none;
-      color: var(--text-secondary);
-      transition: transform var(--motion-fast) ease-out;
+      letter-spacing: -0.035em;
+      line-height: 1.04;
     }
 
     .standing:hover .headline span {
       text-decoration: underline;
-    }
-
-    .standing:hover .headline mn-icon {
-      color: var(--text-primary);
-      transform: translateX(2px);
     }
 
     .standing:focus-visible {
@@ -103,24 +87,15 @@ import {
       border-radius: var(--radius-control);
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .headline mn-icon {
-        transition: none;
-      }
-
-      .standing:hover .headline mn-icon {
-        transform: none;
-      }
-    }
-
     .detail {
       color: var(--text-secondary);
-      font-size: var(--text-sm);
+      font-size: 0.75rem;
+      line-height: 1.4;
     }
 
     @media (max-width: breakpoints.$narrow-max) {
       .headline {
-        font-size: 1.25rem;
+        font-size: 1.875rem;
       }
     }
   `,
@@ -154,7 +129,7 @@ export class LibraryStandingComponent {
         }
         const count = vocabularyCountLabel(state.snapshot.uniqueEntryCount);
         const level = readingLevelPhrase(this.grammar.selectedPreset()?.id);
-        return level === null ? `You can read ${count}.` : `You can read ${count} ${level}.`;
+        return level === null ? `You know ${count}.` : `You know ${count} ${level}.`;
       }
     }
   });
@@ -180,12 +155,7 @@ export class LibraryStandingComponent {
         if (snapshot.uniqueEntryCount === 0) {
           return 'A source is connected but has no words in it yet.';
         }
-        // Below the floor, the shortfall is the more useful of the two: where
-        // the words came from does not help anyone who cannot generate yet.
-        return (
-          generationShortfallLabel(snapshot.uniqueEntryCount) ??
-          `From ${vocabularySourceSummary(snapshot.sourceKinds)} · ${vocabularySyncedLabel(snapshot.createdAt, this.clock.now())}`
-        );
+        return vocabularySyncedLabel(snapshot.createdAt, this.clock.now());
       }
     }
   }

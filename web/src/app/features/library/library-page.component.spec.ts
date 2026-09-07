@@ -208,12 +208,12 @@ describe('LibraryPageComponent', () => {
    * Nothing about a shelf until there is one. The standing line describes words
    * the learner does not have yet, and there is no shelf to add to.
    */
-  it('keeps New story above the empty shelf', async () => {
+  it('keeps the story action and vocabulary setup door above the empty shelf', async () => {
     const fixture = await render();
 
     expect(newReadingButton(fixture)).not.toBeNull();
     expect(element(fixture).querySelector('mn-library-welcome')).not.toBeNull();
-    expect(element(fixture).querySelector('mn-library-standing')).toBeNull();
+    expect(element(fixture).querySelector('mn-library-standing')).not.toBeNull();
   });
 
   it('offers both ways in from the one New story button', async () => {
@@ -235,9 +235,12 @@ describe('LibraryPageComponent', () => {
 
     expect(element(fixture).querySelector('.library-head')).toBeNull();
     expect(element(fixture).querySelector('mn-library-standing a')?.getAttribute('href')).toBe(
-      '/reading-level',
+      '/reading-level#words',
     );
     expect(element(fixture).querySelector('h1')?.textContent).toBe('Library');
+    expect(
+      element(fixture).querySelector<HTMLButtonElement>('[aria-label="Search"]'),
+    ).not.toBeNull();
   });
 
   it('hides the filter chips until the shelf is large enough to need them', async () => {

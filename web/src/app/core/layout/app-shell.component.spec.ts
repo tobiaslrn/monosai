@@ -24,7 +24,7 @@ describe('AppShellComponent', () => {
     TestBed.overrideTemplate(
       AppShellComponent,
       `<a class="mn-skip-link" href="#mn-main">Skip</a>
-      @if (!isReaderRoute()) { <mn-app-bar /> }
+      @if (!isReaderRoute() && !isLibraryRoute()) { <mn-app-bar /> }
       <main id="mn-main" tabindex="-1"><router-outlet /></main>`,
     );
     const router = TestBed.inject(Router);
@@ -67,6 +67,12 @@ describe('AppShellComponent', () => {
     fixture.detectChanges();
     expect(element.querySelector('mn-app-bar')).not.toBeNull();
     expect(intro.offer).toHaveBeenCalledOnce();
+  });
+
+  it('leaves the Library to render its own home header', async () => {
+    const { element } = await render('/library');
+
+    expect(element.querySelector('mn-app-bar')).toBeNull();
   });
 
   /**

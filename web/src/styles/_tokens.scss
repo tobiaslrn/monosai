@@ -19,6 +19,9 @@
   --action-primary: #4f6b59;
   --action-primary-hover: #405645;
   --action-primary-soft: #e4ede6;
+  --home-action-primary: #347e55;
+  --home-action-hover: #2b6947;
+  --home-art-brightness: 1;
   --accent-secondary: #6f629a;
   --accent-secondary-soft: #ece8f5;
 
@@ -68,6 +71,9 @@
   --action-primary: #9dbfa8;
   --action-primary-hover: #b3d0bc;
   --action-primary-soft: #2c3730;
+  --home-action-primary: var(--action-primary);
+  --home-action-hover: var(--action-primary-hover);
+  --home-art-brightness: 0.78;
   --accent-secondary: #b6aada;
   --accent-secondary-soft: #322e42;
 

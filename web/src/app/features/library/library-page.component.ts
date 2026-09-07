@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { NavigationStart, Router } from '@angular/router';
+import { NavigationStart, Router, RouterLink } from '@angular/router';
 import { LibraryScrollMemoryService } from '../../core/routing/library-scroll-memory.service';
 import { LibraryStore } from '../../application/reading/library.store';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
@@ -60,6 +60,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     IconComponent,
+    RouterLink,
     ReaderPopoverComponent,
     NewReadingMenuComponent,
     ReadingCardComponent,
@@ -69,6 +70,20 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   ],
   template: `
     <div class="mn-page library-page">
+      <header class="home-bar">
+        <a class="home-identity" routerLink="/library" aria-label="Monosai home">
+          <img src="icons/icon-192.png" alt="" width="40" height="40" />
+        </a>
+        <div class="home-actions">
+          <button type="button" class="home-icon-button" aria-label="Search" title="Search">
+            <mn-icon name="search" [size]="22" />
+          </button>
+          <a class="home-icon-button" routerLink="/settings" aria-label="Settings" title="Settings">
+            <mn-icon name="settings" [size]="22" />
+          </a>
+        </div>
+      </header>
+
       @if (store.status() === 'failed') {
         <section class="mn-panel" role="alert">
           <h2>Your library could not be loaded</h2>
@@ -77,12 +92,16 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           <button type="button" class="mn-button" (click)="reload()">Try again</button>
         </section>
       } @else {
-        @if (!isFirstRun()) {
+        <section class="home-hero" aria-labelledby="home-heading">
+          <h1 id="home-heading" class="mn-visually-hidden">Library</h1>
           <mn-library-standing />
-        }
+          <div class="hero-art" aria-hidden="true">
+            <img src="assets/home-reader.png" alt="" width="941" height="1672" />
+          </div>
+        </section>
 
         <div class="shelf-head">
-          <h1 class="shelf-heading">Library</h1>
+          <h2 class="mn-visually-hidden">Library</h2>
           <button
             type="button"
             class="mn-button mn-button--primary"
@@ -92,7 +111,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
             (click)="openNewReading()"
           >
             <mn-icon name="add" [size]="18" />
-            <span>New story</span>
+            <span>Create a new story</span>
           </button>
         </div>
 
@@ -179,39 +198,106 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   styles: `
     @use '../../../styles/breakpoints' as breakpoints;
 
-    /*
-     * The shared rail, not a wider one of its own: above ~1200px a 1120px shelf
-     * overhung the app bar by 80px on both sides, so the wordmark, the shelf
-     * heading, and New story each started at a different x.
-     */
+    /* The home header, action, and every date group share the same rail. */
     .library-page {
-      gap: var(--space-7);
+      gap: var(--space-2);
+      max-width: 42rem;
+      --action-primary: var(--home-action-primary);
+      --action-primary-hover: var(--home-action-hover);
     }
 
-    /* The action sits with the shelf it adds to, not with the standing line. */
-    .shelf-head {
+    .home-bar {
       display: flex;
-      gap: var(--space-4);
       align-items: center;
       justify-content: space-between;
+      min-height: var(--touch-target);
+    }
+
+    .home-identity,
+    .home-icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--touch-target);
+      height: var(--touch-target);
+      border: 1px solid transparent;
+      border-radius: var(--radius-control);
+      background: transparent;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .home-identity:hover,
+    .home-icon-button:hover {
+      border-color: var(--border-subtle);
+      background: var(--surface-sunken);
+    }
+
+    .home-identity:focus-visible,
+    .home-icon-button:focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    .home-identity img {
+      width: 2rem;
+      height: 2rem;
+      border-radius: var(--radius-control);
+    }
+
+    .home-actions {
+      display: flex;
+      gap: var(--space-2);
+    }
+
+    .home-hero {
+      position: relative;
+      isolation: isolate;
+      display: flex;
+      align-items: flex-start;
+      min-height: 15rem;
+      padding-block: var(--space-2);
+    }
+
+    .hero-art {
+      position: absolute;
+      z-index: -1;
+      inset: 0 0 auto auto;
+      width: 55%;
+      max-width: 16rem;
+      aspect-ratio: 941 / 850;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .hero-art img {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 100%;
+      height: auto;
+      transform: translateY(-35.5%);
+      filter: brightness(var(--home-art-brightness));
+      /* Follow the illustration's arch and low book-shaped foot, not an oval. */
+      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 941 1672'%3E%3Cdefs%3E%3Cfilter id='soft'%3E%3CfeGaussianBlur stdDeviation='9'/%3E%3C/filter%3E%3C/defs%3E%3Cpath fill='white' filter='url(%23soft)' d='M941 650 C800 553 556 606 428 700 C342 762 324 839 324 927 L324 1053 C273 1022 261 1060 277 1100 C214 1055 244 1167 252 1175 C196 1189 172 1242 180 1280 C92 1292 75 1338 150 1370 C320 1434 720 1444 941 1426 Z'/%3E%3C/svg%3E");
+      mask-size: 100% 100%;
+    }
+
+    .home-hero mn-library-standing {
+      width: 57%;
+    }
+
+    /* The action sits directly below the invitation it acts on. */
+    .shelf-head {
+      display: block;
     }
 
     .shelf-head .mn-button {
-      flex: none;
-    }
-
-    /*
-     * Smaller than it was: the shelf is no longer the first thing the page
-     * says, and a heading the size of a page title above a standing line that
-     * outranks it would read as two competing titles.
-     */
-    /* Side by side is a wide-screen luxury; the line needs the full measure. */
-    .shelf-heading {
-      margin: 0;
-      font-family: var(--font-ui);
-      font-size: var(--text-lg);
+      width: 100%;
+      border-radius: var(--radius-pill);
+      font-size: var(--text-sm);
       font-weight: 600;
-      letter-spacing: -0.01em;
+      min-height: 3.25rem;
     }
 
     .filters {
@@ -221,45 +307,82 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     }
 
     .chip {
+      position: relative;
+      z-index: 0;
       min-height: var(--touch-target);
       padding: var(--space-2) var(--space-4);
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-pill);
-      background: var(--surface-raised);
+      border: 0;
+      background: transparent;
       color: var(--text-primary);
-      font: inherit;
+      font: 500 0.75rem/1 var(--font-ui);
       cursor: pointer;
     }
 
-    .chip.is-active {
+    .chip::before {
+      position: absolute;
+      z-index: -1;
+      inset: var(--space-1) 0;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      background: var(--surface-raised);
+      content: '';
+    }
+
+    .chip.is-active::before {
       border-color: transparent;
       background: var(--action-primary);
+    }
+
+    .chip.is-active {
       color: var(--text-on-action);
     }
 
     .date-groups {
       display: flex;
       flex-direction: column;
-      gap: var(--space-6);
+      gap: var(--space-3);
+      width: 100%;
+    }
+
+    .date-group,
+    .reading-list {
+      width: 100%;
+      min-width: 0;
     }
 
     .date-group h2 {
       margin: 0 0 var(--space-2);
       color: var(--text-secondary);
-      font-size: var(--text-sm);
+      font-size: 0.75rem;
       font-weight: 600;
     }
 
     .reading-list {
       margin: 0;
       padding: 0;
-      border-top: 1px solid var(--border-subtle);
       list-style: none;
+    }
+
+    .reading-list li + li {
+      margin-top: var(--space-1);
     }
 
     @media (max-width: breakpoints.$wide-max) {
       .library-page {
-        gap: var(--space-5);
+        gap: var(--space-2);
+      }
+
+      .home-hero {
+        min-height: 12rem;
+      }
+
+      .home-hero mn-library-standing {
+        width: 59%;
+      }
+
+      .filters {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
   `,

@@ -26,7 +26,9 @@ import { HelpIntroService } from './help-intro.service';
     <a class="mn-skip-link" href="#mn-main">Skip to main content</a>
 
     @if (!isReaderRoute()) {
-      <mn-app-bar />
+      @if (!isLibraryRoute()) {
+        <mn-app-bar />
+      }
       <mn-app-update-banner />
       <mn-vocabulary-sync-banner />
       @if (intro.visible()) {
@@ -138,6 +140,12 @@ export class AppShellComponent {
     // already not one.
     const segment = url.slice('/reader/'.length).split(/[/?#]/)[0];
     return classifyReadingLink(segment).kind === 'well-formed';
+  });
+
+  /** The Library owns a quieter, image-led home header of its own. */
+  protected readonly isLibraryRoute = computed(() => {
+    const path = this.url().url.split(/[?#]/)[0];
+    return path === '/library';
   });
 
   constructor() {

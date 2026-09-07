@@ -104,12 +104,12 @@ describe('LibraryStandingComponent', () => {
     };
   }
 
-  it('leads with the count and says where the words came from', () => {
+  it('leads with the count and keeps the last sync quiet', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
 
     expect(lines(render())).toMatchObject({
-      headline: 'You can read 340 words at a starter level.',
-      detail: 'From Anki · synced today',
+      headline: 'You know 340 words at a starter level.',
+      detail: 'synced today',
     });
   });
 
@@ -117,12 +117,12 @@ describe('LibraryStandingComponent', () => {
    * Below the floor the shortfall replaces the provenance: where the words came
    * from does not help anyone who cannot generate a story yet.
    */
-  it('names the generation floor while there are too few words', () => {
+  it('keeps the sync visible even while there are too few words', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(12) });
 
     expect(lines(render())).toMatchObject({
-      headline: 'You can read 12 words at a starter level.',
-      detail: 'Stories are written from at least 50 words.',
+      headline: 'You know 12 words at a starter level.',
+      detail: 'synced today',
     });
   });
 
@@ -166,17 +166,16 @@ describe('LibraryStandingComponent', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
 
     expect(lines(render())).toMatchObject({
-      headline: 'You can read 340 words.',
-      detail: 'From Anki · synced today',
+      headline: 'You know 340 words.',
+      detail: 'synced today',
     });
   });
 
-  /** The words are a statement, so the chevron is what says it goes somewhere. */
-  it('marks itself as a way somewhere rather than relying on the words', () => {
+  it('keeps the hero copy free of navigation chrome', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
     const element = render().nativeElement as HTMLElement;
 
-    expect(element.querySelector('.headline mn-icon')).not.toBeNull();
+    expect(element.querySelector('.headline mn-icon')).toBeNull();
   });
 
   it('is one link to the page that explains it', () => {
@@ -185,6 +184,6 @@ describe('LibraryStandingComponent', () => {
 
     const link = element.querySelector<HTMLAnchorElement>('[data-testid="library-standing"]');
     expect(link?.tagName).toBe('A');
-    expect(link?.getAttribute('href')).toContain('/reading-level');
+    expect(link?.getAttribute('href')).toContain('/reading-level#words');
   });
 });

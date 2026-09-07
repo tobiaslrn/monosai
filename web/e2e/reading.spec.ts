@@ -156,7 +156,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await importReading(page, '空が青いです。風が気持ちいいです。');
     await page.goto('./#/library');
 
-    await page.getByRole('button', { name: 'New story' }).click();
+    await page.getByRole('button', { name: 'Create a new story' }).click();
     const chooser = page.getByRole('dialog', { name: 'New story' });
     await expect(chooser.getByRole('link', { name: 'Paste text' })).toBeVisible();
     await expect(chooser.getByRole('link', { name: 'Write with AI' })).toBeVisible();
@@ -1283,6 +1283,108 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await expect(card).not.toContainText('none yet');
     await expect(card).not.toContainText('Last opened');
     await expect(card.getByRole('button', { name: 'Read' })).toHaveCount(0);
+  });
+
+  test('aligns dated groups and only stretches filters on narrow screens @mobile @smoke', async ({
+    page,
+  }) => {
+    for (let index = 0; index < 8; index += 1) {
+      await importReading(page, `第${String(index + 1)}の話です。`, `Story ${String(index + 1)}`);
+    }
+
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          const request = indexedDB.open('monosai');
+          request.onerror = () => {
+            reject(new Error('could not open the Monosai database'));
+          };
+          request.onsuccess = () => {
+            const database = request.result;
+            const transaction = database.transaction('readings', 'readwrite');
+            const store = transaction.objectStore('readings');
+            const readings = store.getAll();
+            readings.onerror = () => {
+              reject(new Error('could not read the Library rows'));
+            };
+            readings.onsuccess = () => {
+              const now = Date.now();
+              readings.result.forEach((row, index) => {
+                const daysAgo = index < 3 ? 0 : index < 6 ? 1 : 4;
+                store.put({ ...row, createdAt: now - daysAgo * 86_400_000 });
+              });
+            };
+            transaction.onerror = () => {
+              reject(new Error('could not date the Library rows'));
+            };
+            transaction.oncomplete = () => {
+              database.close();
+              resolve();
+            };
+          };
+        }),
+    );
+
+    await page.goto('./#/library');
+    await expect(page.locator('.date-group')).toHaveCount(3);
+    await expect(page.locator('.date-group h2')).toHaveText([
+      'Today',
+      'Yesterday',
+      'Earlier this week',
+    ]);
+    await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Search', exact: true }).click();
+    await expect(page).toHaveURL(/#\/library$/);
+    const illustration = page.locator('.hero-art img');
+    await expect(illustration).toBeVisible();
+    expect(
+      await illustration.evaluate((image: HTMLImageElement) => image.naturalWidth),
+    ).toBeGreaterThan(0);
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
+
+    const groups = await page.locator('.date-group').evaluateAll((sections) =>
+      sections.map((section) => {
+        const bounds = section.getBoundingClientRect();
+        const cards = [...section.querySelectorAll('mn-reading-card article')].map((card) => {
+          const cardBounds = card.getBoundingClientRect();
+          return { left: cardBounds.left, right: cardBounds.right };
+        });
+        return { left: bounds.left, right: bounds.right, cards };
+      }),
+    );
+    const firstGroup = groups[0];
+    for (const group of groups) {
+      expect(group.left).toBeCloseTo(firstGroup.left, 0);
+      expect(group.right).toBeCloseTo(firstGroup.right, 0);
+      for (const card of group.cards) {
+        expect(card.left).toBeCloseTo(group.left, 0);
+        expect(card.right).toBeCloseTo(group.right, 0);
+      }
+    }
+
+    const filterGeometry = await page
+      .getByRole('group', { name: 'Filter stories' })
+      .evaluate((group) => {
+        const bounds = group.getBoundingClientRect();
+        const buttons = [...group.querySelectorAll('button')].map((button) => {
+          const buttonBounds = button.getBoundingClientRect();
+          return { left: buttonBounds.left, right: buttonBounds.right, width: buttonBounds.width };
+        });
+        return { left: bounds.left, right: bounds.right, width: bounds.width, buttons };
+      });
+    const firstFilter = filterGeometry.buttons[0];
+    const lastFilter = filterGeometry.buttons.at(-1);
+    if ((page.viewportSize()?.width ?? 0) < 960) {
+      expect(firstFilter.left).toBeCloseTo(filterGeometry.left, 0);
+      expect(lastFilter.right).toBeCloseTo(filterGeometry.right, 0);
+      for (const filter of filterGeometry.buttons) {
+        expect(filter.width).toBeCloseTo(firstFilter.width, 0);
+      }
+    } else {
+      expect(lastFilter.right).toBeLessThan(filterGeometry.right - filterGeometry.width / 2);
+    }
   });
 
   /** Chips are chrome until there are enough readings for filtering to help. */

@@ -49,9 +49,10 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
   styles: `
     .job-row {
       position: relative;
-      min-height: 4.75rem;
-      padding: var(--space-3) var(--space-1) var(--space-3) var(--space-3);
-      border-bottom: 1px solid var(--border-subtle);
+      min-height: 3.75rem;
+      padding: var(--space-1) 0 var(--space-1) var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
       background: var(--surface-sunken);
       transition: background-color var(--motion-fast) ease-out;
     }
@@ -59,7 +60,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
     .head {
       display: flex;
       gap: var(--space-3);
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
     }
 
@@ -83,7 +84,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
       min-width: 0;
       margin: 0;
       font-family: var(--font-ui);
-      font-size: 1.125rem;
+      font-size: var(--text-sm);
       font-weight: 600;
       line-height: 1.35;
       overflow-wrap: anywhere;
@@ -117,18 +118,18 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
       align-items: center;
       margin: 0;
       color: var(--text-secondary);
-      font-size: var(--text-sm);
+      font-size: 0.6875rem;
     }
 
     .summary {
       display: -webkit-box;
-      margin: var(--space-1) 0 0;
+      margin: 0;
       overflow: hidden;
       color: var(--text-secondary);
-      font-size: var(--text-sm);
-      line-height: 1.45;
+      font-size: 0.75rem;
+      line-height: 1.3;
       -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
+      -webkit-line-clamp: 1;
     }
 
     .state {

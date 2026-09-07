@@ -30,16 +30,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
   'text-file': 'Text file',
 };
 
-/**
- * One library row: what the reading is, and what it is for.
- *
- * A shelf is for choosing what to open, so the row leads with the two things
- * that decide that — the title, and a sentence saying what is inside. For a
- * generated story that sentence is the premise the learner wrote, which existed
- * in the database and was rendered nowhere. Beside the title sits how long the
- * reading is and when it was last read, because on a shelf the useful date is
- * when you last picked something up rather than when it was filed.
- */
+/** A compact home row: title, character count, opened status, and actions. */
 @Component({
   selector: 'mn-reading-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,6 +42,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
   template: `
     <article class="reading-row">
       <div class="head">
+        <span class="story-mark" aria-hidden="true"></span>
         <div class="copy">
           <div class="title-row">
             <h3>
@@ -58,8 +50,8 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
                 {{ reading().title }}
               </a>
             </h3>
-            <p class="meta">
-              <span>{{ shapeLabel() }}</span>
+            <p class="meta mn-visually-hidden">
+              <span class="shape-label">{{ shapeLabel() }}</span>
               <span class="separator" aria-hidden="true">·</span>
               <span>{{ lastReadLabel() }}</span>
               @if (hasAudio()) {
@@ -71,8 +63,11 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
               }
             </p>
           </div>
-          <p class="summary">{{ summaryLabel() }}</p>
+          <p class="summary">{{ characterLabel() }}</p>
         </div>
+        <span class="status" [class.is-unread]="reading().lastOpenedAt === null">
+          {{ reading().lastOpenedAt === null ? 'Unread' : 'Read' }}
+        </span>
         <div class="menu-anchor">
           <button
             #toggle
@@ -111,11 +106,15 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
     </article>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     .reading-row {
       position: relative;
-      min-height: 4.75rem;
-      padding: var(--space-3) var(--space-1) var(--space-3) var(--space-3);
-      border-bottom: 1px solid var(--border-subtle);
+      min-height: 3.75rem;
+      padding: var(--space-1) 0 var(--space-1) var(--space-3);
+      border: 1px solid color-mix(in srgb, var(--border-subtle) 35%, transparent);
+      border-radius: var(--radius-card);
+      background: var(--surface-raised);
       transition: background-color var(--motion-fast) ease-out;
     }
 
@@ -125,9 +124,17 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
 
     .head {
       display: flex;
-      gap: var(--space-3);
-      align-items: flex-start;
+      gap: var(--space-2);
+      align-items: center;
       justify-content: space-between;
+    }
+
+    .story-mark {
+      flex: 0 0 auto;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: var(--action-primary-soft);
     }
 
     .copy {
@@ -135,7 +142,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       min-width: 0;
     }
 
-    /* The title and its shape share a line; the summary spans the full measure. */
+    /* Detailed provenance remains available to assistive technology. */
     .title-row {
       display: flex;
       flex-wrap: wrap;
@@ -148,8 +155,9 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
     h3 {
       min-width: 0;
       margin: 0;
-      font-family: var(--font-japanese);
-      font-size: 1.25rem;
+      font-family: var(--font-ui);
+      font-size: var(--text-sm);
+      font-weight: 500;
       line-height: 1.35;
       overflow-wrap: anywhere;
     }
@@ -243,28 +251,66 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       align-items: center;
       margin: 0;
       color: var(--text-secondary);
-      font-size: var(--text-sm);
+      font-size: 0.75rem;
     }
 
-    /*
-     * A premise is one sentence. Anything longer is trimmed rather than allowed
-     * to set the height of a row on a shelf of otherwise equal rows.
-     */
+    .status {
+      flex: none;
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-pill);
+      background: var(--status-success-soft);
+      color: var(--status-success);
+      font-size: 0.6875rem;
+      line-height: 1.2;
+    }
+
+    .status.is-unread {
+      background: var(--status-warning-soft);
+      color: var(--status-warning);
+    }
+
+    @media (max-width: breakpoints.$narrow-max) {
+      .reading-row {
+        min-height: 3.75rem;
+      }
+
+      .head {
+        min-height: var(--touch-target);
+      }
+
+      .title-row {
+        display: block;
+      }
+
+      h3 {
+        font-size: var(--text-sm);
+        line-height: 1.3;
+      }
+    }
+
+    /* Keep the character count quiet beneath the title. */
     .summary {
       display: -webkit-box;
-      margin: var(--space-1) 0 0;
+      margin: 0;
       overflow: hidden;
       color: var(--text-secondary);
-      font-size: var(--text-sm);
-      line-height: 1.45;
+      font-size: 0.75rem;
+      line-height: 1.3;
       -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
+      -webkit-line-clamp: 1;
     }
 
     .audio-available {
       display: inline-flex;
       gap: var(--space-1);
       align-items: center;
+    }
+
+    @media (max-width: breakpoints.$narrow-max) {
+      .summary {
+        margin-top: 0;
+        -webkit-line-clamp: 1;
+      }
     }
   `,
 })
@@ -304,24 +350,6 @@ export class ReadingCardComponent {
   protected readonly lastReadLabel = computed(() => {
     const openedAt = this.reading().lastOpenedAt;
     return openedAt === null ? 'unread' : `read ${formatRelativeDay(openedAt, this.clock.now())}`;
-  });
-
-  /**
-   * One line saying what is inside.
-   *
-   * A generated story has a premise the learner wrote, which says more than any
-   * count could. An imported one has no such sentence, so it states its size and
-   * the file it came from, which is what tells two pasted readings apart.
-   */
-  protected readonly summaryLabel = computed(() => {
-    const reading = this.reading();
-    if (reading.kind === 'generated' && reading.premise.trim() !== '') {
-      return reading.premise;
-    }
-    const fileName = reading.kind === 'imported' ? reading.sourceFileName : undefined;
-    return fileName === undefined
-      ? this.characterLabel()
-      : `${fileName} · ${this.characterLabel()}`;
   });
 
   protected readonly hasAudio = computed(() => this.reading().audioSummary.completed > 0);

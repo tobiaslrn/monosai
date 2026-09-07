@@ -33,7 +33,7 @@ test.describe('application shell', () => {
 
     await standing.click();
 
-    await expect(page).toHaveURL(/#\/reading-level$/);
+    await expect(page).toHaveURL(/#\/reading-level#words$/);
     await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
 
     await page.getByRole('button', { name: 'Back to library' }).click();
@@ -105,18 +105,18 @@ test.describe('application shell', () => {
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   });
 
-  /** The mark, icon utilities, and standing line at 320px. */
-  test('keeps the utility bar and Library usable at 320px @mobile', async ({ page }) => {
+  /** The compact home header, standing line, and shelf at 320px. */
+  test('keeps the home header and Library usable at 320px @mobile', async ({ page }) => {
     await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('./#/library');
 
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Monosai home' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Help', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'GitHub (opens in a new tab)' })).toBeVisible();
     await expect(page.getByTestId('library-standing')).toBeVisible();
-    await expect(page.locator('mn-app-bar .wordmark')).toBeHidden();
+    await expect(page.locator('mn-app-bar')).toHaveCount(0);
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);
