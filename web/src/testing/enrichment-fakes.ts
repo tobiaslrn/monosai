@@ -9,6 +9,7 @@ import type { CompletionSummary, GrammarSummary } from '../app/domain/reading/su
 import type { AssetId, ReadingId, SentenceId } from '../app/domain/shared/ids';
 import { err, ok, type Result } from '../app/domain/shared/result';
 import type { StorageError } from '../app/domain/storage/storage-error';
+import type { TranslationPlan } from '../app/domain/enrichment/translation-plan';
 
 /**
  * In-memory `EnrichmentRepository`, for specs that exercise translation cache
@@ -19,6 +20,7 @@ import type { StorageError } from '../app/domain/storage/storage-error';
  * same in-memory bookkeeping so a future spec can grow into them.
  */
 export class FakeEnrichmentRepository implements EnrichmentRepository {
+  readonly translationPlans = new Map<ReadingId, TranslationPlan>();
   /**
    * Which sentence ids each bounded per-sentence query was asked for, so a
    * spec can assert the reader reads only its mounted window.
@@ -55,6 +57,47 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
 
   /** Set to make the bounded per-sentence translation query fail. */
   failListTranslationsForSentencesWith: StorageError | null = null;
+
+  getTranslationPlan(readingId: ReadingId): Promise<Result<TranslationPlan | null, StorageError>> {
+    return Promise.resolve(ok(this.translationPlans.get(readingId) ?? null));
+  }
+
+  storeTranslationPlan(plan: TranslationPlan): Promise<Result<TranslationPlan, StorageError>> {
+    this.translationPlans.set(plan.readingId, plan);
+    return Promise.resolve(ok(plan));
+  }
+
+  commitTranslationPlan(
+    plan: TranslationPlan,
+    translations: readonly TranslationRecord[],
+    _currentCacheKeys: ReadonlyMap<SentenceId, string>,
+    expectedInputFingerprint: string,
+  ): Promise<Result<TranslationPlan, StorageError>> {
+    const active = this.translationPlans.get(plan.readingId);
+    if (active?.inputFingerprint !== expectedInputFingerprint) {
+      return Promise.resolve(
+        err({ domain: 'storage', code: 'conflict', message: 'The active plan changed.' }),
+      );
+    }
+    this.translations.push(...translations);
+    this.translationPlans.set(plan.readingId, plan);
+    return Promise.resolve(ok(plan));
+  }
+
+  storeTranslationForPlan(
+    record: TranslationRecord,
+    _currentCacheKeys: ReadonlyMap<SentenceId, string>,
+    planFingerprint: string,
+  ): Promise<Result<TranslationRecord, StorageError>> {
+    const active = this.translationPlans.get(record.readingId);
+    if (active?.state !== 'ready' || active.planFingerprint !== planFingerprint) {
+      return Promise.resolve(
+        err({ domain: 'storage', code: 'conflict', message: 'The active plan changed.' }),
+      );
+    }
+    this.translations.push(record);
+    return Promise.resolve(ok(record));
+  }
 
   getTranslationByCacheKey(
     cacheKey: string,

@@ -9,6 +9,7 @@ import {
   matchTranslations,
   translationTargets,
   type TranslationBatchRequest,
+  type TranslationProviderResult,
   type TranslationResult,
 } from '../../domain/ai/translation-request';
 import { sentenceId } from '../../domain/shared/ids';
@@ -94,13 +95,16 @@ export class OpenRouterEnricher {
     request: TranslationBatchRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
-  ): Promise<Result<readonly TranslationResult[], AiError>> {
+  ): Promise<Result<TranslationProviderResult, AiError>> {
     const targetCount = translationTargets(request).length;
-    return this.runner.run<readonly TranslationResult[]>({
+    return this.runner.run<TranslationProviderResult>({
       task: 'translation',
       config,
       prompt: buildTranslationPrompt(request),
-      jsonSchema: translationsJsonSchema(targetCount),
+      jsonSchema: translationsJsonSchema(
+        targetCount,
+        request.kind === 'opening' || request.kind === 'glossary-repair',
+      ),
       maxTokens: replyBudget(
         TRANSLATION_BASE_TOKENS,
         TRANSLATION_TOKENS_PER_SENTENCE,
@@ -141,7 +145,7 @@ function readGrammarReview(parsed: unknown): Result<GrammarReviewResult, string>
  */
 function readTranslations(
   request: TranslationBatchRequest,
-): (parsed: unknown) => Result<readonly TranslationResult[], string> {
+): (parsed: unknown) => Result<TranslationProviderResult, string> {
   const targets = translationTargets(request);
   const byWireId = new Map(
     request.window.flatMap((entry, index) =>
@@ -162,7 +166,17 @@ function readTranslations(
       }
       returned.push({ id, textEn: translation.textEn });
     }
+    // Plan-aware callers validate per-sentence translations and the glossary
+    // independently, so a missing or duplicate sentence cannot discard a
+    // safely parsed glossary or unrelated valid translations.
+    if (request.kind !== undefined) {
+      return ok({
+        translations: returned,
+        ...(payload.data.glossary === undefined ? {} : { glossary: payload.data.glossary }),
+      });
+    }
     const matched = matchTranslations(targets, returned);
-    return matched.ok ? ok(matched.value) : err(`translations-${matched.error}`);
+    if (!matched.ok) return err(`translations-${matched.error}`);
+    return ok(matched.value);
   };
 }

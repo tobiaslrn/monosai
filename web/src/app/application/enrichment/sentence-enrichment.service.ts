@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
@@ -15,11 +15,17 @@ import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { LanguageStore } from '../language/language.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { READING_REPOSITORY } from '../shared/repository-tokens';
+import { ENRICHMENT_REPOSITORY, HASHER } from '../shared/repository-tokens';
 import { AudioConfigurationService } from './audio-configuration.service';
 import { AudioSynthesisService, speechContextFor } from './audio-synthesis.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { GrammarAnalysisService } from './grammar-analysis.service';
+import { TranslationJobStore } from './translation-job.store';
 import { TranslationService } from './translation.service';
+import {
+  passageContextFingerprint,
+  translationPassageWindow,
+} from '../../domain/enrichment/translation-plan';
 
 /** Which layer refused, so the reader can offer the right next action. */
 export type EnrichmentFailure =
@@ -51,7 +57,10 @@ interface SentenceContext {
 @Injectable({ providedIn: 'root' })
 export class SentenceEnrichmentService {
   private readonly readings = inject(READING_REPOSITORY);
+  private readonly injector = inject(Injector);
   private readonly translation = inject(TranslationService);
+  private readonly enrichment = inject(ENRICHMENT_REPOSITORY);
+  private readonly hasher = inject(HASHER);
   private readonly grammar = inject(GrammarAnalysisService);
   private readonly audio = inject(AudioSynthesisService);
   private readonly audioConfig = inject(AudioConfigurationService);
@@ -116,16 +125,77 @@ export class SentenceEnrichmentService {
     readingId: ReadingId,
     signal: AbortSignal,
   ): Promise<EnrichmentResult<TranslationRecord>> {
+    if (signal.aborted) {
+      return err({
+        source: 'provider',
+        error: aiError(
+          'cancelled',
+          'translation',
+          'The translation was stopped before it finished.',
+        ),
+      });
+    }
+    // A sentence action joins the reading's plan-aware producer. The fallback
+    // exists only for isolated service tests whose injector deliberately omits
+    // the job infrastructure; the composed application always resolves it.
+    let translationJobs: TranslationJobStore;
+    try {
+      translationJobs = this.injector.get(TranslationJobStore);
+    } catch {
+      return this.translateWithoutJobInfrastructure(sentence, readingId, signal);
+    }
+    await translationJobs.start(readingId);
+    const [plan, records] = await Promise.all([
+      this.enrichment.getTranslationPlan(readingId),
+      this.enrichment.listTranslationsForSentences([sentence.id]),
+    ]);
+    if (!plan.ok) return err({ source: 'storage', error: plan.error });
+    if (!records.ok) return err({ source: 'storage', error: records.error });
+    let record: TranslationRecord | undefined;
+    if (plan.value?.state === 'ready') {
+      const refs = await this.readings.listSentenceRefs(readingId);
+      if (!refs.ok) return err({ source: 'storage', error: refs.error });
+      const loaded = await this.readings.loadSentences(refs.value.map((ref) => ref.id));
+      if (!loaded.ok) return err({ source: 'storage', error: loaded.error });
+      const passageFingerprintBySentence = new Map(
+        loaded.value.map((entry) => [
+          entry.id,
+          passageContextFingerprint(
+            this.hasher,
+            translationPassageWindow(loaded.value, entry.positionInReading),
+          ),
+        ]),
+      );
+      const key = this.keys
+        .translationKeys(loaded.value, plan.value.modelId, plan.value.promptVersion, {
+          planFingerprint: plan.value.planFingerprint,
+          passageFingerprintBySentence,
+        })
+        .get(sentence.id);
+      record = records.value.find((entry) => entry.cacheKey === key);
+    } else {
+      record = [...records.value].sort((a, b) => b.createdAt - a.createdAt)[0];
+    }
+    if (record !== undefined) return ok(record);
+    const progress = translationJobs.progressFor(readingId);
+    return err({
+      source: 'provider',
+      error:
+        progress.kind === 'failed' && progress.error.source === 'provider'
+          ? progress.error.error
+          : aiError('unknown', 'translation', 'The sentence is still missing after translation.'),
+    });
+  }
+
+  private async translateWithoutJobInfrastructure(
+    sentence: Sentence,
+    readingId: ReadingId,
+    signal: AbortSignal,
+  ): Promise<EnrichmentResult<TranslationRecord>> {
     const context = await this.contextFor(readingId, 'translation', (refs, modelId) =>
       this.keys.translationKeys(refs, modelId, PROMPT_VERSIONS.translation),
     );
-    if (!context.ok) {
-      return context;
-    }
-
-    // `run` checks the cache before it sends anything, so a sentence whose
-    // Japanese was already translated under this configuration costs no
-    // request even when the reader asks for it again.
+    if (!context.ok) return context;
     const outcome = await this.translation.run(
       [sentence],
       readingId,
@@ -144,7 +214,6 @@ export class SentenceEnrichmentService {
           aiError('cancelled', 'translation', 'The translation was stopped before it finished.'),
       });
     }
-
     const stored = await this.translation.store(record, context.value.cacheKeys);
     return stored.ok ? ok(stored.value) : err({ source: 'storage', error: stored.error });
   }

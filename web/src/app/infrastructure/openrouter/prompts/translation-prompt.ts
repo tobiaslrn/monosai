@@ -20,11 +20,14 @@ const TASK_LAYER = [
   '- Entries not listed in `targetIds` are context. Use them only to resolve ambiguity; never translate or return them.',
   '- Some context entries carry a `textEn` already produced for this same reading. Render names, invented terms, and recurring nouns exactly as those do.',
   '- `establishedRenderings`, when supplied, shows how a recurring Japanese surface was rendered earlier. Reuse that English rendering whenever the same surface has the same referent.',
+  '- `frozenGlossary`, when supplied, is immutable. Apply a rendering only for the same meaning or referent and do not add or revise entries.',
+  '- For an opening request, make the translations consistent with every glossary entry you return. Omit a candidate when no confident stable rendering can be established; an empty glossary is valid.',
+  '- For a glossary-repair request, return no translations. Use the saved opening translations as constraints and do not contradict them.',
   'Output semantics: `translations` contains `{ id, textEn }`. Never modify, correct, or echo the Japanese.',
 ] as const;
 
 const JSON_CONTRACT =
-  'Return {"translations":[{"id":string,"textEn":string}]}. Include no other fields.';
+  'Return {"translations":[{"id":string,"textEn":string}],"glossary":[{"surfaceJa":string,"renderingEn":string}]}. Omit glossary only for tail requests. Include no other fields.';
 
 /**
  * Ids on the wire are the entry's position in the window, not the sentence's
@@ -54,6 +57,14 @@ export function buildTranslationPrompt(request: TranslationBatchRequest): Assemb
       ...(request.establishedRenderings === undefined
         ? {}
         : { establishedRenderings: request.establishedRenderings }),
+      ...(request.glossaryCandidates === undefined
+        ? {}
+        : { glossaryCandidates: request.glossaryCandidates }),
+      ...(request.frozenGlossary === undefined ? {} : { frozenGlossary: request.frozenGlossary }),
+      ...(request.openingTranslations === undefined
+        ? {}
+        : { savedOpeningTranslations: request.openingTranslations }),
+      requestKind: request.kind ?? 'tail',
     }),
     request.premiseJa === undefined ? '' : asData('story premise', request.premiseJa),
     jsonDataBlock(

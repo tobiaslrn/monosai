@@ -156,12 +156,12 @@ sequenceDiagram
     Classify-->>Reader: known, exception, or unknown per token
     Note over Reader: Scrolling moves the window.<br/>The rest of the reading stays unloaded.
     Learner->>Aids: ask for a translation of one sentence
-    Aids->>Aids: derive the cache key from the sentence,<br/>the model, and the prompt version
+    Aids->>Enrich: join the reading's plan-aware translation producer
     alt a record exists under that key
         Aids-->>Learner: the stored translation, and no request
     else nothing stored
-        Aids->>Enrich: request it
-        Enrich-->>Aids: a record, stored under the key
+        Enrich->>Enrich: persist a frozen terminology plan,<br/>then request missing sentences
+        Enrich-->>Aids: a record, stored under the plan-aware key
         Aids-->>Learner: the translation
     end
 ```
@@ -186,6 +186,16 @@ every analysis already stored.
 Whole-reading translation reports that it has stopped only after cancellation is saved. Reloading
 after that report cannot resume the cancelled job; a failed cancellation write is shown as a storage
 failure instead.
+
+Translation captures the configured model and prompt, title, premise, register, ordered source
+identity, and a deterministic whole-reading candidate set before its first request. Proper nouns
+and useful recurring terms come from stored token analyses; no grammar result or extra AI request
+is needed. A small opening (normally three sentences, or a three-to-five-sentence first paragraph)
+returns both per-sentence English and an optional glossary. A valid glossary is frozen with the
+accepted opening rows in one transaction before any tail request starts. If only the glossary is
+invalid, the English is stored provisionally and Retry repairs only the glossary. Later requests
+use stable Japanese passage windows, identical captured story context, and the identical frozen
+glossary. At most three translation requests roll concurrently; each also holds a shared permit.
 
 The reader combines appearance preferences, per-layer content status, and maintenance in Story
 options. Explicit preparation and retry actions use the existing layer producers; stopping a layer
@@ -250,8 +260,8 @@ request they want to make takes its turn from one shared `PreparationPacer`: at 
 across the three layers, granted to the lowest waiting `(sentence position, layer)`. The reading
 therefore fills front to back — sentence 1's English, grammar and clip before sentence 60's English —
 rather than one whole layer at a time
-([ADR 0059](../decisions/0059-preparation-fills-the-reading-in-order.md)). Translation still runs its
-first batch alone, to settle the reading's English names before anything else asks. The lane never
+([ADR 0059](../decisions/0059-preparation-fills-the-reading-in-order.md)). Translation runs its small
+opening alone and persists its frozen plan before any tail request asks. The lane never
 registers as busy: an update
 activates while a queue exists, and the rows are picked back up after the reload
 ([ADR 0048](../decisions/0048-the-preparation-lane-yields.md)).

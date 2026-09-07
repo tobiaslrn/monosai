@@ -105,6 +105,12 @@ credentials, and policy text are never indexed. Every multi-table write is one t
 reading is never visible without its sentences and tokens. See
 [ADR 0004](../decisions/0004-persistence-shape.md).
 
+Translation plans are validated persisted state with three explicit forms: opening pending,
+glossary repair required, and ready with a frozen glossary. Establishing a ready plan and its
+accepted opening translations is one transaction. Provisional opening rows remain recoverable but
+do not carry a ready plan's cache identity. Schema history adds the plan store monotonically and
+does not rewrite or discard existing translation or job rows.
+
 Other tabs learn about a deleted or changed reading through a `BroadcastChannel`, not by polling
 ([ADR 0042](../decisions/0042-cross-tab-reading-mutations.md)).
 
@@ -124,7 +130,7 @@ made. If it does not match, the stored result is not shown as current.
 
 | Result | Keyed by |
 | --- | --- |
-| Translation | Sentence content hash, the neighbouring sentences, model, prompt version |
+| Translation | Sentence content hash, ready-plan fingerprint, stable Japanese passage-window fingerprint, model and prompt version. The plan covers title, premise, register, ordered source identity, candidate-selection policy and the canonically ordered frozen glossary |
 | Grammar review | Sentence content hash, grammar profile hash, model, prompt version |
 | Audio clip | Sentence content hash, model, voice, options fingerprint, and whether speech instructions are supported. No prompt version |
 
@@ -136,6 +142,11 @@ instead of playing them ([ADR 0043](../decisions/0043-voice-changes-hide-clips-a
 Persisted whole-reading jobs use a configuration-level fingerprint without sentence content. A
 grammar job's version contains the model, prompt version, and immutable profile hash, so it can
 resume only work whose remaining items still mean the same thing.
+
+Translation separates the input fingerprint from the ready plan fingerprint: creation time and job
+progress affect neither. A retry may narrow its target ids without changing passage-window identity,
+so successful sibling rows remain cache hits. Old rows stay available as history but never satisfy
+a different active plan.
 
 The preparation lane writes each accepted grammar record before advancing its
 job row. Story options therefore reports the real queue/request/save outcome:

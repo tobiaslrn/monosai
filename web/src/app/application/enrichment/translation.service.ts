@@ -5,11 +5,17 @@ import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import {
   partitionTranslations,
   planBatches,
+  isTranslationResponse,
+  translationResults,
   translationTargets,
   type EstablishedRendering,
   type TranslationResult,
   type TranslationWindowEntry,
 } from '../../domain/ai/translation-request';
+import type {
+  FrozenGlossaryEntry,
+  TranslationCandidate,
+} from '../../domain/enrichment/translation-plan';
 import type { TranslationRecord } from '../../domain/enrichment/records';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { ReadingId, SentenceId } from '../../domain/shared/ids';
@@ -40,6 +46,14 @@ export interface TranslationContext {
    * between two independent requests.
    */
   readonly establishedRenderings?: readonly EstablishedRendering[];
+  readonly requestKind?: 'opening' | 'tail' | 'glossary-repair';
+  readonly glossaryCandidates?: readonly TranslationCandidate[];
+  readonly frozenGlossary?: readonly FrozenGlossaryEntry[];
+  readonly openingTranslations?: readonly { readonly textJa: string; readonly textEn: string }[];
+  /** Stable Japanese-only context planned from source positions, independent of retry targets. */
+  readonly passageWindow?: readonly Sentence[];
+  /** The caller already reconciled these exact keys immediately before scheduling. */
+  readonly skipCacheLookup?: boolean;
 }
 
 /** Reads the flag through a call, so an earlier check never narrows a later one. */
@@ -68,6 +82,7 @@ interface BatchAnswer {
   readonly unresolved: readonly Sentence[];
   /** The refusal, when nothing came back at all. Null for a partial answer. */
   readonly error: AiError | null;
+  readonly glossary?: readonly FrozenGlossaryEntry[];
 }
 
 export interface TranslationRunOutcome {
@@ -84,6 +99,7 @@ export interface TranslationRunOutcome {
   readonly error: AiError | null;
   /** Everything this call knows about how the reading's names were rendered. */
   readonly establishedRenderings: readonly EstablishedRendering[];
+  readonly glossary?: readonly FrozenGlossaryEntry[];
 }
 
 /**
@@ -105,6 +121,50 @@ export class TranslationService {
   private readonly enrichment = inject(ENRICHMENT_REPOSITORY);
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
+
+  async repairGlossary(
+    context: TranslationContext,
+    promptVersion: string,
+    config: TextTaskConfig,
+    signal: AbortSignal,
+  ): Promise<Result<readonly FrozenGlossaryEntry[], AiError>> {
+    const answered = await this.provider.translate(
+      {
+        kind: 'glossary-repair',
+        window: (context.passageWindow ?? []).map((sentence) => ({
+          textJa: sentence.japaneseText,
+          targetId: null,
+        })),
+        promptVersion,
+        ...(context.titleJa === undefined ? {} : { titleJa: context.titleJa }),
+        ...(context.registerPreference === undefined
+          ? {}
+          : { registerPreference: context.registerPreference }),
+        ...(context.premiseJa === undefined ? {} : { premiseJa: context.premiseJa }),
+        ...(context.glossaryCandidates === undefined
+          ? {}
+          : { glossaryCandidates: context.glossaryCandidates }),
+        ...(context.openingTranslations === undefined
+          ? {}
+          : { openingTranslations: context.openingTranslations }),
+      },
+      config,
+      signal,
+    );
+    if (!answered.ok) return answered;
+    if (!isTranslationResponse(answered.value) || answered.value.glossary === undefined) {
+      return {
+        ok: false,
+        error: aiError(
+          'malformed-response',
+          'translation',
+          'The terminology repair response did not contain a glossary.',
+          { detail: { issueCode: 'glossary-missing' } },
+        ),
+      };
+    }
+    return ok(answered.value.glossary);
+  }
 
   async run(
     sentences: readonly Sentence[],
@@ -133,6 +193,10 @@ export class TranslationService {
     for (const sentence of sentences) {
       const cacheKey = keys.get(sentence.id);
       if (cacheKey === undefined) {
+        misses.push(sentence);
+        continue;
+      }
+      if (context.skipCacheLookup === true) {
         misses.push(sentence);
         continue;
       }
@@ -172,6 +236,7 @@ export class TranslationService {
 
     const failures: SentenceId[] = [];
     let error: AiError | null = null;
+    let glossary: readonly FrozenGlossaryEntry[] | undefined;
     const batches = planBatches(misses);
 
     for (const batch of batches) {
@@ -191,6 +256,7 @@ export class TranslationService {
         });
 
       let answer = await ask(batch);
+      glossary = answer.glossary ?? glossary;
       let settled = answer.matched;
       // One smaller second question for whatever the reply left out. A batch
       // is not spoiled by one missing id, and re-asking for the two sentences
@@ -200,7 +266,13 @@ export class TranslationService {
       if (answer.error === null && answer.unresolved.length > 0 && !isAborted(signal)) {
         const retry = await ask(answer.unresolved);
         settled = [...settled, ...retry.matched];
-        answer = { matched: settled, unresolved: retry.unresolved, error: retry.error };
+        answer = {
+          matched: settled,
+          unresolved: retry.unresolved,
+          error: retry.error,
+          ...(retry.glossary === undefined ? {} : { glossary: retry.glossary }),
+        };
+        glossary = answer.glossary ?? glossary;
       }
 
       if (answer.unresolved.length > 0) {
@@ -254,6 +326,7 @@ export class TranslationService {
       failures,
       error,
       establishedRenderings: [...establishedBySurface.values()],
+      ...(glossary === undefined ? {} : { glossary }),
     };
   }
 
@@ -266,7 +339,10 @@ export class TranslationService {
    * question is the first one with fewer targets, not a different request.
    */
   private async askBatch(targets: readonly Sentence[], run: BatchRun): Promise<BatchAnswer> {
-    const window = buildWindow(run.sentences, targets, run.positionById, run.englishByPosition);
+    const window =
+      run.context.passageWindow === undefined
+        ? buildWindow(run.sentences, targets, run.positionById, run.englishByPosition)
+        : buildFixedWindow(run.context.passageWindow, targets);
     const requested = translationTargets({ window, promptVersion: run.promptVersion });
     const targetText = requested.map((target) => target.textJa).join('\n');
     const establishedRenderings = [...run.establishedBySurface.values()]
@@ -274,6 +350,7 @@ export class TranslationService {
       .slice(0, MAX_ESTABLISHED_RENDERINGS);
     const answered = await this.provider.translate(
       {
+        kind: run.context.requestKind ?? 'tail',
         window,
         promptVersion: run.promptVersion,
         ...(run.context.titleJa === undefined ? {} : { titleJa: run.context.titleJa }),
@@ -282,6 +359,15 @@ export class TranslationService {
           : { registerPreference: run.context.registerPreference }),
         ...(run.context.premiseJa === undefined ? {} : { premiseJa: run.context.premiseJa }),
         ...(establishedRenderings.length === 0 ? {} : { establishedRenderings }),
+        ...(run.context.glossaryCandidates === undefined
+          ? {}
+          : { glossaryCandidates: run.context.glossaryCandidates }),
+        ...(run.context.frozenGlossary === undefined
+          ? {}
+          : { frozenGlossary: run.context.frozenGlossary }),
+        ...(run.context.openingTranslations === undefined
+          ? {}
+          : { openingTranslations: run.context.openingTranslations }),
       },
       run.config,
       run.signal,
@@ -289,12 +375,15 @@ export class TranslationService {
     if (!answered.ok) {
       return { matched: [], unresolved: targets, error: answered.error };
     }
-    const partitioned = partitionTranslations(requested, answered.value);
+    const partitioned = partitionTranslations(requested, translationResults(answered.value));
     const outstanding = new Set(partitioned.unresolved);
     return {
       matched: partitioned.matched,
       unresolved: targets.filter((sentence) => outstanding.has(sentence.id)),
       error: null,
+      ...(isTranslationResponse(answered.value) && answered.value.glossary !== undefined
+        ? { glossary: answered.value.glossary }
+        : {}),
     };
   }
 
@@ -343,6 +432,19 @@ export class TranslationService {
     ]);
     return stored.ok ? ok(sentencesWithoutStoredAid(cacheKeys, stored.value)) : stored;
   }
+}
+
+function buildFixedWindow(
+  passage: readonly Sentence[],
+  targets: readonly Sentence[],
+): readonly TranslationWindowEntry[] {
+  const targetIds = new Set(targets.map((sentence) => sentence.id));
+  return [...passage]
+    .sort((a, b) => a.positionInReading - b.positionInReading)
+    .map((sentence) => ({
+      textJa: sentence.japaneseText,
+      targetId: targetIds.has(sentence.id) ? sentence.id : null,
+    }));
 }
 
 function rememberRenderings(

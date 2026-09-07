@@ -5,7 +5,7 @@ import type { GrammarReviewRequest, GrammarReviewResult } from './grammar-review
 import type { ModelTest, StructuredOutputMode, TextModelConfig } from './model-test';
 import type { StructureIssue } from './story-structure';
 import type { StoryCandidate, StoryGenerationRequest } from './story-request';
-import type { TranslationBatchRequest, TranslationResult } from './translation-request';
+import type { TranslationBatchRequest, TranslationProviderResult } from './translation-request';
 
 /**
  * How one generation task should talk to the model.
@@ -108,5 +108,5 @@ export interface TextGenerationProvider {
     request: TranslationBatchRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
-  ): Promise<Result<readonly TranslationResult[], AiError>>;
+  ): Promise<Result<TranslationProviderResult, AiError>>;
 }

@@ -14,6 +14,7 @@ import type {
   AudioAssetStoredRow,
   GrammarAnalysisRow,
   TranslationRow,
+  TranslationPlanRow,
 } from './schemas/enrichment.schema';
 import type { AssetJobRow } from './schemas/job.schema';
 import type { GrammarProfileRow, GrammarProfileSnapshotRow } from './schemas/grammar.schema';
@@ -45,6 +46,7 @@ export class MonosaiDatabase extends Dexie {
   readonly tokenAnalyses!: Table<TokenAnalysisRow, [string, string]>;
   readonly frozenValidations!: Table<FrozenValidationRow, string>;
   readonly translations!: Table<TranslationRow, string>;
+  readonly translationPlans!: Table<TranslationPlanRow, string>;
   readonly grammarAnalyses!: Table<GrammarAnalysisRow, string>;
   readonly audioAssets!: Table<AudioAssetStoredRow, string>;
   readonly assetJobs!: Table<AssetJobRow, string>;

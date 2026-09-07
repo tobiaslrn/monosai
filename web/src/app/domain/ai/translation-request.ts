@@ -1,5 +1,6 @@
 import type { SentenceId } from '../shared/ids';
 import { err, ok, type Result } from '../shared/result';
+import type { FrozenGlossaryEntry, TranslationCandidate } from '../enrichment/translation-plan';
 
 /** How many sentences one translation request may carry. */
 export const MAX_TRANSLATION_BATCH = 10;
@@ -42,6 +43,8 @@ export interface EstablishedRendering {
 }
 
 export interface TranslationBatchRequest {
+  /** Opening establishes terminology, tail consumes it, repair asks for terminology only. */
+  readonly kind?: 'opening' | 'tail' | 'glossary-repair';
   readonly window: readonly TranslationWindowEntry[];
   /** The reading's Japanese title, when it has one, as subject-matter context. */
   readonly titleJa?: string;
@@ -49,6 +52,10 @@ export interface TranslationBatchRequest {
   readonly registerPreference?: string;
   /** Earlier choices for recurring names or terms, represented by a translated use. */
   readonly establishedRenderings?: readonly EstablishedRendering[];
+  readonly glossaryCandidates?: readonly TranslationCandidate[];
+  readonly frozenGlossary?: readonly FrozenGlossaryEntry[];
+  /** Persisted opening English constrains a repair without asking for it again. */
+  readonly openingTranslations?: readonly { readonly textJa: string; readonly textEn: string }[];
   /** The learner's premise, when generation supplied one, as story-level context. */
   readonly premiseJa?: string;
   readonly promptVersion: string;
@@ -57,6 +64,27 @@ export interface TranslationBatchRequest {
 export interface TranslationResult {
   readonly id: SentenceId;
   readonly textEn: string;
+}
+
+export interface TranslationResponse {
+  readonly translations: readonly TranslationResult[];
+  /** Present for opening and glossary-repair responses; omission is invalid there. */
+  readonly glossary?: readonly FrozenGlossaryEntry[];
+}
+
+/** Compatibility for existing provider fakes while callers migrate to the response envelope. */
+export type TranslationProviderResult = readonly TranslationResult[] | TranslationResponse;
+
+export function isTranslationResponse(
+  result: TranslationProviderResult,
+): result is TranslationResponse {
+  return !Array.isArray(result);
+}
+
+export function translationResults(
+  result: TranslationProviderResult,
+): readonly TranslationResult[] {
+  return isTranslationResponse(result) ? result.translations : result;
 }
 
 /** The entries a batch actually asks for, in reading order. */

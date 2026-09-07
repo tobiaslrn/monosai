@@ -519,11 +519,15 @@ export async function stubOpenRouter(
         return 'Sure, happy to help!';
       }
       const answered = outcome === 'partial' ? sentences.slice(0, -1) : sentences;
+      const establishesGlossary =
+        text.includes('"requestKind":"opening"') ||
+        text.includes('"requestKind":"glossary-repair"');
       return JSON.stringify({
         translations: answered.map((sentence) => ({
           id: sentence.id,
           textEn: `EN: ${sentence.textJa}`,
         })),
+        ...(establishesGlossary ? { glossary: [] } : {}),
       });
     }
     if (schema === DECISIONS_SCHEMA || text.includes('exception policy (data)')) {

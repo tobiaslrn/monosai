@@ -30,6 +30,7 @@ import type {
 import {
   translationTargets,
   type TranslationBatchRequest,
+  type TranslationProviderResult,
   type TranslationResult,
 } from '../app/domain/ai/translation-request';
 import type { CredentialStatus } from '../app/domain/settings/credential';
@@ -280,18 +281,22 @@ export class StubTextProvider implements TextGenerationProvider {
     return this.answer('grammar-review', this.grammarQueue, signal);
   }
 
-  translate(
+  async translate(
     request: TranslationBatchRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
-  ): Promise<Result<readonly TranslationResult[], AiError>> {
+  ): Promise<Result<TranslationProviderResult, AiError>> {
     this.generationCalls.translate += 1;
     this.translationRequests.push(request);
     this.configs.push(config);
     if (this.translateWith !== null) {
       this.translationQueue.push(this.translateWith(request));
     }
-    return this.answer('translation', this.translationQueue, signal);
+    const answer = await this.answer('translation', this.translationQueue, signal);
+    if (!answer.ok || (request.kind !== 'opening' && request.kind !== 'glossary-repair')) {
+      return answer;
+    }
+    return ok({ translations: answer.value, glossary: [] });
   }
 
   private answer<T>(

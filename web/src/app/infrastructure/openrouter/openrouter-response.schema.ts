@@ -519,18 +519,30 @@ export const translationsSchema = z.object({
       }),
     )
     .max(64),
+  glossary: z
+    .array(
+      z.object({
+        surfaceJa: z.string(),
+        renderingEn: z.string(),
+      }),
+    )
+    .max(20)
+    .optional(),
 });
 
 export type TranslationsPayload = z.infer<typeof translationsSchema>;
 
-export function translationsJsonSchema(targetCount: number): Record<string, unknown> {
+export function translationsJsonSchema(
+  targetCount: number,
+  includeGlossary = false,
+): Record<string, unknown> {
   return {
     name: 'monosai_translations',
     strict: true,
     schema: {
       type: 'object',
       additionalProperties: false,
-      required: ['translations'],
+      required: includeGlossary ? ['translations', 'glossary'] : ['translations'],
       properties: {
         translations: {
           type: 'array',
@@ -549,6 +561,24 @@ export function translationsJsonSchema(targetCount: number): Record<string, unkn
             },
           },
         },
+        ...(includeGlossary
+          ? {
+              glossary: {
+                type: 'array',
+                description:
+                  'Zero or more confident terminology choices, using only supplied candidate surfaces.',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['surfaceJa', 'renderingEn'],
+                  properties: {
+                    surfaceJa: { type: 'string' },
+                    renderingEn: { type: 'string' },
+                  },
+                },
+              },
+            }
+          : {}),
       },
     },
   };

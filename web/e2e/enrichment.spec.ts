@@ -239,8 +239,10 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await expect(sentencePopover(page)).toContainText('EN:');
     await dismissPopover(page);
 
-    // The translation exists, and the page it belongs to is unchanged by it.
-    expect(await storedTranslationCount(page)).toBe(1);
+    // A sentence action establishes the same small terminology-aware opening
+    // as whole-reading preparation. Those records exist, and the page they
+    // belong to is unchanged by them.
+    expect(await storedTranslationCount(page)).toBe(3);
     await expect(page.locator('article.text')).not.toContainText('EN:');
     expect(callCount(calls) - afterSetup).toBe(1);
   });

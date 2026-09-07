@@ -243,7 +243,7 @@ export class PreparationStore {
     const runner = this.runners.runnerFor(layer);
     runner.acknowledge(readingId);
     this.unblock(readingId, [layer]);
-    await runner.enqueue(readingId);
+    await runner.enqueue(readingId, 'explicit');
     await this.pump();
   }
 

@@ -14,7 +14,7 @@ import type {
 } from '../../domain/ai/text-generation-provider';
 import type {
   TranslationBatchRequest,
-  TranslationResult,
+  TranslationProviderResult,
 } from '../../domain/ai/translation-request';
 import type { Result } from '../../domain/shared/result';
 import type { OpenRouterEnricher } from './enrichment.adapter';
@@ -107,7 +107,7 @@ export class OpenRouterTextProvider implements TextGenerationProvider {
     request: TranslationBatchRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
-  ): Promise<Result<readonly TranslationResult[], AiError>> {
+  ): Promise<Result<TranslationProviderResult, AiError>> {
     return (await this.enrichment()).translate(request, config, signal);
   }
 }

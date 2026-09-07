@@ -25,6 +25,7 @@ export type DiagnosticFieldName =
   | 'providerKind'
   | 'recovery'
   | 'retryCount'
+  | 'requestCount'
   | 'route'
   | 'schemaVersion'
   | 'sourceKind'
@@ -82,7 +83,9 @@ export type LogEventName =
   | 'job.paused'
   | 'job.started'
   | 'job.succeeded'
-  | 'job.batch';
+  | 'job.batch'
+  | 'translation.completed'
+  | 'translation.first-persisted';
 
 export interface LogEntry {
   readonly level: LogLevel;

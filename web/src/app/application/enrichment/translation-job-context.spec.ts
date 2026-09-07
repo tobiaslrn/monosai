@@ -74,7 +74,7 @@ describe('the whole-reading translation job', () => {
     expect(request.window.filter((entry) => entry.targetId !== null)).toHaveLength(5);
   });
 
-  it('carries a name it has already rendered into the next batch', async () => {
+  it('carries one frozen terminology plan into every tail batch', async () => {
     // Twelve distinct sentences: two independent requests, with the cat named
     // in both. Nothing shares Japanese, so the second request learns nothing
     // from the cache and only what the first one settled can reach it.
@@ -105,10 +105,11 @@ describe('the whole-reading translation job', () => {
 
     await TestBed.inject(TranslationJobStore).start(state.reading.id);
 
-    expect(bed.provider.translationRequests).toHaveLength(2);
+    expect(bed.provider.translationRequests).toHaveLength(3);
     expect(bed.provider.translationRequests[0].establishedRenderings).toBeUndefined();
-    expect(bed.provider.translationRequests[1].establishedRenderings).toEqual([
-      { surfaceJa: 'ミケ', exampleJa: 'ミケはいます。', exampleEn: 'EN: ミケはいます。' },
-    ]);
+    const tail = bed.provider.translationRequests.slice(1);
+    expect(tail.every((request) => request.establishedRenderings === undefined)).toBe(true);
+    expect(tail.map((request) => request.frozenGlossary)).toEqual([[], []]);
+    expect(tail.map((request) => request.titleJa)).toEqual(['ミケの一日', 'ミケの一日']);
   });
 });

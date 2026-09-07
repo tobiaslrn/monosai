@@ -390,6 +390,7 @@ export class DexieReadingRepository implements ReadingRepository {
           this.db.tokenAnalyses,
           this.db.frozenValidations,
           this.db.translations,
+          this.db.translationPlans,
           this.db.grammarAnalyses,
           this.db.audioAssets,
           this.db.assetJobs,
@@ -398,6 +399,7 @@ export class DexieReadingRepository implements ReadingRepository {
         async () => {
           await this.db.audioAssets.where('readingId').equals(id).delete();
           await this.db.translations.where('readingId').equals(id).delete();
+          await this.db.translationPlans.delete(id);
           await this.db.grammarAnalyses.where('readingId').equals(id).delete();
           await this.db.frozenValidations.where('readingId').equals(id).delete();
           await this.db.tokenAnalyses.where('readingId').equals(id).delete();

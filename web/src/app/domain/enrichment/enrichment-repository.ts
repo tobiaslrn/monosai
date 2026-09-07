@@ -8,12 +8,28 @@ import type {
   GrammarAnalysisRecord,
   TranslationRecord,
 } from './records';
+import type { TranslationPlan } from './translation-plan';
 
 /**
  * Cached auxiliary results. Writes are idempotent by cache key and update the
  * owning reading's denormalized summary in the same transaction.
  */
 export interface EnrichmentRepository {
+  getTranslationPlan(readingId: ReadingId): Promise<Result<TranslationPlan | null, StorageError>>;
+  storeTranslationPlan(plan: TranslationPlan): Promise<Result<TranslationPlan, StorageError>>;
+  /** Commits a state transition and its accepted opening rows as one durable unit. */
+  commitTranslationPlan(
+    plan: TranslationPlan,
+    translations: readonly TranslationRecord[],
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
+    expectedInputFingerprint: string,
+  ): Promise<Result<TranslationPlan, StorageError>>;
+  /** Stores only while this exact ready plan is still active. */
+  storeTranslationForPlan(
+    record: TranslationRecord,
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
+    planFingerprint: string,
+  ): Promise<Result<TranslationRecord, StorageError>>;
   getTranslationByCacheKey(
     cacheKey: string,
   ): Promise<Result<TranslationRecord | null, StorageError>>;

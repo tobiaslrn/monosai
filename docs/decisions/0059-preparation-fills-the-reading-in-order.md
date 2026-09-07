@@ -1,7 +1,8 @@
 # 0059 — Preparation fills the reading in order, from one shared pool
 
 Date: 2026-09-06
-Status: Accepted
+Status: Accepted; the mutable translation ledger and first ten-sentence batch
+are superseded by [ADR 0060](0060-progressive-translation-freezes-terminology.md)
 
 Supersedes the bounded-wave and six-request parts of
 [0054](0054-parallel-text-preparation.md), the audio-after-text ordering in

@@ -2,7 +2,9 @@
 
 Date: 2026-09-04
 Status: Accepted, the wave and six-request parts superseded by
-[ADR 0059](0059-preparation-fills-the-reading-in-order.md)
+[ADR 0059](0059-preparation-fills-the-reading-in-order.md), and the mutable
+translation-glossary portions superseded by
+[ADR 0060](0060-progressive-translation-freezes-terminology.md)
 
 Supersedes the sequential text-layer and fixed four-sentence grammar batching
 parts of [0048](0048-the-preparation-lane-yields.md) and

@@ -126,10 +126,15 @@ export class BrowserStorageMaintenance implements StorageMaintenance {
     return runStorage(`storage.clearReadingAid.${layer}`, async () => {
       const aidTable = layer === 'english' ? this.db.translations : this.db.grammarAnalyses;
       const jobKind = layer === 'english' ? 'translate-reading' : 'analyze-reading';
-      await this.db.transaction('rw', [aidTable, this.db.assetJobs, this.db.readings], async () => {
+      const tables =
+        layer === 'english'
+          ? [aidTable, this.db.translationPlans, this.db.assetJobs, this.db.readings]
+          : [aidTable, this.db.assetJobs, this.db.readings];
+      await this.db.transaction('rw', tables, async () => {
         const reading = await this.db.readings.get(readingId);
         if (reading === undefined) return;
         await aidTable.where('readingId').equals(readingId).delete();
+        if (layer === 'english') await this.db.translationPlans.delete(readingId);
         await this.db.assetJobs.where('[readingId+kind]').equals([readingId, jobKind]).delete();
         await this.db.readings.update(
           readingId,

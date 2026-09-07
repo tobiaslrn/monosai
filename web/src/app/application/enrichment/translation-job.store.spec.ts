@@ -36,7 +36,7 @@ const SENTENCE_COUNT = 12;
 
 const TEST_HASHER: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
 
-/** Twelve sentences, so a run has to plan two bounded batches rather than one. */
+/** Twelve sentences, so a run has an opening and two stable tail passages. */
 function longReading(seed = 1): ImportedReadingDraft {
   return importedReadingFixture({
     seed,
@@ -154,10 +154,10 @@ describe('TranslationJobStore', () => {
   it('translates a reading in bounded batches', async () => {
     await bed.store.start(bed.draft.reading.id);
 
-    expect(bed.provider.generationCalls.translate).toBe(2);
+    expect(bed.provider.generationCalls.translate).toBe(3);
     expect(
       bed.provider.translationRequests.map((request) => translationTargets(request).length),
-    ).toEqual([MAX_TRANSLATION_BATCH, SENTENCE_COUNT - MAX_TRANSLATION_BATCH]);
+    ).toEqual([3, 7, 2]);
 
     const progress = bed.store.progress();
     expect(progress.kind).toBe('complete');
@@ -192,7 +192,7 @@ describe('TranslationJobStore', () => {
    * After that the shared pacer decides, and batches go out from the front of
    * the reading rather than in this job's own waves (ADR 0059).
    */
-  it('seeds terminology with the first batch, then runs the rest together in order', async () => {
+  it('establishes terminology with the opening, then rolls at most three tail requests', async () => {
     const batches = 5;
     const draft = importedReadingFixture({
       seed: 99,
@@ -214,16 +214,24 @@ describe('TranslationJobStore', () => {
       peak = Math.max(peak, inFlight);
       await new Promise((resolve) => setTimeout(resolve, 5));
       inFlight -= 1;
-      return ok(targets.map((sentence) => ({ id: sentence.id, textEn: `EN ${sentence.textJa}` })));
+      const translations = targets.map((sentence) => ({
+        id: sentence.id,
+        textEn: `EN ${sentence.textJa}`,
+      }));
+      return ok(request.kind === 'opening' ? { translations, glossary: [] } : translations);
     });
 
     await bed.store.start(draft.reading.id);
 
-    // One request alone, then the remaining four together.
-    expect(peak).toBe(batches - 1);
-    expect(askedFor).toEqual(
-      Array.from({ length: batches }, (_value, index) => `長文${String(index * 10)}です。`),
-    );
+    expect(peak).toBe(3);
+    expect(askedFor).toEqual([
+      '長文0です。',
+      '長文3です。',
+      '長文10です。',
+      '長文20です。',
+      '長文30です。',
+      '長文40です。',
+    ]);
     expect(bed.store.progress().kind).toBe('complete');
   });
 
@@ -231,7 +239,7 @@ describe('TranslationJobStore', () => {
     let call = 0;
     bed.provider.translateWith = (request) => {
       call += 1;
-      return call === 1
+      return call === 2
         ? err(aiError('provider-unavailable', 'translation', 'The provider was unavailable.'))
         : ok(
             translationTargets(request).map((sentence) => ({
@@ -253,8 +261,8 @@ describe('TranslationJobStore', () => {
     if (progress.kind !== 'failed') {
       return;
     }
-    expect(progress.counts.failed).toBe(MAX_TRANSLATION_BATCH);
-    expect(progress.counts.completed).toBe(SENTENCE_COUNT - MAX_TRANSLATION_BATCH);
+    expect(progress.counts.failed).toBe(7);
+    expect(progress.counts.completed).toBe(5);
 
     const rows = await bed.db.assetJobs.toArray();
     expect(rows[0].state).toBe('failed');
@@ -278,7 +286,7 @@ describe('TranslationJobStore', () => {
     }
     expect(progress.error.source).toBe('provider');
     expect(progress.counts.completed).toBe(0);
-    expect(progress.counts.failed).toBe(MAX_TRANSLATION_BATCH);
+    expect(progress.counts.failed).toBe(0);
 
     const rows = await bed.db.assetJobs.toArray();
     expect(rows).toHaveLength(1);
@@ -302,6 +310,75 @@ describe('TranslationJobStore', () => {
     expect(bed.store.progress().kind).toBe('complete');
     const stored = await bed.enrichment.listTranslations(bed.draft.reading.id);
     expect(stored.ok && stored.value).toHaveLength(SENTENCE_COUNT);
+  });
+
+  it('preserves provisional opening English and repairs only the glossary on retry', async () => {
+    let call = 0;
+    const requests: (typeof bed.provider.translationRequests)[number][] = [];
+    vi.spyOn(bed.provider, 'translate').mockImplementation((request) => {
+      call += 1;
+      requests.push(request);
+      const translations = translationTargets(request).map((target) => ({
+        id: target.id,
+        textEn: `EN ${target.textJa}`,
+      }));
+      if (call === 1) {
+        return Promise.resolve(
+          ok({
+            translations,
+            glossary: [{ surfaceJa: 'invented', renderingEn: 'Invented' }],
+          }),
+        );
+      }
+      if (request.kind === 'glossary-repair') {
+        return Promise.resolve(ok({ translations: [], glossary: [] }));
+      }
+      return Promise.resolve(ok({ translations }));
+    });
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(bed.store.progress().kind).toBe('failed');
+    const provisional = await bed.enrichment.listTranslations(bed.draft.reading.id);
+    expect(provisional.ok && provisional.value).toHaveLength(3);
+    const repairing = await bed.enrichment.getTranslationPlan(bed.draft.reading.id);
+    expect(repairing.ok && repairing.value?.state).toBe('glossary-repair-required');
+    expect(requests).toHaveLength(1);
+
+    await bed.store.retry(bed.draft.reading.id);
+
+    expect(translationTargets(requests[1])).toEqual([]);
+    expect(requests[1].openingTranslations).toHaveLength(3);
+    const ready = await bed.enrichment.getTranslationPlan(bed.draft.reading.id);
+    expect(ready.ok && ready.value?.state).toBe('ready');
+    expect(bed.store.progress().kind).toBe('complete');
+  });
+
+  it('does not publish opening English when the ready-plan transaction fails', async () => {
+    const failure = storageError('transaction-aborted', 'The opening commit failed.');
+    vi.spyOn(bed.enrichment, 'commitTranslationPlan').mockResolvedValue(err(failure));
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(bed.store.progress()).toMatchObject({
+      kind: 'failed',
+      error: { source: 'storage', error: failure },
+    });
+    const stored = await bed.enrichment.listTranslations(bed.draft.reading.id);
+    expect(stored.ok && stored.value).toEqual([]);
+  });
+
+  it('supplies every tail request the same frozen terminology and story context', async () => {
+    await bed.store.start(bed.draft.reading.id);
+
+    const tail = bed.provider.translationRequests.filter((request) => request.kind === 'tail');
+    expect(tail).toHaveLength(2);
+    expect(new Set(tail.map((request) => JSON.stringify(request.frozenGlossary))).size).toBe(1);
+    expect(new Set(tail.map((request) => request.titleJa)).size).toBe(1);
+    expect(new Set(tail.map((request) => request.registerPreference)).size).toBe(1);
+    expect(
+      tail.every((request) => request.window.every((entry) => entry.textEn === undefined)),
+    ).toBe(true);
   });
 
   it('keeps stored translations when cancelled and issues no further requests', async () => {
@@ -377,7 +454,7 @@ describe('TranslationJobStore', () => {
   });
 
   it('resumes after a reload by reconciling with the cache and asking only for what is missing', async () => {
-    // Stop after the first batch, leaving ten stored translations behind.
+    // Stop after the opening commit, leaving three stored translations behind.
     let answered = 0;
     bed.provider.beforeAnswer = () => {
       answered += 1;
@@ -391,7 +468,7 @@ describe('TranslationJobStore', () => {
 
     const afterFirst = await bed.enrichment.listTranslations(bed.draft.reading.id);
     const completed = afterFirst.ok ? afterFirst.value.length : 0;
-    expect(completed).toBe(MAX_TRANSLATION_BATCH);
+    expect(completed).toBe(3);
 
     // A reload: a fresh store over the same database, with the cancelled job
     // reopened by starting the reading again.
@@ -468,7 +545,7 @@ describe('TranslationJobStore', () => {
     await bed.store.start(bed.draft.reading.id);
 
     // The run finished both batches: another reading's Stop reached nothing.
-    expect(bed.provider.generationCalls.translate).toBe(2);
+    expect(bed.provider.generationCalls.translate).toBe(3);
     expect(bed.store.progress().kind).toBe('complete');
   });
 
@@ -517,7 +594,7 @@ describe('TranslationJobStore', () => {
 
     // Translations already paid for survive the delete of everything else.
     const stored = await bed.enrichment.listTranslations(bed.draft.reading.id);
-    expect(stored.ok && stored.value).toHaveLength(MAX_TRANSLATION_BATCH);
+    expect(stored.ok && stored.value).toHaveLength(3);
   });
 
   it('leaves a run alone when a different reading is deleted', async () => {
@@ -531,7 +608,7 @@ describe('TranslationJobStore', () => {
     await bed.store.start(bed.draft.reading.id);
     await Promise.all(deletions);
 
-    expect(bed.provider.generationCalls.translate).toBe(2);
+    expect(bed.provider.generationCalls.translate).toBe(3);
     expect(bed.store.progress().kind).toBe('complete');
   });
 
@@ -552,7 +629,7 @@ describe('TranslationJobStore', () => {
     );
   });
 
-  it('translates an imported reading with the register but no story context', async () => {
+  it('translates an imported reading with its captured title and register but no premise', async () => {
     await bed.store.start(bed.draft.reading.id);
 
     // An imported reading has no premise and no provenance. That is a reading
@@ -560,10 +637,10 @@ describe('TranslationJobStore', () => {
     const request = bed.provider.translationRequests[0];
     expect(request.registerPreference).toBe('written');
     expect(request.premiseJa).toBeUndefined();
-    expect(request.titleJa).toBeUndefined();
+    expect(request.titleJa).toBe(bed.draft.reading.title);
   });
 
-  it('reads nothing beyond the sentence refs to queue a reading', async () => {
+  it('captures whole-reading token analyses while queueing without spending', async () => {
     const analyses: string[] = [];
     const original = bed.readings.loadTokenAnalyses.bind(bed.readings);
     bed.readings.loadTokenAnalyses = (ids) => {
@@ -573,10 +650,8 @@ describe('TranslationJobStore', () => {
 
     await bed.store.enqueue(bed.draft.reading.id);
 
-    // Queueing is one of the four reconciliation moments and runs for every
-    // reading in the library; it must not load a reading's tokens to decide
-    // there is work.
-    expect(analyses).toEqual([]);
+    expect(analyses).toHaveLength(SENTENCE_COUNT);
+    expect(bed.provider.generationCalls.translate).toBe(0);
   });
 
   describe('queueing without spending', () => {
@@ -603,6 +678,20 @@ describe('TranslationJobStore', () => {
       expect(bed.provider.generationCalls.translate).toBe(spentOnFirstRun);
       const rows = await bed.jobs.listActive();
       expect(rows.ok && rows.value).toEqual([]);
+    });
+
+    it('queues plan-aware remaining work when the learner explicitly continues', async () => {
+      await bed.store.start(bed.draft.reading.id);
+      const stored = await bed.db.translations.toArray();
+      const removed = stored[0];
+      expect(removed).toBeDefined();
+      await bed.db.translations.delete(removed.cacheKey);
+
+      expect((await bed.store.enqueue(bed.draft.reading.id)).kind).toBe('nothing-to-do');
+      expect((await bed.store.enqueue(bed.draft.reading.id, 'explicit')).kind).toBe('queued');
+
+      const active = await bed.jobs.findActive(bed.draft.reading.id, 'translate-reading');
+      expect(active.ok && active.value?.orderedSentenceIds).toEqual([removed.sentenceId]);
     });
 
     it('still asks for everything when the learner wants it done again', async () => {

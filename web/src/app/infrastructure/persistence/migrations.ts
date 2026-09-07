@@ -56,6 +56,10 @@ const V5_STORES = V4_STORES;
 const V6_STORES = V5_STORES;
 const V7_STORES = V6_STORES;
 const V8_STORES = V7_STORES;
+const V11_STORES: Readonly<Record<string, string | null>> = {
+  ...V8_STORES,
+  translationPlans: '&readingId, state, inputFingerprint',
+};
 
 export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   {
@@ -275,6 +279,10 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
         await settings.put(row);
       }
     },
+  },
+  {
+    version: 11,
+    stores: V11_STORES,
   },
 ];
 

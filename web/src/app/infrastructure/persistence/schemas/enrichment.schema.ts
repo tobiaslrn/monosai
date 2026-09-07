@@ -21,6 +21,49 @@ export const translationRowSchema = z.object({
   createdAt: timestampSchema,
 });
 
+const translationCandidateSchema = z.object({
+  surfaceJa: nonEmptyString.max(120),
+  readingHiragana: nonEmptyString.max(240).optional(),
+  kind: z.enum(['proper-noun', 'recurring-term']),
+  examples: z
+    .array(z.object({ sentenceId: sentenceIdSchema, textJa: nonEmptyString.max(240) }))
+    .max(2)
+    .readonly(),
+});
+
+const translationPlanBaseSchema = z.object({
+  v: rowVersionSchema,
+  readingId: readingIdSchema,
+  modelId: nonEmptyString,
+  promptVersion: nonEmptyString,
+  title: z.string(),
+  premise: z.string(),
+  register: nonEmptyString,
+  contextFingerprint: nonEmptyString,
+  sourceContentFingerprint: nonEmptyString,
+  candidatePolicyVersion: nonEmptyString,
+  contextPolicyVersion: nonEmptyString,
+  candidates: z.array(translationCandidateSchema).max(20).readonly(),
+  inputFingerprint: nonEmptyString,
+  createdAt: timestampSchema,
+});
+
+export const translationPlanRowSchema = z.discriminatedUnion('state', [
+  translationPlanBaseSchema.extend({ state: z.literal('opening-pending') }),
+  translationPlanBaseSchema.extend({
+    state: z.literal('glossary-repair-required'),
+    provisionalOpeningSentenceIds: z.array(sentenceIdSchema).readonly(),
+  }),
+  translationPlanBaseSchema.extend({
+    state: z.literal('ready'),
+    glossary: z
+      .array(z.object({ surfaceJa: nonEmptyString.max(120), renderingEn: nonEmptyString.max(160) }))
+      .max(20)
+      .readonly(),
+    planFingerprint: nonEmptyString,
+  }),
+]);
+
 export const grammarAnalysisRowSchema = z.object({
   v: rowVersionSchema,
   id: nonEmptyString,
@@ -62,6 +105,7 @@ export const audioAssetMetadataSchema = z.object({
 });
 
 export type TranslationRow = z.infer<typeof translationRowSchema>;
+export type TranslationPlanRow = z.infer<typeof translationPlanRowSchema>;
 export type GrammarAnalysisRow = z.infer<typeof grammarAnalysisRowSchema>;
 export type AudioAssetMetadata = z.infer<typeof audioAssetMetadataSchema>;
 /**

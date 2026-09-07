@@ -33,6 +33,10 @@ export class EnrichmentKeysService {
     sentences: readonly KeyableSentence[],
     modelId: string,
     promptVersion: string,
+    context?: {
+      readonly planFingerprint: string;
+      readonly passageFingerprintBySentence: ReadonlyMap<SentenceId, string>;
+    },
   ): ReadonlyMap<SentenceId, string> {
     return new Map(
       sentences.map((sentence, index) => [
@@ -44,6 +48,8 @@ export class EnrichmentKeysService {
           promptVersion,
           sentences[index - 1]?.contentHash ?? null,
           sentences[index + 1]?.contentHash ?? null,
+          context?.planFingerprint ?? null,
+          context?.passageFingerprintBySentence.get(sentence.id) ?? null,
         ),
       ]),
     );

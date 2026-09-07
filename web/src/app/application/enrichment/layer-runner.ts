@@ -22,7 +22,7 @@ import { IDLE_LAYER_PROGRESS, type EnqueueOutcome, type LayerProgress } from './
 export interface LayerRunner {
   readonly layer: PreparationLayer;
   /** Creates the job row and issues nothing. */
-  enqueue(readingId: ReadingId): Promise<EnqueueOutcome>;
+  enqueue(readingId: ReadingId, intent?: 'automatic' | 'explicit'): Promise<EnqueueOutcome>;
   start(readingId: ReadingId): Promise<void>;
   resume(readingId: ReadingId): Promise<void>;
   retry(readingId: ReadingId): Promise<void>;
@@ -76,7 +76,7 @@ export class LayerRunners {
 
 /** The store surface the lane relies on, which all three already have. */
 interface JobStoreLike {
-  enqueue(readingId: ReadingId): Promise<EnqueueOutcome>;
+  enqueue(readingId: ReadingId, intent?: 'automatic' | 'explicit'): Promise<EnqueueOutcome>;
   start(readingId: ReadingId): Promise<void>;
   resume(readingId: ReadingId): Promise<void>;
   retry(readingId: ReadingId): Promise<void>;
@@ -92,7 +92,7 @@ interface JobStoreLike {
 function adapt(layer: PreparationLayer, store: JobStoreLike): LayerRunner {
   return {
     layer,
-    enqueue: (readingId) => store.enqueue(readingId),
+    enqueue: (readingId, intent) => store.enqueue(readingId, intent),
     start: (readingId) => store.start(readingId),
     resume: (readingId) => store.resume(readingId),
     retry: (readingId) => store.retry(readingId),

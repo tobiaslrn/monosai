@@ -21,6 +21,8 @@ export function translationCacheKey(
   promptVersion: string,
   contextBeforeContentHash: string | null = null,
   contextAfterContentHash: string | null = null,
+  translationPlanFingerprint: string | null = null,
+  passageContextFingerprint: string | null = null,
 ): string {
   return hashCanonical(hasher, 'translation', {
     sentenceContentHash,
@@ -28,6 +30,8 @@ export function translationCacheKey(
     promptVersion,
     contextBeforeContentHash,
     contextAfterContentHash,
+    translationPlanFingerprint,
+    passageContextFingerprint,
   });
 }
 
@@ -57,10 +61,12 @@ export function translationConfigFingerprint(
   hasher: Hasher,
   modelId: string,
   promptVersion: string,
+  translationPlanInputFingerprint: string | null = null,
 ): string {
   return hashCanonical(hasher, 'translation-config', {
     modelId,
     promptVersion,
+    translationPlanInputFingerprint,
   });
 }
 

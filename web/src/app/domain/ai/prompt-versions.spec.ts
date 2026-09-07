@@ -29,7 +29,7 @@ describe('PROMPT_VERSIONS', () => {
       repair: 'repair/3',
       'exception-review': 'exception-review/3',
       grammar: 'grammar/4',
-      translation: 'translation/3',
+      translation: 'translation/4',
     });
   });
 });

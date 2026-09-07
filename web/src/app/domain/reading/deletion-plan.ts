@@ -15,6 +15,7 @@ export const OWNED_READING_STORES = [
   'tokenAnalyses',
   'frozenValidations',
   'translations',
+  'translationPlans',
   'grammarAnalyses',
   'audioAssets',
   'assetJobs',

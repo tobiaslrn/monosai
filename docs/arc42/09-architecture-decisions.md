@@ -31,6 +31,7 @@ files are already linked from code comments and from other records.
 | [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md) | Grammar preparation uses bounded batches and resumable recovery |
 | [0054](../decisions/0054-parallel-text-preparation.md) | Text preparation uses sparse adaptive batches and bounded waves |
 | [0059](../decisions/0059-preparation-fills-the-reading-in-order.md) | Preparation fills the reading in order, from one shared pool |
+| [0060](../decisions/0060-progressive-translation-freezes-terminology.md) | Progressive translation freezes a persisted terminology plan |
 
 ### Language processing
 
@@ -74,6 +75,7 @@ files are already linked from code comments and from other records.
 | [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md) | Grammar preparation uses bounded batches and resumable recovery |
 | [0054](../decisions/0054-parallel-text-preparation.md) | Text preparation uses sparse adaptive batches and bounded waves |
 | [0059](../decisions/0059-preparation-fills-the-reading-in-order.md) | Preparation fills the reading in order, from one shared pool |
+| [0060](../decisions/0060-progressive-translation-freezes-terminology.md) | Progressive translation freezes a persisted terminology plan |
 
 ### The reader
 

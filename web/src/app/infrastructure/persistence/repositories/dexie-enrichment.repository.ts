@@ -15,6 +15,7 @@ import type {
   TranslationRecord,
 } from '../../../domain/enrichment/records';
 import type { EnrichmentRepository } from '../../../domain/enrichment/enrichment-repository';
+import type { TranslationPlan } from '../../../domain/enrichment/translation-plan';
 import type { StorageError } from '../../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../monosai-db';
 import { parseRecord, parseRecords } from '../record-validation';
@@ -23,9 +24,11 @@ import {
   audioAssetMetadataSchema,
   grammarAnalysisRowSchema,
   translationRowSchema,
+  translationPlanRowSchema,
   type AudioAssetStoredRow,
   type GrammarAnalysisRow,
   type TranslationRow,
+  type TranslationPlanRow,
 } from '../schemas/enrichment.schema';
 import { runStorage } from './storage-operation';
 
@@ -38,6 +41,88 @@ import { runStorage } from './storage-operation';
  */
 export class DexieEnrichmentRepository implements EnrichmentRepository {
   constructor(private readonly db: MonosaiDatabase) {}
+
+  async getTranslationPlan(
+    readingId: ReadingId,
+  ): Promise<Result<TranslationPlan | null, StorageError>> {
+    const loaded = await runStorage('translationPlans.get', () =>
+      this.db.translationPlans.get(readingId),
+    );
+    if (!loaded.ok) return loaded;
+    if (loaded.value === undefined) return ok(null);
+    const parsed = parseRecord(translationPlanRowSchema, loaded.value, 'translationPlans');
+    return parsed.ok ? ok(toTranslationPlan(parsed.value)) : parsed;
+  }
+
+  async storeTranslationPlan(
+    plan: TranslationPlan,
+  ): Promise<Result<TranslationPlan, StorageError>> {
+    const stored = await runStorage('translationPlans.put', async () => {
+      const reading = await this.db.readings.get(plan.readingId);
+      if (reading === undefined) throw new Error('The reading no longer exists.');
+      await this.db.translationPlans.put({ ...plan, v: ROW_VERSION });
+    });
+    return stored.ok ? ok(plan) : stored;
+  }
+
+  async commitTranslationPlan(
+    plan: TranslationPlan,
+    translations: readonly TranslationRecord[],
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
+    expectedInputFingerprint: string,
+  ): Promise<Result<TranslationPlan, StorageError>> {
+    const stored = await runStorage('translationPlans.commit', async () => {
+      await this.db.transaction(
+        'rw',
+        [this.db.translationPlans, this.db.translations, this.db.readings],
+        async () => {
+          const reading = await this.db.readings.get(plan.readingId);
+          if (reading === undefined) throw new Error('The reading no longer exists.');
+          const active = await this.db.translationPlans.get(plan.readingId);
+          if (active?.inputFingerprint !== expectedInputFingerprint) {
+            throw new Error('The active translation plan changed.');
+          }
+          if (
+            active.state === 'ready' &&
+            plan.state === 'ready' &&
+            active.planFingerprint !== plan.planFingerprint
+          ) {
+            throw new Error('A different ready translation plan is already active.');
+          }
+          await this.db.translations.bulkPut(
+            translations.map((translation) => ({ ...translation, v: ROW_VERSION })),
+          );
+          await this.db.translationPlans.put({ ...plan, v: ROW_VERSION });
+          await this.refreshTranslationSummary(plan.readingId, currentCacheKeys);
+        },
+      );
+    });
+    return stored.ok ? ok(plan) : stored;
+  }
+
+  async storeTranslationForPlan(
+    record: TranslationRecord,
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
+    planFingerprint: string,
+  ): Promise<Result<TranslationRecord, StorageError>> {
+    const stored = await runStorage('translations.putForPlan', async () => {
+      await this.db.transaction(
+        'rw',
+        [this.db.translationPlans, this.db.translations, this.db.readings],
+        async () => {
+          const active = await this.db.translationPlans.get(record.readingId);
+          if (active?.state !== 'ready' || active.planFingerprint !== planFingerprint) {
+            throw new Error('The active translation plan changed.');
+          }
+          const reading = await this.db.readings.get(record.readingId);
+          if (reading === undefined) throw new Error('The reading no longer exists.');
+          await this.db.translations.put({ ...record, v: ROW_VERSION });
+          await this.refreshTranslationSummary(record.readingId, currentCacheKeys);
+        },
+      );
+    });
+    return stored.ok ? ok(record) : stored;
+  }
 
   async getTranslationByCacheKey(
     cacheKey: string,
@@ -498,6 +583,11 @@ function stripBytes(row: AudioAssetStoredRow): Omit<AudioAssetStoredRow, 'bytes'
 function toTranslation(row: TranslationRow): TranslationRecord {
   const { v: _version, ...record } = row;
   return record;
+}
+
+function toTranslationPlan(row: TranslationPlanRow): TranslationPlan {
+  const { v: _version, ...plan } = row;
+  return plan;
 }
 
 function toGrammarAnalysis(row: GrammarAnalysisRow): GrammarAnalysisRecord {
