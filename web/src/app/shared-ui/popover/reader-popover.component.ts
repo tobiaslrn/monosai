@@ -92,7 +92,7 @@ const DISMISS_DISTANCE_PX = 80;
       overflow-y: auto;
       overscroll-behavior: contain;
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
+      border-radius: var(--radius-sheet);
       background: var(--surface-panel);
       box-shadow: var(--shadow-overlay);
       transition: opacity var(--motion-fast) ease-out;
@@ -132,7 +132,7 @@ const DISMISS_DISTANCE_PX = 80;
       overflow: hidden auto;
       border-inline: 0;
       border-block-end: 0;
-      border-radius: var(--radius-card) var(--radius-card) 0 0;
+      border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
       transition:
         opacity var(--motion-fast) ease-out,
         transform var(--motion-medium) cubic-bezier(0.2, 0, 0, 1);

@@ -311,7 +311,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     .player {
       display: flex;
       flex-direction: column;
-      gap: var(--space-1);
+      gap: var(--space-3);
       min-width: 0;
     }
 
@@ -322,9 +322,10 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
      */
     .track {
       position: relative;
+      order: -1;
       display: flex;
       align-items: center;
-      block-size: 20px;
+      block-size: 24px;
     }
 
     .rail,
@@ -332,7 +333,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       position: absolute;
       inset-block-start: 50%;
       inset-inline-start: 0;
-      block-size: 4px;
+      block-size: 5px;
       border-radius: var(--radius-pill);
       transform: translateY(-50%);
       pointer-events: none;
@@ -389,7 +390,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       z-index: 1;
       inline-size: 100%;
       min-block-size: 0;
-      block-size: 20px;
+      block-size: 24px;
       margin: 0;
       padding: 0;
       appearance: none;
@@ -402,40 +403,50 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     }
 
     .scrub::-webkit-slider-runnable-track {
-      block-size: 20px;
+      block-size: 24px;
       background: none;
     }
 
     .scrub::-moz-range-track {
-      block-size: 20px;
+      block-size: 24px;
       background: none;
     }
 
     /*
-     * The thumb appears when the track is being used and not before, the way a
-     * media scrubber does: at rest the bar is a reading of where the reading is,
-     * and a permanent handle on a 4px line reads as a defect.
+     * A compact, persistent thumb makes the generated track read as something
+     * that can be aimed at, not only as a report. It disappears while the
+     * range is disabled, when there is no audio position to choose yet.
      */
     .scrub::-webkit-slider-thumb {
-      inline-size: 12px;
-      block-size: 12px;
-      margin-block-start: 4px;
-      border: 0;
+      inline-size: 14px;
+      block-size: 14px;
+      margin-block-start: 5px;
+      border: 3px solid var(--surface-panel);
       border-radius: var(--radius-pill);
-      background: var(--text-primary);
-      opacity: 0;
+      background: var(--action-primary);
+      box-shadow: var(--shadow-raised);
+      opacity: 1;
       appearance: none;
       transition: opacity var(--motion-fast) ease-out;
     }
 
     .scrub::-moz-range-thumb {
-      inline-size: 12px;
-      block-size: 12px;
-      border: 0;
+      inline-size: 14px;
+      block-size: 14px;
+      border: 3px solid var(--surface-panel);
       border-radius: var(--radius-pill);
-      background: var(--text-primary);
-      opacity: 0;
+      background: var(--action-primary);
+      box-shadow: var(--shadow-raised);
+      opacity: 1;
       transition: opacity var(--motion-fast) ease-out;
+    }
+
+    .scrub:disabled::-webkit-slider-thumb {
+      opacity: 0;
+    }
+
+    .scrub:disabled::-moz-range-thumb {
+      opacity: 0;
     }
 
     .track:hover .scrub:not(:disabled)::-webkit-slider-thumb,
@@ -457,9 +468,9 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
      */
     .controls {
       display: flex;
-      gap: var(--space-1);
+      gap: var(--space-2);
       align-items: center;
-      justify-content: flex-start;
+      justify-content: space-between;
     }
 
     /* Everything that is not the primary verb: no chrome until it is touched. */
@@ -481,6 +492,11 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       transition:
         color var(--motion-fast) ease-out,
         background-color var(--motion-fast) ease-out;
+    }
+
+    button.slot:not(:disabled),
+    a.slot {
+      color: var(--action-primary);
     }
 
     button.slot:hover:not(:disabled),
@@ -508,7 +524,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
      * audio being made. It keeps its own air on both sides.
      */
     .mode {
-      margin-inline: var(--space-2);
+      margin-inline: 0;
     }
 
     /* The pressed state of the mode, since one glyph on its own cannot say it. */
@@ -532,8 +548,8 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       flex: none;
       align-items: center;
       justify-content: center;
-      inline-size: 3.25rem;
-      block-size: 3.25rem;
+      inline-size: 4rem;
+      block-size: 4rem;
       padding: 0;
       border: 0;
       border-radius: var(--radius-pill);
@@ -566,7 +582,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     .primary--wide {
       gap: var(--space-2);
       inline-size: auto;
-      min-inline-size: 3.25rem;
+      min-inline-size: 4rem;
       padding-inline: var(--space-3);
       font-size: var(--text-sm);
       font-weight: 600;

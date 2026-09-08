@@ -188,6 +188,28 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
         </div>
 
         @if (store.status() === 'ready') {
+          <div
+            class="reading-progress"
+            role="progressbar"
+            aria-label="Reading progress"
+            aria-valuemin="1"
+            [attr.aria-valuemax]="sentenceCount()"
+            [attr.aria-valuenow]="currentSentence()"
+            [attr.aria-valuetext]="readingProgressLabel()"
+          >
+            <span class="reading-progress-track" aria-hidden="true">
+              <span
+                class="reading-progress-fill"
+                [style.inline-size.%]="readingProgressPercent()"
+              ></span>
+            </span>
+            <span class="reading-progress-count" aria-hidden="true">
+              {{ currentSentence() }} / {{ sentenceCount() }}
+            </span>
+          </div>
+        }
+
+        @if (store.status() === 'ready') {
           @if (audio.maintenanceState() === 'cleared') {
             <p class="audio-maintenance-message mn-hint" role="status">
               Audio deleted. You can generate it again from scratch.
@@ -409,8 +431,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
        * and push the actions off the screen.
        */
       min-width: 0;
-      padding-block: var(--space-2);
-      border-bottom: 1px solid var(--border-subtle);
+      padding-block: var(--space-2) var(--space-3);
       background: var(--surface-canvas);
     }
 
@@ -435,6 +456,39 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       flex: none;
       gap: var(--space-2);
       align-items: center;
+    }
+
+    .reading-progress {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--space-3);
+      align-items: center;
+      margin-top: var(--space-3);
+    }
+
+    .reading-progress-track {
+      display: block;
+      height: 0.375rem;
+      overflow: hidden;
+      border-radius: var(--radius-pill);
+      background: var(--surface-sunken);
+    }
+
+    .reading-progress-fill {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--action-primary);
+      transition: inline-size var(--motion-medium) ease-out;
+    }
+
+    .reading-progress-count {
+      min-width: 3.25rem;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      text-align: end;
     }
 
     .audio-maintenance-message {
@@ -464,6 +518,10 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       .audio-button.is-busy {
         animation: none;
       }
+
+      .reading-progress-fill {
+        transition: none;
+      }
     }
 
     .content {
@@ -481,9 +539,9 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       left: 50%;
       box-sizing: border-box;
       width: min(34rem, calc(100vw - 2 * var(--space-4)));
-      padding: var(--space-3) var(--space-4);
+      padding: var(--space-4);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
+      border-radius: var(--radius-sheet);
       background: var(--surface-panel);
       box-shadow: var(--shadow-overlay);
       transform: translateX(-50%);
@@ -501,10 +559,10 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
         bottom: 0;
         left: 0;
         width: 100%;
-        padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
+        padding: var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
         border-inline: 0;
         border-block-end: 0;
-        border-radius: var(--radius-card) var(--radius-card) 0 0;
+        border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
         transform: none;
       }
     }
@@ -521,7 +579,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     /* Room for the ruby above the first line of the reading. */
     .text {
       max-width: var(--reader-measure);
-      padding-top: var(--space-2);
+      padding-top: var(--space-4);
     }
 
     .virtual-spacer {
@@ -589,6 +647,18 @@ export class ReaderPageComponent {
   private readonly sentencePopover = viewChild.required<TemplateRef<unknown>>('sentencePopover');
   private readonly estimatedParagraphHeightSignal = signal(DEFAULT_PARAGRAPH_HEIGHT_PX);
   private readonly measuredParagraphHeightsSignal = signal<ReadonlyMap<number, number>>(new Map());
+  private readonly currentSentenceSignal = signal(1);
+  protected readonly currentSentence = this.currentSentenceSignal.asReadonly();
+  protected readonly sentenceCount = computed(() =>
+    Math.max(1, this.store.reading()?.sentenceCount ?? 1),
+  );
+  protected readonly readingProgressPercent = computed(() => {
+    const total = Math.max(1, this.sentenceCount());
+    return Math.min(100, (this.currentSentence() / total) * 100);
+  });
+  protected readonly readingProgressLabel = computed(
+    () => `Sentence ${String(this.currentSentence())} of ${String(this.sentenceCount())}`,
+  );
   protected readonly spacers = computed(() =>
     paragraphSpacers(
       this.store.window(),
@@ -720,6 +790,7 @@ export class ReaderPageComponent {
   protected readonly hasGrammarModel = this.preparation.hasGrammarModel;
 
   private scrollWindowFrame: number | null = null;
+  private readingProgressFrame: number | null = null;
   private lastScrollY = window.scrollY;
   private lastScrollDirection: 'backward' | 'forward' | null = null;
   private measuredLayoutKey = '';
@@ -784,6 +855,7 @@ export class ReaderPageComponent {
       }
       requestAnimationFrame(() => {
         this.measureMountedParagraphs();
+        this.scheduleReadingProgress();
       });
     });
 
@@ -919,6 +991,7 @@ export class ReaderPageComponent {
       }
       this.lastScrollY = window.scrollY;
       this.scheduleWindowForScroll();
+      this.scheduleReadingProgress();
     };
     const remeasureSheet = (): void => {
       this.rearmSheetClearance();
@@ -969,6 +1042,9 @@ export class ReaderPageComponent {
       window.removeEventListener('keydown', navigateEdge);
       if (this.scrollWindowFrame !== null) {
         cancelAnimationFrame(this.scrollWindowFrame);
+      }
+      if (this.readingProgressFrame !== null) {
+        cancelAnimationFrame(this.readingProgressFrame);
       }
       this.preparation.leftReader();
       this.store.close();
@@ -1585,6 +1661,40 @@ export class ReaderPageComponent {
       }
       if (!windowContains(this.store.window(), position)) {
         void this.store.moveTo(position);
+      }
+    });
+  }
+
+  /**
+   * Keeps the header's progress aligned with the first sentence that can
+   * actually be read below the sticky bar. Sentence positions are stored in
+   * reading order, so this remains exact while the paragraph window moves.
+   */
+  private scheduleReadingProgress(): void {
+    if (this.readingProgressFrame !== null || this.store.status() !== 'ready') {
+      return;
+    }
+    this.readingProgressFrame = requestAnimationFrame(() => {
+      this.readingProgressFrame = null;
+      const content = this.content()?.nativeElement;
+      if (content === undefined) {
+        return;
+      }
+      const sentences = [...content.querySelectorAll<HTMLElement>('.sentence[data-sentence-id]')];
+      if (sentences.length === 0) {
+        return;
+      }
+      const readableTop = this.readableBand().top;
+      const visible =
+        sentences.find((sentence) => sentence.getBoundingClientRect().bottom > readableTop + 1) ??
+        sentences.at(-1);
+      const sentenceId = visible?.dataset['sentenceId'];
+      if (sentenceId === undefined) {
+        return;
+      }
+      const position = this.sentencesById().get(sentenceId)?.sentence.positionInReading;
+      if (position !== undefined) {
+        this.currentSentenceSignal.set(position + 1);
       }
     });
   }

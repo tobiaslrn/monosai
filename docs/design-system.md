@@ -233,7 +233,9 @@ that lands the learner on a long page next to a closed fold has not arrived.
 
 ### Saved-story controls
 
-The reader header has Back, the title, Listen, and Story options. Appearance,
+The reader header has Back, the title, Listen, and Story options. A quiet strip
+below them shows the first readable sentence's position in the story; it moves
+with the text rather than asking the learner to mark progress. Appearance,
 preparation, and maintenance share Story options rather than separate header
 buttons. The panel is anchored on desktop and docked as a bottom sheet on small
 screens; it stays within the viewport, scrolls when necessary, and restores
@@ -295,13 +297,15 @@ docked sheet carries no such control: its grab handle is both the affordance and
 the way out.
 
 On a small screen, word and sentence details are independently scrollable
-bottom sheets, at most half the viewport tall. Their bottom edge is the measured
-top edge of the docked audio player, and their height is the smaller of that cap
-and the remaining space above that boundary with the standard top gap. The
-player and the sheet account for the safe-area inset once. Opening or closing
-the player, resizing it, and changing the viewport remeasure that boundary. A
-sentence card keeps its grab handle and its action tray visible while the
-translation, warnings, and grammar scroll between them.
+bottom sheets, at most half the viewport tall. Sheets and the docked player use
+a more generous top radius than ordinary cards so the edge reads as a temporary
+surface rather than another section of the page. Their bottom edge is the
+measured top edge of the docked audio player, and their height is the smaller of
+that cap and the remaining space above that boundary with the standard top gap.
+The player and the sheet account for the safe-area inset once. Opening or
+closing the player, resizing it, and changing the viewport remeasure that
+boundary. A sentence card keeps its grab handle and its action tray visible
+while the translation, warnings, and grammar scroll between them.
 
 An open sheet never covers the line it explains: the reading scrolls just far
 enough to clear the pressed line, reserving temporary room when the press was at

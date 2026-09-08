@@ -20,7 +20,14 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
       </p>
 
       @if (summary().formLabels.length > 0) {
-        <p class="form-line">{{ summary().formLabels.join(' · ') }}</p>
+        <p class="form-line">
+          @for (label of summary().formLabels; track label) {
+            <span class="form-tag">{{ label }}</span>
+            @if (!$last) {
+              <span class="separator form-separator" aria-hidden="true">·</span>
+            }
+          }
+        </p>
       }
     </section>
   `,
@@ -55,15 +62,34 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
     }
 
     .part-of-speech {
-      color: var(--text-secondary);
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-pill);
+      background: var(--action-primary-soft);
+      color: var(--action-primary);
       font-size: var(--text-sm);
+      line-height: 1.2;
     }
 
     .form-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-1);
       color: var(--text-primary);
       font-size: var(--text-sm);
       font-weight: 600;
       line-height: 1.4;
+    }
+
+    .form-tag {
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-pill);
+      background: var(--action-primary-soft);
+      color: var(--action-primary);
+      font-weight: 500;
+    }
+
+    .form-separator {
+      display: none;
     }
   `,
 })
