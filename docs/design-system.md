@@ -247,16 +247,30 @@ is anchored on desktop and docked as a bottom sheet on small screens; it stays
 within the viewport, scrolls when necessary, and restores focus when dismissed.
 Reading appearance uses compact switch rows; story content is one quiet grouped
 list with pill actions, and the destructive story action is separated at the
-foot of the surface.
+foot of the surface, behind a rule that says content continues underneath it.
+
+A content row keeps its copy on one side and its controls on the other, and the
+controls move as one block: on a narrow sheet they wrap together below the copy
+rather than splitting a pill from the control beside it. A row's destructive
+control carries the trash icon and one word — Clear, or Delete for audio —
+because the row already names the layer; the full sentence stays as its
+accessible name and its tooltip. Repeating the layer in every one of these
+labels produced three long red phrases that wrapped on a phone.
 
 Reading appearance contains immediate device-wide preferences. Content for this
 story shows saved results and explicit verbs: Translate story, Add notes,
-Generate audio, Continue, Stop, and Retry remaining. Ready is a status, never a
-switch. Closing the panel leaves background work running. Progress, failures, and
-the recovery actions stay in this panel, beside the layer they affect; status
-changes use the row's accessible announcement. There is no second generation
-status line in the reader header. Deletion is separated and confirmed. The
-panel carries no standing cost note.
+Continue, Stop, and Retry remaining. Ready is a status, never a switch. Closing
+the panel leaves background work running. Progress, failures, and the recovery
+actions for the text layers stay in this panel, beside the layer they affect;
+status changes use the row's accessible announcement. There is no second
+generation status line in the reader header. Deletion is separated and
+confirmed. The panel carries no standing cost note.
+
+Audio is the exception, and its row here is a report and a Delete: generating,
+stopping, retrying and setting up a voice all live on the player, which is the
+card the learner is looking at while any of them matters. One action belongs to
+one surface, and audio had grown a second set of the same controls on a panel
+that has to be opened to reach them.
 
 ### Reader gestures and details
 

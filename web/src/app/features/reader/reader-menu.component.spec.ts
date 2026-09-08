@@ -28,9 +28,13 @@ describe('Story options', () => {
     const element = fixture.nativeElement as HTMLElement;
     const hide = vi.fn();
     Object.defineProperty(element.querySelector('.panel'), 'hidePopover', { value: hide });
+    // By accessible name, because the destructive controls shorten their
+    // visible word and carry the whole phrase as their label.
     const press = (label: string) =>
       [...element.querySelectorAll<HTMLButtonElement>('button')]
-        .find((button) => button.textContent.trim() === label)
+        .find(
+          (button) => (button.getAttribute('aria-label') ?? button.textContent.trim()) === label,
+        )
         ?.click();
     return { fixture, element, hide, press };
   }

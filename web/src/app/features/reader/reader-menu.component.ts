@@ -92,38 +92,47 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
                   <strong>{{ row.name }}</strong>
                   <p role="status">{{ row.status }}</p>
                 </div>
-                @switch (row.action) {
-                  @case ('settings') {
-                    <a class="mn-button" routerLink="/settings" (click)="close()">{{
-                      row.label
-                    }}</a>
+                <div class="row-actions">
+                  @switch (row.action) {
+                    @case ('settings') {
+                      <a class="mn-button" routerLink="/settings" (click)="close()">{{
+                        row.label
+                      }}</a>
+                    }
+                    @case ('prepare') {
+                      <button
+                        type="button"
+                        class="mn-button"
+                        [disabled]="row.disabled || pending() === row.layer"
+                        (click)="prepare.emit(row.layer)"
+                      >
+                        {{ pending() === row.layer ? 'Saving…' : row.label }}
+                      </button>
+                    }
+                    @case ('cancel') {
+                      <button
+                        type="button"
+                        class="mn-button"
+                        [disabled]="pending() === row.layer"
+                        (click)="stopRequested.emit(row.layer)"
+                      >
+                        {{ pending() === row.layer ? 'Stopping…' : row.label }}
+                      </button>
+                    }
                   }
-                  @case ('prepare') {
+                  @if (hasSavedLayer(row.layer)) {
                     <button
                       type="button"
-                      class="mn-button"
-                      [disabled]="row.disabled || pending() === row.layer"
-                      (click)="prepare.emit(row.layer)"
+                      class="delete"
+                      [attr.aria-label]="clearLabel(row.layer)"
+                      [title]="clearLabel(row.layer)"
+                      (click)="clearLayer(row.layer)"
                     >
-                      {{ pending() === row.layer ? 'Saving…' : row.label }}
+                      <mn-icon name="delete" [size]="16" />
+                      {{ clearVerb(row.layer) }}
                     </button>
                   }
-                  @case ('cancel') {
-                    <button
-                      type="button"
-                      class="mn-button"
-                      [disabled]="pending() === row.layer"
-                      (click)="stopRequested.emit(row.layer)"
-                    >
-                      {{ pending() === row.layer ? 'Stopping…' : row.label }}
-                    </button>
-                  }
-                }
-                @if (hasSavedLayer(row.layer)) {
-                  <button type="button" class="delete" (click)="clearLayer(row.layer)">
-                    {{ clearLabel(row.layer) }}
-                  </button>
-                }
+                </div>
               </div>
               @if (row.error) {
                 <p class="mn-error" role="alert">{{ row.error }}</p>
@@ -209,6 +218,14 @@ export class ReaderMenuComponent {
       case 'audio':
         return 'Delete audio…';
     }
+  }
+  /**
+   * The word the control shows. The row already names the layer, so repeating
+   * it in the button made three long destructive labels that wrapped on a
+   * phone; the full sentence stays as the accessible name and the tooltip.
+   */
+  protected clearVerb(layer: PreparationLayer): string {
+    return layer === 'audio' ? 'Delete' : 'Clear';
   }
   protected clearLayer(layer: PreparationLayer): void {
     if (layer === 'audio') {

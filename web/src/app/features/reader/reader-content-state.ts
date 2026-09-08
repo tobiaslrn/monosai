@@ -35,6 +35,21 @@ export function readerContentState(
   readiness: ConfigurationReadiness,
   online: boolean,
 ): ReaderContentState {
+  const state = layerState(reading, layer, progress, readiness, online);
+  // Audio reports here and is run from the transport: generating, stopping,
+  // retrying and voice setup all live on the card that plays it, and a second
+  // copy of them in this list was the same run described twice.
+  // What went wrong stays: it is a report, and the transport carries the retry.
+  return layer === 'audio' ? { ...state, action: null, label: '', disabled: false } : state;
+}
+
+function layerState(
+  reading: Reading,
+  layer: PreparationLayer,
+  progress: LayerProgress,
+  readiness: ConfigurationReadiness,
+  online: boolean,
+): ReaderContentState {
   const grammar = reading.grammarSummary;
   const summary = layer === 'english' ? reading.translationSummary : reading.audioSummary;
   let completed =

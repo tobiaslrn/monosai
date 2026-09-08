@@ -31,7 +31,6 @@ describe('reader content state', () => {
   it.each([
     ['english', 'Translate story'],
     ['grammar', 'Add notes'],
-    ['audio', 'Generate audio'],
   ] as const)('offers an explicit action for absent %s content', (layer, label) => {
     expect(readerContentState(READING, layer, IDLE, 'ready', true)).toMatchObject({
       action: 'prepare',
@@ -128,18 +127,6 @@ describe('reader content state', () => {
     });
   });
 
-  it('shows completed audio without a second playback action', () => {
-    expect(
-      readerContentState(
-        { ...READING, audioSummary: { total: 4, completed: 4, failed: 0 } },
-        'audio',
-        IDLE,
-        'ready',
-        false,
-      ).action,
-    ).toBeNull();
-  });
-
   it('continues partially saved grammar after a reload', () => {
     expect(
       readerContentState(
@@ -158,11 +145,11 @@ describe('reader content state', () => {
     });
   });
 
-  it('links missing voice configuration to settings', () => {
+  it('reports voice configuration without repeating the transport link', () => {
     expect(readerContentState(READING, 'audio', IDLE, 'untested', true)).toMatchObject({
       status: 'Test your voice.',
-      action: 'settings',
-      label: 'Voice settings',
+      action: null,
+      label: '',
     });
   });
 
@@ -188,10 +175,32 @@ describe('reader content state', () => {
     expect(state.status).toBe(kind === 'preparing' ? 'Preparing…' : 'Waiting to continue');
   });
 
-  it('offers new audio after saved clips are deleted', () => {
+  it.each([
+    ['absent', IDLE],
+    ['deleted', { kind: 'deleted', readingId: ID }],
+    ['running', { kind: 'running', readingId: ID, counts: COUNTS }],
+    ['stopped', { kind: 'cancelled', readingId: ID, counts: COUNTS }],
+  ] as const)(
+    'leaves %s audio to the transport rather than offering it twice',
+    (_name, progress) => {
+      expect(readerContentState(READING, 'audio', progress, 'ready', true)).toMatchObject({
+        action: null,
+        label: '',
+        disabled: false,
+      });
+    },
+  );
+
+  it('still reports what a stopped audio run managed', () => {
     expect(
-      readerContentState(READING, 'audio', { kind: 'deleted', readingId: ID }, 'ready', true).label,
-    ).toBe('Generate audio');
+      readerContentState(
+        READING,
+        'audio',
+        { kind: 'cancelled', readingId: ID, counts: COUNTS },
+        'ready',
+        true,
+      ).status,
+    ).toBe('2 of 4 sentences saved · Stopped');
   });
 
   it('counts a completed run before the stored summary refresh arrives', () => {
