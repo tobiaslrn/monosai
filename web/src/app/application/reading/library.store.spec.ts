@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fixedClock } from '../../domain/shared/clock';
 import { readingId } from '../../domain/shared/ids';
+import { storageError } from '../../domain/storage/storage-error';
 import { FakeReadingMutationChannel } from '../../../testing/reading-mutation-channel-fake';
 import { buildReading, FakeReadingRepository } from '../../../testing/reading-repository-fake';
 import { CLOCK, READING_MUTATION_CHANNEL, READING_REPOSITORY } from '../shared/repository-tokens';
@@ -86,5 +87,50 @@ describe('LibraryStore across tabs', () => {
     store.noteExternalChange('Reading one was deleted in another tab.');
 
     expect(store.announcement()).toBe('Reading one was deleted in another tab.');
+  });
+});
+
+describe('LibraryStore automatic paging', () => {
+  let repository: FakeReadingRepository;
+  let store: LibraryStore;
+
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    repository = new FakeReadingRepository();
+    for (let index = 0; index < 13; index += 1) {
+      repository.add(
+        buildReading({
+          id: `r${String(index)}`,
+          createdAt: 1_700_000_000_000 - index,
+        }),
+      );
+    }
+    TestBed.configureTestingModule({
+      providers: [
+        LibraryStore,
+        { provide: CLOCK, useValue: fixedClock(1_700_000_000_000) },
+        { provide: READING_REPOSITORY, useValue: repository },
+        { provide: READING_MUTATION_CHANNEL, useValue: new FakeReadingMutationChannel() },
+      ],
+    });
+    store = TestBed.inject(LibraryStore);
+  });
+
+  it('keeps the loaded page usable and exposes an explicit retry after append failure', async () => {
+    await store.load();
+    repository.failNextListWith = storageError('unavailable', 'The next page is unavailable.');
+
+    await store.loadMore();
+
+    expect(store.items()).toHaveLength(12);
+    expect(store.loadMoreError()?.message).toBe('The next page is unavailable.');
+    expect(store.lastError()).toBeNull();
+    expect(store.loadingMore()).toBe(false);
+
+    await store.retryLoadMore();
+
+    expect(store.items()).toHaveLength(13);
+    expect(store.loadMoreError()).toBeNull();
+    expect(store.hasMore()).toBe(false);
   });
 });

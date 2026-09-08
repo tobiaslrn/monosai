@@ -31,7 +31,10 @@ export class LibraryStore {
   private readonly loadingMoreSignal = signal(false);
   private readonly totalSignal = signal(0);
   private readonly errorSignal = signal<StorageError | null>(null);
+  private readonly loadMoreErrorSignal = signal<StorageError | null>(null);
+  private readonly collectionRevisionSignal = signal(0);
   private readonly announcementSignal = signal('');
+  private requestRevision = 0;
 
   readonly items = this.itemsSignal.asReadonly();
   readonly filter = this.filterSignal.asReadonly();
@@ -40,6 +43,10 @@ export class LibraryStore {
   readonly loadingMore = this.loadingMoreSignal.asReadonly();
   readonly totalReadings = this.totalSignal.asReadonly();
   readonly lastError = this.errorSignal.asReadonly();
+  /** A failure while appending a page leaves the already loaded shelf usable. */
+  readonly loadMoreError = this.loadMoreErrorSignal.asReadonly();
+  /** Changes only when a full collection replaces the loaded page sequence. */
+  readonly collectionRevision = this.collectionRevisionSignal.asReadonly();
   readonly announcement = this.announcementSignal.asReadonly();
 
   readonly isEmpty = computed(
@@ -71,10 +78,16 @@ export class LibraryStore {
   }
 
   async load(): Promise<void> {
+    const requestRevision = ++this.requestRevision;
     this.statusSignal.set('loading');
     this.errorSignal.set(null);
+    this.loadMoreErrorSignal.set(null);
+    this.loadingMoreSignal.set(false);
 
     const total = await this.readings.countReadings('all');
+    if (requestRevision !== this.requestRevision) {
+      return;
+    }
     if (!total.ok) {
       this.fail(total.error);
       return;
@@ -85,6 +98,9 @@ export class LibraryStore {
       filter: this.filterSignal(),
       limit: LIBRARY_PAGE_SIZE,
     });
+    if (requestRevision !== this.requestRevision) {
+      return;
+    }
     if (!page.ok) {
       this.fail(page.error);
       return;
@@ -93,6 +109,7 @@ export class LibraryStore {
     this.itemsSignal.set(page.value.items);
     this.hasMoreSignal.set(page.value.hasMore);
     this.statusSignal.set('ready');
+    this.collectionRevisionSignal.update((revision) => revision + 1);
   }
 
   async setFilter(filter: LibraryFilter): Promise<void> {
@@ -117,20 +134,43 @@ export class LibraryStore {
       return;
     }
 
-    this.loadingMoreSignal.set(true);
-    const page = await this.readings.listLibraryPage({
-      filter: this.filterSignal(),
-      limit: LIBRARY_PAGE_SIZE,
-      createdBefore: oldest.createdAt,
-    });
-    this.loadingMoreSignal.set(false);
+    const requestRevision = this.requestRevision;
+    const filter = this.filterSignal();
 
-    if (!page.ok) {
-      this.errorSignal.set(page.error);
+    this.loadingMoreSignal.set(true);
+    this.loadMoreErrorSignal.set(null);
+    try {
+      const page = await this.readings.listLibraryPage({
+        filter,
+        limit: LIBRARY_PAGE_SIZE,
+        createdBefore: oldest.createdAt,
+      });
+
+      // A filter or full reload may have replaced the cursor while the page
+      // was being read. That result belongs to the old collection and must not
+      // be appended to the new one.
+      if (requestRevision !== this.requestRevision || filter !== this.filterSignal()) {
+        return;
+      }
+      if (!page.ok) {
+        this.loadMoreErrorSignal.set(page.error);
+        return;
+      }
+      this.itemsSignal.set([...this.itemsSignal(), ...page.value.items]);
+      this.hasMoreSignal.set(page.value.hasMore);
+    } finally {
+      if (requestRevision === this.requestRevision) {
+        this.loadingMoreSignal.set(false);
+      }
+    }
+  }
+
+  /** Clears an automatic page failure only when the learner explicitly retries it. */
+  async retryLoadMore(): Promise<void> {
+    if (this.loadMoreErrorSignal() === null) {
       return;
     }
-    this.itemsSignal.set([...items, ...page.value.items]);
-    this.hasMoreSignal.set(page.value.hasMore);
+    await this.loadMore();
   }
 
   /** Deletes a reading and reloads the current page. */

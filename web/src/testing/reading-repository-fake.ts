@@ -165,6 +165,8 @@ export class FakeReadingRepository implements ReadingRepository {
 
   /** Set to make the matching read or write fail with a typed storage error. */
   failListWith: StorageError | null = null;
+  /** Set to fail exactly one bounded list call, leaving the first page usable. */
+  failNextListWith: StorageError | null = null;
   failGraphWith: StorageError | null = null;
 
   listImportedBySourceHash(
@@ -242,8 +244,10 @@ export class FakeReadingRepository implements ReadingRepository {
   }
 
   listLibraryPage(request: LibraryPageRequest): Promise<Result<LibraryPage, StorageError>> {
-    if (this.failListWith !== null) {
-      return Promise.resolve(err(this.failListWith));
+    const failure = this.failNextListWith ?? this.failListWith;
+    this.failNextListWith = null;
+    if (failure !== null) {
+      return Promise.resolve(err(failure));
     }
     const matching = this.readings
       .filter((item) => request.filter === 'all' || item.kind === request.filter)

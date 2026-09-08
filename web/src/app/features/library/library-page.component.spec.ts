@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
@@ -15,9 +15,11 @@ import {
   READING_REPOSITORY,
 } from '../../application/shared/repository-tokens';
 import type { Reading } from '../../domain/reading/reading';
+import type { LibraryPage } from '../../domain/reading/reading-repository';
 import type { ReadingId } from '../../domain/shared/ids';
 import { fixedClock } from '../../domain/shared/clock';
 import { readingId } from '../../domain/shared/ids';
+import { ok } from '../../domain/shared/result';
 import { storageError } from '../../domain/storage/storage-error';
 import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/match-media';
 import { FakeReadingMutationChannel } from '../../../testing/reading-mutation-channel-fake';
@@ -143,6 +145,7 @@ describe('LibraryPageComponent', () => {
 
   afterEach(() => {
     media.restore();
+    vi.restoreAllMocks();
     document.querySelectorAll('.cdk-overlay-container').forEach((node) => {
       node.remove();
     });
@@ -181,6 +184,16 @@ describe('LibraryPageComponent', () => {
   function shelf(): Reading[] {
     return Array.from({ length: FILTER_VISIBILITY_THRESHOLD }, (_unused, index) =>
       reading(`r${String(index)}`, index % 2 === 0 ? 'imported' : 'generated', 1_000 + index),
+    );
+  }
+
+  function manyReadings(count: number): Reading[] {
+    return Array.from({ length: count }, (_unused, index) =>
+      reading(
+        `virtual-${String(index)}`,
+        index % 2 === 0 ? 'imported' : 'generated',
+        10_000 - index,
+      ),
     );
   }
 
@@ -262,6 +275,107 @@ describe('LibraryPageComponent', () => {
       node.textContent.trim(),
     );
     expect(titles).toEqual(['Reading b', 'Reading c', 'Reading a']);
+  });
+
+  it('mounts only rows near the viewport and has no normal Show more action', async () => {
+    repository.readings = manyReadings(36);
+    const fixture = await render();
+
+    expect(element(fixture).querySelector('mn-library-virtual-list')).not.toBeNull();
+    expect(element(fixture).textContent).not.toContain('Show more');
+    expect(element(fixture).querySelectorAll('mn-reading-card').length).toBeLessThan(36);
+  });
+
+  it('keeps virtualized list items positionally announced to assistive technology', async () => {
+    repository.readings = manyReadings(36);
+    const fixture = await render();
+
+    const firstItem = element(fixture).querySelector<HTMLLIElement>('.reading-list li');
+    expect(firstItem?.getAttribute('aria-posinset')).toBe('1');
+    expect(firstItem?.getAttribute('aria-setsize')).toBe('-1');
+  });
+
+  it('loads the next repository page automatically as the loaded end approaches', async () => {
+    repository.readings = manyReadings(24);
+    const fixture = await render();
+
+    expect(TestBed.inject(LibraryStore).items()).toHaveLength(24);
+    expect(element(fixture).textContent).not.toContain('Show more');
+  });
+
+  it('rebuilds the virtual collection when a filter replaces the loaded page', async () => {
+    repository.readings = manyReadings(24);
+    const fixture = await render();
+
+    element(fixture).querySelectorAll<HTMLButtonElement>('.chip')[1].click();
+    await settle(fixture);
+
+    expect(TestBed.inject(LibraryStore).filter()).toBe('imported');
+    expect(
+      [...element(fixture).querySelectorAll('mn-reading-card')].every((card) => {
+        const text = card.textContent;
+        return text.includes('Pasted') && !text.includes('Micro');
+      }),
+    ).toBe(true);
+    expect(element(fixture).querySelector('.virtual-spacer')?.getAttribute('style')).toContain(
+      'height: 0px',
+    );
+  });
+
+  it('keeps long card titles available for wrapping instead of truncating them', async () => {
+    const longTitle = `A story title that keeps going ${'語'.repeat(80)}`;
+    repository.readings = [{ ...reading('long-title', 'imported', 1_000), title: longTitle }];
+    const fixture = await render();
+
+    const title = element(fixture).querySelector('mn-reading-card h3 a');
+    expect((title?.textContent ?? '').trim()).toBe(longTitle);
+  });
+
+  it('shows an accessible loading status while the next page is pending', async () => {
+    repository.readings = manyReadings(36);
+    const fixture = await render();
+    const store = TestBed.inject(LibraryStore);
+    expect(store.items()).toHaveLength(24);
+
+    let resolvePage!: (page: LibraryPage) => void;
+    const pendingPage = new Promise<LibraryPage>((resolve) => {
+      resolvePage = resolve;
+    });
+    vi.spyOn(repository, 'listLibraryPage').mockReturnValueOnce(
+      pendingPage.then((page) => ok(page)),
+    );
+
+    const loading = store.loadMore();
+    fixture.detectChanges();
+
+    const status = element(fixture).querySelector<HTMLElement>('[role="status"]');
+    expect(status?.getAttribute('aria-live')).toBe('polite');
+    expect(status?.textContent).toContain('Loading more stories');
+
+    resolvePage({ items: repository.readings.slice(24), hasMore: false });
+    await loading;
+    await settle(fixture);
+  });
+
+  it('exposes only a retry action after an automatic page failure', async () => {
+    repository.readings = manyReadings(36);
+    const fixture = await render();
+    const store = TestBed.inject(LibraryStore);
+    repository.failNextListWith = storageError('unavailable', 'The next page is unavailable.');
+
+    await store.loadMore();
+    fixture.detectChanges();
+
+    const alert = element(fixture).querySelector<HTMLElement>('[role="alert"]');
+    expect(alert?.textContent).toContain('The next page is unavailable.');
+    expect(alert?.querySelector('button')?.textContent).toContain('Try again');
+    expect(element(fixture).textContent).not.toContain('Show more');
+
+    alert?.querySelector<HTMLButtonElement>('button')?.click();
+    await settle(fixture);
+
+    expect(store.items()).toHaveLength(36);
+    expect(element(fixture).querySelector('[role="alert"]')).toBeNull();
   });
 
   it('groups readings by relative date without empty date sections', async () => {

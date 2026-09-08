@@ -6,6 +6,7 @@ import {
   DestroyRef,
   ViewContainerRef,
   computed,
+  effect,
   inject,
   signal,
   viewChild,
@@ -34,7 +35,7 @@ import { GenerationJobCardComponent } from './generation-job-card.component';
 import { groupLibraryReadings } from './library-date-groups';
 import { LibraryStandingComponent } from './library-standing.component';
 import { LibraryWelcomeComponent } from './library-welcome.component';
-import { ReadingCardComponent } from './reading-card.component';
+import { LibraryVirtualListComponent } from './library-virtual-list.component';
 
 interface FilterOption {
   readonly value: LibraryFilter;
@@ -63,10 +64,10 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     RouterLink,
     ReaderPopoverComponent,
     NewReadingMenuComponent,
-    ReadingCardComponent,
     GenerationJobCardComponent,
     LibraryStandingComponent,
     LibraryWelcomeComponent,
+    LibraryVirtualListComponent,
   ],
   template: `
     <div class="mn-page library-page">
@@ -153,35 +154,11 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         } @else if (store.isEmpty() && generationJobs().length === 0) {
           <p class="mn-hint">No {{ store.filter() }} stories yet.</p>
         } @else {
-          <div class="date-groups">
-            @for (group of readingGroups(); track group.key) {
-              <section class="date-group" [attr.aria-labelledby]="'library-group-' + group.key">
-                <h2 [id]="'library-group-' + group.key">{{ group.label }}</h2>
-                <ul class="reading-list">
-                  @for (reading of group.readings; track reading.id) {
-                    <li>
-                      <mn-reading-card
-                        [reading]="reading"
-                        (deleteRequested)="confirmDelete($event)"
-                        (renameRequested)="promptRename($event)"
-                      />
-                    </li>
-                  }
-                </ul>
-              </section>
-            }
-          </div>
-
-          @if (store.hasMore()) {
-            <button
-              type="button"
-              class="mn-button"
-              [disabled]="store.loadingMore()"
-              (click)="loadMore()"
-            >
-              {{ store.loadingMore() ? 'Loading…' : 'Show more' }}
-            </button>
-          }
+          <mn-library-virtual-list
+            [groups]="readingGroups()"
+            (deleteRequested)="confirmDelete($event)"
+            (renameRequested)="promptRename($event)"
+          />
         }
       }
 
@@ -337,13 +314,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       color: var(--text-on-action);
     }
 
-    .date-groups {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      width: 100%;
-    }
-
     .date-group,
     .reading-list {
       width: 100%;
@@ -393,6 +363,9 @@ export class LibraryPageComponent {
   private readonly dialog = inject(Dialog);
   private readonly popover = inject(PopoverService);
   private readonly viewContainerRef = inject(ViewContainerRef);
+  private restorationCancelled = false;
+  private restorationPosition: number | null = null;
+  private restorationFrame: number | null = null;
   private readonly translationJob = inject(TranslationJobStore);
   private readonly audioJob = inject(AudioJobStore);
   private readonly playback = inject(AudioPlaybackStore);
@@ -441,17 +414,23 @@ export class LibraryPageComponent {
         this.scrollMemory.remember(window.scrollY);
       }
     });
-    const returnPosition = this.scrollMemory.take();
-    void this.store.load().then(() => {
-      if (returnPosition !== null) {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            window.scrollTo(0, returnPosition);
-          });
-        });
+    this.restorationPosition = this.scrollMemory.take();
+    effect(() => {
+      const status = this.store.status();
+      const loadingMore = this.store.loadingMore();
+      const hasItems = this.store.items().length > 0;
+      if (status !== 'ready' || loadingMore || !hasItems || this.restorationPosition === null) {
+        return;
       }
+      this.scheduleScrollRestoration();
     });
+    void this.store.load();
     destroyRef.onDestroy(() => {
+      this.restorationCancelled = true;
+      if (this.restorationFrame !== null) {
+        cancelAnimationFrame(this.restorationFrame);
+        this.restorationFrame = null;
+      }
       navigationEvents.unsubscribe();
       this.popover.close();
     });
@@ -462,11 +441,49 @@ export class LibraryPageComponent {
   }
 
   protected setFilter(filter: LibraryFilter): void {
+    this.restorationPosition = null;
     void this.store.setFilter(filter);
   }
 
-  protected loadMore(): void {
-    void this.store.loadMore();
+  /**
+   * Rebuilds enough paged virtual space for a deep return from a reading.
+   *
+   * The first library page may not be tall enough for the saved window
+   * position, so the browser clamps a one-shot scroll. Loading another page
+   * and retrying after layout keeps the existing window-scroll restoration
+   * meaningful without turning the library into an inner scrolling surface.
+   */
+  private scheduleScrollRestoration(): void {
+    if (this.restorationFrame !== null || this.restorationCancelled) {
+      return;
+    }
+    this.restorationFrame = requestAnimationFrame(() => {
+      this.restorationFrame = null;
+      this.tryScrollRestoration();
+    });
+  }
+
+  private tryScrollRestoration(): void {
+    const position = this.restorationPosition;
+    if (position === null || this.restorationCancelled) {
+      return;
+    }
+    if (this.store.status() !== 'ready') {
+      return;
+    }
+
+    window.scrollTo(0, position);
+    if (
+      window.scrollY >= position ||
+      !this.store.hasMore() ||
+      this.store.loadMoreError() !== null
+    ) {
+      this.restorationPosition = null;
+      return;
+    }
+    if (!this.store.loadingMore()) {
+      void this.store.loadMore();
+    }
   }
 
   /**
