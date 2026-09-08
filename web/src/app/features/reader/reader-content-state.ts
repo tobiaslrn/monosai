@@ -9,7 +9,7 @@ export interface ReaderContentState {
   readonly layer: PreparationLayer;
   readonly name: string;
   readonly status: string;
-  readonly action: 'prepare' | 'cancel' | 'listen' | 'settings' | null;
+  readonly action: 'prepare' | 'cancel' | 'settings' | null;
   readonly label: string;
   readonly disabled: boolean;
   readonly busy: boolean;
@@ -109,8 +109,8 @@ export function readerContentState(
     return {
       ...base,
       status: completedDescription,
-      action: layer === 'audio' ? 'listen' : null,
-      label: layer === 'audio' ? 'Listen' : 'Ready',
+      action: null,
+      label: '',
     };
   }
   if (reading.sentenceCount === 0)

@@ -76,28 +76,15 @@ describe('Story options', () => {
     expect(hide).toHaveBeenCalledOnce();
     expect(deleted).toHaveBeenCalledOnce();
   });
-  it('shows a ready status without a creation action', () => {
+  it('shows a completed status without a separate ready field', () => {
     const { element } = render({
       ...ROW,
       action: null,
-      label: 'Ready',
+      label: '',
       status: '4 of 4 sentences saved',
     });
     expect(element.querySelector('.row-main button')).toBeNull();
-    expect(element.textContent).toContain('Ready');
-  });
-  it('closes before opening the audio player', () => {
-    const { fixture, hide, press } = render({
-      ...ROW,
-      layer: 'audio',
-      action: 'listen',
-      label: 'Listen',
-    });
-    const listen = vi.fn();
-    fixture.componentInstance.listen.subscribe(listen);
-    press('Listen');
-    expect(hide).toHaveBeenCalledOnce();
-    expect(listen).toHaveBeenCalledOnce();
+    expect(element.textContent).toContain('4 of 4 sentences saved');
   });
 
   it('moves focus into the panel and returns it on Escape', () => {
@@ -127,12 +114,12 @@ describe('Story options', () => {
     expect(hide).toHaveBeenCalledOnce();
   });
 
-  it('keeps audio maintenance behind its disclosure and closes before confirmation', () => {
+  it('shows audio deletion inline and closes before confirmation', () => {
     const { fixture, element, hide, press } = render({ ...ROW, layer: 'audio' });
     expect(element.querySelector('details')).toBeNull();
     fixture.componentRef.setInput('hasAudio', true);
     fixture.detectChanges();
-    expect(element.querySelector('details')?.open).toBe(false);
+    expect(element.querySelector('details')).toBeNull();
     const deleted = vi.fn();
     fixture.componentInstance.deleteAudioRequested.subscribe(deleted);
     press('Delete audio…');
@@ -140,14 +127,14 @@ describe('Story options', () => {
     expect(deleted).toHaveBeenCalledOnce();
   });
 
-  it('gives saved translation and grammar rows the same clear lifecycle', () => {
+  it('gives saved translation and grammar rows the same inline clear lifecycle', () => {
     const { fixture, element, hide, press } = render();
     fixture.componentRef.setInput('savedLayers', ['english']);
     fixture.detectChanges();
     const cleared = vi.fn();
     fixture.componentInstance.clearAidRequested.subscribe(cleared);
 
-    expect(element.querySelector('details')?.textContent).toContain('English translation options');
+    expect(element.querySelector('details')).toBeNull();
     press('Clear translation…');
 
     expect(hide).toHaveBeenCalledOnce();

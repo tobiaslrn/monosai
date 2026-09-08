@@ -124,11 +124,11 @@ describe('reader content state', () => {
     ).toMatchObject({
       status: '4 of 4 sentences analyzed',
       action: null,
-      label: 'Ready',
+      label: '',
     });
   });
 
-  it('offers playback for complete saved audio', () => {
+  it('shows completed audio without a second playback action', () => {
     expect(
       readerContentState(
         { ...READING, audioSummary: { total: 4, completed: 4, failed: 0 } },
@@ -137,7 +137,7 @@ describe('reader content state', () => {
         'ready',
         false,
       ).action,
-    ).toBe('listen');
+    ).toBeNull();
   });
 
   it('continues partially saved grammar after a reload', () => {
@@ -207,7 +207,7 @@ describe('reader content state', () => {
         'ready',
         true,
       ).label,
-    ).toBe('Ready');
+    ).toBe('');
   });
 
   it('shows provider errors and directs a non-retryable failure to settings', () => {

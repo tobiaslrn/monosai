@@ -177,7 +177,6 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                   (prepare)="prepareContent($event)"
                   (opened)="popover.close()"
                   (stopRequested)="stopContent($event)"
-                  (listen)="showAudioPlayer()"
                   (deleteAudioRequested)="confirmClearReadingAudio()"
                   (clearAidRequested)="confirmClearTextAid($event)"
                   (deleteRequested)="confirmDelete()"
@@ -1003,10 +1002,6 @@ export class ReaderPageComponent {
 
   protected async stopContent(layer: PreparationLayer): Promise<void> {
     await this.preparation.stop(layer);
-  }
-
-  protected showAudioPlayer(): void {
-    this.audio.openPlayer(this.selection.sentenceId());
   }
 
   protected cancelAudioJob(): void {

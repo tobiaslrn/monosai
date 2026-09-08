@@ -118,28 +118,15 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
                       {{ pending() === row.layer ? 'Stopping…' : row.label }}
                     </button>
                   }
-                  @case ('listen') {
-                    <button type="button" class="mn-button" (click)="listenToStory()">
-                      Listen
-                    </button>
-                  }
-                  @default {
-                    @if (row.label) {
-                      <span class="ready"><mn-icon name="check" [size]="16" />{{ row.label }}</span>
-                    }
-                  }
+                }
+                @if (hasSavedLayer(row.layer)) {
+                  <button type="button" class="delete" (click)="clearLayer(row.layer)">
+                    {{ clearLabel(row.layer) }}
+                  </button>
                 }
               </div>
               @if (row.error) {
                 <p class="mn-error" role="alert">{{ row.error }}</p>
-              }
-              @if (hasSavedLayer(row.layer)) {
-                <details class="mn-disclosure maintenance">
-                  <summary>{{ row.name }} options</summary>
-                  <button type="button" class="delete" (click)="clearLayer(row.layer)">
-                    {{ clearLabel(row.layer) }}
-                  </button>
-                </details>
               }
             </section>
           }
@@ -166,7 +153,6 @@ export class ReaderMenuComponent {
   readonly prepare = output<PreparationLayer>();
   readonly opened = output<void>();
   readonly stopRequested = output<PreparationLayer>();
-  readonly listen = output<void>();
   readonly deleteAudioRequested = output<void>();
   readonly clearAidRequested = output<'english' | 'grammar'>();
   readonly deleteRequested = output<void>();
@@ -206,10 +192,6 @@ export class ReaderMenuComponent {
       event.preventDefault();
       this.close();
     }
-  }
-  protected listenToStory(): void {
-    this.close();
-    this.listen.emit();
   }
   protected deleteAudio(): void {
     this.close();

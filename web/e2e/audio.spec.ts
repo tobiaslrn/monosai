@@ -926,7 +926,6 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     const beforeDelete = synthesisCount(calls);
 
     await openReaderMenu(page);
-    await page.getByText('Audio options', { exact: true }).click();
     await page.getByRole('button', { name: 'Delete audio…', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Delete audio for this story?' })).toBeVisible();
     await page.getByRole('button', { name: 'Delete audio', exact: true }).click();

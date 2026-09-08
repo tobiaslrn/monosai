@@ -105,17 +105,14 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
       .poll(async () => (await countOwnedRows(page))['grammarAnalyses'] ?? 0)
       .toBeGreaterThan(0);
     await trigger.click();
-    await expect(
-      panel.locator('[data-layer="grammar"]').getByText('Ready', { exact: true }),
-    ).toBeVisible();
     await expect(panel.locator('[data-layer="grammar"] [role="status"]')).toContainText(
       'sentences analyzed',
     );
     await page.reload();
     await trigger.click();
-    await expect(
-      panel.locator('[data-layer="grammar"]').getByText('Ready', { exact: true }),
-    ).toBeVisible();
+    await expect(panel.locator('[data-layer="grammar"] [role="status"]')).toContainText(
+      'sentences analyzed',
+    );
     const bounds = await panel.boundingBox();
     expect(bounds).not.toBeNull();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
@@ -396,7 +393,7 @@ test.describe('scenario 12 — whole-reading translation', () => {
     expect(callCount(resumeCalls), 'opening an interrupted reading resumes nothing').toBe(0);
 
     await startWholeReadingTranslation(page);
-    await expect(progress(page)).toContainText('Ready', { timeout: 30_000 });
+    await expect(progress(page)).toContainText('sentences saved', { timeout: 30_000 });
     expect(await storedTranslationCount(page)).toBe(SENTENCE_COUNT);
 
     // Only the sentences that were still missing were requested. Count the
