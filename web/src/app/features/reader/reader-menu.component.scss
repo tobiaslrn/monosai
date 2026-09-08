@@ -43,23 +43,8 @@ h3 {
 .row-copy strong {
   font-weight: 500;
 }
-.content,
-footer {
+.content {
   margin-top: var(--space-4);
-}
-/*
- * The action stays reachable without scrolling to the end of a long sheet, so
- * it is sticky and content passes underneath it. The rule is what says so: an
- * opaque strip laid straight over a half-visible row read as a clipped layout
- * rather than as somewhere still to scroll.
- */
-footer {
-  position: sticky;
-  bottom: calc(-1 * var(--space-4));
-  margin-inline: calc(-1 * var(--space-4));
-  padding: var(--space-4);
-  border-top: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
 }
 .content-rows {
   overflow: hidden;
@@ -106,33 +91,27 @@ footer {
   border-radius: var(--radius-pill);
   white-space: nowrap;
 }
-.delete {
+/*
+ * Bare at rest, and named by its label rather than by a word beside it: three
+ * of these run down one short list, one to a row that already says which layer
+ * it belongs to, and each one opens a confirmation before anything is lost.
+ */
+.clear {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  min-height: var(--touch-target);
+  justify-content: center;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  padding: 0;
   border: 1px solid transparent;
-  padding-inline: var(--space-2);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: none;
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  white-space: nowrap;
   color: var(--status-danger);
   cursor: pointer;
+  transition: background-color var(--motion-fast) ease-out;
 }
-.delete:hover:not(:disabled) {
-  border-color: var(--status-danger);
-}
-.delete-story {
-  justify-content: center;
-  width: 100%;
-  padding-inline: var(--space-4);
-  border: 1px solid var(--status-danger);
-  border-radius: var(--radius-pill);
-  background: transparent;
-  font-weight: 600;
+.clear:hover {
+  background: var(--surface-sunken);
 }
 .mn-error {
   font-size: var(--text-sm);

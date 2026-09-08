@@ -1,5 +1,4 @@
 import type { ElementRef, TemplateRef } from '@angular/core';
-import { formatList, startSentence } from '../../domain/shared/locale';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -29,7 +28,6 @@ import { AppSettingsStore } from '../../application/settings/app-settings.store'
 import { LibraryStore } from '../../application/reading/library.store';
 import { ViewportService } from '../../core/platform/viewport.service';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
-import { describeDeletion } from '../../domain/reading/deletion-plan';
 import {
   DEFAULT_PARAGRAPH_HEIGHT_PX,
   paragraphAtOffset,
@@ -179,7 +177,6 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                   (stopRequested)="stopContent($event)"
                   (deleteAudioRequested)="confirmClearReadingAudio()"
                   (clearAidRequested)="confirmClearTextAid($event)"
-                  (deleteRequested)="confirmDelete()"
                 />
               }
             </div>
@@ -1424,40 +1421,6 @@ export class ReaderPageComponent {
     if (this.previewTimer !== null) {
       clearTimeout(this.previewTimer);
       this.previewTimer = null;
-    }
-  }
-
-  protected async confirmDelete(): Promise<void> {
-    const reading = this.store.reading();
-    if (reading === null) {
-      return;
-    }
-    const plan = describeDeletion(reading, {
-      translationRunning: this.preparation.translationRunningFor(reading.id),
-      audioRunning: this.audio.running(),
-    });
-    const confirmed = await openConfirmDialog(this.dialog, {
-      title: `Delete ${plan.title}?`,
-      message: 'This cannot be undone. It permanently removes:',
-      details: plan.removes,
-      footnote: `${startSentence(formatList(plan.preserves))} are not affected.`,
-      confirmLabel: 'Delete permanently',
-      cancelLabel: 'Keep it',
-      tone: 'danger',
-    });
-    if (!confirmed) {
-      return;
-    }
-    // Before the rows go: a job still writing to them would fail against
-    // storage and report that failure on whatever reading is opened next.
-    await Promise.all([
-      this.preparation.readingDeleted(reading.id),
-      this.audio.readingDeleted(reading.id),
-    ]);
-    if (await this.library.delete(reading.id)) {
-      // Before navigating: a deleted reading must not go on being read aloud.
-      this.audio.playback.readingDeleted(reading.id);
-      await this.router.navigate(['/library'], { replaceUrl: true });
     }
   }
 

@@ -1247,24 +1247,23 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
   });
 
-  test('replaces a deleted reader so browser Back cannot reopen it', async ({ page }) => {
+  test('says so rather than reopening a story deleted from another screen', async ({ page }) => {
     await page.goto('./#/library');
     await page.getByRole('link', { name: /Paste Japanese text/ }).click();
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
     const deletedUrl = page.url();
 
-    await page.getByRole('button', { name: 'Story options', exact: true }).click();
-    await page.getByRole('button', { name: 'Delete story…', exact: true }).click();
-    await page.getByRole('button', { name: 'Delete permanently' }).click();
-    await expect(page).toHaveURL(/#\/library$/);
+    // Deletion lives on the library card, so the reader URL outlives the
+    // reading and a bookmark or a Back press can still arrive at it.
+    await page.goto('./#/library');
+    await page.getByRole('button', { name: /^Actions for / }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete permanently' }).click();
+    await expect(page.locator('mn-reading-card')).toHaveCount(0);
 
-    await page.goBack();
-    await expect(page).not.toHaveURL(deletedUrl);
-    // The last reading is gone, so the Library is a first visit again.
-    await expect(
-      page.getByRole('heading', { name: /Japanese you can actually read/, level: 2 }),
-    ).toBeVisible();
+    await page.goto(deletedUrl);
+    await expect(page.getByRole('heading', { name: 'This story is no longer here' })).toBeVisible();
   });
 
   /** A compact row identifies the reading without repeating its contents. */

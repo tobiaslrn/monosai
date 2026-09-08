@@ -155,8 +155,10 @@ audio transport, close, back, and overflow. Everything else carries a visible
 label beside its icon: anything rare, anything destructive, and anything that
 spends money or sends a request.
 
-The non-reader utility bar's three destinations are the deliberate exception
-described above; this does not grant other infrequent controls icon-only status.
+There are exactly two deliberate exceptions: the non-reader utility bar's three
+destinations, described above, and the trash icons on the Story options content
+rows, described under Saved-story controls. Neither grants other infrequent
+controls icon-only status.
 
 This is narrower than it sounds, and deliberately so. Research on icon usability
 is consistent that only a small set of symbols is read reliably without a label,
@@ -245,17 +247,24 @@ the positions they can report accurately. Appearance, preparation, and
 maintenance share Story options rather than separate header buttons. The panel
 is anchored on desktop and docked as a bottom sheet on small screens; it stays
 within the viewport, scrolls when necessary, and restores focus when dismissed.
-Reading appearance uses compact switch rows; story content is one quiet grouped
-list with pill actions, and the destructive story action is separated at the
-foot of the surface, behind a rule that says content continues underneath it.
+Reading appearance uses compact switch rows, and story content is one quiet
+grouped list with pill actions. Deleting the story itself is not here: it is on
+the library card, which is the one place it lives.
 
 A content row keeps its copy on one side and its controls on the other, and the
 controls move as one block: on a narrow sheet they wrap together below the copy
 rather than splitting a pill from the control beside it. A row's destructive
-control carries the trash icon and one word — Clear, or Delete for audio —
-because the row already names the layer; the full sentence stays as its
-accessible name and its tooltip. Repeating the layer in every one of these
-labels produced three long red phrases that wrapped on a phone.
+control is **the trash icon alone**, in the danger colour and bare at rest.
+
+This is the one place a destructive control has no visible label, and it is a
+deliberate exception to the rule above. Three of them run down one short list,
+identical in shape, each in a row that already names the layer it clears, and
+each opening a confirmation that says in full what is about to go — so the
+press is not the commitment, and the trash can is the most reliably read symbol
+there is. Every one carries the whole sentence as its accessible name and its
+tooltip. Repeating the layer in the label instead produced three long red
+phrases that wrapped on a phone. The exception does not extend to destructive
+controls that stand alone or act without confirmation.
 
 Reading appearance contains immediate device-wide preferences. Content for this
 story shows saved results and explicit verbs: Translate story, Add notes,
@@ -265,8 +274,8 @@ missing, so a full set prints Ready rather than the same number twice. Closing
 the panel leaves background work running. Progress, failures, and the recovery
 actions for the text layers stay in this panel, beside the layer they affect;
 status changes use the row's accessible announcement. There is no second
-generation status line in the reader header. Deletion is separated and
-confirmed. The panel carries no standing cost note.
+generation status line in the reader header. Every deletion is confirmed. The
+panel carries no standing cost note.
 
 Audio is the exception, and its row here is a report and a Delete: generating,
 stopping, retrying and setting up a voice all live on the player, which is the

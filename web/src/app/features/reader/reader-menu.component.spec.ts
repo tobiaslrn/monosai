@@ -72,13 +72,9 @@ describe('Story options', () => {
     expect(element.querySelector<HTMLButtonElement>('.row-main button')?.disabled).toBe(true);
     expect(element.textContent).toContain('Stopping…');
   });
-  it('closes before requesting confirmation of deletion', () => {
-    const { fixture, hide, press } = render();
-    const deleted = vi.fn();
-    fixture.componentInstance.deleteRequested.subscribe(deleted);
-    press('Delete story…');
-    expect(hide).toHaveBeenCalledOnce();
-    expect(deleted).toHaveBeenCalledOnce();
+  it('leaves deleting the story to the library', () => {
+    const { element } = render();
+    expect(element.textContent).not.toContain('Delete story');
   });
   it('shows a completed status without a separate ready field', () => {
     const { element } = render({

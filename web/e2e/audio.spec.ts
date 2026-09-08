@@ -1050,11 +1050,14 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
     await page.keyboard.press('Escape');
 
-    await openReaderMenu(page);
-    await page.getByRole('button', { name: 'Delete story…', exact: true }).click();
-    await page.getByRole('button', { name: 'Delete permanently' }).click();
+    // Deleted from the library, which is where that action lives: the sound has
+    // to stop even though the press did not happen on the screen playing it.
+    await page.goto('./#/library');
+    await page.getByRole('button', { name: /^Actions for / }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete permanently' }).click();
 
-    await expect(page).toHaveURL(/#\/library/);
+    await expect(page.locator('mn-reading-card')).toHaveCount(0);
     await expect(audioPlayer(page)).toHaveCount(0);
     expect(await storedClipCount(page)).toBe(0);
   });

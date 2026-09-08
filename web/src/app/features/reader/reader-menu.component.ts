@@ -123,13 +123,12 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
                   @if (hasSavedLayer(row.layer)) {
                     <button
                       type="button"
-                      class="delete"
+                      class="clear"
                       [attr.aria-label]="clearLabel(row.layer)"
                       [title]="clearLabel(row.layer)"
                       (click)="clearLayer(row.layer)"
                     >
-                      <mn-icon name="delete" [size]="16" />
-                      {{ clearVerb(row.layer) }}
+                      <mn-icon name="delete" />
                     </button>
                   }
                 </div>
@@ -144,11 +143,6 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
           <p class="mn-error" role="alert">{{ error() }}</p>
         }
       </section>
-      <footer>
-        <button type="button" class="delete delete-story" (click)="deleteStory()">
-          Delete story…
-        </button>
-      </footer>
     </section>
   `,
   styleUrl: './reader-menu.component.scss',
@@ -164,7 +158,6 @@ export class ReaderMenuComponent {
   readonly stopRequested = output<PreparationLayer>();
   readonly deleteAudioRequested = output<void>();
   readonly clearAidRequested = output<'english' | 'grammar'>();
-  readonly deleteRequested = output<void>();
   private readonly anchor = viewChild.required<ElementRef<HTMLButtonElement>>('anchor');
   private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
   private readonly closeButton = viewChild<ElementRef<HTMLButtonElement>>('closeButton');
@@ -209,6 +202,7 @@ export class ReaderMenuComponent {
   protected hasSavedLayer(layer: PreparationLayer): boolean {
     return layer === 'audio' ? this.hasAudio() : this.savedLayers().includes(layer);
   }
+  /** The whole sentence, which is what the icon-only control is named. */
   protected clearLabel(layer: PreparationLayer): string {
     switch (layer) {
       case 'english':
@@ -219,14 +213,6 @@ export class ReaderMenuComponent {
         return 'Delete audio…';
     }
   }
-  /**
-   * The word the control shows. The row already names the layer, so repeating
-   * it in the button made three long destructive labels that wrapped on a
-   * phone; the full sentence stays as the accessible name and the tooltip.
-   */
-  protected clearVerb(layer: PreparationLayer): string {
-    return layer === 'audio' ? 'Delete' : 'Clear';
-  }
   protected clearLayer(layer: PreparationLayer): void {
     if (layer === 'audio') {
       this.deleteAudio();
@@ -235,11 +221,6 @@ export class ReaderMenuComponent {
     this.close();
     this.clearAidRequested.emit(layer);
   }
-  protected deleteStory(): void {
-    this.close();
-    this.deleteRequested.emit();
-  }
-
   protected onDragStart(event: PointerEvent): void {
     this.dragStartY = event.clientY;
     (event.currentTarget as Element).setPointerCapture(event.pointerId);
