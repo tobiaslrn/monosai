@@ -15,7 +15,7 @@ import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnosti
   selector: 'mn-diagnostics-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mn-panel" aria-labelledby="mn-diagnostics-heading">
+    <section class="mn-panel mn-settings-section" aria-labelledby="mn-diagnostics-heading">
       <h2 id="mn-diagnostics-heading">Troubleshooting</h2>
       <p class="mn-hint">
         Copy a privacy-safe diagnostic log when you need help. Logs stay in this tab, disappear on

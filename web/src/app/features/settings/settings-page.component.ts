@@ -20,7 +20,7 @@ import { StorageSectionComponent } from './storage-section.component';
     DiagnosticsSectionComponent,
   ],
   template: `
-    <div class="mn-page">
+    <div class="mn-page settings-page">
       <mn-page-header heading="Settings" [backTo]="backTarget()" [backLabel]="backLabel()" />
 
       <!--
@@ -39,6 +39,18 @@ import { StorageSectionComponent } from './storage-section.component';
 
       <mn-diagnostics-section />
     </div>
+  `,
+  styles: `
+    /* Match the Library's calm reading-first rail instead of filling the
+       repository-wide form measure with a sparse settings grid. */
+    .settings-page {
+      gap: var(--space-4);
+      max-width: 42rem;
+    }
+
+    mn-page-header {
+      margin-bottom: var(--space-1);
+    }
   `,
 })
 export class SettingsPageComponent {

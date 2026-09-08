@@ -323,9 +323,6 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     );
 
     await expect(page.getByRole('main')).toHaveCount(1);
-    const progress = page.getByRole('progressbar', { name: 'Reading progress' });
-    await expect(progress).toHaveAttribute('aria-valuemax', '54');
-    await expect(progress).toHaveAttribute('aria-valuenow', '1');
     // The reading has to be laid out before it is tall enough to scroll, and
     // the header is only sticky against a page that actually scrolls.
     await expect
@@ -343,9 +340,6 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       window.scrollTo(0, 500);
     });
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
-    await expect
-      .poll(() => progress.getAttribute('aria-valuenow').then((value) => Number(value)))
-      .toBeGreaterThan(1);
     await expect
       .poll(() => page.locator('.bar').evaluate((element) => element.getBoundingClientRect().top))
       .toBeCloseTo(0, 0);

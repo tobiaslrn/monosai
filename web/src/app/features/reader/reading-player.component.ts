@@ -282,9 +282,11 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
         than stepped through.
       -->
       <div class="track" [class.is-generating]="isGenerating()">
-        <span class="rail"></span>
-        <span class="fill generated" [style.inline-size.%]="generatedPercent()"></span>
-        <span class="fill played" [style.inline-size.%]="percent()"></span>
+        <span class="track-paint" aria-hidden="true">
+          <span class="rail"></span>
+          <span class="fill generated" [style.inline-size.%]="generatedPercent()"></span>
+          <span class="fill played" [style.inline-size.%]="percent()"></span>
+        </span>
         <input
           class="scrub"
           type="range"
@@ -321,11 +323,25 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
      * the reading is half the card.
      */
     .track {
+      --scrub-thumb-size: 14px;
+      --scrub-thumb-radius: 7px;
+
       position: relative;
       order: -1;
       display: flex;
       align-items: center;
       block-size: 24px;
+    }
+
+    /*
+     * Native range thumbs travel between their own two radii, not between the
+     * input's outer edges. Paint on that same inner rail so the played fill
+     * ends at the thumb's centre throughout the drag.
+     */
+    .track-paint {
+      position: absolute;
+      inset: 0 var(--scrub-thumb-radius);
+      pointer-events: none;
     }
 
     .rail,
@@ -336,7 +352,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       block-size: 5px;
       border-radius: var(--radius-pill);
       transform: translateY(-50%);
-      pointer-events: none;
     }
 
     .rail {
@@ -418,8 +433,8 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
      * range is disabled, when there is no audio position to choose yet.
      */
     .scrub::-webkit-slider-thumb {
-      inline-size: 14px;
-      block-size: 14px;
+      inline-size: var(--scrub-thumb-size);
+      block-size: var(--scrub-thumb-size);
       margin-block-start: 5px;
       border: 3px solid var(--surface-panel);
       border-radius: var(--radius-pill);
@@ -431,8 +446,8 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     }
 
     .scrub::-moz-range-thumb {
-      inline-size: 14px;
-      block-size: 14px;
+      inline-size: var(--scrub-thumb-size);
+      block-size: var(--scrub-thumb-size);
       border: 3px solid var(--surface-panel);
       border-radius: var(--radius-pill);
       background: var(--action-primary);

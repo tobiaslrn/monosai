@@ -13,7 +13,7 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
   selector: 'mn-app-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mn-panel" aria-labelledby="mn-app-heading">
+    <section class="mn-panel mn-settings-section" aria-labelledby="mn-app-heading">
       <h2 id="mn-app-heading">App</h2>
 
       <dl class="mn-facts">

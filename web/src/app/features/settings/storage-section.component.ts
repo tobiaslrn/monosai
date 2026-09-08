@@ -35,7 +35,7 @@ function formatBytes(bytes: number | null): string {
   selector: 'mn-storage-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mn-panel" aria-labelledby="mn-storage-heading">
+    <section class="mn-panel mn-settings-section" aria-labelledby="mn-storage-heading">
       <h2 id="mn-storage-heading">Storage</h2>
 
       <dl class="mn-facts">

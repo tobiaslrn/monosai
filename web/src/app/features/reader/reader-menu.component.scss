@@ -15,7 +15,7 @@
   margin: var(--space-2) 0 0;
   padding: var(--space-4);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-sheet);
   background: var(--surface-panel);
   color: var(--text-primary);
   box-shadow: var(--shadow-overlay);
@@ -36,8 +36,8 @@ h2 {
   font-weight: 600;
 }
 h3 {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-sm);
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-md);
   font-weight: 600;
 }
 .row-copy strong {
@@ -45,18 +45,22 @@ h3 {
 }
 .content,
 footer {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-4);
 }
 footer {
   position: sticky;
   bottom: calc(-1 * var(--space-4));
-  padding-bottom: var(--space-4);
+  padding-block: var(--space-4);
   background: var(--surface-panel);
 }
+.content-rows {
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--surface-canvas);
+}
 .content-row {
-  padding-block: var(--space-3);
+  padding: var(--space-3);
 }
 .content-row + .content-row {
   border-top: 1px solid var(--border-subtle);
@@ -79,12 +83,17 @@ footer {
 }
 .mn-button {
   padding-inline: var(--space-3);
+  border-radius: var(--radius-pill);
 }
 .ready {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--status-success-soft);
   color: var(--status-success);
+  font-weight: 600;
 }
 .delete {
   min-height: var(--touch-target);
@@ -98,7 +107,17 @@ footer {
 }
 .maintenance {
   margin-top: var(--space-2);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border-subtle);
   font-size: var(--text-sm);
+}
+.delete-story {
+  width: 100%;
+  padding-inline: var(--space-4);
+  border: 1px solid var(--status-danger);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-weight: 600;
 }
 .mn-error {
   font-size: var(--text-sm);
@@ -113,7 +132,7 @@ footer {
     width: 100%;
     max-height: calc(100dvh - var(--space-4));
     padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
-    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
   }
 
   .panel.is-dragging {

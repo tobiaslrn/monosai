@@ -100,6 +100,12 @@ Pages are **top-aligned and grow downward**, like a document. Content is never
 centred vertically and never stretched to fill the viewport. A short page leaves
 the space below it empty, which is the honest result of having little to say.
 
+Settings uses the Library's compact rail rather than the widest form measure.
+Each top-level group is one quiet raised card with a compact section heading;
+actions use the same pill silhouette as the Library's filters and creation
+control. Complex model fields may use sunken groups inside that card, but may
+not introduce a second competing hierarchy of raised panels.
+
 ### Density
 
 Interactive targets are **one size at every width and every pointer**. There is
@@ -233,13 +239,15 @@ that lands the learner on a long page next to a closed fold has not arrived.
 
 ### Saved-story controls
 
-The reader header has Back, the title, Listen, and Story options. A quiet strip
-below them shows the first readable sentence's position in the story; it moves
-with the text rather than asking the learner to mark progress. Appearance,
-preparation, and maintenance share Story options rather than separate header
-buttons. The panel is anchored on desktop and docked as a bottom sheet on small
-screens; it stays within the viewport, scrolls when necessary, and restores
-focus when dismissed.
+The reader header has Back, the title, Listen, and Story options. It carries no
+story progress marker: the reading surface and audio transport already expose
+the positions they can report accurately. Appearance, preparation, and
+maintenance share Story options rather than separate header buttons. The panel
+is anchored on desktop and docked as a bottom sheet on small screens; it stays
+within the viewport, scrolls when necessary, and restores focus when dismissed.
+Reading appearance uses compact switch rows; story content is one quiet grouped
+list with pill actions, and the destructive story action is separated at the
+foot of the surface.
 
 Reading appearance contains immediate device-wide preferences. Content for this
 story shows saved results and explicit verbs: Translate story, Add notes,

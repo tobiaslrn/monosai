@@ -13,7 +13,7 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
   selector: 'mn-appearance-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mn-panel" aria-labelledby="mn-appearance-heading">
+    <section class="mn-panel mn-settings-section" aria-labelledby="mn-appearance-heading">
       <h2 id="mn-appearance-heading">Appearance</h2>
 
       <fieldset>
@@ -52,16 +52,43 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
     }
 
     .options {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-2);
     }
 
     label {
+      position: relative;
       display: inline-flex;
-      gap: var(--space-2);
       align-items: center;
+      justify-content: center;
       min-height: var(--touch-target);
+      padding-inline: var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      background: var(--surface-canvas);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    label:has(input:checked) {
+      border-color: transparent;
+      background: var(--action-primary);
+      color: var(--text-on-action);
+    }
+
+    label:has(input:focus-visible) {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
       cursor: pointer;
     }
   `,

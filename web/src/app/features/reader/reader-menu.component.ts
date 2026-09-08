@@ -84,66 +84,74 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
       <mn-reader-aids />
       <section class="content" aria-label="Content for this story">
         <h3>Content for this story</h3>
-        @for (row of rows(); track row.layer) {
-          <section class="content-row" [attr.aria-label]="row.name" [attr.data-layer]="row.layer">
-            <div class="row-main">
-              <div class="row-copy">
-                <strong>{{ row.name }}</strong>
-                <p role="status">{{ row.status }}</p>
-              </div>
-              @switch (row.action) {
-                @case ('settings') {
-                  <a class="mn-button" routerLink="/settings" (click)="close()">{{ row.label }}</a>
-                }
-                @case ('prepare') {
-                  <button
-                    type="button"
-                    class="mn-button"
-                    [disabled]="row.disabled || pending() === row.layer"
-                    (click)="prepare.emit(row.layer)"
-                  >
-                    {{ pending() === row.layer ? 'Saving…' : row.label }}
-                  </button>
-                }
-                @case ('cancel') {
-                  <button
-                    type="button"
-                    class="mn-button"
-                    [disabled]="pending() === row.layer"
-                    (click)="stopRequested.emit(row.layer)"
-                  >
-                    {{ pending() === row.layer ? 'Stopping…' : row.label }}
-                  </button>
-                }
-                @case ('listen') {
-                  <button type="button" class="mn-button" (click)="listenToStory()">Listen</button>
-                }
-                @default {
-                  @if (row.label) {
-                    <span class="ready"><mn-icon name="check" [size]="16" />{{ row.label }}</span>
+        <div class="content-rows">
+          @for (row of rows(); track row.layer) {
+            <section class="content-row" [attr.aria-label]="row.name" [attr.data-layer]="row.layer">
+              <div class="row-main">
+                <div class="row-copy">
+                  <strong>{{ row.name }}</strong>
+                  <p role="status">{{ row.status }}</p>
+                </div>
+                @switch (row.action) {
+                  @case ('settings') {
+                    <a class="mn-button" routerLink="/settings" (click)="close()">{{
+                      row.label
+                    }}</a>
+                  }
+                  @case ('prepare') {
+                    <button
+                      type="button"
+                      class="mn-button"
+                      [disabled]="row.disabled || pending() === row.layer"
+                      (click)="prepare.emit(row.layer)"
+                    >
+                      {{ pending() === row.layer ? 'Saving…' : row.label }}
+                    </button>
+                  }
+                  @case ('cancel') {
+                    <button
+                      type="button"
+                      class="mn-button"
+                      [disabled]="pending() === row.layer"
+                      (click)="stopRequested.emit(row.layer)"
+                    >
+                      {{ pending() === row.layer ? 'Stopping…' : row.label }}
+                    </button>
+                  }
+                  @case ('listen') {
+                    <button type="button" class="mn-button" (click)="listenToStory()">
+                      Listen
+                    </button>
+                  }
+                  @default {
+                    @if (row.label) {
+                      <span class="ready"><mn-icon name="check" [size]="16" />{{ row.label }}</span>
+                    }
                   }
                 }
+              </div>
+              @if (row.error) {
+                <p class="mn-error" role="alert">{{ row.error }}</p>
               }
-            </div>
-            @if (row.error) {
-              <p class="mn-error" role="alert">{{ row.error }}</p>
-            }
-            @if (hasSavedLayer(row.layer)) {
-              <details class="mn-disclosure maintenance">
-                <summary>{{ row.name }} options</summary>
-                <button type="button" class="delete" (click)="clearLayer(row.layer)">
-                  {{ clearLabel(row.layer) }}
-                </button>
-              </details>
-            }
-          </section>
-        }
+              @if (hasSavedLayer(row.layer)) {
+                <details class="mn-disclosure maintenance">
+                  <summary>{{ row.name }} options</summary>
+                  <button type="button" class="delete" (click)="clearLayer(row.layer)">
+                    {{ clearLabel(row.layer) }}
+                  </button>
+                </details>
+              }
+            </section>
+          }
+        </div>
         @if (error()) {
           <p class="mn-error" role="alert">{{ error() }}</p>
         }
       </section>
       <footer>
-        <button type="button" class="delete" (click)="deleteStory()">Delete story…</button>
+        <button type="button" class="delete delete-story" (click)="deleteStory()">
+          Delete story…
+        </button>
       </footer>
     </section>
   `,

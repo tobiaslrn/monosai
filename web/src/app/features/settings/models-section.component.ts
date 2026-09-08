@@ -49,7 +49,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     '(document:keydown.escape)': 'connectionMenuOpen.set(false)',
   },
   template: `
-    <section class="mn-panel models" aria-labelledby="mn-models-heading">
+    <section class="mn-panel mn-settings-section models" aria-labelledby="mn-models-heading">
       <header class="section-head">
         <h2 id="mn-models-heading">AI &amp; generation</h2>
         <div class="connection">
@@ -534,7 +534,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       padding: var(--space-3);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-card);
-      background: var(--surface-raised);
+      background: var(--surface-canvas);
     }
     /*
      * A fixed height regardless of what sits on the right. Otherwise a pill

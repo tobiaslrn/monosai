@@ -56,12 +56,13 @@ const AIDS: readonly AidOption[] = [
       <div class="switches">
         @for (aid of aids; track aid.key) {
           <label class="aid">
+            <span>{{ aid.label }}</span>
             <input
+              class="mn-switch"
               type="checkbox"
               [checked]="settings.readerPreferences()[aid.key]"
               (change)="toggleAid(aid.key, $event)"
             />
-            <span>{{ aid.label }}</span>
           </label>
         }
       </div>
@@ -77,18 +78,21 @@ const AIDS: readonly AidOption[] = [
     .appearance {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: var(--space-3);
     }
 
     h3 {
       margin: 0;
-      font-size: var(--text-sm);
+      font-size: var(--text-md);
       font-weight: 600;
     }
     .switches {
       display: flex;
-      flex-wrap: wrap;
-      column-gap: var(--space-3);
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      background: var(--surface-canvas);
     }
     .scale input {
       min-width: 0;
@@ -107,6 +111,10 @@ const AIDS: readonly AidOption[] = [
       gap: var(--space-3);
       align-items: center;
       min-height: var(--touch-target);
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      background: var(--surface-canvas);
     }
 
     .scale input {
@@ -130,11 +138,15 @@ const AIDS: readonly AidOption[] = [
 
     .aid {
       display: flex;
-      gap: var(--space-3);
       align-items: center;
+      justify-content: space-between;
       min-height: var(--touch-target);
-      padding: var(--space-1);
+      padding: var(--space-2) var(--space-3);
       cursor: pointer;
+    }
+
+    .aid + .aid {
+      border-top: 1px solid var(--border-subtle);
     }
   `,
 })

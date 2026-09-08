@@ -51,7 +51,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
       gap: var(--space-3);
       align-items: center;
       min-height: var(--touch-target);
-      padding: var(--space-4) var(--space-5);
+      padding: var(--space-3) var(--space-4);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-card);
       background: var(--surface-panel);
@@ -81,7 +81,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
     }
 
     .title {
-      font-weight: 500;
+      font-weight: 600;
     }
   `,
 })
