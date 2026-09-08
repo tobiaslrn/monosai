@@ -58,8 +58,29 @@ over speculative abstractions.
   artifact with the worker live.
 - Navigate relatively (`page.goto('./#/library')`). The build bakes
   `<base href="/monosai/">`, so a leading slash escapes the base path.
-- For UI work, inspect the rendered app on desktop and Android-sized viewports.
-  Use Playwright for uploads, offline behavior, IndexedDB, and durable coverage.
+- Use Playwright for uploads, offline behavior, IndexedDB, and durable coverage.
+
+### Looking at the UI
+
+Never judge a visual change from the markup, the stylesheet, or a DOM query.
+Render it, save a PNG, and open that PNG with the image-reading tool — reading
+the file is the step, and a change is unverified until you have actually looked
+at the picture on both a desktop and an Android-sized viewport, in light and
+dark. Screenshot the state that is hard, not the empty one: the longest label,
+the row that carries two controls at once, the partial and failed states.
+
+The loop, once per change:
+
+1. `npm run build:pages` once.
+2. Write a throwaway spec under `web/e2e` that drives the app to the state you
+   want and calls `page.screenshot({ path: 'test-results/<name>.png' })`. Tag its
+   title `@smoke` — the default config greps for it — and add `@mobile` so the
+   `android-chrome` project runs it too. Reuse the `e2e` helpers for setup, and
+   loop over `page.emulateMedia({ colorScheme })` for both themes.
+3. `MONOSAI_PREBUILT_DIST=true npx playwright test --grep @<your-tag>` from
+   `web`, which reuses the build instead of making another.
+4. Read every PNG it wrote. Fix what you see, rebuild, repeat.
+5. Delete the throwaway spec before committing.
 
 Commands:
 
@@ -165,5 +186,11 @@ create an empty merge commit solely to record that branches met.
 Use subagents only for simple, isolated repository research. Work on the current
 branch; do not create or switch branches. Keep commits focused, never rewrite
 history, and do not push unless explicitly requested.
+
+A push is not finished until CI is green. Having pushed, watch the run
+(`gh run watch` or `gh run list --branch main`), read the failing job's log,
+fix the cause on the same branch, push again, and keep going until `gate`
+passes. A red run you walked away from is an unfinished task, not a known
+issue — say so explicitly if you genuinely cannot fix it.
 
 Use editing tools for multiline file content rather than shell string literals.
