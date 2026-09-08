@@ -101,7 +101,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         </section>
 
         <div class="shelf-head">
-          <h2 class="mn-visually-hidden">Library</h2>
           <button
             type="button"
             class="mn-button mn-button--primary"

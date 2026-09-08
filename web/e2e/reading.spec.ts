@@ -1376,6 +1376,9 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
       });
     const firstFilter = filterGeometry.buttons[0];
     const lastFilter = filterGeometry.buttons.at(-1);
+    if (lastFilter === undefined) {
+      throw new Error('The filter group must contain at least one button');
+    }
     if ((page.viewportSize()?.width ?? 0) < 960) {
       expect(firstFilter.left).toBeCloseTo(filterGeometry.left, 0);
       expect(lastFilter.right).toBeCloseTo(filterGeometry.right, 0);
@@ -1405,7 +1408,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
     await toggle.click();
     await expect(menu).toBeVisible();
-    await page.getByRole('heading', { name: 'Library', level: 1 }).click();
+    await page.getByRole('button', { name: 'Search', exact: true }).click();
     await expect(menu).toBeHidden();
 
     await toggle.click();
