@@ -255,6 +255,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       display: flex;
       align-items: flex-start;
       min-height: 15rem;
+      margin-bottom: calc(var(--space-1) * -1);
       padding-block: var(--space-2);
     }
 
