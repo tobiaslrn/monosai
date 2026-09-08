@@ -255,7 +255,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       display: flex;
       align-items: flex-start;
       min-height: 15rem;
-      margin-bottom: calc(var(--space-1) * -1);
+      margin-bottom: calc(var(--space-2) * -1);
       padding-block: var(--space-2);
     }
 
@@ -373,7 +373,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       }
 
       .home-hero {
-        min-height: 12rem;
+        min-height: 11.5rem;
       }
 
       .home-hero mn-library-standing {
