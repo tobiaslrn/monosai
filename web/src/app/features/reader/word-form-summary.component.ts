@@ -24,7 +24,7 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
           @for (label of summary().formLabels; track label) {
             <span class="form-tag">{{ label }}</span>
             @if (!$last) {
-              <span class="separator form-separator" aria-hidden="true">·</span>
+              <span class="separator form-separator" aria-hidden="true">{{ ' · ' }}</span>
             }
           }
         </p>
