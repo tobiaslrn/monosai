@@ -393,7 +393,10 @@ test.describe('scenario 12 — whole-reading translation', () => {
     expect(callCount(resumeCalls), 'opening an interrupted reading resumes nothing').toBe(0);
 
     await startWholeReadingTranslation(page);
-    await expect(progress(page)).toContainText('sentences saved', { timeout: 30_000 });
+    await expect(progress(page)).toContainText(
+      `${String(SENTENCE_COUNT)} of ${String(SENTENCE_COUNT)} sentences saved`,
+      { timeout: 30_000 },
+    );
     expect(await storedTranslationCount(page)).toBe(SENTENCE_COUNT);
 
     // Only the sentences that were still missing were requested. Count the
