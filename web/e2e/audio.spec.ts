@@ -143,18 +143,14 @@ async function openReaderMenu(page: Page): Promise<void> {
 /**
  * Stops a run from where that action lives.
  *
- * Not in the player: it is a reading-level audio action beside Delete audio,
- * and a permanent row for it made a card that floats over the reading taller
- * than the controls in it.
+ * The player, and only the player: every audio action is on the card that plays
+ * it, and Story options reports the run rather than carrying a second copy of
+ * its controls behind a panel that has to be opened first.
  */
 async function stopGenerating(page: Page): Promise<void> {
-  await openReaderMenu(page);
-  await page
-    .locator('[data-layer="audio"]')
-    .getByRole('button', { name: 'Stop', exact: true })
-    .click();
-  await expect(page.locator('[data-layer="audio"]')).not.toContainText('Stopping…');
-  await page.keyboard.press('Escape');
+  const stopping = audioPlayer(page).getByRole('button', { name: 'Stop generating audio' });
+  await stopping.click();
+  await expect(stopping).toHaveCount(0, { timeout: 60_000 });
 }
 
 /** The sentence popover's own audio action, which is a label and nothing else. */

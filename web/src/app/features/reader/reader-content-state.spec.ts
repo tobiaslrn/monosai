@@ -111,6 +111,18 @@ describe('reader content state', () => {
     });
   });
 
+  it('says a finished layer is ready rather than counting a full set twice', () => {
+    expect(
+      readerContentState(
+        { ...READING, translationSummary: { total: 4, completed: 4, failed: 0 } },
+        'english',
+        IDLE,
+        'ready',
+        true,
+      ).status,
+    ).toBe('Ready');
+  });
+
   it('reads analyzed grammar offline without requiring a model', () => {
     expect(
       readerContentState(
@@ -121,7 +133,7 @@ describe('reader content state', () => {
         false,
       ),
     ).toMatchObject({
-      status: '4 of 4 sentences analyzed',
+      status: 'Ready',
       action: null,
       label: '',
     });

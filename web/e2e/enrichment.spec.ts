@@ -104,15 +104,14 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await expect
       .poll(async () => (await countOwnedRows(page))['grammarAnalyses'] ?? 0)
       .toBeGreaterThan(0);
+    // Either report says the analysis is stored: a full set is Ready, and a
+    // partial one counts what it has.
+    const analyzed = /^(Ready|\d+ of \d+ sentences analyzed)$/;
     await trigger.click();
-    await expect(panel.locator('[data-layer="grammar"] [role="status"]')).toContainText(
-      'sentences analyzed',
-    );
+    await expect(panel.locator('[data-layer="grammar"] [role="status"]')).toHaveText(analyzed);
     await page.reload();
     await trigger.click();
-    await expect(panel.locator('[data-layer="grammar"] [role="status"]')).toContainText(
-      'sentences analyzed',
-    );
+    await expect(panel.locator('[data-layer="grammar"] [role="status"]')).toHaveText(analyzed);
     const bounds = await panel.boundingBox();
     expect(bounds).not.toBeNull();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
@@ -393,10 +392,9 @@ test.describe('scenario 12 — whole-reading translation', () => {
     expect(callCount(resumeCalls), 'opening an interrupted reading resumes nothing').toBe(0);
 
     await startWholeReadingTranslation(page);
-    await expect(progress(page)).toContainText(
-      `${String(SENTENCE_COUNT)} of ${String(SENTENCE_COUNT)} sentences saved`,
-      { timeout: 30_000 },
-    );
+    // A finished layer says Ready: the count reports what is still missing, and
+    // the stored total below is what says every sentence arrived.
+    await expect(progress(page).getByRole('status')).toHaveText('Ready', { timeout: 30_000 });
     expect(await storedTranslationCount(page)).toBe(SENTENCE_COUNT);
 
     // Only the sentences that were still missing were requested. Count the

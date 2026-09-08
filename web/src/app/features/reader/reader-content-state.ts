@@ -121,9 +121,11 @@ function layerState(
       break;
   }
   if (reading.sentenceCount > 0 && completed >= reading.sentenceCount) {
+    // A count is what is still missing, said as a fraction. Nothing is missing
+    // here, and "14 of 14" made the learner read two numbers to find that out.
     return {
       ...base,
-      status: completedDescription,
+      status: 'Ready',
       action: null,
       label: '',
     };

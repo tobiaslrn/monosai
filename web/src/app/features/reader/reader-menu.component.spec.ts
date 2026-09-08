@@ -85,10 +85,10 @@ describe('Story options', () => {
       ...ROW,
       action: null,
       label: '',
-      status: '4 of 4 sentences saved',
+      status: 'Ready',
     });
     expect(element.querySelector('.row-main button')).toBeNull();
-    expect(element.textContent).toContain('4 of 4 sentences saved');
+    expect(element.textContent).toContain('Ready');
   });
 
   it('moves focus into the panel and returns it on Escape', () => {

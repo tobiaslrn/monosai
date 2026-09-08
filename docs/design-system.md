@@ -259,7 +259,9 @@ labels produced three long red phrases that wrapped on a phone.
 
 Reading appearance contains immediate device-wide preferences. Content for this
 story shows saved results and explicit verbs: Translate story, Add notes,
-Continue, Stop, and Retry remaining. Ready is a status, never a switch. Closing
+Continue, Stop, and Retry remaining. Ready is a status, never a switch, and it
+is the whole status once a layer is finished: a count says what is still
+missing, so a full set prints Ready rather than the same number twice. Closing
 the panel leaves background work running. Progress, failures, and the recovery
 actions for the text layers stay in this panel, beside the layer they affect;
 status changes use the row's accessible announcement. There is no second
