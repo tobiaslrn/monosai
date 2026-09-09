@@ -1,11 +1,26 @@
 package io.github.tobiaslrn.monosai.bridge.anki
 
 class CardQueries(private val provider: ReadQueries, private val decks: DeckQueries) {
-    private val columns = arrayOf("_id", "note_id", "deck_id", "reps", "lapses", "sm2_factor", "queue")
+    private companion object {
+        val LEGACY_COLUMNS = arrayOf("_id", "note_id", "deck_id", "reps", "lapses", "sm2_factor", "queue")
+        val COLUMNS_WITH_INTERVAL = LEGACY_COLUMNS + "ivl"
+    }
+
+    /**
+     * Resolved once, because AnkiDroid builds differ in whether they expose `ivl`
+     * and an unknown projection column makes the provider reject the whole query.
+     */
+    private var columns: Array<String> = LEGACY_COLUMNS
 
     fun probe() {
         // An impossible id still exercises URI/projection support, even in an empty collection.
-        provider.query("cards", columns, "cid:0") { it.requiredLong("_id") }
+        provider.query("cards", LEGACY_COLUMNS, "cid:0") { it.requiredLong("_id") }
+        // Only after the supported projection proved access, so a permission or
+        // provider failure is still reported as itself rather than as a missing column.
+        columns = runCatching {
+            provider.query("cards", COLUMNS_WITH_INTERVAL, "cid:0") { it.requiredLong("_id") }
+            COLUMNS_WITH_INTERVAL
+        }.getOrDefault(LEGACY_COLUMNS)
     }
     fun find(query: String): List<Long> = provider.query("cards", arrayOf("_id"), query) { it.requiredLong("_id") }
     fun info(ids: List<Long>): List<CardRead> {
@@ -14,7 +29,7 @@ class CardQueries(private val provider: ReadQueries, private val decks: DeckQuer
         val found = provider.query("cards", columns, "cid:${ids.joinToString(",")}") {
             fun count(column: String): Int = it.requiredInt(column)
             CardRead(it.requiredLong("_id"), it.requiredLong("note_id"), count("reps"), count("lapses"), count("sm2_factor"), count("queue"),
-                names[it.requiredLong("deck_id")] ?: throw AnkiReadException(ReadFailure.QUERY))
+                names[it.requiredLong("deck_id")] ?: throw AnkiReadException(ReadFailure.QUERY), it.optionalInt("ivl"))
         }.associateBy { it.cardId }
         return ids.mapNotNull { found[it] }
     }

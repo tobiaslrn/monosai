@@ -50,6 +50,13 @@ internal fun Cursor.requiredInt(column: String): Int {
     if (isNull(index)) throw IllegalArgumentException("Missing column")
     return getLong(index).also { require(it in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) }.toInt()
 }
+/** Reads a column that some AnkiDroid versions do not expose, without failing. */
+internal fun Cursor.optionalInt(column: String): Int? {
+    val index = getColumnIndex(column)
+    if (index < 0 || isNull(index)) return null
+    val value = getLong(index)
+    return if (value in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) value.toInt() else null
+}
 internal fun Cursor.requiredText(column: String): String {
     val index = getColumnIndexOrThrow(column)
     if (isNull(index)) throw IllegalArgumentException("Missing column")

@@ -18,7 +18,7 @@ internal class FixtureReads : AnkiReads {
     }
     override fun findCards(query: String): List<Long> { require(query == "deck:*"); return listOf(1L) }
     override fun cardsInfo(ids: List<Long>): List<CardRead> {
-        require(ids == listOf(1L)); return listOf(CardRead(1, 1, 3, 1, 2400, 2, "Core Japanese"))
+        require(ids == listOf(1L)); return listOf(CardRead(1, 1, 3, 1, 2400, 2, "Core Japanese", 23))
     }
     override fun notesInfo(ids: List<Long>): List<NoteRead> {
         require(ids == listOf(1L)); return listOf(NoteRead(1, "Basic", linkedMapOf("Expression" to "<b>ねこ</b>", "Meaning" to "cat")))
@@ -28,7 +28,10 @@ internal class FixtureReads : AnkiReads {
 class RouterTest {
     @Test fun everyFixtureIsByteIdentical() {
         val directory = File(javaClass.classLoader!!.getResource("fixtures")!!.toURI())
-        assertEquals(AllowedReads.entries.size + 1, directory.listFiles()!!.size)
+        // One fixture per implemented read, plus the two the bridge refuses: a
+        // write, and `getReviewsOfCards`, which AnkiDroid has no review log for.
+        val refused = 2
+        assertEquals(AllowedReads.entries.size + refused, directory.listFiles()!!.size)
         for (fixture in directory.listFiles()!!) {
             val actual = Router(FixtureReads()).route(File(fixture, "request.json").readText())
             assertArrayEquals(fixture.name, File(fixture, "response.json").readBytes(), actual.toByteArray())

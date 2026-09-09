@@ -11,14 +11,18 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class QueriesTest {
-    private class Provider : ReadQueries {
+    private class Provider(private val interval: Int? = null) : ReadQueries {
         val queries = mutableListOf<Triple<String, List<String>, String?>>()
         val cursors = mutableListOf<Cursor>()
         override fun checkPermission() = Unit
         override fun <T> query(path: String, columns: Array<String>, selection: String?, row: (Cursor) -> T): List<T> {
             queries.add(Triple(path, columns.toList(), selection))
+            // An AnkiDroid without the column rejects the projection outright.
+            if (path == "cards" && interval == null && columns.contains("ivl"))
+                throw AnkiReadException(ReadFailure.EVIDENCE)
             val data: Map<String, Any> = when (path) {
-                "cards" -> mapOf("_id" to 7L, "note_id" to 5L, "deck_id" to 2L, "reps" to 3, "lapses" to 0, "sm2_factor" to 0, "queue" to -1)
+                "cards" -> mapOf("_id" to 7L, "note_id" to 5L, "deck_id" to 2L, "reps" to 3, "lapses" to 0, "sm2_factor" to 0, "queue" to -1,
+                    "ivl" to (interval ?: 0))
                 "decks" -> mapOf("deck_id" to 2L, "deck_name" to "日本語::動詞")
                 "models" -> mapOf("_id" to 4L, "name" to "Basic", "field_names" to "Expression\u001fMeaning")
                 "notes" -> mapOf("_id" to 5L, "mid" to 4L, "flds" to "<b>見る</b>\u001f")
@@ -46,6 +50,24 @@ class QueriesTest {
             NoteQueries(provider, ModelQueries(provider)).info(listOf(5, 99)))
         assertEquals("nid:5,99", provider.queries.last().third)
     }
+    @Test fun readsTheIntervalWhenAnkiDroidExposesIt() {
+        val provider = Provider(interval = 23)
+        val cards = CardQueries(provider, DeckQueries(provider))
+        cards.probe()
+        assertEquals(listOf(CardRead(7, 5, 3, 0, 0, -1, "日本語::動詞", 23)), cards.info(listOf(7)))
+        assertTrue(provider.queries.any { it.second.contains("ivl") })
+    }
+
+    @Test fun fallsBackToTheSupportedProjectionWhenTheIntervalIsMissing() {
+        // An unknown projection column makes the provider reject the whole query,
+        // so an older AnkiDroid must not lose every card over an optional signal.
+        val provider = Provider(interval = null)
+        val cards = CardQueries(provider, DeckQueries(provider))
+        cards.probe()
+        assertEquals(listOf(CardRead(7, 5, 3, 0, 0, -1, "日本語::動詞", null)), cards.info(listOf(7)))
+        assertFalse(provider.queries.last().second.contains("ivl"))
+    }
+
     @Test fun emptyBatchesNeverBecomeUnboundedSearches() {
         val provider = Provider()
         assertTrue(CardQueries(provider, DeckQueries(provider)).info(emptyList()).isEmpty())

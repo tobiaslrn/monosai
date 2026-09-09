@@ -28,6 +28,7 @@ export const PROTOCOL_COLLECTION: FixtureCollection = {
         queue: card.queue,
         lapses: card.lapses ?? undefined,
         factor: card.factor ?? undefined,
+        intervalDays: card.interval ?? undefined,
       })),
   })),
 };

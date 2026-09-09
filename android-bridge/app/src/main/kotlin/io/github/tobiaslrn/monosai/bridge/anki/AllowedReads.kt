@@ -7,7 +7,8 @@ enum class AllowedReads(val action: String) {
     CARDS("cardsInfo"), NOTES("notesInfo");
 }
 
-data class CardRead(val cardId: Long, val note: Long, val reps: Int, val lapses: Int, val factor: Int, val queue: Int, val deckName: String)
+/** `interval` is Anki's `ivl` in days, absent when this AnkiDroid does not expose it. */
+data class CardRead(val cardId: Long, val note: Long, val reps: Int, val lapses: Int, val factor: Int, val queue: Int, val deckName: String, val interval: Int? = null)
 data class NoteRead(val noteId: Long, val modelName: String, val fields: Map<String, String>)
 
 interface AnkiReads {
