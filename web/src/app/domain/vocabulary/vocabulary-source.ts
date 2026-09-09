@@ -1,5 +1,6 @@
 import type { VocabularySourceId } from '../shared/ids';
 import type { AnkiSchedulingSignals } from '../anki/scheduling-signals';
+import type { PracticeEvidence, PracticeObservationBasis } from '../anki/practice-evidence';
 
 export type AnkiConnectionKind = 'desktop-connect' | 'android-connect';
 export type AnkiProviderKind = AnkiConnectionKind | 'package';
@@ -51,6 +52,8 @@ export type VocabularySource = AnkiVocabularySource | TextListVocabularySource;
 export interface VocabularySourceCacheEntry extends AnkiSchedulingSignals {
   readonly rawValue?: string;
   readonly sourceRecordId?: string;
+  /** Meaningful only under the cache's own `practice` basis. */
+  readonly practice?: PracticeEvidence;
 }
 
 /** Last complete read of one source. Partial reads are never persisted. */
@@ -59,6 +62,14 @@ export interface VocabularySourceCache {
   readonly refreshedAt: number;
   readonly entries: readonly VocabularySourceCacheEntry[];
   readonly warnings: readonly string[];
+  /**
+   * What this read could establish about recent study.
+   *
+   * Required rather than optional, so a source that cannot answer has to say
+   * so. An absent basis would be read as "nothing was practised", which is the
+   * one thing it never means.
+   */
+  readonly practice: PracticeObservationBasis;
 }
 
 export function isAnkiSource(source: VocabularySource): source is AnkiVocabularySource {

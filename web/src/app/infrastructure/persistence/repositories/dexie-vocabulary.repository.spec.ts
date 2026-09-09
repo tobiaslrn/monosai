@@ -17,6 +17,7 @@ import type { MonosaiDatabase } from '../monosai-db';
 import { ROW_VERSION } from '../schemas/common.schema';
 import { DexieSettingsRepository } from './dexie-settings.repository';
 import { DexieVocabularyRepository } from './dexie-vocabulary.repository';
+import { unmeasuredBasis } from '../../../domain/anki/practice-evidence';
 
 function packageSourceFixture(id: VocabularySourceId): VocabularySource {
   return {
@@ -64,6 +65,51 @@ describe('DexieVocabularyRepository', () => {
     expect(active.ok && active.value?.id).toBe(commit.snapshot.id);
   });
 
+  it('reloads the practice evidence a refresh established, word by word', async () => {
+    const commit = snapshotFixture(40);
+    const sourceId = commit.provenance[0].sourceId;
+    const practised = {
+      ...commit.items[0],
+      practice: { answeredWithinDays: 1, answeredAgain: true },
+    } as const;
+    const observed = {
+      recentAnswers: 'available',
+      recentDifficulty: 'available',
+      learningState: 'available',
+      fsrsDifficulty: 'unsupported',
+      windowBasis: 'anki-study-days',
+      observedAt: 1_700_000_000_000,
+    } as const;
+
+    await repository.commitSnapshot({
+      ...commit,
+      items: [practised, ...commit.items.slice(1)],
+      sources: [packageSourceFixture(sourceId)],
+      caches: [
+        {
+          sourceId,
+          refreshedAt: 1_700_000_000_000,
+          entries: [{ rawValue: '猫', practice: { answeredWithinDays: 1 } }],
+          warnings: [],
+          practice: observed,
+        },
+      ],
+    });
+    db.close();
+    await db.open();
+
+    const reloaded: unknown[] = [];
+    for await (const batch of repository.streamItems(commit.snapshot.id, 10)) {
+      reloaded.push(...batch);
+    }
+    expect(reloaded).toContainEqual(expect.objectContaining({ practice: practised.practice }));
+    // The basis has to survive with the words, or a reload could not tell a word
+    // nobody practised from one this source was never able to speak about.
+    expect((await db.vocabularySourceCaches.get(sourceId))?.practice).toEqual(observed);
+    // A word with no evidence carries no key at all, rather than an empty shape.
+    expect(reloaded.filter((item) => 'practice' in (item as object))).toHaveLength(1);
+  });
+
   it('leaves the active snapshot unchanged when a commit fails', async () => {
     const first = snapshotFixture(2);
     await repository.commitSnapshot(first);
@@ -88,7 +134,13 @@ describe('DexieVocabularyRepository', () => {
       ...commit,
       sources: [packageSourceFixture(sourceId)],
       caches: [
-        { sourceId, refreshedAt: 1_700_000_000_000, entries: [{ rawValue: '猫' }], warnings: [] },
+        {
+          sourceId,
+          refreshedAt: 1_700_000_000_000,
+          entries: [{ rawValue: '猫' }],
+          warnings: [],
+          practice: unmeasuredBasis(1_700_000_000_000),
+        },
       ],
     });
 
@@ -107,7 +159,9 @@ describe('DexieVocabularyRepository', () => {
       ...commit,
       snapshot: { ...commit.snapshot, uniqueEntryCount: commit.items.length + 1 },
       sources: [packageSourceFixture(sourceId)],
-      caches: [{ sourceId, refreshedAt: 1, entries: [], warnings: [] }],
+      caches: [
+        { sourceId, refreshedAt: 1, entries: [], warnings: [], practice: unmeasuredBasis(1) },
+      ],
     });
 
     expect(failed.ok).toBe(false);

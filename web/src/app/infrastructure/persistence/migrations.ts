@@ -284,6 +284,32 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
     version: 11,
     stores: V11_STORES,
   },
+  {
+    // Source caches now say what their read could establish about recent study.
+    // No index changes: a capture is read with the source it belongs to.
+    version: 12,
+    stores: V11_STORES,
+    upgrade: async (transaction) => {
+      await transaction
+        .table('vocabularySourceCaches')
+        .toCollection()
+        .modify((row: unknown) => {
+          const cache = requireRecord(row, 'vocabulary source cache');
+          const refreshedAt = cache['refreshedAt'];
+          // Marked unmeasured rather than backfilled. These reads happened
+          // before the searches existed, so nothing about them says the learner
+          // did not study; the next refresh is what can answer that.
+          cache['practice'] = {
+            recentAnswers: 'unsupported',
+            recentDifficulty: 'unsupported',
+            learningState: 'unsupported',
+            fsrsDifficulty: 'unsupported',
+            windowBasis: 'anki-study-days',
+            observedAt: typeof refreshedAt === 'number' ? refreshedAt : 0,
+          };
+        });
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].version;

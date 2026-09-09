@@ -16,6 +16,7 @@ import { PACKAGE_PROVIDER_FACTORY } from '../shared/anki-tokens';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { PackageImportStore } from './package-import.store';
 import { SourceMappingStore } from './source-mapping.store';
+import { unmeasuredBasis } from '../../domain/anki/practice-evidence';
 
 /** One deck with subdecks and one obvious expression field. */
 const SHARED_DECK: FixtureCollection = {
@@ -174,6 +175,7 @@ describe('PackageImportStore', () => {
       refreshedAt: 1,
       entries: [{ rawValue: '犬' }],
       warnings: [],
+      practice: unmeasuredBasis(1),
     });
 
     await store().start(FILE);

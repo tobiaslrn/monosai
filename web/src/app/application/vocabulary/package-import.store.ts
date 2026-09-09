@@ -25,6 +25,7 @@ import { PACKAGE_PROVIDER_FACTORY } from '../shared/anki-tokens';
 import { CLOCK, ID_GENERATOR } from '../shared/repository-tokens';
 import { SourceMappingStore } from './source-mapping.store';
 import { VocabularySyncService, type VocabularySyncFailure } from './vocabulary-sync.service';
+import { unmeasuredBasis } from '../../domain/anki/practice-evidence';
 
 export type PackageImportFailure = AnkiError | VocabularySyncFailure | StorageError;
 
@@ -397,6 +398,9 @@ export class PackageImportStore {
       refreshedAt,
       entries,
       warnings,
+      // A package is a saved observation; reading recent study out of its review
+      // log is a separate question from the one this import answers.
+      practice: unmeasuredBasis(refreshedAt),
     };
     const stored: SourceMapping = { ...mapping, updatedAt: refreshedAt, lastSyncedAt: refreshedAt };
 

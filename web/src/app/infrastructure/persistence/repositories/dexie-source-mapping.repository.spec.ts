@@ -5,6 +5,7 @@ import { createTestDatabase, destroyTestDatabase } from '../../../../testing/tes
 import type { MonosaiDatabase } from '../monosai-db';
 import { ROW_VERSION } from '../schemas/common.schema';
 import { DexieSourceMappingRepository } from './dexie-source-mapping.repository';
+import { unmeasuredBasis } from '../../../domain/anki/practice-evidence';
 
 const FIRST = sourceMappingId('11111111-1111-4111-8111-111111111111');
 const SECOND = sourceMappingId('22222222-2222-4222-8222-222222222222');
@@ -166,6 +167,7 @@ describe('DexieSourceMappingRepository', () => {
       refreshedAt: 10,
       entries: [{ rawValue: '猫', sourceRecordId: '1' }],
       warnings: [],
+      practice: unmeasuredBasis(10),
     });
 
     expect(await repository.readCaches([FIRST])).toEqual({
@@ -176,6 +178,7 @@ describe('DexieSourceMappingRepository', () => {
           refreshedAt: 10,
           entries: [{ rawValue: '猫', sourceRecordId: '1' }],
           warnings: [],
+          practice: unmeasuredBasis(10),
         },
       ],
     });

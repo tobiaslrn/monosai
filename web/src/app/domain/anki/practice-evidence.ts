@@ -80,9 +80,9 @@ export interface PracticeEvidence {
    */
   readonly answeredWithinDays?: PracticeWindowDays;
   /** Answered Again at least once in the difficulty window. */
-  readonly answeredAgain?: boolean;
+  readonly answeredAgain?: true;
   /** Answered Hard at least once in the difficulty window. */
-  readonly answeredHard?: boolean;
+  readonly answeredHard?: true;
   /**
    * One and the same card was answered recently and is still being learned.
    *
@@ -90,8 +90,23 @@ export interface PracticeEvidence {
    * another sibling's learning state would claim something about a card that is
    * not true of any card the learner has.
    */
-  readonly recentlyAnsweredWhileLearning?: boolean;
+  readonly recentlyAnsweredWhileLearning?: true;
   /** One and the same card was answered recently and is due again within a week. */
+  readonly recentlyAnsweredWithShortInterval?: true;
+}
+
+/**
+ * Evidence as it arrives, before normalization.
+ *
+ * Wider than the stored shape on purpose: a provider reply, a persisted row and
+ * a merge all produce ordinary numbers and booleans, and narrowing them to the
+ * positive-only form is exactly what `normalizePracticeEvidence` is for.
+ */
+export interface PracticeEvidenceInput {
+  readonly answeredWithinDays?: number;
+  readonly answeredAgain?: boolean;
+  readonly answeredHard?: boolean;
+  readonly recentlyAnsweredWhileLearning?: boolean;
   readonly recentlyAnsweredWithShortInterval?: boolean;
 }
 
@@ -154,7 +169,7 @@ export function hasRecentDifficulty(
 
 /** Keeps provider output in the normalized shape persisted by the app. */
 export function normalizePracticeEvidence(
-  evidence: Partial<PracticeEvidence> | null | undefined,
+  evidence: PracticeEvidenceInput | null | undefined,
 ): PracticeEvidence {
   const answeredWithinDays = PRACTICE_WINDOWS.find(
     (window) => window === evidence?.answeredWithinDays,

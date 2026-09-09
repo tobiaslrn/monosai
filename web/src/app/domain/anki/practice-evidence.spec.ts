@@ -68,7 +68,7 @@ describe('recent difficulty', () => {
 
 describe('normalization', () => {
   it('drops a window the searches never produce', () => {
-    expect(normalizePracticeEvidence({ answeredWithinDays: 4 as never })).toEqual({});
+    expect(normalizePracticeEvidence({ answeredWithinDays: 4 })).toEqual({});
     expect(normalizePracticeEvidence({ answeredWithinDays: 3 })).toEqual({ answeredWithinDays: 3 });
   });
 

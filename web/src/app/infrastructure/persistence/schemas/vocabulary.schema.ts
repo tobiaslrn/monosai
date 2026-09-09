@@ -24,7 +24,35 @@ const schedulingSignalsShape = {
   firstReviewedAt: z.number().int().positive().optional(),
   intervalDays: z.number().positive().optional(),
   fsrsDifficulty: z.number().min(1).max(10).optional(),
+  lastReviewedAt: z.number().int().positive().optional(),
 };
+
+/**
+ * One expression's recent-study evidence.
+ *
+ * Only positive membership is stored. A word absent from a pool is absent from
+ * the row, and whether that means "not practised" or "never asked" is answered
+ * by the capture's basis, not by the row.
+ */
+const practiceEvidenceSchema = z.object({
+  answeredWithinDays: z.union([z.literal(1), z.literal(3), z.literal(7)]).optional(),
+  answeredAgain: z.literal(true).optional(),
+  answeredHard: z.literal(true).optional(),
+  recentlyAnsweredWhileLearning: z.literal(true).optional(),
+  recentlyAnsweredWithShortInterval: z.literal(true).optional(),
+});
+
+const evidenceAvailabilitySchema = z.enum(['available', 'unsupported', 'unavailable']);
+
+/** What one read of one source could establish, recorded once for the read. */
+const practiceObservationBasisSchema = z.object({
+  recentAnswers: evidenceAvailabilitySchema,
+  recentDifficulty: evidenceAvailabilitySchema,
+  learningState: evidenceAvailabilitySchema,
+  fsrsDifficulty: evidenceAvailabilitySchema,
+  windowBasis: z.enum(['anki-study-days', 'rolling-days']),
+  observedAt: timestampSchema,
+});
 
 export const vocabularySnapshotRowSchema = z.object({
   v: rowVersionSchema,
@@ -55,6 +83,7 @@ export const vocabularyItemRowSchema = z.object({
   canonicalExpression: nonEmptyString,
   expressionHash: nonEmptyString,
   ...schedulingSignalsShape,
+  practice: practiceEvidenceSchema.optional(),
   analyzedSequence: z
     .array(
       z.object({
@@ -127,10 +156,12 @@ export const vocabularySourceCacheRowSchema = z.object({
         rawValue: z.string().optional(),
         sourceRecordId: z.string().optional(),
         ...schedulingSignalsShape,
+        practice: practiceEvidenceSchema.optional(),
       }),
     )
     .readonly(),
   warnings: z.array(z.string()).readonly(),
+  practice: practiceObservationBasisSchema,
 });
 
 /** Compatibility export for adapters/tests still using mapping terminology. */

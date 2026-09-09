@@ -147,6 +147,7 @@ export class SnapshotBuilder {
         expressionHash: item.expressionHash,
         analyzedSequence: analyzed.value.get(item.expressionHash) ?? [],
         ...normalizeSchedulingSignals(item.entry),
+        ...(item.entry.practice === undefined ? {} : { practice: item.entry.practice }),
       });
     }
 

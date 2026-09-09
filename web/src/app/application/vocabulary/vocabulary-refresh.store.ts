@@ -6,6 +6,11 @@ import type { AnkiCatalog } from '../../domain/anki/catalog';
 import { canDiscover, canRefresh } from '../../domain/anki/capabilities';
 import { normalizeSchedulingSignals } from '../../domain/anki/scheduling-signals';
 import {
+  normalizePracticeEvidence,
+  unmeasuredBasis,
+  type PracticeObservationBasis,
+} from '../../domain/anki/practice-evidence';
+import {
   canRefreshMappings,
   resolveMappings,
   type MappingResolution,
@@ -229,6 +234,7 @@ export class VocabularyRefreshStore {
 
     const entries: ExtractedEntry[] = [];
     const warnings: string[] = [];
+    const observed = new Map<SourceMappingId, PracticeObservationBasis>();
     const seenMappings = new Set<SourceMappingId>();
 
     for await (const event of provider.extractReviewed(resolved, signal)) {
@@ -245,6 +251,9 @@ export class VocabularyRefreshStore {
           break;
         case 'entry':
           entries.push(event.entry);
+          break;
+        case 'observed':
+          observed.set(event.mappingId, event.basis);
           break;
         case 'warning':
           warnings.push(event.message);
@@ -271,10 +280,12 @@ export class VocabularyRefreshStore {
       entriesBySource.set(source.id, []);
     }
     for (const entry of entries) {
+      const practice = normalizePracticeEvidence(entry.practice);
       entriesBySource.get(entry.sourceMappingId)?.push({
         rawValue: entry.rawFieldValue,
         ...(entry.sourceNoteId === undefined ? {} : { sourceRecordId: entry.sourceNoteId }),
         ...normalizeSchedulingSignals(entry),
+        ...(Object.keys(practice).length === 0 ? {} : { practice }),
       });
     }
     const refreshedAt = Date.now();
@@ -283,6 +294,7 @@ export class VocabularyRefreshStore {
       refreshedAt,
       entries: entriesBySource.get(source.id) ?? [],
       warnings,
+      practice: observed.get(source.id) ?? unmeasuredBasis(refreshedAt),
     }));
 
     const built = await this.sync.prepare(

@@ -11,6 +11,7 @@ import { CLOCK, ID_GENERATOR, VOCABULARY_SOURCE_REPOSITORY } from '../shared/rep
 import { SnapshotHistoryStore } from './snapshot-history.store';
 import { SourceMappingStore } from './source-mapping.store';
 import { VocabularySyncService, type VocabularySyncFailure } from './vocabulary-sync.service';
+import { unmeasuredBasis } from '../../domain/anki/practice-evidence';
 
 /** Explicit local reader write. Anki is never contacted or modified. */
 @Injectable({ providedIn: 'root' })
@@ -64,6 +65,8 @@ export class ReaderWordListService {
         sourceRecordId: String(index + 1),
       })),
       warnings: [],
+      // Words the learner typed carry no scheduling history to observe.
+      practice: unmeasuredBasis(now),
     };
     const prepared = await this.sync.prepare({ sources: [source], caches: [cache] });
     if (!prepared.ok) return prepared;

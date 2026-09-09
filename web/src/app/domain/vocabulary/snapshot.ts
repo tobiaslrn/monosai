@@ -2,6 +2,7 @@ import type { SnapshotId, VocabularyItemId } from '../shared/ids';
 import type { VocabularySourceId } from '../shared/ids';
 import type { VocabularySourceKind } from './vocabulary-source';
 import type { AnkiSchedulingSignals } from '../anki/scheduling-signals';
+import type { PracticeEvidence } from '../anki/practice-evidence';
 
 export type { AnkiProviderKind } from './vocabulary-source';
 
@@ -41,6 +42,13 @@ export interface VocabularyItem extends AnkiSchedulingSignals {
   readonly canonicalExpression: string;
   readonly expressionHash: string;
   readonly analyzedSequence: readonly VocabularyToken[];
+  /**
+   * Recent study of this expression, merged over every note that produced it.
+   *
+   * Read against the contributing sources' own bases, which the caches hold:
+   * absence here is only a real "not practised" for a source that could answer.
+   */
+  readonly practice?: PracticeEvidence;
 }
 
 export interface VocabularyProvenance {

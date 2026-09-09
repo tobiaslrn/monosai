@@ -17,6 +17,7 @@ import { VocabularyClassificationService } from '../reading/vocabulary-classific
 import { AppSettingsStore } from '../settings/app-settings.store';
 import { VOCABULARY_REPOSITORY, VOCABULARY_SOURCE_REPOSITORY } from '../shared/repository-tokens';
 import { SnapshotBuilder, type AnalysisProgress } from './snapshot-builder';
+import { unmeasuredBasis } from '../../domain/anki/practice-evidence';
 
 export type VocabularySyncFailure = LanguageError | StorageError;
 
@@ -156,6 +157,7 @@ export class VocabularySyncService {
         sourceRecordId: String(index + 1),
       })),
       warnings: [],
+      practice: unmeasuredBasis(source.lastSyncedAt ?? source.updatedAt),
     };
     const prepared = await this.prepare({ caches: [cache] });
     return prepared.ok ? this.commit(prepared.value) : prepared;

@@ -11,6 +11,7 @@ import { ankiError } from '../../domain/anki/anki-error';
 import type { AnkiVocabularyProvider } from '../../domain/anki/anki-provider';
 import { ANKI_PROVIDER_FACTORY } from '../shared/anki-tokens';
 import { AutomaticAnkiSyncCoordinator } from './automatic-anki-sync.coordinator';
+import { unmeasuredBasis } from '../../domain/anki/practice-evidence';
 
 describe('AutomaticAnkiSyncCoordinator', () => {
   let beds: VocabularyTestBed;
@@ -162,6 +163,7 @@ describe('AutomaticAnkiSyncCoordinator', () => {
       refreshedAt: 1,
       entries: [{ rawValue: '猫' }],
       warnings: [],
+      practice: unmeasuredBasis(1),
     });
     const emptyCollection = {
       ...CONTRACT_COLLECTION,

@@ -3,6 +3,11 @@ import { ankiError, type AnkiError } from '../../domain/anki/anki-error';
 import type { ExtractedEntry } from '../../domain/anki/anki-provider';
 import { canRefresh } from '../../domain/anki/capabilities';
 import { normalizeSchedulingSignals } from '../../domain/anki/scheduling-signals';
+import {
+  normalizePracticeEvidence,
+  unmeasuredBasis,
+  type PracticeObservationBasis,
+} from '../../domain/anki/practice-evidence';
 import { canRefreshMappings, resolveMappings } from '../../domain/anki/mapping-validation';
 import type { Clock } from '../../domain/shared/clock';
 import { err, ok, type Result } from '../../domain/shared/result';
@@ -70,10 +75,13 @@ export class AnkiSourceReader {
       }
 
       const entries = new Map(sources.map((source) => [source.id, [] as ExtractedEntry[]]));
+      const observed = new Map<string, PracticeObservationBasis>();
       const warnings: string[] = [];
       for await (const event of provider.extractReviewed(resolution.resolved, signal)) {
         if (event.kind === 'entry') {
           entries.get(event.entry.sourceMappingId)?.push(event.entry);
+        } else if (event.kind === 'observed') {
+          observed.set(event.mappingId, event.basis);
         } else if (event.kind === 'warning') {
           warnings.push(event.message);
         } else if (event.kind === 'failed') {
@@ -93,14 +101,25 @@ export class AnkiSourceReader {
             rawValue: entry.rawFieldValue,
             ...(entry.sourceNoteId === undefined ? {} : { sourceRecordId: entry.sourceNoteId }),
             ...normalizeSchedulingSignals(entry),
+            ...practiceOf(entry),
           })),
           warnings,
+          // A provider that finished without reporting an observation established
+          // nothing, which is not the same as establishing that nothing happened.
+          practice: observed.get(source.id) ?? unmeasuredBasis(refreshedAt),
         })),
       );
     } finally {
       provider.dispose();
     }
   }
+}
+
+function practiceOf(entry: ExtractedEntry): {
+  practice?: ReturnType<typeof normalizePracticeEvidence>;
+} {
+  const practice = normalizePracticeEvidence(entry.practice);
+  return Object.keys(practice).length === 0 ? {} : { practice };
 }
 
 /** True when a failure is worth waiting out rather than acting on. */
