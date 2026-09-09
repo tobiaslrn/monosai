@@ -4,6 +4,7 @@ import type { AnkiVocabularyProvider, ExtractedEntry } from '../../domain/anki/a
 import type { AnkiCapabilities } from '../../domain/anki/capabilities';
 import type { AnkiCatalog } from '../../domain/anki/catalog';
 import { canDiscover, canRefresh } from '../../domain/anki/capabilities';
+import { normalizeSchedulingSignals } from '../../domain/anki/scheduling-signals';
 import {
   canRefreshMappings,
   resolveMappings,
@@ -273,9 +274,7 @@ export class VocabularyRefreshStore {
       entriesBySource.get(entry.sourceMappingId)?.push({
         rawValue: entry.rawFieldValue,
         ...(entry.sourceNoteId === undefined ? {} : { sourceRecordId: entry.sourceNoteId }),
-        ...(entry.reps === undefined ? {} : { reps: entry.reps }),
-        ...(entry.lapseRatio === undefined ? {} : { lapseRatio: entry.lapseRatio }),
-        ...(entry.easeFactor === undefined ? {} : { easeFactor: entry.easeFactor }),
+        ...normalizeSchedulingSignals(entry),
       });
     }
     const refreshedAt = Date.now();

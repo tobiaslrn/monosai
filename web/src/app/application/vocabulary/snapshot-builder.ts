@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { canonicalizeExpression, expressionHashOf } from '../../domain/anki/canonical-expression';
 import { mergeEntries, type PreparedEntry } from '../../domain/anki/deduplication';
 import { extractVisibleText } from '../../domain/anki/field-extraction';
+import { normalizeSchedulingSignals } from '../../domain/anki/scheduling-signals';
 import { ANALYZER_VERSION, NORMALIZATION_VERSION } from '../../domain/language/analyzer-version';
 import { languageError, type LanguageError } from '../../domain/language/language-error';
 import { err, ok, type Result } from '../../domain/shared/result';
@@ -145,9 +146,7 @@ export class SnapshotBuilder {
         canonicalExpression: item.canonicalExpression,
         expressionHash: item.expressionHash,
         analyzedSequence: analyzed.value.get(item.expressionHash) ?? [],
-        ...(item.entry.reps === undefined ? {} : { reps: item.entry.reps }),
-        ...(item.entry.lapseRatio === undefined ? {} : { lapseRatio: item.entry.lapseRatio }),
-        ...(item.entry.easeFactor === undefined ? {} : { easeFactor: item.entry.easeFactor }),
+        ...normalizeSchedulingSignals(item.entry),
       });
     }
 

@@ -7,6 +7,7 @@ import type {
 } from '../../../domain/anki/anki-provider';
 import type { AnkiCapabilities, CapabilityLimitation } from '../../../domain/anki/capabilities';
 import type { AnkiCatalog } from '../../../domain/anki/catalog';
+import { normalizeSchedulingSignals } from '../../../domain/anki/scheduling-signals';
 import { err, ok, type Result } from '../../../domain/shared/result';
 import type { AnkiProviderKind } from '../../../domain/vocabulary/snapshot';
 import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
@@ -124,9 +125,7 @@ export class PackageProviderAdapter implements AnkiVocabularyProvider {
             sourceMappingId: mapping.id,
             sourceNoteId: field.sourceNoteId,
             ...(field.rawFieldValue === undefined ? {} : { rawFieldValue: field.rawFieldValue }),
-            ...(field.reps === undefined ? {} : { reps: field.reps }),
-            ...(field.lapseRatio === undefined ? {} : { lapseRatio: field.lapseRatio }),
-            ...(field.easeFactor === undefined ? {} : { easeFactor: field.easeFactor }),
+            ...normalizeSchedulingSignals(field),
           },
         };
       }

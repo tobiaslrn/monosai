@@ -25,6 +25,9 @@ export interface ExtractedEntry {
   readonly reps?: AnkiSchedulingSignals['reps'];
   readonly lapseRatio?: AnkiSchedulingSignals['lapseRatio'];
   readonly easeFactor?: AnkiSchedulingSignals['easeFactor'];
+  readonly firstReviewedAt?: AnkiSchedulingSignals['firstReviewedAt'];
+  readonly intervalDays?: AnkiSchedulingSignals['intervalDays'];
+  readonly fsrsDifficulty?: AnkiSchedulingSignals['fsrsDifficulty'];
 }
 
 /**

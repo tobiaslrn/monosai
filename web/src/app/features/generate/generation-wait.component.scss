@@ -4,18 +4,70 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  min-height: 24.375rem;
+  gap: var(--space-5);
   text-align: center;
+}
+
+/*
+ * The illustration's box is fixed, so the surface is laid out identically from
+ * the first frame to the last: the video paints into space the page already
+ * held rather than pushing the stage name down when it decodes.
+ */
+.mascot {
+  position: relative;
+  /*
+   * The ground is drawn behind the character with `z-index: -1`, and this
+   * confines that to the illustration rather than letting it fall behind the
+   * page.
+   */
+  isolation: isolate;
+  flex: none;
+  width: 15rem;
+  max-width: 55vw;
+  aspect-ratio: 384 / 480;
+}
+
+/*
+ * The character is drawn on transparency, so the ground it sits on is drawn
+ * here rather than baked in. Two flat ellipses with real edges, not a blur: a
+ * pool a quarter wider than the character, and a smaller, darker one where the
+ * boots and the body press into it. Reaching well past the silhouette is what
+ * makes it read at all — a pool the width of the boots is hidden behind them —
+ * and stacking the two in one colour is what gives it its two tones.
+ */
+.mascot::before,
+.mascot::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  background: var(--mascot-ground);
+}
+
+.mascot::before {
+  right: -10%;
+  bottom: 3%;
+  left: -15%;
+  height: 16.5%;
+}
+
+.mascot::after {
+  right: 9%;
+  bottom: 5.5%;
+  left: 5%;
+  height: 9.5%;
+}
+
+.mascot video,
+.mascot img {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .copy {
   max-width: 37.5rem;
   animation: copy-in var(--motion-medium) ease-out;
-}
-
-.eyebrow {
-  margin-bottom: var(--space-2);
 }
 
 h2 {
@@ -72,6 +124,14 @@ h2 {
 
 @media (max-width: breakpoints.$narrow-max) {
   :host {
-    min-height: 21.25rem;
+    gap: var(--space-4);
+  }
+
+  .mascot {
+    width: 11.5rem;
+  }
+
+  h2 {
+    font-size: 1.625rem;
   }
 }

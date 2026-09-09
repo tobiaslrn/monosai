@@ -178,7 +178,11 @@ export class FakeAnkiProvider implements AnkiVocabularyProvider {
                 (signals, card) =>
                   mergeSchedulingSignals(
                     signals,
-                    schedulingSignalsFromCard(card.reps, card.lapses, card.factor),
+                    schedulingSignalsFromCard({
+                      reps: card.reps,
+                      lapses: card.lapses,
+                      factor: card.factor,
+                    }),
                   ),
                 {},
               ),

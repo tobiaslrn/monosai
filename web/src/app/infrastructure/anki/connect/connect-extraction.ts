@@ -58,11 +58,11 @@ export async function* extractMapping(
       if (!isEligibleReviewedCard(card.reps, card.queue) || !inScope(card.deckName, mapping)) {
         continue;
       }
-      const signals = schedulingSignalsFromCard(
-        card.reps,
-        card.lapses ?? undefined,
-        card.factor ?? undefined,
-      );
+      const signals = schedulingSignalsFromCard({
+        reps: card.reps,
+        lapses: card.lapses ?? undefined,
+        factor: card.factor ?? undefined,
+      });
       schedulingByNote.set(
         card.note,
         mergeSchedulingSignals(schedulingByNote.get(card.note), signals),

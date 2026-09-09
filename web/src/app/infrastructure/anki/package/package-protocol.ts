@@ -9,7 +9,7 @@ import type { DeckScope } from '../../../domain/vocabulary/source-mapping';
  * which matters because a service-worker update can leave an old worker script
  * cached independently of the page that loads it.
  */
-export const PACKAGE_PROTOCOL_VERSION = 2;
+export const PACKAGE_PROTOCOL_VERSION = 3;
 
 export interface OpenRequest {
   readonly operation: 'open';
@@ -77,6 +77,9 @@ export interface ExtractedField {
   readonly reps?: number;
   readonly lapseRatio?: number;
   readonly easeFactor?: number;
+  readonly firstReviewedAt?: number;
+  readonly intervalDays?: number;
+  readonly fsrsDifficulty?: number;
 }
 
 export interface ExtractResult {

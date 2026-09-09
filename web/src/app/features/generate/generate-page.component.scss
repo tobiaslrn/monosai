@@ -11,40 +11,49 @@
   margin: 0 0 var(--space-2);
 }
 
+/*
+ * Neither screen is a panel: each is the whole of the page, and a panel
+ * wrapping a whole page separates nothing. They sit on the paper the Library
+ * and the reader sit on, which is also what lets the illustration be drawn on
+ * one ground rather than on a card inside another.
+ */
 .wait-screen,
 .result-screen {
-  padding: var(--space-6);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-card);
-  background: var(--surface-panel);
-  box-shadow: var(--shadow-raised);
-}
-
-.wait-screen {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 33.75rem;
+  padding: var(--space-4) 0 var(--space-6);
+  text-align: center;
+}
+
+/*
+ * The stage name is one to three lines depending on which stage it is, so the
+ * screen holds a height that fits the longest of them and hands the slack to
+ * the gap above the footer. The illustration and the Cancel button then sit
+ * where they sat before the stage changed, which is the point: neither moves
+ * under the learner while they wait.
+ */
+.wait-screen {
+  gap: var(--space-5);
+  justify-content: space-between;
+  min-height: 39rem;
+}
+
+.leave {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
 }
 
 .leave-hint {
-  max-width: 34rem;
-  margin: var(--space-3) 0 0;
-  text-align: center;
-}
-
-.cancel {
-  margin-top: auto;
+  max-width: 30rem;
+  margin: 0;
 }
 
 .result-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   gap: var(--space-3);
-  min-height: 26.25rem;
   justify-content: center;
-  text-align: center;
 }
 
 .result-screen h2 {
@@ -75,8 +84,16 @@
 @media (max-width: breakpoints.$narrow-max) {
   .wait-screen,
   .result-screen {
-    min-height: 0;
-    padding: var(--space-5) var(--space-4);
+    padding: var(--space-2) 0 var(--space-5);
+  }
+
+  .wait-screen {
+    gap: var(--space-4);
+    min-height: 34rem;
+  }
+
+  .result-screen h2 {
+    font-size: 1.75rem;
   }
 
   .actions {

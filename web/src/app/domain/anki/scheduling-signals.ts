@@ -11,6 +11,33 @@ export interface AnkiSchedulingSignals {
   readonly lapseRatio?: number;
   /** Minimum non-zero ease factor observed for the note's eligible cards. */
   readonly easeFactor?: number;
+  /**
+   * Earliest real review of any eligible card, in epoch milliseconds.
+   *
+   * This is when the learner actually met the word, which is what "recently
+   * learned" means. It is not when the note was added: a premade deck adds
+   * thousands of notes at one instant and the learner meets them over years.
+   */
+  readonly firstReviewedAt?: number;
+  /** Largest current scheduling interval, in days, over the eligible cards. */
+  readonly intervalDays?: number;
+  /** Largest FSRS difficulty, on Anki's 1-10 scale, over the eligible cards. */
+  readonly fsrsDifficulty?: number;
+}
+
+/** Bounds of Anki's FSRS difficulty scale, used to reject implausible values. */
+export const FSRS_DIFFICULTY_MINIMUM = 1;
+export const FSRS_DIFFICULTY_MAXIMUM = 10;
+
+/** One eligible card's raw scheduling columns, before normalization. */
+export interface AnkiCardScheduling {
+  readonly reps: number;
+  readonly lapses?: number;
+  readonly factor?: number;
+  readonly firstReviewedAt?: number;
+  /** Anki's `ivl`: positive days, or negative seconds while a card is learning. */
+  readonly intervalDays?: number;
+  readonly fsrsDifficulty?: number;
 }
 
 /** Anki's queue code for a card the learner explicitly suspended. */
@@ -35,10 +62,20 @@ export function normalizeSchedulingSignals(
   const reps = positiveInteger(signals?.reps);
   const lapseRatio = unitInterval(signals?.lapseRatio);
   const easeFactor = positiveFinite(signals?.easeFactor);
+  const firstReviewedAt = positiveInteger(signals?.firstReviewedAt);
+  const intervalDays = positiveFinite(signals?.intervalDays);
+  const fsrsDifficulty = withinRange(
+    signals?.fsrsDifficulty,
+    FSRS_DIFFICULTY_MINIMUM,
+    FSRS_DIFFICULTY_MAXIMUM,
+  );
   return {
     ...(reps === undefined ? {} : { reps }),
     ...(lapseRatio === undefined ? {} : { lapseRatio }),
     ...(easeFactor === undefined ? {} : { easeFactor }),
+    ...(firstReviewedAt === undefined ? {} : { firstReviewedAt }),
+    ...(intervalDays === undefined ? {} : { intervalDays }),
+    ...(fsrsDifficulty === undefined ? {} : { fsrsDifficulty }),
   };
 }
 
@@ -52,24 +89,46 @@ export function mergeSchedulingSignals(
   const reps = minimumDefined(a.reps, b.reps);
   const lapseRatio = maximumDefined(a.lapseRatio, b.lapseRatio);
   const easeFactor = minimumDefined(a.easeFactor, b.easeFactor);
+  // Earliest first review: the note entered the vocabulary when its first card
+  // was first answered, and the earliest evidence is also the pessimistic one,
+  // so a late-added sibling never makes a long-known note look freshly learned.
+  const firstReviewedAt = minimumDefined(a.firstReviewedAt, b.firstReviewedAt);
+  // Largest interval: a note is as settled as its best-established card. Taking
+  // the minimum would let one sibling in relearning, whose interval resets to a
+  // day, present a long-known note as new.
+  const intervalDays = maximumDefined(a.intervalDays, b.intervalDays);
+  const fsrsDifficulty = maximumDefined(a.fsrsDifficulty, b.fsrsDifficulty);
   return {
     ...(reps === undefined ? {} : { reps }),
     ...(lapseRatio === undefined ? {} : { lapseRatio }),
     ...(easeFactor === undefined ? {} : { easeFactor }),
+    ...(firstReviewedAt === undefined ? {} : { firstReviewedAt }),
+    ...(intervalDays === undefined ? {} : { intervalDays }),
+    ...(fsrsDifficulty === undefined ? {} : { fsrsDifficulty }),
   };
 }
 
-/** Turns one eligible card's optional columns into normalized note signals. */
-export function schedulingSignalsFromCard(
-  reps: number,
-  lapses?: number,
-  factor?: number,
-): AnkiSchedulingSignals {
+/**
+ * Turns one eligible card's optional columns into normalized note signals.
+ *
+ * The interval is resolved here rather than during the merge because Anki
+ * stores a learning card's interval as negative seconds. Reading that as "at
+ * most a day out" per card is what makes merging by maximum correct: the
+ * comparison then happens between values that all mean the same thing.
+ */
+export function schedulingSignalsFromCard(card: AnkiCardScheduling): AnkiSchedulingSignals {
+  const { reps, lapses, factor, firstReviewedAt, intervalDays, fsrsDifficulty } = card;
   return normalizeSchedulingSignals({
     reps,
     lapseRatio:
       Number.isFinite(lapses) && (lapses ?? 0) >= 0 && reps > 0 ? (lapses ?? 0) / reps : undefined,
     easeFactor: factor,
+    firstReviewedAt,
+    intervalDays:
+      intervalDays === undefined || !Number.isFinite(intervalDays)
+        ? undefined
+        : Math.max(intervalDays, 1),
+    fsrsDifficulty,
   });
 }
 
@@ -82,7 +141,24 @@ function positiveFinite(value: number | undefined): number | undefined {
 }
 
 function unitInterval(value: number | undefined): number | undefined {
-  return Number.isFinite(value) && (value ?? 0) >= 0 && (value ?? 0) <= 1 ? value : undefined;
+  return withinRange(value, 0, 1);
+}
+
+/**
+ * Rejects rather than clamps an out-of-range value.
+ *
+ * A clamped value would enter the palette as a confident score the evidence
+ * never supported; dropping it lets the mode fall back to weaker evidence, or
+ * to neutral, which is the honest answer when a provider sends nonsense.
+ */
+function withinRange(
+  value: number | undefined,
+  minimum: number,
+  maximum: number,
+): number | undefined {
+  return Number.isFinite(value) && (value ?? 0) >= minimum && (value ?? 0) <= maximum
+    ? value
+    : undefined;
 }
 
 function minimumDefined(left: number | undefined, right: number | undefined): number | undefined {

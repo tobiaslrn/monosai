@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ViewportService } from '../../core/platform/viewport.service';
 import type { GenerationState } from '../../application/generation/generation.store';
 
 interface WaitCopy {
@@ -85,9 +86,39 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
   selector: 'mn-generation-wait',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <!--
+      Decorative throughout: the stage name below and the page's live region
+      carry what is happening, and the illustration only says that something
+      still is. Under reduced motion the loop is replaced by its own first
+      frame at the same size, so the surface is laid out identically.
+    -->
+    <div class="mascot" aria-hidden="true">
+      @if (animates()) {
+        <video
+          data-testid="generation-mascot"
+          width="384"
+          height="480"
+          autoplay
+          muted
+          loop
+          playsinline
+          disablepictureinpicture
+        >
+          <source src="assets/story-writer.webm" type="video/webm" />
+        </video>
+      } @else {
+        <img
+          data-testid="generation-mascot-still"
+          src="assets/story-writer.png"
+          alt=""
+          width="384"
+          height="480"
+        />
+      }
+    </div>
+
     @for (message of [copy()]; track message.key) {
       <div class="copy" data-testid="generation-copy">
-        <p class="mn-eyebrow eyebrow">Creating your story</p>
         <h2>
           <span class="status-title">{{ message.title }}</span
           ><span class="loading-dots" aria-hidden="true"
@@ -108,4 +139,14 @@ export class GenerationWaitComponent {
   readonly state = input.required<GenerationState>();
 
   protected readonly copy = computed(() => generationWaitCopy(this.state()));
+
+  /**
+   * Whether the illustration loops.
+   *
+   * Branching here rather than hiding one of two elements in CSS keeps the
+   * unused asset off the wire entirely: a learner who has asked for less motion
+   * never fetches the video.
+   */
+  private readonly viewport = inject(ViewportService);
+  protected readonly animates = computed(() => !this.viewport.prefersReducedMotion());
 }

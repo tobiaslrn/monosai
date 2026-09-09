@@ -11,10 +11,19 @@ import {
 export const providerKindSchema = z.enum(['desktop-connect', 'android-connect', 'package']);
 export const sourceKindSchema = z.enum(['anki-connect', 'anki-package', 'text-list']);
 
+/**
+ * Optional because a row written before a signal existed legitimately lacks it,
+ * and because no source can prove every signal: a package carries a review log
+ * that AnkiDroid's provider cannot expose at all. Zod strips unknown keys, so a
+ * signal missing from this shape would be silently dropped on read.
+ */
 const schedulingSignalsShape = {
   reps: z.number().int().positive().optional(),
   lapseRatio: z.number().min(0).max(1).optional(),
   easeFactor: z.number().positive().optional(),
+  firstReviewedAt: z.number().int().positive().optional(),
+  intervalDays: z.number().positive().optional(),
+  fsrsDifficulty: z.number().min(1).max(10).optional(),
 };
 
 export const vocabularySnapshotRowSchema = z.object({

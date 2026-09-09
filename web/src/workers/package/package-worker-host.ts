@@ -1,5 +1,6 @@
 import { ankiError, type AnkiError } from '../../app/domain/anki/anki-error';
 import type { AnkiCatalog } from '../../app/domain/anki/catalog';
+import { normalizeSchedulingSignals } from '../../app/domain/anki/scheduling-signals';
 import { describeThrown } from '../../app/domain/shared/errors';
 import { err, ok, type Result } from '../../app/domain/shared/result';
 import {
@@ -306,9 +307,7 @@ export class PackageWorkerHost {
       return {
         sourceNoteId: note.noteId,
         ...(value === undefined ? {} : { rawFieldValue: value }),
-        ...(note.reps === undefined ? {} : { reps: note.reps }),
-        ...(note.lapseRatio === undefined ? {} : { lapseRatio: note.lapseRatio }),
-        ...(note.easeFactor === undefined ? {} : { easeFactor: note.easeFactor }),
+        ...normalizeSchedulingSignals(note),
       };
     });
 

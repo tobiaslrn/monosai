@@ -3,6 +3,7 @@ import { ankiError, isRetryable, type AnkiError } from '../../domain/anki/anki-e
 import type { AnkiCatalog } from '../../domain/anki/catalog';
 import type { AnkiVocabularyProvider, PackageSource } from '../../domain/anki/anki-provider';
 import { canRefresh } from '../../domain/anki/capabilities';
+import { normalizeSchedulingSignals } from '../../domain/anki/scheduling-signals';
 import {
   planPackageImport,
   withDeck,
@@ -360,9 +361,7 @@ export class PackageImportStore {
             ...(event.entry.sourceNoteId === undefined
               ? {}
               : { sourceRecordId: event.entry.sourceNoteId }),
-            ...(event.entry.reps === undefined ? {} : { reps: event.entry.reps }),
-            ...(event.entry.lapseRatio === undefined ? {} : { lapseRatio: event.entry.lapseRatio }),
-            ...(event.entry.easeFactor === undefined ? {} : { easeFactor: event.entry.easeFactor }),
+            ...normalizeSchedulingSignals(event.entry),
           });
           break;
         case 'warning':

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { ankiError, type AnkiError } from '../../domain/anki/anki-error';
 import type { ExtractedEntry } from '../../domain/anki/anki-provider';
 import { canRefresh } from '../../domain/anki/capabilities';
+import { normalizeSchedulingSignals } from '../../domain/anki/scheduling-signals';
 import { canRefreshMappings, resolveMappings } from '../../domain/anki/mapping-validation';
 import type { Clock } from '../../domain/shared/clock';
 import { err, ok, type Result } from '../../domain/shared/result';
@@ -91,9 +92,7 @@ export class AnkiSourceReader {
           entries: (entries.get(source.id) ?? []).map((entry) => ({
             rawValue: entry.rawFieldValue,
             ...(entry.sourceNoteId === undefined ? {} : { sourceRecordId: entry.sourceNoteId }),
-            ...(entry.reps === undefined ? {} : { reps: entry.reps }),
-            ...(entry.lapseRatio === undefined ? {} : { lapseRatio: entry.lapseRatio }),
-            ...(entry.easeFactor === undefined ? {} : { easeFactor: entry.easeFactor }),
+            ...normalizeSchedulingSignals(entry),
           })),
           warnings,
         })),
