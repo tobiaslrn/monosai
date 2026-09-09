@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mappingFor } from '../../../../testing/anki-provider-contract';
-import { batched, searchFor } from './connect-search';
+import { ACTIVITY_SEARCHES, activitySearchFor, batched, searchFor } from './connect-search';
 
 describe('searchFor', () => {
   it('asks for the deck and the note type', () => {
@@ -27,6 +27,33 @@ describe('searchFor', () => {
     expect(query).not.toContain('is:new');
     expect(query).not.toContain('is:review');
     expect(query).not.toContain('-is:');
+  });
+});
+
+describe('activity searches', () => {
+  it('groups the mapping scope so the rated term applies to it', () => {
+    // Without the parentheses the search reads as "this deck, or anything rated
+    // today", which would pull the learner's whole collection into the mapping.
+    expect(activitySearchFor(mappingFor({ deckScope: 'deck-and-subdecks' }), 'rated:1')).toBe(
+      '("deck:Core Japanese" "note:Basic") rated:1',
+    );
+  });
+
+  it('keeps the mapping scope escaped inside the group', () => {
+    const query = activitySearchFor(mappingFor({ deckName: 'Grammar "notes"' }), 'rated:7:1');
+    expect(query).toBe(
+      '("deck:Grammar \\"notes\\"" "note:Basic" -"deck:Grammar \\"notes\\"::*") rated:7:1',
+    );
+  });
+
+  it('asks Anki the five questions the practice modes rest on', () => {
+    expect(ACTIVITY_SEARCHES.map((search) => search.term)).toEqual([
+      'rated:1',
+      'rated:3',
+      'rated:7',
+      'rated:7:1',
+      'rated:7:2',
+    ]);
   });
 });
 

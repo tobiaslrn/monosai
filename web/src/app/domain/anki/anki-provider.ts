@@ -7,6 +7,7 @@ import type { AnkiCapabilities } from './capabilities';
 import type { AnkiCatalog } from './catalog';
 import type { AnkiError } from './anki-error';
 import type { AnkiSchedulingSignals } from './scheduling-signals';
+import type { PracticeEvidence, PracticeObservationBasis } from './practice-evidence';
 
 /**
  * One reviewed field value, exactly as the provider read it.
@@ -28,6 +29,14 @@ export interface ExtractedEntry {
   readonly firstReviewedAt?: AnkiSchedulingSignals['firstReviewedAt'];
   readonly intervalDays?: AnkiSchedulingSignals['intervalDays'];
   readonly fsrsDifficulty?: AnkiSchedulingSignals['fsrsDifficulty'];
+  readonly lastReviewedAt?: AnkiSchedulingSignals['lastReviewedAt'];
+  /**
+   * What the source observed about recent study of this note.
+   *
+   * Meaningful only under the capture's basis, which arrives once per mapping
+   * as an `observed` event rather than being repeated on every entry.
+   */
+  readonly practice?: PracticeEvidence;
 }
 
 /**
@@ -45,6 +54,18 @@ export type AnkiExtractionEvent =
       readonly total: number | null;
     }
   | { readonly kind: 'entry'; readonly entry: ExtractedEntry }
+  | {
+      /**
+       * What this mapping's read could establish, emitted once it is settled.
+       *
+       * Kept apart from the entries because it describes the capture, not a
+       * word: it is what separates a word nobody studied from a word about
+       * which nothing could be asked.
+       */
+      readonly kind: 'observed';
+      readonly mappingId: SourceMappingId;
+      readonly basis: PracticeObservationBasis;
+    }
   | { readonly kind: 'warning'; readonly message: string }
   | { readonly kind: 'failed'; readonly error: AnkiError };
 

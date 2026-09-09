@@ -23,6 +23,15 @@ export interface AnkiSchedulingSignals {
   readonly intervalDays?: number;
   /** Largest FSRS difficulty, on Anki's 1-10 scale, over the eligible cards. */
   readonly fsrsDifficulty?: number;
+  /**
+   * Latest real answer to any eligible card, in epoch milliseconds.
+   *
+   * Supplemental to the answered-within pools, never a substitute for them: it
+   * says when a card was last answered, which a source may know exactly, may
+   * know not at all, and which says nothing about a sibling that was not. Pool
+   * membership is what the recent-practice windows are decided from.
+   */
+  readonly lastReviewedAt?: number;
 }
 
 /** Bounds of Anki's FSRS difficulty scale, used to reject implausible values. */
@@ -38,6 +47,7 @@ export interface AnkiCardScheduling {
   /** Anki's `ivl`: positive days, or negative seconds while a card is learning. */
   readonly intervalDays?: number;
   readonly fsrsDifficulty?: number;
+  readonly lastReviewedAt?: number;
 }
 
 /** Anki's queue code for a card the learner explicitly suspended. */
@@ -69,6 +79,7 @@ export function normalizeSchedulingSignals(
     FSRS_DIFFICULTY_MINIMUM,
     FSRS_DIFFICULTY_MAXIMUM,
   );
+  const lastReviewedAt = positiveInteger(signals?.lastReviewedAt);
   return {
     ...(reps === undefined ? {} : { reps }),
     ...(lapseRatio === undefined ? {} : { lapseRatio }),
@@ -76,6 +87,7 @@ export function normalizeSchedulingSignals(
     ...(firstReviewedAt === undefined ? {} : { firstReviewedAt }),
     ...(intervalDays === undefined ? {} : { intervalDays }),
     ...(fsrsDifficulty === undefined ? {} : { fsrsDifficulty }),
+    ...(lastReviewedAt === undefined ? {} : { lastReviewedAt }),
   };
 }
 
@@ -98,6 +110,10 @@ export function mergeSchedulingSignals(
   // day, present a long-known note as new.
   const intervalDays = maximumDefined(a.intervalDays, b.intervalDays);
   const fsrsDifficulty = maximumDefined(a.fsrsDifficulty, b.fsrsDifficulty);
+  // Latest last review: the note was practised when its most recently answered
+  // card was answered. The earliest would date the note to a sibling the learner
+  // has not seen in a year and call a word studied today long forgotten.
+  const lastReviewedAt = maximumDefined(a.lastReviewedAt, b.lastReviewedAt);
   return {
     ...(reps === undefined ? {} : { reps }),
     ...(lapseRatio === undefined ? {} : { lapseRatio }),
@@ -105,6 +121,7 @@ export function mergeSchedulingSignals(
     ...(firstReviewedAt === undefined ? {} : { firstReviewedAt }),
     ...(intervalDays === undefined ? {} : { intervalDays }),
     ...(fsrsDifficulty === undefined ? {} : { fsrsDifficulty }),
+    ...(lastReviewedAt === undefined ? {} : { lastReviewedAt }),
   };
 }
 
@@ -117,7 +134,8 @@ export function mergeSchedulingSignals(
  * comparison then happens between values that all mean the same thing.
  */
 export function schedulingSignalsFromCard(card: AnkiCardScheduling): AnkiSchedulingSignals {
-  const { reps, lapses, factor, firstReviewedAt, intervalDays, fsrsDifficulty } = card;
+  const { reps, lapses, factor, firstReviewedAt, intervalDays, fsrsDifficulty, lastReviewedAt } =
+    card;
   return normalizeSchedulingSignals({
     reps,
     lapseRatio:
@@ -129,6 +147,7 @@ export function schedulingSignalsFromCard(card: AnkiCardScheduling): AnkiSchedul
         ? undefined
         : Math.max(intervalDays, 1),
     fsrsDifficulty,
+    lastReviewedAt,
   });
 }
 

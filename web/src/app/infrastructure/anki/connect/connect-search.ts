@@ -30,6 +30,39 @@ export function searchFor(mapping: SourceMapping): string {
   return terms.join(' ');
 }
 
+/**
+ * The activity searches run for one mapping, in a fixed order.
+ *
+ * Anki answers these itself, against its own study days and the learner's own
+ * rollover, which is the only thing that knows when a day ended. `rated:`
+ * membership also survives a deck the learner reset and started again: the card
+ * is in today's pool because it was answered today, whatever its history says.
+ *
+ * The pools nest — `rated:1` is a subset of `rated:3` is a subset of `rated:7` —
+ * and that invariant is checked after the reads, because they are separate
+ * queries over a live collection rather than one atomic snapshot.
+ */
+export const ACTIVITY_SEARCHES = [
+  { key: 'answered1', term: 'rated:1' },
+  { key: 'answered3', term: 'rated:3' },
+  { key: 'answered7', term: 'rated:7' },
+  { key: 'again7', term: 'rated:7:1' },
+  { key: 'hard7', term: 'rated:7:2' },
+] as const;
+
+export type ActivitySearchKey = (typeof ACTIVITY_SEARCHES)[number]['key'];
+
+/**
+ * Narrows one activity search to a mapping's own cards.
+ *
+ * The mapping scope is repeated rather than the search run collection-wide, so
+ * a card outside the mapping can never reach its vocabulary through the
+ * intersection, and the provider does the filtering it is best at.
+ */
+export function activitySearchFor(mapping: SourceMapping, term: string): string {
+  return `(${searchFor(mapping)}) ${term}`;
+}
+
 /** Splits ids into request-sized batches. */
 export function batched<T>(items: readonly T[], size: number): readonly (readonly T[])[] {
   const batches: T[][] = [];

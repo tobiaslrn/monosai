@@ -26,6 +26,14 @@ export interface FakeServerOptions {
   /** Throws like a browser reporting a refused, blocked, or rejected request. */
   readonly transportFailure?: boolean;
   readonly delayMs?: number;
+  /**
+   * Search terms this endpoint rejects, as an older or unrelated bridge would.
+   *
+   * Distinct from an unsupported action: the endpoint knows `findCards` and
+   * fails only on the syntax, which is exactly how a refresh discovers that it
+   * cannot ask about recent study without losing the vocabulary itself.
+   */
+  readonly failingSearchTerms?: readonly string[];
 }
 
 interface ServerCard {
@@ -35,10 +43,19 @@ interface ServerCard {
   readonly lapses?: number;
   readonly factor?: number;
   readonly queue: number;
+  /** Home deck, which is what Anki's `deck:` matches even for a filtered card. */
   readonly deckName: string;
+  /** Where the card sits right now, when that is not its home deck. */
+  readonly filteredDeckName?: string;
   readonly noteTypeName: string;
   readonly interval?: number;
   readonly firstReviewedAt?: number;
+  readonly lastAnsweredDaysAgo?: number;
+  readonly answeredAgain?: boolean;
+  readonly answeredHard?: boolean;
+  readonly cardType?: number;
+  readonly fsrsDifficulty?: number;
+  readonly lastReviewedAt?: number;
 }
 
 /**
@@ -74,9 +91,16 @@ export class FakeAnkiConnectServer {
           factor: card.factor,
           queue: card.queue ?? (card.suspended === true ? -1 : card.reps > 0 ? 2 : 0),
           deckName: card.deckName,
+          filteredDeckName: card.filteredDeckName,
           noteTypeName: note.noteTypeName,
           interval: card.intervalDays,
           firstReviewedAt: card.firstReviewedAt,
+          lastAnsweredDaysAgo: card.lastAnsweredDaysAgo,
+          answeredAgain: card.answeredAgain,
+          answeredHard: card.answeredHard,
+          cardType: card.cardType,
+          fsrsDifficulty: card.fsrsDifficulty,
+          lastReviewedAt: card.lastReviewedAt,
         });
       }
     }
@@ -128,6 +152,12 @@ export class FakeAnkiConnectServer {
     if (this.options.failingActions?.includes(action) === true) {
       return this.envelope(null, 'query-failed: collection is not open');
     }
+    // A search the endpoint cannot parse fails as a query, not as an unknown
+    // action: it knows `findCards` perfectly well and refuses only the syntax.
+    const query = typeof params['query'] === 'string' ? params['query'] : '';
+    if (this.options.failingSearchTerms?.some((term) => query.includes(term)) === true) {
+      return this.envelope(null, 'query-failed: invalid search');
+    }
 
     const result =
       this.options.unimplementedActions?.includes(action) === true
@@ -171,15 +201,20 @@ export class FakeAnkiConnectServer {
         const ids = new Set((params['cards'] as number[] | undefined) ?? []);
         return this.cards
           .filter((card) => ids.has(card.cardId))
-          .map(({ cardId, note, reps, lapses, factor, queue, deckName, interval }) => ({
-            cardId,
-            note,
-            reps,
-            ...(lapses === undefined ? {} : { lapses }),
-            ...(factor === undefined ? {} : { factor }),
-            ...(interval === undefined ? {} : { interval }),
-            queue,
-            deckName,
+          .map((card) => ({
+            cardId: card.cardId,
+            note: card.note,
+            reps: card.reps,
+            ...(card.lapses === undefined ? {} : { lapses: card.lapses }),
+            ...(card.factor === undefined ? {} : { factor: card.factor }),
+            ...(card.interval === undefined ? {} : { interval: card.interval }),
+            ...(card.cardType === undefined ? {} : { cardType: card.cardType }),
+            ...(card.fsrsDifficulty === undefined ? {} : { fsrsDifficulty: card.fsrsDifficulty }),
+            ...(card.lastReviewedAt === undefined ? {} : { lastReviewedAt: card.lastReviewedAt }),
+            queue: card.queue,
+            // A filtered card reports where it sits, and its home deck beside it.
+            deckName: card.filteredDeckName ?? card.deckName,
+            ...(card.filteredDeckName === undefined ? {} : { originalDeckName: card.deckName }),
           }));
       }
       case 'getReviewsOfCards': {
@@ -232,10 +267,12 @@ export class FakeAnkiConnectServer {
    * `note:Y` matches the note type. Terms combine with AND.
    */
   private findCards(query: string): number[] {
-    const terms = [...query.matchAll(/(-?)"([^"]*)"/gu)].map((match) => ({
-      negated: match[1] === '-',
-      term: match[2],
-    }));
+    // Quoted terms and bare ones both count. Reading only the quoted half would
+    // silently drop every `rated:` term and answer the scope search instead,
+    // which is the same as claiming the learner answered their whole deck today.
+    const terms = [...query.replace(/[()]/gu, ' ').matchAll(/(-?)("[^"]*"|\S+)/gu)].map(
+      (match) => ({ negated: match[1] === '-', term: unquote(match[2]) }),
+    );
 
     return this.cards
       .filter((card) =>
@@ -249,15 +286,59 @@ export class FakeAnkiConnectServer {
 
   private matchesTerm(card: ServerCard, term: string): boolean {
     if (term.startsWith('deck:')) {
+      // The home deck decides, as it does in Anki: a filtered deck moves a card
+      // for a while without changing which deck it belongs to.
       const value = term.slice('deck:'.length);
-      if (value.endsWith('::*')) {
-        return card.deckName.startsWith(value.slice(0, -1));
+      // `*` is Anki's wildcard, which is how `deck:*` asks for the whole
+      // collection and `deck:X::*` for the subdecks without the parent.
+      if (value.includes('*')) {
+        return wildcard(value).test(card.deckName);
       }
       return card.deckName === value || card.deckName.startsWith(`${value}::`);
     }
     if (term.startsWith('note:')) {
       return card.noteTypeName === term.slice('note:'.length);
     }
+    if (term.startsWith('rated:')) {
+      return this.wasRated(card, term.slice('rated:'.length));
+    }
     return false;
   }
+
+  /**
+   * Anki's `rated:days[:ease]`.
+   *
+   * `rated:1` is today, so a day count is "fewer than N study days ago" rather
+   * than "at most N". The optional ease narrows it to one answer button: `1` is
+   * Again and `2` is Hard.
+   */
+  private wasRated(card: ServerCard, argument: string): boolean {
+    const parts = argument.split(':');
+    const within = Number(parts[0]);
+    const answered = card.lastAnsweredDaysAgo;
+    if (answered === undefined || !Number.isFinite(within) || answered >= within) {
+      return false;
+    }
+    if (parts.length < 2) {
+      return true;
+    }
+    if (parts[1] === '1') {
+      return card.answeredAgain === true;
+    }
+    return parts[1] === '2' ? card.answeredHard === true : false;
+  }
+}
+
+/** Strips the quotes a search term may be wrapped in, keeping its content as written. */
+function unquote(term: string): string {
+  return term.startsWith('"') ? term.slice(1, -1) : term;
+}
+
+/** Anki's `*`, with every other character taken literally. */
+function wildcard(value: string): RegExp {
+  const pattern = value
+    .split('*')
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'))
+    .join('.*');
+  return new RegExp(`^${pattern}$`, 'u');
 }

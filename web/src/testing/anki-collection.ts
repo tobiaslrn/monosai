@@ -29,6 +29,25 @@ export interface FixtureCard {
   readonly intervalDays?: number;
   /** FSRS difficulty, stored inside the card's `data` JSON. */
   readonly fsrsDifficulty?: number;
+  /**
+   * Study days since the learner last answered this card; `0` is today.
+   *
+   * This is what Anki's `rated:` searches are asked about, so it is expressed
+   * the way those searches are rather than as a timestamp: a fixture that gave
+   * a date would make the test decide where the study day ends, which is the
+   * one thing only Anki knows.
+   */
+  readonly lastAnsweredDaysAgo?: number;
+  /** Answered Again at least once in the last seven study days. */
+  readonly answeredAgain?: boolean;
+  /** Answered Hard at least once in the last seven study days. */
+  readonly answeredHard?: boolean;
+  /** Anki's card type code: 0 new, 1 learning, 2 review, 3 relearning. */
+  readonly cardType?: number;
+  /** Epoch milliseconds of the last answer, where the source can report one. */
+  readonly lastReviewedAt?: number;
+  /** Filtered deck the card currently sits in; `deckName` stays its home deck. */
+  readonly filteredDeckName?: string;
 }
 
 export interface FixtureNote {

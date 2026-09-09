@@ -41,7 +41,21 @@ export const cardsInfoSchema = z.array(
     factor: z.number().int().nonnegative().nullable().optional(),
     /** Anki's `ivl`: positive days, or negative seconds while a card is learning. */
     interval: z.number().int().nullable().optional(),
+    /** Anki's card type code, which says whether the card is being learned. */
+    cardType: z.number().int().nullable().optional(),
+    /** Raw FSRS memory-state difficulty, validated against its scale in the domain. */
+    fsrsDifficulty: z.number().nullable().optional(),
+    /** Epoch milliseconds of the last answer. The bridge converts from seconds. */
+    lastReviewedAt: z.number().int().nullable().optional(),
     deckName: z.string(),
+    /**
+     * Home deck of a card currently in a filtered deck.
+     *
+     * A filtered deck moves a card without changing where it belongs, so deck
+     * scope has to be checked against this where it exists. Without it, studying
+     * from a filtered deck would silently drop a mapping's own cards.
+     */
+    originalDeckName: z.string().nullable().optional(),
   }),
 );
 

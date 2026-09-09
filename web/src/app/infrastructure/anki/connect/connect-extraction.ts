@@ -3,12 +3,22 @@ import type { AnkiExtractionEvent } from '../../../domain/anki/anki-provider';
 import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
 import type { AnkiConnectClient, ReviewsOfCards } from './connect-client';
 import { batched, searchFor } from './connect-search';
+import { captureActivity, type ActivityPools } from './connect-activity';
 import {
   mergeSchedulingSignals,
   isEligibleReviewedCard,
   schedulingSignalsFromCard,
   type AnkiSchedulingSignals,
 } from '../../../domain/anki/scheduling-signals';
+import {
+  isLearningCardType,
+  mergePracticeEvidence,
+  SHORT_INTERVAL_DAYS,
+  type EvidenceAvailability,
+  type PracticeEvidence,
+  type PracticeWindowDays,
+} from '../../../domain/anki/practice-evidence';
+import type { CardInfo } from './connect-client';
 
 /** Ids per `cardsInfo` or `notesInfo` request when the endpoint states no limit. */
 export const DEFAULT_BATCH_SIZE = 200;
@@ -52,7 +62,20 @@ export async function* extractMapping(
     return;
   }
 
+  const activity = await captureActivity(client, mapping, signal);
+  if (activity.cancelled !== undefined) {
+    yield { kind: 'failed', error: activity.cancelled };
+    return;
+  }
+
   const schedulingByNote = new Map<number, AnkiSchedulingSignals>();
+  const practiceByNote = new Map<number, PracticeEvidence>();
+  // Availability of a column is proved by a value arriving, not by asking: the
+  // wire cannot distinguish a build that never published the column from a
+  // collection where every card happens to leave it null, and claiming the
+  // stronger of the two would let an absent signal read as a settled "no".
+  let sawCardType = false;
+  let sawFsrsDifficulty = false;
   let examined = 0;
   // Turned off for the rest of the run by the first endpoint that cannot answer,
   // so one unsupported action costs one request rather than one per batch.
@@ -72,7 +95,7 @@ export async function* extractMapping(
     }
 
     const eligible = cards.value.filter(
-      (card) => isEligibleReviewedCard(card.reps, card.queue) && inScope(card.deckName, mapping),
+      (card) => isEligibleReviewedCard(card.reps, card.queue) && inScope(card, mapping),
     );
     examined += cards.value.length;
 
@@ -112,16 +135,40 @@ export async function* extractMapping(
         lapses: card.lapses ?? undefined,
         factor: card.factor ?? undefined,
         intervalDays: card.interval ?? undefined,
+        fsrsDifficulty: card.fsrsDifficulty ?? undefined,
+        lastReviewedAt: card.lastReviewedAt ?? undefined,
         ...(firstReviewedAt === undefined ? {} : { firstReviewedAt }),
       });
       schedulingByNote.set(
         card.note,
         mergeSchedulingSignals(schedulingByNote.get(card.note), signals),
       );
+      sawCardType ||= card.cardType !== undefined && card.cardType !== null;
+      sawFsrsDifficulty ||= card.fsrsDifficulty !== undefined && card.fsrsDifficulty !== null;
+      practiceByNote.set(
+        card.note,
+        mergePracticeEvidence(
+          practiceByNote.get(card.note),
+          practiceFromCard(card, activity.pools),
+        ),
+      );
     }
 
     yield { kind: 'progress', mappingId: mapping.id, examined, total: found.value.length };
   }
+
+  yield {
+    kind: 'observed',
+    mappingId: mapping.id,
+    basis: {
+      recentAnswers: activity.recentAnswers,
+      recentDifficulty: activity.recentDifficulty,
+      learningState: observed(sawCardType),
+      fsrsDifficulty: observed(sawFsrsDifficulty),
+      windowBasis: 'anki-study-days',
+      observedAt: Date.now(),
+    },
+  };
 
   const eligibleNoteIds = [...schedulingByNote.keys()];
   for (const batch of batched(eligibleNoteIds, batchSize)) {
@@ -154,6 +201,7 @@ export async function* extractMapping(
           sourceNoteId: String(note.noteId),
           ...(field === undefined ? {} : { rawFieldValue: field.value }),
           ...schedulingByNote.get(note.noteId),
+          ...practiceOf(practiceByNote.get(note.noteId)),
         },
       };
     }
@@ -182,9 +230,66 @@ function firstReviewTimes(reviews: ReviewsOfCards): Map<number, number> {
   return firstByCard;
 }
 
-function inScope(deckName: string, mapping: SourceMapping): boolean {
-  if (deckName === mapping.deckName) {
+/**
+ * Reads one card's membership in the pools this capture established.
+ *
+ * The correlated flags are decided from this card alone. A note whose siblings
+ * disagree is common - one template answered this morning, another settled for
+ * months - and combining one sibling's recent answer with another's learning
+ * state would assert something true of no card the learner actually has.
+ */
+function practiceFromCard(card: CardInfo, pools: ActivityPools): PracticeEvidence {
+  const answeredWithinDays = narrowestWindow(card.cardId, pools);
+  const recent = answeredWithinDays !== undefined;
+  const interval = card.interval ?? undefined;
+  return {
+    ...(answeredWithinDays === undefined ? {} : { answeredWithinDays }),
+    ...(pools.again7.has(card.cardId) ? { answeredAgain: true } : {}),
+    ...(pools.hard7.has(card.cardId) ? { answeredHard: true } : {}),
+    ...(recent && isLearningCardType(card.cardType ?? undefined)
+      ? { recentlyAnsweredWhileLearning: true }
+      : {}),
+    // A negative interval is Anki storing seconds for a card inside a learning
+    // step, which is shorter than any day count rather than longer.
+    ...(recent && interval !== undefined && interval <= SHORT_INTERVAL_DAYS
+      ? { recentlyAnsweredWithShortInterval: true }
+      : {}),
+  };
+}
+
+function narrowestWindow(cardId: number, pools: ActivityPools): PracticeWindowDays | undefined {
+  if (pools.answered1.has(cardId)) {
+    return 1;
+  }
+  if (pools.answered3.has(cardId)) {
+    return 3;
+  }
+  return pools.answered7.has(cardId) ? 7 : undefined;
+}
+
+function practiceOf(practice: PracticeEvidence | undefined): { practice?: PracticeEvidence } {
+  return practice === undefined || Object.keys(practice).length === 0 ? {} : { practice };
+}
+
+function observed(seen: boolean): EvidenceAvailability {
+  return seen ? 'available' : 'unsupported';
+}
+
+/**
+ * Confirms the card belongs to the mapping's deck.
+ *
+ * A filtered deck moves a card without changing where it belongs, so its home
+ * deck decides. Checking only the current deck would drop exactly the cards the
+ * learner is studying right now, which is the opposite of what recent practice
+ * is for.
+ */
+function inScope(
+  card: Pick<CardInfo, 'deckName' | 'originalDeckName'>,
+  mapping: SourceMapping,
+): boolean {
+  const home = card.originalDeckName ?? card.deckName;
+  if (home === mapping.deckName) {
     return true;
   }
-  return mapping.deckScope === 'deck-and-subdecks' && deckName.startsWith(`${mapping.deckName}::`);
+  return mapping.deckScope === 'deck-and-subdecks' && home.startsWith(`${mapping.deckName}::`);
 }
