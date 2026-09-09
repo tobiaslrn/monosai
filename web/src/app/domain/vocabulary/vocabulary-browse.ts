@@ -25,6 +25,7 @@ export const DEFAULT_BROWSE_QUERY: BrowseQuery = {
 };
 
 const DAY_MS = 86_400_000;
+const BROWSE_COLLATOR = new Intl.Collator('ja', { sensitivity: 'variant', usage: 'sort' });
 
 /** Applies all browser filters without changing the input order or array. */
 export function applyBrowseQuery(
@@ -95,23 +96,32 @@ function compareEntries(
 ): number {
   const primary =
     sort === 'expression'
-      ? left.canonicalExpression.localeCompare(right.canonicalExpression)
+      ? compareStableText(left.canonicalExpression, right.canonicalExpression)
       : sort.startsWith('first-studied')
         ? compareOptionalNumber(left.firstReviewedAt, right.firstReviewedAt, sort.endsWith('desc'))
         : compareDifficulty(left, right, sort.endsWith('desc'));
   if (primary !== 0) {
     return primary;
   }
-  const canonical = left.canonicalExpression.localeCompare(right.canonicalExpression);
+  const canonical = compareStableText(left.canonicalExpression, right.canonicalExpression);
   if (canonical !== 0) {
     return canonical;
   }
-  const visible = left.visibleExpression.localeCompare(right.visibleExpression);
+  const visible = compareStableText(left.visibleExpression, right.visibleExpression);
   if (visible !== 0) {
     return visible;
   }
-  const meaning = (left.meaning ?? '').localeCompare(right.meaning ?? '');
-  return meaning !== 0 ? meaning : left.itemId.localeCompare(right.itemId);
+  const meaning = compareStableText(left.meaning ?? '', right.meaning ?? '');
+  return meaning !== 0 ? meaning : compareStableText(left.itemId, right.itemId);
+}
+
+/** Use one Japanese collation policy, then code-unit order to make ties total. */
+function compareStableText(left: string, right: string): number {
+  const collated = BROWSE_COLLATOR.compare(left, right);
+  if (collated !== 0) {
+    return collated;
+  }
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function compareDifficulty(

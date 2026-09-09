@@ -40,6 +40,10 @@ import type {
             <dd lang="ja">{{ entry().readingHiragana ?? '—' }}</dd>
           </div>
           <div>
+            <dt>Meaning</dt>
+            <dd>{{ entry().meaning ?? '—' }}</dd>
+          </div>
+          <div>
             <dt>First studied</dt>
             <dd>{{ firstStudiedDate() }}</dd>
           </div>
@@ -99,6 +103,7 @@ import type {
 
     .summary-main {
       flex: 1 1 auto;
+      min-width: 0;
     }
 
     .summary-meta {
@@ -119,15 +124,16 @@ import type {
     }
 
     .meaning {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      overflow-wrap: anywhere;
+      white-space: normal;
     }
 
     .summary-meta {
+      max-width: 100%;
       justify-items: end;
       text-align: end;
-      white-space: nowrap;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     .detail {
@@ -187,7 +193,7 @@ import type {
       }
 
       .summary-meta {
-        grid-template-columns: repeat(2, auto);
+        grid-template-columns: 1fr;
         justify-content: start;
         justify-items: start;
         text-align: start;

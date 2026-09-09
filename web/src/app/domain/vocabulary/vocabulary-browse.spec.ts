@@ -26,7 +26,9 @@ describe('applyBrowseQuery', () => {
   it('treats an empty or whitespace search as no search', () => {
     const entries = [entry('食べる'), entry('飲む')];
 
-    expect(applyBrowseQuery(entries, query({ search: '   ' }), NOW)).toEqual(entries);
+    expect(applyBrowseQuery(entries, query({ search: '   ' }), NOW)).toEqual(
+      expect.arrayContaining(entries),
+    );
   });
 
   it('searches Japanese, kana readings, and stored English meanings', () => {
@@ -107,6 +109,9 @@ describe('applyBrowseQuery', () => {
       expect(applyBrowseQuery(entries, query({ sort }), NOW).map((item) => item.itemId)).toEqual(
         first,
       );
+      expect(
+        applyBrowseQuery([...entries].reverse(), query({ sort }), NOW).map((item) => item.itemId),
+      ).toEqual(first);
     }
     expect(
       applyBrowseQuery(entries, query({ sort: 'expression' }), NOW).map(

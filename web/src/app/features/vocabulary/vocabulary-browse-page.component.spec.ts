@@ -13,6 +13,7 @@ import type { VocabularyRepository } from '../../domain/vocabulary/vocabulary-re
 import { storageError } from '../../domain/storage/storage-error';
 import { fixedClock } from '../../domain/shared/clock';
 import { VocabularyBrowsePageComponent } from './vocabulary-browse-page.component';
+import { VocabularyBrowseStore } from '../../application/vocabulary/vocabulary-browse.store';
 
 const NOW = 1_700_000_000_000;
 
@@ -161,8 +162,36 @@ describe('VocabularyBrowsePageComponent', () => {
     await settle(fixture);
 
     expect(element.textContent).toContain('たべる');
+    expect(element.textContent).toContain('Meaning');
+    expect(element.textContent).toContain('eat');
     expect(element.textContent).toContain('Contributing sources');
     expect(element.querySelector('a[href^="/reading-level/source/"]')).not.toBeNull();
+  });
+
+  it('does not keep stale counts beside a failed reload', async () => {
+    await seedVocabulary();
+    const repository = beds.vocabulary as VocabularyRepository;
+    const original = repository.listVocabularyEntries.bind(repository);
+    let shouldFail = false;
+    repository.listVocabularyEntries = () =>
+      shouldFail
+      ? Promise.resolve({
+            ok: false,
+            error: storageError('unknown', 'Storage is unavailable.'),
+          })
+        : original();
+
+    const { fixture, element } = await render();
+    expect(element.querySelector('h1')?.textContent).toContain('3 words');
+
+    shouldFail = true;
+    await TestBed.inject(VocabularyBrowseStore).load();
+    await settle(fixture);
+
+    expect(element.textContent).toContain('Vocabulary could not be loaded.');
+    expect(element.textContent).toContain('Saved vocabulary is unchanged.');
+    expect(element.querySelector('h1')?.textContent).toContain('0 words');
+    expect(element.textContent).not.toContain('3 words');
   });
 
   it('offers retry for a failed or unavailable read', async () => {

@@ -100,6 +100,16 @@ describe('DesktopConnectAdapter', () => {
     expect(neko).toMatchObject({ reps: 3, lapseRatio: 1 / 3, easeFactor: 2_400 });
   });
 
+  it('reads an optional meaning field from the same notesInfo response', async () => {
+    const { client } = serverAnd();
+    const collected = await collectExtraction(new DesktopConnectAdapter(client), [
+      mappingFor({ meaningFieldName: 'Meaning' }),
+    ]);
+    const neko = collected.entries.find((entry) => entry.rawFieldValue === '<b>ねこ</b>');
+
+    expect(neko).toMatchObject({ rawMeaning: 'cat' });
+  });
+
   it('keeps working when a bridge omits optional scheduling columns', async () => {
     const collection = {
       ...CONTRACT_COLLECTION,

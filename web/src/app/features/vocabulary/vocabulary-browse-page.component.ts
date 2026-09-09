@@ -103,12 +103,14 @@ interface VirtualVocabularyEntry {
         @case ('unavailable') {
           <section class="state-message" role="alert">
             <p>Vocabulary is unavailable.</p>
+            <p>Saved vocabulary is unchanged.</p>
             <button type="button" class="mn-button" (click)="reload()">Try again</button>
           </section>
         }
         @case ('failed') {
           <section class="state-message" role="alert">
             <p>Vocabulary could not be loaded.</p>
+            <p>Saved vocabulary is unchanged.</p>
             <button type="button" class="mn-button" (click)="reload()">Try again</button>
           </section>
         }

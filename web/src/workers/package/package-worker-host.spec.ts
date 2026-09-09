@@ -292,6 +292,22 @@ describe('PackageWorkerHost', () => {
       expect(result.fields.map((field) => field.rawFieldValue)).toContain('dog');
     });
 
+    it('reads an optional meaning field alongside the expression field', async () => {
+      const harness = createPackageHarness();
+      await open(harness, 'contract-schema18-zstd.apkg');
+      const result = await extract(harness, {
+        ...BASIC_EXPRESSION,
+        meaningFieldName: 'Meaning',
+      });
+
+      expect(result.fields.find((field) => field.rawFieldValue === '<b>ねこ</b>')).toMatchObject({
+        rawMeaning: 'cat',
+      });
+      expect(result.fields.find((field) => field.rawFieldValue === 'ねこ')).toMatchObject({
+        rawMeaning: 'cat again',
+      });
+    });
+
     it('returns normalized scheduling signals when package card columns exist', async () => {
       const harness = createPackageHarness();
       await open(harness, 'contract-schema18-zstd.apkg');

@@ -173,7 +173,10 @@ test.describe('vocabulary', () => {
     page,
   }) => {
     test.setTimeout(120_000);
-    await stubAnkiConnect(page, ankiAnswers(['食べる', '見る'], ['eat', 'see']));
+    await stubAnkiConnect(
+      page,
+      ankiAnswers(['食べる', '食べる', '見る'], ['eat', 'consume', 'see']),
+    );
     await openVocabulary(page);
     await addTextList(page, 'My textbook', '飲む');
     await expect(page.getByTestId('words-standing')).toHaveText('1 word', {
@@ -190,7 +193,17 @@ test.describe('vocabulary', () => {
     });
 
     await page.getByTestId('browse-vocabulary').click();
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Vocabulary');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Vocabulary · 3 words');
+    await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(4);
+    await expectNoSeriousAccessibilityViolations(page);
+
+    await page.getByTestId('vocabulary-search').fill('食べる');
+    await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(2);
+    await expect(page.locator('mn-vocabulary-browse-row').filter({ hasText: 'eat' })).toHaveCount(1);
+    await expect(
+      page.locator('mn-vocabulary-browse-row').filter({ hasText: 'consume' }),
+    ).toHaveCount(1);
+
     await page.getByTestId('vocabulary-search').fill('eat');
     await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(1);
     await expect(page.locator('mn-vocabulary-browse-row')).toContainText('eat');
@@ -199,18 +212,29 @@ test.describe('vocabulary', () => {
     await page.getByTestId('vocabulary-filters').click();
     const filters = page.getByRole('dialog', { name: 'Filters' });
     await expect(filters).toBeVisible();
+    await expectNoSeriousAccessibilityViolations(page);
     await filters.getByLabel('First studied').selectOption('last-7-days');
     await filters.getByRole('button', { name: /Show/ }).click();
     await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(0);
     await page.getByRole('button', { name: 'Reset filters' }).click();
-    await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(3);
+    await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(4);
+
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '200%';
+    });
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))
+      .toBe(true);
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '';
+    });
 
     const eatRow = page.locator('mn-vocabulary-browse-row').filter({ hasText: 'eat' });
     await eatRow.locator('summary').click();
     await expect(eatRow).toContainText('Contributing sources');
+    await expectNoSeriousAccessibilityViolations(page);
     await eatRow.getByRole('link', { name: /Anki/ }).click();
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Anki');
-    await expectNoSeriousAccessibilityViolations(page);
   });
 
   test('imports a package and applies its default mapping without a refresh step @smoke', async ({

@@ -14,7 +14,7 @@ provided by the learner's notes. The browser also needs to show that meaning.
 
 When an Anki meaning field is mapped, vocabulary item identity is the pair of
 the expression hash and the visible meaning after markup extraction, trimming,
-whitespace collapsing, and case folding. An unmapped meaning has an empty
+whitespace collapsing, and lower-casing. An unmapped meaning has an empty
 identity key. Exact pairs still merge across sources; different meanings stay
 as different items. Provenance remains attached to the item created by its
 pair.

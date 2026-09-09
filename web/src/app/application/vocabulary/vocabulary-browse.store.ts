@@ -42,6 +42,13 @@ export class VocabularyBrowseStore {
 
   async load(): Promise<void> {
     this.stateSignal.set('loading');
+    // A reload failure must not leave counts from a different read beside the
+    // failure state; clearing these signals does not change persisted data.
+    this.failureSignal.set(null);
+    this.entriesSignal.set([]);
+    this.sourcesSignal.set([]);
+    this.snapshotSignal.set(null);
+    this.expandedId.set(null);
     const loaded = await this.repository.listVocabularyEntries();
     if (!loaded.ok) {
       this.failureSignal.set(loaded.error);
@@ -49,7 +56,6 @@ export class VocabularyBrowseStore {
       return;
     }
     this.failureSignal.set(null);
-    this.expandedId.set(null);
     if (loaded.value === null) {
       this.entriesSignal.set([]);
       this.sourcesSignal.set([]);
