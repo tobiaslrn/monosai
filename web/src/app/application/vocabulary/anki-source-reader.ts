@@ -99,6 +99,7 @@ export class AnkiSourceReader {
           refreshedAt,
           entries: (entries.get(source.id) ?? []).map((entry) => ({
             rawValue: entry.rawFieldValue,
+            ...(entry.rawMeaning === undefined ? {} : { rawMeaning: entry.rawMeaning }),
             ...(entry.sourceNoteId === undefined ? {} : { sourceRecordId: entry.sourceNoteId }),
             ...normalizeSchedulingSignals(entry),
             ...practiceOf(entry),

@@ -32,6 +32,8 @@ export interface AnkiVocabularySource extends VocabularySourceBase {
   readonly deckScope: DeckScope;
   readonly noteTypeName: string;
   readonly expressionFieldName: string;
+  /** The Anki field whose visible text explains the expression, when mapped. */
+  readonly meaningFieldName?: string;
   /**
    * Whether Monosai re-reads this source on its own while it is open.
    *
@@ -51,6 +53,7 @@ export type VocabularySource = AnkiVocabularySource | TextListVocabularySource;
 
 export interface VocabularySourceCacheEntry extends AnkiSchedulingSignals {
   readonly rawValue?: string;
+  readonly rawMeaning?: string;
   readonly sourceRecordId?: string;
   /** Meaningful only under the cache's own `practice` basis. */
   readonly practice?: PracticeEvidence;

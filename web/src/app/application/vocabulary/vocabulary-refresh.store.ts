@@ -283,6 +283,7 @@ export class VocabularyRefreshStore {
       const practice = normalizePracticeEvidence(entry.practice);
       entriesBySource.get(entry.sourceMappingId)?.push({
         rawValue: entry.rawFieldValue,
+        ...(entry.rawMeaning === undefined ? {} : { rawMeaning: entry.rawMeaning }),
         ...(entry.sourceNoteId === undefined ? {} : { sourceRecordId: entry.sourceNoteId }),
         ...normalizeSchedulingSignals(entry),
         ...(Object.keys(practice).length === 0 ? {} : { practice }),

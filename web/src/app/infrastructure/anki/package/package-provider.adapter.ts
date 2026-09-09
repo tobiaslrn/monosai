@@ -101,6 +101,9 @@ export class PackageProviderAdapter implements AnkiVocabularyProvider {
           deckScope: mapping.deckScope,
           noteTypeName: mapping.noteTypeName,
           expressionFieldName: mapping.expressionFieldName,
+          ...(mapping.meaningFieldName === undefined
+            ? {}
+            : { meaningFieldName: mapping.meaningFieldName }),
         },
         signal,
       );
@@ -125,6 +128,7 @@ export class PackageProviderAdapter implements AnkiVocabularyProvider {
             sourceMappingId: mapping.id,
             sourceNoteId: field.sourceNoteId,
             ...(field.rawFieldValue === undefined ? {} : { rawFieldValue: field.rawFieldValue }),
+            ...(field.rawMeaning === undefined ? {} : { rawMeaning: field.rawMeaning }),
             ...normalizeSchedulingSignals(field),
           },
         };

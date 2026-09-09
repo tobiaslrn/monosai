@@ -194,12 +194,15 @@ export async function* extractMapping(
       // says every key is present, so the lookup is widened to say otherwise.
       const fields: Record<string, { value: string } | undefined> = note.fields;
       const field = fields[mapping.expressionFieldName];
+      const meaningField =
+        mapping.meaningFieldName === undefined ? undefined : fields[mapping.meaningFieldName];
       yield {
         kind: 'entry',
         entry: {
           sourceMappingId: mapping.id,
           sourceNoteId: String(note.noteId),
           ...(field === undefined ? {} : { rawFieldValue: field.value }),
+          ...(meaningField === undefined ? {} : { rawMeaning: meaningField.value }),
           ...schedulingByNote.get(note.noteId),
           ...practiceOf(practiceByNote.get(note.noteId)),
         },

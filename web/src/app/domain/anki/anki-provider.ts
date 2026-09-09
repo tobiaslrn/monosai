@@ -20,6 +20,8 @@ export interface ExtractedEntry {
   readonly sourceMappingId: SourceMappingId;
   /** Absent when the note has no value for the selected field at all. */
   readonly rawFieldValue?: string;
+  /** Absent when no meaning field is mapped or the note has no value there. */
+  readonly rawMeaning?: string;
   /** Diagnostic only. Providers that cannot expose note ids safely omit it. */
   readonly sourceNoteId?: string;
   /** Optional normalized scheduling state from eligible cards for this note. */

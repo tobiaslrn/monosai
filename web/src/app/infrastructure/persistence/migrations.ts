@@ -330,8 +330,16 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
           // content from the next commit, which is all a revision has to do.
           const createdAt = snapshot['createdAt'];
           snapshot['revision'] = `legacy-${typeof createdAt === 'number' ? createdAt : 0}`;
-        });
+      });
     },
+  },
+  {
+    // Meaning is optional data added to existing vocabulary, source, cache, and
+    // provenance rows. There is no index change and no upgrade function: an
+    // absent meaning is already the correct representation for every old row,
+    // so changing record shape or meaning is unnecessary.
+    version: 14,
+    stores: V11_STORES,
   },
 ];
 

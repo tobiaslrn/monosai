@@ -27,6 +27,7 @@ const requestSchema = z.discriminatedUnion('operation', [
       deckScope: z.enum(['deck-only', 'deck-and-subdecks']),
       noteTypeName: nonEmpty,
       expressionFieldName: nonEmpty,
+      meaningFieldName: nonEmpty.optional(),
     }),
   }),
   z.object({ operation: z.literal('close'), payload: z.object({}) }),

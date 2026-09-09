@@ -88,6 +88,7 @@ export const vocabularyItemRowSchema = z.object({
   visibleExpression: nonEmptyString,
   canonicalExpression: nonEmptyString,
   expressionHash: nonEmptyString,
+  meaning: nonEmptyString.optional(),
   ...schedulingSignalsShape,
   practice: practiceEvidenceSchema.optional(),
   analyzedSequence: z
@@ -111,6 +112,7 @@ export const vocabularyProvenanceRowSchema = z.object({
   deckName: nonEmptyString.optional(),
   noteTypeName: nonEmptyString.optional(),
   fieldName: nonEmptyString.optional(),
+  meaningFieldName: nonEmptyString.optional(),
   sourceRecordId: z.string().optional(),
 });
 
@@ -133,6 +135,7 @@ export const vocabularySourceRowSchema = z.discriminatedUnion('kind', [
     deckScope: z.enum(['deck-only', 'deck-and-subdecks']),
     noteTypeName: nonEmptyString,
     expressionFieldName: nonEmptyString,
+    meaningFieldName: nonEmptyString.optional(),
     automaticSync: z.boolean(),
   }),
   z.object({
@@ -143,6 +146,7 @@ export const vocabularySourceRowSchema = z.discriminatedUnion('kind', [
     deckScope: z.enum(['deck-only', 'deck-and-subdecks']),
     noteTypeName: nonEmptyString,
     expressionFieldName: nonEmptyString,
+    meaningFieldName: nonEmptyString.optional(),
     automaticSync: z.literal(false),
   }),
   z.object({
@@ -160,6 +164,7 @@ export const vocabularySourceCacheRowSchema = z.object({
     .array(
       z.object({
         rawValue: z.string().optional(),
+        rawMeaning: z.string().optional(),
         sourceRecordId: z.string().optional(),
         ...schedulingSignalsShape,
         practice: practiceEvidenceSchema.optional(),

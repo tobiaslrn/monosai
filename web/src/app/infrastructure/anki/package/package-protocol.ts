@@ -9,7 +9,7 @@ import type { DeckScope } from '../../../domain/vocabulary/source-mapping';
  * which matters because a service-worker update can leave an old worker script
  * cached independently of the page that loads it.
  */
-export const PACKAGE_PROTOCOL_VERSION = 3;
+export const PACKAGE_PROTOCOL_VERSION = 4;
 
 export interface OpenRequest {
   readonly operation: 'open';
@@ -32,6 +32,7 @@ export interface ExtractRequest {
     readonly deckScope: DeckScope;
     readonly noteTypeName: string;
     readonly expressionFieldName: string;
+    readonly meaningFieldName?: string;
   };
 }
 
@@ -74,6 +75,8 @@ export interface ExtractedField {
   readonly sourceNoteId: string;
   /** Absent when the note carries no value in that field position at all. */
   readonly rawFieldValue?: string;
+  /** Absent when no meaning field is mapped or the note carries no value there. */
+  readonly rawMeaning?: string;
   readonly reps?: number;
   readonly lapseRatio?: number;
   readonly easeFactor?: number;

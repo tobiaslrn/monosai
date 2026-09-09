@@ -276,6 +276,7 @@ export class PackageWorkerHost {
       deckScope: 'deck-only' | 'deck-and-subdecks';
       noteTypeName: string;
       expressionFieldName: string;
+      meaningFieldName?: string;
     },
   ): Dispatched {
     const noteType = state.reader.noteTypes.find((type) => type.name === selection.noteTypeName);
@@ -298,15 +299,30 @@ export class PackageWorkerHost {
         ),
       );
     }
+    const meaningOrdinal =
+      selection.meaningFieldName === undefined
+        ? -1
+        : noteType.fieldNames.indexOf(selection.meaningFieldName);
+    if (selection.meaningFieldName !== undefined && meaningOrdinal < 0) {
+      return err(
+        ankiError(
+          'field-discovery-failed',
+          'That field is no longer part of the note type.',
+          selection.meaningFieldName,
+        ),
+      );
+    }
 
     const notes = state.reader.reviewedNotes(selection);
     const fields: ExtractedField[] = notes.map((note) => {
       // `at` rather than an index, because a note can legitimately carry fewer
       // values than its note type declares fields.
       const value = note.fieldValues.at(ordinal);
+      const meaning = meaningOrdinal < 0 ? undefined : note.fieldValues.at(meaningOrdinal);
       return {
         sourceNoteId: note.noteId,
         ...(value === undefined ? {} : { rawFieldValue: value }),
+        ...(meaning === undefined ? {} : { rawMeaning: meaning }),
         ...normalizeSchedulingSignals(note),
       };
     });
