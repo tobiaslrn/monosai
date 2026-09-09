@@ -15,3 +15,31 @@ export interface RandomSource {
    */
   nextInt(exclusiveMax: number): number;
 }
+
+/**
+ * Draws `size` distinct entries with a partial Fisher-Yates shuffle.
+ *
+ * Only the first `size` positions are resolved, so taking twelve words out of
+ * eighteen hundred costs twelve swaps rather than eighteen hundred. The input
+ * is never mutated, and every draw comes from the injected source, so a test
+ * can pin an exact selection while a real run stays varied.
+ */
+export function sampleWithoutReplacement<T>(
+  items: readonly T[],
+  size: number,
+  random: RandomSource,
+): readonly T[] {
+  const wanted = Math.max(0, Math.min(Math.trunc(size), items.length));
+  if (wanted === 0) {
+    return [];
+  }
+
+  const pool = [...items];
+  for (let index = 0; index < wanted; index += 1) {
+    const pick = index + random.nextInt(pool.length - index);
+    const swapped = pool[pick];
+    pool[pick] = pool[index];
+    pool[index] = swapped;
+  }
+  return pool.slice(0, wanted);
+}

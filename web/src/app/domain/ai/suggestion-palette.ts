@@ -1,5 +1,5 @@
 import type { StoryForm } from '../reading/reading';
-import type { RandomSource } from '../shared/random';
+import { sampleWithoutReplacement, type RandomSource } from '../shared/random';
 import type { VocabularyItemId } from '../shared/ids';
 import {
   FSRS_DIFFICULTY_MAXIMUM,
@@ -74,32 +74,13 @@ export interface PaletteCandidate extends AnkiSchedulingSignals {
   readonly id: VocabularyItemId;
 }
 
-/**
- * Samples a palette with a partial Fisher-Yates shuffle.
- *
- * Only the first `size` positions are resolved, so a 1,800-entry snapshot costs
- * at most 180 swaps rather than 1,800. The input is never mutated, and the
- * randomness comes from an injected source so a test can drive an exact
- * selection.
- */
+/** Samples a palette uniformly without replacement. */
 export function samplePalette(
   itemIds: readonly VocabularyItemId[],
   size: number,
   random: RandomSource,
 ): readonly VocabularyItemId[] {
-  const wanted = Math.max(0, Math.min(Math.trunc(size), itemIds.length));
-  if (wanted === 0) {
-    return [];
-  }
-
-  const pool = [...itemIds];
-  for (let index = 0; index < wanted; index += 1) {
-    const pick = index + random.nextInt(pool.length - index);
-    const swapped = pool[pick];
-    pool[pick] = pool[index];
-    pool[index] = swapped;
-  }
-  return pool.slice(0, wanted);
+  return sampleWithoutReplacement(itemIds, size, random);
 }
 
 /**
