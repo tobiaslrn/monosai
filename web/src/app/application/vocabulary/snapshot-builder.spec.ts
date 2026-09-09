@@ -7,7 +7,7 @@ import { vocabularySourceId } from '../../domain/shared/ids';
 import type { TextListVocabularySource } from '../../domain/vocabulary/vocabulary-source';
 import { SnapshotBuilder, type SourceEntry } from './snapshot-builder';
 
-const MAPPING = mappingFor();
+const MAPPING = { ...mappingFor(), meaningFieldName: 'Meaning' };
 const TEXT_SOURCE: TextListVocabularySource = {
   id: vocabularySourceId('22222222-2222-4222-8222-222222222222'),
   kind: 'text-list',
@@ -19,11 +19,16 @@ const TEXT_SOURCE: TextListVocabularySource = {
   lastSyncedAt: 1,
 };
 
-function entry(rawValue: string | undefined, sourceRecordId?: string): SourceEntry {
+function entry(
+  rawValue: string | undefined,
+  sourceRecordId?: string,
+  rawMeaning?: string,
+): SourceEntry {
   return {
     sourceId: MAPPING.id,
     ...(rawValue === undefined ? {} : { rawValue }),
     ...(sourceRecordId === undefined ? {} : { sourceRecordId }),
+    ...(rawMeaning === undefined ? {} : { rawMeaning }),
   };
 }
 
@@ -122,10 +127,16 @@ describe('SnapshotBuilder', () => {
     expect(built.content.snapshot.status).toBe('complete');
   });
 
-  it('agrees between the unique count and the items it produced', async () => {
-    const built = await build([entry('ねこ'), entry('ねこ'), entry('犬')]);
+  it('counts distinct expressions separately from meaning entries', async () => {
+    const built = await build([
+      entry('食べる', 'n1', 'eat'),
+      entry('食べる', 'n2', 'consume'),
+      entry('犬'),
+    ]);
 
-    expect(built.content.snapshot.uniqueEntryCount).toBe(built.content.items.length);
+    expect(built.content.items).toHaveLength(3);
+    expect(built.content.snapshot.uniqueEntryCount).toBe(2);
+    expect(built.stats.uniqueExpressions).toBe(2);
   });
 
   it('points every item and provenance record at the same snapshot', async () => {

@@ -54,9 +54,13 @@ export class DexieVocabularyRepository implements VocabularyRepository {
   commitSnapshot(commit: SnapshotCommit): Promise<Result<VocabularySnapshot, StorageError>> {
     return runStorageWithRules('vocabulary.commitSnapshot', async () => {
       assertUniqueIds(commit.items, 'vocabulary item');
-      if (commit.snapshot.uniqueEntryCount !== commit.items.length) {
+      const uniqueExpressionCount = new Set(commit.items.map((item) => item.expressionHash)).size;
+      if (commit.snapshot.uniqueEntryCount !== uniqueExpressionCount) {
         throw new StorageRuleViolation(
-          storageError('conflict', 'The snapshot entry count does not match its items.'),
+          storageError(
+            'conflict',
+            'The snapshot word count does not match its distinct expression hashes.',
+          ),
         );
       }
       const itemIds = new Set<string>(commit.items.map((item) => item.id));
@@ -421,9 +425,10 @@ function toItem(row: VocabularyItemRow): VocabularyItem {
 /**
  * One entry per canonical expression, merging what several items proved.
  *
- * A snapshot already merges exact duplicates, so this is normally one item per
- * expression. It merges anyway rather than assuming that, because a capture
- * that quietly dropped a second contribution would drop its evidence too.
+ * A snapshot normally has one item per expression-and-meaning identity. This
+ * projection merges items back to one expression for practice selection and
+ * generation, retaining every distinct meaning rather than dropping a second
+ * contribution.
  */
 function mergeExpressions(items: readonly VocabularyItem[]): readonly VocabularyExpression[] {
   const byExpression = new Map<string, VocabularyExpression>();
@@ -437,11 +442,25 @@ function mergeExpressions(items: readonly VocabularyItem[]): readonly Vocabulary
     byExpression.set(expression.canonicalExpression, {
       ...existing,
       itemIds: [...existing.itemIds, ...expression.itemIds],
+      meanings: mergeMeanings(existing.meanings, expression.meanings),
       ...practiceOf(existing, expression),
       ...highestDifficulty(existing, expression),
     });
   }
   return [...byExpression.values()];
+}
+
+function mergeMeanings(left: readonly string[], right: readonly string[]): readonly string[] {
+  const seen = new Set(left);
+  const merged = [...left];
+  for (const meaning of right) {
+    if (seen.has(meaning)) {
+      continue;
+    }
+    seen.add(meaning);
+    merged.push(meaning);
+  }
+  return merged;
 }
 
 function practiceOf(

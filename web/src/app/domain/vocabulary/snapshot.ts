@@ -52,6 +52,7 @@ export interface VocabularyItem extends AnkiSchedulingSignals {
   readonly visibleExpression: string;
   readonly canonicalExpression: string;
   readonly expressionHash: string;
+  readonly meaning?: string;
   readonly analyzedSequence: readonly VocabularyToken[];
   /**
    * Recent study of this expression, merged over every note that produced it.
@@ -74,6 +75,8 @@ export interface VocabularyExpression {
   readonly canonicalExpression: string;
   readonly visibleExpression: string;
   readonly expressionHash: string;
+  /** Distinct meanings carried by this canonical expression, in capture order. */
+  readonly meanings: readonly string[];
   /**
    * Every vocabulary item carrying this expression, captured with it.
    *
@@ -93,6 +96,7 @@ export function toVocabularyExpression(item: VocabularyItem): VocabularyExpressi
     canonicalExpression: item.canonicalExpression,
     visibleExpression: item.visibleExpression,
     expressionHash: item.expressionHash,
+    meanings: item.meaning === undefined ? [] : [item.meaning],
     itemIds: [item.id],
     ...(item.practice === undefined ? {} : { practice: item.practice }),
     ...(item.fsrsDifficulty === undefined ? {} : { fsrsDifficulty: item.fsrsDifficulty }),
@@ -107,6 +111,7 @@ export interface VocabularyProvenance {
   readonly deckName?: string;
   readonly noteTypeName?: string;
   readonly fieldName?: string;
+  readonly meaningFieldName?: string;
   readonly sourceRecordId?: string;
 }
 

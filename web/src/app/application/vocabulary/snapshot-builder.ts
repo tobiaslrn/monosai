@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { canonicalizeExpression, expressionHashOf } from '../../domain/anki/canonical-expression';
 import { mergeEntries, type PreparedEntry } from '../../domain/anki/deduplication';
 import { extractVisibleText } from '../../domain/anki/field-extraction';
+import type { MarkupTextExtractor } from '../../domain/anki/markup-text';
 import { normalizeSchedulingSignals } from '../../domain/anki/scheduling-signals';
 import { ANALYZER_VERSION, NORMALIZATION_VERSION } from '../../domain/language/analyzer-version';
 import { languageError, type LanguageError } from '../../domain/language/language-error';
@@ -47,6 +48,7 @@ interface AcceptedEntry {
   readonly visibleExpression: string;
   readonly canonicalExpression: string;
   readonly expressionHash: string;
+  readonly meaning?: string;
 }
 
 /**
@@ -98,11 +100,14 @@ export class SnapshotBuilder {
         continue;
       }
       const canonicalExpression = canonicalizeExpression(visibleExpression);
+      const meaning =
+        source.kind === 'text-list' ? undefined : extractMeaning(entry.rawMeaning, this.extractor);
       accepted.push({
         entry,
         visibleExpression,
         canonicalExpression,
         expressionHash: expressionHashOf(this.hasher, canonicalExpression),
+        ...(meaning === undefined ? {} : { meaning }),
       });
     }
 
@@ -137,6 +142,9 @@ export class SnapshotBuilder {
                 deckName: source.deckName,
                 noteTypeName: source.noteTypeName,
                 fieldName: source.expressionFieldName,
+                ...(source.meaningFieldName === undefined
+                  ? {}
+                  : { meaningFieldName: source.meaningFieldName }),
               }),
           ...(item.entry.sourceRecordId === undefined
             ? {}
@@ -145,6 +153,7 @@ export class SnapshotBuilder {
         visibleExpression: item.visibleExpression,
         canonicalExpression: item.canonicalExpression,
         expressionHash: item.expressionHash,
+        ...(item.meaning === undefined ? {} : { meaning: item.meaning }),
         analyzedSequence: analyzed.value.get(item.expressionHash) ?? [],
         ...normalizeSchedulingSignals(item.entry),
         ...(item.entry.practice === undefined ? {} : { practice: item.entry.practice }),
@@ -153,6 +162,10 @@ export class SnapshotBuilder {
 
     const id = request.snapshotId ?? snapshotId(this.ids.nextId());
     const merged = mergeEntries(prepared, id, () => vocabularyItemId(this.ids.nextId()));
+    // Items are browser entries (expression plus meaning), while the standing
+    // word count remains distinct expression hashes for compatibility with the
+    // reader, generation floor, and every existing "words" surface.
+    const uniqueExpressionCount = new Set(merged.items.map((item) => item.expressionHash)).size;
 
     const stats: SnapshotStats = {
       sourcesQueried: request.sources.length,
@@ -160,7 +173,7 @@ export class SnapshotBuilder {
       nonEmptyValues: accepted.length,
       rejectedEmptyValues,
       duplicateOccurrences: merged.duplicateOccurrences,
-      uniqueExpressions: merged.items.length,
+      uniqueExpressions: uniqueExpressionCount,
       sourceWarnings: [...request.warnings],
     };
 
@@ -174,7 +187,7 @@ export class SnapshotBuilder {
           revision: this.ids.nextId(),
           createdAt: this.clock.now(),
           status: 'complete',
-          uniqueEntryCount: merged.items.length,
+          uniqueEntryCount: uniqueExpressionCount,
           sourceIds: request.sources.map((source) => source.id),
           sourceKinds: [...new Set(request.sources.map((source) => source.kind))],
           analyzerVersion: ANALYZER_VERSION,
@@ -245,4 +258,10 @@ export class SnapshotBuilder {
 
     return ok(sequences);
   }
+}
+
+/** Meaning is optional data: an unusable meaning never rejects its expression. */
+function extractMeaning(raw: string | undefined, extractor: MarkupTextExtractor): string | undefined {
+  const extracted = extractVisibleText(raw, extractor);
+  return extracted.ok ? extracted.value : undefined;
 }

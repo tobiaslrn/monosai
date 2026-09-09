@@ -1,10 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
   isEligibleReviewedCard,
+  difficultyPercent,
   mergeSchedulingSignals,
   normalizeSchedulingSignals,
   schedulingSignalsFromCard,
 } from './scheduling-signals';
+
+describe('difficultyPercent', () => {
+  it('maps and clamps the FSRS scale', () => {
+    expect(difficultyPercent(1)).toBe(0);
+    expect(difficultyPercent(10)).toBe(100);
+    expect(difficultyPercent(5.5)).toBe(50);
+    expect(difficultyPercent(-2)).toBe(0);
+    expect(difficultyPercent(22)).toBe(100);
+    expect(difficultyPercent(undefined)).toBeNull();
+  });
+});
 
 describe('normalizeSchedulingSignals', () => {
   it('keeps signals that are within range', () => {

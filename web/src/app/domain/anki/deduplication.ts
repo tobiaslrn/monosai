@@ -5,6 +5,7 @@ import { mergePracticeEvidence, type PracticeEvidence } from './practice-evidenc
 
 /** One accepted field value with everything needed to become a vocabulary item. */
 export interface PreparedEntry extends AnkiSchedulingSignals {
+  readonly meaning?: string;
   readonly practice?: PracticeEvidence;
   readonly provenance: Omit<VocabularyProvenance, 'vocabularyItemId'>;
   readonly visibleExpression: string;
@@ -36,15 +37,25 @@ function provenanceKey(itemId: VocabularyItemId, entry: PreparedEntry): string {
   return `${itemId} ${entry.provenance.sourceId} ${entry.provenance.sourceRecordId ?? ''}`;
 }
 
+/** The identity projection for an already extracted meaning. */
+function meaningKey(meaning: string | undefined): string {
+  return meaning === undefined ? '' : meaning.trim().replace(/\s+/gu, ' ').toLowerCase();
+}
+
 /**
- * Merges exact canonical duplicates into one item while keeping every source
- * that contributed it.
+ * Merges exact expression-and-meaning duplicates into one item while keeping
+ * every source that contributed it.
  *
- * Only an identical canonical expression merges. Two spellings of the same word
- * stay two items even when the dictionary would give them one lemma, because
- * the learner reviewed those spellings separately and the matcher is allowed to
- * reach each of them through its own normalization rules rather than by having
- * them collapsed here.
+ * Only an identical canonical expression with an identical visible meaning
+ * merges. Two spellings of the same word stay two items even when the dictionary
+ * would give them one lemma, because the learner reviewed those spellings
+ * separately and the matcher is allowed to reach each of them through its own
+ * normalization rules rather than by having them collapsed here. Likewise,
+ * two Anki cards with the same expression but different meanings stay separate:
+ * collapsing them would lose the distinction the learner's note supplied.
+ * Meaning has already passed through visible-text extraction; this key only
+ * trims, collapses whitespace, and folds case so harmless formatting does not
+ * create another item.
  *
  * The first occurrence supplies the visible expression and the analyzed
  * sequence, so the merge is stable in input order rather than dependent on how
@@ -55,13 +66,14 @@ export function mergeEntries(
   snapshot: SnapshotId,
   nextItemId: () => VocabularyItemId,
 ): MergeResult {
-  const itemsByHash = new Map<string, VocabularyItem>();
+  const itemsByIdentity = new Map<string, VocabularyItem>();
   const provenance: VocabularyProvenance[] = [];
   const seenProvenance = new Set<string>();
   let duplicateOccurrences = 0;
 
   for (const entry of entries) {
-    let item = itemsByHash.get(entry.expressionHash);
+    const identity = `${entry.expressionHash}\uFFFD${meaningKey(entry.meaning)}`;
+    let item = itemsByIdentity.get(identity);
     if (item === undefined) {
       item = {
         id: nextItemId(),
@@ -69,11 +81,12 @@ export function mergeEntries(
         visibleExpression: entry.visibleExpression,
         canonicalExpression: entry.canonicalExpression,
         expressionHash: entry.expressionHash,
+        ...(entry.meaning === undefined ? {} : { meaning: entry.meaning }),
         analyzedSequence: entry.analyzedSequence,
         ...mergeSchedulingSignals(undefined, entry),
         ...practiceOf(undefined, entry.practice),
       };
-      itemsByHash.set(entry.expressionHash, item);
+      itemsByIdentity.set(identity, item);
     } else {
       duplicateOccurrences += 1;
       item = {
@@ -81,7 +94,7 @@ export function mergeEntries(
         ...mergeSchedulingSignals(item, entry),
         ...practiceOf(item.practice, entry.practice),
       };
-      itemsByHash.set(entry.expressionHash, item);
+      itemsByIdentity.set(identity, item);
     }
 
     const key = provenanceKey(item.id, entry);
@@ -92,5 +105,5 @@ export function mergeEntries(
     provenance.push({ vocabularyItemId: item.id, ...entry.provenance });
   }
 
-  return { items: [...itemsByHash.values()], provenance, duplicateOccurrences };
+  return { items: [...itemsByIdentity.values()], provenance, duplicateOccurrences };
 }

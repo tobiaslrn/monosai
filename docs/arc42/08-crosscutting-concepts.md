@@ -10,8 +10,13 @@ The reading model is one hierarchy. A **reading** holds **paragraphs**, a paragr
 either **imported** or **generated**.
 
 A **vocabulary snapshot** is the one current, deduplicated set of expressions the learner has
-reviewed and not suspended. A refresh replaces it atomically; a failed or cancelled refresh leaves the previous one
-untouched.
+reviewed and not suspended. Its stored items are identified by canonical expression plus the
+optional visible meaning from the learner's Anki note: identical pairs merge, while two meanings
+for one expression remain separate items. A refresh replaces it atomically; a failed or cancelled
+refresh leaves the previous one untouched. The matcher, practice selection, and generation still
+project one expression at a time; that projection carries all distinct meanings. The snapshot's
+`uniqueEntryCount` continues to count distinct expression hashes, so it can be lower than the
+number of stored/browser items.
 
 Its id is stable across refreshes so a generated story keeps one link to the current vocabulary,
 which means the id cannot say whether the words behind it changed. Each committed replacement
@@ -111,6 +116,11 @@ Indexes exist only for queries the application actually makes. Large text, token
 credentials, and policy text are never indexed. Every multi-table write is one transaction, so a
 reading is never visible without its sentences and tokens. See
 [ADR 0004](../decisions/0004-persistence-shape.md).
+
+Vocabulary meaning fields were added in schema version 14. This version changes no index and has
+no upgrade function: every new field is optional, and an absent value on an existing row already
+has the correct meaning of "not mapped". Versions 1 through 13 remain immutable
+([ADR 0062](../decisions/0062-vocabulary-identity-is-expression-plus-meaning.md)).
 
 Translation plans are validated persisted state with three explicit forms: opening pending,
 glossary repair required, and ready with a frozen glossary. Establishing a ready plan and its

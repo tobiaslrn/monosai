@@ -38,6 +38,22 @@ export interface AnkiSchedulingSignals {
 export const FSRS_DIFFICULTY_MINIMUM = 1;
 export const FSRS_DIFFICULTY_MAXIMUM = 10;
 
+/** Maps Anki's 1-10 FSRS scale onto the browser's 0-100 percent scale. */
+export function difficultyPercent(fsrsDifficulty: number | undefined): number | null {
+  if (fsrsDifficulty === undefined || !Number.isFinite(fsrsDifficulty)) {
+    return null;
+  }
+  const clamped = Math.min(
+    FSRS_DIFFICULTY_MAXIMUM,
+    Math.max(FSRS_DIFFICULTY_MINIMUM, fsrsDifficulty),
+  );
+  return Math.round(
+    ((clamped - FSRS_DIFFICULTY_MINIMUM) /
+      (FSRS_DIFFICULTY_MAXIMUM - FSRS_DIFFICULTY_MINIMUM)) *
+      100,
+  );
+}
+
 /** One eligible card's raw scheduling columns, before normalization. */
 export interface AnkiCardScheduling {
   readonly reps: number;

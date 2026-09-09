@@ -70,6 +70,55 @@ describe('mergeEntries', () => {
     expect(result.duplicateOccurrences).toBe(1);
   });
 
+  it('keeps the same expression with different meanings in separate items', () => {
+    const result = mergeEntries(
+      [entry({ meaning: 'eat', sourceRecordId: 'n1' }), entry({ meaning: 'consume', sourceRecordId: 'n2' })],
+      SNAPSHOT,
+      idSequence(),
+    );
+
+    expect(result.items.map((item) => item.meaning)).toEqual(['eat', 'consume']);
+    expect(result.duplicateOccurrences).toBe(0);
+  });
+
+  it('merges meanings that differ only in visible formatting', () => {
+    const result = mergeEntries(
+      [entry({ meaning: 'eat', sourceRecordId: 'n1' }), entry({ meaning: '  EAT  ', sourceRecordId: 'n2' })],
+      SNAPSHOT,
+      idSequence(),
+    );
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].meaning).toBe('eat');
+    expect(result.duplicateOccurrences).toBe(1);
+  });
+
+  it('keeps unmapped meanings together', () => {
+    const result = mergeEntries(
+      [entry({ sourceRecordId: 'n1' }), entry({ sourceRecordId: 'n2' })],
+      SNAPSHOT,
+      idSequence(),
+    );
+
+    expect(result.items).toHaveLength(1);
+  });
+
+  it('attaches each meaning provenance to its own item', () => {
+    const result = mergeEntries(
+      [
+        entry({ meaning: 'eat', sourceId: MAPPING_A, sourceRecordId: 'n1' }),
+        entry({ meaning: 'consume', sourceId: MAPPING_B, sourceRecordId: 'n2' }),
+      ],
+      SNAPSHOT,
+      idSequence(),
+    );
+
+    expect(result.provenance.map((record) => [record.sourceId, record.vocabularyItemId])).toEqual([
+      [MAPPING_A, result.items[0].id],
+      [MAPPING_B, result.items[1].id],
+    ]);
+  });
+
   it('merges scheduling signals in the direction each priority mode needs', () => {
     const result = mergeEntries(
       [

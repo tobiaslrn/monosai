@@ -45,6 +45,7 @@ function expression(word: string, practice: PracticeEvidence = {}): VocabularyEx
     visibleExpression: word,
     expressionHash: `hash-${word}`,
     itemIds: [vocabularyItemId(`item-${word}`)],
+    meanings: [],
     practice,
   };
 }
