@@ -72,9 +72,31 @@ async function testSqlModule(): Promise<{
   return modulePromise;
 }
 
+/**
+ * Builds a collection in memory from SQL, for reader tests that need a shape no
+ * committed fixture has.
+ *
+ * Statements run through the same read-only `query` surface the reader uses,
+ * because a `prepare`/`step` pair executes DDL and DML just as well as it reads
+ * — so the test double gains no write method the production port lacks.
+ */
+export async function syntheticCollection(
+  statements: readonly string[],
+): Promise<CollectionDatabase> {
+  const sql = await testSqlModule();
+  const database = wrapDatabase(new sql.Database(new Uint8Array(0)));
+  for (const statement of statements) {
+    database.query(statement);
+  }
+  return database;
+}
+
 export const testDatabaseFactory: CollectionDatabaseFactory = async (bytes) => {
   const sql = await testSqlModule();
-  const database = new sql.Database(bytes);
+  return wrapDatabase(new sql.Database(bytes));
+};
+
+function wrapDatabase(database: SqlJsDatabaseLike): CollectionDatabase {
   const wrapped: CollectionDatabase = {
     query(statementSql, params = []) {
       const statement = database.prepare(statementSql);
@@ -96,7 +118,7 @@ export const testDatabaseFactory: CollectionDatabaseFactory = async (bytes) => {
     },
   };
   return wrapped;
-};
+}
 
 export interface PackageHarness {
   readonly host: PackageWorkerHost;

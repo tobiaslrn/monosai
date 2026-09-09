@@ -19,7 +19,17 @@ export const CONTRACT_COLLECTION = {
       id: 'n-neko-html',
       noteTypeName: 'Basic',
       fieldValues: ['<b>ねこ</b>', 'cat'],
-      cards: [{ deckName: 'Core Japanese', reps: 3, lapses: 1, factor: 2400 }],
+      cards: [
+        {
+          deckName: 'Core Japanese',
+          reps: 3,
+          lapses: 1,
+          factor: 2400,
+          firstReviewedAt: 1760000000000,
+          intervalDays: 23,
+          fsrsDifficulty: 8.269,
+        },
+      ],
     },
     {
       id: 'n-neko-plain',
@@ -52,7 +62,16 @@ export const CONTRACT_COLLECTION = {
       id: 'n-inu',
       noteTypeName: 'Basic',
       fieldValues: ['<script>alert(1)</script>犬', 'dog'],
-      cards: [{ deckName: 'Core Japanese', reps: 2, lapses: 1, factor: 2200 }],
+      cards: [
+        {
+          deckName: 'Core Japanese',
+          reps: 2,
+          lapses: 1,
+          factor: 2200,
+          firstReviewedAt: 1770000000000,
+          intervalDays: 4,
+        },
+      ],
     },
     {
       id: 'n-onaka',

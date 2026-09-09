@@ -49,6 +49,14 @@ function noteTypeIds(noteTypes) {
  * more, but a fixture that filled them in would be asserting Anki's schema
  * rather than Monosai's use of it.
  */
+const DAY_MS = 86_400_000;
+/** Epoch milliseconds a card with no explicit first review is dated from. */
+const UNDATED_FIRST_REVIEW = 1_600_000_000_000;
+/** Spacing between undated cards, wider than any fixture's review count. */
+const UNDATED_CARD_STRIDE_MS = 400 * DAY_MS;
+/** How far before the first review a fixture's manual reschedule is written. */
+const RESCHEDULE_OFFSET_MS = 30 * DAY_MS;
+
 export function buildSchema18(collection, { separator = FIELD_SEPARATOR } = {}) {
   const decks = deckIds(collection.deckNames);
   const models = noteTypeIds(collection.noteTypes);
@@ -64,7 +72,7 @@ export function buildSchema18(collection, { separator = FIELD_SEPARATOR } = {}) 
       create table cards (id integer primary key, nid integer not null, did integer not null,
                           ord integer, odid integer not null default 0, queue integer default 0,
                           type integer default 0, reps integer not null default 0, lapses integer default 0,
-                          factor integer default 0);
+                          factor integer default 0, ivl integer default 0, data text);
       create table revlog (id integer primary key, cid integer not null, ease integer);
     `);
     database
@@ -92,7 +100,6 @@ export function buildSchema18(collection, { separator = FIELD_SEPARATOR } = {}) 
 
     let noteRowId = 1;
     let cardRowId = 1;
-    let revlogId = 1;
     for (const note of collection.notes) {
       const id = noteRowId++;
       database
@@ -109,7 +116,7 @@ export function buildSchema18(collection, { separator = FIELD_SEPARATOR } = {}) 
         const cardId = cardRowId++;
         database
           .prepare(
-            'insert into cards (id, nid, did, ord, odid, queue, type, reps, lapses, factor) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'insert into cards (id, nid, did, ord, odid, queue, type, reps, lapses, factor, ivl, data) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           )
           .run(
             cardId,
@@ -122,11 +129,27 @@ export function buildSchema18(collection, { separator = FIELD_SEPARATOR } = {}) 
             card.reps,
             card.lapses ?? 0,
             card.factor ?? 0,
+            card.intervalDays ?? 0,
+            card.fsrsDifficulty === undefined ? null : JSON.stringify({ d: card.fsrsDifficulty }),
           );
+        // Review ids are epoch milliseconds in a real collection, and the
+        // earliest of them is what "recently learned" reads, so they cannot be
+        // counters. A dated card keeps its date exactly; an undated one is
+        // spaced a day per card, which is what keeps the ids unique without
+        // perturbing a date a test asserts on. Each reviewed card also gets one
+        // `ease = 0` entry before its first real review, so the fixtures prove a
+        // manual reschedule is never mistaken for the day the word was learned.
+        const firstReviewedAt =
+          card.firstReviewedAt ?? UNDATED_FIRST_REVIEW + cardId * UNDATED_CARD_STRIDE_MS;
+        if (card.reps > 0) {
+          database
+            .prepare('insert into revlog (id, cid, ease) values (?, ?, ?)')
+            .run(firstReviewedAt - RESCHEDULE_OFFSET_MS, cardId, 0);
+        }
         for (let review = 0; review < card.reps; review += 1) {
           database
             .prepare('insert into revlog (id, cid, ease) values (?, ?, ?)')
-            .run(revlogId++, cardId, 3);
+            .run(firstReviewedAt + review * DAY_MS, cardId, 3);
         }
       }
     }

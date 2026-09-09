@@ -314,6 +314,38 @@ describe('PackageWorkerHost', () => {
       });
     });
 
+    it('carries first review, interval, and FSRS difficulty across the protocol', async () => {
+      const harness = createPackageHarness();
+      await open(harness, 'contract-schema18-zstd.apkg');
+      const result = await extract(harness, BASIC_EXPRESSION);
+
+      // The fixture writes a manual reschedule before the first real review, so
+      // this also proves an `ease = 0` entry is not read as the learning date.
+      expect(result.fields.find((field) => field.rawFieldValue === '<b>ねこ</b>')).toMatchObject({
+        firstReviewedAt: 1_760_000_000_000,
+        intervalDays: 23,
+        fsrsDifficulty: 8.269,
+      });
+
+      // A card with no FSRS state must read as unknown, never as easy.
+      const inu = result.fields.find((field) => field.rawFieldValue?.includes('犬'));
+      expect(inu).toMatchObject({ firstReviewedAt: 1_770_000_000_000, intervalDays: 4 });
+      expect(inu).not.toHaveProperty('fsrsDifficulty');
+    });
+
+    it('omits the newer signals for a package whose cards lack those columns', async () => {
+      // Schema 11 here is built without `ivl` or `data` on purpose, so the
+      // columns-absent path stays covered end to end rather than only in unit
+      // tests. Real schema-11 collections do carry `ivl`.
+      const harness = createPackageHarness();
+      await open(harness, 'contract-schema11.apkg');
+      const result = await extract(harness, BASIC_EXPRESSION);
+
+      const neko = result.fields.find((field) => field.rawFieldValue === '<b>ねこ</b>');
+      expect(neko).not.toHaveProperty('intervalDays');
+      expect(neko).not.toHaveProperty('fsrsDifficulty');
+    });
+
     it('counts a review made in a filtered deck against the card home deck', async () => {
       const harness = createPackageHarness();
       await open(harness, 'filtered-deck.apkg');

@@ -23,6 +23,12 @@ export interface FixtureCard {
   /** Anki's scheduler queue code. `-1` means explicitly suspended. */
   readonly queue?: number;
   readonly suspended?: boolean;
+  /** Epoch milliseconds of the card's first real review, written to `revlog`. */
+  readonly firstReviewedAt?: number;
+  /** Anki's `ivl`. Negative values mean seconds, as they do in a collection. */
+  readonly intervalDays?: number;
+  /** FSRS difficulty, stored inside the card's `data` JSON. */
+  readonly fsrsDifficulty?: number;
 }
 
 export interface FixtureNote {
@@ -67,7 +73,17 @@ export const CONTRACT_COLLECTION: FixtureCollection = {
       id: 'n-neko-html',
       noteTypeName: 'Basic',
       fieldValues: ['<b>ねこ</b>', 'cat'],
-      cards: [{ deckName: 'Core Japanese', reps: 3, lapses: 1, factor: 2_400 }],
+      cards: [
+        {
+          deckName: 'Core Japanese',
+          reps: 3,
+          lapses: 1,
+          factor: 2_400,
+          firstReviewedAt: 1_760_000_000_000,
+          intervalDays: 23,
+          fsrsDifficulty: 8.269,
+        },
+      ],
     },
     {
       id: 'n-neko-plain',
@@ -100,7 +116,16 @@ export const CONTRACT_COLLECTION: FixtureCollection = {
       id: 'n-inu',
       noteTypeName: 'Basic',
       fieldValues: ['<script>alert(1)</script>犬', 'dog'],
-      cards: [{ deckName: 'Core Japanese', reps: 2, lapses: 1, factor: 2_200 }],
+      cards: [
+        {
+          deckName: 'Core Japanese',
+          reps: 2,
+          lapses: 1,
+          factor: 2_200,
+          firstReviewedAt: 1_770_000_000_000,
+          intervalDays: 4,
+        },
+      ],
     },
     {
       id: 'n-onaka',

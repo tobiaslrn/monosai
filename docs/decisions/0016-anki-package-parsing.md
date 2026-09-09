@@ -112,6 +112,33 @@ package may have been exported without scheduling information. The two are not
 distinguishable from the data alone, so the warning names the possibility rather
 than asserting it.
 
+### Optional scheduling signals
+
+Beyond eligibility, the reader collects whatever scheduling state the collection
+happens to carry, so the suggestion palette can be weighted. Every one of these
+is capability-probed and optional, and none of them can make a note eligible or
+ineligible — that remains `reps > 0`, not suspended, in scope.
+
+- **First review** — `min(revlog.id)` over entries with `ease > 0`, which is
+  epoch milliseconds. `ease = 0` marks a manual reschedule rather than an
+  answered card, and enabling FSRS rewrites an entire collection that way, so
+  counting one would date every word to the day the learner switched scheduler.
+  The join is to a pre-aggregated derived table, because joining `revlog`
+  directly would multiply each card by its review count.
+- **Interval** — `cards.ivl`, read per card as at most a day when it is not
+  positive, because Anki stores a learning card's interval as negative seconds.
+- **FSRS difficulty** — the `d` field of the JSON in `cards.data`. It is parsed
+  in TypeScript rather than with `json_extract`, so the package path does not
+  depend on whether this build of SQLite was compiled with its JSON functions;
+  a missing function would fail every package, not just FSRS ones. Anything
+  unusable — the empty string a pre-FSRS card holds, malformed JSON, a missing
+  `d`, a value off the 1-10 scale — reads as no signal rather than as easy.
+
+The reader emits one row per eligible card and combines a note's cards in the
+domain, with `mergeSchedulingSignals`, rather than aggregating in SQL. The rule
+for combining cards then exists in exactly one place, shared with the
+AnkiConnect path, instead of being restated in a query.
+
 ### Resource limits
 
 Every size in a learner-supplied archive is attacker-controlled, so
