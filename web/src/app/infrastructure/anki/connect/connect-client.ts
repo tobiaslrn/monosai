@@ -10,6 +10,7 @@ import {
   nameListSchema,
   notesInfoSchema,
   permissionSchema,
+  reviewsOfCardsSchema,
   versionSchema,
 } from './connect-response.schema';
 
@@ -38,6 +39,7 @@ const DEFAULT_TIMEOUT_MS = 5_000;
 const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 
 export type CardInfo = z.infer<typeof cardsInfoSchema>[number];
+export type ReviewsOfCards = z.infer<typeof reviewsOfCardsSchema>;
 export type NoteInfo = z.infer<typeof notesInfoSchema>[number];
 export type PermissionInfo = z.infer<typeof permissionSchema>;
 
@@ -145,6 +147,25 @@ export class AnkiConnectClient {
     signal?: AbortSignal,
   ): Promise<Result<readonly CardInfo[], AnkiError>> {
     return this.invoke('cardsInfo', { cards }, cardsInfoSchema, 'query-failed', signal);
+  }
+
+  /**
+   * Reads the review log for the given cards.
+   *
+   * Only ever called with cards already known to be eligible, so a collection's
+   * whole history is never requested to answer a question about a subset.
+   */
+  getReviewsOfCards(
+    cards: readonly number[],
+    signal?: AbortSignal,
+  ): Promise<Result<ReviewsOfCards, AnkiError>> {
+    return this.invoke(
+      'getReviewsOfCards',
+      { cards },
+      reviewsOfCardsSchema,
+      'query-failed',
+      signal,
+    );
   }
 
   notesInfo(

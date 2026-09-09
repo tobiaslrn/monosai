@@ -39,8 +39,23 @@ export const cardsInfoSchema = z.array(
     /** Scheduling columns are absent from some Anki-compatible bridges. */
     lapses: z.number().int().nonnegative().nullable().optional(),
     factor: z.number().int().nonnegative().nullable().optional(),
+    /** Anki's `ivl`: positive days, or negative seconds while a card is learning. */
+    interval: z.number().int().nullable().optional(),
     deckName: z.string(),
   }),
+);
+
+/**
+ * One entry per review, keyed by card id as a string.
+ *
+ * Only the fields the first-review calculation needs are declared; Zod strips
+ * the rest, so a bridge that sends more costs nothing. `ease` is zero for a
+ * manual reschedule rather than an answered card, which is what separates a
+ * review from the bulk rewrite that enabling FSRS performs.
+ */
+export const reviewsOfCardsSchema = z.record(
+  z.string(),
+  z.array(z.object({ id: z.number().int().positive(), ease: z.number().int() })),
 );
 
 export const notesInfoSchema = z.array(

@@ -15,7 +15,7 @@ const CLIENT_SOURCE = readFileSync(
  * action later without noticing what it does.
  */
 describe('AnkiConnect action allowlist', () => {
-  it('is exactly the eight read actions Monosai needs', () => {
+  it('is exactly the nine read actions Monosai needs', () => {
     expect([...ALLOWED_ACTIONS]).toEqual([
       'version',
       'requestPermission',
@@ -25,6 +25,7 @@ describe('AnkiConnect action allowlist', () => {
       'findCards',
       'cardsInfo',
       'notesInfo',
+      'getReviewsOfCards',
     ]);
   });
 

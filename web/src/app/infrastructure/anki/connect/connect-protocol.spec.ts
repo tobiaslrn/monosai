@@ -25,13 +25,22 @@ describe('shared bridge wire fixtures', () => {
     cardsInfo: cardsInfoSchema,
     notesInfo: notesInfoSchema,
   };
+  /**
+   * Allowed of the desktop add-on, but deliberately not implemented by the
+   * bridge: AnkiDroid's content provider exposes no review log, so the fixture
+   * records the refusal the extraction path is written to fall back from.
+   */
+  const REFUSED_BY_BRIDGE = ['getReviewsOfCards'];
   it('covers exactly the read allowlist and a refused write', () => {
+    expect(protocolFixtures.map((f) => f.request.action).sort()).toEqual(
+      [...ALLOWED_ACTIONS, 'addNote'].sort(),
+    );
     expect(
       protocolFixtures
-        .filter((f) => f.response.error === null)
+        .filter((f) => f.response.error !== null)
         .map((f) => f.request.action)
         .sort(),
-    ).toEqual([...ALLOWED_ACTIONS].sort());
+    ).toEqual([...REFUSED_BY_BRIDGE, 'addNote'].sort());
   });
   for (const fixture of protocolFixtures) {
     it(`parses and reproduces ${fixture.name}`, async () => {
@@ -39,9 +48,14 @@ describe('shared bridge wire fixtures', () => {
         const schema = schemas[fixture.request.action as keyof typeof schemas];
         expect(schema.safeParse(fixture.response.result).success).toBe(true);
       } else {
-        expect(fixture.response).toEqual({ result: null, error: 'unsupported action: addNote' });
+        expect(fixture.response).toEqual({
+          result: null,
+          error: `unsupported action: ${fixture.request.action}`,
+        });
       }
-      const response = await new FakeAnkiConnectServer().fetch('http://localhost', {
+      const response = await new FakeAnkiConnectServer(undefined, {
+        unimplementedActions: REFUSED_BY_BRIDGE,
+      }).fetch('http://localhost', {
         body: JSON.stringify(fixture.request),
       });
       expect(await response.json()).toEqual(fixture.response);

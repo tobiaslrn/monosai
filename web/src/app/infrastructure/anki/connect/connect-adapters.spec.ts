@@ -117,6 +117,59 @@ describe('DesktopConnectAdapter', () => {
     expect(neko).not.toHaveProperty('easeFactor');
   });
 
+  it('reads the first review from the review log, ignoring a reschedule', async () => {
+    const { client } = serverAnd();
+    const collected = await collectExtraction(new DesktopConnectAdapter(client), [mappingFor()]);
+    const neko = collected.entries.find((entry) => entry.rawFieldValue === '<b>ねこ</b>');
+
+    // The fake writes an `ease` of zero a day before the first real answer, as
+    // Anki does for a manual reschedule and for enabling FSRS.
+    expect(neko).toMatchObject({ firstReviewedAt: 1_760_000_000_000, intervalDays: 23 });
+  });
+
+  it('asks for reviews only of the cards that survived eligibility', async () => {
+    const { server, client } = serverAnd();
+    await collectExtraction(new DesktopConnectAdapter(client), [mappingFor()]);
+    const requested = server.requests
+      .filter((request) => request.action === 'getReviewsOfCards')
+      .flatMap((request) => (request.params['cards'] as number[] | undefined) ?? []);
+    const suspended = server.requests
+      .filter((request) => request.action === 'cardsInfo')
+      .flatMap((request) => (request.params['cards'] as number[] | undefined) ?? []);
+
+    expect(requested.length).toBeGreaterThan(0);
+    expect(requested.length).toBeLessThan(suspended.length);
+  });
+
+  it('keeps the refresh going when the endpoint cannot serve review history', async () => {
+    const { server, client } = serverAnd({ unimplementedActions: ['getReviewsOfCards'] });
+    const collected = await collectExtraction(new DesktopConnectAdapter(client), [mappingFor()]);
+    const neko = collected.entries.find((entry) => entry.rawFieldValue === '<b>ねこ</b>');
+
+    // Losing an optional signal must not cost the learner their vocabulary.
+    expect(neko).toMatchObject({ reps: 3, intervalDays: 23 });
+    expect(neko).not.toHaveProperty('firstReviewedAt');
+    expect(collected.warnings).toHaveLength(1);
+    // One refusal is enough to stop asking for the rest of the run.
+    expect(
+      server.requests.filter((request) => request.action === 'getReviewsOfCards'),
+    ).toHaveLength(1);
+  });
+
+  it('degrades the same way when review history fails or is malformed', async () => {
+    for (const options of [
+      { failingActions: ['getReviewsOfCards'] },
+      { malformedActions: ['getReviewsOfCards'] },
+    ]) {
+      const { client } = serverAnd(options);
+      const collected = await collectExtraction(new DesktopConnectAdapter(client), [mappingFor()]);
+      const neko = collected.entries.find((entry) => entry.rawFieldValue === '<b>ねこ</b>');
+
+      expect(neko).toMatchObject({ reps: 3 });
+      expect(neko).not.toHaveProperty('firstReviewedAt');
+    }
+  });
+
   it('stops at the first failure instead of continuing to the next mapping', async () => {
     const { client } = serverAnd({ failingActions: ['findCards'] });
     const collected = await collectExtraction(new DesktopConnectAdapter(client), [
@@ -169,6 +222,21 @@ describe('AndroidConnectAdapter', () => {
     expect(probed.ok).toBe(false);
     if (probed.ok) return;
     expect(probed.error.code).toBe('review-evidence-unsupported');
+  });
+
+  it('never asks the bridge for a review log it cannot have', async () => {
+    // AnkiDroid's content provider exposes no review log, so asking would spend
+    // a guaranteed refusal and a misleading warning on every refresh.
+    const { server, client } = serverAnd();
+    const collected = await collectExtraction(new AndroidConnectAdapter(client), [mappingFor()]);
+
+    expect(server.requests.filter((request) => request.action === 'getReviewsOfCards')).toEqual([]);
+    expect(collected.warnings).toEqual([]);
+
+    // Recency on Android rests on the interval instead.
+    const neko = collected.entries.find((entry) => entry.rawFieldValue === '<b>ねこ</b>');
+    expect(neko).toMatchObject({ intervalDays: 23 });
+    expect(neko).not.toHaveProperty('firstReviewedAt');
   });
 
   it('refuses to build a snapshot when note fields are unavailable', async () => {

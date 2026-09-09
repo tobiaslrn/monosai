@@ -9,6 +9,15 @@ import {
 /** Actions the fake refuses to answer, so unsupported-action can be exercised. */
 export interface FakeServerOptions {
   readonly unsupportedActions?: readonly string[];
+  /**
+   * Actions this endpoint does not implement at all.
+   *
+   * Distinct from `unsupportedActions`, which models an endpoint that knows the
+   * action and declines it: this is how a real endpoint answers a name it has
+   * never heard of, naming it back. The Android bridge answers
+   * `getReviewsOfCards` this way, because AnkiDroid has no review log.
+   */
+  readonly unimplementedActions?: readonly string[];
   readonly failingActions?: readonly string[];
   readonly malformedActions?: readonly string[];
   readonly permission?: 'granted' | 'denied';
@@ -28,12 +37,14 @@ interface ServerCard {
   readonly queue: number;
   readonly deckName: string;
   readonly noteTypeName: string;
+  readonly interval?: number;
+  readonly firstReviewedAt?: number;
 }
 
 /**
  * A deterministic stand-in for a local AnkiConnect endpoint.
  *
- * It answers the same eight actions the real add-on does, over the same
+ * It answers the same nine actions the real add-on does, over the same
  * `{result, error}` envelope, so the adapters under test run their real request
  * and parsing paths. Its search implementation is intentionally literal about
  * Anki's semantics — `deck:` includes subdecks and is narrowed by subtracting
@@ -64,6 +75,8 @@ export class FakeAnkiConnectServer {
           queue: card.queue ?? (card.suspended === true ? -1 : card.reps > 0 ? 2 : 0),
           deckName: card.deckName,
           noteTypeName: note.noteTypeName,
+          interval: card.intervalDays,
+          firstReviewedAt: card.firstReviewedAt,
         });
       }
     }
@@ -116,7 +129,10 @@ export class FakeAnkiConnectServer {
       return this.envelope(null, 'query-failed: collection is not open');
     }
 
-    const result = this.answer(action, params);
+    const result =
+      this.options.unimplementedActions?.includes(action) === true
+        ? undefined
+        : this.answer(action, params);
     return result === undefined
       ? this.envelope(null, `unsupported action: ${action}`)
       : this.envelope(result, null);
@@ -155,15 +171,34 @@ export class FakeAnkiConnectServer {
         const ids = new Set((params['cards'] as number[] | undefined) ?? []);
         return this.cards
           .filter((card) => ids.has(card.cardId))
-          .map(({ cardId, note, reps, lapses, factor, queue, deckName }) => ({
+          .map(({ cardId, note, reps, lapses, factor, queue, deckName, interval }) => ({
             cardId,
             note,
             reps,
             ...(lapses === undefined ? {} : { lapses }),
             ...(factor === undefined ? {} : { factor }),
+            ...(interval === undefined ? {} : { interval }),
             queue,
             deckName,
           }));
+      }
+      case 'getReviewsOfCards': {
+        const ids = new Set((params['cards'] as number[] | undefined) ?? []);
+        const reviews: Record<string, { id: number; ease: number }[]> = {};
+        for (const card of this.cards.filter((entry) => ids.has(entry.cardId))) {
+          if (card.firstReviewedAt === undefined) {
+            reviews[String(card.cardId)] = [];
+            continue;
+          }
+          // A manual reschedule before the first real answer, so a test proves
+          // an `ease` of zero is never mistaken for the day a word was learned.
+          reviews[String(card.cardId)] = [
+            { id: card.firstReviewedAt - 86_400_000, ease: 0 },
+            { id: card.firstReviewedAt, ease: 3 },
+            { id: card.firstReviewedAt + 86_400_000, ease: 2 },
+          ];
+        }
+        return reviews;
       }
       case 'notesInfo': {
         const ids = (params['notes'] as number[] | undefined) ?? [];

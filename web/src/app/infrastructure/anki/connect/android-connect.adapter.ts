@@ -183,7 +183,11 @@ export class AndroidConnectAdapter implements AnkiVocabularyProvider {
 
     const batchSize = ready.value.maxBatchSize ?? ANDROID_BATCH_SIZE;
     for (const mapping of mappings) {
-      for await (const event of extractMapping(this.client, mapping, batchSize, signal)) {
+      // AnkiDroid's content provider has no review log, so the bridge is never
+      // asked for one; recency falls back to the card interval on Android.
+      for await (const event of extractMapping(this.client, mapping, batchSize, signal, {
+        readsReviewHistory: false,
+      })) {
         yield event;
         if (event.kind === 'failed') {
           return;

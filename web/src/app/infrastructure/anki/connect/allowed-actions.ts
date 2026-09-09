@@ -6,7 +6,7 @@
  * typed as `AllowedAction`, so sending anything outside this list is a compile
  * error rather than something a review has to notice. Adding an entry here is
  * the only way to widen what Monosai can ask Anki to do, and every one of these
- * eight only reads.
+ * nine only reads.
  *
  * Never add an action that creates, changes, deletes, schedules, syncs, imports,
  * exports, stores media, or opens a window in the Anki UI.
@@ -20,6 +20,10 @@ export const ALLOWED_ACTIONS = [
   'findCards',
   'cardsInfo',
   'notesInfo',
+  // Reads the review log so a word can be weighted by when it was learned.
+  // AnkiDroid's content provider has no review log, so the bridge answers this
+  // as an unsupported action and the caller falls back to the card interval.
+  'getReviewsOfCards',
 ] as const;
 
 export type AllowedAction = (typeof ALLOWED_ACTIONS)[number];

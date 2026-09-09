@@ -6,16 +6,23 @@ UTF-8 responses are compact JSON with a final LF and always contain `result`
 and `error`. On error, result is null; on success, error is null. Empty arrays
 are successful results. Fixtures are literal wire bytes, not formatter input.
 
-| Action            | Parameters                | Result                                                       |
-| ----------------- | ------------------------- | ------------------------------------------------------------ |
-| version           | none                      | `6`                                                          |
-| requestPermission | none                      | `{permission:"granted",requireApiKey:false,version:6}`       |
-| deckNames         | none                      | array of deck names                                          |
-| modelNames        | none                      | array of note type names                                     |
-| modelFieldNames   | modelName: string         | field names in stored order                                  |
-| findCards         | query: Anki search string | card IDs, using the id-only projection                       |
-| cardsInfo         | cards: integer ID array   | cardId, note, reps, lapses, factor, deckName                 |
-| notesInfo         | notes: integer ID array   | noteId, modelName, fields keyed by name with value and order |
+| Action            | Parameters                | Result                                                        |
+| ----------------- | ------------------------- | ------------------------------------------------------------- |
+| version           | none                      | `6`                                                           |
+| requestPermission | none                      | `{permission:"granted",requireApiKey:false,version:6}`        |
+| deckNames         | none                      | array of deck names                                           |
+| modelNames        | none                      | array of note type names                                      |
+| modelFieldNames   | modelName: string         | field names in stored order                                   |
+| findCards         | query: Anki search string | card IDs, using the id-only projection                        |
+| cardsInfo         | cards: integer ID array   | cardId, note, reps, lapses, factor, queue, interval, deckName |
+| notesInfo         | notes: integer ID array   | noteId, modelName, fields keyed by name with value and order  |
+
+`interval` is Anki's `ivl` in days, and is omitted when the installed AnkiDroid
+does not expose the column. `getReviewsOfCards` is on Monosai's read allowlist
+for the desktop add-on but is deliberately not implemented here: AnkiDroid's
+content provider has no review log, so the bridge answers it as an unsupported
+action and the caller falls back to `interval` to judge how recently a word was
+learned.
 
 Unknown actions (including writes) return
 `{"result":null,"error":"unsupported action: <name>"}` without querying AnkiDroid.
