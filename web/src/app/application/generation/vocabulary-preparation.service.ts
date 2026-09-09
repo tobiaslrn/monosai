@@ -12,7 +12,7 @@ import type { StoryForm } from '../../domain/reading/reading';
 import type { SnapshotId, VocabularyItemId } from '../../domain/shared/ids';
 import { ok, type Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
-import { RANDOM_SOURCE, VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
+import { CLOCK, RANDOM_SOURCE, VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
 import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
 
 /** Items read per streamed batch, matching the reader's classification path. */
@@ -38,6 +38,7 @@ export interface PreparedVocabulary {
 export class VocabularyPreparationService {
   private readonly vocabulary = inject(VOCABULARY_REPOSITORY);
   private readonly random = inject(RANDOM_SOURCE);
+  private readonly clock = inject(CLOCK);
 
   /**
    * Reads the snapshot and samples a hidden palette.
@@ -86,6 +87,7 @@ export class VocabularyPreparationService {
       paletteSizeFor(form, candidates.length),
       priorityMode,
       this.random,
+      this.clock.now(),
     );
 
     return ok({

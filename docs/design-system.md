@@ -466,6 +466,32 @@ else. A page of Japanese that shifts while being read is unreadable.
 Every non-essential transition is removed under `prefers-reduced-motion`,
 including the expressive ones. Character is the first thing cut, not the last.
 
+### Illustration
+
+Two surfaces carry a drawn character: the Library, above the shelf, and the
+generation wait. Both are apparatus or empty space. **It is never drawn on the
+reading surface, on a failure, on a row, or in a banner** — a face beside a
+rejected key or a story that could not be saved reads as indifference, and a
+figure inside a row breaks the row shape the shelf depends on.
+
+It is always decorative: `aria-hidden`, never the only thing saying what is
+happening, and never a substitute for a sentence. The wait screen's stage name
+and its live region carry the meaning; the illustration only says that something
+still is.
+
+The generation wait is the one place a looping illustration is allowed, because
+it is the longest wait in the application and the loop is what shows the work is
+still open. It obeys the rules the rest of motion obeys. Its box is fixed and
+square-ish from the first frame, so nothing appears, moves, or resizes while the
+learner waits. Under `prefers-reduced-motion` it is replaced by a still frame of
+identical dimensions — not paused, not hidden — and the branch is made in the
+component rather than in CSS so the loop is never fetched at all.
+
+A character drawn on transparency is given its ground here rather than in the
+asset: flat ellipses with real edges, a wide pool and a smaller darker one where
+the figure meets it. Baking the shadow into the image would fix it to one
+theme's paper. The tone is a token, warm on light and black on dark.
+
 ## 8. Words
 
 ### Voice
