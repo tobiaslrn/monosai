@@ -44,8 +44,6 @@ export const vocabularySnapshotRowSchema = z.object({
     duplicateOccurrences: z.number().int().nonnegative(),
     uniqueExpressions: z.number().int().nonnegative(),
     sourceWarnings: z.array(z.string()).readonly(),
-    // Optional so a row written before this stat existed still validates.
-    entriesWithSchedulingRecency: z.number().int().nonnegative().optional(),
   }),
 });
 

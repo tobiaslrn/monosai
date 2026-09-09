@@ -17,7 +17,6 @@ import { StoryFormComponent } from './story-form.component';
     presetName="Starter forms"
     [ankiWordPriorityMode]="priorityMode()"
     (ankiWordPriorityModeChanged)="priorityMode.set($event)"
-    [wordsWithSchedulingRecency]="wordsWithRecency()"
     [vocabularyStrictness]="strictness()"
     (vocabularyStrictnessChanged)="strictness.set($event)"
     (generate)="generated = generated + 1"
@@ -27,7 +26,6 @@ class HostComponent {
   readonly canGenerate = signal(true);
   readonly disabled = signal(false);
   readonly priorityMode = signal<AnkiWordPriorityMode>('uniform');
-  readonly wordsWithRecency = signal(200);
   readonly strictness = signal<VocabularyStrictness>('standard');
   generated = 0;
 }
@@ -200,39 +198,6 @@ describe('StoryFormComponent', () => {
     expect(select?.textContent).toContain('Difficult');
     expect(element.querySelector('.word-selection')?.textContent).not.toContain('Inspiration only');
     expect(select?.getAttribute('aria-describedby')).toBe('mn-defaults-scope');
-  });
-
-  it('says when a snapshot cannot answer the selected mode', () => {
-    // The snapshot predates the scheduling evidence, so the mode would behave
-    // exactly as Uniform does. Saying nothing is what made the setting look
-    // broken in the first place.
-    const { element, fixture, host } = render();
-    host.wordsWithRecency.set(0);
-    host.priorityMode.set('recent');
-    fixture.detectChanges();
-
-    const hint = element.querySelector('[data-testid="word-selection-hint"]');
-    expect(hint?.textContent).toContain('Refresh your Anki source');
-    expect(element.querySelector('#mn-word-selection')?.getAttribute('aria-describedby')).toBe(
-      'mn-word-selection-hint',
-    );
-  });
-
-  it('stays quiet when the mode asks nothing of the snapshot', () => {
-    const { element, fixture, host } = render();
-    host.wordsWithRecency.set(0);
-    host.priorityMode.set('uniform');
-    fixture.detectChanges();
-
-    expect(element.querySelector('[data-testid="word-selection-hint"]')).toBeNull();
-  });
-
-  it('stays quiet when the snapshot carries the evidence', () => {
-    const { element, fixture, host } = render();
-    host.priorityMode.set('difficult');
-    fixture.detectChanges();
-
-    expect(element.querySelector('[data-testid="word-selection-hint"]')).toBeNull();
   });
 
   it('emits a changed mode and locks the select during generation', () => {

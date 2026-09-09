@@ -146,9 +146,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           <select
             id="mn-word-selection"
             data-testid="word-priority-select"
-            [attr.aria-describedby]="
-              needsRefreshForWordSelection() ? 'mn-word-selection-hint' : 'mn-defaults-scope'
-            "
+            aria-describedby="mn-defaults-scope"
             [value]="ankiWordPriorityMode()"
             [disabled]="disabled()"
             (change)="onWordPriorityMode($event)"
@@ -157,11 +155,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             <option value="recent">Recently learned</option>
             <option value="difficult">Difficult</option>
           </select>
-          @if (needsRefreshForWordSelection()) {
-            <p id="mn-word-selection-hint" class="mn-hint" data-testid="word-selection-hint">
-              Refresh your Anki source to use this.
-            </p>
-          }
         </div>
 
         <details class="mn-disclosure strictness">
@@ -595,13 +588,6 @@ export class StoryFormComponent {
   readonly snapshotSummary = input.required<string>();
   readonly presetName = input.required<string>();
   readonly ankiWordPriorityMode = input<AnkiWordPriorityMode>('uniform');
-  /**
-   * How many words in the current snapshot can say when they were learned.
-   *
-   * Zero means the snapshot predates that evidence, so Recently learned and
-   * Difficult have nothing to weight and behave exactly as Uniform does.
-   */
-  readonly wordsWithSchedulingRecency = input(0);
   readonly vocabularyStrictness = input<VocabularyStrictness>('standard');
   readonly preparationTargets = input<readonly PreparationLayer[]>(['english', 'grammar']);
   readonly audioReadiness = input<ConfigurationReadiness>('incomplete');
@@ -610,16 +596,6 @@ export class StoryFormComponent {
   readonly ankiWordPriorityModeChanged = output<AnkiWordPriorityMode>();
   readonly vocabularyStrictnessChanged = output<VocabularyStrictness>();
   readonly preparationTargetsChanged = output<readonly PreparationLayer[]>();
-
-  /**
-   * Whether the chosen mode would silently do nothing.
-   *
-   * Said only when it matters: a learner on Uniform is not asking for anything
-   * the snapshot cannot give, so the line would be noise.
-   */
-  protected readonly needsRefreshForWordSelection = computed(
-    () => this.ankiWordPriorityMode() !== 'uniform' && this.wordsWithSchedulingRecency() === 0,
-  );
 
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
   protected readonly lengthLabels = LENGTH_LABELS;

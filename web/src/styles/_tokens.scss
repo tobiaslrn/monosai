@@ -22,9 +22,6 @@
   --home-action-primary: #347e55;
   --home-action-hover: #2b6947;
   --home-art-brightness: 1;
-  /* The ground an illustration drawn on transparency sits on. Warm in light,
-   * because a neutral grey pool reads as dirt on warm paper. */
-  --mascot-ground: rgb(211 179 124 / 30%);
   --accent-secondary: #6f629a;
   --accent-secondary-soft: #ece8f5;
 
@@ -77,7 +74,6 @@
   --home-action-primary: var(--action-primary);
   --home-action-hover: var(--action-primary-hover);
   --home-art-brightness: 0.78;
-  --mascot-ground: rgb(0 0 0 / 42%);
   --accent-secondary: #b6aada;
   --accent-secondary-soft: #322e42;
 

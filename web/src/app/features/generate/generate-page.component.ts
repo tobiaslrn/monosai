@@ -113,7 +113,7 @@ function formatList(items: readonly string[]): string {
       } @else if (savedReading(); as reading) {
         <section class="result-screen" aria-label="Saved story details">
           <div class="ready-mark" aria-hidden="true">✓</div>
-          <p class="mn-eyebrow">Saved to your library</p>
+          <p class="mn-eyebrow eyebrow">Saved to your library</p>
           <p class="story-title" lang="ja" data-testid="saved-title">{{ reading.title }}</p>
           @if (preparingLabel(); as label) {
             <p class="mn-hint" data-testid="saved-preparation">{{ label }}</p>
@@ -145,26 +145,24 @@ function formatList(items: readonly string[]): string {
           data-testid="generation-screen"
         >
           <mn-generation-wait [state]="state()" />
-          <div class="leave">
-            <p class="mn-hint leave-hint" data-testid="leave-hint">
-              You can go back to your library while this is written. It keeps going, and the story
-              appears when it is ready.
-            </p>
-            @if (canCancel()) {
-              <button
-                type="button"
-                class="mn-button"
-                data-testid="cancel-generation"
-                (click)="cancel()"
-              >
-                Cancel
-              </button>
-            }
-          </div>
+          <p class="mn-hint leave-hint" data-testid="leave-hint">
+            You can go back to your library while this is written. It keeps going, and the story
+            appears when it is ready.
+          </p>
+          @if (canCancel()) {
+            <button
+              type="button"
+              class="mn-button cancel"
+              data-testid="cancel-generation"
+              (click)="cancel()"
+            >
+              Cancel
+            </button>
+          }
         </section>
       } @else if (state().kind === 'cancelled') {
         <section class="result-screen" aria-labelledby="mn-generate-cancelled-heading">
-          <p class="mn-eyebrow">Nothing was saved</p>
+          <p class="mn-eyebrow eyebrow">Nothing was saved</p>
           <h2 id="mn-generate-cancelled-heading">Generation stopped</h2>
           <p class="mn-hint">Your premise and instructions are still here.</p>
           <div class="actions">
@@ -187,7 +185,6 @@ function formatList(items: readonly string[]): string {
             [snapshotSummary]="snapshotSummary()"
             [presetName]="presetLine().presetName"
             [ankiWordPriorityMode]="appSettings.ankiWordPriorityMode()"
-            [wordsWithSchedulingRecency]="wordsWithSchedulingRecency()"
             (ankiWordPriorityModeChanged)="
               saveDefault(
                 appSettings.setAnkiWordPriorityMode($event),
@@ -360,11 +357,6 @@ export class GeneratePageComponent {
     const active = this.snapshots.active();
     return active === null ? 'No words yet' : `${String(active.uniqueEntryCount)} reviewed words`;
   });
-
-  /** Zero when the snapshot predates the evidence the priority modes weight. */
-  protected readonly wordsWithSchedulingRecency = computed(
-    () => this.snapshots.active()?.stats.entriesWithSchedulingRecency ?? 0,
-  );
 
   protected readonly canGenerate = computed(
     () => allPrerequisitesMet(this.checks()) && this.draft.isValid() && this.jobs.canStart(),

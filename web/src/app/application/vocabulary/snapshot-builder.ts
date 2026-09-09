@@ -161,9 +161,6 @@ export class SnapshotBuilder {
       duplicateOccurrences: merged.duplicateOccurrences,
       uniqueExpressions: merged.items.length,
       sourceWarnings: [...request.warnings],
-      entriesWithSchedulingRecency: merged.items.filter(
-        (item) => item.firstReviewedAt !== undefined || item.intervalDays !== undefined,
-      ).length,
     };
 
     return ok({
