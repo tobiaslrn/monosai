@@ -35,10 +35,16 @@ import {
   imports: [RouterLink, IconComponent],
   template: `
     <p class="standing" data-testid="source-standing">
-      <b data-testid="words-standing">{{ wordsValue() }}</b>
-      @if (standingDetail(); as detail) {
-        <span>{{ detail }}</span>
-      }
+      <a
+        class="standing-link"
+        routerLink="/reading-level/vocabulary"
+        data-testid="browse-vocabulary"
+      >
+        <b data-testid="words-standing">{{ wordsValue() }}</b>
+        @if (standingDetail(); as detail) {
+          <span>{{ detail }}</span>
+        }
+      </a>
     </p>
 
     <ul class="sources">
@@ -112,6 +118,20 @@ import {
       font-size: var(--text-md);
       font-weight: 700;
       font-variant-numeric: tabular-nums;
+    }
+
+    .standing-link {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 0 var(--space-2);
+      align-items: baseline;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .standing-link:hover b {
+      text-decoration: underline;
+      text-underline-offset: 3px;
     }
 
     .sources {

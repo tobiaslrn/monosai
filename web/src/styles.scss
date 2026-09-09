@@ -19,6 +19,18 @@
   display: block;
 }
 
+/* App-level filter dialogs centre on desktop and dock to the bottom on phones. */
+.cdk-overlay-pane.vocabulary-filter-pane {
+  max-width: calc(100vw - 2 * var(--space-4));
+}
+
+@media (max-width: 31.999em) {
+  .cdk-overlay-pane.vocabulary-filter-pane {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
 /*
  * A hover preview is a hint, not a surface: it must never swallow the pointer
  * event that would have pinned the word underneath it.

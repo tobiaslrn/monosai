@@ -359,6 +359,7 @@ export class PackageImportStore {
             ...(event.entry.rawFieldValue === undefined
               ? {}
               : { rawValue: event.entry.rawFieldValue }),
+            ...(event.entry.rawMeaning === undefined ? {} : { rawMeaning: event.entry.rawMeaning }),
             ...(event.entry.sourceNoteId === undefined
               ? {}
               : { sourceRecordId: event.entry.sourceNoteId }),

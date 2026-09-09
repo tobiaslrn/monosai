@@ -202,6 +202,55 @@ describe('DexieVocabularyRepository', () => {
     expect(captured.ok && captured.value).toBeNull();
   });
 
+  it('lists browser entries with readings, dates, meanings, and provenance at one revision', async () => {
+    const commit = snapshotFixture(52);
+    const sourceId = commit.provenance[0].sourceId;
+    const first = commit.items[0];
+    await repository.commitSnapshot({
+      ...commit,
+      items: [
+        {
+          ...first,
+          meaning: 'cat',
+          firstReviewedAt: 1_700_000_000_000,
+          lastReviewedAt: 1_700_100_000_000,
+          fsrsDifficulty: 5.5,
+          analyzedSequence: [{ surface: 'ねこ', readingHiragana: 'ねこ' }],
+        },
+        ...commit.items.slice(1),
+      ],
+      sources: [packageSourceFixture(sourceId)],
+    });
+
+    const listed = await repository.listVocabularyEntries();
+
+    expect(listed.ok).toBe(true);
+    if (!listed.ok || listed.value === null) {
+      throw new Error('expected browser vocabulary');
+    }
+    expect(listed.value.snapshot.revision).toBe(commit.snapshot.revision);
+    const listedEntry = listed.value.entries.find((entry) => entry.itemId === first.id);
+    expect(listedEntry).toMatchObject({
+      itemId: first.id,
+      visibleExpression: 'ねこ',
+      readingHiragana: 'ねこ',
+      meaning: 'cat',
+      fsrsDifficulty: 5.5,
+      firstReviewedAt: 1_700_000_000_000,
+      lastReviewedAt: 1_700_100_000_000,
+      sourceIds: [sourceId],
+    });
+    expect(listed.value.sources).toEqual([
+      expect.objectContaining({ sourceId, label: 'Anki · Core Japanese · Expression' }),
+    ]);
+  });
+
+  it('lists no browser vocabulary before a first snapshot exists', async () => {
+    const listed = await repository.listVocabularyEntries();
+
+    expect(listed.ok && listed.value).toBeNull();
+  });
+
   it('gives every committed replacement its own revision', async () => {
     const first = snapshotFixture(44);
     await repository.commitSnapshot(first);

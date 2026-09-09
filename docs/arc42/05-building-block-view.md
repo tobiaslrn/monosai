@@ -63,10 +63,12 @@ the providers, and owns the shell and the router, so it must be allowed to see e
 
 ## 5.2 Level 2: how each layer is divided
 
-The vocabulary application layer owns an unsaved Anki connection draft. The
-domain scores bounded visible field samples; both live adapters obtain them
-through validated read-only requests. Features render the mapping and preview,
-and confirmation uses the existing atomic vocabulary commit boundary.
+The vocabulary application layer owns an unsaved Anki connection draft and the
+read state for the vocabulary browser. The domain scores bounded visible field
+samples and applies the browser query; live adapters obtain their inputs
+through validated read-only requests. Features render mapping, preview, and
+the browse list, while confirmation uses the existing atomic vocabulary commit
+boundary.
 
 Every layer is divided by domain area, and the same area name recurs across layers. `reading`
 appears in `domain/`, in `application/`, and as a screen in `features/`; the layer rule decides which
@@ -94,6 +96,15 @@ The one exception is `features/vocabulary/source-page.component.ts`, which is a 
 one source, and everything it can be configured to do, so the list above it can stay a list
 ([ADR 0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)).
 The area names still line up across the layers; only the screen that renders them moved.
+
+The other vocabulary route is `features/vocabulary/vocabulary-browse-page.component.ts`. It reads
+`VocabularyRepository.listVocabularyEntries()` once, then keeps search, source, difficulty, date,
+and sort state in `application/vocabulary/vocabulary-browse.store.ts`. The page's row and filter
+sheet are presentation-only; the pure query rules remain in `domain/vocabulary/vocabulary-browse.ts`.
+The repository projects analyzed readings and joins provenance to each item in the same read
+transaction as the active snapshot and included source observations. The page uses the established
+variable-height virtual list model because an expanded native disclosure is taller than its closed
+row.
 
 Two entries are worth a note. There is no `domain/audio`, because playback is a platform behaviour
 rather than a rule about Japanese; what is durable about audio — the clip and its cache key — belongs

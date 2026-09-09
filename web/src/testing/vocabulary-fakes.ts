@@ -44,7 +44,9 @@ import {
 } from '../app/domain/vocabulary/vocabulary-source';
 import type {
   SnapshotCommit,
+  VocabularyBrowse,
   VocabularyCapture,
+  VocabularyEntry,
   VocabularyRepository,
 } from '../app/domain/vocabulary/vocabulary-repository';
 import { DomMarkupTextExtractor } from '../app/infrastructure/anki/dom-markup-text';
@@ -139,6 +141,54 @@ export class StubVocabularyRepository implements VocabularyRepository {
         expressions: this.items
           .filter((item) => item.snapshotId === snapshot.id)
           .map(toVocabularyExpression),
+        sources: included.map((source) => {
+          const cache = this.sources?.caches.get(source.id);
+          return {
+            sourceId: source.id,
+            label: source.label,
+            kind: source.kind,
+            ...(source.kind === 'text-list' ? {} : { providerKind: source.providerKind }),
+            automaticSync: source.kind === 'text-list' ? false : source.automaticSync,
+            refreshedAt: cache?.refreshedAt ?? null,
+            practice: cache?.practice ?? null,
+            warnings: cache?.warnings ?? [],
+          };
+        }),
+      }),
+    );
+  }
+
+  listVocabularyEntries(): Promise<Result<VocabularyBrowse | null, StorageError>> {
+    const snapshot = this.snapshots.find((entry) => entry.id === this.activeSnapshotId);
+    if (snapshot === undefined) {
+      return Promise.resolve(ok(null));
+    }
+    const snapshotItems = this.items.filter((item) => item.snapshotId === snapshot.id);
+    const entries: VocabularyEntry[] = snapshotItems.map((item) => ({
+      itemId: item.id,
+      visibleExpression: item.visibleExpression,
+      canonicalExpression: item.canonicalExpression,
+      ...(item.analyzedSequence.some((token) => token.readingHiragana !== undefined)
+        ? {
+            readingHiragana: item.analyzedSequence
+              .map((token) => token.readingHiragana ?? '')
+              .join(''),
+          }
+        : {}),
+      ...(item.meaning === undefined ? {} : { meaning: item.meaning }),
+      ...(item.fsrsDifficulty === undefined ? {} : { fsrsDifficulty: item.fsrsDifficulty }),
+      ...(item.firstReviewedAt === undefined ? {} : { firstReviewedAt: item.firstReviewedAt }),
+      ...(item.lastReviewedAt === undefined ? {} : { lastReviewedAt: item.lastReviewedAt }),
+      sourceIds: this.provenance
+        .filter((record) => record.vocabularyItemId === item.id)
+        .map((record) => record.sourceId)
+        .filter((sourceId, index, sourceIds) => sourceIds.indexOf(sourceId) === index),
+    }));
+    const included = [...(this.sources?.stored.values() ?? [])].filter(isIncludedInVocabulary);
+    return Promise.resolve(
+      ok({
+        snapshot,
+        entries,
         sources: included.map((source) => {
           const cache = this.sources?.caches.get(source.id);
           return {

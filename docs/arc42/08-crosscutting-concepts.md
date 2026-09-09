@@ -206,6 +206,12 @@ Two rules from it reach into the code directly: colour is never the only carrier
 dates and numbers format in one fixed locale, which
 `domain/shared/` declares.
 
+The vocabulary browser follows the same boundary: `listVocabularyEntries` returns the active
+snapshot, item projections, provenance source ids, and included source observations from one Dexie
+read transaction. Its store keeps only the current query and expanded item; the pure domain query
+function owns matching, filtering, and total sorting. A filter dialog is an app-level CDK Dialog,
+so focus, Escape, and focus return are shared overlay behaviour rather than reader-specific code.
+
 ## 8.10 Testing seams
 
 Selects with catalogue-driven options use Angular's `ngModel` select value accessor.

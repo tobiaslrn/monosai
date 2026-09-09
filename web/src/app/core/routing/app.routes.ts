@@ -93,6 +93,14 @@ export const APP_ROUTES: Routes = [
     loadComponent: () =>
       import('../../features/vocabulary/source-page.component').then((m) => m.SourcePageComponent),
   },
+  {
+    path: 'reading-level/vocabulary',
+    title: 'Your vocabulary · Monosai',
+    loadComponent: () =>
+      import('../../features/vocabulary/vocabulary-browse-page.component').then(
+        (m) => m.VocabularyBrowsePageComponent,
+      ),
+  },
   // The two routes this screen replaced. Links live in bookmarks, in the
   // service worker's share redirect, and in anything Android saved, so each
   // keeps working and lands on the half of the merged page it meant, carrying

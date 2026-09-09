@@ -1,5 +1,5 @@
 import { ok, type Result } from '../../../domain/shared/result';
-import type { SnapshotId } from '../../../domain/shared/ids';
+import type { SnapshotId, VocabularySourceId } from '../../../domain/shared/ids';
 import {
   toVocabularyExpression,
   type VocabularyExpression,
@@ -16,7 +16,9 @@ import { DEFAULT_APP_SETTINGS, type AppSettings } from '../../../domain/settings
 import type {
   CapturedSourceObservation,
   SnapshotCommit,
+  VocabularyBrowse,
   VocabularyCapture,
+  VocabularyEntry,
   VocabularyRepository,
 } from '../../../domain/vocabulary/vocabulary-repository';
 import { storageError, type StorageError } from '../../../domain/storage/storage-error';
@@ -282,6 +284,118 @@ export class DexieVocabularyRepository implements VocabularyRepository {
     });
   }
 
+  /**
+   * Reads the active items, their provenance, and current source observations
+   * in one transaction. A refresh landing between separate queries must not
+   * make the browser show words from one snapshot with sources from another.
+   */
+  async listVocabularyEntries(): Promise<Result<VocabularyBrowse | null, StorageError>> {
+    const listed = await runStorageWithRules('vocabulary.entries', () =>
+      this.db.transaction(
+        'r',
+        [
+          this.db.settings,
+          this.db.vocabularySnapshots,
+          this.db.vocabularyItems,
+          this.db.vocabularyProvenance,
+          this.db.vocabularySources,
+          this.db.vocabularySourceCaches,
+        ],
+        async () => {
+          const activeId = (await this.readAppSettingsWithinTransaction()).activeSnapshotId;
+          if (activeId === null) {
+            return null;
+          }
+          const snapshotRow = await this.db.vocabularySnapshots.get(activeId);
+          if (snapshotRow === undefined) {
+            return null;
+          }
+          const items = await this.db.vocabularyItems
+            .where('snapshotId')
+            .equals(activeId)
+            .toArray();
+          const itemIds = items.map((item) => item.id);
+          return {
+            snapshotRow,
+            items,
+            provenance:
+              itemIds.length === 0
+                ? []
+                : await this.db.vocabularyProvenance
+                    .where('vocabularyItemId')
+                    .anyOf(itemIds)
+                    .toArray(),
+            sources: await this.db.vocabularySources.toArray(),
+            caches: await this.db.vocabularySourceCaches.toArray(),
+          };
+        },
+      ),
+    );
+    if (!listed.ok) {
+      return listed;
+    }
+    if (listed.value === null) {
+      return ok(null);
+    }
+
+    const snapshot = parseRecord(
+      vocabularySnapshotRowSchema,
+      listed.value.snapshotRow,
+      'vocabularySnapshots',
+    );
+    if (!snapshot.ok) {
+      return snapshot;
+    }
+    const items = parseRecords(vocabularyItemRowSchema, listed.value.items, 'vocabularyItems');
+    if (!items.ok) {
+      return items;
+    }
+    const provenance = parseRecords(
+      vocabularyProvenanceRowSchema,
+      listed.value.provenance,
+      'vocabularyProvenance',
+    );
+    if (!provenance.ok) {
+      return provenance;
+    }
+    const sources = parseRecords(
+      vocabularySourceRowSchema,
+      listed.value.sources,
+      'vocabularySources',
+    );
+    if (!sources.ok) {
+      return sources;
+    }
+    const caches = parseRecords(
+      vocabularySourceCacheRowSchema,
+      listed.value.caches,
+      'vocabularySourceCaches',
+    );
+    if (!caches.ok) {
+      return caches;
+    }
+
+    const sourceIdsByItem = new Map<string, VocabularySourceId[]>();
+    for (const row of provenance.value) {
+      const sourceIds = sourceIdsByItem.get(row.vocabularyItemId) ?? [];
+      if (!sourceIds.includes(row.sourceId)) {
+        sourceIds.push(row.sourceId);
+      }
+      sourceIdsByItem.set(row.vocabularyItemId, sourceIds);
+    }
+    const cacheBySource = new Map(caches.value.map((cache) => [cache.sourceId, cache]));
+
+    return ok({
+      snapshot: toSnapshot(snapshot.value),
+      entries: items.value.map((row) =>
+        toVocabularyBrowseEntry(toItem(row), sourceIdsByItem.get(row.id) ?? []),
+      ),
+      sources: sources.value
+        .filter((source) => isIncludedInVocabulary(source))
+        .map((source) => toObservation(source, cacheBySource.get(source.id))),
+    });
+  }
+
   async listExpressionHashes(id: SnapshotId): Promise<Result<readonly string[], StorageError>> {
     const loaded = await runStorage('vocabularyItems.expressionHashes', () =>
       this.db.vocabularyItems.where('snapshotId').equals(id).toArray(),
@@ -420,6 +534,26 @@ function toSnapshot(row: VocabularySnapshotRow): VocabularySnapshot {
 function toItem(row: VocabularyItemRow): VocabularyItem {
   const { v: _version, ...item } = row;
   return item;
+}
+
+function toVocabularyBrowseEntry(
+  item: VocabularyItem,
+  sourceIds: readonly VocabularySourceId[],
+): VocabularyEntry {
+  const readingHiragana = item.analyzedSequence
+    .map((token) => token.readingHiragana ?? '')
+    .join('');
+  return {
+    itemId: item.id,
+    visibleExpression: item.visibleExpression,
+    canonicalExpression: item.canonicalExpression,
+    ...(readingHiragana === '' ? {} : { readingHiragana }),
+    ...(item.meaning === undefined ? {} : { meaning: item.meaning }),
+    ...(item.fsrsDifficulty === undefined ? {} : { fsrsDifficulty: item.fsrsDifficulty }),
+    ...(item.firstReviewedAt === undefined ? {} : { firstReviewedAt: item.firstReviewedAt }),
+    ...(item.lastReviewedAt === undefined ? {} : { lastReviewedAt: item.lastReviewedAt }),
+    sourceIds,
+  };
 }
 
 /**

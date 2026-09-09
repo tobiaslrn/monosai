@@ -157,10 +157,10 @@ describe('ReadingLevelPageComponent', () => {
     await settle(fixture);
     await vi.waitFor(async () => {
       await settle(fixture);
-      expect(element.querySelectorAll('mn-anki-mapping-draft select')).toHaveLength(3);
+      expect(element.querySelectorAll('mn-anki-mapping-draft select')).toHaveLength(4);
     });
     const selects = element.querySelectorAll<HTMLSelectElement>('mn-anki-mapping-draft select');
-    for (const [index, value] of ['Core Japanese', 'Basic', 'Expression'].entries()) {
+    for (const [index, value] of ['Core Japanese', 'Basic', 'Expression', 'Meaning'].entries()) {
       selects[index].value = value;
       selects[index].dispatchEvent(new Event('change'));
       await settle(fixture);

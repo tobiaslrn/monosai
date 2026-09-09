@@ -330,7 +330,7 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
           // content from the next commit, which is all a revision has to do.
           const createdAt = snapshot['createdAt'];
           snapshot['revision'] = `legacy-${typeof createdAt === 'number' ? createdAt : 0}`;
-      });
+        });
     },
   },
   {

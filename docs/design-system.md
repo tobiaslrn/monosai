@@ -138,6 +138,28 @@ than substituting the other date.
 Rows on one shelf are the same height, and a row standing in for work still
 running matches the row it will become.
 
+### Lists with filters
+
+A list that helps the learner find a known item keeps one quiet column and a
+compact toolbar: search first, the most useful quick filter beside it, and a
+labelled Filters action for the less frequent choices. The current sort is
+visible as one line of text, and the result count is both visible near the list
+and announced through a polite live region.
+
+Rows show the value that makes them recognisable, the meaning or secondary
+line beneath it, and only the metadata needed to choose between rows. A row
+that has more to say uses native `details`/`summary`; its closed summary still
+states the current value. Expanded detail may include provenance links, but it
+does not create a second row action hierarchy. Long lists may mount a measured
+window of variable-height rows as long as the document keeps native list
+semantics and the expanded row remains fully usable.
+
+Search and filters have explicit empty-results states. Search text and the
+active filters remain visible when there are no matches, with a Reset action
+near the result. A list that has never been filled and a list whose current
+snapshot is empty are separate states, and both offer the one action that can
+change that fact.
+
 The home Library is a compact shelf exception: date groups share one pair of
 card edges, with quiet flat cards, a small circular mark, a system-sans title,
 and a character count. A short Read or Unread badge and overflow sit opposite.
@@ -239,14 +261,27 @@ presents its contents plainly.
 Where a link can point inside a disclosure, arriving there opens it. A deep link
 that lands the learner on a long page next to a closed fold has not arrived.
 
+### App-level overlays and sheets
+
+An app-level modal surface uses the CDK Dialog pattern: focus moves into the
+surface, `Escape` dismisses it, outside dismissal follows the surface's
+semantics, and focus returns to the control that opened it. The surface is a
+centred card on a wide viewport. On a small viewport it becomes a bottom sheet
+that is full width, owns its scrolling, and uses the sheet radius; it does not
+need an anchor in the page underneath it. The backdrop and focus treatment are
+shared, while the content decides whether its safe dismissal is Cancel, Close,
+or a committed primary action.
+
 ### Saved-story controls
 
 The reader header has Back, the title, Listen, and Story options. It carries no
 story progress marker: the reading surface and audio transport already expose
 the positions they can report accurately. Appearance, preparation, and
-maintenance share Story options rather than separate header buttons. The panel
-is anchored on desktop and docked as a bottom sheet on small screens; it stays
-within the viewport, scrolls when necessary, and restores focus when dismissed.
+maintenance share Story options rather than separate header buttons. The
+reader's panel is anchored on desktop and docked as a bottom sheet on small
+screens; it stays within the viewport, scrolls when necessary, and restores
+focus when dismissed. It follows the app-level overlay pattern above while
+retaining its reader anchor.
 Reading appearance uses compact switch rows, and story content is one quiet
 grouped list with pill actions. Deleting the story itself is not here: it is on
 the library card, which is the one place it lives.

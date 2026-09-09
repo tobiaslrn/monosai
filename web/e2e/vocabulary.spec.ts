@@ -50,13 +50,13 @@ async function addLiveAnki(page: Page, confirm = true): Promise<void> {
   if (confirm) await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
 }
 
-function ankiAnswers(expressions: readonly string[]) {
+function ankiAnswers(expressions: readonly string[], meanings = expressions.map(() => 'meaning')) {
   return {
     version: 6,
     requestPermission: { permission: 'granted', requireApiKey: false, version: 6 },
     deckNames: ['Core Japanese'],
     modelNames: ['Basic'],
-    modelFieldNames: ['Expression'],
+    modelFieldNames: ['Expression', 'Meaning'],
     findCards: expressions.map((_, index) => index + 1),
     cardsInfo: expressions.map((_, index) => ({
       cardId: index + 1,
@@ -68,7 +68,10 @@ function ankiAnswers(expressions: readonly string[]) {
     notesInfo: expressions.map((expression, index) => ({
       noteId: index + 10,
       modelName: 'Basic',
-      fields: { Expression: { value: expression, order: 0 } },
+      fields: {
+        Expression: { value: expression, order: 0 },
+        Meaning: { value: meanings[index] ?? 'meaning', order: 1 },
+      },
     })),
   };
 }
@@ -163,6 +166,50 @@ test.describe('vocabulary', () => {
     const snapshots = await readSnapshots(page);
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0].sourceKinds).toEqual(['text-list', 'anki-connect']);
+    await expectNoSeriousAccessibilityViolations(page);
+  });
+
+  test('browses, filters, expands, and follows a meaning-mapped Anki entry @smoke @mobile', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await stubAnkiConnect(page, ankiAnswers(['食べる', '見る'], ['eat', 'see']));
+    await openVocabulary(page);
+    await addTextList(page, 'My textbook', '飲む');
+    await expect(page.getByTestId('words-standing')).toHaveText('1 word', {
+      timeout: 60_000,
+    });
+
+    await addLiveAnki(page, false);
+    const draft = page.getByRole('region', { name: 'Review Anki source' });
+    await draft.getByLabel('Meaning field').selectOption('Meaning');
+    await draft.getByRole('button', { name: 'Preview vocabulary', exact: true }).click();
+    await draft.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
+    await expect(page.getByTestId('words-standing')).toHaveText('3 words', {
+      timeout: 60_000,
+    });
+
+    await page.getByTestId('browse-vocabulary').click();
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Vocabulary');
+    await page.getByTestId('vocabulary-search').fill('eat');
+    await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(1);
+    await expect(page.locator('mn-vocabulary-browse-row')).toContainText('eat');
+
+    await page.getByTestId('vocabulary-search').fill('');
+    await page.getByTestId('vocabulary-filters').click();
+    const filters = page.getByRole('dialog', { name: 'Filters' });
+    await expect(filters).toBeVisible();
+    await filters.getByLabel('First studied').selectOption('last-7-days');
+    await filters.getByRole('button', { name: /Show/ }).click();
+    await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Reset filters' }).click();
+    await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(3);
+
+    const eatRow = page.locator('mn-vocabulary-browse-row').filter({ hasText: 'eat' });
+    await eatRow.locator('summary').click();
+    await expect(eatRow).toContainText('Contributing sources');
+    await eatRow.getByRole('link', { name: /Anki/ }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Anki');
     await expectNoSeriousAccessibilityViolations(page);
   });
 

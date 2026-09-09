@@ -1,5 +1,5 @@
 import type { Result } from '../shared/result';
-import type { SnapshotId, VocabularySourceId } from '../shared/ids';
+import type { SnapshotId, VocabularyItemId, VocabularySourceId } from '../shared/ids';
 import type { StorageError } from '../storage/storage-error';
 import type { PracticeObservationBasis } from '../anki/practice-evidence';
 import type {
@@ -87,6 +87,27 @@ export interface VocabularyCapture {
   readonly sources: readonly CapturedSourceObservation[];
 }
 
+/** One stored item as the vocabulary browser presents it. */
+export interface VocabularyEntry {
+  readonly itemId: VocabularyItemId;
+  readonly visibleExpression: string;
+  readonly canonicalExpression: string;
+  /** Kana reading joined from the analyzed tokens; absent when none was read. */
+  readonly readingHiragana?: string;
+  readonly meaning?: string;
+  readonly fsrsDifficulty?: number;
+  readonly firstReviewedAt?: number;
+  readonly lastReviewedAt?: number;
+  readonly sourceIds: readonly VocabularySourceId[];
+}
+
+export interface VocabularyBrowse {
+  readonly snapshot: VocabularySnapshot;
+  readonly entries: readonly VocabularyEntry[];
+  /** Only sources currently included, as `captureVocabulary` reports them. */
+  readonly sources: readonly CapturedSourceObservation[];
+}
+
 export interface VocabularyRepository {
   /** Replaces the current vocabulary atomically; at most one snapshot remains. */
   commitSnapshot(commit: SnapshotCommit): Promise<Result<VocabularySnapshot, StorageError>>;
@@ -99,6 +120,8 @@ export interface VocabularyRepository {
    * revision. Null when no vocabulary has been built yet.
    */
   captureVocabulary(): Promise<Result<VocabularyCapture | null, StorageError>>;
+  /** Reads browser entries and their source observations at one revision. */
+  listVocabularyEntries(): Promise<Result<VocabularyBrowse | null, StorageError>>;
   /** Lists canonical expression hashes for comparing two vocabulary contents. */
   listExpressionHashes(id: SnapshotId): Promise<Result<readonly string[], StorageError>>;
   /** Streams matcher input in bounded batches instead of one large array. */

@@ -312,3 +312,47 @@ Reaching the frontier is a stall inside the resource, reported as `waiting` and 
 It ends when the next clip is appended. It is the one gap left: a stall long enough for the page to
 be frozen still stops the reading, which is why the shared concurrency bound — and the position
 ordering that fills the front of the reading first — exists.
+
+## 6.6 Browse vocabulary
+
+The vocabulary standing on the reading-level page is the entry point to the
+browser. The page reads the active snapshot, item rows, provenance, and source
+observations in one repository transaction. Search, source, difficulty, date,
+and sort are then applied locally by pure domain rules; opening the filter
+sheet does not contact Anki or change stored data. Expanding a row reveals the
+reading, full first-studied date, and source links from that same capture.
+
+```mermaid
+sequenceDiagram
+    actor Learner
+    participant Level as Reading-level page
+    participant Browser as Vocabulary browse store
+    participant Repo as Vocabulary repository
+    participant Db as Dexie
+    participant Query as Browse query rules
+    participant Sheet as CDK filter dialog
+
+    Learner->>Level: open the vocabulary standing
+    Level->>Browser: load
+    Browser->>Repo: listVocabularyEntries()
+    Repo->>Db: one read transaction over snapshot, items,<br/>provenance, sources, and caches
+    Db-->>Repo: one consistent vocabulary
+    Repo-->>Browser: entries, revision, and included source observations
+    Browser->>Query: apply default query
+    Query-->>Level: sorted visible rows and match count
+    Learner->>Level: search or choose a source
+    Level->>Browser: update query
+    Browser->>Query: filter and sort locally
+    Query-->>Level: rows and polite match announcement
+    Learner->>Level: open Filters
+    Level->>Sheet: open with current query and entries
+    Learner->>Sheet: choose filters, then Show N words
+    Sheet-->>Level: draft query
+    Level->>Browser: apply query
+    Learner->>Level: expand a row or follow a source
+    Level-->>Learner: native details or source page
+```
+
+An empty result caused by search or filters leaves the controls in place and
+offers Reset. A missing or failed repository read is reported with retry; it
+never replaces the learner's stored vocabulary.
