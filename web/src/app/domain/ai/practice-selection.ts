@@ -94,6 +94,14 @@ export interface PracticeSelection {
    * it as a target would ask the model for a word outside the allowlist.
    */
   readonly unavailablePins: readonly string[];
+  /**
+   * Pinned expressions that did not fit inside the current limit.
+   *
+   * Shortening a story shrinks the list, and dropping somebody's own choices
+   * silently to make room is the one thing a manual pick must never suffer. The
+   * conflict is named so the learner can drop a pin or restore the length.
+   */
+  readonly excessPins: readonly string[];
 }
 
 /**
@@ -206,16 +214,17 @@ export function selectPracticeTargets(input: PracticeSelectionInput): PracticeSe
   if (input.mode === 'free') {
     // Free reading has no targets at all, so a pin cannot be unavailable in it
     // and the learner is not asked about a word this story never promised.
-    return { ...base, targets: [], unavailablePins: [] };
+    return { ...base, targets: [], unavailablePins: [], excessPins: [] };
   }
 
   const pinned = [...new Set(input.pinned ?? [])];
   const unavailablePins = pinned.filter((expression) => !byExpression.has(expression));
-  const manual = pinned
-    .flatMap((expression) => {
-      const candidate = byExpression.get(expression);
-      return candidate === undefined ? [] : [candidate];
-    })
+  const resolvedPins = pinned.flatMap((expression) => {
+    const candidate = byExpression.get(expression);
+    return candidate === undefined ? [] : [candidate];
+  });
+  const excessPins = resolvedPins.slice(limit).map((candidate) => candidate.canonicalExpression);
+  const manual = resolvedPins
     .slice(0, limit)
     .map((candidate) => toTarget(candidate, input.windowDays, 'manual'));
 
@@ -228,7 +237,7 @@ export function selectPracticeTargets(input: PracticeSelectionInput): PracticeSe
     taken,
   ).map((candidate) => toTarget(candidate, input.windowDays, 'automatic'));
 
-  return { ...base, targets: [...manual, ...automatic], unavailablePins };
+  return { ...base, targets: [...manual, ...automatic], unavailablePins, excessPins };
 }
 
 function selectAutomatically(
