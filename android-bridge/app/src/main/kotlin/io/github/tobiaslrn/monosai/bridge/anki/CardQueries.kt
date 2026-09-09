@@ -8,7 +8,7 @@ class CardQueries(private val provider: ReadQueries, private val decks: DeckQuer
 
     /**
      * Resolved once, because AnkiDroid builds differ in whether they expose `ivl`
-     * and an unknown projection column makes the provider reject the whole query.
+     * and an unknown projection column makes the provider reject the query.
      */
     private var columns: Array<String> = LEGACY_COLUMNS
 
@@ -25,12 +25,28 @@ class CardQueries(private val provider: ReadQueries, private val decks: DeckQuer
     fun find(query: String): List<Long> = provider.query("cards", arrayOf("_id"), query) { it.requiredLong("_id") }
     fun info(ids: List<Long>): List<CardRead> {
         if (ids.isEmpty()) return emptyList()
+        val found = read("cid:${ids.joinToString(",")}").associateBy { it.cardId }
+        return ids.mapNotNull { found[it] }
+    }
+
+    private fun read(selection: String): List<CardRead> {
+        val active = columns
+        if (active === LEGACY_COLUMNS) return rows(LEGACY_COLUMNS, selection)
+        // Some AnkiDroid builds reject an unknown projection column only once a row
+        // is produced, so the empty probe cannot prove `ivl`. Give the optional
+        // signal up permanently rather than lose every card to it.
+        return runCatching { rows(active, selection) }.getOrElse {
+            columns = LEGACY_COLUMNS
+            rows(LEGACY_COLUMNS, selection)
+        }
+    }
+
+    private fun rows(projection: Array<String>, selection: String): List<CardRead> {
         val names = decks.namesById()
-        val found = provider.query("cards", columns, "cid:${ids.joinToString(",")}") {
+        return provider.query("cards", projection, selection) {
             fun count(column: String): Int = it.requiredInt(column)
             CardRead(it.requiredLong("_id"), it.requiredLong("note_id"), count("reps"), count("lapses"), count("sm2_factor"), count("queue"),
                 names[it.requiredLong("deck_id")] ?: throw AnkiReadException(ReadFailure.QUERY), it.optionalInt("ivl"))
-        }.associateBy { it.cardId }
-        return ids.mapNotNull { found[it] }
+        }
     }
 }

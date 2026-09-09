@@ -11,14 +11,16 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class QueriesTest {
-    private class Provider(private val interval: Int? = null) : ReadQueries {
+    private class Provider(private val interval: Int? = null, private val rejectsIntervalOnlyOnRows: Boolean = false) : ReadQueries {
         val queries = mutableListOf<Triple<String, List<String>, String?>>()
         val cursors = mutableListOf<Cursor>()
         override fun checkPermission() = Unit
         override fun <T> query(path: String, columns: Array<String>, selection: String?, row: (Cursor) -> T): List<T> {
             queries.add(Triple(path, columns.toList(), selection))
-            // An AnkiDroid without the column rejects the projection outright.
-            if (path == "cards" && interval == null && columns.contains("ivl"))
+            // An AnkiDroid without the column rejects the projection outright, or -
+            // when it fills rows itself - only once a row is actually produced.
+            if (path == "cards" && interval == null && columns.contains("ivl") &&
+                (!rejectsIntervalOnlyOnRows || selection != "cid:0"))
                 throw AnkiReadException(ReadFailure.EVIDENCE)
             val data: Map<String, Any> = when (path) {
                 "cards" -> mapOf("_id" to 7L, "note_id" to 5L, "deck_id" to 2L, "reps" to 3, "lapses" to 0, "sm2_factor" to 0, "queue" to -1,
@@ -66,6 +68,20 @@ class QueriesTest {
         cards.probe()
         assertEquals(listOf(CardRead(7, 5, 3, 0, 0, -1, "日本語::動詞", null)), cards.info(listOf(7)))
         assertFalse(provider.queries.last().second.contains("ivl"))
+    }
+
+    @Test fun fallsBackWhenTheIntervalIsRejectedOnlyOnceRowsAreProduced() {
+        // The empty probe cannot prove `ivl` on a provider that fills rows itself,
+        // so the first real batch is where the projection has to give way.
+        val provider = Provider(interval = null, rejectsIntervalOnlyOnRows = true)
+        val cards = CardQueries(provider, DeckQueries(provider))
+        cards.probe()
+        assertEquals(listOf(CardRead(7, 5, 3, 0, 0, -1, "日本語::動詞", null)), cards.info(listOf(7)))
+        assertFalse(provider.queries.last().second.contains("ivl"))
+        // The downgrade sticks, so later batches cost no failed query.
+        val attempted = provider.queries.count { it.second.contains("ivl") }
+        assertEquals(listOf(CardRead(7, 5, 3, 0, 0, -1, "日本語::動詞", null)), cards.info(listOf(7)))
+        assertEquals(attempted, provider.queries.count { it.second.contains("ivl") })
     }
 
     @Test fun emptyBatchesNeverBecomeUnboundedSearches() {
