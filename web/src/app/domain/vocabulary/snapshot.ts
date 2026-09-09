@@ -13,6 +13,14 @@ export interface SnapshotStats {
   readonly duplicateOccurrences: number;
   readonly uniqueExpressions: number;
   readonly sourceWarnings: readonly string[];
+  /**
+   * How many words carry evidence of when they were learned.
+   *
+   * Optional because snapshots taken before that evidence existed cannot report
+   * it. Zero and absent mean the same thing to a reader: the priority modes have
+   * nothing to weight until this source is refreshed.
+   */
+  readonly entriesWithSchedulingRecency?: number;
 }
 
 /** Complete current vocabulary result of one successful refresh. */

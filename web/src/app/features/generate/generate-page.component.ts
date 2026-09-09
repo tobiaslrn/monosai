@@ -187,6 +187,7 @@ function formatList(items: readonly string[]): string {
             [snapshotSummary]="snapshotSummary()"
             [presetName]="presetLine().presetName"
             [ankiWordPriorityMode]="appSettings.ankiWordPriorityMode()"
+            [wordsWithSchedulingRecency]="wordsWithSchedulingRecency()"
             (ankiWordPriorityModeChanged)="
               saveDefault(
                 appSettings.setAnkiWordPriorityMode($event),
@@ -359,6 +360,11 @@ export class GeneratePageComponent {
     const active = this.snapshots.active();
     return active === null ? 'No words yet' : `${String(active.uniqueEntryCount)} reviewed words`;
   });
+
+  /** Zero when the snapshot predates the evidence the priority modes weight. */
+  protected readonly wordsWithSchedulingRecency = computed(
+    () => this.snapshots.active()?.stats.entriesWithSchedulingRecency ?? 0,
+  );
 
   protected readonly canGenerate = computed(
     () => allPrerequisitesMet(this.checks()) && this.draft.isValid() && this.jobs.canStart(),
