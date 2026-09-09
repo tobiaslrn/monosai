@@ -1,13 +1,22 @@
 import { ok, type Result } from '../../../domain/shared/result';
 import type { SnapshotId } from '../../../domain/shared/ids';
-import type {
-  VocabularyItem,
-  VocabularyProvenance,
-  VocabularySnapshot,
+import {
+  toVocabularyExpression,
+  type VocabularyExpression,
+  type VocabularyItem,
+  type VocabularyProvenance,
+  type VocabularySnapshot,
 } from '../../../domain/vocabulary/snapshot';
+import { isIncludedInVocabulary } from '../../../domain/vocabulary/vocabulary-source';
+import {
+  mergePracticeEvidence,
+  type PracticeEvidence,
+} from '../../../domain/anki/practice-evidence';
 import { DEFAULT_APP_SETTINGS, type AppSettings } from '../../../domain/settings/settings';
 import type {
+  CapturedSourceObservation,
   SnapshotCommit,
+  VocabularyCapture,
   VocabularyRepository,
 } from '../../../domain/vocabulary/vocabulary-repository';
 import { storageError, type StorageError } from '../../../domain/storage/storage-error';
@@ -23,6 +32,8 @@ import {
   vocabularySnapshotRowSchema,
   type VocabularyItemRow,
   type VocabularySnapshotRow,
+  type VocabularySourceCacheRow,
+  type VocabularySourceRow,
 } from '../schemas/vocabulary.schema';
 import { assertUniqueIds } from './integrity';
 import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
@@ -110,6 +121,7 @@ export class DexieVocabularyRepository implements VocabularyRepository {
           }
           const current = await this.readAppSettingsWithinTransaction();
           const id = current.activeSnapshotId ?? commit.snapshot.id;
+          await this.assertExpectedRevisionWithinTransaction(commit, id);
           replacement = id === commit.snapshot.id ? commit.snapshot : { ...commit.snapshot, id };
           const items = commit.items.map((item) => ({ ...item, snapshotId: id }));
 
@@ -177,6 +189,93 @@ export class DexieVocabularyRepository implements VocabularyRepository {
     }
     const parsed = parseRecord(vocabularySnapshotRowSchema, loaded.value, 'vocabularySnapshots');
     return parsed.ok ? ok(toSnapshot(parsed.value)) : parsed;
+  }
+
+  /**
+   * Reads the vocabulary, its expressions, and its sources at one revision.
+   *
+   * One read transaction, so nothing in the result can describe two different
+   * vocabularies. Paging these queries outside a transaction would let a
+   * refresh replace every row between two batches and produce a capture that is
+   * half one vocabulary and half another, with nothing afterwards able to tell.
+   *
+   * Items are projected to expressions inside the adapter, so analyzed token
+   * sequences never travel with a capture: this is what a selection needs in
+   * order to choose and to explain itself, not matcher input.
+   */
+  async captureVocabulary(): Promise<Result<VocabularyCapture | null, StorageError>> {
+    const captured = await runStorageWithRules('vocabulary.capture', () =>
+      this.db.transaction(
+        'r',
+        [
+          this.db.settings,
+          this.db.vocabularySnapshots,
+          this.db.vocabularyItems,
+          this.db.vocabularySources,
+          this.db.vocabularySourceCaches,
+        ],
+        async () => {
+          const activeId = (await this.readAppSettingsWithinTransaction()).activeSnapshotId;
+          if (activeId === null) {
+            return null;
+          }
+          const snapshotRow = await this.db.vocabularySnapshots.get(activeId);
+          if (snapshotRow === undefined) {
+            return null;
+          }
+          return {
+            snapshotRow,
+            items: await this.db.vocabularyItems.where('snapshotId').equals(activeId).toArray(),
+            sources: await this.db.vocabularySources.toArray(),
+            caches: await this.db.vocabularySourceCaches.toArray(),
+          };
+        },
+      ),
+    );
+    if (!captured.ok) {
+      return captured;
+    }
+    if (captured.value === null) {
+      return ok(null);
+    }
+
+    const snapshot = parseRecord(
+      vocabularySnapshotRowSchema,
+      captured.value.snapshotRow,
+      'vocabularySnapshots',
+    );
+    if (!snapshot.ok) {
+      return snapshot;
+    }
+    const items = parseRecords(vocabularyItemRowSchema, captured.value.items, 'vocabularyItems');
+    if (!items.ok) {
+      return items;
+    }
+    const sources = parseRecords(
+      vocabularySourceRowSchema,
+      captured.value.sources,
+      'vocabularySources',
+    );
+    if (!sources.ok) {
+      return sources;
+    }
+    const caches = parseRecords(
+      vocabularySourceCacheRowSchema,
+      captured.value.caches,
+      'vocabularySourceCaches',
+    );
+    if (!caches.ok) {
+      return caches;
+    }
+
+    const cachesBySource = new Map(caches.value.map((cache) => [cache.sourceId, cache]));
+    return ok({
+      snapshot: toSnapshot(snapshot.value),
+      expressions: mergeExpressions(items.value.map(toItem)),
+      sources: sources.value
+        .filter((source) => isIncludedInVocabulary(source))
+        .map((source) => toObservation(source, cachesBySource.get(source.id))),
+    });
   }
 
   async listExpressionHashes(id: SnapshotId): Promise<Result<readonly string[], StorageError>> {
@@ -249,6 +348,34 @@ export class DexieVocabularyRepository implements VocabularyRepository {
     );
   }
 
+  /**
+   * Refuses a build prepared against a vocabulary that has since been replaced.
+   *
+   * Checked inside the write transaction, because the window between reading
+   * and writing is the whole problem: another tab's refresh, or a source the
+   * learner has just removed, must not be undone by content assembled before
+   * either happened. The caller re-prepares against what is stored rather than
+   * retrying the same stale build.
+   */
+  private async assertExpectedRevisionWithinTransaction(
+    commit: SnapshotCommit,
+    id: SnapshotId,
+  ): Promise<void> {
+    if (commit.expectedRevision === undefined) {
+      return;
+    }
+    const stored = await this.db.vocabularySnapshots.get(id);
+    // An absent vocabulary is not a conflict: there is nothing newer to lose.
+    if (stored !== undefined && stored.revision !== commit.expectedRevision) {
+      throw new StorageRuleViolation(
+        storageError(
+          'conflict',
+          'Your vocabulary changed while this one was being prepared. Nothing was overwritten.',
+        ),
+      );
+    }
+  }
+
   private async readAppSettingsWithinTransaction(): Promise<AppSettings> {
     const existing = await this.db.settings.get(SETTINGS_KEYS.app);
     const current = existing
@@ -289,4 +416,65 @@ function toSnapshot(row: VocabularySnapshotRow): VocabularySnapshot {
 function toItem(row: VocabularyItemRow): VocabularyItem {
   const { v: _version, ...item } = row;
   return item;
+}
+
+/**
+ * One entry per canonical expression, merging what several items proved.
+ *
+ * A snapshot already merges exact duplicates, so this is normally one item per
+ * expression. It merges anyway rather than assuming that, because a capture
+ * that quietly dropped a second contribution would drop its evidence too.
+ */
+function mergeExpressions(items: readonly VocabularyItem[]): readonly VocabularyExpression[] {
+  const byExpression = new Map<string, VocabularyExpression>();
+  for (const item of items) {
+    const expression = toVocabularyExpression(item);
+    const existing = byExpression.get(expression.canonicalExpression);
+    if (existing === undefined) {
+      byExpression.set(expression.canonicalExpression, expression);
+      continue;
+    }
+    byExpression.set(expression.canonicalExpression, {
+      ...existing,
+      itemIds: [...existing.itemIds, ...expression.itemIds],
+      ...practiceOf(existing, expression),
+      ...highestDifficulty(existing, expression),
+    });
+  }
+  return [...byExpression.values()];
+}
+
+function practiceOf(
+  left: VocabularyExpression,
+  right: VocabularyExpression,
+): { practice?: PracticeEvidence } {
+  const merged = mergePracticeEvidence(left.practice, right.practice);
+  return Object.keys(merged).length === 0 ? {} : { practice: merged };
+}
+
+function highestDifficulty(
+  left: VocabularyExpression,
+  right: VocabularyExpression,
+): { fsrsDifficulty?: number } {
+  const known = [left.fsrsDifficulty, right.fsrsDifficulty].filter(
+    (value): value is number => value !== undefined,
+  );
+  return known.length === 0 ? {} : { fsrsDifficulty: Math.max(...known) };
+}
+
+/** What one included source contributed, and what its last read could prove. */
+function toObservation(
+  source: VocabularySourceRow,
+  cache: VocabularySourceCacheRow | undefined,
+): CapturedSourceObservation {
+  return {
+    sourceId: source.id,
+    label: source.label,
+    kind: source.kind,
+    ...(source.kind === 'text-list' ? {} : { providerKind: source.providerKind }),
+    automaticSync: source.kind === 'text-list' ? false : source.automaticSync,
+    refreshedAt: cache?.refreshedAt ?? null,
+    practice: cache?.practice ?? null,
+    warnings: cache?.warnings ?? [],
+  };
 }

@@ -33,6 +33,7 @@ class HostComponent {}
 function snapshotOf(uniqueEntryCount: number): VocabularySnapshot {
   return {
     id: snapshotId('snapshot-1'),
+    revision: 'revision-1',
     createdAt: 1_700_000_000_000,
     status: 'complete',
     uniqueEntryCount,

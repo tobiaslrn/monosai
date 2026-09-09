@@ -37,8 +37,17 @@ export interface PrepareInput {
 
 export interface PreparedVocabularySync {
   readonly commit: SnapshotCommit;
-  /** True when the merged canonical expression set differs from the active snapshot. */
+  /**
+   * True when the merged canonical expression set differs from the active
+   * snapshot.
+   *
+   * A narrow question, and not the one anything watching practice should ask:
+   * an evening of study changes what every one of those words proves while
+   * leaving the set of words identical. Read the committed revision for that.
+   */
   readonly vocabularyChanged: boolean;
+  /** What this build came from, so a conflicted commit can build it again. */
+  readonly input: PrepareInput;
 }
 
 /** Builds the one active vocabulary from independent, persisted source caches. */
@@ -119,11 +128,20 @@ export class VocabularySyncService {
       return err(built.error);
     }
     return ok({
-      commit: { ...built.value.content, sources: pendingSources, caches: replacementCaches },
+      commit: {
+        ...built.value.content,
+        sources: pendingSources,
+        caches: replacementCaches,
+        // Building analyzes every expression, which is slow enough that another
+        // tab can commit meanwhile. Naming the revision this was built from
+        // makes the write refuse rather than undo that commit.
+        ...(current.value === null ? {} : { expectedRevision: current.value.revision }),
+      },
       vocabularyChanged: !sameExpressionHashes(
         currentExpressionHashes,
         built.value.content.items.map((item) => item.expressionHash),
       ),
+      input,
     });
   }
 
@@ -132,11 +150,25 @@ export class VocabularySyncService {
    *
    * One repository call, so one transaction: sources, caches, snapshot, items,
    * provenance, and activation either all land or none do.
+   *
+   * A build that lost the race to another writer is not written over the top.
+   * It is prepared once more against what is now stored and committed again, so
+   * the other tab's refresh or the source the learner has just removed survives.
+   * The rebuilt content can differ from the one a caller had already shown; that
+   * is the cost of not discarding somebody else's work, and a second conflict is
+   * reported rather than retried forever.
    */
   async commit(
     prepared: PreparedVocabularySync,
   ): Promise<Result<VocabularySnapshot, VocabularySyncFailure>> {
-    const committed = await this.vocabulary.commitSnapshot(prepared.commit);
+    let committed = await this.vocabulary.commitSnapshot(prepared.commit);
+    if (!committed.ok && committed.error.code === 'conflict') {
+      const reprepared = await this.prepare(prepared.input);
+      if (!reprepared.ok) {
+        return reprepared;
+      }
+      committed = await this.vocabulary.commitSnapshot(reprepared.value.commit);
+    }
     if (!committed.ok) {
       return committed;
     }

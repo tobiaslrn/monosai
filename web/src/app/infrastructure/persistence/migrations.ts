@@ -310,6 +310,29 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
         });
     },
   },
+  {
+    // The stored vocabulary now says which committed replacement it came from.
+    // No index changes: a revision is read with the snapshot it belongs to and
+    // compared by value, never queried across rows.
+    version: 13,
+    stores: V11_STORES,
+    upgrade: async (transaction) => {
+      await transaction
+        .table('vocabularySnapshots')
+        .toCollection()
+        .modify((row: unknown) => {
+          const snapshot = requireRecord(row, 'vocabulary snapshot');
+          if (typeof snapshot['revision'] === 'string' && snapshot['revision'] !== '') {
+            return;
+          }
+          // Derived rather than random, so re-running the upgrade cannot make
+          // a capture look stale that is not. Any token distinguishes this
+          // content from the next commit, which is all a revision has to do.
+          const createdAt = snapshot['createdAt'];
+          snapshot['revision'] = `legacy-${typeof createdAt === 'number' ? createdAt : 0}`;
+        });
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].version;

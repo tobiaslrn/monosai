@@ -57,6 +57,12 @@ const practiceObservationBasisSchema = z.object({
 export const vocabularySnapshotRowSchema = z.object({
   v: rowVersionSchema,
   id: snapshotIdSchema,
+  /**
+   * Opaque, not a uuid: rows written before revisions existed were backfilled
+   * with a token derived from the row itself, which is exactly as usable for
+   * saying "this is no longer what you captured".
+   */
+  revision: nonEmptyString,
   createdAt: timestampSchema,
   status: z.literal('complete'),
   uniqueEntryCount: z.number().int().nonnegative(),

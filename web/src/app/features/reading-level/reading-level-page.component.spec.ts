@@ -188,6 +188,7 @@ describe('ReadingLevelPageComponent', () => {
     const { element, fixture } = await render();
     beds.vocabulary.snapshots.push({
       id: snapshotId('snapshot-1'),
+      revision: 'revision-1',
       createdAt: 1_700_000_000_000,
       status: 'complete',
       uniqueEntryCount: 12,

@@ -168,6 +168,10 @@ export class SnapshotBuilder {
       content: {
         snapshot: {
           id,
+          // A fresh token for this build. The id is reused so stories keep one
+          // link to the current vocabulary; the revision is what says the
+          // content behind that link is not the content someone captured.
+          revision: this.ids.nextId(),
           createdAt: this.clock.now(),
           status: 'complete',
           uniqueEntryCount: merged.items.length,

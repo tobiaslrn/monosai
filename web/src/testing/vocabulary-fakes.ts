@@ -25,10 +25,11 @@ import { storageError, type StorageError } from '../app/domain/storage/storage-e
 import type { AppSettings, ReaderPreferences } from '../app/domain/settings/settings';
 import { DEFAULT_APP_SETTINGS, DEFAULT_READER_PREFERENCES } from '../app/domain/settings/settings';
 import type { SettingsRepository } from '../app/domain/settings/settings-repository';
-import type {
-  VocabularyItem,
-  VocabularyProvenance,
-  VocabularySnapshot,
+import {
+  toVocabularyExpression,
+  type VocabularyItem,
+  type VocabularyProvenance,
+  type VocabularySnapshot,
 } from '../app/domain/vocabulary/snapshot';
 import type {
   SharedPackage,
@@ -36,12 +37,14 @@ import type {
 } from '../app/domain/platform/shared-package-inbox.port';
 import { SHARED_PACKAGE_INBOX } from '../app/domain/platform/shared-package-inbox.port';
 import type { SourceMappingRepository } from '../app/domain/vocabulary/source-mapping-repository';
-import type {
-  VocabularySource,
-  VocabularySourceCache,
+import {
+  isIncludedInVocabulary,
+  type VocabularySource,
+  type VocabularySourceCache,
 } from '../app/domain/vocabulary/vocabulary-source';
 import type {
   SnapshotCommit,
+  VocabularyCapture,
   VocabularyRepository,
 } from '../app/domain/vocabulary/vocabulary-repository';
 import { DomMarkupTextExtractor } from '../app/infrastructure/anki/dom-markup-text';
@@ -73,6 +76,18 @@ export class StubVocabularyRepository implements VocabularyRepository {
       // Exactly like the real transaction aborting: nothing is written and the
       // The current vocabulary is untouched.
       return Promise.resolve({ ok: false, error: this.commitFailure });
+    }
+    const stored = this.snapshots.find((snapshot) => snapshot.id === this.activeSnapshotId);
+    if (commit.expectedRevision !== undefined && stored !== undefined) {
+      if (stored.revision !== commit.expectedRevision) {
+        return Promise.resolve({
+          ok: false,
+          error: storageError(
+            'conflict',
+            'Your vocabulary changed while this one was being prepared. Nothing was overwritten.',
+          ),
+        });
+      }
     }
     for (const source of commit.sources) {
       this.sources?.stored.set(source.id, source);
@@ -109,6 +124,35 @@ export class StubVocabularyRepository implements VocabularyRepository {
   listExpressionHashes(id: SnapshotId): Promise<Result<readonly string[], StorageError>> {
     return Promise.resolve(
       ok(this.items.filter((item) => item.snapshotId === id).map((item) => item.expressionHash)),
+    );
+  }
+
+  captureVocabulary(): Promise<Result<VocabularyCapture | null, StorageError>> {
+    const snapshot = this.snapshots.find((entry) => entry.id === this.activeSnapshotId);
+    if (snapshot === undefined) {
+      return Promise.resolve(ok(null));
+    }
+    const included = [...(this.sources?.stored.values() ?? [])].filter(isIncludedInVocabulary);
+    return Promise.resolve(
+      ok({
+        snapshot,
+        expressions: this.items
+          .filter((item) => item.snapshotId === snapshot.id)
+          .map(toVocabularyExpression),
+        sources: included.map((source) => {
+          const cache = this.sources?.caches.get(source.id);
+          return {
+            sourceId: source.id,
+            label: source.label,
+            kind: source.kind,
+            ...(source.kind === 'text-list' ? {} : { providerKind: source.providerKind }),
+            automaticSync: source.kind === 'text-list' ? false : source.automaticSync,
+            refreshedAt: cache?.refreshedAt ?? null,
+            practice: cache?.practice ?? null,
+            warnings: cache?.warnings ?? [],
+          };
+        }),
+      }),
     );
   }
 

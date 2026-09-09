@@ -311,6 +311,7 @@ function sequentialIds(): { nextId: () => string } {
 function snapshotFixture(uniqueEntryCount: number): VocabularySnapshot {
   return {
     id: GENERATION_SNAPSHOT_ID,
+    revision: 'revision-1',
     createdAt: FIXED_NOW,
     status: 'complete',
     uniqueEntryCount,

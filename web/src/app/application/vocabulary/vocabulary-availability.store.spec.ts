@@ -54,6 +54,7 @@ describe('VocabularyAvailabilityStore', () => {
     await repository.commitSnapshot({
       snapshot: {
         id: active,
+        revision: 'revision-1',
         createdAt: 1,
         status: 'complete',
         uniqueEntryCount: 0,
@@ -93,6 +94,7 @@ describe('VocabularyAvailabilityStore', () => {
     await repository.commitSnapshot({
       snapshot: {
         id: snapshotId('55555555-5555-4555-8555-555555555555'),
+        revision: 'revision-1',
         createdAt: 1_700_000_000_000,
         status: 'complete',
         uniqueEntryCount: 340,

@@ -13,6 +13,7 @@ const ACTIVE = snapshotId('33333333-3333-4333-8333-333333333333');
 function snapshot(uniqueEntryCount: number): VocabularySnapshot {
   return {
     id: ACTIVE,
+    revision: 'revision-1',
     createdAt: 1_700_000_000_000,
     status: 'complete',
     uniqueEntryCount,

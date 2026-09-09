@@ -42,6 +42,7 @@ function snapshotOf(
 ): VocabularySnapshot {
   return {
     id: snapshotId('snapshot-1'),
+    revision: 'revision-1',
     createdAt,
     status: 'complete',
     uniqueEntryCount,

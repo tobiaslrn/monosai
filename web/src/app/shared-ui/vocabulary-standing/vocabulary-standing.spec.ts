@@ -15,6 +15,7 @@ const NOON = new Date(2026, 7, 21, 12, 0, 0).getTime();
 function snapshotOf(overrides: Partial<VocabularySnapshot>): VocabularySnapshot {
   return {
     id: snapshotId('snapshot-1'),
+    revision: 'revision-1',
     createdAt: NOON,
     status: 'complete',
     uniqueEntryCount: 340,

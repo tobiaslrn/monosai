@@ -298,6 +298,7 @@ export function snapshotFixture(seed: number, entryCount = 3): SnapshotCommit {
 
   const snapshot: VocabularySnapshot = {
     id,
+    revision: `revision-${seed}`,
     createdAt: 1_700_000_100_000,
     status: 'complete',
     uniqueEntryCount: items.length,

@@ -110,6 +110,144 @@ describe('DexieVocabularyRepository', () => {
     expect(reloaded.filter((item) => 'practice' in (item as object))).toHaveLength(1);
   });
 
+  it('captures the vocabulary, its revision, and what its sources proved together', async () => {
+    const commit = snapshotFixture(41);
+    const sourceId = commit.provenance[0].sourceId;
+    const observed = {
+      recentAnswers: 'available',
+      recentDifficulty: 'available',
+      learningState: 'available',
+      fsrsDifficulty: 'unavailable',
+      windowBasis: 'anki-study-days',
+      observedAt: 1_700_000_000_000,
+    } as const;
+    await repository.commitSnapshot({
+      ...commit,
+      items: [
+        { ...commit.items[0], practice: { answeredWithinDays: 1 }, fsrsDifficulty: 8 },
+        ...commit.items.slice(1),
+      ],
+      sources: [packageSourceFixture(sourceId)],
+      caches: [
+        {
+          sourceId,
+          refreshedAt: 1_700_000_000_000,
+          entries: [],
+          warnings: ['Difficulty was unavailable.'],
+          practice: observed,
+        },
+      ],
+    });
+
+    const captured = await repository.captureVocabulary();
+
+    expect(captured.ok).toBe(true);
+    if (!captured.ok || captured.value === null) {
+      throw new Error('expected a capture');
+    }
+    expect(captured.value.snapshot.revision).toBe(commit.snapshot.revision);
+    expect(captured.value.expressions).toHaveLength(commit.items.length);
+    expect(captured.value.expressions).toContainEqual(
+      expect.objectContaining({
+        canonicalExpression: commit.items[0].canonicalExpression,
+        itemIds: [commit.items[0].id],
+        practice: { answeredWithinDays: 1 },
+        fsrsDifficulty: 8,
+      }),
+    );
+    // A word no source spoke about carries no evidence key, so an absence
+    // cannot be read back as a proven "not practised".
+    expect(
+      captured.value.expressions.filter((expression) => 'practice' in expression),
+    ).toHaveLength(1);
+    expect(captured.value.sources).toEqual([
+      expect.objectContaining({
+        sourceId,
+        label: 'Anki · Core Japanese · Expression',
+        refreshedAt: 1_700_000_000_000,
+        practice: observed,
+        warnings: ['Difficulty was unavailable.'],
+      }),
+    ]);
+  });
+
+  it('says a source was never read rather than inventing an observation for it', async () => {
+    const commit = snapshotFixture(42);
+    const sourceId = commit.provenance[0].sourceId;
+    await repository.commitSnapshot({ ...commit, sources: [packageSourceFixture(sourceId)] });
+
+    const captured = await repository.captureVocabulary();
+
+    expect(captured.ok && captured.value?.sources).toEqual([
+      expect.objectContaining({ sourceId, refreshedAt: null, practice: null }),
+    ]);
+  });
+
+  it('leaves an excluded source out of the capture that explains the words', async () => {
+    const commit = snapshotFixture(43);
+    const sourceId = commit.provenance[0].sourceId;
+    await repository.commitSnapshot({
+      ...commit,
+      sources: [{ ...packageSourceFixture(sourceId), enabled: false }],
+    });
+
+    const captured = await repository.captureVocabulary();
+
+    expect(captured.ok && captured.value?.sources).toEqual([]);
+  });
+
+  it('captures nothing at all before a first vocabulary exists', async () => {
+    const captured = await repository.captureVocabulary();
+
+    expect(captured.ok && captured.value).toBeNull();
+  });
+
+  it('gives every committed replacement its own revision', async () => {
+    const first = snapshotFixture(44);
+    await repository.commitSnapshot(first);
+    const second = snapshotFixture(45);
+
+    const committed = await repository.commitSnapshot(second);
+
+    expect(committed.ok && committed.value.revision).toBe(second.snapshot.revision);
+    expect(committed.ok && committed.value.revision).not.toBe(first.snapshot.revision);
+    // The id is reused so generated stories keep one link; the revision is what
+    // tells a capture that the words behind that link have been replaced.
+    expect(committed.ok && committed.value.id).toBe(first.snapshot.id);
+  });
+
+  it('refuses a build prepared against a vocabulary that has since been replaced', async () => {
+    const first = snapshotFixture(46);
+    await repository.commitSnapshot(first);
+    const newer = snapshotFixture(47);
+    await repository.commitSnapshot(newer);
+
+    const stale = snapshotFixture(48);
+    const refused = await repository.commitSnapshot({
+      ...stale,
+      expectedRevision: first.snapshot.revision,
+    });
+
+    expect(refused.ok).toBe(false);
+    expect(!refused.ok && refused.error.code).toBe('conflict');
+    // The newer commit survives untouched: refusing is the point of the guard.
+    const active = await repository.getActiveSnapshot();
+    expect(active.ok && active.value?.revision).toBe(newer.snapshot.revision);
+  });
+
+  it('accepts a build prepared against the revision that is actually stored', async () => {
+    const first = snapshotFixture(49);
+    await repository.commitSnapshot(first);
+    const next = snapshotFixture(50);
+
+    const committed = await repository.commitSnapshot({
+      ...next,
+      expectedRevision: first.snapshot.revision,
+    });
+
+    expect(committed.ok).toBe(true);
+  });
+
   it('leaves the active snapshot unchanged when a commit fails', async () => {
     const first = snapshotFixture(2);
     await repository.commitSnapshot(first);

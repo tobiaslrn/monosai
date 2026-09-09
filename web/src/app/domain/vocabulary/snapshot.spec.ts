@@ -10,6 +10,7 @@ import {
 function snapshotWith(uniqueEntryCount: number): VocabularySnapshot {
   return {
     id: snapshotId('00000000-0000-4000-8000-000000000001'),
+    revision: 'revision-1',
     createdAt: 0,
     status: 'complete',
     uniqueEntryCount,

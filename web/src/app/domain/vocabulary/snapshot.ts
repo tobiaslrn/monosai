@@ -19,6 +19,17 @@ export interface SnapshotStats {
 /** Complete current vocabulary result of one successful refresh. */
 export interface VocabularySnapshot {
   readonly id: SnapshotId;
+  /**
+   * Which committed replacement this content came from.
+   *
+   * The id is deliberately stable so a generated story keeps one link to the
+   * current vocabulary, which means it cannot say whether the words behind it
+   * have changed. This can: every commit writes a new opaque token, including
+   * one that changed only what a source proved about recent study. Anything
+   * that captured a vocabulary compares this to find out that its capture is
+   * stale, and a commit can require it to refuse to overwrite a newer one.
+   */
+  readonly revision: string;
   readonly createdAt: number;
   readonly status: 'complete';
   readonly uniqueEntryCount: number;
@@ -49,6 +60,43 @@ export interface VocabularyItem extends AnkiSchedulingSignals {
    * absence here is only a real "not practised" for a source that could answer.
    */
   readonly practice?: PracticeEvidence;
+}
+
+/**
+ * One canonical expression as the whole vocabulary knows it.
+ *
+ * The projection practice selection works from: identity, what the learner
+ * sees, the items a matcher can recognize it through, and the evidence about
+ * it. Deliberately without the analyzed token sequence, which is matcher input
+ * and would make every capture carry the largest column in the table.
+ */
+export interface VocabularyExpression {
+  readonly canonicalExpression: string;
+  readonly visibleExpression: string;
+  readonly expressionHash: string;
+  /**
+   * Every vocabulary item carrying this expression, captured with it.
+   *
+   * One today, because a snapshot merges exact duplicates. Kept as a list
+   * because a selection has to stay explicable after a later refresh gives the
+   * same word different item ids.
+   */
+  readonly itemIds: readonly VocabularyItemId[];
+  readonly practice?: PracticeEvidence;
+  /** Anki's own memory-state difficulty, on the 1-10 scale, where known. */
+  readonly fsrsDifficulty?: number;
+}
+
+/** Reads one stored item as the expression it stands for. */
+export function toVocabularyExpression(item: VocabularyItem): VocabularyExpression {
+  return {
+    canonicalExpression: item.canonicalExpression,
+    visibleExpression: item.visibleExpression,
+    expressionHash: item.expressionHash,
+    itemIds: [item.id],
+    ...(item.practice === undefined ? {} : { practice: item.practice }),
+    ...(item.fsrsDifficulty === undefined ? {} : { fsrsDifficulty: item.fsrsDifficulty }),
+  };
 }
 
 export interface VocabularyProvenance {
