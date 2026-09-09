@@ -258,6 +258,21 @@ const STALE_REASONS: Record<StaleReason, string> = {
                       }
                     </select>
                   </label>
+                  <label class="mn-field">
+                    <span>Meaning</span>
+                    <select
+                      class="mn-control"
+                      aria-label="Meaning field"
+                      [disabled]="refresh.isBusy()"
+                      [ngModel]="source.meaningFieldName ?? ''"
+                      (change)="setMeaningField(source, $event)"
+                    >
+                      <option value="">Not mapped</option>
+                      @for (field of fieldsFor(source.noteTypeName); track field) {
+                        <option [value]="field">{{ field }}</option>
+                      }
+                    </select>
+                  </label>
                 </div>
                 @if (hasChildren(source.deckName)) {
                   <label class="check">
@@ -529,7 +544,7 @@ export class SourcePageComponent {
     if (source.kind === 'text-list') {
       return '';
     }
-    return `Reading the ${source.expressionFieldName} field of ${source.noteTypeName}`;
+    return `Reading the ${source.expressionFieldName} field of ${source.noteTypeName}; meaning ${source.meaningFieldName ?? 'not mapped'}`;
   }
 
   /** Whether the mapping controls have a live catalog to offer values from. */
@@ -594,12 +609,24 @@ export class SourcePageComponent {
       expressionFieldName: fields.includes(source.expressionFieldName)
         ? source.expressionFieldName
         : (fields[0] ?? ''),
+      meaningFieldName:
+        source.meaningFieldName !== undefined && fields.includes(source.meaningFieldName)
+          ? source.meaningFieldName
+          : undefined,
     });
     await this.applyConnectedSourceChange();
   }
 
   protected async setField(source: SourceMapping, event: Event): Promise<void> {
     await this.store.update(source.id, { expressionFieldName: readValue(event) });
+    await this.applyConnectedSourceChange();
+  }
+
+  protected async setMeaningField(source: SourceMapping, event: Event): Promise<void> {
+    const meaningFieldName = readValue(event);
+    await this.store.update(source.id, {
+      meaningFieldName: meaningFieldName === '' ? undefined : meaningFieldName,
+    });
     await this.applyConnectedSourceChange();
   }
 

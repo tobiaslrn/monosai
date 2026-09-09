@@ -59,6 +59,20 @@ import { AnkiConnectionStore } from '../../application/vocabulary/anki-connectio
             }
           </select>
         </label>
+        <label class="mn-field"
+          ><span>Meaning field</span>
+          <select
+            aria-label="Meaning field"
+            [ngModel]="store.selection().meaningFieldName ?? ''"
+            (ngModelChange)="store.change({ meaningFieldName: $event || undefined })"
+            [disabled]="store.refresh.isBusy() && !store.preview()"
+          >
+            <option value="">Not mapped</option>
+            @for (field of fields(); track field) {
+              <option [value]="field">{{ field }}</option>
+            }
+          </select>
+        </label>
         @if (store.preview()) {
           @for (warning of store.preview()?.stats?.sourceWarnings; track $index) {
             <p class="mn-hint" role="status">{{ warning }}</p>

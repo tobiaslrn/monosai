@@ -11,6 +11,8 @@ export interface AnkiMappingSuggestion {
   readonly deckName: string;
   readonly noteTypeName: string;
   readonly expressionFieldName: string;
+  /** Chosen by the learner; field sampling deliberately never guesses it. */
+  readonly meaningFieldName?: string;
 }
 
 /** Samples are visible text. Require predominantly Japanese, never catalogue order. */

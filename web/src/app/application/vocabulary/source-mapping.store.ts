@@ -17,6 +17,7 @@ export interface NewMapping {
   readonly deckScope: DeckScope;
   readonly noteTypeName: string;
   readonly expressionFieldName: string;
+  readonly meaningFieldName?: string;
 }
 
 export type MappingEdit = Partial<NewMapping>;
@@ -90,6 +91,9 @@ export class SourceMappingStore {
       deckScope: mapping.deckScope,
       noteTypeName: mapping.noteTypeName,
       expressionFieldName: mapping.expressionFieldName,
+      ...(mapping.meaningFieldName === undefined
+        ? {}
+        : { meaningFieldName: mapping.meaningFieldName }),
       enabled: true,
       createdAt: now,
       updatedAt: now,
