@@ -142,6 +142,88 @@ describe('AutomaticAnkiSyncCoordinator', () => {
     expect(beds.vocabulary.commitCount).toBe(1);
   });
 
+  describe('coming back from Anki', () => {
+    /** Puts the coordinator in the state a hidden tab leaves it in. */
+    function goHidden(): void {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'visible',
+      });
+    }
+
+    beforeEach(() => {
+      coordinator.start();
+    });
+
+    it('reads once past the cooldown, because the answers are why they returned', async () => {
+      configureAutomaticSource();
+      await coordinator.trigger(true);
+      expect(beds.vocabulary.commitCount).toBe(1);
+
+      goHidden();
+      await coordinator.resume();
+
+      expect(beds.vocabulary.commitCount).toBe(2);
+    });
+
+    it('does not read again for every focus event inside one visible session', async () => {
+      configureAutomaticSource();
+      goHidden();
+      await coordinator.resume();
+      const afterReturn = beds.vocabulary.commitCount;
+
+      await coordinator.resume();
+      await coordinator.trigger();
+
+      expect(beds.vocabulary.commitCount).toBe(afterReturn);
+    });
+
+    it('queues exactly one follow-up behind a read that began before they returned', async () => {
+      configureAutomaticSource();
+      const running = coordinator.trigger(true);
+      goHidden();
+
+      await Promise.all([running, coordinator.resume(), coordinator.resume()]);
+
+      // The first read cannot contain what was answered while the tab was
+      // hidden, so one more happens - and only one, however many events fired.
+      expect(beds.vocabulary.commitCount).toBe(2);
+    });
+  });
+
+  it('publishes a revision for every commit, including a scheduling-only one', async () => {
+    configureAutomaticSource();
+
+    await coordinator.trigger(true);
+    const first = coordinator.committedRevision();
+
+    providerFactory = () =>
+      new FakeAnkiProvider(
+        {
+          ...CONTRACT_COLLECTION,
+          notes: CONTRACT_COLLECTION.notes.map((note) => ({
+            ...note,
+            cards: note.cards.map((card) =>
+              card.reps > 0 ? { ...card, lapses: (card.lapses ?? 0) + 1 } : card,
+            ),
+          })),
+        },
+        { kind: 'desktop-connect' },
+      );
+    await coordinator.trigger(true);
+
+    expect(first).not.toBeNull();
+    // The words are identical and the banner stays quiet, but what they prove
+    // about recent study is not, and a practice list has to notice.
+    expect(coordinator.status()).toEqual({ kind: 'idle' });
+    expect(coordinator.committedRevision()).not.toBe(first);
+  });
+
   it('treats unavailable Anki as non-destructive', async () => {
     configureAutomaticSource();
     providerFactory = () =>

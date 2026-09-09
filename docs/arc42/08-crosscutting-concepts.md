@@ -13,6 +13,13 @@ A **vocabulary snapshot** is the one current, deduplicated set of expressions th
 reviewed and not suspended. A refresh replaces it atomically; a failed or cancelled refresh leaves the previous one
 untouched.
 
+Its id is stable across refreshes so a generated story keeps one link to the current vocabulary,
+which means the id cannot say whether the words behind it changed. Each committed replacement
+therefore also writes a **revision**: an opaque token that changes on every commit, including one
+where the word list is identical and only what those words prove about recent study is new. Anything
+that captured a vocabulary compares the revision to learn its capture is stale, and a commit can name
+the revision it was prepared against so a slow build cannot overwrite a newer one.
+
 Every token in the reader carries one of three statuses:
 
 | Status | Meaning |

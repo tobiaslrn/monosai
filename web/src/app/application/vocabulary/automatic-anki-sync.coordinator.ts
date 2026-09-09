@@ -23,7 +23,18 @@ export type AutomaticAnkiSyncStatus =
   | { readonly kind: 'waiting'; readonly message: string }
   | { readonly kind: 'attention'; readonly message: string };
 
-/** Opportunistically refreshes configured live Anki sources while Monosai is open. */
+/**
+ * Opportunistically refreshes configured live Anki sources while Monosai is
+ * open, and is the one place a return from Anki is handled.
+ *
+ * The cooldown exists so an app that regains focus repeatedly does not hammer a
+ * bridge, but the learner who studied three cards and came straight back is
+ * exactly the case it would get wrong: their answers are the reason they
+ * returned. A genuine hidden-to-visible transition therefore reads once past
+ * the cooldown, and every other trigger in that moment — the focus event that
+ * follows, a page asking on entry — joins that one read instead of starting
+ * another.
+ */
 @Injectable()
 export class AutomaticAnkiSyncCoordinator {
   private readonly repository = inject(VOCABULARY_SOURCE_REPOSITORY);
@@ -33,17 +44,31 @@ export class AutomaticAnkiSyncCoordinator {
   private readonly view = inject(DOCUMENT).defaultView;
 
   private readonly statusSignal = signal<AutomaticAnkiSyncStatus>({ kind: 'idle' });
+  private readonly revisionSignal = signal<string | null>(null);
   private started = false;
   private lastAttemptAt = Number.NEGATIVE_INFINITY;
   private inFlight: Promise<void> | null = null;
+  private followUp: Promise<void> | null = null;
+  private hidden = false;
 
   readonly status = this.statusSignal.asReadonly();
+
+  /**
+   * The revision of the most recent committed vocabulary, or null before one.
+   *
+   * Separate from `status`, which speaks about words appearing and disappearing.
+   * An evening of study commits a revision in which every word is the same and
+   * everything they prove is different, and anything built on that evidence has
+   * to notice. A word count is the one thing that cannot tell it.
+   */
+  readonly committedRevision = this.revisionSignal.asReadonly();
 
   start(): void {
     if (this.started) {
       return;
     }
     this.started = true;
+    this.hidden = this.view?.document.visibilityState === 'hidden';
     this.view?.setTimeout(() => void this.trigger(), START_DELAY_MS);
     this.view?.setInterval(() => {
       if (this.view?.document.visibilityState === 'visible') {
@@ -52,10 +77,43 @@ export class AutomaticAnkiSyncCoordinator {
     }, RETRY_INTERVAL_MS);
     this.view?.document.addEventListener('visibilitychange', () => {
       if (this.view?.document.visibilityState === 'visible') {
-        void this.trigger();
+        void this.resume();
+      } else {
+        this.hidden = true;
       }
     });
     this.view?.addEventListener('focus', () => void this.trigger());
+  }
+
+  /**
+   * Handles the learner coming back, from Anki or from anywhere else.
+   *
+   * Only a real return does anything: repeated focus events inside one visible
+   * session are ordinary triggers and stay behind the cooldown. A read that was
+   * already running when they returned cannot contain the answers they gave
+   * while away, so exactly one follow-up is queued behind it — one, however
+   * many events arrive.
+   */
+  resume(): Promise<void> {
+    if (!this.hidden) {
+      // Still resolves with whatever this return already set going, so a caller
+      // that awaits it is not told the refresh finished before it did.
+      return this.followUp ?? this.inFlight ?? Promise.resolve();
+    }
+    this.hidden = false;
+    return this.inFlight === null ? this.trigger(true) : this.scheduleFollowUp(this.inFlight);
+  }
+
+  private scheduleFollowUp(running: Promise<void>): Promise<void> {
+    if (this.followUp !== null) {
+      return this.followUp;
+    }
+    this.followUp = running
+      .then(() => this.trigger(true))
+      .finally(() => {
+        this.followUp = null;
+      });
+    return this.followUp;
   }
 
   trigger(force = false): Promise<void> {
@@ -137,6 +195,9 @@ export class AutomaticAnkiSyncCoordinator {
       });
       return;
     }
+    // Published for every commit, including one whose word list is identical:
+    // what those words proved about recent study is exactly what changed.
+    this.revisionSignal.set(committed.value.revision);
     if (!prepared.value.vocabularyChanged) {
       this.statusSignal.set({ kind: 'idle' });
       return;

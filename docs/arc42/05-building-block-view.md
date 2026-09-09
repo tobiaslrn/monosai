@@ -229,6 +229,27 @@ This is one client rather than one per task because of
 [ADR 0018](../decisions/0018-openrouter-request-boundary.md): the credential boundary, the retry
 limits, and the error model are single concerns, and duplicating them is how one of them drifts.
 
+### Practice words for a story
+
+`PracticePreviewStore` holds one immutable capture of the vocabulary — its revision, its
+expressions, and what each included source last proved about recent study, all read in one
+repository transaction. The words a story will practise are selected from that capture by the pure
+domain functions in `domain/ai/practice-selection.ts`, whose only randomness is the injected
+`RandomSource`.
+
+The list is redrawn only when something asks: a new capture, a changed mode or period, an edited
+choice, or Shuffle. Reading it never redraws it, so it cannot change beneath a learner who is
+deciding, and a generation is handed the list that was on screen rather than a fresh sample. Manual
+choices survive shuffles and refreshes by canonical expression; one the vocabulary no longer
+contains is reported rather than sent, because a target outside the allowlist is one the story can
+never legitimately contain.
+
+`AutomaticAnkiSyncCoordinator` is the single place a return from Anki is handled. A genuine
+hidden-to-visible transition reads once past the ordinary cooldown, because the answers just given
+are the reason the learner came back; the focus event that follows joins that read instead of
+starting another, and a read that began before the return gets exactly one follow-up queued behind
+it. Every successful commit publishes its revision, whether or not the word list changed.
+
 ### Reader additions to word lists
 
 Word details calls `ReaderWordListService` only after **Add to word list** is pressed.
