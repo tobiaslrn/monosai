@@ -6,23 +6,39 @@ UTF-8 responses are compact JSON with a final LF and always contain `result`
 and `error`. On error, result is null; on success, error is null. Empty arrays
 are successful results. Fixtures are literal wire bytes, not formatter input.
 
-| Action            | Parameters                | Result                                                        |
-| ----------------- | ------------------------- | ------------------------------------------------------------- |
-| version           | none                      | `6`                                                           |
-| requestPermission | none                      | `{permission:"granted",requireApiKey:false,version:6}`        |
-| deckNames         | none                      | array of deck names                                           |
-| modelNames        | none                      | array of note type names                                      |
-| modelFieldNames   | modelName: string         | field names in stored order                                   |
-| findCards         | query: Anki search string | card IDs, using the id-only projection                        |
-| cardsInfo         | cards: integer ID array   | cardId, note, reps, lapses, factor, queue, interval, deckName |
-| notesInfo         | notes: integer ID array   | noteId, modelName, fields keyed by name with value and order  |
+| Action            | Parameters                | Result                                                       |
+| ----------------- | ------------------------- | ------------------------------------------------------------ |
+| version           | none                      | `6`                                                          |
+| requestPermission | none                      | `{permission:"granted",requireApiKey:false,version:6}`       |
+| deckNames         | none                      | array of deck names                                          |
+| modelNames        | none                      | array of note type names                                     |
+| modelFieldNames   | modelName: string         | field names in stored order                                  |
+| findCards         | query: Anki search string | card IDs, using the id-only projection                       |
+| cardsInfo         | cards: integer ID array   | see the card fields below                                    |
+| notesInfo         | notes: integer ID array   | noteId, modelName, fields keyed by name with value and order |
 
-`interval` is Anki's `ivl` in days, and is omitted when the installed AnkiDroid
-does not expose the column. `getReviewsOfCards` is on Monosai's read allowlist
-for the desktop add-on but is deliberately not implemented here: AnkiDroid's
-content provider has no review log, so the bridge answers it as an unsupported
-action and the caller falls back to `interval` to judge how recently a word was
-learned.
+A card always carries `cardId`, `note`, `reps`, `lapses`, `factor`, `queue` and
+`deckName`. It carries `interval` (days), `cardType`, `fsrsDifficulty`,
+`lastReviewedAt` (epoch milliseconds, converted once from the provider's
+seconds) and `originalDeckName` only where they exist, and a key is absent
+rather than zero when they do not: an older AnkiDroid does not publish the
+column, a card Anki never scheduled with FSRS leaves it null, and a card in its
+own deck has no separate home deck. Capability is established per provider
+session against real rows, and one unpublished column never costs the others.
+
+These are the column names AnkiDroid's public contract publishes, which are not
+the names of the fields behind them — the interval is `interval` here and `ivl`
+only inside a collection file. Asking for a backing name makes the provider
+reject the whole projection, which the bridge would then read as an old build.
+The shared `cardsInfo` fixture stays the small collection both sides replay; the
+full card shape is pinned by the bridge's own router test.
+
+`getReviewsOfCards` is on Monosai's read allowlist for the desktop add-on but is
+deliberately not implemented here: AnkiDroid's content provider has no review
+log. Recency does not depend on one. `findCards` passes an Anki search through
+unchanged, so `rated:` searches answer which cards were actually answered in the
+last one, three or seven Anki study days, and `rated:7:1` and `rated:7:2` which
+of those were answered Again or Hard.
 
 Unknown actions (including writes) return
 `{"result":null,"error":"unsupported action: <name>"}` without querying AnkiDroid.

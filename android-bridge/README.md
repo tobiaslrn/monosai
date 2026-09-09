@@ -4,7 +4,10 @@ Optional live vocabulary access from the Monosai PWA to AnkiDroid. This is a sma
 native listener, not a WebView or a second web build. All first-party code is ISC
 under the [root licence](../LICENSE). No source from AnkiconnectAndroid or
 AnkiDroid's GPL implementation is included. URI/column names follow AnkiDroid's
-[public API contract](https://github.com/ankidroid/Anki-Android/blob/v2.24.0/api/src/main/java/com/ichi2/anki/FlashCardsContract.kt).
+[public API contract](https://github.com/ankidroid/Anki-Android/blob/9f579c10bb151146728220729c510acbbd8faba7/api/src/main/java/com/ichi2/anki/FlashCardsContract.kt),
+pinned to 2.24.1. That contract publishes column names of its own, which are not
+the names of the fields behind them, so the projection is checked against it
+rather than against a collection's schema.
 
 ## Requirements and setup
 
@@ -92,6 +95,16 @@ transport compatibility or energy consumption. Before publishing the first APK:
 - Connect from the deployed PWA to AnkiDroid 2.24+, inspect real decks and note
   types, build a snapshot and compare reviewed (`reps > 0`) results with a desktop
   package export of that collection, including subdecks and multiple templates.
+- Confirm the scheduling columns against the collection itself, on a disposable
+  profile: `interval` matches the card's real interval; `fsrsDifficulty` and
+  `lastReviewedAt` are present where Anki has them and null where it does not;
+  a card studied from a filtered deck reports its home deck. A fake cannot
+  establish which columns this installed AnkiDroid actually publishes.
+- Answer known cards, then compare `rated:1`, `rated:3`, `rated:7`, `rated:7:1`
+  and `rated:7:2` with the same searches in AnkiDroid's own browser, including a
+  deck that was reset and restudied and a card answered across the study-day
+  rollover. Read only; never answer or reschedule the learner's cards to produce
+  evidence.
 - Check AnkiDroid absent, permission refused/revoked, and a 2.23 provider. Expect
   the specific installed/access/review-support error, never desktop permission advice.
 - Refuse the page origin and confirm `origin-not-allowed`; kill the listener

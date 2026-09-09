@@ -37,8 +37,14 @@ class Router(private val reads: AnkiReads) {
             AllowedReads.CARDS -> JsonArray(reads.cardsInfo(params.ids("cards")).map { card -> buildJsonObject {
                 put("cardId", card.cardId); put("note", card.note); put("reps", card.reps)
                 put("lapses", card.lapses); put("factor", card.factor); put("queue", card.queue)
+                // Each optional signal is written only when this AnkiDroid and this
+                // card actually carried it, so an absent key never reads as a zero.
                 card.interval?.let { put("interval", it) }
+                card.cardType?.let { put("cardType", it) }
+                card.fsrsDifficulty?.let { put("fsrsDifficulty", it) }
+                card.lastReviewedAt?.let { put("lastReviewedAt", it) }
                 put("deckName", card.deckName)
+                card.originalDeckName?.let { put("originalDeckName", it) }
             } })
             AllowedReads.NOTES -> JsonArray(reads.notesInfo(params.ids("notes")).map { note -> buildJsonObject {
                 put("noteId", note.noteId); put("modelName", note.modelName)

@@ -37,6 +37,31 @@ class RouterTest {
             assertArrayEquals(fixture.name, File(fixture, "response.json").readBytes(), actual.toByteArray())
         }
     }
+    private fun cardEnvelope(card: CardRead): String {
+        val reads = object : AnkiReads by FixtureReads() {
+            override fun cardsInfo(ids: List<Long>) = listOf(card)
+        }
+        return Router(reads).route("""{"action":"cardsInfo","version":6,"params":{"cards":[1]}}""")
+    }
+
+    @Test fun everySchedulingSignalReachesTheWireUnderItsOwnName() {
+        // The shared fixture stays the small collection both sides replay, so the
+        // full card shape is pinned here instead, next to the mapping that writes it.
+        val card = CardRead(1, 1, 3, 1, 2400, 2, "Filtered Practice", 23, 2, "Core Japanese", 7.5, 1_757_000_000_000L)
+        val expected = """[{"cardId":1,"note":1,"reps":3,"lapses":1,"factor":2400,"queue":2,""" +
+            """"interval":23,"cardType":2,"fsrsDifficulty":7.5,"lastReviewedAt":1757000000000,""" +
+            """"deckName":"Filtered Practice","originalDeckName":"Core Japanese"}]"""
+        assertEquals(envelope(Json.parseToJsonElement(expected)), cardEnvelope(card))
+    }
+
+    @Test fun aCardWithoutOptionalSignalsOmitsThoseKeysRatherThanSendingZero() {
+        // An older AnkiDroid, or a card Anki never scheduled with FSRS, must not
+        // arrive as a confident zero interval or an epoch-zero last review.
+        val expected = """[{"cardId":1,"note":1,"reps":3,"lapses":1,"factor":2400,"queue":2,"deckName":"Core Japanese"}]"""
+        assertEquals(envelope(Json.parseToJsonElement(expected)),
+            cardEnvelope(CardRead(1, 1, 3, 1, 2400, 2, "Core Japanese")))
+    }
+
     @Test fun unknownWritesNeverReachTheProvider() {
         val reads = FixtureReads()
         assertEquals("unsupported action: addNote", Json.parseToJsonElement(Router(reads).route("""{"action":"addNote","version":6}""")).jsonObject["error"]!!.jsonPrimitive.content)
