@@ -20,9 +20,6 @@ export const PRACTICE_WINDOWS = [1, 3, 7] as const;
 
 export type PracticeWindowDays = (typeof PRACTICE_WINDOWS)[number];
 
-/** The window the Again and Hard searches always cover. */
-export const DIFFICULTY_WINDOW_DAYS: PracticeWindowDays = 7;
-
 /**
  * Whether a source could answer one family of questions during a capture.
  *
@@ -137,36 +134,6 @@ export function unmeasuredBasis(observedAt: number): PracticeObservationBasis {
   };
 }
 
-/**
- * Whether the expression was answered inside the chosen window.
- *
- * `undefined` means the source could not answer, which callers must keep
- * distinct from `false`: one leaves the learner without a recommendation and a
- * reason, the other is a word that genuinely was not practised.
- */
-export function wasAnsweredWithin(
-  evidence: PracticeEvidence | undefined,
-  windowDays: PracticeWindowDays,
-  basis: PracticeObservationBasis,
-): boolean | undefined {
-  if (basis.recentAnswers !== 'available') {
-    return undefined;
-  }
-  const answered = evidence?.answeredWithinDays;
-  return answered !== undefined && answered <= windowDays;
-}
-
-/** Whether the expression carries positive recent-failure evidence. */
-export function hasRecentDifficulty(
-  evidence: PracticeEvidence | undefined,
-  basis: PracticeObservationBasis,
-): boolean | undefined {
-  if (basis.recentDifficulty !== 'available') {
-    return undefined;
-  }
-  return evidence?.answeredAgain === true || evidence?.answeredHard === true;
-}
-
 /** Keeps provider output in the normalized shape persisted by the app. */
 export function normalizePracticeEvidence(
   evidence: PracticeEvidenceInput | null | undefined,
@@ -213,42 +180,6 @@ export function mergePracticeEvidence(
     recentlyAnsweredWithShortInterval:
       a.recentlyAnsweredWithShortInterval === true || b.recentlyAnsweredWithShortInterval === true,
   });
-}
-
-/**
- * Merges two captures' bases.
- *
- * A family is available only where every contributing capture could answer it:
- * one source that cannot run the searches makes the combined answer partial,
- * and calling that combination available would let its words read as unstudied.
- * The observation time is the oldest, so freshness is never overstated.
- */
-export function mergeObservationBases(
-  left: PracticeObservationBasis,
-  right: PracticeObservationBasis,
-): PracticeObservationBasis {
-  return {
-    recentAnswers: weakest(left.recentAnswers, right.recentAnswers),
-    recentDifficulty: weakest(left.recentDifficulty, right.recentDifficulty),
-    learningState: weakest(left.learningState, right.learningState),
-    fsrsDifficulty: weakest(left.fsrsDifficulty, right.fsrsDifficulty),
-    windowBasis:
-      left.windowBasis === 'rolling-days' || right.windowBasis === 'rolling-days'
-        ? 'rolling-days'
-        : 'anki-study-days',
-    observedAt: Math.min(left.observedAt, right.observedAt),
-  };
-}
-
-/** Ordered least to most capable, so the weakest contribution decides. */
-const AVAILABILITY_ORDER: readonly EvidenceAvailability[] = [
-  'unsupported',
-  'unavailable',
-  'available',
-];
-
-function weakest(left: EvidenceAvailability, right: EvidenceAvailability): EvidenceAvailability {
-  return AVAILABILITY_ORDER.indexOf(left) <= AVAILABILITY_ORDER.indexOf(right) ? left : right;
 }
 
 function narrowest(
