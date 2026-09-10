@@ -137,6 +137,15 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
 
   for (const item of items) {
     const sequence = item.analyzedSequence;
+
+    // The whole expression is always a single-token key as well: an entry
+    // analyzed alone as several tokens (十分 as 十 + 分) can be one token in
+    // running text (これで十分です), and its literal form is still exact evidence.
+    addToBucket(exact, item.canonicalExpression, item.id);
+    const candidates: { key: string; basis: NormalizedMatchBasis }[] = [
+      { key: normalizeLookupKey(item.canonicalExpression), basis: 'normalized-form' },
+    ];
+
     if (sequence.length >= 2) {
       insert(
         exactPhrases,
@@ -148,15 +157,11 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
         sequence.map((token) => normalizeLookupKey(token.surface)),
         item.id,
       );
-      continue;
     }
-
-    addToBucket(exact, item.canonicalExpression, item.id);
-
-    const candidates: { key: string; basis: NormalizedMatchBasis }[] = [
-      { key: normalizeLookupKey(item.canonicalExpression), basis: 'normalized-form' },
-    ];
-    for (const token of sequence) {
+    // Per-token lemmas and readings describe the whole entry only when it is one
+    // token; joined across a split they can name a different word (じゅうふん).
+    const tokenKeys = sequence.length === 1 ? sequence : [];
+    for (const token of tokenKeys) {
       if (token.lemma !== undefined && token.lemma.length > 0) {
         candidates.push({ key: normalizeLookupKey(token.lemma), basis: 'lemma' });
       }
