@@ -51,7 +51,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
         <button
           #toggle
           type="button"
-          class="add-source"
+          class="mn-button mn-button--ghost"
           aria-haspopup="dialog"
           aria-controls="mn-add-words-menu"
           [attr.aria-expanded]="mode() === 'choices' || mode() === 'anki'"
@@ -216,7 +216,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
               <mn-icon name="info" [size]="18" />
               <span>Your sources stay separate. Duplicate words are counted once.</span>
             </p>
-            <button type="button" class="mn-button cancel" (click)="dismiss()">Cancel</button>
+            <button type="button" class="mn-button" (click)="dismiss()">Cancel</button>
           }
         </div>
         <input
@@ -259,25 +259,8 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       gap: var(--space-2);
     }
 
-    /* A quiet green verb beside its heading, like the home filters' weight. */
-    .add-source {
-      display: inline-flex;
-      gap: var(--space-1);
-      align-items: center;
-      min-height: var(--touch-target);
-      padding: var(--space-2) var(--space-1);
-      border: 0;
-      border-radius: var(--radius-control);
-      background: transparent;
-      color: var(--action-primary-text);
-      font: inherit;
-      font-weight: var(--weight-semibold);
-      cursor: pointer;
+    .add-words > .mn-button {
       anchor-name: --mn-add-words-anchor;
-    }
-
-    .add-source:hover {
-      background: var(--action-primary-soft);
     }
 
     .editor-head {
@@ -483,13 +466,8 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       margin-top: 0.05rem;
     }
 
-    .cancel {
+    .sheet-note + .mn-button {
       width: 100%;
-      min-height: 3.25rem;
-      border-color: var(--action-primary);
-      border-radius: var(--radius-pill);
-      color: var(--action-primary-text);
-      font-weight: var(--weight-semibold);
     }
 
     .file-input {

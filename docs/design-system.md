@@ -8,9 +8,10 @@ It deliberately carries **no values**. There are no hex codes, no pixel counts,
 no type scale, and no component API here, because a document that repeats them
 goes stale the first time one is tuned. Values live in `web/src/styles/_tokens.scss`,
 the named thresholds in `web/src/styles/_breakpoints.scss`, and the shared control
-classes in `web/src/styles/_controls.scss`; this document
+classes in `web/src/styles/_controls.scss` and
+`web/src/styles/components/_button.scss`; this document
 names the *roles* those tokens fill and the rules that govern their use. When
-the two disagree, this document describes the intent and the tokens describe the
+these disagree, this document describes the intent and the tokens describe the
 current state — reconcile by changing the tokens.
 
 This document describes what any screen may do. What a particular screen does is
@@ -228,8 +229,19 @@ glyph. Fill and border are reserved for hover, for press, and for the single
 primary action of a surface — the play control in the transport, the primary
 button of a form.
 
-At most one control on a surface is filled. If two actions both look primary,
-one of them is not.
+Text buttons share one pill silhouette, one touch-target height, one text size,
+and one weight. The unqualified `.mn-button` is the secondary outline for an
+ordinary reversible action. `.mn-button--primary` is the one filled action that
+starts or commits the main work on a surface. `.mn-button--ghost` is action-colour
+text without a border for quiet verbs such as adding a source, testing, or
+previewing. `.mn-button--danger` keeps a destructive action outlined in the
+danger colour and is used where confirmation follows. A surface has at most one
+filled primary control; selected toggles use a soft selection tint instead.
+
+Disabled controls are drawn with the sunken surface, secondary text, and a
+distinct boundary. Opacity alone is not a disabled state: disabled must be
+recognisable in both themes and must not resemble either an active secondary
+outline or a selected control.
 
 A bare icon button still meets the 3:1 non-text contrast requirement, because
 the glyph itself is the visual indicator; a boundary is not required to satisfy

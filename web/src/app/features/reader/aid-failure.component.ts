@@ -14,10 +14,10 @@ import { describeEnrichmentFailure, enrichmentNeedsSettings } from './enrichment
         <p>{{ message }}</p>
         <p class="unaffected">Your reading and saved aids are unchanged.</p>
         @if (setupMessage() || needsSettings()) {
-          <a class="mn-button mn-button--secondary" routerLink="/settings">Open Settings</a>
+          <a class="mn-button" routerLink="/settings">Open Settings</a>
         } @else if (needsCredit()) {
           <a
-            class="mn-button mn-button--secondary"
+            class="mn-button"
             href="https://openrouter.ai/settings/credits"
             target="_blank"
             rel="noopener noreferrer"

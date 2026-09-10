@@ -93,7 +93,7 @@ interface VirtualVocabularyEntry {
         </label>
         <button
           type="button"
-          class="mn-button filters-button"
+          class="mn-button"
           aria-haspopup="dialog"
           (click)="openFilters()"
           data-testid="vocabulary-filters"
@@ -152,7 +152,9 @@ interface VirtualVocabularyEntry {
                     : 'No words match these filters.'
                 }}
               </p>
-              <button type="button" class="reset" (click)="reset()">Reset filters</button>
+              <button type="button" class="mn-button mn-button--ghost" (click)="reset()">
+                Reset filters
+              </button>
             </section>
           } @else {
             <div class="list-region">
@@ -243,14 +245,6 @@ interface VirtualVocabularyEntry {
       font-weight: var(--weight-medium);
     }
 
-    .filters-button {
-      flex: none;
-      border-color: var(--action-primary);
-      border-radius: var(--radius-pill);
-      color: var(--action-primary-text);
-      font-weight: var(--weight-semibold);
-    }
-
     .sort-line {
       display: flex;
       gap: var(--space-1);
@@ -321,16 +315,6 @@ interface VirtualVocabularyEntry {
       margin: 0;
     }
 
-    .reset {
-      min-height: var(--touch-target);
-      padding: var(--space-2) 0;
-      border: 0;
-      background: transparent;
-      color: var(--action-primary);
-      text-decoration: underline;
-      text-underline-offset: 3px;
-      cursor: pointer;
-    }
   `,
 })
 export class VocabularyBrowsePageComponent {

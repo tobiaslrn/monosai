@@ -56,7 +56,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
           <button
             #connectionButton
             type="button"
-            class="mn-button connection-button"
+            class="mn-button"
             data-testid="connect-openrouter"
             [class.mn-button--primary]="!credential.isConfigured()"
             [attr.aria-expanded]="connectionMenuOpen()"
@@ -166,7 +166,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
               @if (retestable(text.readiness())) {
                 <button
                   type="button"
-                  class="status status--action"
+                  class="mn-button mn-button--ghost"
                   data-testid="test-text-model"
                   [disabled]="text.action() !== 'idle'"
                   (click)="text.test()"
@@ -240,7 +240,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                   ) {
                     <button
                       type="button"
-                      class="status status--action"
+                      class="mn-button mn-button--ghost"
                       data-testid="test-text-model"
                       [disabled]="text.action() !== 'idle'"
                       (click)="text.testTask(task.id)"
@@ -328,7 +328,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
               @if (tts.action() === 'testing') {
                 <button
                   type="button"
-                  class="status status--action"
+                  class="mn-button mn-button--ghost"
                   data-testid="cancel-tts-test"
                   (click)="tts.cancelTest()"
                 >
@@ -337,7 +337,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
               } @else {
                 <button
                   type="button"
-                  class="status status--action"
+                  class="mn-button mn-button--ghost"
                   data-testid="test-tts"
                   [disabled]="tts.draft().modelId === '' || tts.draft().voiceId === ''"
                   (click)="testAudio()"
@@ -468,12 +468,6 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     }
     .connection {
       position: relative;
-    }
-    .connection-button {
-      white-space: nowrap;
-      // Loading credentials changes both foreground and background. Blending
-      // between the two palettes briefly makes the label unreadable.
-      transition: transform var(--motion-fast) ease-out;
     }
     .connection-dot {
       width: 8px;
@@ -610,21 +604,6 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .status--action {
-      padding: 2px var(--space-2);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-pill);
-      background: none;
-      color: var(--text-primary);
-      cursor: pointer;
-    }
-    .status--action:hover:not(:disabled) {
-      background: var(--surface-sunken);
-    }
-    .status--action:disabled {
-      color: var(--text-secondary);
-      cursor: default;
-    }
     .branches {
       margin-top: var(--space-1);
       border-top: 1px solid var(--border-subtle);
@@ -650,7 +629,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     }
     @media (max-width: breakpoints.$narrow-max) {
       .connection,
-      .connection-button {
+      .connection > .mn-button {
         width: 100%;
       }
       .connection-menu {

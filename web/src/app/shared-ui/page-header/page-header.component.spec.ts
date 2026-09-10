@@ -17,6 +17,13 @@ import { PageHeaderComponent } from './page-header.component';
 })
 class HostComponent {}
 
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [PageHeaderComponent],
+  template: `<mn-page-header heading="Vocabulary" [help]="true" />`,
+})
+class HelpHostComponent {}
+
 describe('PageHeaderComponent back control', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
@@ -65,5 +72,15 @@ describe('PageHeaderComponent back control', () => {
     expect(element.querySelector<HTMLAnchorElement>('a.mn-icon-button')?.getAttribute('href')).toBe(
       '/settings',
     );
+  });
+
+  it('uses the shared icon button for help', () => {
+    const fixture = TestBed.createComponent(HelpHostComponent);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    const help = element.querySelector<HTMLAnchorElement>('a.mn-icon-button[aria-label="Help"]');
+    expect(help?.getAttribute('href')).toBe('/help');
+    expect(help?.classList.contains('mn-icon-button')).toBe(true);
   });
 });

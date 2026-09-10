@@ -45,7 +45,7 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
         <div class="save-bar">
           <button
             type="button"
-            class="mn-button mn-button--primary save"
+            class="mn-button mn-button--primary"
             [disabled]="draft() === null || saving()"
             (click)="save()"
             data-testid="save-level"
@@ -74,11 +74,8 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
       background: linear-gradient(to top, var(--surface-canvas) 72%, transparent);
     }
 
-    .save {
+    .save-bar > .mn-button {
       width: 100%;
-      min-height: 3.25rem;
-      border-radius: var(--radius-pill);
-      font-weight: var(--weight-semibold);
     }
 
     .assets-failed {

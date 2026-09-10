@@ -35,7 +35,7 @@ import { IconComponent } from '../icon/icon.component';
       <div class="trailing">
         <ng-content />
         @if (help()) {
-          <a class="help-link" routerLink="/help" aria-label="Help" title="Help">
+          <a class="mn-icon-button" routerLink="/help" aria-label="Help" title="Help">
             <mn-icon name="help" [size]="24" />
           </a>
         }
@@ -75,23 +75,6 @@ import { IconComponent } from '../icon/icon.component';
 
     .trailing:empty {
       display: none;
-    }
-
-    /* Bare at rest, like the home header's own utilities. */
-    .help-link {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: var(--touch-target);
-      height: var(--touch-target);
-      border: 1px solid transparent;
-      border-radius: var(--radius-control);
-      color: var(--text-primary);
-    }
-
-    .help-link:hover {
-      border-color: var(--border-subtle);
-      background: var(--surface-sunken);
     }
 
     .subtitle {

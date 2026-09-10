@@ -43,7 +43,7 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
       <div class="actions-row">
         <button
           type="button"
-          class="mn-button mn-button--secondary"
+          class="mn-button"
           data-testid="save-policy"
           [disabled]="
             policy.action() !== 'idle' || policy.isTooLong() || !policy.hasUnsavedChanges()

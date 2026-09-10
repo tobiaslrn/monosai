@@ -106,7 +106,7 @@ export interface VocabularyFilterSheetData {
         <button type="button" class="mn-button mn-button--primary" (click)="show()">
           Show {{ matchCount() }} words
         </button>
-        <button type="button" class="reset" (click)="reset()">Reset</button>
+        <button type="button" class="mn-button mn-button--ghost" (click)="reset()">Reset</button>
       </div>
     </section>
   `,
@@ -153,17 +153,6 @@ export interface VocabularyFilterSheetData {
       align-items: center;
       justify-content: space-between;
       margin-block-start: var(--space-2);
-    }
-
-    .reset {
-      min-height: var(--touch-target);
-      padding: var(--space-2);
-      border: 0;
-      background: transparent;
-      color: var(--action-primary);
-      text-decoration: underline;
-      text-underline-offset: 3px;
-      cursor: pointer;
     }
 
     @media (max-width: 31.999em) {

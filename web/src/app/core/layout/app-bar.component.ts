@@ -87,13 +87,6 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       flex: none;
       gap: var(--space-2);
     }
-    .mn-icon-button {
-      min-width: var(--touch-target);
-      min-height: var(--touch-target);
-      background: transparent;
-      border-color: transparent;
-    }
-    .mn-icon-button:hover,
     .current {
       background: var(--surface-sunken);
     }

@@ -143,7 +143,9 @@ describe('VocabularyBrowsePageComponent', () => {
     expect(element.querySelectorAll('mn-vocabulary-browse-row')).toHaveLength(1);
     element.querySelector<HTMLButtonElement>('[data-testid="vocabulary-filters"]')?.click();
     await settle(fixture);
-    document.querySelector<HTMLButtonElement>('mn-vocabulary-filter-sheet .reset')?.click();
+    document
+      .querySelector<HTMLButtonElement>('mn-vocabulary-filter-sheet .mn-button--ghost')
+      ?.click();
     document
       .querySelector<HTMLButtonElement>('mn-vocabulary-filter-sheet .mn-button--primary')
       ?.click();

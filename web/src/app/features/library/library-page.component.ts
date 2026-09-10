@@ -76,10 +76,10 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           <img src="icons/icon-192.png" alt="" width="40" height="40" />
         </a>
         <div class="home-actions">
-          <button type="button" class="home-icon-button" aria-label="Search" title="Search">
+          <button type="button" class="mn-icon-button" aria-label="Search" title="Search">
             <mn-icon name="search" [size]="22" />
           </button>
-          <a class="home-icon-button" routerLink="/settings" aria-label="Settings" title="Settings">
+          <a class="mn-icon-button" routerLink="/settings" aria-label="Settings" title="Settings">
             <mn-icon name="settings" [size]="22" />
           </a>
         </div>
@@ -119,9 +119,8 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
             @for (option of filters; track option.value) {
               <button
                 type="button"
-                class="chip"
+                class="mn-button"
                 [attr.aria-pressed]="store.filter() === option.value"
-                [class.is-active]="store.filter() === option.value"
                 (click)="setFilter(option.value)"
               >
                 {{ option.label }}
@@ -186,8 +185,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       min-height: var(--touch-target);
     }
 
-    .home-identity,
-    .home-icon-button {
+    .home-identity {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -200,14 +198,12 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       cursor: pointer;
     }
 
-    .home-identity:hover,
-    .home-icon-button:hover {
+    .home-identity:hover {
       border-color: var(--border-subtle);
       background: var(--surface-sunken);
     }
 
-    .home-identity:focus-visible,
-    .home-icon-button:focus-visible {
+    .home-identity:focus-visible {
       outline: 3px solid var(--focus-ring);
       outline-offset: 2px;
     }
@@ -268,47 +264,12 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
     .shelf-head .mn-button {
       width: 100%;
-      border-radius: var(--radius-pill);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-semibold);
-      min-height: 3.25rem;
     }
 
     .filters {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-2);
-    }
-
-    .chip {
-      position: relative;
-      z-index: 0;
-      min-height: var(--touch-target);
-      padding: var(--space-2) var(--space-4);
-      border: 0;
-      background: transparent;
-      color: var(--text-primary);
-      font: var(--weight-medium) var(--text-xs)/1 var(--font-ui);
-      cursor: pointer;
-    }
-
-    .chip::before {
-      position: absolute;
-      z-index: -1;
-      inset: var(--space-1) 0;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-pill);
-      background: var(--surface-raised);
-      content: '';
-    }
-
-    .chip.is-active::before {
-      border-color: transparent;
-      background: var(--action-primary);
-    }
-
-    .chip.is-active {
-      color: var(--text-on-action);
     }
 
     .date-group,

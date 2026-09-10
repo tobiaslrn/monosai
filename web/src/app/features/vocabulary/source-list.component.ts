@@ -74,7 +74,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
           <span class="status-text">{{ message }}</span>
           <button
             type="button"
-            class="mn-button"
+            class="mn-button mn-button--ghost"
             [disabled]="syncing()"
             (click)="syncAgain()"
             data-testid="attention-retry"
@@ -89,7 +89,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
           @if (canSyncAgain()) {
             <button
               type="button"
-              class="sync"
+              class="mn-icon-button sync"
               [class.is-busy]="syncing()"
               [disabled]="syncing()"
               aria-label="Read Anki again"
@@ -212,34 +212,8 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
       flex: none;
     }
 
-    .status.is-attention .mn-button {
-      flex: none;
-      border-color: currentcolor;
-      border-radius: var(--radius-pill);
-      color: inherit;
-    }
-
     .sync {
-      display: inline-flex;
-      flex: none;
-      align-items: center;
-      justify-content: center;
-      width: var(--touch-target);
-      height: var(--touch-target);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-control);
-      background: var(--surface-raised);
-      color: var(--text-primary);
-      cursor: pointer;
-    }
-
-    .sync:hover:not(:disabled) {
-      background: var(--surface-sunken);
-    }
-
-    .sync:disabled {
-      color: var(--text-secondary);
-      cursor: default;
+      color: var(--action-primary);
     }
 
     .sync.is-busy mn-icon {

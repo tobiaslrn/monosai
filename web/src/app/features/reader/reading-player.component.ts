@@ -127,7 +127,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
         -->
         <button
           type="button"
-          class="slot"
+          class="mn-icon-button slot"
           aria-label="Restart this sentence, or go back to the one before"
           title="Restart this sentence, or go back to the one before"
           [disabled]="!store.canGoPrevious()"
@@ -149,7 +149,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
               the setup itself, in the place and the shape Play would have had.
             -->
             <a
-              class="primary primary--wide"
+              class="mn-icon-button primary primary--wide"
               routerLink="/settings"
               aria-label="Set up audio model"
               title="Set up audio model"
@@ -161,7 +161,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           @case ('generate') {
             <button
               type="button"
-              class="primary"
+              class="mn-icon-button primary"
               aria-label="Generate audio"
               title="Generate audio"
               (click)="generate.emit()"
@@ -172,7 +172,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           @case ('pause') {
             <button
               type="button"
-              class="primary"
+              class="mn-icon-button primary"
               aria-label="Pause"
               title="Pause"
               (click)="store.pause()"
@@ -183,7 +183,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           @default {
             <button
               type="button"
-              class="primary"
+              class="mn-icon-button primary"
               [attr.aria-label]="playLabel()"
               [title]="playLabel()"
               [disabled]="!canPressPlay()"
@@ -196,7 +196,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
         <button
           type="button"
-          class="slot"
+          class="mn-icon-button slot"
           aria-label="Next sentence with audio"
           title="Next sentence with audio"
           [disabled]="!store.canGoNext()"
@@ -213,7 +213,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
         -->
         <button
           type="button"
-          class="slot mode"
+          class="mn-icon-button slot mode"
           [class.on]="store.stepMode()"
           [attr.aria-pressed]="store.stepMode()"
           title="One sentence at a time"
@@ -232,7 +232,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
         @if (canStartFromSelection()) {
           <button
             type="button"
-            class="slot"
+            class="mn-icon-button slot"
             aria-label="Start from this sentence"
             title="Start from this sentence"
             (click)="playFromSelection()"
@@ -240,13 +240,13 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
             <mn-icon name="sentence-start" [size]="20" />
           </button>
         } @else {
-          <span class="slot" aria-hidden="true"></span>
+          <span class="slot empty-slot" aria-hidden="true"></span>
         }
 
         @if (auxAction(); as aux) {
           <button
             type="button"
-            [class]="'slot tone-' + aux.tone"
+            [class]="'mn-icon-button slot tone-' + aux.tone"
             [attr.aria-label]="aux.label"
             [title]="aux.title"
             (click)="pressAux(aux)"
@@ -271,7 +271,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
             <mn-icon [name]="aux.icon" [size]="aux.kind === 'cancel' ? 14 : 20" />
           </button>
         } @else {
-          <span class="slot" aria-hidden="true"></span>
+          <span class="slot empty-slot" aria-hidden="true"></span>
         }
       </div>
 
@@ -491,38 +491,17 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     /* Everything that is not the primary verb: no chrome until it is touched. */
     .slot {
       position: relative;
-      display: inline-flex;
-      flex: none;
-      align-items: center;
-      justify-content: center;
+      color: var(--text-secondary);
+    }
+
+    .empty-slot {
       inline-size: var(--touch-target);
       block-size: var(--touch-target);
-      padding: 0;
-      border: 0;
-      border-radius: var(--radius-pill);
-      background: none;
-      color: var(--text-secondary);
-      text-decoration: none;
-      cursor: pointer;
-      transition:
-        color var(--motion-fast) ease-out,
-        background-color var(--motion-fast) ease-out;
     }
 
     button.slot:not(:disabled),
     a.slot {
       color: var(--action-primary);
-    }
-
-    button.slot:hover:not(:disabled),
-    a.slot:hover {
-      background: var(--surface-sunken);
-      color: var(--text-primary);
-    }
-
-    .slot:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
     }
 
     .tone-accent {
@@ -559,18 +538,11 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
     /* Play is the one control that is pressed repeatedly, so it is the big one. */
     .primary {
-      display: inline-flex;
-      flex: none;
-      align-items: center;
-      justify-content: center;
       inline-size: 4rem;
       block-size: 4rem;
-      padding: 0;
-      border: 0;
       border-radius: var(--radius-pill);
       background: var(--action-primary);
       color: var(--text-on-action);
-      cursor: pointer;
       transition:
         background-color var(--motion-fast) ease-out,
         transform var(--motion-fast) ease-out;
@@ -585,8 +557,10 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     }
 
     .primary:disabled {
+      border: 1px dashed var(--border-subtle);
+      background: var(--surface-sunken);
+      color: var(--text-secondary);
       cursor: not-allowed;
-      opacity: 0.55;
     }
 
     /*

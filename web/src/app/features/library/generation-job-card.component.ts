@@ -37,7 +37,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
         </div>
         <button
           type="button"
-          class="dismiss"
+          class="mn-icon-button dismiss"
           [attr.aria-label]="dismissLabel()"
           (click)="dismissRequested.emit(job())"
         >
@@ -143,21 +143,6 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
     .dismiss {
       position: relative;
       z-index: 1;
-      display: inline-flex;
-      flex: none;
-      align-items: center;
-      justify-content: center;
-      width: var(--touch-target);
-      height: var(--touch-target);
-      border: 1px solid transparent;
-      border-radius: var(--radius-control);
-      background: transparent;
-      color: var(--text-secondary);
-      cursor: pointer;
-    }
-
-    .dismiss:hover {
-      border-color: var(--border-subtle);
     }
   `,
 })

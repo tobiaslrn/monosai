@@ -92,7 +92,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
               @if (source.kind === 'anki-connect') {
                 <button
                   type="button"
-                  class="mn-button"
+                  class="mn-button mn-button--ghost"
                   [disabled]="manual.isSyncing()"
                   (click)="syncNow(source)"
                 >
@@ -395,13 +395,6 @@ const STALE_REASONS: Record<StaleReason, string> = {
       background: var(--status-warning-soft);
       color: var(--status-warning);
       font-size: var(--text-sm);
-    }
-
-    .flag .mn-button {
-      min-height: var(--touch-target);
-      padding: 0 var(--space-3);
-      border-color: currentcolor;
-      color: inherit;
     }
 
     .stale {

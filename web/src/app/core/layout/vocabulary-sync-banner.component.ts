@@ -25,7 +25,9 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
           <aside class="banner attention" role="status" aria-live="polite" aria-atomic="true">
             <span>{{ status.message }}</span>
             <span class="actions">
-              <button type="button" class="link" (click)="retry()">Retry now</button>
+              <button type="button" class="mn-button mn-button--ghost" (click)="retry()">
+                Retry now
+              </button>
               <a routerLink="/reading-level" fragment="words">Manage sources</a>
             </span>
           </aside>
@@ -91,18 +93,10 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
       gap: var(--space-2);
     }
 
-    a,
-    .link {
+    a {
       color: var(--accent-strong);
       font: inherit;
       text-decoration: underline;
-    }
-
-    .link {
-      padding: 0;
-      border: 0;
-      background: transparent;
-      cursor: pointer;
     }
 
     @media (prefers-reduced-motion: reduce) {

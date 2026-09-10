@@ -150,7 +150,7 @@ function formatList(items: readonly string[]): string {
           @if (canCancel()) {
             <button
               type="button"
-              class="mn-button cancel"
+              class="mn-button"
               data-testid="cancel-generation"
               (click)="cancel()"
             >

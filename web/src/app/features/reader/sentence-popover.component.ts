@@ -133,20 +133,20 @@ export interface UnknownWord {
       }
 
       <div class="actions">
-        <button type="button" class="action" (click)="copySentence()">
+        <button type="button" class="mn-button" (click)="copySentence()">
           <mn-icon [name]="copyStatus() === 'copied' ? 'check' : 'copy'" [size]="18" />
           <span>{{ copyStatus() === 'copied' ? 'Copied' : 'Copy' }}</span>
         </button>
 
         @if (translateOffer(); as offer) {
-          <button type="button" class="action" (click)="translate.emit()">
+          <button type="button" class="mn-button" (click)="translate.emit()">
             <mn-icon name="translate" [size]="18" />
             <span>{{ offer }}</span>
           </button>
         }
 
         @if (grammarOffer(); as offer) {
-          <button type="button" class="action" (click)="analyzeGrammar.emit()">
+          <button type="button" class="mn-button" (click)="analyzeGrammar.emit()">
             <mn-icon name="grammar" [size]="18" />
             <span>{{ offer }}</span>
           </button>
@@ -155,8 +155,8 @@ export interface UnknownWord {
         @if (audioOffer(); as offer) {
           <button
             type="button"
-            class="action"
-            [class.is-primary]="offer === 'Play'"
+            class="mn-button"
+            [class.mn-button--primary]="offer === 'Play'"
             (click)="audioAction()"
           >
             <mn-icon [name]="offer === 'Play' ? 'play' : 'audio'" [size]="18" />
@@ -266,61 +266,15 @@ export interface UnknownWord {
       background: var(--surface-panel);
     }
 
-    .action {
-      display: flex;
-      gap: var(--space-2);
-      align-items: center;
-      justify-content: center;
+    .actions .mn-button > span {
       min-width: 0;
-      min-height: var(--touch-target);
-      padding: var(--space-2);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-control);
-      background: var(--surface-raised);
-      color: var(--text-primary);
-      font: inherit;
-      font-size: var(--text-sm);
-      font-weight: var(--weight-medium);
-      cursor: pointer;
-      transition:
-        background-color var(--motion-fast) ease-out,
-        border-color var(--motion-fast) ease-out,
-        transform var(--motion-fast) ease-out;
-    }
-
-    .action span {
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
     }
 
-    .action mn-icon {
+    .actions .mn-button mn-icon {
       flex: none;
-      color: var(--text-secondary);
-    }
-
-    .action:hover {
-      border-color: var(--action-primary);
-      background: var(--action-primary-soft);
-    }
-
-    .action:active {
-      transform: translateY(1px);
-    }
-
-    /* Playing a clip that already exists is a result rather than a request. */
-    .action.is-primary {
-      border-color: transparent;
-      background: var(--action-primary);
-      color: var(--text-on-action);
-    }
-
-    .action.is-primary mn-icon {
-      color: inherit;
-    }
-
-    .action.is-primary:hover {
-      background: var(--action-primary-hover);
     }
 
     .words {

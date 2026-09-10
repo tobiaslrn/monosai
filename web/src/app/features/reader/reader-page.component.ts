@@ -277,7 +277,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
             </article>
             <a
               id="mn-after-story"
-              class="mn-button mn-button--secondary"
+              class="mn-button"
               routerLink="/library"
               (click)="backToLibrary($event)"
               >Go to library</a

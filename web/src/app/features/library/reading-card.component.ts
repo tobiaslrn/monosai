@@ -72,7 +72,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
           <button
             #toggle
             type="button"
-            class="overflow"
+            class="mn-icon-button"
             aria-haspopup="menu"
             [attr.aria-controls]="menuId()"
             [attr.aria-expanded]="menuOpen()"
@@ -182,23 +182,6 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       position: relative;
       z-index: 1;
       flex: none;
-    }
-
-    .overflow {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: var(--touch-target);
-      height: var(--touch-target);
-      border: 1px solid transparent;
-      border-radius: var(--radius-control);
-      background: transparent;
-      color: var(--text-secondary);
-      cursor: pointer;
-    }
-
-    .overflow:hover {
-      border-color: var(--border-subtle);
     }
 
     .menu {

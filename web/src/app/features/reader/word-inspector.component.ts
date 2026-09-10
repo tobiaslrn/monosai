@@ -153,7 +153,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
                 are a dictionary page, and asking for one is a press.
               -->
               @if (hiddenSenseCount() > 0) {
-                <button type="button" class="more" (click)="expand()">
+                <button type="button" class="mn-button mn-button--ghost" (click)="expand()">
                   More ({{ hiddenSenseCount() }})
                 </button>
               }
@@ -212,7 +212,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         @if (canAdd()) {
           <button
             type="button"
-            class="next-action mn-button mn-button--secondary"
+            class="mn-button"
             [disabled]="adding()"
             (click)="addWord()"
           >
@@ -353,21 +353,6 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       font-size: var(--text-sm);
     }
 
-    .more {
-      display: inline-flex;
-      align-items: center;
-      min-height: var(--touch-target);
-      margin-top: var(--space-1);
-      padding: 0;
-      border: 0;
-      background: none;
-      color: var(--text-primary);
-      font: inherit;
-      font-size: var(--text-sm);
-      text-decoration: underline;
-      cursor: pointer;
-    }
-
     /* The same shape the sentence card gives a finding, so one rule reads the
      * same whichever way the reader arrived at it. */
     .finding + .finding {
@@ -408,14 +393,6 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 
     section .mn-button {
       margin-top: var(--space-2);
-    }
-
-    .next-action {
-      margin: 0;
-      padding: var(--space-3);
-      border-radius: var(--radius-control);
-      background: var(--surface-sunken);
-      font-size: var(--text-sm);
     }
 
     .mn-error {

@@ -1,67 +1,9 @@
 @use 'breakpoints';
 
 /**
- * Shared control primitives. Feature styles consume these classes and the
- * semantic tokens; they never hard-code palette values.
+ * Shared form and disclosure primitives. Feature styles consume these classes
+ * and the semantic tokens; they never hard-code palette values.
  */
-.mn-button {
-  display: inline-flex;
-  gap: var(--space-2);
-  align-items: center;
-  justify-content: center;
-  min-height: var(--touch-target);
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
-  background: var(--surface-raised);
-  color: var(--text-primary);
-  font-weight: var(--weight-medium);
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background-color var(--motion-fast) ease-out,
-    border-color var(--motion-fast) ease-out,
-    color var(--motion-fast) ease-out,
-    transform var(--motion-fast) ease-out;
-}
-
-.mn-button:hover:not(:disabled) {
-  background: var(--surface-sunken);
-}
-
-/*
- * A disabled control is drawn, not dimmed. Opacity alone read as "greyed out"
- * only in the light theme, where the primary fill is a dark green; in the dark
- * theme it is a light sage on a near-black page, so a disabled primary stayed
- * the loudest thing on the screen and the one thing that could not be pressed.
- * Both themes now give it the sunken surface and secondary text.
- */
-.mn-button:disabled,
-.mn-button[aria-disabled='true'] {
-  border-color: var(--border-subtle);
-  background: var(--surface-sunken);
-  color: var(--text-secondary);
-  cursor: not-allowed;
-}
-
-.mn-button:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.mn-button--primary {
-  border-color: transparent;
-  background: var(--action-primary);
-  color: var(--text-on-action);
-}
-
-.mn-button--primary:hover:not(:disabled) {
-  background: var(--action-primary-hover);
-}
-
-.mn-button--danger {
-  border-color: var(--status-danger);
-  color: var(--status-danger);
-}
 
 .mn-field {
   display: flex;
@@ -285,10 +227,6 @@ input.mn-switch:disabled {
   letter-spacing: -0.01em;
 }
 
-.mn-settings-section .mn-button {
-  border-radius: var(--radius-pill);
-}
-
 /*
  * The Library's row surface, for anything that sits on the canvas the way a
  * story row does: a quiet raised card with an edge only just there.
@@ -323,43 +261,6 @@ input.mn-switch:disabled {
   gap: var(--space-5);
   max-width: var(--layout-measure);
   margin-inline: auto;
-}
-
-/*
- * A square control carrying only an icon. Shared because the reader header, the
- * page headers, and the card menus all need the same touch target and the same
- * quiet border.
- */
-.mn-icon-button {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: var(--touch-target);
-  height: var(--touch-target);
-  padding: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-control);
-  background: var(--surface-raised);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition:
-    background-color var(--motion-fast) ease-out,
-    border-color var(--motion-fast) ease-out,
-    transform var(--motion-fast) ease-out;
-}
-
-.mn-icon-button:hover:not(:disabled) {
-  background: var(--surface-sunken);
-}
-
-.mn-icon-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.mn-icon-button:active:not(:disabled) {
-  transform: translateY(1px);
 }
 
 /*

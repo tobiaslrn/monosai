@@ -122,7 +122,7 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
                   @if (hasSavedLayer(row.layer)) {
                     <button
                       type="button"
-                      class="clear"
+                      class="mn-icon-button clear"
                       [attr.aria-label]="clearLabel(row.layer)"
                       [title]="clearLabel(row.layer)"
                       (click)="clearLayer(row.layer)"

@@ -1,0 +1,139 @@
+/**
+ * Shared button primitives. Feature styles may position these controls, but
+ * their silhouette, type, palette, and interaction states live here.
+ */
+.mn-button {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out,
+    color var(--motion-fast) ease-out,
+    transform var(--motion-fast) ease-out;
+}
+
+.mn-button:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--surface-sunken);
+}
+
+.mn-button:active:not(:disabled):not([aria-disabled='true']) {
+  transform: translateY(1px);
+}
+
+.mn-button--primary {
+  border-color: transparent;
+  background: var(--action-primary);
+  color: var(--text-on-action);
+}
+
+.mn-button--primary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--action-primary-hover);
+}
+
+.mn-button--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--action-primary-text);
+}
+
+.mn-button--ghost:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--action-primary-soft);
+}
+
+.mn-button--danger {
+  border-color: var(--status-danger);
+  color: var(--status-danger);
+}
+
+.mn-button--danger:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--status-danger-soft);
+}
+
+/* A pressed toggle is selected, not primary: it gets a soft, readable tint. */
+.mn-button[aria-pressed='true']:not(:disabled):not([aria-disabled='true']) {
+  border-color: var(--action-primary);
+  background: var(--action-primary-soft);
+  color: var(--action-primary-text);
+}
+
+/*
+ * A disabled control is drawn, not dimmed. Opacity alone read as "greyed out"
+ * only in the light theme, where the primary fill is a dark green; in the dark
+ * theme it is a light sage on a near-black page, so a disabled primary stayed
+ * the loudest thing on the screen and the one thing that could not be pressed.
+ * Both themes use the sunken surface, secondary text, and a dashed boundary so
+ * disabled is distinct from an active outline and from a selected control.
+ */
+.mn-button:disabled,
+.mn-button[aria-disabled='true'] {
+  border-color: var(--border-subtle);
+  border-style: dashed;
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+/*
+ * Icon-only controls are quiet until touched. The transparent border is not
+ * needed: the glyph itself is the control, and the shared focus ring remains
+ * visible for keyboard users.
+ */
+.mn-icon-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-primary);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) ease-out,
+    color var(--motion-fast) ease-out,
+    transform var(--motion-fast) ease-out;
+}
+
+.mn-icon-button:hover:not(:disabled):not([aria-disabled='true']),
+.mn-icon-button:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--surface-sunken);
+}
+
+.mn-icon-button:active:not(:disabled):not([aria-disabled='true']) {
+  transform: translateY(1px);
+}
+
+.mn-icon-button[aria-pressed='true']:not(:disabled):not([aria-disabled='true']) {
+  background: var(--action-primary-soft);
+  color: var(--action-primary-text);
+}
+
+.mn-icon-button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.mn-icon-button:disabled,
+.mn-icon-button[aria-disabled='true'] {
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}

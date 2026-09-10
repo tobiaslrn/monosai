@@ -256,11 +256,11 @@ describe('LibraryPageComponent', () => {
     ).not.toBeNull();
   });
 
-  it('hides the filter chips until the shelf is large enough to need them', async () => {
+  it('hides the filter buttons until the shelf is large enough to need them', async () => {
     repository.readings = [reading('a', 'imported', 1_000), reading('b', 'generated', 2_000)];
     const fixture = await render();
 
-    expect(element(fixture).querySelectorAll('.chip')).toHaveLength(0);
+    expect(element(fixture).querySelectorAll('button[aria-pressed]')).toHaveLength(0);
   });
 
   it('lists saved readings newest first', async () => {
@@ -307,7 +307,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = manyReadings(24);
     const fixture = await render();
 
-    element(fixture).querySelectorAll<HTMLButtonElement>('.chip')[1].click();
+    element(fixture).querySelectorAll<HTMLButtonElement>('button[aria-pressed]')[1].click();
     await settle(fixture);
 
     expect(TestBed.inject(LibraryStore).filter()).toBe('imported');
@@ -413,24 +413,26 @@ describe('LibraryPageComponent', () => {
     ).toBe(false);
   });
 
-  it('exposes filters as pressed-state chips and filters the list', async () => {
+  it('exposes filters as pressed-state buttons and filters the list', async () => {
     repository.readings = shelf();
     const fixture = await render();
 
-    const chips = [...element(fixture).querySelectorAll<HTMLButtonElement>('.chip')];
-    expect(chips.map((chip) => chip.getAttribute('aria-pressed'))).toEqual([
+    const filters = [
+      ...element(fixture).querySelectorAll<HTMLButtonElement>('button[aria-pressed]'),
+    ];
+    expect(filters.map((filter) => filter.getAttribute('aria-pressed'))).toEqual([
       'true',
       'false',
       'false',
     ]);
 
-    chips[1].click();
+    filters[1].click();
     await settle(fixture);
 
     expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(4);
     expect(
-      [...element(fixture).querySelectorAll('.chip')].map((chip) =>
-        chip.getAttribute('aria-pressed'),
+      [...element(fixture).querySelectorAll('button[aria-pressed]')].map((filter) =>
+        filter.getAttribute('aria-pressed'),
       ),
     ).toEqual(['false', 'true', 'false']);
   });
@@ -439,7 +441,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = shelf();
     const fixture = await render();
 
-    element(fixture).querySelectorAll<HTMLButtonElement>('.chip')[1].click();
+    element(fixture).querySelectorAll<HTMLButtonElement>('button[aria-pressed]')[1].click();
     await settle(fixture);
 
     const live = element(fixture).querySelector('[aria-live="polite"]');
@@ -451,7 +453,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
@@ -469,7 +471,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
@@ -499,7 +501,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
     await settle(fixture);
@@ -529,7 +531,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
     await settle(fixture);
@@ -549,7 +551,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
@@ -568,7 +570,7 @@ describe('LibraryPageComponent', () => {
     translationJob.running = readingId('a');
     const fixture = await render();
 
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
@@ -593,7 +595,7 @@ describe('LibraryPageComponent', () => {
     audioJob.running = readingId('a');
     const fixture = await render();
 
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
@@ -611,7 +613,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .overflow')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
     await settle(fixture);
@@ -703,8 +705,10 @@ describe('LibraryPageComponent', () => {
     jobs.setJobs([fakeGenerationJob('job-5')]);
     const fixture = await render();
 
-    const chips = [...element(fixture).querySelectorAll<HTMLButtonElement>('.chip')];
-    chips.find((chip) => chip.textContent.trim() === 'Imported')?.click();
+    const filters = [
+      ...element(fixture).querySelectorAll<HTMLButtonElement>('button[aria-pressed]'),
+    ];
+    filters.find((filter) => filter.textContent.trim() === 'Imported')?.click();
     await settle(fixture);
 
     expect(element(fixture).querySelectorAll('mn-generation-job-card')).toHaveLength(0);

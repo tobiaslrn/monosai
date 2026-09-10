@@ -170,7 +170,7 @@ describe('WordInspectorComponent', () => {
       validation: { category: 'unknown', reason: 'not-in-vocabulary' },
     });
     const element = fixture.nativeElement as HTMLElement;
-    const button = element.querySelector<HTMLButtonElement>('button.next-action');
+    const button = element.querySelector<HTMLButtonElement>('button.mn-button');
     expect(button?.textContent).toContain('Add to word list');
     button?.click();
     await fixture.whenStable();
@@ -180,7 +180,7 @@ describe('WordInspectorComponent', () => {
       'Added to Reader words',
     );
     expect(element.querySelector('.status')).toBeNull();
-    expect(element.querySelector('button.next-action')).toBeNull();
+    expect(element.querySelector('button.mn-button')).toBeNull();
   });
 
   it('shows the grammar covering this word, where the reader stopped', async () => {
@@ -339,7 +339,7 @@ describe('WordInspectorComponent', () => {
     const dictionary = inspector.querySelector('#mn-inspector-dictionary');
     const grammar = inspector.querySelector('.grammar-section');
     const status = inspector.querySelector('.status');
-    const nextAction = inspector.querySelector('.next-action');
+    const nextAction = inspector.querySelector('.mn-button');
 
     expect(surface).not.toBeNull();
     expect(form).not.toBeNull();
@@ -444,11 +444,11 @@ describe('WordInspectorComponent', () => {
       const fixture = await render();
       const element = fixture.nativeElement as HTMLElement;
 
-      element.querySelector<HTMLButtonElement>('.more')?.click();
+      element.querySelector<HTMLButtonElement>('.mn-button--ghost')?.click();
       fixture.detectChanges();
 
       expect(element.querySelectorAll('.glosses li')).toHaveLength(5);
-      expect(element.querySelector('.more')).toBeNull();
+      expect(element.querySelector('.mn-button--ghost')).toBeNull();
     });
 
     it('offers no More when the entry is short enough to show whole', async () => {
@@ -456,7 +456,7 @@ describe('WordInspectorComponent', () => {
       const element = (await render()).nativeElement as HTMLElement;
 
       expect(element.querySelectorAll('.glosses li')).toHaveLength(2);
-      expect(element.querySelector('.more')).toBeNull();
+      expect(element.querySelector('.mn-button--ghost')).toBeNull();
     });
   });
 

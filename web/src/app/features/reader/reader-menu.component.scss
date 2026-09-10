@@ -86,32 +86,13 @@ h3 {
   color: var(--text-secondary);
   font-size: var(--text-sm);
 }
-.mn-button {
-  padding-inline: var(--space-3);
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
 /*
  * Bare at rest, and named by its label rather than by a word beside it: three
  * of these run down one short list, one to a row that already says which layer
  * it belongs to, and each one opens a confirmation before anything is lost.
  */
 .clear {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--touch-target);
-  height: var(--touch-target);
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--radius-control);
-  background: none;
   color: var(--status-danger);
-  cursor: pointer;
-  transition: background-color var(--motion-fast) ease-out;
-}
-.clear:hover {
-  background: var(--surface-sunken);
 }
 .mn-error {
   font-size: var(--text-sm);

@@ -73,7 +73,12 @@ const DISMISS_DISTANCE_PX = 80;
           head of the content, so the first thing in a word lookup was a control
           rather than the word.
         -->
-        <button type="button" class="close" aria-label="Close" (click)="closed.emit()">
+        <button
+          type="button"
+          class="mn-icon-button close"
+          aria-label="Close"
+          (click)="closed.emit()"
+        >
           <mn-icon name="close" [size]="16" />
         </button>
       }
@@ -95,6 +100,8 @@ const DISMISS_DISTANCE_PX = 80;
       border-radius: var(--radius-sheet);
       background: var(--surface-panel);
       box-shadow: var(--shadow-overlay);
+      /* The first row leaves room for the shared close control in its corner. */
+      --mn-popover-close-inset: calc(var(--touch-target) + var(--space-3));
       transition: opacity var(--motion-fast) ease-out;
 
       @starting-style {
@@ -162,46 +169,10 @@ const DISMISS_DISTANCE_PX = 80;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 1.75rem;
-      height: var(--touch-target);
-      padding: 0;
-      border: 0;
-      border-radius: var(--radius-control);
-      background: none;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: background-color var(--motion-fast) ease-out;
-    }
-
-    .close:hover {
-      background: var(--surface-sunken);
-      color: var(--text-primary);
-    }
-
-    .close:focus-visible {
-      outline: 2px solid var(--action-primary);
-      outline-offset: 2px;
-    }
-
-    /*
-     * How much room the card's leading row has to leave for that control.
-     * Published rather than applied here: only the row the button actually
-     * overlaps should be inset, and padding the whole body would pull the
-     * sentence card's full-bleed action tray off its own edge.
-     */
-    .popover {
-      /* The control's own width, and a gap the size of the card's other gaps. */
-      --mn-popover-close-inset: calc(1.75rem + var(--space-3));
     }
 
     :host(.is-sheet) .popover {
       --mn-popover-close-inset: 0px;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .close {
-        transition: none;
-      }
     }
 
     /*

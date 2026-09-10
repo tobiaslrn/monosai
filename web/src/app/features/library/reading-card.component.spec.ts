@@ -139,6 +139,6 @@ describe('ReadingCardComponent', () => {
     const element = render(generated());
 
     expect(element.querySelector('h3 a')?.getAttribute('href')).toContain('/reader/');
-    expect(element.querySelector('.menu-anchor .overflow')).not.toBeNull();
+    expect(element.querySelector('.menu-anchor .mn-icon-button')).not.toBeNull();
   });
 });
