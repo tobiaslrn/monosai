@@ -28,7 +28,7 @@ import { TextInputStepComponent } from './text-input-step.component';
         composer cards its textareas, and this one sat bare on the page
         background beside it.
       -->
-      <section class="mn-panel">
+      <section class="mn-card">
         <mn-text-input-step />
 
         @if (busyMessage(); as message) {
@@ -39,30 +39,34 @@ import { TextInputStepComponent } from './text-input-step.component';
         }
 
         @if (store.languageFailure(); as failure) {
-          <div class="mn-error" role="alert">
-            <p><strong>Japanese analysis is not ready.</strong> {{ failure.message }}</p>
-            <p>Your text has not been changed and nothing was saved.</p>
+          <div class="mn-notice mn-notice--error" role="alert">
+            <div>
+              <p><strong>Japanese analysis is not ready.</strong> {{ failure.message }}</p>
+              <p>Your text has not been changed and nothing was saved.</p>
+            </div>
             <button type="button" class="mn-button" (click)="retry()">Try again</button>
           </div>
         }
 
         @if (store.storageFailure(); as failure) {
-          <div class="mn-error" role="alert">
-            <p><strong>The story could not be saved.</strong> {{ failure.message }}</p>
-            <p>Your text is still here, so you can try saving again.</p>
+          <div class="mn-notice mn-notice--error" role="alert">
+            <div>
+              <p><strong>The story could not be saved.</strong> {{ failure.message }}</p>
+              <p>Your text is still here, so you can try saving again.</p>
+            </div>
           </div>
         }
 
         @if (store.duplicates().length > 0) {
-          <div class="duplicate" role="alert">
-            <p>
+          <p class="mn-notice mn-notice--warning" role="alert">
+            <span>
               <strong>This text is already in your library.</strong>
               Adding it again will save a separate copy.
-            </p>
-          </div>
+            </span>
+          </p>
         }
 
-        <div class="actions">
+        <div class="mn-actions mn-actions--end">
           <button
             type="button"
             class="mn-button mn-button--primary"
@@ -78,13 +82,6 @@ import { TextInputStepComponent } from './text-input-step.component';
     </div>
   `,
   styles: `
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      justify-content: flex-end;
-    }
-
     .busy {
       display: flex;
       gap: var(--space-2);
@@ -112,32 +109,6 @@ import { TextInputStepComponent } from './text-input-step.component';
       .spinner {
         animation: none;
       }
-    }
-
-    .mn-error {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      align-items: flex-start;
-      padding: var(--space-3);
-      border: 1px solid var(--status-danger);
-      border-radius: var(--radius-control);
-      background: var(--status-danger-soft);
-    }
-
-    .mn-error p {
-      margin: 0;
-    }
-
-    .duplicate {
-      padding: var(--space-3);
-      border: 1px solid var(--status-warning);
-      border-radius: var(--radius-control);
-      background: var(--status-warning-soft);
-    }
-
-    .duplicate p {
-      margin: 0;
     }
   `,
 })

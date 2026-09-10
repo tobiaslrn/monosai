@@ -1,0 +1,68 @@
+/*
+ * One choice out of a few, as native radios. Each option is a label wearing
+ * the button silhouette — the same height, text size and weight — and the
+ * chosen one takes the selection tint a pressed toggle uses, not the filled
+ * primary, because choosing is not committing.
+ *
+ *   <div class="mn-segmented">
+ *     <label><input type="radio" name="…" /><span>System</span></label>
+ *   </div>
+ */
+.mn-segmented {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: var(--space-2);
+}
+
+.mn-segmented > label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out;
+}
+
+.mn-segmented > label:hover {
+  background: var(--surface-sunken);
+}
+
+.mn-segmented > label:has(input:checked) {
+  border-color: var(--action-primary);
+  background: var(--action-primary-soft);
+  color: var(--action-primary-text);
+}
+
+.mn-segmented > label:has(input:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.mn-segmented input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mn-segmented > label {
+    transition: none;
+  }
+}

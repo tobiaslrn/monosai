@@ -133,13 +133,13 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
                 </div>
               </div>
               @if (row.error) {
-                <p class="mn-error" role="alert">{{ row.error }}</p>
+                <p class="row-notice mn-notice mn-notice--error" role="alert">{{ row.error }}</p>
               }
             </section>
           }
         </div>
         @if (error()) {
-          <p class="mn-error" role="alert">{{ error() }}</p>
+          <p class="menu-notice mn-notice mn-notice--error" role="alert">{{ error() }}</p>
         }
       </section>
     </section>

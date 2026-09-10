@@ -42,8 +42,10 @@ import { HelpIntroService } from './help-intro.service';
       }
       @if (intro.saveFailed()) {
         <div class="intro-error" role="alert">
-          <p>Could not save your Help preference.</p>
-          <button type="button" class="mn-button" (click)="intro.retrySave()">Try again</button>
+          <div class="mn-notice mn-notice--error">
+            <p>Could not save your Help preference.</p>
+            <button type="button" class="mn-button" (click)="intro.retrySave()">Try again</button>
+          </div>
         </div>
       }
     }
@@ -72,7 +74,7 @@ import { HelpIntroService } from './help-intro.service';
     }
 
     .intro-error {
-      max-width: var(--layout-measure);
+      max-width: var(--page-measure);
       margin: var(--space-4) auto;
       padding-inline: var(--space-4);
     }

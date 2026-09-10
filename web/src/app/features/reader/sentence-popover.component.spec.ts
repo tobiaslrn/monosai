@@ -367,7 +367,7 @@ describe('SentencePopoverComponent', () => {
     const rendered = host(render(NO_AIDS, false));
 
     expect(
-      [...rendered.querySelectorAll('.actions button')].map((button) => button.textContent.trim()),
+      [...rendered.querySelectorAll('.tray button')].map((button) => button.textContent.trim()),
     ).not.toContain('Grammar');
   });
 
@@ -497,7 +497,7 @@ describe('SentencePopoverComponent', () => {
     it('offers to play, and never generates, once a clip exists', () => {
       const fixture = render(aidsWith({ audio: clip() }));
       const rendered = host(fixture);
-      const labels = [...rendered.querySelectorAll('.actions button')].map((button) =>
+      const labels = [...rendered.querySelectorAll('.tray button')].map((button) =>
         button.textContent.trim(),
       );
 
@@ -512,7 +512,7 @@ describe('SentencePopoverComponent', () => {
     it('reports that a clip is being produced, offering neither action', () => {
       const rendered = host(render(aidsWith({ audioAction: { state: 'running', error: null } })));
 
-      const labels = [...rendered.querySelectorAll('.actions button')].map((button) =>
+      const labels = [...rendered.querySelectorAll('.tray button')].map((button) =>
         button.textContent.trim(),
       );
 

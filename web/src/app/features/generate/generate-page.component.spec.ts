@@ -90,7 +90,7 @@ describe('GeneratePageComponent', () => {
     expect(button?.getAttribute('aria-describedby')).toBe('mn-generate-disabled-reason');
     // The blockers sit in the composer's action bar, beside the button they
     // are the reason for, rather than at the foot of the defaults card.
-    expect(page.querySelector('.actions mn-prerequisite-panel')?.textContent).toContain(
+    expect(page.querySelector('.action-bar mn-prerequisite-panel')?.textContent).toContain(
       'You are offline',
     );
     expect(page.querySelector('[data-check="network"] strong')?.textContent).toContain(

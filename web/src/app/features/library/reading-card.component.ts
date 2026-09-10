@@ -65,7 +65,10 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
           </div>
           <p class="summary">{{ characterLabel() }}</p>
         </div>
-        <span class="status" [class.is-unread]="reading().lastOpenedAt === null">
+        <span
+          class="mn-status-pill"
+          [class.mn-status-pill--accent]="reading().lastOpenedAt === null"
+        >
           {{ reading().lastOpenedAt === null ? 'Unread' : 'Read' }}
         </span>
         <div class="menu-anchor">
@@ -235,21 +238,6 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       margin: 0;
       color: var(--text-secondary);
       font-size: var(--text-xs);
-    }
-
-    .status {
-      flex: none;
-      padding: var(--space-1) var(--space-2);
-      border-radius: var(--radius-pill);
-      background: var(--status-success-soft);
-      color: var(--status-success);
-      font-size: var(--text-xs);
-      line-height: 1.2;
-    }
-
-    .status.is-unread {
-      background: var(--status-warning-soft);
-      color: var(--status-warning);
     }
 
     @media (max-width: breakpoints.$narrow-max) {

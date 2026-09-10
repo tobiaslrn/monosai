@@ -179,7 +179,7 @@ describe('WordInspectorComponent', () => {
     expect(element.querySelector('[role="status"]')?.textContent).toContain(
       'Added to Reader words',
     );
-    expect(element.querySelector('.status')).toBeNull();
+    expect(element.querySelector('.warning')).toBeNull();
     expect(element.querySelector('button.mn-button')).toBeNull();
   });
 
@@ -307,7 +307,7 @@ describe('WordInspectorComponent', () => {
       })
     ).nativeElement as HTMLElement;
 
-    expect(element.querySelector('.status')).toBeNull();
+    expect(element.querySelector('.warning')).toBeNull();
     expect(element.textContent).not.toContain('Known from Anki');
   });
 
@@ -319,7 +319,7 @@ describe('WordInspectorComponent', () => {
       })
     ).nativeElement as HTMLElement;
 
-    expect(element.querySelector('.status')?.textContent).toContain('Unknown vocabulary');
+    expect(element.querySelector('.warning')?.textContent).toContain('Unknown vocabulary');
     expect(element.textContent).toContain('Add to word list');
   });
 
@@ -338,7 +338,7 @@ describe('WordInspectorComponent', () => {
     const route = inspector.querySelector('header .sentence-details');
     const dictionary = inspector.querySelector('#mn-inspector-dictionary');
     const grammar = inspector.querySelector('.grammar-section');
-    const status = inspector.querySelector('.status');
+    const status = inspector.querySelector('.warning');
     const nextAction = inspector.querySelector('.mn-button');
 
     expect(surface).not.toBeNull();

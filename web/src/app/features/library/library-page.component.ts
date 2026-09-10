@@ -86,7 +86,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       </header>
 
       @if (store.status() === 'failed') {
-        <section class="mn-panel" role="alert">
+        <section class="mn-card" role="alert">
           <h2>Your library could not be loaded</h2>
           <p class="mn-hint">{{ store.lastError()?.message }}</p>
           <button type="button" class="mn-button" (click)="reload()">Try again</button>

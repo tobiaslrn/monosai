@@ -119,7 +119,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         }
 
         <section class="dictionary-section" aria-labelledby="mn-inspector-dictionary">
-          <h3 class="mn-section-label" id="mn-inspector-dictionary">Meanings</h3>
+          <h3 class="mn-group-title" id="mn-inspector-dictionary">Meanings</h3>
           @switch (store.dictionary().kind) {
             @case ('looking-up') {
               <p class="mn-hint" role="status">Looking up…</p>
@@ -128,7 +128,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
               <p class="mn-hint">No definition found.</p>
             }
             @case ('failed') {
-              <p class="mn-error" role="alert">
+              <p class="mn-notice mn-notice--error" role="alert">
                 The dictionary is unavailable. The rest of this word's details are unaffected.
               </p>
             }
@@ -163,7 +163,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 
         @if (hasNotes() || grammar().stale) {
           <section class="grammar-section" aria-labelledby="mn-inspector-grammar">
-            <h3 class="mn-section-label" id="mn-inspector-grammar">Grammar</h3>
+            <h3 class="mn-group-title" id="mn-inspector-grammar">Grammar</h3>
 
             @if (grammar().stale) {
               <p class="mn-hint">
@@ -186,7 +186,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
             @for (finding of grammar().sentenceFindings; track $index) {
               <div class="finding">
                 <p class="finding-label">
-                  {{ finding.label }} <span class="scope">whole sentence</span>
+                  {{ finding.label }} <span class="scope mn-status-pill">whole sentence</span>
                 </p>
                 <p class="finding-text" lang="en">{{ finding.explanationEn }}</p>
               </div>
@@ -195,9 +195,9 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         }
 
         @if (warningPresentation(); as presentation) {
-          <section class="status" aria-labelledby="mn-inspector-status">
-            <h3 class="mn-section-label" id="mn-inspector-status">
-              <span class="badge">{{ presentation.label }}</span>
+          <section class="warning" aria-labelledby="mn-inspector-status">
+            <h3 id="mn-inspector-status">
+              <span class="mn-status-pill mn-status-pill--warning">{{ presentation.label }}</span>
             </h3>
             @if (presentation.structuralForm; as form) {
               <p class="form-name">{{ form.nameEn }}</p>
@@ -210,12 +210,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
         }
 
         @if (canAdd()) {
-          <button
-            type="button"
-            class="mn-button"
-            [disabled]="adding()"
-            (click)="addWord()"
-          >
+          <button type="button" class="mn-button" [disabled]="adding()" (click)="addWord()">
             {{ adding() ? 'Adding…' : 'Add to word list' }}
           </button>
         }
@@ -223,7 +218,9 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
           <p role="status" class="mn-hint">Added to {{ label }}.</p>
         }
         @if (addFailure(); as failure) {
-          <p role="alert" class="mn-error">{{ failure }} Your word lists are unchanged.</p>
+          <p role="alert" class="mn-notice mn-notice--error">
+            {{ failure }} Your word lists are unchanged.
+          </p>
         }
       </div>
     }
@@ -288,38 +285,23 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       white-space: nowrap;
     }
 
-    /* The same quiet section label the sentence card uses, so the two match. */
+    /* The same group title the sentence card uses, so the two match. */
     h3 {
-      margin-bottom: var(--space-2);
+      margin: 0 0 var(--space-2);
     }
 
-    /* Except this one, which is a status badge rather than a label. */
-    .status h3 {
-      color: inherit;
-      letter-spacing: normal;
-      text-transform: none;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: var(--space-1) var(--space-2);
-      border-radius: var(--radius-pill);
-      background: var(--surface-sunken);
-      font-size: var(--text-sm);
-    }
-
-    .status .form-name {
+    .warning .form-name {
       font-weight: var(--weight-semibold);
     }
 
-    .status .form-example {
+    .warning .form-example {
       padding: var(--space-2) var(--space-3);
       border-radius: var(--radius-control);
       background: var(--surface-raised);
       font-size: var(--text-lg);
     }
 
-    .status p {
+    .warning p {
       margin: var(--space-2) 0 0;
       color: var(--text-secondary);
     }
@@ -377,27 +359,19 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
     }
 
     .scope {
-      display: inline-block;
       margin-inline-start: var(--space-2);
-      padding: 0 var(--space-2);
-      border-radius: var(--radius-pill);
-      background: var(--surface-sunken);
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-regular);
     }
 
     section p + p {
       margin-block: var(--space-1) 0;
     }
 
-    section .mn-button {
+    section button {
       margin-top: var(--space-2);
     }
 
-    .mn-error {
+    p[role] {
       margin: 0;
-      color: var(--status-danger);
     }
   `,
 })

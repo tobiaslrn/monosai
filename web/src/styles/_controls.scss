@@ -1,8 +1,7 @@
-@use 'breakpoints';
-
 /**
- * Shared form and disclosure primitives. Feature styles consume these classes
- * and the semantic tokens; they never hard-code palette values.
+ * Shared form fields, the switch, and the disclosure. Feature styles consume
+ * these classes and the semantic tokens; they never hard-code palette values.
+ * Surfaces, notices, pills and layout live in `components/`.
  */
 
 .mn-field {
@@ -61,6 +60,16 @@
 textarea.mn-control,
 .mn-field textarea {
   resize: vertical;
+}
+
+/*
+ * What is wrong with the value in the field above it. Inline rather than a
+ * notice: it belongs to one control, and it goes the moment the value is fixed.
+ */
+.mn-field-error {
+  margin: 0;
+  color: var(--status-danger);
+  font-size: var(--text-sm);
 }
 
 input[type='checkbox'],
@@ -171,154 +180,4 @@ input.mn-switch:disabled {
 
 .mn-disclosure[open] > summary::before {
   transform: rotate(45deg) translate(-1px, -1px);
-}
-
-/*
- * The one role for secondary text. There used to be several competing greys and
- * sizes for the same job, which is how a page ends up with three kinds of quiet.
- */
-.mn-hint {
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-}
-
-/*
- * A grouped surface. It carries a border only where it separates its contents
- * from something else; a panel wrapping the whole of a page separates nothing,
- * and `mn-panel--plain` is that case.
- */
-.mn-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-5);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-card);
-  background: var(--surface-panel);
-}
-
-@media (max-width: breakpoints.$narrow-max) {
-  .mn-panel {
-    padding: var(--space-4);
-  }
-}
-
-.mn-panel--plain {
-  padding: 0;
-  border: 0;
-  background: none;
-}
-
-/*
- * Settings is a stack of compact decisions, not a dashboard. Its sections use
- * the same quiet raised cards and pill actions as the Library while retaining
- * the ordinary panel primitive everywhere else.
- */
-.mn-settings-section {
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--surface-raised);
-}
-
-.mn-settings-section > h2,
-.mn-settings-section > .section-head > h2 {
-  margin: 0;
-  font-size: var(--text-lg);
-  letter-spacing: -0.01em;
-}
-
-/*
- * The Library's row surface, for anything that sits on the canvas the way a
- * story row does: a quiet raised card with an edge only just there.
- */
-.mn-card {
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 35%, transparent);
-  border-radius: var(--radius-card);
-  background: var(--surface-raised);
-}
-
-/* The soft round mark a card leads with, carrying the icon of what it opens. */
-.mn-icon-badge {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 50%;
-  background: var(--action-primary-soft);
-  color: var(--action-primary);
-}
-
-/*
- * Every page centres itself. Without a sidebar there is nothing else deciding
- * where a page sits, and a column pinned to the left edge of a wide window is
- * not a layout.
- */
-.mn-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  max-width: var(--layout-measure);
-  margin-inline: auto;
-}
-
-/*
- * The two small-caps labels the application uses to rank a fragment below a
- * heading without adding another heading level. They are defined here because
- * they were seven near-identical copies, and named here because uppercase is a
- * deliberate exception to sentence case — see `docs/design-system.md`.
- */
-.mn-eyebrow {
-  margin: 0;
-  color: var(--action-primary);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.mn-section-label {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-/*
- * A read-only fact list: a label column and its values. One definition, because
- * Settings alone rendered three — a 320px label column, a 256px one, and a
- * right-aligned auto column — for the same pattern on one screen. Below the
- * narrow breakpoint the label column collapses and the value follows it.
- */
-.mn-facts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.mn-facts > div {
-  display: grid;
-  grid-template-columns: minmax(10rem, 18rem) minmax(0, 1fr);
-  gap: var(--space-2);
-  align-items: baseline;
-}
-
-.mn-facts dt {
-  color: var(--text-secondary);
-}
-
-.mn-facts dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-@media (max-width: breakpoints.$narrow-max) {
-  .mn-facts > div {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-  }
 }

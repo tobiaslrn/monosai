@@ -45,7 +45,7 @@ export interface RenameDialogData {
         />
       </div>
 
-      <div class="actions">
+      <div class="mn-actions mn-actions--end">
         <button type="button" class="mn-button" (click)="cancel()">Keep current name</button>
         <button type="submit" class="mn-button mn-button--primary" [disabled]="!canSave()">
           Save name
@@ -69,14 +69,6 @@ export interface RenameDialogData {
     h2 {
       margin: 0;
       font-size: var(--text-xl);
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      justify-content: flex-end;
-      margin-top: var(--space-2);
     }
   `,
 })

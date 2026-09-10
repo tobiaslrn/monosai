@@ -94,9 +94,9 @@ h3 {
 .clear {
   color: var(--status-danger);
 }
-.mn-error {
-  font-size: var(--text-sm);
-  margin-bottom: 0;
+.row-notice,
+.menu-notice {
+  margin-top: var(--space-2);
 }
 @media (max-width: breakpoints.$wide-max) {
   .panel {

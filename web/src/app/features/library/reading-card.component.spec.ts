@@ -131,8 +131,8 @@ describe('ReadingCardComponent', () => {
   });
 
   it('distinguishes opened and unread stories without claiming completion', () => {
-    expect(textOf(imported(), '.status')).toBe('Unread');
-    expect(textOf(imported({ lastOpenedAt: NOW }), '.status')).toBe('Read');
+    expect(textOf(imported(), '.mn-status-pill')).toBe('Unread');
+    expect(textOf(imported({ lastOpenedAt: NOW }), '.mn-status-pill')).toBe('Read');
   });
 
   it('keeps the whole row a link to the reader and the actions out of it', () => {

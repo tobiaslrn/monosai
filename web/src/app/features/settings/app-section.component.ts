@@ -13,8 +13,8 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
   selector: 'mn-app-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mn-panel mn-settings-section" aria-labelledby="mn-app-heading">
-      <h2 id="mn-app-heading">App</h2>
+    <section class="mn-card" aria-labelledby="mn-app-heading">
+      <h2 id="mn-app-heading" class="mn-card-title">App</h2>
 
       <dl class="mn-facts">
         <div>
@@ -24,7 +24,7 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
       </dl>
 
       @let update = updates.status();
-      <div class="actions">
+      <div class="mn-actions">
         @if (!install.isStandalone()) {
           <button
             type="button"
@@ -54,11 +54,8 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
     </section>
   `,
   styles: `
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      margin-top: var(--space-4);
+    p {
+      margin: 0;
     }
   `,
 })

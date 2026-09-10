@@ -10,13 +10,13 @@ import { IconComponent } from '../icon/icon.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent],
   template: `
-    <section class="panel" role="alert">
-      <p class="badge"><mn-icon name="warning" [size]="18" /> {{ heading() }}</p>
+    <section class="mn-card panel" role="alert">
+      <p class="heading"><mn-icon name="warning" [size]="18" /> {{ heading() }}</p>
       <p class="description">{{ description() }}</p>
       @if (dataStatus(); as status) {
         <p class="data-status">{{ status }}</p>
       }
-      <div class="actions">
+      <div class="mn-actions">
         <ng-content select="[data-actions]" />
       </div>
     </section>

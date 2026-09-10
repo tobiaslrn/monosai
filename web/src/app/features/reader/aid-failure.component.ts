@@ -10,9 +10,11 @@ import { describeEnrichmentFailure, enrichmentNeedsSettings } from './enrichment
   imports: [RouterLink],
   template: `
     @if (message(); as message) {
-      <div class="failure" role="alert">
-        <p>{{ message }}</p>
-        <p class="unaffected">Your reading and saved aids are unchanged.</p>
+      <div class="mn-notice mn-notice--error" role="alert">
+        <div>
+          <p>{{ message }}</p>
+          <p>Your reading and saved aids are unchanged.</p>
+        </div>
         @if (setupMessage() || needsSettings()) {
           <a class="mn-button" routerLink="/settings">Open Settings</a>
         } @else if (needsCredit()) {
@@ -28,20 +30,9 @@ import { describeEnrichmentFailure, enrichmentNeedsSettings } from './enrichment
     }
   `,
   styles: `
-    .failure {
-      display: grid;
-      gap: var(--space-2);
-      font-size: var(--text-sm);
-    }
-    p {
-      margin: 0;
-      color: var(--status-danger);
-    }
-    .unaffected {
-      color: var(--text-secondary);
-    }
-    a {
-      justify-self: start;
+    :host {
+      display: block;
+      align-self: stretch;
     }
   `,
 })

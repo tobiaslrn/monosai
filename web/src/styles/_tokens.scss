@@ -138,7 +138,8 @@
   --reader-line-height-ruby: 2.6;
   --reader-paragraph-gap: 2.25rem;
   --reader-measure: 36em;
-  --layout-measure: 60rem;
+  /* Every non-reader page and the application bar share this column. */
+  --page-measure: 60rem;
 
   --motion-fast: 120ms;
   --motion-medium: 200ms;

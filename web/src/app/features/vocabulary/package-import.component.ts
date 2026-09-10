@@ -25,39 +25,43 @@ import { ANKI_LINKS } from './anki-links';
       @switch (current.kind) {
         @case ('idle') {}
         @case ('complete') {
-          <div class="panel" data-testid="package-import-complete">
+          <div class="mn-card" data-testid="package-import-complete">
             <p class="headline">
               {{ current.outcome.replaced ? 'Replaced' : 'Added' }}
               {{ current.outcome.deckName }} · {{ current.outcome.uniqueExpressions }} unique
               expressions
             </p>
-            <div class="actions">
+            <div class="mn-actions">
               <button type="button" class="mn-button" (click)="store.dismiss()">Dismiss</button>
             </div>
           </div>
         }
         @case ('cancelled') {
-          <div class="panel" data-testid="package-import-cancelled">
+          <div class="mn-card" data-testid="package-import-cancelled">
             <p class="headline">Import cancelled. Your vocabulary is unchanged.</p>
-            <div class="actions">
+            <div class="mn-actions">
               <button type="button" class="mn-button" (click)="store.dismiss()">Dismiss</button>
             </div>
           </div>
         }
         @case ('failed') {
-          <div class="panel is-failed" role="alert" data-testid="package-import-failed">
-            <p class="headline">{{ current.error.message }}</p>
-            <p class="mn-hint">
-              Your current vocabulary and other sources are unchanged.
-              @if (!current.canRetry) {
-                Export the deck from Anki or AnkiDroid with scheduling information included, then
-                add it again —
-                <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
-                  >how to export</a
-                >.
-              }
-            </p>
-            <div class="actions">
+          <div class="mn-card" role="alert" data-testid="package-import-failed">
+            <div class="mn-notice mn-notice--error">
+              <div>
+                <p class="headline">{{ current.error.message }}</p>
+                <p>
+                  Your current vocabulary and other sources are unchanged.
+                  @if (!current.canRetry) {
+                    Export the deck from Anki or AnkiDroid with scheduling information included,
+                    then add it again —
+                    <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
+                      >how to export</a
+                    >.
+                  }
+                </p>
+              </div>
+            </div>
+            <div class="mn-actions">
               @if (current.canRetry) {
                 <button
                   type="button"
@@ -73,7 +77,7 @@ import { ANKI_LINKS } from './anki-links';
           </div>
         }
         @case ('selecting') {
-          <div class="panel" data-testid="package-import-selection">
+          <div class="mn-card" data-testid="package-import-selection">
             <h3 #selectionHeading tabindex="-1">Choose what to import</h3>
             <p class="mn-hint">
               Monosai could not tell what this package should become, so nothing has been imported
@@ -158,7 +162,7 @@ import { ANKI_LINKS } from './anki-links';
               }
             }
 
-            <div class="actions">
+            <div class="mn-actions">
               <button
                 type="button"
                 class="mn-button mn-button--primary"
@@ -172,10 +176,10 @@ import { ANKI_LINKS } from './anki-links';
           </div>
         }
         @default {
-          <div class="panel" data-testid="package-import-progress">
+          <div class="mn-card" data-testid="package-import-progress">
             <p class="headline">{{ progress() }}</p>
             @if (store.canCancel()) {
-              <div class="actions">
+              <div class="mn-actions">
                 <button type="button" class="mn-button" (click)="store.cancel()">Cancel</button>
               </div>
             }
@@ -187,21 +191,8 @@ import { ANKI_LINKS } from './anki-links';
   styles: `
     @use '../../../styles/breakpoints' as breakpoints;
 
-    .panel {
-      display: grid;
-      gap: var(--space-2);
-      padding: var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-raised);
-    }
-
-    .panel.is-failed {
-      border-color: var(--status-danger);
-    }
-
     .headline,
-    .panel h3 {
+    h3 {
       margin: 0;
     }
 
@@ -216,16 +207,11 @@ import { ANKI_LINKS } from './anki-links';
       }
     }
 
-    .actions,
     .check {
       display: flex;
       align-items: center;
       gap: var(--space-2);
       flex-wrap: wrap;
-    }
-
-    .code {
-      font-family: var(--font-mono, monospace);
     }
   `,
 })

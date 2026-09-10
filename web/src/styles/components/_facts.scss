@@ -1,0 +1,33 @@
+/*
+ * A read-only fact list: the label on the left, its value on the right, on
+ * one line at every width. The row wraps only when the value itself is too
+ * long to sit beside its label, and then the value keeps to the right edge.
+ * There is no breakpoint and no fixed label column, because neither knows how
+ * long the words in it will be.
+ */
+.mn-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.mn-facts > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.mn-facts dt {
+  color: var(--text-secondary);
+}
+
+.mn-facts dd {
+  min-width: 0;
+  margin: 0 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  overflow-wrap: anywhere;
+}

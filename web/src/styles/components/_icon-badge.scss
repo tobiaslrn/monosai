@@ -1,0 +1,12 @@
+/* The soft round mark a row or a card leads with, carrying the icon of what it opens. */
+.mn-icon-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--action-primary-soft);
+  color: var(--action-primary);
+}

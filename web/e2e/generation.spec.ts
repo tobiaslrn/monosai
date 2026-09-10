@@ -113,7 +113,7 @@ test.describe('generating a story', () => {
     await expect(generate).toBeAttached();
     await expect
       .poll(() =>
-        generate.evaluate((element) => getComputedStyle(element.closest('.actions')!).position),
+        generate.evaluate((element) => getComputedStyle(element.closest('.action-bar')!).position),
       )
       .toBe('static');
     await generate.scrollIntoViewIfNeeded();

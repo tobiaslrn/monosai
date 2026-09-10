@@ -15,14 +15,16 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
           @if (summary().dictionaryForm !== surface()) {
             <span class="separator" aria-hidden="true">·</span>
           }
-          <span class="part-of-speech">{{ partOfSpeech }}</span>
+          <span class="part-of-speech mn-status-pill mn-status-pill--accent">{{
+            partOfSpeech
+          }}</span>
         }
       </p>
 
       @if (summary().formLabels.length > 0) {
         <p class="form-line">
           @for (label of summary().formLabels; track label) {
-            <span class="form-tag">{{ label }}</span>
+            <span class="mn-status-pill mn-status-pill--accent">{{ label }}</span>
             @if (!$last) {
               <span class="separator form-separator" aria-hidden="true">{{ ' · ' }}</span>
             }
@@ -61,31 +63,10 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
       color: var(--text-secondary);
     }
 
-    .part-of-speech {
-      padding: var(--space-1) var(--space-2);
-      border-radius: var(--radius-pill);
-      background: var(--action-primary-soft);
-      color: var(--action-primary-text);
-      font-size: var(--text-sm);
-      line-height: 1.2;
-    }
-
     .form-line {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-1);
-      color: var(--text-primary);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-semibold);
-      line-height: 1.4;
-    }
-
-    .form-tag {
-      padding: var(--space-1) var(--space-2);
-      border-radius: var(--radius-pill);
-      background: var(--action-primary-soft);
-      color: var(--action-primary-text);
-      font-weight: var(--weight-medium);
     }
 
     .form-separator {

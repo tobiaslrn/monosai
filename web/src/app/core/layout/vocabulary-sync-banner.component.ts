@@ -24,7 +24,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
         @case ('attention') {
           <aside class="banner attention" role="status" aria-live="polite" aria-atomic="true">
             <span>{{ status.message }}</span>
-            <span class="actions">
+            <span class="mn-actions">
               <button type="button" class="mn-button mn-button--ghost" (click)="retry()">
                 Retry now
               </button>
@@ -88,13 +88,8 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
       color: var(--text-primary);
     }
 
-    .actions {
-      display: inline-flex;
-      gap: var(--space-2);
-    }
-
     a {
-      color: var(--accent-strong);
+      color: var(--action-primary-text);
       font: inherit;
       text-decoration: underline;
     }

@@ -12,7 +12,7 @@ import { AnkiConnectionStore } from '../../application/vocabulary/anki-connectio
       <button type="button" class="mn-button" (click)="store.cancel()">Cancel</button>
     }
     @if (store.selecting()) {
-      <section class="mn-panel" aria-label="Review Anki source">
+      <section class="mn-card" aria-label="Review Anki source">
         <h3>Review Anki source</h3>
         @if (!store.suggested()) {
           <p class="mn-hint">

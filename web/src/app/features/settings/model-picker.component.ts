@@ -70,7 +70,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 
           @if (favorites().length > 0) {
             <div class="favorites" aria-label="Favourite models">
-              <p class="mn-eyebrow">Favourites</p>
+              <p class="mn-group-title">Favourites</p>
               @for (model of favorites(); track model.modelId) {
                 <ng-container
                   [ngTemplateOutlet]="modelRow"
@@ -96,7 +96,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
             @if (loading()) {
               <p class="state" role="status">Loading OpenRouter models…</p>
             } @else if (failure()) {
-              <p class="state error" role="alert">{{ failure() }}</p>
+              <p class="state-notice mn-notice mn-notice--error" role="alert">{{ failure() }}</p>
             } @else if (others().length === 0) {
               <p class="state">No matching models.</p>
             } @else {
@@ -222,7 +222,6 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       margin: 0;
       padding: var(--space-2) var(--space-3) var(--space-1);
       background: var(--action-primary-soft);
-      font-size: var(--text-xs);
     }
     .results {
       min-height: 3rem;
@@ -278,8 +277,8 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       color: var(--text-secondary);
       text-align: center;
     }
-    .error {
-      color: var(--status-danger);
+    .state-notice {
+      margin: var(--space-2);
     }
   `,
 })

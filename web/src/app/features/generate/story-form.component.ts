@@ -60,7 +60,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             {{ formatCount(draft.premiseLimit) }} characters
           </p>
           @if (premiseTooLong()) {
-            <p id="mn-premise-limit" class="limit-hint" role="alert">
+            <p id="mn-premise-limit" class="mn-field-error" role="alert">
               {{ premiseLimitMessage() }}
             </p>
           }
@@ -84,7 +84,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             {{ formatCount(draft.instructionsLimit) }} characters
           </p>
           @if (instructionsTooLong()) {
-            <p id="mn-instructions-limit" class="limit-hint" role="alert">
+            <p id="mn-instructions-limit" class="mn-field-error" role="alert">
               {{ instructionsLimitMessage() }}
             </p>
           }
@@ -122,7 +122,11 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           }
         </div>
         @if (showLengthWarning()) {
-          <p id="mn-length-warning" class="length-warning" role="status">
+          <p
+            id="mn-length-warning"
+            class="length-warning mn-notice mn-notice--warning"
+            role="status"
+          >
             <mn-icon name="warning" [size]="17" />
             <span> Longer stories may ignore your vocabulary and grammar settings. </span>
           </p>
@@ -218,7 +222,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         }
 
         <div class="generation-sources" data-testid="form-sources">
-          <p class="mn-section-label setting-section-title">Uses</p>
+          <p class="mn-group-title setting-section-title">Uses</p>
           <a
             routerLink="/reading-level"
             fragment="words"
@@ -241,9 +245,9 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       </aside>
     </div>
 
-    <div class="actions">
+    <div class="action-bar">
       <ng-content select="[generation-blockers]" />
-      <div class="actions-row">
+      <div class="mn-actions">
         <button
           type="button"
           class="mn-button mn-button--primary"
@@ -255,10 +259,10 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           <mn-icon name="generate" [size]="18" />
           <span>Generate story</span>
         </button>
-        @if (!canGenerate() && disabledReason()) {
-          <p id="mn-generate-disabled-reason" class="mn-hint">{{ disabledReason() }}</p>
-        }
       </div>
+      @if (!canGenerate() && disabledReason()) {
+        <p id="mn-generate-disabled-reason" class="mn-hint">{{ disabledReason() }}</p>
+      }
       @if (atGenerationLimit()) {
         <p class="mn-hint" data-testid="generation-limit">
           Generation limit reached. This one can start when one finishes.
@@ -289,12 +293,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     .counter.is-over {
       color: var(--status-danger);
       font-weight: var(--weight-semibold);
-    }
-
-    .limit-hint {
-      margin: calc(var(--space-1) * -1) 0 0;
-      color: var(--status-danger);
-      font-size: var(--text-sm);
     }
 
     .composer-grid {
@@ -456,21 +454,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     }
 
     .length-warning {
-      display: flex;
-      gap: var(--space-2);
-      align-items: flex-start;
-      margin: var(--space-3) 0 0;
-      padding: var(--space-3);
-      border: 1px solid color-mix(in srgb, var(--status-warning) 28%, transparent);
-      border-radius: var(--radius-control);
-      background: var(--status-warning-soft);
-      color: var(--status-warning);
-      font-size: var(--text-sm);
-      line-height: 1.45;
-    }
-
-    .length-warning mn-icon {
-      margin-top: 1px;
+      margin-top: var(--space-3);
     }
 
     .word-selection {
@@ -575,18 +559,15 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
      * Generate belongs to the whole composer. It remains in document flow so
      * its prerequisite copy never covers the fields it explains.
      */
-    .actions {
+    .action-bar {
       display: flex;
       flex-direction: column;
       gap: var(--space-2);
       padding-block: var(--space-2);
     }
 
-    .actions-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3);
-      align-items: center;
+    .action-bar p {
+      margin: 0;
     }
   `,
 })

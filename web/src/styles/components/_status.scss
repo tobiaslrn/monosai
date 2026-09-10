@@ -1,0 +1,43 @@
+/*
+ * A short word that says where something stands — Ready, Unread, Test failed,
+ * a word form. It is never pressable, so it never takes the action colour: the
+ * accent is the lavender, and the rest are the status pairs.
+ */
+.mn-status-pill {
+  --pill-soft: var(--surface-sunken);
+  --pill-ink: var(--text-secondary);
+
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-1);
+  align-items: center;
+  max-width: 100%;
+  padding: calc(var(--space-1) / 2) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--pill-soft);
+  color: var(--pill-ink);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.mn-status-pill--success {
+  --pill-soft: var(--status-success-soft);
+  --pill-ink: var(--status-success);
+}
+
+.mn-status-pill--warning {
+  --pill-soft: var(--status-warning-soft);
+  --pill-ink: var(--status-warning);
+}
+
+.mn-status-pill--danger {
+  --pill-soft: var(--status-danger-soft);
+  --pill-ink: var(--status-danger);
+}
+
+.mn-status-pill--accent {
+  --pill-soft: var(--accent-secondary-soft);
+  --pill-ink: var(--accent-secondary);
+}

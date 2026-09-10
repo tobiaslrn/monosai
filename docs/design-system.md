@@ -7,9 +7,9 @@ choice applies when, and what each rule rules out. It is the authority for
 It deliberately carries **no values**. There are no hex codes, no pixel counts,
 no type scale, and no component API here, because a document that repeats them
 goes stale the first time one is tuned. Values live in `web/src/styles/_tokens.scss`,
-the named thresholds in `web/src/styles/_breakpoints.scss`, and the shared control
-classes in `web/src/styles/_controls.scss` and
-`web/src/styles/components/_button.scss`; this document
+the named thresholds in `web/src/styles/_breakpoints.scss`, the form fields in
+`web/src/styles/_controls.scss`, and one file per shared primitive in
+`web/src/styles/components/`; this document
 names the *roles* those tokens fill and the rules that govern their use. When
 these disagree, this document describes the intent and the tokens describe the
 current state — reconcile by changing the tokens.
@@ -115,6 +115,28 @@ Each top-level group is one quiet raised card with a compact section heading;
 actions use the same pill silhouette as the Library's filters and creation
 control. Complex model fields may use sunken groups inside that card, but may
 not introduce a second competing hierarchy of raised panels.
+
+### Surfaces and groups
+
+A page groups its content with two surfaces and no others. The **card** is the
+one raised surface: a quiet edge, the card radius, and one inner padding. Inside
+a card, a related set of controls may sit in an **inset** — a sunken group with
+no border of its own, because the card already draws the boundary. Nesting stops
+there: an inset holds neither a card nor another inset, so a page never has more
+than two levels of grouping.
+
+Content inside a surface runs in a **stack** with one gap, and buttons that act
+together sit in one **actions** row. The row moves as a block: when it no longer
+fits beside the copy it belongs to it drops beneath that copy whole, and a button
+label never breaks across two lines.
+
+A card's title is the section rank. A group inside it takes a **group title** —
+sentence case, small, semibold, secondary — or no title at all when its contents
+are self-evident.
+
+A read-only list of **facts** puts each label on the left and its value on the
+right, on one line at every width; a row wraps only when its value is too long to
+fit, and the value keeps to the right edge.
 
 ### Density
 
@@ -237,6 +259,10 @@ text without a border for quiet verbs such as adding a source, testing, or
 previewing. `.mn-button--danger` keeps a destructive action outlined in the
 danger colour and is used where confirmation follows. A surface has at most one
 filled primary control; selected toggles use a soft selection tint instead.
+
+A choice of one out of a few — the theme — is a **segmented** control: native
+radios drawn at the button's height, size, and weight, the chosen one wearing the
+same selection tint as a pressed toggle rather than the filled primary.
 
 Disabled controls are drawn with the sunken surface, secondary text, and a
 distinct boundary. Opacity alone is not a disabled state: disabled must be
@@ -570,15 +596,10 @@ safe. A local-first application failing to save is precisely where terseness
 reads as indifference. That sentence says what survived, in the concrete — not
 that an error occurred.
 
-Sentence case everywhere: page titles, section headings, buttons, menu items,
-labels. Title case is not a rank and is not used to mark one.
-
-**One exception, named:** a small-caps label may rank a fragment below the heading
-above it where adding another heading level would be worse. There are two, both in
-`_controls.scss`, and no third is written inline: `.mn-eyebrow` (accented, above a
-result or a group) and `.mn-section-label` (quiet, over a list inside a card). The
-markup stays sentence case; only the rendering is capitalised. Anything that could be
-an ordinary heading is one instead.
+Sentence case everywhere: page titles, section headings, group titles, buttons,
+menu items, labels. Title case is not a rank and is not used to mark one, and
+neither are capitals: there is no uppercase label anywhere in the application.
+A fragment that needs ranking below the heading above it is a group title.
 
 ### The prose budget
 
@@ -644,6 +665,15 @@ content, not a format: it is never passed through these, and it carries
 A result appears **where it was caused** — beside the control that produced it —
 and clears on the next action. There is no application-wide notification
 surface.
+
+What a result says is drawn one of three ways. A sentence that belongs to a
+surface — a failure, a warning, a success, or a fact to know before acting — is
+a **notice**: the status's soft background with its words in the status colour,
+an optional leading icon, and at most one action at its end. A short word that
+says where something stands — Ready, Unread, Test failed, a word's form — is a
+**status pill**, which is never pressable and so never takes the action colour.
+What is wrong with the value of one field is plain danger-coloured text directly
+under that field, not a notice.
 
 **Toasts are for work the learner did not trigger**: a background vocabulary
 refresh that changed something, an update becoming available. That is the whole

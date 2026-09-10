@@ -6,9 +6,7 @@ test.describe('settings persistence', () => {
   test('puts everyday configuration before advanced and technical settings', async ({ page }) => {
     await page.goto('./#/settings');
 
-    const headingsLocator = page.locator(
-      'main section.mn-panel > h2, main section.mn-panel > header > h2',
-    );
+    const headingsLocator = page.getByRole('main').getByRole('heading', { level: 2 });
     // Read only once the page has rendered: reading text does not wait on its own.
     await expect(headingsLocator.first()).toBeVisible();
     const headings = await headingsLocator.allInnerTexts();

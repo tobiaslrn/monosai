@@ -31,19 +31,23 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
         {{ formatCount(store.characterCount()) }} of {{ formatCount(limit) }} characters
       </p>
       @if (isOverLimit()) {
-        <p id="mn-import-limit-hint" class="limit-hint" role="alert">{{ overLimitMessage() }}</p>
+        <p id="mn-import-limit-hint" class="mn-field-error" role="alert">
+          {{ overLimitMessage() }}
+        </p>
       }
       @if (store.advisories().length > 0) {
-        <div id="mn-import-advisories" class="advisories" role="status">
-          @for (advisory of store.advisories(); track advisory.code) {
-            <p>{{ advisory.message }}</p>
-          }
+        <div id="mn-import-advisories" class="mn-notice mn-notice--warning" role="status">
+          <div>
+            @for (advisory of store.advisories(); track advisory.code) {
+              <p>{{ advisory.message }}</p>
+            }
+          </div>
         </div>
       }
     </div>
 
     @if (store.rejection(); as rejection) {
-      <p class="mn-error" role="alert">{{ rejection.message }}</p>
+      <p class="mn-notice mn-notice--error" role="alert">{{ rejection.message }}</p>
     }
 
     <div class="mn-field">
@@ -82,28 +86,6 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
     .count.is-over {
       color: var(--status-danger);
       font-weight: var(--weight-semibold);
-    }
-
-    .limit-hint {
-      margin: calc(var(--space-1) * -1) 0 0;
-      color: var(--status-danger);
-      font-size: var(--text-sm);
-    }
-
-    .advisories {
-      display: grid;
-      gap: var(--space-1);
-      color: var(--status-warning);
-      font-size: var(--text-sm);
-    }
-
-    .advisories p {
-      margin: 0;
-    }
-
-    .mn-error {
-      margin: 0;
-      color: var(--status-danger);
     }
   `,
 })

@@ -10,6 +10,14 @@
 @use 'styles/a11y';
 @use 'styles/components/button';
 @use 'styles/controls';
+@use 'styles/components/text';
+@use 'styles/components/layout';
+@use 'styles/components/card';
+@use 'styles/components/icon-badge';
+@use 'styles/components/notice';
+@use 'styles/components/status';
+@use 'styles/components/facts';
+@use 'styles/components/segmented';
 
 .cdk-overlay-dark-backdrop {
   background: rgb(37 40 36 / 45%);

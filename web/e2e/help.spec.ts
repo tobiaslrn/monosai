@@ -15,13 +15,17 @@ test.describe('first-use Help', () => {
     ).toBeVisible();
     await page.getByRole('button', { name: 'Create a new story', exact: true }).click();
     await page.getByRole('link', { name: 'Write with AI', exact: true }).click();
-    await expect(page.locator('.actions [data-check="text-model"] strong')).toHaveText('Text AI:');
-    await expect(page.locator('.actions [data-check="vocabulary"] strong')).toHaveText(
+    await expect(page.locator('.action-bar [data-check="text-model"] strong')).toHaveText(
+      'Text AI:',
+    );
+    await expect(page.locator('.action-bar [data-check="vocabulary"] strong')).toHaveText(
       'Word list:',
     );
     await expect(page.getByTestId('generate')).toBeDisabled();
     await page.context().setOffline(true);
-    await expect(page.locator('.actions [data-check="network"]')).toContainText('You are offline');
+    await expect(page.locator('.action-bar [data-check="network"]')).toContainText(
+      'You are offline',
+    );
     await expect(page.getByTestId('generate')).toHaveAttribute(
       'aria-describedby',
       'mn-generate-disabled-reason',

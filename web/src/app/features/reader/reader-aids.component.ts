@@ -67,7 +67,7 @@ const AIDS: readonly AidOption[] = [
         }
       </div>
       @if (vocabularyNotice(); as notice) {
-        <p class="vocabulary-notice" data-testid="reader-vocabulary-notice">
+        <p class="mn-notice mn-notice--warning" data-testid="reader-vocabulary-notice">
           {{ notice }}
           <a routerLink="/reading-level" fragment="words">What you can read</a>
         </p>
@@ -125,19 +125,6 @@ const AIDS: readonly AidOption[] = [
       color: var(--text-secondary);
       font-size: var(--text-sm);
       font-variant-numeric: tabular-nums;
-    }
-
-    .vocabulary-notice {
-      margin: 0;
-      padding: var(--space-2);
-      border-radius: var(--radius-control);
-      background: var(--status-warning-soft);
-      color: var(--text-primary);
-      font-size: var(--text-sm);
-    }
-
-    .vocabulary-notice a {
-      color: var(--action-primary-text);
     }
 
     .aid {

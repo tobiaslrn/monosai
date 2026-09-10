@@ -37,7 +37,7 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
         <mn-preset-picker [selected]="draft()" (selectedChange)="choose($event)" />
 
         @if (profile.lastError()) {
-          <p class="mn-error" role="alert">
+          <p class="mn-notice mn-notice--error" role="alert">
             Your level could not be saved. The level you had is unchanged.
           </p>
         }
@@ -92,10 +92,6 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
 
     .assets-failed h2 {
       font-size: var(--text-lg);
-    }
-
-    .mn-error {
-      margin: 0;
     }
   `,
 })

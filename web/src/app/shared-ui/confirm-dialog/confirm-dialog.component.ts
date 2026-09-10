@@ -40,7 +40,7 @@ export interface ConfirmDialogData {
         <p class="footnote">{{ data.footnote }}</p>
       }
 
-      <div class="actions">
+      <div class="mn-actions mn-actions--end">
         <button type="button" class="mn-button" cdkFocusInitial (click)="cancel()">
           {{ data.cancelLabel }}
         </button>
@@ -87,14 +87,6 @@ export interface ConfirmDialogData {
 
     .footnote {
       font-size: var(--text-sm);
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      justify-content: flex-end;
-      margin-top: var(--space-2);
     }
   `,
 })

@@ -35,8 +35,8 @@ function formatBytes(bytes: number | null): string {
   selector: 'mn-storage-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mn-panel mn-settings-section" aria-labelledby="mn-storage-heading">
-      <h2 id="mn-storage-heading">Storage</h2>
+    <section class="mn-card" aria-labelledby="mn-storage-heading">
+      <h2 id="mn-storage-heading" class="mn-card-title">Storage</h2>
 
       <dl class="mn-facts">
         <div>
@@ -53,7 +53,7 @@ function formatBytes(bytes: number | null): string {
         </div>
       </dl>
 
-      <div class="actions-row">
+      <div class="mn-actions">
         @if (storage.status().canRequest) {
           <button
             type="button"
@@ -95,10 +95,10 @@ function formatBytes(bytes: number | null): string {
               Delete all Monosai data
             </button>
           } @else {
-            <p role="alert" class="confirm">
+            <p role="alert" class="mn-notice mn-notice--error">
               This deletes everything Monosai has stored in this browser. Continue?
             </p>
-            <div class="actions-row">
+            <div class="mn-actions">
               <button
                 type="button"
                 class="mn-button mn-button--danger"
@@ -114,20 +114,17 @@ function formatBytes(bytes: number | null): string {
       </details>
 
       @if (storage.failure(); as failure) {
-        <p role="alert" class="failure">{{ failure.message }}</p>
+        <p role="alert" class="mn-notice mn-notice--error">{{ failure.message }}</p>
       }
     </section>
   `,
   styles: `
-    .danger {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      align-items: flex-start;
+    p {
+      margin: 0;
     }
 
     .danger {
-      padding-top: var(--space-4);
+      padding-top: var(--space-2);
       border-top: 1px solid var(--border-subtle);
     }
 
@@ -138,20 +135,9 @@ function formatBytes(bytes: number | null): string {
     .danger-content {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: var(--space-3);
       align-items: flex-start;
       padding-top: var(--space-2);
-    }
-
-    .actions-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-    }
-
-    .confirm,
-    .failure {
-      color: var(--status-danger);
     }
   `,
 })

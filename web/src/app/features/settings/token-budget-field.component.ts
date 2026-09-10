@@ -43,7 +43,7 @@ let nextId = 0;
       (change)="commit()"
     />
     @if (invalid()) {
-      <p [id]="errorId" class="error" role="alert">
+      <p [id]="errorId" class="mn-field-error" role="alert">
         Use a whole number between {{ min }} and {{ max }}.
       </p>
     }
@@ -53,11 +53,6 @@ let nextId = 0;
       display: grid;
       gap: var(--space-1);
       min-width: 0;
-    }
-    .error {
-      margin: 0;
-      color: var(--status-danger);
-      font-size: var(--text-sm);
     }
   `,
 })

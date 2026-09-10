@@ -85,7 +85,7 @@ test('loads the next library page at the window end without Show more @smoke @mo
   const layout = await lastRow.evaluate((link) => {
     const card = link.closest('mn-reading-card');
     const title = card?.querySelector('h3');
-    const status = card?.querySelector('.status');
+    const status = card?.querySelector('.mn-status-pill');
     const menu = card?.querySelector('.menu-anchor');
     if (
       title === null ||

@@ -15,13 +15,13 @@ import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnosti
   selector: 'mn-diagnostics-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mn-panel mn-settings-section" aria-labelledby="mn-diagnostics-heading">
-      <h2 id="mn-diagnostics-heading">Troubleshooting</h2>
+    <section class="mn-card" aria-labelledby="mn-diagnostics-heading">
+      <h2 id="mn-diagnostics-heading" class="mn-card-title">Troubleshooting</h2>
       <p class="mn-hint">
         Copy a privacy-safe diagnostic log when you need help. Logs stay in this tab, disappear on
         reload, and never include your API key or reading content.
       </p>
-      <div class="actions">
+      <div class="mn-actions">
         <button type="button" class="mn-button" (click)="copyDiagnostics()">
           Copy diagnostics
         </button>
@@ -30,9 +30,9 @@ import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnosti
         </button>
       </div>
       @if (copyStatus() === 'copied') {
-        <p class="status" role="status">Diagnostics copied.</p>
+        <p class="mn-hint" role="status">Diagnostics copied.</p>
       } @else if (copyStatus() === 'failed') {
-        <p class="status" role="status">Diagnostics could not be copied on this browser.</p>
+        <p class="mn-hint" role="status">Diagnostics could not be copied on this browser.</p>
       }
       <details class="mn-disclosure advanced">
         <summary>Advanced technical details</summary>
@@ -66,17 +66,6 @@ import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnosti
       margin: 0;
     }
 
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      justify-content: flex-start;
-    }
-
-    .status {
-      color: var(--text-secondary);
-    }
-
     .advanced {
       padding-top: var(--space-2);
       border-top: 1px solid var(--border-subtle);
@@ -84,10 +73,6 @@ import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnosti
 
     dl {
       margin-top: var(--space-3);
-    }
-
-    dd {
-      font-variant-numeric: tabular-nums;
     }
   `,
 })

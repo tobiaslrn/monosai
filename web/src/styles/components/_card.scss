@@ -1,0 +1,47 @@
+/*
+ * The two surfaces a page is grouped with.
+ *
+ * `.mn-card` is the one raised surface: a quiet card with an edge only just
+ * there. `.mn-inset` is a sunken group inside a card, with no border of its
+ * own, because the card already draws the boundary. Nesting stops there — an
+ * inset never holds another inset or a card — so a page has at most two levels.
+ */
+.mn-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 35%, transparent);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+}
+
+/* A card made of rows that carry their own padding and dividers. */
+.mn-card--flush {
+  gap: 0;
+  padding: 0;
+  overflow: clip;
+}
+
+.mn-inset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--surface-sunken) 75%, var(--surface-raised));
+}
+
+.mn-card :where(h2, h3),
+.mn-inset :where(h3, h4) {
+  margin: 0;
+}
+
+/* The card's own title: the section rank, whichever element carries it. */
+.mn-card-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}

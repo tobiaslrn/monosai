@@ -20,12 +20,12 @@ import { AppUpdateStore } from '../../application/pwa/app-update.store';
           @case ('available') {
             <p>A new version of Monosai has downloaded.</p>
             @if (store.isBusy()) {
-              <p class="hint">Waiting for current work to finish.</p>
+              <p class="mn-hint">Waiting for current work to finish.</p>
               <button type="button" class="mn-button mn-button--primary" disabled>
                 Update and reload
               </button>
             } @else {
-              <div class="actions">
+              <div class="mn-actions">
                 <button type="button" class="mn-button mn-button--primary" (click)="activate()">
                   Update and reload
                 </button>
@@ -39,9 +39,9 @@ import { AppUpdateStore } from '../../application/pwa/app-update.store';
           @case ('failed') {
             <p>{{ status.message }}</p>
             @if (store.isBusy()) {
-              <p class="hint">Waiting for current work to finish.</p>
+              <p class="mn-hint">Waiting for current work to finish.</p>
             }
-            <div class="actions">
+            <div class="mn-actions">
               @if (status.recovery === 'reload') {
                 <button
                   type="button"
@@ -74,15 +74,6 @@ import { AppUpdateStore } from '../../application/pwa/app-update.store';
 
     p {
       margin: 0;
-    }
-
-    .hint {
-      color: var(--text-secondary);
-    }
-
-    .actions {
-      display: flex;
-      gap: var(--space-2);
     }
   `,
 })

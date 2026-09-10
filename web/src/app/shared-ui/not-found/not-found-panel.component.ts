@@ -20,12 +20,12 @@ import { RouterLink } from '@angular/router';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink],
   template: `
-    <section class="mn-panel" role="alert">
+    <section class="mn-card" role="alert">
       <h2>{{ heading() }}</h2>
       @for (line of explanation(); track line) {
         <p class="mn-hint">{{ line }}</p>
       }
-      <div class="actions">
+      <div class="mn-actions">
         <a class="mn-button mn-button--primary" [routerLink]="primaryLink()">{{
           primaryLabel()
         }}</a>
@@ -43,12 +43,6 @@ import { RouterLink } from '@angular/router';
 
     p {
       margin: 0;
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
     }
   `,
 })

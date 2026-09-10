@@ -46,7 +46,9 @@ let nextId = 0;
       (change)="commit()"
     />
     @if (invalid()) {
-      <p [id]="errorId" class="error" role="alert">Enter a number from {{ min }} to {{ max }}.</p>
+      <p [id]="errorId" class="mn-field-error" role="alert">
+        Enter a number from {{ min }} to {{ max }}.
+      </p>
     }
   `,
   styles: `
@@ -54,11 +56,6 @@ let nextId = 0;
       display: grid;
       gap: var(--space-1);
       min-width: 0;
-    }
-    .error {
-      margin: 0;
-      color: var(--status-danger);
-      font-size: var(--text-sm);
     }
   `,
 })

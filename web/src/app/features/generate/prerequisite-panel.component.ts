@@ -48,7 +48,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     }
 
     @if (preset().warning; as warning) {
-      <p class="warning" data-testid="preset-warning">
+      <p class="mn-notice mn-notice--info" data-testid="preset-warning">
         <mn-icon name="info" [size]="16" />
         <span><span class="mn-visually-hidden">Note: </span>{{ warning }}</span>
       </p>
@@ -84,15 +84,6 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     .detail {
       flex: 1;
       min-width: 12rem;
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .warning {
-      display: flex;
-      gap: var(--space-2);
-      align-items: flex-start;
       margin: 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);

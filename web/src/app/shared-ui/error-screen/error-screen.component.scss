@@ -1,16 +1,13 @@
 .panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
   max-width: 35rem;
   margin: var(--space-6) auto;
-  padding: var(--space-5);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-card);
-  background: var(--surface-panel);
 }
 
-.badge {
+p {
+  margin: 0;
+}
+
+.heading {
   display: flex;
   gap: var(--space-2);
   align-items: center;
@@ -21,10 +18,4 @@
 .description,
 .data-status {
   color: var(--text-secondary);
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
 }

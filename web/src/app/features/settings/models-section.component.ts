@@ -49,9 +49,9 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     '(document:keydown.escape)': 'connectionMenuOpen.set(false)',
   },
   template: `
-    <section class="mn-panel mn-settings-section models" aria-labelledby="mn-models-heading">
+    <section class="mn-card" aria-labelledby="mn-models-heading">
       <header class="section-head">
-        <h2 id="mn-models-heading">AI &amp; generation</h2>
+        <h2 id="mn-models-heading" class="mn-card-title">AI &amp; generation</h2>
         <div class="connection">
           <button
             #connectionButton
@@ -149,7 +149,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
           [attr.data-readiness]="text.readiness()"
         >
           <div class="node-head">
-            <h3 class="mn-section-label" id="mn-text-model-label">Text</h3>
+            <h3 class="mn-group-title" id="mn-text-model-label">Text</h3>
             <!--
               Where this stands and the press that moves it on, in the slot the
               Audio head puts them in. Text used to show one or the other, so
@@ -157,9 +157,9 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
             -->
             <div class="head-status">
               <span
-                class="status"
-                [class.status--ok]="text.readiness() === 'ready'"
-                [class.status--bad]="text.readiness() === 'failed'"
+                class="mn-status-pill"
+                [class.mn-status-pill--success]="text.readiness() === 'ready'"
+                [class.mn-status-pill--danger]="text.readiness() === 'failed'"
                 data-testid="text-readiness"
                 >{{ readinessLabel(text.readiness(), text.action() === 'testing') }}</span
               >
@@ -250,7 +250,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                   } @else if (
                     text.routePreset(task.id) !== null && text.routeReadiness(task.id) === 'ready'
                   ) {
-                    <span class="status status--ok">Ready</span>
+                    <span class="mn-status-pill mn-status-pill--success">Ready</span>
                   }
                 </div>
 
@@ -309,7 +309,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
           [attr.data-readiness]="tts.readiness()"
         >
           <div class="node-head">
-            <h3 class="mn-section-label" id="mn-audio-model-label">Audio</h3>
+            <h3 class="mn-group-title" id="mn-audio-model-label">Audio</h3>
             <!--
               The same two answers the Text head gives — where this stands, and
               the press that moves it on — because a speech model that has never
@@ -318,9 +318,9 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
             -->
             <div class="head-status">
               <span
-                class="status"
-                [class.status--ok]="tts.readiness() === 'ready'"
-                [class.status--bad]="audioStatus() === 'failed'"
+                class="mn-status-pill"
+                [class.mn-status-pill--success]="tts.readiness() === 'ready'"
+                [class.mn-status-pill--danger]="audioStatus() === 'failed'"
                 data-testid="audio-readiness"
                 [title]="audioStatusTitle()"
                 >{{ audioStatusLabel() }}</span
@@ -407,7 +407,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
           <!-- Speed is only ever produced by the model, so the surface says
                which channel carried it rather than implying it took effect. -->
           @if (paceNote(); as note) {
-            <p class="hint" data-testid="audio-pace-note">{{ note }}</p>
+            <p class="mn-hint" data-testid="audio-pace-note">{{ note }}</p>
           }
 
           <!--
@@ -418,7 +418,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
             reading that already had audio.
           -->
           @if (audioReadinessNote(); as note) {
-            <p class="hint" data-testid="audio-readiness-note">{{ note }}</p>
+            <p class="mn-hint" data-testid="audio-readiness-note">{{ note }}</p>
           }
 
           <!-- The preview is heard, not operated: it starts itself and leaves no player behind. -->
@@ -436,28 +436,20 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       </div>
 
       @if (text.testFailure(); as failure) {
-        <p class="error" role="alert">{{ failure.message }}</p>
+        <p class="mn-notice mn-notice--error" role="alert">{{ failure.message }}</p>
       }
       @if (tts.testFailure(); as failure) {
-        <p class="error" role="alert">{{ failure.message }}</p>
+        <p class="mn-notice mn-notice--error" role="alert">{{ failure.message }}</p>
       }
     </section>
   `,
   styles: `
     @use '../../../styles/breakpoints' as breakpoints;
 
-    .models {
-      gap: var(--space-3);
-    }
-    h2,
     h3,
     h4,
     p {
       margin: 0;
-    }
-    h2 {
-      font-size: var(--text-lg);
-      letter-spacing: -0.01em;
     }
     .section-head {
       display: flex;
@@ -545,8 +537,6 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     }
     .node-head h3 {
       overflow: hidden;
-      color: var(--text-primary);
-      font-weight: var(--weight-bold);
       text-overflow: ellipsis;
     }
     /* A branch is subordinate to its node, and its label says so. */
@@ -576,22 +566,6 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       color: var(--text-secondary);
       font-size: var(--text-xs);
     }
-    .hint {
-      color: var(--text-secondary);
-      font-size: var(--text-xs);
-    }
-    .status {
-      flex: none;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      white-space: nowrap;
-    }
-    .status--ok {
-      color: var(--status-success);
-    }
-    .status--bad {
-      color: var(--status-danger);
-    }
     /* Where this stands, and the press that moves it on, on one line. */
     .head-status {
       display: flex;
@@ -599,10 +573,6 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       align-items: center;
       gap: var(--space-2);
       min-width: 0;
-    }
-    .head-status .status {
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
     .branches {
       margin-top: var(--space-1);
@@ -620,12 +590,6 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       padding-block: var(--space-1) var(--space-3);
       padding-inline-start: var(--space-3);
       border-inline-start: 2px solid var(--border-subtle);
-    }
-    .error {
-      padding: var(--space-3);
-      border-radius: var(--radius-control);
-      background: var(--status-danger-soft);
-      color: var(--status-danger);
     }
     @media (max-width: breakpoints.$narrow-max) {
       .connection,

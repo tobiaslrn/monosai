@@ -40,7 +40,7 @@ describe('StepperComponent', () => {
       { key: 'f', label: 'Sixth', status: 'pending' },
     ]);
 
-    const statuses = [...element.querySelectorAll('.status')].map((node) =>
+    const statuses = [...element.querySelectorAll('.step-status')].map((node) =>
       node.textContent.trim(),
     );
     expect(statuses).toEqual([

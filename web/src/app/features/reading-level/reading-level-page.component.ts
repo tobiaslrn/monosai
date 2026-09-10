@@ -125,7 +125,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
               </span>
               <span class="level-main">
                 <span class="level-title">Reading level</span>
-                <span class="level-tag">
+                <span class="mn-status-pill mn-status-pill--accent">
                   <span data-testid="grammar-standing">{{ grammarValue() }}</span>
                   @if (grammarLevel(); as level) {
                     <span> · {{ level }}</span>
@@ -157,7 +157,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
         }
 
         @if (profile.lastError()) {
-          <p class="mn-error" role="alert">
+          <p class="mn-notice mn-notice--error" role="alert">
             Your change could not be saved. Your saved level is unchanged.
           </p>
         }
@@ -298,15 +298,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     .level-title {
       font-size: var(--text-lg);
       font-weight: var(--weight-bold);
-    }
-
-    .level-tag {
-      padding: 0.2rem var(--space-3);
-      border-radius: var(--radius-pill);
-      background: var(--action-primary-soft);
-      color: var(--action-primary-text);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-semibold);
     }
 
     .chevron {

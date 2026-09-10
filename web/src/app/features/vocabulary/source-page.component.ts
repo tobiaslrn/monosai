@@ -83,11 +83,11 @@ const STALE_REASONS: Record<StaleReason, string> = {
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
 
       @if (source(); as source) {
-        <section class="mn-panel" [attr.aria-label]="source.label">
+        <section class="mn-card" [attr.aria-label]="source.label">
           <p class="mn-hint" data-testid="source-summary">{{ summary(source) }}</p>
 
           @if (attention(); as message) {
-            <p class="flag" role="status" data-testid="source-attention">
+            <p class="mn-notice mn-notice--warning" role="status" data-testid="source-attention">
               <span>{{ message }}</span>
               @if (source.kind === 'anki-connect') {
                 <button
@@ -324,7 +324,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
           </div>
         </section>
       } @else if (store.loaded()) {
-        <section class="mn-panel">
+        <section class="mn-card">
           <p>This source is no longer here.</p>
         </section>
       }
@@ -380,20 +380,6 @@ const STALE_REASONS: Record<StaleReason, string> = {
       gap: var(--space-2);
       align-items: center;
       min-height: var(--touch-target);
-      font-size: var(--text-sm);
-    }
-
-    .flag {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3);
-      align-items: center;
-      justify-content: space-between;
-      margin: 0;
-      padding: var(--space-2) var(--space-3);
-      border-radius: var(--radius-control);
-      background: var(--status-warning-soft);
-      color: var(--status-warning);
       font-size: var(--text-sm);
     }
 

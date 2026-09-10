@@ -53,7 +53,7 @@ const STATUS_LABELS: Record<StepStatus, string> = {
           <span class="marker" aria-hidden="true"></span>
           <span class="text">
             <span class="name">{{ step.label }}</span>
-            <span class="status">
+            <span class="step-status">
               {{ statusLabel(step.status) }}
               @if (step.detail) {
                 <span class="detail"> · {{ step.detail }}</span>
@@ -102,7 +102,7 @@ const STATUS_LABELS: Record<StepStatus, string> = {
       color: var(--text-secondary);
     }
 
-    .status {
+    .step-status {
       color: var(--text-secondary);
       font-size: var(--text-sm);
     }

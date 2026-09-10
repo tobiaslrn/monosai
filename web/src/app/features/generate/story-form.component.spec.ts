@@ -329,7 +329,7 @@ describe('StoryFormComponent', () => {
     // Generate acts on the whole composer, so it is the action bar's rather
     // than the defaults card's.
     expect(element.querySelector('.story-settings [data-testid="generate"]')).toBeNull();
-    expect(element.querySelector('.actions [data-testid="generate"]')).not.toBeNull();
+    expect(element.querySelector('.action-bar [data-testid="generate"]')).not.toBeNull();
   });
 
   /**

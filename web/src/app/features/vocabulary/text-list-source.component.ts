@@ -50,7 +50,7 @@ import { textListPreviewLabel } from './text-list-preview';
         </p>
       }
       @if (editorError(); as error) {
-        <p class="error" role="alert">{{ error }}</p>
+        <p class="mn-notice mn-notice--error" role="alert">{{ error }}</p>
       }
       @if (preview().nonJapaneseLines > 0) {
         <p class="mn-hint" role="status">
@@ -58,7 +58,7 @@ import { textListPreviewLabel } from './text-list-preview';
           are the words you intended; they can still be added.
         </p>
       }
-      <div class="actions">
+      <div class="mn-actions">
         <button
           type="submit"
           class="mn-button mn-button--primary"
@@ -99,16 +99,6 @@ import { textListPreviewLabel } from './text-list-preview';
     .preview {
       color: var(--text-secondary);
       font-size: var(--text-sm);
-    }
-
-    .error {
-      color: var(--status-danger);
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
     }
   `,
 })

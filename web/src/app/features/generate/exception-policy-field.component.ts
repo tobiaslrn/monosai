@@ -35,12 +35,12 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
       </div>
 
       @if (policy.isTooLong()) {
-        <p id="mn-policy-error" role="alert" class="warning">
+        <p id="mn-policy-error" role="alert" class="mn-field-error">
           Remove {{ overLimitLabel() }} to continue.
         </p>
       }
 
-      <div class="actions-row">
+      <div class="mn-actions">
         <button
           type="button"
           class="mn-button"
@@ -58,25 +58,18 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
         <p class="mn-hint" role="status">Exceptions saved as a default.</p>
       }
       @if (policy.failure(); as failure) {
-        <p role="alert" class="warning">{{ failure.message }}</p>
+        <p role="alert" class="mn-notice mn-notice--error">{{ failure.message }}</p>
       }
     </div>
   `,
   styles: `
-    .actions-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      align-items: center;
-    }
     .policy {
       display: grid;
       gap: var(--space-3);
     }
 
-    .warning {
+    p {
       margin: 0;
-      color: var(--status-danger);
     }
   `,
 })

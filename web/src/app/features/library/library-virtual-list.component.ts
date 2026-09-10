@@ -150,9 +150,11 @@ function readingKey(id: string): string {
       }
 
       @if (store.loadMoreError(); as error) {
-        <section class="load-error" role="alert">
-          <p>More stories could not be loaded.</p>
-          <p class="mn-hint">{{ error.message }}</p>
+        <section class="load-error mn-notice mn-notice--error" role="alert">
+          <div>
+            <p>More stories could not be loaded.</p>
+            <p>{{ error.message }}</p>
+          </div>
           <button type="button" class="mn-button" (click)="retryLoadMore()">Try again</button>
         </section>
       }
@@ -233,17 +235,7 @@ function readingKey(id: string): string {
     }
 
     .load-error {
-      display: grid;
-      gap: var(--space-2);
       margin: var(--space-2) 0;
-      padding: var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-sunken);
-    }
-
-    .load-error p {
-      margin: 0;
     }
 
     @keyframes library-loading-pulse {

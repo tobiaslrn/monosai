@@ -59,7 +59,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       align-items: center;
       justify-content: space-between;
       gap: var(--space-3);
-      max-width: var(--layout-measure);
+      max-width: var(--page-measure);
       margin-inline: auto;
     }
     .identity {

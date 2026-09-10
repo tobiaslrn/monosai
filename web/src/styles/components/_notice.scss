@@ -1,0 +1,81 @@
+/*
+ * A notice reports something beside the thing it is about: a failure, a
+ * warning, a result, or a fact the learner needs before acting. It is a soft
+ * status background with the status colour for its words, an optional leading
+ * icon, and an optional action at the end that moves to its own line only when
+ * the words need the room.
+ *
+ *   <div class="mn-notice mn-notice--error" role="alert">
+ *     <mn-icon name="warning" />      optional
+ *     <p>What happened.</p>           or a <div> of several paragraphs
+ *     <button class="mn-button">…</button>   optional
+ *   </div>
+ */
+.mn-notice {
+  --notice-soft: var(--surface-sunken);
+  --notice-ink: var(--text-primary);
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--notice-soft);
+  color: var(--notice-ink);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.mn-notice--error {
+  --notice-soft: var(--status-danger-soft);
+  --notice-ink: var(--status-danger);
+}
+
+.mn-notice--warning {
+  --notice-soft: var(--status-warning-soft);
+  --notice-ink: var(--status-warning);
+}
+
+.mn-notice--success {
+  --notice-soft: var(--status-success-soft);
+  --notice-ink: var(--status-success);
+}
+
+.mn-notice--info {
+  --notice-soft: var(--accent-secondary-soft);
+  --notice-ink: var(--accent-secondary);
+}
+
+.mn-notice > mn-icon {
+  flex: none;
+  align-self: flex-start;
+}
+
+/* The words take the row; the action sits at its end. */
+.mn-notice > :is(p, div, span) {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+}
+
+.mn-notice > span {
+  display: block;
+}
+
+.mn-notice p {
+  margin: 0;
+}
+
+.mn-notice > :is(.mn-button, a.mn-button) {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.mn-notice a:not(.mn-button) {
+  color: inherit;
+}

@@ -102,7 +102,7 @@ export interface VocabularyFilterSheetData {
         </select>
       </label>
 
-      <div class="actions">
+      <div class="mn-actions sheet-actions">
         <button type="button" class="mn-button mn-button--primary" (click)="show()">
           Show {{ matchCount() }} words
         </button>
@@ -146,11 +146,7 @@ export interface VocabularyFilterSheetData {
       font-weight: var(--weight-medium);
     }
 
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3);
-      align-items: center;
+    .sheet-actions {
       justify-content: space-between;
       margin-block-start: var(--space-2);
     }

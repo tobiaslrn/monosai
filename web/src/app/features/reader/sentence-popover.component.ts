@@ -69,7 +69,7 @@ export interface UnknownWord {
       -->
       @if (unknownWords().length > 0) {
         <section class="vocabulary" aria-labelledby="mn-sentence-vocabulary">
-          <h3 class="mn-section-label" id="mn-sentence-vocabulary">Words you may not know</h3>
+          <h3 class="mn-group-title" id="mn-sentence-vocabulary">Words you may not know</h3>
           <ul class="words">
             @for (word of unknownWords(); track word.surface) {
               <li>
@@ -83,7 +83,7 @@ export interface UnknownWord {
 
       @if (concerns().length > 0) {
         <section class="grammar" aria-labelledby="mn-sentence-grammar">
-          <h3 class="mn-section-label" id="mn-sentence-grammar">Grammar</h3>
+          <h3 class="mn-group-title" id="mn-sentence-grammar">Grammar</h3>
           @for (finding of concerns(); track $index) {
             <p class="finding-label">{{ finding.label }}</p>
             <p class="finding-text" lang="en">{{ finding.explanationEn }}</p>
@@ -125,14 +125,14 @@ export interface UnknownWord {
       -->
       @if (copyStatus() === 'failed') {
         <section class="copy-fallback" aria-labelledby="mn-sentence-copy-fallback">
-          <p class="mn-error" id="mn-sentence-copy-fallback" role="alert">
+          <p class="mn-notice mn-notice--error" id="mn-sentence-copy-fallback" role="alert">
             Copy failed. The sentence is unchanged — select it here, or try Copy again.
           </p>
           <p class="copy-source" lang="ja">{{ sentenceText() }}</p>
         </section>
       }
 
-      <div class="actions">
+      <div class="tray">
         <button type="button" class="mn-button" (click)="copySentence()">
           <mn-icon [name]="copyStatus() === 'copied' ? 'check' : 'copy'" [size]="18" />
           <span>{{ copyStatus() === 'copied' ? 'Copied' : 'Copy' }}</span>
@@ -242,7 +242,7 @@ export interface UnknownWord {
      * that spend a request are visibly one group and visibly the bottom of the
      * card rather than three loose buttons among the notes.
      */
-    .actions {
+    .tray {
       /*
        * Sticky, so the sentence's actions stay reachable while a long
        * translation, its warnings, and its grammar scroll past between the
@@ -266,14 +266,14 @@ export interface UnknownWord {
       background: var(--surface-panel);
     }
 
-    .actions .mn-button > span {
+    .tray button > span {
       min-width: 0;
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
     }
 
-    .actions .mn-button mn-icon {
+    .tray button mn-icon {
       flex: none;
     }
 
@@ -318,10 +318,8 @@ export interface UnknownWord {
       line-height: 1.6;
     }
 
-    .mn-hint,
-    .mn-error {
+    p[role='status'] {
       margin: 0;
-      font-size: var(--text-sm);
     }
 
     /* Plain, selectable Japanese: the manual way out of a failed copy. */
@@ -339,17 +337,6 @@ export interface UnknownWord {
 
     .copy-fallback {
       align-self: stretch;
-    }
-
-    .setup-message {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      align-items: center;
-    }
-
-    .mn-error {
-      color: var(--status-danger);
     }
   `,
 })

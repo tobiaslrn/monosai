@@ -189,7 +189,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
               Audio deleted. You can generate it again from scratch.
             </p>
           } @else if (audio.maintenanceError(); as error) {
-            <p class="audio-maintenance-message mn-error" role="alert">
+            <p class="audio-maintenance-message mn-notice mn-notice--error" role="alert">
               Deleting audio failed: {{ error.message }}
             </p>
           }
@@ -230,7 +230,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
             />
           }
           @case ('failed') {
-            <section class="mn-panel" role="alert">
+            <section class="mn-card" role="alert">
               <h2>This story could not be opened</h2>
               <p class="mn-hint">{{ store.lastError()?.message }}</p>
               <p class="mn-hint">Your saved text was not changed.</p>

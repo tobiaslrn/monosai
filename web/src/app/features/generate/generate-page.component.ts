@@ -112,12 +112,12 @@ function formatList(items: readonly string[]): string {
       } @else if (savedReading(); as reading) {
         <section class="result-screen" aria-label="Saved story details">
           <div class="ready-mark" aria-hidden="true">✓</div>
-          <p class="mn-eyebrow eyebrow">Saved to your library</p>
+          <p class="mn-group-title">Saved to your library</p>
           <p class="story-title" lang="ja" data-testid="saved-title">{{ reading.title }}</p>
           @if (preparingLabel(); as label) {
             <p class="mn-hint" data-testid="saved-preparation">{{ label }}</p>
           }
-          <div class="actions">
+          <div class="mn-actions result-actions">
             <a
               class="mn-button mn-button--primary"
               [routerLink]="['/reader', reading.id]"
@@ -160,10 +160,10 @@ function formatList(items: readonly string[]): string {
         </section>
       } @else if (state().kind === 'cancelled') {
         <section class="result-screen" aria-labelledby="mn-generate-cancelled-heading">
-          <p class="mn-eyebrow eyebrow">Nothing was saved</p>
+          <p class="mn-group-title">Nothing was saved</p>
           <h2 id="mn-generate-cancelled-heading">Generation stopped</h2>
           <p class="mn-hint">Your premise and instructions are still here.</p>
-          <div class="actions">
+          <div class="mn-actions result-actions">
             <button type="button" class="mn-button mn-button--primary" (click)="retry()">
               Back to the form
             </button>
@@ -172,7 +172,7 @@ function formatList(items: readonly string[]): string {
         </section>
       } @else if (state().kind !== 'failed') {
         <!-- Plain: the form is the page, so a border around it encloses nothing. -->
-        <section class="mn-panel mn-panel--plain" aria-labelledby="mn-generate-form-heading">
+        <section aria-labelledby="mn-generate-form-heading">
           <h2 id="mn-generate-form-heading" class="mn-visually-hidden">Your story</h2>
           <mn-story-form
             [canGenerate]="canGenerate()"

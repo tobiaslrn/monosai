@@ -1,0 +1,21 @@
+/*
+ * The one role for secondary text. There used to be several competing greys and
+ * sizes for the same job, which is how a page ends up with three kinds of quiet.
+ */
+.mn-hint {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+/*
+ * The title of a group inside a card or a sheet — Text, Audio, Uses, Words you
+ * may not know. The third rank, set in sentence case and carried by weight and
+ * colour rather than by capitals.
+ */
+.mn-group-title {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+}

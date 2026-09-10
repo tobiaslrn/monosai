@@ -13,12 +13,12 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
   selector: 'mn-appearance-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mn-panel mn-settings-section" aria-labelledby="mn-appearance-heading">
-      <h2 id="mn-appearance-heading">Appearance</h2>
+    <section class="mn-card" aria-labelledby="mn-appearance-heading">
+      <h2 id="mn-appearance-heading" class="mn-card-title">Appearance</h2>
 
       <fieldset>
         <legend>Theme</legend>
-        <div class="options">
+        <div class="mn-segmented">
           @for (option of themeOptions; track option.value) {
             <label>
               <input
@@ -47,49 +47,13 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
     }
 
     legend {
+      margin-bottom: var(--space-2);
       padding: 0;
       font-weight: var(--weight-medium);
     }
 
-    .options {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: var(--space-2);
-    }
-
-    label {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: var(--touch-target);
-      padding-inline: var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-pill);
-      background: var(--surface-canvas);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-semibold);
-      cursor: pointer;
-    }
-
-    label:has(input:checked) {
-      border-color: transparent;
-      background: var(--action-primary);
-      color: var(--text-on-action);
-    }
-
-    label:has(input:focus-visible) {
-      outline: 3px solid var(--focus-ring);
-      outline-offset: 2px;
-    }
-
-    input {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      cursor: pointer;
+    p {
+      margin: 0;
     }
   `,
 })

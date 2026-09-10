@@ -1,0 +1,57 @@
+/*
+ * Every non-reader page is one centred column on the page measure. The
+ * application bar uses the same measure, so the two share a left edge.
+ */
+.mn-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: var(--page-measure);
+  margin-inline: auto;
+}
+
+/* A vertical run of blocks with one gap between them. */
+.mn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.mn-stack--tight {
+  gap: var(--space-2);
+}
+
+.mn-stack--loose {
+  gap: var(--space-5);
+}
+
+/*
+ * A row of buttons that moves as one block. The buttons wrap onto a new line
+ * together rather than one label breaking in two, and when the row sits
+ * beside copy it drops below that copy as a whole.
+ */
+.mn-actions {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.mn-actions > * {
+  flex: none;
+  white-space: nowrap;
+}
+
+.mn-actions--end {
+  justify-content: flex-end;
+  margin-inline-start: auto;
+}
+
+/* Buttons that share the row equally, for a narrow sheet or a form's foot. */
+.mn-actions--fill > * {
+  flex: 1 1 0;
+}

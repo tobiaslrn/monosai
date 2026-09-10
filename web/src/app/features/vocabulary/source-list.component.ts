@@ -36,7 +36,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, IconComponent],
   template: `
-    <div class="mn-card">
+    <div class="mn-card mn-card--flush">
       <ul class="sources">
         @for (source of sources(); track source.id) {
           <li>
@@ -69,9 +69,9 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
       </ul>
 
       @if (attention(); as message) {
-        <p class="status is-attention" data-testid="source-attention">
+        <p class="footer is-attention" data-testid="source-attention">
           <mn-icon name="warning" [size]="20" />
-          <span class="status-text">{{ message }}</span>
+          <span class="footer-text">{{ message }}</span>
           <button
             type="button"
             class="mn-button mn-button--ghost"
@@ -83,9 +83,9 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
           </button>
         </p>
       } @else if (syncedLabel(); as synced) {
-        <p class="status" data-testid="source-synced">
+        <p class="footer" data-testid="source-synced">
           <mn-icon class="synced" name="synced" [size]="22" />
-          <span class="status-text">{{ synced }}</span>
+          <span class="footer-text">{{ synced }}</span>
           @if (canSyncAgain()) {
             <button
               type="button"
@@ -182,7 +182,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
       vertical-align: 0.05em;
     }
 
-    .status {
+    .footer {
       display: flex;
       gap: var(--space-3);
       align-items: center;
@@ -193,7 +193,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
       color: var(--text-secondary);
     }
 
-    .status-text {
+    .footer-text {
       flex: 1;
       min-width: 0;
     }
@@ -203,12 +203,12 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
       color: var(--status-success);
     }
 
-    .status.is-attention {
+    .footer.is-attention {
       color: var(--status-warning);
       font-size: var(--text-sm);
     }
 
-    .status.is-attention mn-icon {
+    .footer.is-attention mn-icon {
       flex: none;
     }
 

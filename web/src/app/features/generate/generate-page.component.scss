@@ -1,10 +1,7 @@
 @use '../../../styles/breakpoints';
 
-.actions {
-  display: flex;
-  flex-wrap: wrap;
+.result-actions {
   justify-content: center;
-  gap: var(--space-2);
 }
 
 .recovery p {
@@ -79,11 +76,11 @@
     padding: var(--space-5) var(--space-4);
   }
 
-  .actions {
+  .result-actions {
     width: 100%;
   }
 
-  .actions > * {
+  .result-actions > * {
     flex: 1 1 100%;
   }
 }
