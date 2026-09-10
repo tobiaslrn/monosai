@@ -25,8 +25,8 @@ describe('PROMPT_VERSIONS', () => {
 
   it('invalidates the sparse grammar contract independently', () => {
     expect(PROMPT_VERSIONS).toEqual({
-      story: 'story/3',
-      repair: 'repair/3',
+      story: 'story/4',
+      repair: 'repair/4',
       'exception-review': 'exception-review/3',
       grammar: 'grammar/4',
       translation: 'translation/4',

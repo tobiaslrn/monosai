@@ -65,6 +65,33 @@ describe('estimateRequestTokens', () => {
     ).toBeGreaterThan(FIXED_PROMPT_OVERHEAD_TOKENS);
   });
 
+  it('counts the focus block and its ages', () => {
+    const plain = estimateRequestTokens(request());
+    const focused = estimateRequestTokens(
+      request({
+        focusVocabulary: [
+          { expression: '旅', firstSeen: 'yesterday' },
+          { expression: '出る', firstSeen: '3 weeks ago' },
+        ],
+      }),
+    );
+
+    expect(focused).toBeGreaterThan(plain);
+  });
+
+  it('counts a focus word once, not also among the other words', () => {
+    const allowedVocabulary = Array.from({ length: 200 }, (_value, index) => `語${String(index)}`);
+    const focusVocabulary = allowedVocabulary.map((expression) => ({ expression, firstSeen: 'x' }));
+    const plain = estimateRequestTokens(request({ allowedVocabulary, suggestedVocabulary: [] }));
+    const withFocus = estimateRequestTokens(
+      request({ allowedVocabulary, suggestedVocabulary: [], focusVocabulary }),
+    );
+
+    // Counted twice, the focus would add its whole block on top of the plain
+    // estimate; counted once, the words it takes from the other list come off.
+    expect(withFocus).toBeLessThan(plain + estimateTokens(JSON.stringify(focusVocabulary)));
+  });
+
   it('fits the supported vocabulary range comfortably inside the budget', () => {
     const full = request({
       allowedVocabulary: Array.from({ length: 1_800 }, () => '国際交流基金'),

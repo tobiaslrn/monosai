@@ -4,7 +4,11 @@ import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { MAX_PREMISE_LENGTH } from '../../domain/ai/story-request';
-import type { AnkiWordPriorityMode, VocabularyStrictness } from '../../domain/settings/settings';
+import type {
+  AnkiWordPriorityMode,
+  RecentFocusSize,
+  VocabularyStrictness,
+} from '../../domain/settings/settings';
 import { StoryFormComponent } from './story-form.component';
 
 @Component({
@@ -17,6 +21,8 @@ import { StoryFormComponent } from './story-form.component';
     presetName="Starter forms"
     [ankiWordPriorityMode]="priorityMode()"
     (ankiWordPriorityModeChanged)="priorityMode.set($event)"
+    [recentFocusSize]="focusSize()"
+    (recentFocusSizeChanged)="focusSize.set($event)"
     [vocabularyStrictness]="strictness()"
     (vocabularyStrictnessChanged)="strictness.set($event)"
     (generate)="generated = generated + 1"
@@ -26,6 +32,7 @@ class HostComponent {
   readonly canGenerate = signal(true);
   readonly disabled = signal(false);
   readonly priorityMode = signal<AnkiWordPriorityMode>('uniform');
+  readonly focusSize = signal<RecentFocusSize>(50);
   readonly strictness = signal<VocabularyStrictness>('standard');
   generated = 0;
 }
@@ -211,6 +218,46 @@ describe('StoryFormComponent', () => {
     select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
     expect(host.priorityMode()).toBe('recent');
+
+    host.disabled.set(true);
+    fixture.detectChanges();
+    expect(select.disabled).toBe(true);
+  });
+
+  it('offers the focus size only while Recently learned is selected', () => {
+    const { element, fixture, host } = render();
+    expect(element.querySelector('#mn-focus-size')).toBeNull();
+
+    host.priorityMode.set('recent');
+    fixture.detectChanges();
+    const select = element.querySelector<HTMLSelectElement>('#mn-focus-size');
+    expect(select?.value).toBe('50');
+    expect([...(select?.options ?? [])].map((option) => option.textContent.trim())).toEqual([
+      'Newest 25 words',
+      'Newest 50 words',
+      'Newest 100 words',
+    ]);
+
+    host.priorityMode.set('difficult');
+    fixture.detectChanges();
+    expect(element.querySelector('#mn-focus-size')).toBeNull();
+  });
+
+  it('emits a changed focus size and locks it during generation', () => {
+    const { element, fixture, host } = render();
+    host.priorityMode.set('recent');
+    host.focusSize.set(100);
+    fixture.detectChanges();
+    const select = element.querySelector<HTMLSelectElement>('#mn-focus-size');
+    if (select === null) {
+      throw new Error('focus-size select was not rendered');
+    }
+    expect(select.value).toBe('100');
+
+    select.value = '25';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(host.focusSize()).toBe(25);
 
     host.disabled.set(true);
     fixture.detectChanges();

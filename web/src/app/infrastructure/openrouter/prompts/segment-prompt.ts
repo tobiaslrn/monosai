@@ -44,6 +44,7 @@ export function buildSegmentPrompt(request: StorySegmentRequest): AssembledPromp
         request.original.allowedVocabulary,
         request.original.suggestedVocabulary,
         request.original.structuralBaseline,
+        request.original.focusVocabulary,
       ),
     ),
     jsonDataBlock('story blueprint', request.blueprint),

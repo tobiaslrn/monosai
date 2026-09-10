@@ -28,6 +28,9 @@ export const vocabularySourceIdSchema = z.uuid().transform(vocabularySourceId);
 export const assetIdSchema = z.uuid().transform(assetId);
 export const jobIdSchema = z.uuid().transform(jobId);
 
+/** Mirrors `RECENT_FOCUS_SIZES`; shared by the settings row and provenance. */
+export const recentFocusSizeSchema = z.union([z.literal(25), z.literal(50), z.literal(100)]);
+
 export const completionSummarySchema = z.object({
   total: z.number().int().nonnegative(),
   completed: z.number().int().nonnegative(),

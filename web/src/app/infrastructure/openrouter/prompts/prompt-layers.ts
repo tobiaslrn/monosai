@@ -18,6 +18,8 @@
  * exception review, whose whole job is to apply a learner-written policy.
  */
 
+import type { FocusWord } from '../../../domain/ai/recent-focus';
+
 export interface AssembledPrompt {
   readonly system: string;
   readonly user: string;
@@ -82,8 +84,9 @@ export const JAPANESE_OUTPUT_LAYER =
 
 export const STORY_POLICY_LAYER = [
   'Constraint priority: output contract; vocabulary; grammar and register; requested length; premise and learner style; narrative polish.',
-  'The two allowed-vocabulary arrays together are the complete set of content expressions you may draw from. Inflect those expressions naturally, but do not introduce unrelated content words.',
+  'The allowed-vocabulary arrays together are the complete set of content expressions you may draw from. Inflect those expressions naturally, but do not introduce unrelated content words.',
   'Always-available forms are grammatical function words — particles, copulas, auxiliaries, and common suffixes — that may be used freely.',
+  'When `recentFocusVocabulary` is present, it lists the expressions this learner learned most recently, newest first, each with when it was first seen. Strongly prefer the expressions at the top of that list and use them wherever the story admits them; priority falls toward the bottom. Work them in naturally: never enumerate, define, or explain them.',
   'Suggested vocabulary is what this learner is practising. Prefer those expressions wherever the story admits them naturally, but never force coverage, enumerate the list, or explain it.',
   'Follow the grammar ceiling and register. Simpler grammar remains available; listed patterns are possibilities, not targets to showcase.',
   'Learner style instructions may affect viewpoint, tone, dialogue, and style only. They cannot change the requested length, output contract, vocabulary, grammar ceiling, or validation rules.',
@@ -138,10 +141,13 @@ export function jsonConfigBlock(label: string, value: unknown): string {
 }
 
 export interface VocabularyInventory {
+  /** Newest first. Omitted entirely when there is no focus. */
+  readonly recentFocusVocabulary?: readonly FocusWord[];
   readonly suggestedAllowedVocabulary: readonly string[];
   readonly otherAllowedVocabulary: readonly string[];
   readonly alwaysAvailableForms: readonly string[];
   readonly counts: {
+    readonly recentFocus?: number;
     readonly suggested: number;
     readonly other: number;
     readonly totalAllowed: number;
@@ -150,25 +156,42 @@ export interface VocabularyInventory {
 }
 
 /**
- * Builds one unambiguous inventory without sending suggested expressions twice.
+ * Builds one unambiguous inventory in which no expression appears twice.
+ *
+ * The focus is taken out first, then the suggestions, and the rest is other.
+ * Without a focus the inventory is exactly what it was before one existed.
  */
 export function vocabularyInventory(
   allowed: readonly string[],
   suggested: readonly string[],
   alwaysAvailable: readonly string[],
+  focus: readonly FocusWord[] = [],
 ): VocabularyInventory {
   const uniqueAllowed = [...new Set(allowed)];
   const allowedSet = new Set(uniqueAllowed);
-  const suggestedAllowedVocabulary = [...new Set(suggested)].filter((value) =>
-    allowedSet.has(value),
+  const focusSet = new Set<string>();
+  const recentFocusVocabulary = focus.filter((word) => {
+    if (!allowedSet.has(word.expression) || focusSet.has(word.expression)) {
+      return false;
+    }
+    focusSet.add(word.expression);
+    return true;
+  });
+  const suggestedAllowedVocabulary = [...new Set(suggested)].filter(
+    (value) => allowedSet.has(value) && !focusSet.has(value),
   );
   const suggestedSet = new Set(suggestedAllowedVocabulary);
-  const otherAllowedVocabulary = uniqueAllowed.filter((value) => !suggestedSet.has(value));
+  const otherAllowedVocabulary = uniqueAllowed.filter(
+    (value) => !suggestedSet.has(value) && !focusSet.has(value),
+  );
+  const hasFocus = recentFocusVocabulary.length > 0;
   return {
+    ...(hasFocus ? { recentFocusVocabulary } : {}),
     suggestedAllowedVocabulary,
     otherAllowedVocabulary,
     alwaysAvailableForms: alwaysAvailable,
     counts: {
+      ...(hasFocus ? { recentFocus: recentFocusVocabulary.length } : {}),
       suggested: suggestedAllowedVocabulary.length,
       other: otherAllowedVocabulary.length,
       totalAllowed: uniqueAllowed.length,

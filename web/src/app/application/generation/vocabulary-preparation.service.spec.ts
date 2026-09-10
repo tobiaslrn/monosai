@@ -174,18 +174,40 @@ describe('VocabularyPreparationService', () => {
       );
     }
 
-    it('fills the palette with recently learned words', async () => {
+    it('focuses on the newest words and keeps them out of the palette', async () => {
+      seedByAge(80);
+
+      const prepared = await service.prepare(SNAPSHOT, 'micro', 'recent', 25);
+
+      expect(prepared.ok).toBe(true);
+      if (!prepared.ok) return;
+      const focus = prepared.value.focusVocabulary;
+      expect(focus).toHaveLength(25);
+      // The fresh half was all reviewed yesterday, so the expression breaks the tie.
+      expect(focus.every((word) => Number(word.expression.slice(1)) >= 40)).toBe(true);
+      expect(focus.every((word) => word.firstSeen === 'yesterday')).toBe(true);
+      const focused = new Set(focus.map((word) => word.expression));
+      expect(prepared.value.suggestedVocabulary.some((word) => focused.has(word))).toBe(false);
+      expect(prepared.value.suggestedVocabulary).toHaveLength(40);
+      expect(prepared.value.allowedVocabulary).toHaveLength(80);
+    });
+
+    it('uses the default size of fifty', async () => {
       seedByAge(80);
 
       const prepared = await service.prepare(SNAPSHOT, 'micro', 'recent');
 
-      expect(prepared.ok).toBe(true);
-      if (!prepared.ok) return;
-      // 40 of 80 sampled; every one of them should come from the fresh half.
-      const fresh = prepared.value.suggestedVocabulary.filter(
-        (expression) => Number(expression.slice(1)) >= 40,
-      );
-      expect(fresh.length).toBeGreaterThan(prepared.value.suggestedVocabulary.length * 0.75);
+      expect(prepared.ok && prepared.value.focusVocabulary).toHaveLength(50);
+    });
+
+    it('chooses no focus outside Recently learned', async () => {
+      seedByAge(80);
+
+      const uniform = await service.prepare(SNAPSHOT, 'micro', 'uniform');
+      const difficult = await service.prepare(SNAPSHOT, 'micro', 'difficult');
+
+      expect(uniform.ok && uniform.value.focusVocabulary).toEqual([]);
+      expect(difficult.ok && difficult.value.focusVocabulary).toEqual([]);
     });
 
     it('fills the palette with the words the learner finds hard', async () => {
@@ -206,27 +228,23 @@ describe('VocabularyPreparationService', () => {
       expect(hard.length).toBeGreaterThan(prepared.value.suggestedVocabulary.length * 0.75);
     });
 
-    it('samples a snapshot with no signals as if the mode were uniform', async () => {
-      // What a learner sees before re-syncing: no bias either way, rather than
-      // a mode that quietly reorders their vocabulary on meaningless evidence.
+    it('proceeds without a focus when no word carries a first review', async () => {
+      // What a learner sees before re-syncing: an ordinary palette, no focus.
       seed(80);
 
       const prepared = await service.prepare(SNAPSHOT, 'micro', 'recent');
-      const uniform = await service.prepare(SNAPSHOT, 'micro', 'uniform');
 
-      expect(prepared.ok && uniform.ok).toBe(true);
-      if (!prepared.ok || !uniform.ok) return;
+      expect(prepared.ok).toBe(true);
+      if (!prepared.ok) return;
+      expect(prepared.value.focusVocabulary).toEqual([]);
       expect(new Set(prepared.value.suggestedItemIds).size).toBe(40);
-      expect(prepared.value.suggestedVocabulary).toHaveLength(
-        uniform.value.suggestedVocabulary.length,
-      );
     });
 
-    it('merges the signals of two notes for one word before weighting', async () => {
+    it('merges the first reviews of two notes for one word before ordering', async () => {
       repository.items.push(
         { ...item(0, '猫'), firstReviewedAt: NOW - 730 * DAY },
         { ...item(1, '猫'), firstReviewedAt: NOW - DAY },
-        { ...item(2, '犬'), firstReviewedAt: NOW - DAY },
+        { ...item(2, '犬'), firstReviewedAt: NOW - 3 * DAY },
       );
 
       const prepared = await service.prepare(SNAPSHOT, 'micro', 'recent');
@@ -235,7 +253,8 @@ describe('VocabularyPreparationService', () => {
       if (!prepared.ok) return;
       // The earlier of the two dates wins, so 猫 is the older word of the pair.
       expect(prepared.value.allowedVocabulary).toEqual(['猫', '犬']);
-      expect(prepared.value.suggestedVocabulary).toHaveLength(2);
+      expect(prepared.value.focusVocabulary.map((word) => word.expression)).toEqual(['犬', '猫']);
+      expect(prepared.value.suggestedVocabulary).toEqual([]);
     });
   });
 

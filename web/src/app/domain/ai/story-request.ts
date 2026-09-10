@@ -2,6 +2,7 @@ import type { RegisterPreference } from '../grammar/presets';
 import type { StoryForm } from '../reading/reading';
 import type { SnapshotId } from '../shared/ids';
 import { err, ok, type Result } from '../shared/result';
+import type { FocusWord } from './recent-focus';
 
 export const STORY_SENTENCE_COUNTS = [5, 15, 30, 50, 100, 200, 400, 800] as const;
 export const MIN_STORY_SENTENCES = STORY_SENTENCE_COUNTS[0];
@@ -104,6 +105,11 @@ export interface StoryGenerationRequest {
   readonly allowedVocabulary: readonly string[];
   /** Inspiration only; never required, never displayed. */
   readonly suggestedVocabulary: readonly string[];
+  /**
+   * The newest words, newest first, which the story should strongly favour.
+   * Present only under Recently learned; never required, never displayed.
+   */
+  readonly focusVocabulary?: readonly FocusWord[];
   /** Function words that count as readable regardless of the allowlist. */
   readonly structuralBaseline: readonly string[];
   readonly grammarGuidance: string;

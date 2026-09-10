@@ -145,6 +145,7 @@ function sharedConfigBlocks(request: StoryRepairRequest): readonly string[] {
         request.original.allowedVocabulary,
         request.original.suggestedVocabulary,
         request.original.structuralBaseline,
+        request.original.focusVocabulary,
       ),
     ),
   ];

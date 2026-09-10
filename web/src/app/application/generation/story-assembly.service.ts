@@ -1,5 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import type { GenerationProvenance } from '../../domain/ai/generation-provenance';
+import type {
+  GenerationProvenance,
+  RecentFocusProvenance,
+} from '../../domain/ai/generation-provenance';
 import { promptVersionRecord } from '../../domain/ai/prompt-versions';
 import { ANALYZER_VERSION } from '../../domain/language/analyzer-version';
 import { buildExcerpt } from '../../domain/reading/excerpt';
@@ -51,6 +54,8 @@ export interface AcceptedStory {
   readonly repairAttempts: number;
   readonly suggestedVocabularyItemIds: readonly VocabularyItemId[];
   readonly ankiWordPriorityMode?: AnkiWordPriorityMode;
+  /** The focus sent under Recently learned; absent for every other mode. */
+  readonly recentFocus?: RecentFocusProvenance;
   /** How much repair the learner's strictness allowed this run to spend. */
   readonly vocabularyStrictness: VocabularyStrictness;
   readonly exceptionCount: number;
@@ -161,6 +166,7 @@ export class StoryAssemblyService {
       repairAttempts: accepted.repairAttempts,
       suggestedVocabularyItemIds: accepted.suggestedVocabularyItemIds,
       ankiWordPriorityMode: accepted.ankiWordPriorityMode ?? 'uniform',
+      ...(accepted.recentFocus === undefined ? {} : { recentFocus: accepted.recentFocus }),
       vocabularyStrictness: accepted.vocabularyStrictness,
       preparationTargets: accepted.preparationTargets,
       createdAt: now,

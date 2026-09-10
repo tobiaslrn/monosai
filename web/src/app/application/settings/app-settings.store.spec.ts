@@ -35,3 +35,56 @@ describe('AppSettingsStore Help preference', () => {
     expect(store.helpIntroSeen()).toBe(true);
   });
 });
+
+describe('AppSettingsStore focus size', () => {
+  function configure(updateAppSettings: ReturnType<typeof vi.fn>): AppSettingsStore {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SETTINGS_REPOSITORY,
+          useValue: {
+            getAppSettings: vi.fn().mockResolvedValue(ok(DEFAULT_APP_SETTINGS)),
+            getReaderPreferences: vi.fn().mockResolvedValue(ok(DEFAULT_READER_PREFERENCES)),
+            updateAppSettings,
+          },
+        },
+      ],
+    });
+    return TestBed.inject(AppSettingsStore);
+  }
+
+  it('starts at fifty and saves a new size', async () => {
+    const update = vi.fn().mockResolvedValue(ok({ ...DEFAULT_APP_SETTINGS, recentFocusSize: 100 }));
+    const store = configure(update);
+    await store.load();
+    expect(store.recentFocusSize()).toBe(50);
+
+    await store.setRecentFocusSize(100);
+
+    expect(update).toHaveBeenCalledWith({ recentFocusSize: 100 });
+    expect(store.recentFocusSize()).toBe(100);
+  });
+
+  it('rolls back a size the repository refused', async () => {
+    const store = configure(
+      vi.fn().mockResolvedValue(err(storageError('unavailable', 'Unavailable'))),
+    );
+    await store.load();
+
+    await store.setRecentFocusSize(25);
+
+    expect(store.recentFocusSize()).toBe(50);
+    expect(store.lastFailure()?.code).toBe('unavailable');
+  });
+
+  it('ignores a size outside the offered choices', async () => {
+    const update = vi.fn();
+    const store = configure(update);
+    await store.load();
+
+    await store.setRecentFocusSize(30 as never);
+
+    expect(update).not.toHaveBeenCalled();
+  });
+});

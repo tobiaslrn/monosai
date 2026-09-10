@@ -1,13 +1,19 @@
 import { z } from 'zod';
 import {
   DEFAULT_ANKI_CONNECT_PORT,
+  DEFAULT_RECENT_FOCUS_SIZE,
   DEFAULT_STORY_TOKEN_BUDGET,
   MAX_STORY_TOKEN_BUDGET,
   MAX_TEXT_SCALE,
   MIN_STORY_TOKEN_BUDGET,
   MIN_TEXT_SCALE,
 } from '../../../domain/settings/settings';
-import { nonEmptyString, snapshotIdSchema, timestampSchema } from './common.schema';
+import {
+  nonEmptyString,
+  recentFocusSizeSchema,
+  snapshotIdSchema,
+  timestampSchema,
+} from './common.schema';
 
 export const appSettingsSchema = z.object({
   helpIntroSeen: z.boolean().default(false),
@@ -15,6 +21,9 @@ export const appSettingsSchema = z.object({
   activeSnapshotId: snapshotIdSchema.nullable(),
   ankiConnectPort: z.number().int().min(1).max(65_535).default(DEFAULT_ANKI_CONNECT_PORT),
   ankiWordPriorityMode: z.enum(['uniform', 'recent', 'difficult']).default('uniform'),
+  // Absent on rows written before the focus existed, which means the default
+  // rather than a corrupt row. Settings are keyed records, so no Dexie version.
+  recentFocusSize: recentFocusSizeSchema.default(DEFAULT_RECENT_FOCUS_SIZE),
   updatedAt: timestampSchema,
 });
 

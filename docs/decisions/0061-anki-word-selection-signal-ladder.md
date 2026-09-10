@@ -1,7 +1,8 @@
 # 0061 — Anki word selection weights a ladder of scheduling evidence
 
 Date: 2026-09-09
-Status: Accepted
+Status: Accepted. The Recently learned weighting is superseded by
+[ADR 0067](0067-recently-learned-is-a-focus-list.md); Difficult is unchanged.
 
 ## Context
 

@@ -34,6 +34,7 @@ describe('DexieSettingsRepository', () => {
     expect(app.ok && app.value.activeSnapshotId).toBeNull();
     expect(app.ok && app.value.ankiConnectPort).toBe(8_765);
     expect(app.ok && app.value.ankiWordPriorityMode).toBe('uniform');
+    expect(app.ok && app.value.recentFocusSize).toBe(50);
     expect(preferences.ok && preferences.value).toEqual(DEFAULT_READER_PREFERENCES);
 
     const textModel = await repository.getTextModelSettings();
@@ -76,6 +77,16 @@ describe('DexieSettingsRepository', () => {
     expect(reloaded.ok && reloaded.value.ankiWordPriorityMode).toBe('difficult');
   });
 
+  it('round-trips the focus size and rejects one that is not offered', async () => {
+    const saved = await repository.updateAppSettings({ recentFocusSize: 100 });
+    expect(saved.ok && saved.value.recentFocusSize).toBe(100);
+
+    const invalid = await repository.updateAppSettings({ recentFocusSize: 30 as never });
+    expect(invalid.ok).toBe(false);
+    const reloaded = await repository.getAppSettings();
+    expect(reloaded.ok && reloaded.value.recentFocusSize).toBe(100);
+  });
+
   it('stores generation strictness in its own settings row', async () => {
     const saved = await repository.updateGenerationSettings({ vocabularyStrictness: 'strict' });
 
@@ -111,6 +122,7 @@ describe('DexieSettingsRepository', () => {
     const loaded = await repository.getAppSettings();
 
     expect(loaded.ok && loaded.value.ankiWordPriorityMode).toBe('uniform');
+    expect(loaded.ok && loaded.value.recentFocusSize).toBe(50);
   });
 
   it('starts every reader aid enabled, at unscaled text', async () => {

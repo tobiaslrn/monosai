@@ -48,6 +48,7 @@ export function buildStoryPrompt(request: StoryGenerationRequest): AssembledProm
         request.allowedVocabulary,
         request.suggestedVocabulary,
         request.structuralBaseline,
+        request.focusVocabulary,
       ),
     ),
     jsonConfigBlock('story requirements', {

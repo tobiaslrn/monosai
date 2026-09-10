@@ -45,10 +45,18 @@ export function estimateTokens(text: string): number {
  */
 export const FIXED_PROMPT_OVERHEAD_TOKENS = 1_200;
 
+/**
+ * Mirrors the inventory the prompt adapter sends: the focus, then the
+ * suggestions, then the rest, with no expression in two arrays.
+ */
 export function estimateRequestTokens(request: StoryGenerationRequest): number {
   const allowed = new Set(request.allowedVocabulary);
-  const suggestedAllowedVocabulary = [...new Set(request.suggestedVocabulary)].filter((value) =>
-    allowed.has(value),
+  const recentFocusVocabulary = (request.focusVocabulary ?? []).filter((word) =>
+    allowed.has(word.expression),
+  );
+  const focused = new Set(recentFocusVocabulary.map((word) => word.expression));
+  const suggestedAllowedVocabulary = [...new Set(request.suggestedVocabulary)].filter(
+    (value) => allowed.has(value) && !focused.has(value),
   );
   const suggested = new Set(suggestedAllowedVocabulary);
   const compactDynamicJson = JSON.stringify({
@@ -57,8 +65,11 @@ export function estimateRequestTokens(request: StoryGenerationRequest): number {
       register: request.registerPreference,
     },
     vocabularyInventory: {
+      recentFocusVocabulary,
       suggestedAllowedVocabulary,
-      otherAllowedVocabulary: request.allowedVocabulary.filter((value) => !suggested.has(value)),
+      otherAllowedVocabulary: request.allowedVocabulary.filter(
+        (value) => !suggested.has(value) && !focused.has(value),
+      ),
       alwaysAvailableForms: request.structuralBaseline,
     },
     storyRequirements: {

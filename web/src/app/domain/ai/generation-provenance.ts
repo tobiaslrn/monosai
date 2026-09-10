@@ -1,6 +1,16 @@
 import type { ReadingId, SnapshotId, VocabularyItemId } from '../shared/ids';
 import type { PreparationLayer } from '../enrichment/preparation';
-import type { AnkiWordPriorityMode, VocabularyStrictness } from '../settings/settings';
+import type {
+  AnkiWordPriorityMode,
+  RecentFocusSize,
+  VocabularyStrictness,
+} from '../settings/settings';
+import type { FocusWord } from './recent-focus';
+
+export interface RecentFocusProvenance {
+  readonly size: RecentFocusSize;
+  readonly words: readonly FocusWord[];
+}
 
 /**
  * Everything needed to explain or reproduce one generated story.
@@ -36,6 +46,12 @@ export interface GenerationProvenance {
   readonly suggestedVocabularyItemIds: readonly VocabularyItemId[];
   /** The palette mode captured when this generation began. */
   readonly ankiWordPriorityMode: AnkiWordPriorityMode;
+  /**
+   * The focus list sent under Recently learned, with the size that bounded it.
+   * An empty list means no word carried a first-review date. Absent for other
+   * modes and on stories saved before the focus existed.
+   */
+  readonly recentFocus?: RecentFocusProvenance;
   /**
    * The strictness that set this run's repair budget. Absent on stories saved
    * before generation recorded it.

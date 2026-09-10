@@ -48,11 +48,13 @@ import type { StorageError } from '../app/domain/storage/storage-error';
 import type {
   AnkiWordPriorityMode,
   ExceptionPolicy,
+  RecentFocusSize,
   VocabularyStrictness,
 } from '../app/domain/settings/settings';
 import {
   DEFAULT_EXCEPTION_POLICY,
   DEFAULT_GENERATION_SETTINGS,
+  DEFAULT_RECENT_FOCUS_SIZE,
   DEFAULT_STORY_TOKEN_BUDGET,
   repairBudgetFor,
 } from '../app/domain/settings/settings';
@@ -65,7 +67,7 @@ import { FakeLanguageRuntime } from './reading-fakes';
 import { FakeReadingRepository } from './reading-repository-fake';
 import { StubVocabularyRepository } from './vocabulary-fakes';
 
-const FIXED_NOW = 1_700_000_000_000;
+export const FIXED_NOW = 1_700_000_000_000;
 
 export const GENERATION_SNAPSHOT_ID: SnapshotId = snapshotId(
   '00000000-0000-4000-8000-00000000aaaa',
@@ -351,6 +353,9 @@ export interface GenerationTestBedOptions {
   readonly storyTokenBudget?: number;
   readonly uniqueEntryCount?: number;
   readonly ankiWordPriorityMode?: AnkiWordPriorityMode;
+  readonly recentFocusSize?: RecentFocusSize;
+  /** Per-expression first reviews, keyed by canonical expression. */
+  readonly firstReviewedAt?: Readonly<Record<string, number>>;
   readonly vocabularyStrictness?: VocabularyStrictness;
   readonly defaultPreparationTargets?: readonly PreparationLayer[];
   /** Anything a spec around the pipeline needs, such as the library's channel. */
@@ -392,6 +397,9 @@ export function configureGenerationTestBed(
       canonicalExpression: expression,
       expressionHash: `h(${expression})`,
       analyzedSequence: [{ surface: expression }],
+      ...(options.firstReviewedAt?.[expression] === undefined
+        ? {}
+        : { firstReviewedAt: options.firstReviewedAt[expression] }),
     })),
   );
 
@@ -431,6 +439,7 @@ export function configureGenerationTestBed(
         useValue: {
           activeSnapshotId: signal<SnapshotId | null>(snapshot.id),
           ankiWordPriorityMode: priorityMode,
+          recentFocusSize: signal(options.recentFocusSize ?? DEFAULT_RECENT_FOCUS_SIZE),
         },
       },
       {

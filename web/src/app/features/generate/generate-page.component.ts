@@ -190,6 +190,10 @@ function formatList(items: readonly string[]): string {
                 'Word selection'
               )
             "
+            [recentFocusSize]="appSettings.recentFocusSize()"
+            (recentFocusSizeChanged)="
+              saveDefault(appSettings.setRecentFocusSize($event), appSettings.lastFailure, 'Focus')
+            "
             [vocabularyStrictness]="generationSettings.vocabularyStrictness()"
             (vocabularyStrictnessChanged)="
               saveDefault(

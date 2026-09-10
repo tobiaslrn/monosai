@@ -3,6 +3,7 @@ import { aiError } from '../../domain/ai/ai-error';
 import { err, ok } from '../../domain/shared/result';
 import { storageError } from '../../domain/storage/storage-error';
 import {
+  FIXED_NOW,
   configureGenerationTestBed,
   shortStory,
   storyWithUnknown,
@@ -83,7 +84,7 @@ describe('GenerationStore strict pass', () => {
     expect(provenance.requestedSentenceCount).toBe(5);
     expect(provenance.repairAttempts).toBe(0);
     expect(provenance.modelId).toBe('vendor/text-model');
-    expect(provenance.promptVersions).toMatchObject({ story: 'story/3' });
+    expect(provenance.promptVersions).toMatchObject({ story: 'story/4' });
     expect(provenance.grammarProfileSnapshotId.length).toBeGreaterThan(0);
     expect(provenance.suggestedVocabularyItemIds.length).toBeGreaterThan(0);
   });
@@ -102,6 +103,36 @@ describe('GenerationStore strict pass', () => {
     await bed.store.generate(5, PREMISE);
 
     expect(bed.readings.provenance[0]?.ankiWordPriorityMode).toBe('difficult');
+    expect(bed.readings.provenance[0]?.recentFocus).toBeUndefined();
+  });
+
+  it('sends the newest words first and records them with the size under Recently learned', async () => {
+    bed = configureGenerationTestBed({
+      ankiWordPriorityMode: 'recent',
+      recentFocusSize: 25,
+      firstReviewedAt: { ねこ: FIXED_NOW - 30 * 86_400_000, ミケ: FIXED_NOW },
+    });
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    await bed.store.generate(5, PREMISE);
+
+    const expected = [
+      { expression: 'ミケ', firstSeen: 'today' },
+      { expression: 'ねこ', firstSeen: '4 weeks ago' },
+    ];
+    expect(bed.provider.storyRequests[0]?.focusVocabulary).toEqual(expected);
+    expect(bed.provider.storyRequests[0]?.suggestedVocabulary).not.toContain('ミケ');
+    expect(bed.readings.provenance[0]?.recentFocus).toEqual({ size: 25, words: expected });
+  });
+
+  it('records an empty focus when no word carries a first review', async () => {
+    bed = configureGenerationTestBed({ ankiWordPriorityMode: 'recent' });
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.readings.provenance).toHaveLength(1);
+    expect(bed.readings.provenance[0]?.recentFocus).toEqual({ size: 50, words: [] });
   });
 
   it('never stores an unknown category on an accepted story', async () => {

@@ -44,6 +44,7 @@ export function buildBlueprintPrompt(
         request.allowedVocabulary,
         request.suggestedVocabulary,
         request.structuralBaseline,
+        request.focusVocabulary,
       ),
     ),
     jsonConfigBlock('required segment plan', segments),

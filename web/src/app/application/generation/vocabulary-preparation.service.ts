@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
 import { checkContextBudget, type ContextBudget } from '../../domain/ai/context-budget';
+import { selectRecentFocus, type FocusWord } from '../../domain/ai/recent-focus';
 import type { StoryGenerationRequest } from '../../domain/ai/story-request';
 import {
   paletteSizeFor,
@@ -13,7 +14,11 @@ import type { SnapshotId, VocabularyItemId } from '../../domain/shared/ids';
 import { ok, type Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { CLOCK, RANDOM_SOURCE, VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
-import type { AnkiWordPriorityMode } from '../../domain/settings/settings';
+import {
+  DEFAULT_RECENT_FOCUS_SIZE,
+  type AnkiWordPriorityMode,
+  type RecentFocusSize,
+} from '../../domain/settings/settings';
 
 /** Items read per streamed batch, matching the reader's classification path. */
 const ITEM_BATCH_SIZE = 500;
@@ -24,6 +29,8 @@ export interface PreparedVocabulary {
   /** Hidden inspiration sample; recorded in provenance, never displayed. */
   readonly suggestedVocabulary: readonly string[];
   readonly suggestedItemIds: readonly VocabularyItemId[];
+  /** Newest words first; empty outside Recently learned or without dates. */
+  readonly focusVocabulary: readonly FocusWord[];
   readonly uniqueExpressionCount: number;
 }
 
@@ -41,17 +48,22 @@ export class VocabularyPreparationService {
   private readonly clock = inject(CLOCK);
 
   /**
-   * Reads the snapshot and samples a hidden palette.
+   * Reads the snapshot, chooses a focus under Recently learned, and samples a
+   * hidden palette.
    *
    * Deduplication is by canonical expression, because two Anki notes for the
    * same word are one word to the model and would otherwise weight the list.
    * The palette is sampled over item ids so provenance can name exactly what
    * was suggested, and the sampled expressions are what the prompt carries.
+   *
+   * Under Recently learned the palette is drawn uniformly from the words
+   * outside the focus, so it still varies stories and nothing is sent twice.
    */
   async prepare(
     snapshotId: SnapshotId,
     form: StoryForm,
     priorityMode: AnkiWordPriorityMode = 'uniform',
+    focusSize: RecentFocusSize = DEFAULT_RECENT_FOCUS_SIZE,
   ): Promise<Result<PreparedVocabulary, StorageError>> {
     const candidatesByExpression = new Map<string, PaletteCandidate>();
 
@@ -75,26 +87,40 @@ export class VocabularyPreparationService {
       }
     }
 
-    const candidates = [...candidatesByExpression.values()];
-    const expressionByItem = new Map(
-      [...candidatesByExpression.entries()].map(([expression, candidate]) => [
-        candidate.id,
-        expression,
-      ]),
-    );
+    const focusVocabulary =
+      priorityMode === 'recent'
+        ? selectRecentFocus(
+            [...candidatesByExpression].map(([expression, candidate]) => ({
+              ...candidate,
+              expression,
+            })),
+            focusSize,
+            this.clock.now(),
+          )
+        : [];
+    const focused = new Set(focusVocabulary.map((word) => word.expression));
+
+    const expressionByItem = new Map<VocabularyItemId, string>();
+    const paletteCandidates: PaletteCandidate[] = [];
+    for (const [expression, candidate] of candidatesByExpression) {
+      expressionByItem.set(candidate.id, expression);
+      if (!focused.has(expression)) {
+        paletteCandidates.push(candidate);
+      }
+    }
     const suggestedItemIds = sampleWeightedPalette(
-      candidates,
-      paletteSizeFor(form, candidates.length),
-      priorityMode,
+      paletteCandidates,
+      paletteSizeFor(form, paletteCandidates.length),
+      priorityMode === 'difficult' ? 'difficult' : 'uniform',
       this.random,
-      this.clock.now(),
     );
 
     return ok({
       allowedVocabulary: [...candidatesByExpression.keys()],
       suggestedVocabulary: suggestedItemIds.map((id) => expressionByItem.get(id) ?? ''),
       suggestedItemIds,
-      uniqueExpressionCount: candidates.length,
+      focusVocabulary,
+      uniqueExpressionCount: candidatesByExpression.size,
     });
   }
 

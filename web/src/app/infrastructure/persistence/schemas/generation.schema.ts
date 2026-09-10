@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   nonEmptyString,
   readingIdSchema,
+  recentFocusSizeSchema,
   rowVersionSchema,
   sentenceIdSchema,
   snapshotIdSchema,
@@ -72,6 +73,18 @@ export const generationProvenanceRowSchema = z.object({
   repairAttempts: z.number().int().min(0).max(2),
   suggestedVocabularyItemIds: z.array(vocabularyItemIdSchema).readonly(),
   ankiWordPriorityMode: z.enum(['uniform', 'recent', 'difficult']).default('uniform'),
+  // Optional for the same reason as the fields below: an older row, or a story
+  // written under another mode, legitimately has no focus. The table indexes
+  // only `id` and `readingId`, so no Dexie version is needed.
+  recentFocus: z
+    .object({
+      size: recentFocusSizeSchema,
+      words: z
+        .array(z.object({ expression: nonEmptyString, firstSeen: nonEmptyString }))
+        .max(100)
+        .readonly(),
+    })
+    .optional(),
   // Both optional only for rows written before generation stopped producing
   // aids. Every new generation writes them, and no Dexie version is needed
   // because an older row legitimately lacks them — the same precedent

@@ -2,10 +2,12 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   DEFAULT_APP_SETTINGS,
   DEFAULT_READER_PREFERENCES,
+  isRecentFocusSize,
   isValidAnkiConnectPort,
   type AppSettings,
   type AnkiWordPriorityMode,
   type ReaderPreferences,
+  type RecentFocusSize,
   type ThemeSetting,
 } from '../../domain/settings/settings';
 import type { StorageError } from '../../domain/storage/storage-error';
@@ -41,6 +43,7 @@ export class AppSettingsStore {
   readonly activeSnapshotId = computed(() => this.appSettings().activeSnapshotId);
   readonly ankiConnectPort = computed(() => this.appSettings().ankiConnectPort);
   readonly ankiWordPriorityMode = computed(() => this.appSettings().ankiWordPriorityMode);
+  readonly recentFocusSize = computed(() => this.appSettings().recentFocusSize);
   readonly readerPreferences = this.preferences.asReadonly();
   readonly lastFailure = this.failure.asReadonly();
 
@@ -79,45 +82,37 @@ export class AppSettingsStore {
     this.failure.set(null);
   }
 
-  async setTheme(theme: ThemeSetting): Promise<void> {
-    const previous = this.appSettings();
-    this.appSettings.set({ ...previous, theme });
-
-    const saved = await this.repository.updateAppSettings({ theme });
-    if (saved.ok) {
-      this.appSettings.set(saved.value);
-      this.failure.set(null);
-    } else {
-      this.appSettings.set(previous);
-      this.failure.set(saved.error);
-    }
+  setTheme(theme: ThemeSetting): Promise<void> {
+    return this.saveAppSettings({ theme });
   }
 
   async setAnkiConnectPort(port: number): Promise<void> {
     if (!isValidAnkiConnectPort(port)) {
       return;
     }
-    const previous = this.appSettings();
-    this.appSettings.set({ ...previous, ankiConnectPort: port });
-
-    const saved = await this.repository.updateAppSettings({ ankiConnectPort: port });
-    if (saved.ok) {
-      this.appSettings.set(saved.value);
-      this.failure.set(null);
-    } else {
-      this.appSettings.set(previous);
-      this.failure.set(saved.error);
-    }
+    await this.saveAppSettings({ ankiConnectPort: port });
   }
 
   async setAnkiWordPriorityMode(mode: AnkiWordPriorityMode): Promise<void> {
     if (!['uniform', 'recent', 'difficult'].includes(mode)) {
       return;
     }
-    const previous = this.appSettings();
-    this.appSettings.set({ ...previous, ankiWordPriorityMode: mode });
+    await this.saveAppSettings({ ankiWordPriorityMode: mode });
+  }
 
-    const saved = await this.repository.updateAppSettings({ ankiWordPriorityMode: mode });
+  async setRecentFocusSize(size: RecentFocusSize): Promise<void> {
+    if (!isRecentFocusSize(size)) {
+      return;
+    }
+    await this.saveAppSettings({ recentFocusSize: size });
+  }
+
+  /** Applies a patch optimistically and rolls it back if the write fails. */
+  private async saveAppSettings(patch: Partial<Omit<AppSettings, 'updatedAt'>>): Promise<void> {
+    const previous = this.appSettings();
+    this.appSettings.set({ ...previous, ...patch });
+
+    const saved = await this.repository.updateAppSettings(patch);
     if (saved.ok) {
       this.appSettings.set(saved.value);
       this.failure.set(null);

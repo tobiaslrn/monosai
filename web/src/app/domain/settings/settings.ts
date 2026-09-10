@@ -8,6 +8,15 @@ export type ThemeSetting = 'system' | 'light' | 'dark';
 export type AnkiWordPriorityMode = 'uniform' | 'recent' | 'difficult';
 export type VocabularyStrictness = 'relaxed' | 'standard' | 'strict';
 
+/** How many of the newest words Recently learned puts in front of the model. */
+export const RECENT_FOCUS_SIZES = [25, 50, 100] as const;
+export type RecentFocusSize = (typeof RECENT_FOCUS_SIZES)[number];
+export const DEFAULT_RECENT_FOCUS_SIZE: RecentFocusSize = 50;
+
+export function isRecentFocusSize(value: number): value is RecentFocusSize {
+  return (RECENT_FOCUS_SIZES as readonly number[]).includes(value);
+}
+
 export const DEFAULT_ANKI_CONNECT_PORT = 8_765;
 
 export function isValidAnkiConnectPort(port: number): boolean {
@@ -20,6 +29,8 @@ export interface AppSettings {
   readonly activeSnapshotId: SnapshotId | null;
   readonly ankiConnectPort: number;
   readonly ankiWordPriorityMode: AnkiWordPriorityMode;
+  /** Read only while `ankiWordPriorityMode` is `recent`. */
+  readonly recentFocusSize: RecentFocusSize;
   readonly updatedAt: number;
 }
 
@@ -29,6 +40,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   activeSnapshotId: null,
   ankiConnectPort: DEFAULT_ANKI_CONNECT_PORT,
   ankiWordPriorityMode: 'uniform',
+  recentFocusSize: DEFAULT_RECENT_FOCUS_SIZE,
   updatedAt: 0,
 };
 

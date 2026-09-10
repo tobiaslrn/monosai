@@ -6,7 +6,14 @@ import {
   STORY_LENGTH_RELIABILITY_WARNING_SENTENCES,
   STORY_SENTENCE_COUNTS,
 } from '../../domain/ai/story-request';
-import type { AnkiWordPriorityMode, VocabularyStrictness } from '../../domain/settings/settings';
+import {
+  DEFAULT_RECENT_FOCUS_SIZE,
+  RECENT_FOCUS_SIZES,
+  isRecentFocusSize,
+  type AnkiWordPriorityMode,
+  type RecentFocusSize,
+  type VocabularyStrictness,
+} from '../../domain/settings/settings';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import { formatCount, formatCountOf } from '../../domain/shared/locale';
@@ -135,19 +142,38 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           (targetsChanged)="preparationTargetsChanged.emit($event)"
         />
 
-        <div class="mn-field word-selection">
-          <label for="mn-word-selection">Anki word selection</label>
-          <select
-            id="mn-word-selection"
-            data-testid="word-priority-select"
-            [value]="ankiWordPriorityMode()"
-            [disabled]="disabled()"
-            (change)="onWordPriorityMode($event)"
-          >
-            <option value="uniform">Uniform</option>
-            <option value="recent">Recently learned</option>
-            <option value="difficult">Difficult</option>
-          </select>
+        <div class="word-selection">
+          <div class="mn-field">
+            <label for="mn-word-selection">Anki word selection</label>
+            <select
+              id="mn-word-selection"
+              data-testid="word-priority-select"
+              [value]="ankiWordPriorityMode()"
+              [disabled]="disabled()"
+              (change)="onWordPriorityMode($event)"
+            >
+              <option value="uniform">Uniform</option>
+              <option value="recent">Recently learned</option>
+              <option value="difficult">Difficult</option>
+            </select>
+          </div>
+          @if (ankiWordPriorityMode() === 'recent') {
+            <div class="mn-field">
+              <label for="mn-focus-size">Focus</label>
+              <select
+                id="mn-focus-size"
+                data-testid="focus-size-select"
+                [disabled]="disabled()"
+                (change)="onRecentFocusSize($event)"
+              >
+                @for (size of focusSizes; track size) {
+                  <option [value]="size" [selected]="size === recentFocusSize()">
+                    Newest {{ size }} words
+                  </option>
+                }
+              </select>
+            </div>
+          }
         </div>
 
         <details class="mn-disclosure strictness">
@@ -448,6 +474,9 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     }
 
     .word-selection {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
       margin-top: var(--space-5);
       padding-top: var(--space-4);
       border-top: 1px solid var(--border-subtle);
@@ -574,15 +603,18 @@ export class StoryFormComponent {
   readonly snapshotSummary = input.required<string>();
   readonly presetName = input.required<string>();
   readonly ankiWordPriorityMode = input<AnkiWordPriorityMode>('uniform');
+  readonly recentFocusSize = input<RecentFocusSize>(DEFAULT_RECENT_FOCUS_SIZE);
   readonly vocabularyStrictness = input<VocabularyStrictness>('standard');
   readonly preparationTargets = input<readonly PreparationLayer[]>(['english', 'grammar']);
   readonly audioReadiness = input<ConfigurationReadiness>('incomplete');
 
   readonly generate = output<void>();
   readonly ankiWordPriorityModeChanged = output<AnkiWordPriorityMode>();
+  readonly recentFocusSizeChanged = output<RecentFocusSize>();
   readonly vocabularyStrictnessChanged = output<VocabularyStrictness>();
   readonly preparationTargetsChanged = output<readonly PreparationLayer[]>();
 
+  protected readonly focusSizes = RECENT_FOCUS_SIZES;
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
   protected readonly lengthLabels = LENGTH_LABELS;
   protected readonly formatCount = formatCount;
@@ -657,6 +689,13 @@ export class StoryFormComponent {
     const value = (event.target as HTMLSelectElement).value;
     if (value === 'uniform' || value === 'recent' || value === 'difficult') {
       this.ankiWordPriorityModeChanged.emit(value);
+    }
+  }
+
+  protected onRecentFocusSize(event: Event): void {
+    const value = Number((event.target as HTMLSelectElement).value);
+    if (isRecentFocusSize(value)) {
+      this.recentFocusSizeChanged.emit(value);
     }
   }
 

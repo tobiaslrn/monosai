@@ -85,6 +85,18 @@ test.describe('generate prerequisites', () => {
     await page.reload();
 
     await expect(page.getByTestId('word-priority-select')).toHaveValue('difficult');
+    // The focus size belongs to Recently learned alone.
+    await expect(page.getByTestId('focus-size-select')).toHaveCount(0);
+
+    await page.getByTestId('word-priority-select').selectOption('recent');
+    const focus = page.getByTestId('focus-size-select');
+    await expect(focus).toHaveValue('50');
+    await focus.selectOption('100');
+    await expectSettingPersisted(page, 'app', 'recentFocusSize', 100);
+
+    await page.reload();
+
+    await expect(page.getByTestId('focus-size-select')).toHaveValue('100');
   });
 });
 

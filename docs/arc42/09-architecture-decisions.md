@@ -63,6 +63,7 @@ files are already linked from code comments and from other records.
 | [0061](../decisions/0061-anki-word-selection-signal-ladder.md)        | Anki word selection weights a ladder of scheduling evidence        |
 | [0065](../decisions/0065-ankidroid-first-review-study-day.md)         | AnkiDroid first review uses the supported search language           |
 | [0066](../decisions/0066-desktop-fsrs-difficulty-by-search.md)        | Desktop FSRS difficulty uses the supported search language          |
+| [0067](../decisions/0067-recently-learned-is-a-focus-list.md)         | Recently learned sends the newest words as an ordered focus list    |
 
 ### AI providers and generation
 
@@ -81,6 +82,7 @@ files are already linked from code comments and from other records.
 | [0054](../decisions/0054-parallel-text-preparation.md)                        | Text preparation uses sparse adaptive batches and bounded waves                 |
 | [0059](../decisions/0059-preparation-fills-the-reading-in-order.md)           | Preparation fills the reading in order, from one shared pool                    |
 | [0060](../decisions/0060-progressive-translation-freezes-terminology.md)      | Progressive translation freezes a persisted terminology plan                    |
+| [0067](../decisions/0067-recently-learned-is-a-focus-list.md)                 | Recently learned sends the newest words as an ordered focus list                |
 
 ### The reader
 

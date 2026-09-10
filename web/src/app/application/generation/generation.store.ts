@@ -28,7 +28,11 @@ import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import type { VocabularyItemId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
-import type { AnkiWordPriorityMode, VocabularyStrictness } from '../../domain/settings/settings';
+import type {
+  AnkiWordPriorityMode,
+  RecentFocusSize,
+  VocabularyStrictness,
+} from '../../domain/settings/settings';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { LanguageStore } from '../language/language.store';
 import { VocabularyClassificationService } from '../reading/vocabulary-classification.service';
@@ -131,6 +135,7 @@ interface CapturedContext {
   readonly policyHash: string;
   readonly taskConfig: TextTaskConfig;
   readonly ankiWordPriorityMode: AnkiWordPriorityMode;
+  readonly recentFocusSize: RecentFocusSize;
   readonly vocabularyStrictness: VocabularyStrictness;
   readonly repairBudget: number;
   /**
@@ -236,6 +241,7 @@ export class GenerationStore {
     // Read the mode synchronously with the other run inputs. Settings are
     // optimistic, so a later UI change cannot alter this in-flight request.
     const capturedPriorityMode = this.appSettings.ankiWordPriorityMode();
+    const capturedFocusSize = this.appSettings.recentFocusSize();
 
     this.logger.info('job.started', { kind: 'generation', count: sentenceCount });
 
@@ -244,7 +250,7 @@ export class GenerationStore {
     this.stateSignal.set({ kind: 'checking-prerequisites' });
     this.announce('Checking what this story needs…');
 
-    const captured = await this.capture(modelPresetId, capturedPriorityMode);
+    const captured = await this.capture(modelPresetId, capturedPriorityMode, capturedFocusSize);
     if (!captured.ok) {
       this.fail(captured.error);
       return;
@@ -273,6 +279,7 @@ export class GenerationStore {
       context.snapshot.id,
       form,
       context.ankiWordPriorityMode,
+      context.recentFocusSize,
     );
     if (!prepared.ok) {
       this.fail(prepared.error);
@@ -289,6 +296,7 @@ export class GenerationStore {
       premise: input.value.premise,
       allowedVocabulary: prepared.value.allowedVocabulary,
       suggestedVocabulary: prepared.value.suggestedVocabulary,
+      focusVocabulary: prepared.value.focusVocabulary,
       structuralBaseline: this.baselineForms(),
       grammarGuidance: context.profile.resolvedGuidance,
       registerPreference: context.profile.registerPreference,
@@ -520,6 +528,7 @@ export class GenerationStore {
   private async capture(
     modelPresetId: string | null,
     ankiWordPriorityMode: AnkiWordPriorityMode,
+    recentFocusSize: RecentFocusSize,
   ): Promise<
     | { readonly ok: true; readonly value: CapturedContext }
     | { readonly ok: false; readonly error: GenerationFailure }
@@ -581,6 +590,7 @@ export class GenerationStore {
         policyHash: policy.policyHash,
         taskConfig: selected,
         ankiWordPriorityMode,
+        recentFocusSize,
         vocabularyStrictness,
         repairBudget,
         preparationTargets,
@@ -808,6 +818,14 @@ export class GenerationStore {
       repairAttempts: this.repairSignal(),
       suggestedVocabularyItemIds: suggestedItemIds,
       ankiWordPriorityMode: context.ankiWordPriorityMode,
+      ...(context.ankiWordPriorityMode === 'recent'
+        ? {
+            recentFocus: {
+              size: context.recentFocusSize,
+              words: request.focusVocabulary ?? [],
+            },
+          }
+        : {}),
       vocabularyStrictness: context.vocabularyStrictness,
       exceptionCount,
       preparationTargets: context.preparationTargets,

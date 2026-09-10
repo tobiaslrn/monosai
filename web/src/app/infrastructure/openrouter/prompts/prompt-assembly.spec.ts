@@ -75,6 +75,45 @@ describe('prompt assembly contracts', () => {
     });
   });
 
+  it('sends the focus newest first and takes it out of every other array', () => {
+    const prompt = buildStoryPrompt(
+      request({
+        suggestedVocabulary: ['猫', '旅'],
+        focusVocabulary: [
+          { expression: '旅', firstSeen: 'today' },
+          { expression: '未許可', firstSeen: 'today' },
+          { expression: '出る', firstSeen: '3 weeks ago' },
+          { expression: '旅', firstSeen: 'today' },
+        ],
+      }),
+    );
+    const inventory = jsonBlock(prompt.user, 'vocabulary inventory');
+
+    expect(Object.keys(inventory)[0]).toBe('recentFocusVocabulary');
+    expect(inventory['recentFocusVocabulary']).toEqual([
+      { expression: '旅', firstSeen: 'today' },
+      { expression: '出る', firstSeen: '3 weeks ago' },
+    ]);
+    expect(inventory['suggestedAllowedVocabulary']).toEqual(['猫']);
+    expect(inventory['otherAllowedVocabulary']).toEqual([]);
+    expect(inventory['counts']).toEqual({
+      recentFocus: 2,
+      suggested: 1,
+      other: 0,
+      totalAllowed: 3,
+      alwaysAvailable: 2,
+    });
+    expect(prompt.system).toContain('`recentFocusVocabulary`');
+  });
+
+  it('omits the focus entirely when there is none', () => {
+    const prompt = buildStoryPrompt(request({ focusVocabulary: [] }));
+
+    expect(jsonBlock(prompt.user, 'vocabulary inventory')).not.toHaveProperty(
+      'recentFocusVocabulary',
+    );
+  });
+
   it('sends the requested sentence count and the fallback shape in one contract', () => {
     const prompt = buildStoryPrompt(request());
     const requirements = jsonBlock(prompt.user, 'story requirements');

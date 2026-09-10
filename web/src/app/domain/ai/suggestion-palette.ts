@@ -6,7 +6,6 @@ import {
   FSRS_DIFFICULTY_MINIMUM,
   type AnkiSchedulingSignals,
 } from '../anki/scheduling-signals';
-import type { AnkiWordPriorityMode } from '../settings/settings';
 
 /**
  * How many reviewed items are sampled as inspiration for one story.
@@ -38,11 +37,13 @@ export const PALETTE_BASELINE_WEIGHT = 1_000;
  */
 export const PALETTE_MAX_TILT = 16;
 
-/** Days after which a word counts as half as recently learned. */
-export const RECENCY_HALF_LIFE_DAYS = 120;
-
-/** Interval beyond which a word is simply long known and ranks no lower. */
-export const ESTABLISHED_INTERVAL_DAYS = 180;
+/**
+ * How the palette is weighted.
+ *
+ * Recently learned is absent: it chooses an ordered focus list instead
+ * (ADR 0067) and samples its palette uniformly from the remaining words.
+ */
+export type PaletteWeighting = 'uniform' | 'difficult';
 
 /**
  * The score given when a mode has no evidence about a word at all.
@@ -67,8 +68,6 @@ const NEUTRAL_SCORE = 0.5;
  */
 const SM2_ESTIMATE_CONFIDENCE = 0.5;
 
-const MILLISECONDS_PER_DAY = 86_400_000;
-
 /** One item and the optional Anki scheduling state used to weight it. */
 export interface PaletteCandidate extends AnkiSchedulingSignals {
   readonly id: VocabularyItemId;
@@ -81,37 +80,6 @@ export function samplePalette(
   random: RandomSource,
 ): readonly VocabularyItemId[] {
   return sampleWithoutReplacement(itemIds, size, random);
-}
-
-/**
- * Scores how recently the learner met a word, from 0 to 1.
- *
- * The first review answers the question directly. The interval is a usable
- * stand-in where no review log exists — a word still being learned is scheduled
- * days out, one long known is scheduled months out — but it is weaker, because a
- * mature word that lapsed also drops to a short interval.
- *
- * Review count is deliberately not a fallback. Under modern scheduling a settled
- * word accrues few repetitions over years while a fresh one accrues many in a
- * week, so it measures difficulty rather than recency, and using it made this
- * mode indistinguishable from chance.
- */
-function recencyScore(candidate: AnkiSchedulingSignals, now: number): number {
-  if (Number.isFinite(candidate.firstReviewedAt) && Number.isFinite(now)) {
-    const ageDays = Math.max(0, (now - (candidate.firstReviewedAt ?? 0)) / MILLISECONDS_PER_DAY);
-    // Half-life decay rather than age measured against some maximum: any maximum
-    // is either arbitrary or drawn from the collection, and a collection-derived
-    // one would let a single ancient card rescale every other word.
-    return clamp(Math.pow(0.5, ageDays / RECENCY_HALF_LIFE_DAYS), 0, 1);
-  }
-  if (Number.isFinite(candidate.intervalDays)) {
-    // Logarithmic, because intervals roughly double as retention grows, so the
-    // step from two days to four says far more than a month to a month and a day.
-    const established =
-      Math.log2(Math.max(candidate.intervalDays ?? 1, 1)) / Math.log2(ESTABLISHED_INTERVAL_DAYS);
-    return clamp(1 - established, 0, 1);
-  }
-  return NEUTRAL_SCORE;
 }
 
 /** Scores how hard the learner finds a word, from 0 to 1. */
@@ -137,23 +105,18 @@ function difficultyScore(candidate: AnkiSchedulingSignals): number {
 /**
  * Computes the integer weight for one palette candidate.
  *
- * Each mode reduces its evidence to a score between 0 and 1, and one shared
- * curve maps that onto a weight, so the shape of a mode's judgement lives with
- * the evidence instead of being spread across two places.
+ * The mode reduces its evidence to a score between 0 and 1, and one shared
+ * curve maps that onto a weight, so the shape of its judgement lives with the
+ * evidence instead of being spread across two places.
  *
- * The scoring functions stay defensive about their inputs because snapshots from
- * older installs and test doubles can carry absent or invalid optional fields.
+ * The scoring stays defensive about its inputs because snapshots from older
+ * installs and test doubles can carry absent or invalid optional fields.
  */
-export function priorityWeight(
-  mode: AnkiWordPriorityMode,
-  candidate: AnkiSchedulingSignals,
-  now: number,
-): number {
+export function priorityWeight(mode: PaletteWeighting, candidate: AnkiSchedulingSignals): number {
   if (mode === 'uniform') {
     return PALETTE_BASELINE_WEIGHT;
   }
-  const score = mode === 'recent' ? recencyScore(candidate, now) : difficultyScore(candidate);
-  return weightForScore(score);
+  return weightForScore(difficultyScore(candidate));
 }
 
 /** Maps a 0-to-1 score onto the weight range every mode shares. */
@@ -183,9 +146,8 @@ export function easePenalty(factor: number | undefined): number {
 export function sampleWeightedPalette(
   candidates: readonly PaletteCandidate[],
   size: number,
-  mode: AnkiWordPriorityMode,
+  mode: PaletteWeighting,
   random: RandomSource,
-  now: number,
 ): readonly VocabularyItemId[] {
   const uniqueCandidates = deduplicateCandidates(candidates);
   const wanted = Math.max(0, Math.min(Math.trunc(size), uniqueCandidates.length));
@@ -204,7 +166,7 @@ export function sampleWeightedPalette(
   // recomputing every weight on every draw was work with no effect on the result.
   const pool = uniqueCandidates.map((candidate) => ({
     id: candidate.id,
-    weight: priorityWeight(mode, candidate, now),
+    weight: priorityWeight(mode, candidate),
   }));
   const sampled: VocabularyItemId[] = [];
   for (let draw = 0; draw < wanted; draw += 1) {
