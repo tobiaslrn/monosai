@@ -30,6 +30,24 @@ describe('bundled dictionary lookup', () => {
     expect(result.entries.map((entry) => entry.writtenForms[0])).not.toContain('入る');
   });
 
+  it('does not read a katakana name as the hiragana word it spells', () => {
+    // アンナ folds to あんな, "that sort of"; a name has no entry to show.
+    const result = index.lookup({
+      surface: 'アンナ',
+      lemma: 'アンナ',
+      readingHiragana: 'あんな',
+      partOfSpeech: 'proper-noun',
+    });
+
+    expect(result).toEqual({ matchedBy: 'none', entries: [] });
+  });
+
+  it('still returns an exact spelling for a proper noun', () => {
+    const result = index.lookup({ surface: '猫', partOfSpeech: 'proper-noun' });
+    expect(result.matchedBy).toBe('surface');
+    expect(result.entries.length).toBeGreaterThan(0);
+  });
+
   it('finds a common beginner word by exact surface', () => {
     const result = index.lookup({ surface: '猫' });
     expect(result.matchedBy).toBe('surface');

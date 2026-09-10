@@ -142,6 +142,10 @@ export class DictionaryIndex {
   lookup(query: DictionaryQuery): DictionaryLookup {
     const limit = query.limit ?? DICTIONARY_RESULT_LIMIT;
     const candidates = this.exactCandidates(query);
+    // The bundled dictionary has no names, so for a proper noun only its exact
+    // spelling is evidence. Reading and variant matches would turn the name アンナ
+    // into the unrelated word あんな.
+    const guessesAllowed = query.partOfSpeech !== 'proper-noun';
 
     for (const [basis, lookupKey, indexes] of candidates) {
       const narrowed =
@@ -168,7 +172,11 @@ export class DictionaryIndex {
       }
     }
 
-    if (query.readingHiragana !== undefined && query.readingHiragana.length > 0) {
+    if (
+      guessesAllowed &&
+      query.readingHiragana !== undefined &&
+      query.readingHiragana.length > 0
+    ) {
       const byReading = this.normalized.get(normalizeLookupKey(query.readingHiragana));
       if (byReading !== undefined) {
         const filtered =
@@ -205,6 +213,9 @@ export class DictionaryIndex {
     const fallback = candidates.at(0);
     if (fallback !== undefined) {
       return { matchedBy: fallback[0], entries: this.resolve(fallback[2], limit) };
+    }
+    if (!guessesAllowed) {
+      return { matchedBy: 'none', entries: [] };
     }
 
     for (const candidate of [query.surface, query.lemma]) {
