@@ -306,6 +306,7 @@ export class GenerationStore {
       ...(input.value.specialInstructions === undefined
         ? {}
         : { specialInstructions: input.value.specialInstructions }),
+      ...(context.policyText === '' ? {} : { exceptionPolicy: context.policyText }),
     };
 
     const budget = this.preparation.guardBudget(request);

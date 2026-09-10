@@ -42,6 +42,13 @@ describe('estimateTokens', () => {
 });
 
 describe('estimateRequestTokens', () => {
+  it('counts the learner exception policy', () => {
+    const policy = 'English loanwords in katakana are fine.';
+    expect(estimateRequestTokens(request({ exceptionPolicy: policy }))).toBe(
+      estimateRequestTokens(request()) + estimateTokens(policy),
+    );
+  });
+
   it('grows with the allowlist rather than ignoring it', () => {
     const small = estimateRequestTokens(request());
     const large = estimateRequestTokens(

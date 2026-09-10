@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { StoryGenerationRequest } from '../../../domain/ai/story-request';
 import type { StoryRepairRequest } from '../../../domain/ai/text-generation-provider';
 import { snapshotId } from '../../../domain/shared/ids';
-import { buildRepairPrompt } from './repair-prompt';
+import { CONFIG_OPEN } from './prompt-layers';
+import { buildRepairPrompt, buildScopedRepairPrompt } from './repair-prompt';
 
 const ORIGINAL: StoryGenerationRequest = {
   form: 'micro',
@@ -22,6 +23,52 @@ const CANDIDATE: StoryRepairRequest['candidate'] = {
   titleJa: 'ねこの一日',
   sentences: [{ index: 0, textJa: 'ねこがいます。' }],
 };
+
+describe('learner exception policy in repair prompts', () => {
+  const POLICY = 'Katakana loanwords are fine.';
+
+  function repairRequest(original: StoryGenerationRequest): StoryRepairRequest {
+    return {
+      original,
+      candidate: CANDIDATE,
+      unknownSpans: [{ sentenceIndex: 0, surface: '図書館' }],
+      structureIssues: [],
+      attempt: 1,
+      previouslyAttempted: [],
+      promptVersion: 'repair/5',
+    };
+  }
+
+  function users(original: StoryGenerationRequest): readonly string[] {
+    const request = repairRequest(original);
+    return [
+      buildRepairPrompt(request).user,
+      buildScopedRepairPrompt(request, [
+        { index: 0, textJa: 'ねこがいます。', surfaces: ['図書館'] },
+      ]).user,
+    ];
+  }
+
+  it('sends the policy to full and scoped repairs when set', () => {
+    for (const user of users({ ...ORIGINAL, exceptionPolicy: POLICY })) {
+      expect(user).toContain(`learner exception policy\n${JSON.stringify({ text: POLICY })}`);
+    }
+  });
+
+  it('omits the policy when there is none', () => {
+    for (const user of users(ORIGINAL)) {
+      expect(user).not.toContain(`${CONFIG_OPEN} learner exception policy`);
+    }
+  });
+
+  it('lets repairs use what the policy clearly allows', () => {
+    const request = repairRequest(ORIGINAL);
+    expect(buildRepairPrompt(request).system).toContain('learner exception policy clearly allows');
+    expect(buildScopedRepairPrompt(request, []).system).toContain(
+      'learner exception policy clearly allows',
+    );
+  });
+});
 
 describe('buildRepairPrompt', () => {
   it('omits learner style instructions when none were given', () => {

@@ -12,6 +12,7 @@ import {
   asConfig,
   assemble,
   jsonConfigBlock,
+  exceptionPolicySection,
   jsonDataBlock,
   premiseContext,
   vocabularyInventory,
@@ -34,7 +35,7 @@ const TASK_LAYER = [
   'Goal: Return the complete repaired story, changing only what is needed to fix every supplied problem.',
   'Success criteria:',
   '- Preserve already-valid wording, premise, meaning, ordering, register, and narrative continuity wherever possible.',
-  '- Remove or rewrite every listed disallowed expression using only the vocabulary inventory. Do not keep it, gloss it, or evade validation by changing its script.',
+  '- Remove or rewrite every listed disallowed expression using only the vocabulary inventory or expressions the learner exception policy clearly allows. Do not keep it, gloss it, or evade validation by changing its script.',
   '- Keep the story near the requested length without adding disconnected filler.',
   '- Expressions listed under `alreadyAttempted` survived an earlier repair. Choose a different replacement for them rather than the one you would reach for first.',
   'Output semantics: return `titleJa` and `sentences` of `{ index, textJa }`, with indexes contiguous from 0 and one sentence per entry.',
@@ -46,7 +47,7 @@ const SCOPED_TASK_LAYER = [
   'Goal: Rewrite only the supplied target entries so that no disallowed expression remains.',
   'Success criteria:',
   '- Return one replacement for every target index, and no entry for any other index.',
-  '- Remove or rewrite every disallowed expression in that entry using only the vocabulary inventory. Do not keep it, gloss it, or evade validation by changing its script.',
+  '- Remove or rewrite every disallowed expression in that entry using only the vocabulary inventory or expressions the learner exception policy clearly allows. Do not keep it, gloss it, or evade validation by changing its script.',
   '- Keep each replacement the same sentence: same meaning, role, viewpoint, register, and length as far as the vocabulary allows. Do not merge, split, or reorder sentences.',
   '- Stay consistent with the surrounding context entries, which are shown for continuity and must not be returned.',
   '- Expressions listed under `alreadyAttempted` survived an earlier repair. Choose a different replacement for them rather than the one you would reach for first.',
@@ -148,5 +149,6 @@ function sharedConfigBlocks(request: StoryRepairRequest): readonly string[] {
         request.original.focusVocabulary,
       ),
     ),
+    exceptionPolicySection(request.original.exceptionPolicy),
   ];
 }

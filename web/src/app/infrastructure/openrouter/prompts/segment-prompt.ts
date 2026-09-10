@@ -6,6 +6,7 @@ import {
   asConfig,
   assemble,
   jsonConfigBlock,
+  exceptionPolicySection,
   jsonDataBlock,
   premiseContext,
   vocabularyInventory,
@@ -47,6 +48,7 @@ export function buildSegmentPrompt(request: StorySegmentRequest): AssembledPromp
         request.original.focusVocabulary,
       ),
     ),
+    exceptionPolicySection(request.original.exceptionPolicy),
     jsonDataBlock('story blueprint', request.blueprint),
     jsonConfigBlock('current segment', {
       index: request.segment.index,

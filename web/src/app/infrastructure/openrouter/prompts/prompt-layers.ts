@@ -83,8 +83,9 @@ export const JAPANESE_OUTPUT_LAYER =
   'Write natural Japanese. Do not add romaji, furigana, translations, notes, or explanations to the Japanese fields.';
 
 export const STORY_POLICY_LAYER = [
-  'Constraint priority: output contract; vocabulary; grammar and register; requested length; premise and learner style; narrative polish.',
-  'The allowed-vocabulary arrays together are the complete set of content expressions you may draw from. Inflect those expressions naturally, but do not introduce unrelated content words.',
+  'Constraint priority: output contract; vocabulary, including expressions the learner exception policy clearly allows; grammar and register; requested length; premise and learner style; narrative polish.',
+  'The allowed-vocabulary arrays together are the complete set of content expressions you may draw from, unless a learner exception policy is supplied. Inflect those expressions naturally, but do not introduce unrelated content words.',
+  'When a learner exception policy is supplied, expressions it clearly allows (for example a category such as loanwords or names) may also be used naturally where they fit the premise, without glossing or explaining them. Anything the policy does not clearly cover stays forbidden.',
   'Always-available forms are grammatical function words — particles, copulas, auxiliaries, and common suffixes — that may be used freely.',
   'When `recentFocusVocabulary` is present, it lists the expressions this learner learned most recently, newest first, each with when it was first seen. Strongly prefer the expressions at the top of that list and use them wherever the story admits them; priority falls toward the bottom. Work them in naturally: never enumerate, define, or explain them.',
   'Suggested vocabulary is what this learner is practising. Prefer those expressions wherever the story admits them naturally, but never force coverage, enumerate the list, or explain it.',
@@ -118,6 +119,14 @@ export function premiseSection(premise: string): string {
  */
 export function premiseContext(premise: string): string {
   return premise === '' ? '' : asData('premise', premise);
+}
+
+/**
+ * The learner exception policy, under the same label the exception review
+ * uses, so the writer and the reviewer see the identical setting.
+ */
+export function exceptionPolicySection(policy: string | undefined): string {
+  return policy === undefined ? '' : jsonConfigBlock('learner exception policy', { text: policy });
 }
 
 /** Joins the layers with blank lines, so each one reads as its own block. */

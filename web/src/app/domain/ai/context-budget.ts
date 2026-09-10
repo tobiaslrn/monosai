@@ -81,6 +81,7 @@ export function estimateRequestTokens(request: StoryGenerationRequest): number {
     estimateTokens(compactDynamicJson) +
     estimateTokens(request.premise) +
     estimateTokens(request.specialInstructions ?? '') +
+    estimateTokens(request.exceptionPolicy ?? '') +
     (request.requestedSentenceCount > 50 ? estimateTokens(JSON.stringify({ segmentSize: 50 })) : 0)
   );
 }

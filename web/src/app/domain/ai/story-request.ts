@@ -101,6 +101,11 @@ export interface StoryGenerationRequest {
   readonly requestedSentenceCount: number;
   readonly premise: string;
   readonly specialInstructions?: string;
+  /**
+   * The learner exception policy the writer may draw from. Absent when empty.
+   * The exception review remains the authority on what it actually allows.
+   */
+  readonly exceptionPolicy?: string;
   /** Canonical expressions the story may use. The local validation authority. */
   readonly allowedVocabulary: readonly string[];
   /** Inspiration only; never required, never displayed. */

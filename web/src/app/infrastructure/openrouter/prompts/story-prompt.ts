@@ -6,6 +6,7 @@ import {
   asConfig,
   assemble,
   jsonConfigBlock,
+  exceptionPolicySection,
   premiseSection,
   vocabularyInventory,
   type AssembledPrompt,
@@ -51,6 +52,7 @@ export function buildStoryPrompt(request: StoryGenerationRequest): AssembledProm
         request.focusVocabulary,
       ),
     ),
+    exceptionPolicySection(request.exceptionPolicy),
     jsonConfigBlock('story requirements', {
       requestedSentenceCount: request.requestedSentenceCount,
     }),

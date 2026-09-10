@@ -16,7 +16,7 @@ The terms Monosai's code and these chapters use. Where a term names a type, the 
 | **Structural baseline** | Curated grammar and function words that are always allowed, because Japanese sentences cannot be formed without them. It is not starter vocabulary. [ADR 0015](../decisions/0015-structural-baseline-stays-curated.md) |
 | **Grammar profile** | The learner's device-wide setting: one of six ordered difficulty presets. Every register is allowed and the preset's own prose is sent; there is no rule catalog and no per-rule selection. [ADR 0008](../decisions/0008-grammar-profile-presets.md), [ADR 0014](../decisions/0014-remove-grammar-rule-catalog.md), [ADR 0064](../decisions/0064-every-register-and-the-preset-wording.md) |
 | **Preset** | One of the six ordered difficulty levels, named for the grammar the learner commands rather than for a JLPT level. They are cumulative |
-| **Exception policy** | One device-wide sentence the learner writes, which the AI applies to generated words that Anki does not cover |
+| **Exception policy** | One device-wide sentence the learner writes, which the AI applies to generated words that Anki does not cover. The story writer may draw on it; the exception review still decides |
 | **Known** | Validated locally, against the current snapshot or against a generated story's frozen evidence |
 | **Exception** | Not known through Anki, but accepted by the exception review under the captured policy |
 | **Unknown** | Accepted by no authoritative check. It is marked in the reader, never hidden. [ADR 0033](../decisions/0033-unresolved-unknown-words-are-marked-not-rejected.md) |

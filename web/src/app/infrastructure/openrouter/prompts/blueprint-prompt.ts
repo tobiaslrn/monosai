@@ -5,6 +5,7 @@ import {
   asConfig,
   assemble,
   jsonConfigBlock,
+  exceptionPolicySection,
   premiseSection,
   vocabularyInventory,
   type AssembledPrompt,
@@ -47,6 +48,7 @@ export function buildBlueprintPrompt(
         request.focusVocabulary,
       ),
     ),
+    exceptionPolicySection(request.exceptionPolicy),
     jsonConfigBlock('required segment plan', segments),
     jsonConfigBlock('story requirements', {
       requestedSentenceCount: request.requestedSentenceCount,

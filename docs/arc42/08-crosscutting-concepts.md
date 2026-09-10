@@ -30,7 +30,7 @@ Every token in the reader carries one of three statuses:
 | Status | Meaning |
 | --- | --- |
 | **Known** | Matched locally, either against the current snapshot or against a generated story's frozen evidence |
-| **Exception** | Not known through Anki, but accepted by the AI exception review under the policy the learner wrote |
+| **Exception** | Not known through Anki, but accepted by the AI exception review under the policy the learner wrote. The writer sees the same policy and may use what it clearly allows, but only the review accepts |
 | **Unknown** | Accepted by no authoritative check. It is marked, not hidden |
 
 An imported reading is classified against the current snapshot each time it is opened, so it follows

@@ -12,8 +12,8 @@
  * change behaviour keeps its version.
  */
 export const PROMPT_VERSIONS = {
-  story: 'story/4',
-  repair: 'repair/4',
+  story: 'story/5',
+  repair: 'repair/5',
   'exception-review': 'exception-review/3',
   grammar: 'grammar/4',
   translation: 'translation/4',

@@ -94,7 +94,7 @@ sequenceDiagram
 
     Learner->>Store: premise (optional), length
     Store->>Store: check prerequisites, then capture<br/>snapshot, profile, policy, and model
-    Store->>Provider: write the story
+    Store->>Provider: write the story (with the captured policy)
     Provider-->>Store: a structured story
     Store->>Worker: tokenize, then match against the snapshot
     Worker-->>Store: known or unknown, per token
@@ -103,7 +103,7 @@ sequenceDiagram
         Provider-->>Store: accepted, or not
     end
     opt still unknown, a bounded number of attempts
-        Store->>Provider: repair the affected sentences
+        Store->>Provider: repair the affected sentences (with the captured policy)
         Provider-->>Store: revised sentences
     end
     Store->>Repo: finalize

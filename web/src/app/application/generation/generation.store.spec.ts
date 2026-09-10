@@ -84,7 +84,7 @@ describe('GenerationStore strict pass', () => {
     expect(provenance.requestedSentenceCount).toBe(5);
     expect(provenance.repairAttempts).toBe(0);
     expect(provenance.modelId).toBe('vendor/text-model');
-    expect(provenance.promptVersions).toMatchObject({ story: 'story/4' });
+    expect(provenance.promptVersions).toMatchObject({ story: 'story/5' });
     expect(provenance.grammarProfileSnapshotId.length).toBeGreaterThan(0);
     expect(provenance.suggestedVocabularyItemIds.length).toBeGreaterThan(0);
   });
@@ -231,6 +231,23 @@ describe('GenerationStore exception review', () => {
       .filter((status) => status.validation.category === 'policy-exception');
     expect(exceptions).toHaveLength(1);
     expect(exceptions[0].validation).toMatchObject({ explanationEn: APPROVAL.explanationEn });
+  });
+
+  it('lets the writer see the exception policy', async () => {
+    await bed.setPolicy(POLICY);
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.provider.storyRequests[0].exceptionPolicy).toBe(POLICY);
+  });
+
+  it('sends no exception policy to the writer when none is configured', async () => {
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.provider.storyRequests[0]).not.toHaveProperty('exceptionPolicy');
   });
 
   it('does not ask the policy when there is none configured', async () => {
