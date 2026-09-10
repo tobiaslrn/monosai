@@ -51,13 +51,20 @@ async function addLiveAnki(page: Page, confirm = true): Promise<void> {
 }
 
 function ankiAnswers(expressions: readonly string[], meanings = expressions.map(() => 'meaning')) {
+  const cardIds = expressions.map((_, index) => index + 1);
   return {
     version: 6,
     requestPermission: { permission: 'granted', requireApiKey: false, version: 6 },
     deckNames: ['Core Japanese'],
     modelNames: ['Basic'],
     modelFieldNames: ['Expression', 'Meaning'],
-    findCards: expressions.map((_, index) => index + 1),
+    // This fixture has reviewed-card counts but deliberately no review history.
+    // Android's introduced search must therefore return no matching cards rather
+    // than replaying the mapping search response and fabricating today's date.
+    findCards: (request: { readonly params?: Readonly<Record<string, unknown>> }) => {
+      const query = request.params?.['query'];
+      return typeof query === 'string' && query.includes('introduced:') ? [] : cardIds;
+    },
     cardsInfo: expressions.map((_, index) => ({
       cardId: index + 1,
       note: index + 10,

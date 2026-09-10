@@ -2,6 +2,16 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, type Page, type Route } from '@playwright/test';
 
+interface AnkiRequest {
+  readonly action?: string;
+  readonly params?: Readonly<Record<string, JsonValue>>;
+}
+type JsonValue = string | number | boolean | null | JsonObject | readonly JsonValue[];
+interface JsonObject {
+  readonly [key: string]: JsonValue;
+}
+type AnkiStubAnswer = JsonValue | ((request: AnkiRequest) => JsonValue);
+
 const FIXTURE_DIR = join(process.cwd(), 'src', 'testing', 'fixtures', 'anki');
 
 /** The addresses the connection adapters are allowed to reach. */
@@ -32,13 +42,20 @@ export async function stubAndroidBridge(page: Page): Promise<void> {
     'cardsInfo',
     'notesInfo',
   ];
-  const answers: Record<string, unknown> = {};
+  const answers: Record<string, AnkiStubAnswer> = {};
   for (const action of actions) {
     const envelope = JSON.parse(readFileSync(join(fixtures, action, 'response.json'), 'utf8')) as {
-      result: unknown;
+      result: JsonValue;
     };
     answers[action] = envelope.result;
   }
+  const ordinaryFindCards = answers['findCards'];
+  answers['findCards'] = (request: AnkiRequest) => {
+    const query = request.params?.['query'];
+    return typeof query === 'string' && query.includes('introduced:')
+      ? []
+      : (ordinaryFindCards ?? []);
+  };
   await stubAnkiConnect(page, answers);
 }
 
@@ -65,9 +82,12 @@ export async function choosePackage(page: Page, name: string): Promise<void> {
  * them is enough to exercise the whole connection path without anything
  * listening locally.
  */
-export async function stubAnkiConnect(page: Page, answers: Record<string, unknown>): Promise<void> {
+export async function stubAnkiConnect(
+  page: Page,
+  answers: Record<string, AnkiStubAnswer>,
+): Promise<void> {
   const handler = async (route: Route): Promise<void> => {
-    const body = route.request().postDataJSON() as { action?: string };
+    const body = route.request().postDataJSON() as AnkiRequest;
     const action = body.action ?? '';
     if (!(action in answers)) {
       await route.fulfill({
@@ -77,10 +97,14 @@ export async function stubAnkiConnect(page: Page, answers: Record<string, unknow
       });
       return;
     }
+    const answer = answers[action];
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ result: answers[action], error: null }),
+      body: JSON.stringify({
+        result: typeof answer === 'function' ? answer(body) : answer,
+        error: null,
+      }),
     });
   };
 
