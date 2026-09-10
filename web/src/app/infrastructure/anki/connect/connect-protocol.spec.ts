@@ -14,6 +14,20 @@ import {
   versionSchema,
 } from './connect-response.schema';
 
+describe('cardsInfoSchema', () => {
+  const card = { cardId: 1, note: 1, reps: 3, queue: 2, deckName: 'Core Japanese' };
+
+  it("reads the desktop add-on's card type from its own `type` key", () => {
+    const parsed = cardsInfoSchema.parse([{ ...card, type: 1 }]);
+    expect(parsed[0]).toMatchObject({ cardType: 1 });
+    expect(parsed[0]).not.toHaveProperty('type');
+  });
+
+  it("keeps the bridge's `cardType` when both keys are present", () => {
+    expect(cardsInfoSchema.parse([{ ...card, cardType: 2, type: 1 }])[0]?.cardType).toBe(2);
+  });
+});
+
 describe('shared bridge wire fixtures', () => {
   const schemas = {
     version: versionSchema,
