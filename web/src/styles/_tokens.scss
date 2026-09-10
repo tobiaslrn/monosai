@@ -114,6 +114,8 @@
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
+  /* Shared semantic role for every non-reader page title. */
+  --text-page-title: var(--text-2xl);
   --text-display: 2.5rem;
 
   --weight-regular: 400;

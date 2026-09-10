@@ -26,9 +26,7 @@ import { HelpIntroService } from './help-intro.service';
     <a class="mn-skip-link" href="#mn-main">Skip to main content</a>
 
     @if (!isReaderRoute()) {
-      @if (!ownsHeader()) {
-        <mn-app-bar />
-      }
+      <mn-app-bar [showSearch]="isLibraryRoute()" />
       <mn-app-update-banner />
       <mn-vocabulary-sync-banner />
       @if (intro.visible()) {
@@ -144,15 +142,10 @@ export class AppShellComponent {
     return classifyReadingLink(segment).kind === 'well-formed';
   });
 
-  /**
-   * The Library owns a quieter, image-led home header of its own, and the
-   * pages about what the learner can read follow it: each wears its own title
-   * row with Help at its end, so the utility bar would only repeat it.
-   */
-  protected readonly ownsHeader = computed(() => {
-    const path = this.url().url.split(/[?#]/)[0];
-    return path === '/library' || path === '/reading-level' || path.startsWith('/reading-level/');
-  });
+  /** Search is a reserved Library utility; every other non-reader route keeps the common set. */
+  protected readonly isLibraryRoute = computed(
+    () => this.url().url.split(/[?#]/)[0] === '/library',
+  );
 
   constructor() {
     effect(() => {

@@ -167,13 +167,15 @@ kept clear of the docked player.
 
 ### Whitebox: non-reader shell and Help
 
-`core/layout/` owns the utility bar and first-use CDK dialog. The shell only
-renders after successful startup and waits for a completed non-reader route
-before offering Help; Reader routes show neither the bar nor the introduction.
-`features/help/` is a lazy static prose screen. Dismissal goes through
-`AppSettingsStore` and the settings repository; schema v9 adds `helpIntroSeen`
-transactionally, defaulting to false. Write failures expose retry in the shell.
-See [ADR 0051](../decisions/0051-non-reader-utilities-and-first-use-help.md).
+`core/layout/` owns the shared utility bar and first-use CDK dialog. The shell
+only renders after successful startup and waits for a completed non-reader route
+before offering Help; the utility bar is present on every non-reader route and
+the page itself owns its `mn-page-header`. Reader routes show neither the bar
+nor the introduction. `features/help/` is a lazy static prose screen.
+Dismissal goes through `AppSettingsStore` and the settings repository; schema v9
+adds `helpIntroSeen` transactionally, defaulting to false. Write failures expose
+retry in the shell. See [ADR 0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)
+and [ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md).
 
 Two seams deserve a closer look, because a mistake in either crosses a boundary the rest of the
 system relies on.

@@ -115,7 +115,11 @@ test('loads the next library page at the window end without Show more @smoke @mo
   expect(layout).not.toBeNull();
   expect(layout?.documentWidth).toBeLessThanOrEqual(layout?.viewportWidth ?? 0);
   expect(layout?.titleScrollWidth).toBeLessThanOrEqual(layout?.titleClientWidth ?? 0);
-  expect(layout?.titleHeight).toBeGreaterThan(20);
+  // The shared page measure leaves this fixture on one line on desktop; the
+  // mobile lane still proves that long titles wrap instead of being hidden.
+  if ((layout?.viewportWidth ?? 0) < 960) {
+    expect(layout?.titleHeight).toBeGreaterThan(20);
+  }
   expect(layout?.titleRight).toBeLessThanOrEqual(layout?.statusLeft ?? 0);
   expect(layout?.statusRight).toBeLessThanOrEqual(layout?.menuLeft ?? 0);
   await expect(page.getByRole('button', { name: 'Show more', exact: true })).toHaveCount(0);

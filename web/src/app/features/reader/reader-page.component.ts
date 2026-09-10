@@ -399,6 +399,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       top: 0;
       z-index: 1001;
       grid-area: bar;
+      isolation: isolate;
       /*
        * A grid item is sized by its content unless it is allowed to shrink, and
        * a long title would otherwise stretch the whole reader past its measure
@@ -407,6 +408,21 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       min-width: 0;
       padding-block: var(--space-2) var(--space-3);
       background: var(--surface-canvas);
+    }
+
+    /*
+     * The reader is measured, but its sticky furniture must still cover the
+     * full viewport while text scrolls beneath it. Keep the backdrop in the
+     * reader's own canvas token so it stays opaque in both themes.
+     */
+    .bar::before {
+      position: absolute;
+      z-index: -1;
+      inset-block: 0;
+      inset-inline: -100vw;
+      background: var(--surface-canvas);
+      content: '';
+      pointer-events: none;
     }
 
     .bar-row {

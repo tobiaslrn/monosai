@@ -64,7 +64,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
         subtitle="Manage the words and grammar in your stories."
         [backTo]="backTarget()"
         [backLabel]="backLabel()"
-        [help]="true"
       />
 
       <p
@@ -167,10 +166,8 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
   styles: `
     @use '../../../styles/breakpoints' as breakpoints;
 
-    /* The Library's rail, so the two screens read as one application. */
     .level-page {
       gap: var(--space-5);
-      max-width: 42rem;
     }
 
     /*

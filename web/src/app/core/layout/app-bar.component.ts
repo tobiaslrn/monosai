@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
@@ -44,6 +44,11 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
         >
           <mn-icon name="github" />
         </a>
+        @if (showSearch()) {
+          <button type="button" class="mn-icon-button" aria-label="Search" title="Search">
+            <mn-icon name="search" [size]="22" />
+          </button>
+        }
       </nav>
     </header>
   `,
@@ -105,4 +110,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     }
   `,
 })
-export class AppBarComponent {}
+export class AppBarComponent {
+  /** Search belongs to the Library shelf; other pages keep the common utilities only. */
+  readonly showSearch = input(false);
+}

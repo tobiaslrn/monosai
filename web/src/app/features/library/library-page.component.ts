@@ -12,7 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { NavigationStart, Router, RouterLink } from '@angular/router';
+import { NavigationStart, Router } from '@angular/router';
 import { LibraryScrollMemoryService } from '../../core/routing/library-scroll-memory.service';
 import { LibraryStore } from '../../application/reading/library.store';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
@@ -36,6 +36,7 @@ import { groupLibraryReadings } from './library-date-groups';
 import { LibraryStandingComponent } from './library-standing.component';
 import { LibraryWelcomeComponent } from './library-welcome.component';
 import { LibraryVirtualListComponent } from './library-virtual-list.component';
+import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 
 interface FilterOption {
   readonly value: LibraryFilter;
@@ -61,7 +62,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     IconComponent,
-    RouterLink,
+    PageHeaderComponent,
     ReaderPopoverComponent,
     NewReadingMenuComponent,
     GenerationJobCardComponent,
@@ -71,19 +72,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   ],
   template: `
     <div class="mn-page library-page">
-      <header class="home-bar">
-        <a class="home-identity" routerLink="/library" aria-label="Monosai home">
-          <img src="icons/icon-192.png" alt="" width="40" height="40" />
-        </a>
-        <div class="home-actions">
-          <button type="button" class="mn-icon-button" aria-label="Search" title="Search">
-            <mn-icon name="search" [size]="22" />
-          </button>
-          <a class="mn-icon-button" routerLink="/settings" aria-label="Settings" title="Settings">
-            <mn-icon name="settings" [size]="22" />
-          </a>
-        </div>
-      </header>
+      <mn-page-header heading="Library" />
 
       @if (store.status() === 'failed') {
         <section class="mn-card" role="alert">
@@ -92,8 +81,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           <button type="button" class="mn-button" (click)="reload()">Try again</button>
         </section>
       } @else {
-        <section class="home-hero" aria-labelledby="home-heading">
-          <h1 id="home-heading" class="mn-visually-hidden">Library</h1>
+        <section class="home-hero" aria-labelledby="mn-page-title">
           <mn-library-standing />
           <div class="hero-art" aria-hidden="true">
             <img src="assets/home-reader.png" alt="" width="941" height="1672" />
@@ -174,48 +162,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
     /* The home header, action, and every date group share the same rail. */
     .library-page {
-      gap: var(--space-2);
-      max-width: 42rem;
-    }
-
-    .home-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-height: var(--touch-target);
-    }
-
-    .home-identity {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: var(--touch-target);
-      height: var(--touch-target);
-      border: 1px solid transparent;
-      border-radius: var(--radius-control);
-      background: transparent;
-      color: var(--text-primary);
-      cursor: pointer;
-    }
-
-    .home-identity:hover {
-      border-color: var(--border-subtle);
-      background: var(--surface-sunken);
-    }
-
-    .home-identity:focus-visible {
-      outline: 3px solid var(--focus-ring);
-      outline-offset: 2px;
-    }
-
-    .home-identity img {
-      width: 2rem;
-      height: 2rem;
-      border-radius: var(--radius-control);
-    }
-
-    .home-actions {
-      display: flex;
       gap: var(--space-2);
     }
 

@@ -31,14 +31,9 @@ import { IconComponent } from '../icon/icon.component';
           </a>
         }
       }
-      <h1>{{ heading() }}</h1>
+      <h1 id="mn-page-title">{{ heading() }}</h1>
       <div class="trailing">
         <ng-content />
-        @if (help()) {
-          <a class="mn-icon-button" routerLink="/help" aria-label="Help" title="Help">
-            <mn-icon name="help" [size]="24" />
-          </a>
-        }
       </div>
     </header>
     @if (subtitle(); as line) {
@@ -61,7 +56,7 @@ import { IconComponent } from '../icon/icon.component';
       min-width: 0;
       margin: 0;
       overflow: hidden;
-      font-size: var(--text-2xl);
+      font-size: var(--text-page-title);
       white-space: nowrap;
       text-overflow: ellipsis;
     }
@@ -87,10 +82,6 @@ import { IconComponent } from '../icon/icon.component';
       .head {
         gap: var(--space-2);
       }
-
-      h1 {
-        font-size: var(--text-2xl);
-      }
     }
   `,
 })
@@ -102,11 +93,6 @@ export class PageHeaderComponent {
   readonly backLabel = input('Back');
   /** One quiet line under the title: what the page holds, or how much of it. */
   readonly subtitle = input<string | null>(null);
-  /**
-   * Help at the end of the title row, for the pages that wear no utility bar
-   * because they carry their own header, as the Library does.
-   */
-  readonly help = input(false);
   protected readonly usesHistoryBack = computed(() => {
     const target = this.backTo();
     return target !== null && this.navigation.canPopTo(target);

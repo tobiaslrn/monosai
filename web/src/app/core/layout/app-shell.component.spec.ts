@@ -24,7 +24,7 @@ describe('AppShellComponent', () => {
     TestBed.overrideTemplate(
       AppShellComponent,
       `<a class="mn-skip-link" href="#mn-main">Skip</a>
-      @if (!isReaderRoute() && !ownsHeader()) { <mn-app-bar /> }
+      @if (!isReaderRoute()) { <mn-app-bar [showSearch]="isLibraryRoute()" /> }
       <main id="mn-main" tabindex="-1"><router-outlet /></main>`,
     );
     const router = TestBed.inject(Router);
@@ -69,18 +69,20 @@ describe('AppShellComponent', () => {
     expect(intro.offer).toHaveBeenCalledOnce();
   });
 
-  it('leaves the Library to render its own home header', async () => {
+  it('uses the shared utility bar on the Library and reserves Search there', async () => {
     const { element } = await render('/library');
 
-    expect(element.querySelector('mn-app-bar')).toBeNull();
+    expect(element.querySelector('mn-app-bar')).not.toBeNull();
+    expect(element.querySelector('nav button[aria-label="Search"]')).not.toBeNull();
   });
 
-  it('leaves the pages about what you can read to their own title row', async () => {
+  it('uses the shared utility bar on the pages about what you can read', async () => {
     for (const url of ['/reading-level', '/reading-level/vocabulary', '/reading-level/level']) {
       TestBed.resetTestingModule();
       const { element } = await render(url);
 
-      expect(element.querySelector('mn-app-bar')).toBeNull();
+      expect(element.querySelector('mn-app-bar')).not.toBeNull();
+      expect(element.querySelector('nav button[aria-label="Search"]')).toBeNull();
     }
   });
 

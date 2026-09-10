@@ -20,9 +20,11 @@ class HostComponent {}
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [PageHeaderComponent],
-  template: `<mn-page-header heading="Vocabulary" [help]="true" />`,
+  template: `<mn-page-header heading="Vocabulary"
+    ><span data-testid="trailing">Action</span></mn-page-header
+  >`,
 })
-class HelpHostComponent {}
+class TrailingHostComponent {}
 
 describe('PageHeaderComponent back control', () => {
   beforeEach(() => {
@@ -74,13 +76,11 @@ describe('PageHeaderComponent back control', () => {
     );
   });
 
-  it('uses the shared icon button for help', () => {
-    const fixture = TestBed.createComponent(HelpHostComponent);
+  it('projects an optional trailing element into the page header', () => {
+    const fixture = TestBed.createComponent(TrailingHostComponent);
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
 
-    const help = element.querySelector<HTMLAnchorElement>('a.mn-icon-button[aria-label="Help"]');
-    expect(help?.getAttribute('href')).toBe('/help');
-    expect(help?.classList.contains('mn-icon-button')).toBe(true);
+    expect(element.querySelector('.trailing [data-testid="trailing"]')?.textContent).toBe('Action');
   });
 });

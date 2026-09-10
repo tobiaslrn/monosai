@@ -59,7 +59,6 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
   styles: `
     .choice-page {
       gap: var(--space-4);
-      max-width: 42rem;
     }
 
     /*

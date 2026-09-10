@@ -207,10 +207,10 @@ learner activates the new version from a banner. See
 [`docs/design-system.md`](../design-system.md) is the authority for structure, controls, colour,
 units, motion, voice, and state. It holds rules and intent. The values live in
 `web/src/styles/_tokens.scss`, the form fields in `web/src/styles/_controls.scss`, and each shared
-primitive — button, card and inset, notice, status pill, facts, stack and actions, segmented control —
-in its own file under `web/src/styles/components/`. Components compose those classes and keep only
-placement in their own styles. A change that departs from the design system changes that document
-first, in the same commit.
+primitive — button, card and inset, notice, status pill, facts, stack and actions, segmented control,
+page frame and page header — in its own file under `web/src/styles/components/` or the shared UI
+folder. Components compose those classes and keep only placement in their own styles. A change that
+departs from the design system changes that document first, in the same commit.
 
 Two rules from it reach into the code directly: colour is never the only carrier of meaning, and
 dates and numbers format in one fixed locale, which
@@ -267,10 +267,12 @@ that ended with the tab that owned it. All three render `mn-not-found-panel` —
 same alert panel, the same explanation shape, and the application's ordinary primary
 and secondary buttons — so a dead link never looks like a different product.
 
-Application chrome follows the same rule. The shell drops its masthead only for the
-reader itself, which is decided by classifying the URL's id rather than by matching
-the `/reader/` prefix: a segment that is not an id never reaches the reader, and that
-screen previously lost every way out of the application to the prefix match.
+Application chrome follows the same rule. The shell drops its utility bar only for
+the reader itself, which is decided by classifying the URL's id rather than by
+matching the `/reader/` prefix: a segment that is not an id never reaches the
+reader, and that screen previously lost every way out of the application to the
+prefix match. All other pages pair the bar with their shared page frame and page
+header ([ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md)).
 
 The reader's own not-found state keeps the reader's bar rather than the masthead: it
 is reached only after a reading has begun loading, and swapping the chrome in when a

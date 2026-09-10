@@ -54,24 +54,31 @@ express — Generate's length and word-selection panel is the case this exists
 for. The aside stacks below the fields when the width no longer supports it. It
 is available to forms only; reading surfaces, lists, and prose never take one.
 
-### The non-reader utility bar
+### The non-reader utility bar and page frame
 
-Every non-reader screen shares one compact application bar: the Monosai mark
-and wordmark link to the Library, followed by Settings, Help, and GitHub in a
+Every non-reader screen shares one compact application bar: the Monosai mark and
+wordmark link to the Library, followed by Settings, Help, and GitHub in a
 labelled utility navigation landmark. The wordmark may hide at the existing
-narrow breakpoint. The Reader has no application bar and keeps its own controls.
+narrow breakpoint. The bar and the page below it use the same bounded
+`--page-measure`, so their left and right edges remain aligned at every
+supported width.
+The Reader has no application bar and keeps its own controls.
 
-These three destinations are an explicit exception to the repetition rule:
-they are icon-only on both mobile and desktop, with accessible names and
-tooltips. GitHub names its new-tab behavior. Local destinations identify the
-current page. The bar sits in the document flow and uses bare shared icon
-controls with unchanged touch targets and visible keyboard focus.
+These three destinations are an explicit exception to the repetition rule: they
+are icon-only on both mobile and desktop, with accessible names and tooltips.
+GitHub names its new-tab behavior. Local destinations identify the current page.
+The bar sits in the document flow and uses bare shared icon controls with
+unchanged touch targets and visible keyboard focus. The Library may add its
+reserved Search control to this same utility row; Search remains a no-op until
+the shelf has a real search interaction, but keeps native button semantics,
+accessible name, tooltip, touch target, and focus treatment.
 
-The Library is the home-screen exception. It uses the mark without the wordmark,
-a Settings destination, and a reserved Search control so the opening surface can
-stay as compact as the reading-first composition it introduces. Search remains a
-no-op until the shelf has a real search interaction; it still keeps its native
-button semantics, accessible name, tooltip, touch target, and focus treatment.
+Below the bar, every non-reader screen uses `mn-page-header`: a Back control
+where the page has a parent destination, the page title, and an optional trailing
+element. The title uses the shared page-title token. The Library is the home
+destination and therefore has no Back control; its image-led hero follows the
+shared header. Reader routes keep their own sticky header instead.
+
 The home illustration blends into the canvas through an organic crop; the hero
 is not a card and therefore has no panel boundary or elevation.
 The crop follows the illustration's arch and low foreground, preserving the
@@ -82,16 +89,6 @@ width on phones and stay compact on desktop.
 Home's primary action uses the shared primary action colour; the illustration is
 gently dimmed in the dark palette.
 
-**What you can read is composed like the Library**
-([ADR 0063](decisions/0063-what-you-can-read-is-composed-like-the-library.md)).
-Its overview, the vocabulary list, the reading-level ladder, and a source's page
-wear no utility bar. Each has its own title row instead: Back, the title, and
-Help at its end as a bare icon link, with one quiet line beneath the title that
-says what the page holds or how much of it. They use the Library's rail and its
-row surface — quiet raised cards (`.mn-card`) led by a soft round mark
-(`.mn-icon-badge`) — and a section heading at the rank below the title, with its
-one verb opposite it as green text rather than as a filled button.
-
 Below the bar the Library states **where the learner stands** — how many words
 Monosai can write from, and at what level. That line is the screen's lead and
 also the way to the page that explains it. In the image-led home hero it remains
@@ -99,10 +96,10 @@ plain copy without a trailing navigation glyph; hover, focus, and link semantics
 identify the interaction without interrupting the headline. It states current
 facts and never becomes a control that changes them.
 
-**A destination is named once per screen.** A masthead label that repeats the
-sentence beneath it is not navigation, it is a caption, however it is styled.
-Where a prominent line already leads somewhere, that is the door; a second link
-to the same place in nearly the same words makes both harder to see.
+**A destination is named once per screen.** The utility bar supplies common
+destinations, and the page header names the current one. Where a prominent line
+already leads somewhere, that is the door; a second link to the same place in
+nearly the same words makes both harder to see.
 
 ### Vertical composition
 
@@ -110,11 +107,11 @@ Pages are **top-aligned and grow downward**, like a document. Content is never
 centred vertically and never stretched to fill the viewport. A short page leaves
 the space below it empty, which is the honest result of having little to say.
 
-Settings uses the Library's compact rail rather than the widest form measure.
-Each top-level group is one quiet raised card with a compact section heading;
-actions use the same pill silhouette as the Library's filters and creation
-control. Complex model fields may use sunken groups inside that card, but may
-not introduce a second competing hierarchy of raised panels.
+Settings uses the same page frame as every other non-reader screen. Each
+top-level group is one quiet raised card with a compact section heading; actions
+use the same pill silhouette as the Library's filters and creation control.
+Complex model fields may use sunken groups inside that card, but may not
+introduce a second competing hierarchy of raised panels.
 
 ### Surfaces and groups
 
@@ -493,11 +490,12 @@ render Japanese until a network request completes is not local-first.
 
 The type scale is small on purpose: rank is carried by **size and weight within
 one scale**, not by a second system. All-caps micro-labels are not part of the
-language. The page or surface title uses `--text-2xl`, a section uses
-`--text-xl`, and a group uses `--text-lg` one step below it. Body copy uses
-`--text-md`; metadata and supporting copy use `--text-sm` or `--text-xs`; the
-Library hero uses `--text-display`. Weight follows the same hierarchy through
-the regular, medium, semibold, and bold weight tokens.
+language. The shared page or surface title uses the semantic
+`--text-page-title` token, a section uses `--text-xl`, and a group uses
+`--text-lg` one step below it. Body copy uses `--text-md`; metadata and
+supporting copy use `--text-sm` or `--text-xs`; the Library hero uses
+`--text-display`. Weight follows the same hierarchy through the regular,
+medium, semibold, and bold weight tokens.
 
 Three ranks exist: the page or surface title, the section within it, and the
 group within that. A fourth rank means the surface is doing too much. A group

@@ -246,14 +246,10 @@ describe('LibraryPageComponent', () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
-    expect(element(fixture).querySelector('.library-head')).toBeNull();
     expect(element(fixture).querySelector('mn-library-standing a')?.getAttribute('href')).toBe(
       '/reading-level#words',
     );
-    expect(element(fixture).querySelector('h1')?.textContent).toBe('Library');
-    expect(
-      element(fixture).querySelector<HTMLButtonElement>('[aria-label="Search"]'),
-    ).not.toBeNull();
+    expect(element(fixture).querySelector('mn-page-header h1')?.textContent).toBe('Library');
   });
 
   it('hides the filter buttons until the shelf is large enough to need them', async () => {

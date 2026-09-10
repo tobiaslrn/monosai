@@ -57,7 +57,6 @@ interface VirtualVocabularyEntry {
         heading="Your vocabulary"
         backTo="/reading-level"
         backLabel="Back to what you can read"
-        [help]="true"
         [subtitle]="countLabel()"
       />
 
@@ -194,10 +193,8 @@ interface VirtualVocabularyEntry {
     </div>
   `,
   styles: `
-    /* The Library's rail, so the list reads as part of the same application. */
     .vocabulary-page {
       gap: var(--space-3);
-      max-width: 42rem;
     }
 
     .search-field {
@@ -314,7 +311,6 @@ interface VirtualVocabularyEntry {
     .state-message p {
       margin: 0;
     }
-
   `,
 })
 export class VocabularyBrowsePageComponent {

@@ -103,6 +103,7 @@ files are already linked from code comments and from other records.
 | [0061](../decisions/0061-anki-word-selection-signal-ladder.md)         | Anki word selection weights a ladder of scheduling evidence                       |
 | [0058](../decisions/0058-one-gesture-per-meaning-on-touch.md)          | On touch, a tap opens a word and a held press opens its sentence                  |
 | [0063](../decisions/0063-what-you-can-read-is-composed-like-the-library.md) | What you can read is composed like the Library; the ladder saves on request |
+| [0068](../decisions/0068-one-non-reader-frame-and-page-header.md)            | All non-reader pages share one utility bar, frame, and page header          |
 
 ### Audio
 
