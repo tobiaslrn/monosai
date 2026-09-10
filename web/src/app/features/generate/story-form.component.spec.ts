@@ -181,7 +181,7 @@ describe('StoryFormComponent', () => {
     expect(slider.getAttribute('aria-valuetext')).toBe('Long, 800 sentences');
     expect(slider.getAttribute('aria-describedby')).toContain('mn-length-warning');
     expect(element.querySelector('#mn-length-warning')?.textContent).toContain(
-      'less reliable at following your grammar and vocabulary settings',
+      'Longer stories may ignore your vocabulary and grammar settings',
     );
     expect(element.querySelector<HTMLButtonElement>('[data-testid="generate"]')?.disabled).toBe(
       false,
@@ -197,7 +197,7 @@ describe('StoryFormComponent', () => {
     expect(select?.textContent).toContain('Recently learned');
     expect(select?.textContent).toContain('Difficult');
     expect(element.querySelector('.word-selection')?.textContent).not.toContain('Inspiration only');
-    expect(select?.getAttribute('aria-describedby')).toBe('mn-defaults-scope');
+    expect(select?.getAttribute('aria-describedby')).toBeNull();
   });
 
   it('emits a changed mode and locks the select during generation', () => {
@@ -263,13 +263,13 @@ describe('StoryFormComponent', () => {
   it('keeps premise and instruction guidance inside the text boxes', () => {
     const { element } = render();
 
-    expect(
-      element.querySelector<HTMLTextAreaElement>('[data-testid="premise"]')?.placeholder,
-    ).toContain('leave it empty');
+    expect(element.querySelector<HTMLTextAreaElement>('[data-testid="premise"]')?.placeholder).toBe(
+      'Optional premise',
+    );
     expect(
       element.querySelector<HTMLTextAreaElement>('[data-testid="special-instructions"]')
         ?.placeholder,
-    ).toContain('optional');
+    ).toBe('Tone, viewpoint, dialogue, or register');
   });
 
   it('links the snapshot and preset from the settings sidebar', () => {

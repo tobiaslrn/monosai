@@ -146,7 +146,7 @@ export class LibraryStandingComponent {
       case 'unknown':
         return null;
       case 'unavailable':
-        return 'Nothing was changed.';
+        return '';
       case 'known': {
         const snapshot = state.snapshot;
         if (snapshot === null) {

@@ -63,7 +63,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
           </li>
         } @empty {
           <li class="empty mn-hint" data-testid="no-sources">
-            No sources yet. Add one and Monosai reads your words from wherever you keep them.
+            No sources yet. Add one to use your words.
           </li>
         }
       </ul>

@@ -7,7 +7,7 @@ describe('generationWaitCopy', () => {
     expect(generationWaitCopy({ kind: 'writing' })).toEqual({
       key: 'writing',
       title: 'Generating your story',
-      detail: 'Writing your story. This is usually the longest step.',
+      detail: '',
     });
   });
 
@@ -25,7 +25,7 @@ describe('generationWaitCopy', () => {
       }),
     ).toMatchObject({
       title: 'Replacing 5 unfamiliar words',
-      detail: 'Repair attempt 1 of 2. The revised story will be checked again.',
+      detail: 'Repair 1 of 2',
     });
   });
 
@@ -37,7 +37,7 @@ describe('generationWaitCopy', () => {
     // save does not keep.
     expect(generationWaitCopy(state)).toMatchObject({
       title: 'Saving your story',
-      detail: 'Adding the Japanese to your library.',
+      detail: '',
     });
   });
 });

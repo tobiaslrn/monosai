@@ -105,7 +105,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                 href="https://openrouter.ai/settings/keys"
                 target="_blank"
                 rel="noopener noreferrer"
-                >Get a key on openrouter.ai (opens in a new tab)</a
+                >Get a key on openrouter.ai</a
               >
               <label class="mn-field">
                 <span>{{ credential.isConfigured() ? 'Replace API key' : 'API key' }}</span>
@@ -786,7 +786,7 @@ export class ModelsSectionComponent {
       case 'cancelled':
         return 'The preview was stopped, so this configuration is still untested.';
       case 'stale':
-        return 'Audio saved with the previous settings is kept on this device, but it cannot be played in these ones — a story may show as having no audio until you generate it again or set the previous voice and speed back.';
+        return 'Existing audio uses different settings. Generate it again or restore the previous settings.';
       case 'testing':
       case 'ready':
       case 'failed':

@@ -41,7 +41,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             id="mn-premise"
             rows="5"
             data-testid="premise"
-            placeholder="Describe what the story should be about, or leave it empty for a topic of the model's choosing"
+            placeholder="Optional premise"
             [value]="draft.premise()"
             [attr.aria-describedby]="premiseDescriptionIds()"
             [attr.aria-invalid]="premiseTooLong()"
@@ -65,7 +65,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             id="mn-instructions"
             rows="4"
             data-testid="special-instructions"
-            placeholder="Tone, viewpoint, dialogue, or register (optional)"
+            placeholder="Tone, viewpoint, dialogue, or register"
             [value]="draft.specialInstructions()"
             [attr.aria-describedby]="instructionsDescriptionIds()"
             [attr.aria-invalid]="instructionsTooLong()"
@@ -117,19 +117,13 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         @if (showLengthWarning()) {
           <p id="mn-length-warning" class="length-warning" role="status">
             <mn-icon name="warning" [size]="17" />
-            <span>
-              At this length, models are much less reliable at following your grammar and vocabulary
-              settings. You can still generate the story.
-            </span>
+            <span> Longer stories may ignore your vocabulary and grammar settings. </span>
           </p>
         }
       </div>
 
       <aside class="story-settings" aria-label="Story settings">
         <h3>Defaults for every story</h3>
-        <p id="mn-defaults-scope" class="mn-hint defaults-scope">
-          Changes here apply to future stories.
-        </p>
         <ng-content select="[story-defaults]" />
 
         <mn-preparation-targets
@@ -146,7 +140,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           <select
             id="mn-word-selection"
             data-testid="word-priority-select"
-            aria-describedby="mn-defaults-scope"
             [value]="ankiWordPriorityMode()"
             [disabled]="disabled()"
             (change)="onWordPriorityMode($event)"
@@ -236,16 +229,13 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           <mn-icon name="generate" [size]="18" />
           <span>Generate story</span>
         </button>
-        @if (!canGenerate()) {
-          <p id="mn-generate-disabled-reason" class="mn-hint">
-            {{ disabledReason() || 'Keep both fields within the character limits to generate.' }}
-          </p>
+        @if (!canGenerate() && disabledReason()) {
+          <p id="mn-generate-disabled-reason" class="mn-hint">{{ disabledReason() }}</p>
         }
       </div>
       @if (atGenerationLimit()) {
         <p class="mn-hint" data-testid="generation-limit">
-          You already have as many stories being written as Monosai runs at once. This one can start
-          when one of them finishes.
+          Generation limit reached. This one can start when one finishes.
         </p>
       }
     </div>
@@ -302,10 +292,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     .story-settings {
       display: flex;
       flex-direction: column;
-    }
-
-    .defaults-scope {
-      margin: calc(-1 * var(--space-3)) 0 var(--space-4);
     }
 
     .text-fields {

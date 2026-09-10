@@ -140,12 +140,12 @@ describe('LibraryStandingComponent', () => {
   });
 
   /** A read that failed is not "you have no words". */
-  it('says what could not be read and that nothing was changed', () => {
+  it('says what could not be read without read-only boilerplate', () => {
     state.set({ kind: 'unavailable', message: 'The database could not be opened.' });
 
     expect(lines(render())).toMatchObject({
       headline: 'Your words could not be read.',
-      detail: 'Nothing was changed.',
+      detail: '',
     });
   });
 

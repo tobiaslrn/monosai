@@ -272,7 +272,7 @@ describe('ModelsSectionComponent audio readiness', () => {
     detect();
 
     expect(readiness(element)).toBe('Settings changed');
-    expect(note(element)).toContain('Audio saved with the previous settings is kept');
+    expect(note(element)).toContain('Existing audio uses different settings');
   });
 
   it('keeps the saved speed when the field is cleared, and says the value is unusable', async () => {
@@ -292,7 +292,7 @@ describe('ModelsSectionComponent audio readiness', () => {
     expect(settings.tts.speed).toBe(1.5);
     expect(tts.readiness()).toBe('ready');
     expect(speed.getAttribute('aria-invalid')).toBe('true');
-    expect(element.querySelector('[role="alert"]')?.textContent).toContain('between 0.5 and 2');
+    expect(element.querySelector('[role="alert"]')?.textContent).toContain('from 0.5 to 2');
   });
 
   it('commits a speed the field accepts', async () => {
@@ -384,7 +384,7 @@ describe('ModelsSectionComponent audio readiness', () => {
       expect(settings.tts.voiceId).toBe('kaede');
       // A changed voice does not delete the clips it can no longer reach.
       expect(readiness(element)).toBe('Settings changed');
-      expect(note(element)).toContain('kept');
+      expect(note(element)).toContain('Existing audio uses different settings');
     });
 
     it('offers the same readiness word to the text panel, and retests from it', async () => {

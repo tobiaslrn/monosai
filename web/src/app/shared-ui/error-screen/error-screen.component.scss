@@ -28,12 +28,3 @@
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-
-.code {
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-}
-
-code {
-  font-family: ui-monospace, 'Cascadia Mono', consolas, monospace;
-}

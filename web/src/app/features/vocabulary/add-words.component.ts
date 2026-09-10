@@ -90,9 +90,9 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
                   <p class="mn-hint">
                     {{ paragraph.before }}
                     @if (paragraph.link; as link) {
-                      <a [href]="link.href" target="_blank" rel="noopener noreferrer"
-                        >{{ link.text }} (opens in a new tab)</a
-                      >
+                      <a [href]="link.href" target="_blank" rel="noopener noreferrer">{{
+                        link.text
+                      }}</a>
                     }
                     {{ paragraph.after }}
                   </p>
@@ -119,7 +119,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
                   <p class="code-line">
                     {{ failureCode() }} ·
                     <a [href]="links.troubleshooting" target="_blank" rel="noopener noreferrer"
-                      >troubleshooting (opens in a new tab)</a
+                      >troubleshooting</a
                     >
                   </p>
                 </details>
@@ -143,7 +143,6 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
           } @else {
             <div class="sheet-intro">
               <h3 class="sheet-title">Add words</h3>
-              <p class="sheet-lead">Choose how to import your vocabulary.</p>
             </div>
             <div class="choices">
               @if (platform === 'ios') {
@@ -160,7 +159,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
                 </button>
                 <p class="mn-hint aside">
                   <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
-                    >How to export from Anki (opens in a new tab)</a
+                    >How to export from Anki</a
                   >
                 </p>
               } @else {
@@ -361,11 +360,6 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       margin: 0;
       font-size: 1.625rem;
       letter-spacing: -0.01em;
-    }
-
-    .sheet-lead {
-      margin: 0;
-      color: var(--text-secondary);
     }
 
     .sheet-head {

@@ -14,38 +14,38 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
       return {
         key: state.kind,
         title: 'Checking your setup',
-        detail: 'Making sure the model, vocabulary, and grammar profile are ready.',
+        detail: '',
       };
     case 'preparing':
       return {
         key: state.kind,
         title: 'Preparing your vocabulary',
-        detail: 'Collecting the reviewed words this story may use.',
+        detail: '',
       };
     case 'writing':
       return {
         key: state.kind,
         title: 'Generating your story',
-        detail: 'Writing your story. This is usually the longest step.',
+        detail: '',
       };
     case 'parsing':
       return {
         key: state.kind,
         title: 'Reading the generated Japanese',
-        detail: 'Breaking the story into words so it can be checked locally.',
+        detail: '',
       };
     case 'validating':
       return {
         key: state.kind,
         title: 'Checking the vocabulary',
-        detail: 'Comparing every word with your reviewed vocabulary.',
+        detail: '',
       };
     case 'exception-review': {
       const count = state.candidateCount;
       return {
         key: `${state.kind}-${String(count)}`,
         title: `Reviewing ${String(count)} unfamiliar ${count === 1 ? 'word' : 'words'}`,
-        detail: 'Checking whether your exception policy allows them.',
+        detail: '',
       };
     }
     case 'repairing': {
@@ -57,20 +57,20 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
       return {
         key: `${state.kind}-${String(state.attempt)}`,
         title,
-        detail: `Repair attempt ${String(state.attempt)} of ${String(state.totalAttempts)}. The revised story will be checked again.`,
+        detail: `Repair ${String(state.attempt)} of ${String(state.totalAttempts)}`,
       };
     }
     case 'finalizing':
       return {
         key: state.kind,
         title: 'Saving your story',
-        detail: 'Adding the Japanese to your library.',
+        detail: '',
       };
     case 'saved':
       return {
         key: state.kind,
         title: 'Your story is ready',
-        detail: `Saved “${state.reading.title}”.`,
+        detail: '',
       };
     case 'cancelled':
       return { key: state.kind, title: 'Generation stopped', detail: 'Nothing was saved.' };
@@ -87,14 +87,15 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
   template: `
     @for (message of [copy()]; track message.key) {
       <div class="copy" data-testid="generation-copy">
-        <p class="mn-eyebrow eyebrow">Creating your story</p>
         <h2>
           <span class="status-title">{{ message.title }}</span
           ><span class="loading-dots" aria-hidden="true"
             ><span class="loading-dots__reveal">...</span></span
           >
         </h2>
-        <p>{{ message.detail }}</p>
+        @if (message.detail) {
+          <p>{{ message.detail }}</p>
+        }
       </div>
     }
   `,

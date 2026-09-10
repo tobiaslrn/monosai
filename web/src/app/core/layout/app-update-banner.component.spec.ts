@@ -71,7 +71,7 @@ describe('AppUpdateBannerComponent', () => {
     expect(disabledButton).not.toBeNull();
     expect(disabledButton?.textContent).toContain('Update and reload');
     expect(enabledButton).toBeNull();
-    expect(element.textContent).toContain('a story is being generated');
+    expect(element.textContent).toContain('Waiting for current work to finish.');
   });
 
   it('offers a reload action for an unrecoverable state', () => {

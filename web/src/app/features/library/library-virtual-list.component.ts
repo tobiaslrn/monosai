@@ -152,7 +152,7 @@ function readingKey(id: string): string {
       @if (store.loadMoreError(); as error) {
         <section class="load-error" role="alert">
           <p>More stories could not be loaded.</p>
-          <p class="mn-hint">{{ error.message }} Nothing was changed or deleted.</p>
+          <p class="mn-hint">{{ error.message }}</p>
           <button type="button" class="mn-button" (click)="retryLoadMore()">Try again</button>
         </section>
       }

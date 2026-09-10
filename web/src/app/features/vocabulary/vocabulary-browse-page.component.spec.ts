@@ -190,7 +190,7 @@ describe('VocabularyBrowsePageComponent', () => {
     await settle(fixture);
 
     expect(element.textContent).toContain('Vocabulary could not be loaded.');
-    expect(element.textContent).toContain('Saved vocabulary is unchanged.');
+    expect(element.textContent).not.toContain('Saved vocabulary is unchanged.');
     expect(count()).toBe('0 words');
     expect(element.textContent).not.toContain('3 words');
   });

@@ -27,13 +27,12 @@ import { TtsStore } from '../../application/settings/tts.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
-import { technicalCode } from '../../domain/shared/errors';
 import { jobId } from '../../domain/shared/ids';
 import {
   NavigationHistoryService,
   navigationOriginState,
 } from '../../core/routing/navigation-history.service';
-import { aiErrorCopy, aiTaskCopy } from '../../shared-ui/ai-error/ai-error-copy';
+import { aiErrorCopy } from '../../shared-ui/ai-error/ai-error-copy';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { NotFoundPanelComponent } from '../../shared-ui/not-found/not-found-panel.component';
@@ -146,8 +145,7 @@ function formatList(items: readonly string[]): string {
         >
           <mn-generation-wait [state]="state()" />
           <p class="mn-hint leave-hint" data-testid="leave-hint">
-            You can go back to your library while this is written. It keeps going, and the story
-            appears when it is ready.
+            You can return to the library; generation continues.
           </p>
           @if (canCancel()) {
             <button
@@ -228,12 +226,12 @@ function formatList(items: readonly string[]): string {
           [heading]="copy.heading"
           [description]="copy.whatFailed"
           [dataStatus]="copy.whatDidNot"
-          [code]="failureCode()"
         >
           <div data-actions class="recovery">
-            <p data-testid="failure-context">{{ failureContext() }}</p>
             <p>{{ copy.primaryAction }}</p>
-            <p class="mn-hint">{{ copy.escape }}</p>
+            @if (copy.escape) {
+              <p class="mn-hint">{{ copy.escape }}</p>
+            }
             @if (canRetrySave()) {
               <button
                 type="button"
@@ -310,7 +308,7 @@ export class GeneratePageComponent {
   protected readonly missingJob = computed(() => this.jobId() !== undefined && this.job() === null);
 
   protected readonly missingJobExplanation = [
-    'Stories are written in the tab you start them in, and reloading ends them. Nothing was saved.',
+    'This generation is no longer running. Nothing was saved.',
   ];
 
   protected readonly state = computed<GenerationState>(() => this.job()?.store.state() ?? IDLE);
@@ -391,7 +389,7 @@ export class GeneratePageComponent {
   protected readonly preparingLabel = computed(() => {
     const targets = this.savedReading()?.preparationTargets ?? [];
     const named = targets.map((target) => PREPARATION_LABELS[target]);
-    return named.length === 0 ? null : `Preparing ${formatList(named)}. You can start reading now.`;
+    return named.length === 0 ? null : `Preparing ${formatList(named)}.`;
   });
 
   /**
@@ -421,26 +419,8 @@ export class GeneratePageComponent {
           whatFailed: state.error.message,
           whatDidNot: 'Nothing was saved. Your library and vocabulary are unchanged.',
           primaryAction: 'Try generating again.',
-          escape: 'Reading and importing work without this.',
+          escape: '',
         };
-  });
-
-  protected readonly failureContext = computed(() => {
-    const state = this.state();
-    if (state.kind !== 'failed') {
-      return '';
-    }
-    if (state.error.domain === 'ai') {
-      return `This happened while ${aiTaskCopy(state.error.task)}.`;
-    }
-    return state.during === 'finalizing'
-      ? 'This happened while saving your story.'
-      : 'This happened while preparing your story.';
-  });
-
-  protected readonly failureCode = computed(() => {
-    const state = this.state();
-    return state.kind === 'failed' ? technicalCode(state.error) : null;
   });
 
   protected readonly canRetrySave = computed(() => {

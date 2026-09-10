@@ -21,7 +21,6 @@ describe('HelpPageComponent', () => {
       'OpenRouter bills your account directly',
       'exact model IDs',
       'structured output',
-      'Gemini TTS works by far the best in Monosai.',
       'Very short stories can be rough',
       'length is a guideline',
       'Basic grammar patterns',

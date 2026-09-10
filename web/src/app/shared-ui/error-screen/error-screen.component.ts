@@ -19,11 +19,6 @@ import { IconComponent } from '../icon/icon.component';
       <div class="actions">
         <ng-content select="[data-actions]" />
       </div>
-      @if (code(); as technical) {
-        <p class="code">
-          Technical code: <code>{{ technical }}</code>
-        </p>
-      }
     </section>
   `,
   styleUrl: './error-screen.component.scss',
@@ -33,5 +28,4 @@ export class ErrorScreenComponent {
   readonly description = input.required<string>();
   /** Explicit statement about saved data, required by the failure policy. */
   readonly dataStatus = input<string | null>(null);
-  readonly code = input<string | null>(null);
 }

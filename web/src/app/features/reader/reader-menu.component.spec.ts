@@ -45,7 +45,7 @@ describe('Story options', () => {
     );
     expect(element.querySelector('.panel')?.getAttribute('role')).toBe('dialog');
     expect(element.textContent).toContain('Reading appearance');
-    expect(element.textContent).toContain('Content for this story');
+    expect(element.textContent).not.toContain('Content for this story');
     expect(element.textContent).not.toMatch(/cost|charges|OpenRouter/);
   });
   it('starts a layer without closing its progress surface', () => {

@@ -107,7 +107,7 @@ describe('GeneratePageComponent', () => {
       'Generating your story',
     );
     expect(page.querySelector('[data-testid="leave-hint"]')?.textContent).toContain(
-      'go back to your library',
+      'return to the library',
     );
     expect(page.querySelector('[data-testid="cancel-generation"]')).not.toBeNull();
     expect(page.querySelector('mn-story-form')).toBeNull();
@@ -174,10 +174,8 @@ describe('GeneratePageComponent', () => {
     ]);
     const page = (await renderFixture(JOB_ID)).nativeElement as HTMLElement;
 
-    expect(page.querySelector('[data-testid="failure-context"]')?.textContent).toContain(
-      'writing your story',
-    );
-    expect(page.textContent).toContain('ai/authentication');
+    expect(page.querySelector('[data-testid="failure-context"]')).toBeNull();
+    expect(page.textContent).not.toContain('ai/authentication');
     expect(page.querySelector('[data-testid="retry-save"]')).toBeNull();
   });
 
@@ -191,9 +189,7 @@ describe('GeneratePageComponent', () => {
     const fixture = await renderFixture(JOB_ID);
     const page = fixture.nativeElement as HTMLElement;
 
-    expect(page.querySelector('[data-testid="failure-context"]')?.textContent).toContain(
-      'saving your story',
-    );
+    expect(page.querySelector('[data-testid="failure-context"]')).toBeNull();
     page.querySelector<HTMLButtonElement>('[data-testid="retry-save"]')?.click();
     await fixture.whenStable();
 
@@ -205,7 +201,7 @@ describe('GeneratePageComponent', () => {
     const page = await render();
 
     expect(page.querySelector('[data-testid="generation-limit"]')?.textContent).toContain(
-      'as many stories being written as Monosai runs at once',
+      'Generation limit reached',
     );
     expect(page.querySelector<HTMLButtonElement>('[data-testid="generate"]')?.disabled).toBe(true);
   });

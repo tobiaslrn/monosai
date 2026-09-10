@@ -89,9 +89,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
 
         <mn-source-list />
         <p class="draft-status mn-hint" role="status">This list is not saved yet.</p>
-        @if (hasSources()) {
-          <p class="note sources-note">Words from all sources are combined.</p>
-        }
         <mn-package-import />
       </section>
 
@@ -111,8 +108,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
           <div class="mn-card assets-failed" role="alert">
             <h3>Language assets are unavailable</h3>
             <p class="mn-hint">
-              The reading levels ship with the language bundle, which could not be loaded. Your
-              saved profile is unchanged.
+              Reading levels could not be loaded. Your saved profile is unchanged.
             </p>
             <button type="button" class="mn-button" (click)="retryLanguage()">Try again</button>
           </div>
@@ -160,8 +156,10 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
           </details>
         }
 
-        @if (profile.lastError(); as error) {
-          <p class="mn-error" role="alert">Your change could not be saved: {{ error.code }}</p>
+        @if (profile.lastError()) {
+          <p class="mn-error" role="alert">
+            Your change could not be saved. Your saved level is unchanged.
+          </p>
         }
       </section>
     </div>
@@ -480,8 +478,6 @@ export class ReadingLevelPageComponent {
 
   protected readonly state = this.refresh.state;
 
-  protected readonly hasSources = computed(() => this.mappings.sources().length > 0);
-
   /**
    * One live region for what the page's work is doing. An import in progress
    * owns it, because it is the thing the learner just started; otherwise the
@@ -515,9 +511,7 @@ export class ReadingLevelPageComponent {
   });
 
   protected readonly grammarDetail = computed(
-    () =>
-      this.profile.selectedPreset()?.descriptionEn ??
-      'Reading levels arrive with the language bundle.',
+    () => this.profile.selectedPreset()?.descriptionEn ?? 'Reading levels are built in.',
   );
 
   /** A closed disclosure states its current value rather than hiding it. */

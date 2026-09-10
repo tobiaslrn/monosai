@@ -20,10 +20,7 @@ import { AppUpdateStore } from '../../application/pwa/app-update.store';
           @case ('available') {
             <p>A new version of Monosai has downloaded.</p>
             @if (store.isBusy()) {
-              <p class="hint">
-                Waiting until {{ store.busyReason() ?? 'the current work' }} finishes before
-                updating.
-              </p>
+              <p class="hint">Waiting for current work to finish.</p>
               <button type="button" class="mn-button mn-button--primary" disabled>
                 Update and reload
               </button>
@@ -42,9 +39,7 @@ import { AppUpdateStore } from '../../application/pwa/app-update.store';
           @case ('failed') {
             <p>{{ status.message }}</p>
             @if (store.isBusy()) {
-              <p class="hint">
-                Waiting until {{ store.busyReason() ?? 'the current work' }} finishes.
-              </p>
+              <p class="hint">Waiting for current work to finish.</p>
             }
             <div class="actions">
               @if (status.recovery === 'reload') {

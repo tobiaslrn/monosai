@@ -66,7 +66,6 @@ test.describe('Help and utility bar', () => {
 
   test('links to each flow and names every icon-only destination @smoke', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Start here' })).toBeVisible();
-    await expect(page.getByText('Gemini TTS works by far the best in Monosai.')).toBeVisible();
     const utilities = page.getByRole('navigation', { name: 'Utilities' });
     await expect(utilities.getByRole('link')).toHaveCount(3);
     const settings = utilities.getByRole('link', { name: 'Settings', exact: true });
