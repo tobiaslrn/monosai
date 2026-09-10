@@ -79,7 +79,9 @@ alike.
 A package and the desktop add-on produce an exact first-review instant. AnkiDroid
 does not expose the review log, but its supported `introduced:N` search proves
 the first-review study day ([ADR 0065](0065-ankidroid-first-review-study-day.md)).
-FSRS difficulty is currently package-only. Rather than gate the feature on the
+FSRS difficulty comes exactly from a package or the Android bridge, and to the
+whole percent from desktop search ([ADR 0066](0066-desktop-fsrs-difficulty-by-search.md)).
+Rather than gate the feature on the
 weakest source, each mode uses the best evidence available and says so in one
 place.
 

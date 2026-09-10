@@ -98,6 +98,7 @@ export class DesktopConnectAdapter implements AnkiVocabularyProvider {
     for (const mapping of mappings) {
       for await (const event of extractMapping(this.client, mapping, this.batchSize, signal, {
         readsReviewHistory: true,
+        searchesFsrsDifficulty: true,
       })) {
         yield event;
         if (event.kind === 'failed') {

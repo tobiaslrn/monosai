@@ -8,6 +8,7 @@ import {
   type FakeServerOptions,
 } from '../../../../testing/anki-connect-server';
 import { collectExtraction, mappingFor } from '../../../../testing/anki-provider-contract';
+import { difficultyPercent } from '../../../domain/anki/scheduling-signals';
 import { AndroidConnectAdapter } from './android-connect.adapter';
 import { AnkiConnectClient, DESKTOP_ENDPOINTS } from './connect-client';
 import { DesktopConnectAdapter } from './desktop-connect.adapter';
@@ -141,6 +142,37 @@ describe('DesktopConnectAdapter', () => {
     expect(neko).toMatchObject({ firstReviewedAt: 1_760_000_000_000, intervalDays: 23 });
   });
 
+  it('recovers FSRS difficulty through search, since cardsInfo carries none', async () => {
+    const { server, client } = serverAnd({ cardShape: 'desktop' });
+    const collected = await collectExtraction(new DesktopConnectAdapter(client), [mappingFor()]);
+    const neko = collected.entries.find((entry) => entry.rawFieldValue === '<b>ねこ</b>');
+    const plain = collected.entries.find((entry) => entry.rawFieldValue === 'ねこ');
+    const observed = collected.events.find((event) => event.kind === 'observed');
+
+    expect(difficultyPercent(neko?.fsrsDifficulty)).toBe(difficultyPercent(8.269));
+    // A card still on SM-2 matches no difficulty and must not read as 0%.
+    expect(plain).not.toHaveProperty('fsrsDifficulty');
+    expect(observed?.kind === 'observed' && observed.basis.fsrsDifficulty).toBe('available');
+    expect(collected.warnings).toEqual([]);
+    expect(
+      server.requests.some(
+        (request) =>
+          request.action === 'findCards' && String(request.params['query']).includes('prop:d'),
+      ),
+    ).toBe(true);
+  });
+
+  it('keeps the vocabulary without difficulty when Anki cannot search it', async () => {
+    const { client } = serverAnd({ cardShape: 'desktop', failingSearchTerms: ['prop:d'] });
+    const collected = await collectExtraction(new DesktopConnectAdapter(client), [mappingFor()]);
+    const observed = collected.events.find((event) => event.kind === 'observed');
+
+    expect(collected.entries.length).toBeGreaterThan(0);
+    expect(collected.entries.every((entry) => entry.fsrsDifficulty === undefined)).toBe(true);
+    expect(observed?.kind === 'observed' && observed.basis.fsrsDifficulty).toBe('unsupported');
+    expect(collected.warnings).toEqual([]);
+  });
+
   it('asks for reviews only of the cards that survived eligibility', async () => {
     const { server, client } = serverAnd();
     await collectExtraction(new DesktopConnectAdapter(client), [mappingFor()]);
@@ -263,6 +295,20 @@ describe('AndroidConnectAdapter', () => {
       firstReviewedAt: representativeLocalDate(introducedDays, ANDROID_NOW),
       firstReviewedPrecision: 'anki-day',
     });
+  });
+
+  it('reads difficulty from the bridge instead of searching for it', async () => {
+    const { server, client } = serverAnd();
+    const collected = await collectExtraction(new AndroidConnectAdapter(client), [mappingFor()]);
+    const neko = collected.entries.find((entry) => entry.rawFieldValue === '<b>ねこ</b>');
+
+    expect(neko).toMatchObject({ fsrsDifficulty: 8.269 });
+    expect(
+      server.requests.some(
+        (request) =>
+          request.action === 'findCards' && String(request.params['query']).includes('prop:d'),
+      ),
+    ).toBe(false);
   });
 
   it('keeps the vocabulary and warns once when introduced search is unavailable', async () => {

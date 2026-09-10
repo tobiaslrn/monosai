@@ -126,6 +126,9 @@ classes join cards, decks, notes and model fields through ContentProvider querie
 The web Android adapter recovers a card's first reviewed study day through bounded
 parallel `introduced:N` searches over the same read-only `findCards` action; it
 never opens AnkiDroid's private collection or presents the result as an exact time.
+The bridge reports FSRS difficulty directly; the desktop add-on does not, so the
+desktop adapter recovers it to the whole percent through `prop:d` searches over
+the same action ([ADR 0066](../decisions/0066-desktop-fsrs-difficulty-by-search.md)).
 The update boundary makes bounded HTTPS requests to GitHub only on app launch or
 explicit download and verifies the APK signer before system installation.
 `protocol/fixtures/` is consumed by both JVM and web tests. See

@@ -1,13 +1,13 @@
 import type { AnkiError } from '../../../domain/anki/anki-error';
 import { ok, type Result } from '../../../domain/shared/result';
-import type { AnkiConnectClient } from './connect-client';
+import {
+  buildCardPredicateQueries,
+  matchCardPredicates,
+  type CardPredicateQuery,
+  type CardSearchClient,
+} from './card-predicate-search';
 
 const DAY_MS = 86_400_000;
-const MAX_QUERY_LENGTH = 8_000;
-
-interface SearchClient {
-  findCards(query: string, signal?: AbortSignal): Promise<Result<readonly number[], AnkiError>>;
-}
 
 interface SearchState {
   readonly cardId: number;
@@ -18,11 +18,6 @@ interface SearchState {
 interface IntroducedPredicate {
   readonly cardId: number;
   readonly days: number;
-}
-
-interface IntroducedQuery {
-  readonly query: string;
-  readonly predicates: readonly IntroducedPredicate[];
 }
 
 export interface IntroducedFirstReview {
@@ -40,7 +35,7 @@ export interface IntroducedFirstReview {
  * rounds logarithmic, while every generated query stays below the bridge limit.
  */
 export async function resolveIntroducedFirstReviews(
-  client: Pick<AnkiConnectClient, 'findCards'> | SearchClient,
+  client: CardSearchClient,
   cardIds: readonly number[],
   now: number,
   signal?: AbortSignal,
@@ -62,7 +57,7 @@ export async function resolveIntroducedFirstReviews(
         cardId: state.cardId,
         days: Math.floor((state.low + state.high) / 2),
       }));
-    const searched = await runPredicates(client, predicates, signal);
+    const searched = await matchCardPredicates(client, predicates.map(toCardPredicate), signal);
     if (!searched.ok) {
       return searched;
     }
@@ -80,9 +75,9 @@ export async function resolveIntroducedFirstReviews(
   // The binary search assumes each upper bound matches. Confirm the final
   // predicate so a reviewed count with missing history stays unknown instead
   // of receiving a fabricated date.
-  const confirmed = await runPredicates(
+  const confirmed = await matchCardPredicates(
     client,
-    states.map((state) => ({ cardId: state.cardId, days: state.low })),
+    states.map((state) => toCardPredicate({ cardId: state.cardId, days: state.low })),
     signal,
   );
   if (!confirmed.ok) {
@@ -108,83 +103,13 @@ export function representativeLocalDate(introducedDays: number, now: number): nu
   return date.getTime();
 }
 
-async function runPredicates(
-  client: SearchClient,
-  predicates: readonly IntroducedPredicate[],
-  signal?: AbortSignal,
-): Promise<Result<ReadonlySet<number>, AnkiError>> {
-  const matched = new Set<number>();
-  for (const request of buildQueries(predicates)) {
-    const found = await client.findCards(request.query, signal);
-    if (!found.ok) {
-      return found;
-    }
-    const expected = new Set(request.predicates.map((predicate) => predicate.cardId));
-    for (const cardId of found.value) {
-      if (expected.has(cardId)) matched.add(cardId);
-    }
-  }
-  return ok(matched);
-}
-
 /** Packs same-threshold ids together, then packs clauses under the provider limit. */
 export function buildIntroducedQueries(
   predicates: readonly IntroducedPredicate[],
-): readonly IntroducedQuery[] {
-  return buildQueries(predicates);
+): readonly CardPredicateQuery[] {
+  return buildCardPredicateQueries(predicates.map(toCardPredicate));
 }
 
-function buildQueries(predicates: readonly IntroducedPredicate[]): readonly IntroducedQuery[] {
-  if (predicates.length === 0) return [];
-  const byDays = new Map<number, number[]>();
-  for (const predicate of predicates) {
-    const ids = byDays.get(predicate.days) ?? [];
-    ids.push(predicate.cardId);
-    byDays.set(predicate.days, ids);
-  }
-
-  const clauses: { text: string; predicates: IntroducedPredicate[] }[] = [];
-  for (const [days, ids] of [...byDays.entries()].sort(([left], [right]) => left - right)) {
-    let chunk: number[] = [];
-    for (const cardId of ids) {
-      const candidate = [...chunk, cardId];
-      if (chunk.length > 0 && clause(candidate, days).length > MAX_QUERY_LENGTH) {
-        clauses.push(toClause(chunk, days));
-        chunk = [cardId];
-      } else {
-        chunk = candidate;
-      }
-    }
-    if (chunk.length > 0) clauses.push(toClause(chunk, days));
-  }
-
-  const requests: IntroducedQuery[] = [];
-  let texts: string[] = [];
-  let packed: IntroducedPredicate[] = [];
-  for (const current of clauses) {
-    const candidate = [...texts, current.text].join(' OR ');
-    if (texts.length > 0 && candidate.length > MAX_QUERY_LENGTH) {
-      requests.push({ query: texts.join(' OR '), predicates: packed });
-      texts = [current.text];
-      packed = [...current.predicates];
-    } else {
-      texts.push(current.text);
-      packed.push(...current.predicates);
-    }
-  }
-  if (texts.length > 0) {
-    requests.push({ query: texts.join(' OR '), predicates: packed });
-  }
-  return requests;
-}
-
-function toClause(ids: readonly number[], days: number) {
-  return {
-    text: clause(ids, days),
-    predicates: ids.map((cardId) => ({ cardId, days })),
-  };
-}
-
-function clause(ids: readonly number[], days: number): string {
-  return `(cid:${ids.join(',')} introduced:${String(days)})`;
+function toCardPredicate({ cardId, days }: IntroducedPredicate) {
+  return { cardId, term: `introduced:${String(days)}` };
 }

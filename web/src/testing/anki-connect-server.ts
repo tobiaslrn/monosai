@@ -36,6 +36,14 @@ export interface FakeServerOptions {
   readonly failingSearchTerms?: readonly string[];
   /** Fixed clock for `introduced:` search fixtures. */
   readonly now?: number;
+  /**
+   * Which endpoint's `cardsInfo` shape to answer with; the bridge's by default.
+   *
+   * The desktop add-on calls the card type `type` and carries no FSRS
+   * difficulty or last answer, so a desktop test that used the bridge's shape
+   * would pass against columns the real add-on never sends.
+   */
+  readonly cardShape?: 'bridge' | 'desktop';
 }
 
 interface ServerCard {
@@ -210,9 +218,7 @@ export class FakeAnkiConnectServer {
             ...(card.lapses === undefined ? {} : { lapses: card.lapses }),
             ...(card.factor === undefined ? {} : { factor: card.factor }),
             ...(card.interval === undefined ? {} : { interval: card.interval }),
-            ...(card.cardType === undefined ? {} : { cardType: card.cardType }),
-            ...(card.fsrsDifficulty === undefined ? {} : { fsrsDifficulty: card.fsrsDifficulty }),
-            ...(card.lastReviewedAt === undefined ? {} : { lastReviewedAt: card.lastReviewedAt }),
+            ...this.endpointColumns(card),
             queue: card.queue,
             // A filtered card reports where it sits, and its home deck beside it.
             deckName: card.filteredDeckName ?? card.deckName,
@@ -262,24 +268,35 @@ export class FakeAnkiConnectServer {
     }
   }
 
+  /** The `cardsInfo` columns whose name or presence depends on the endpoint. */
+  private endpointColumns(card: ServerCard): Record<string, number> {
+    if (this.options.cardShape === 'desktop') {
+      return card.cardType === undefined ? {} : { type: card.cardType };
+    }
+    return {
+      ...(card.cardType === undefined ? {} : { cardType: card.cardType }),
+      ...(card.fsrsDifficulty === undefined ? {} : { fsrsDifficulty: card.fsrsDifficulty }),
+      ...(card.lastReviewedAt === undefined ? {} : { lastReviewedAt: card.lastReviewedAt }),
+    };
+  }
+
   /**
    * Anki's search, reduced to what the adapter's queries use.
    *
    * `deck:X` matches X and its descendants; a leading `-` negates a term; and
-   * `note:Y` matches the note type. Terms combine with AND.
+   * `note:Y` matches the note type. Terms combine with AND. Per-card questions
+   * arrive as `(cid:1,2 term)` clauses joined by OR.
    */
   private findCards(query: string): number[] {
-    const introduced = [...query.matchAll(/\(cid:([0-9,]+) introduced:([0-9]+)\)/gu)].map(
-      (match) => ({
-        ids: new Set(match[1].split(',').map(Number)),
-        days: Number(match[2]),
-      }),
-    );
-    if (introduced.length > 0) {
+    const clauses = [...query.matchAll(/\(cid:([0-9,]+) ([^()]+)\)/gu)].map((match) => ({
+      ids: new Set(match[1].split(',').map(Number)),
+      term: match[2],
+    }));
+    if (clauses.length > 0) {
       return this.cards
         .filter((card) =>
-          introduced.some(
-            (clause) => clause.ids.has(card.cardId) && this.wasIntroduced(card, clause.days),
+          clauses.some(
+            (clause) => clause.ids.has(card.cardId) && this.matchesTerm(card, clause.term),
           ),
         )
         .map((card) => card.cardId);
@@ -320,7 +337,25 @@ export class FakeAnkiConnectServer {
     if (term.startsWith('rated:')) {
       return this.wasRated(card, term.slice('rated:'.length));
     }
+    if (term.startsWith('introduced:')) {
+      return this.wasIntroduced(card, Number(term.slice('introduced:'.length)));
+    }
+    if (term.startsWith('prop:d>=')) {
+      return this.hasDifficultyAtLeast(card, Number(term.slice('prop:d>='.length)));
+    }
     return false;
+  }
+
+  /**
+   * Anki's `prop:d>=X`, which compares difficulty on 0-1 as `(D - 1) / 9`.
+   * A card without FSRS memory state matches no difficulty at all.
+   */
+  private hasDifficultyAtLeast(card: ServerCard, threshold: number): boolean {
+    return (
+      card.fsrsDifficulty !== undefined &&
+      Number.isFinite(threshold) &&
+      (card.fsrsDifficulty - 1) / 9 >= threshold
+    );
   }
 
   /**

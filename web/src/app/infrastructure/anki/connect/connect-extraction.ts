@@ -4,7 +4,9 @@ import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
 import type { AnkiConnectClient, ReviewsOfCards } from './connect-client';
 import { batched, searchFor } from './connect-search';
 import { captureActivity, type ActivityPools } from './connect-activity';
+import { resolveDifficultyPercents } from './difficulty-search';
 import {
+  fsrsDifficultyFromPercent,
   mergeSchedulingSignals,
   isEligibleReviewedCard,
   schedulingSignalsFromCard,
@@ -37,6 +39,13 @@ export interface ExtractionOptions {
   readonly readsReviewHistory?: boolean;
   /** Whether first-review study days can be recovered through `introduced:N`. */
   readonly readsIntroducedHistory?: boolean;
+  /**
+   * Whether FSRS difficulty has to be recovered through `prop:d` searches.
+   *
+   * The desktop add-on's `cardsInfo` carries no memory state and no action
+   * exposes it; the bridge reads difficulty straight from AnkiDroid's columns.
+   */
+  readonly searchesFsrsDifficulty?: boolean;
   /** One timestamp per mapping keeps every recovered day internally consistent. */
   readonly now?: () => number;
 }
@@ -191,6 +200,37 @@ export async function* extractMapping(
           card.note,
           mergeSchedulingSignals(schedulingByNote.get(card.note), firstReview),
         );
+      }
+    }
+  }
+
+  const withoutDifficulty = eligibleCards.filter(
+    (card) => card.fsrsDifficulty === undefined || card.fsrsDifficulty === null,
+  );
+  if (options.searchesFsrsDifficulty === true && withoutDifficulty.length > 0) {
+    const percents = await resolveDifficultyPercents(
+      client,
+      withoutDifficulty.map((card) => card.cardId),
+      signal,
+    );
+    if (!percents.ok && percents.error.code === 'cancelled') {
+      yield { kind: 'failed', error: percents.error };
+      return;
+    }
+    // An Anki too old for `prop:d`, like a collection still on SM-2, simply has
+    // no difficulty to report. That is what the basis already says, and the
+    // learner has nothing to act on, so it is not worth a warning.
+    if (percents.ok) {
+      for (const card of withoutDifficulty) {
+        const percent = percents.value.get(card.cardId);
+        if (percent === undefined) continue;
+        schedulingByNote.set(
+          card.note,
+          mergeSchedulingSignals(schedulingByNote.get(card.note), {
+            fsrsDifficulty: fsrsDifficultyFromPercent(percent),
+          }),
+        );
+        sawFsrsDifficulty = true;
       }
     }
   }

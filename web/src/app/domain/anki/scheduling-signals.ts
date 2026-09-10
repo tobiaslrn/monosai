@@ -60,6 +60,19 @@ export function difficultyPercent(fsrsDifficulty: number | undefined): number | 
   );
 }
 
+/**
+ * Maps a 0-100 percent back onto Anki's 1-10 FSRS scale.
+ *
+ * The inverse of `difficultyPercent`, for a source that can only say which whole
+ * percent a card's difficulty rounds to.
+ */
+export function fsrsDifficultyFromPercent(percent: number): number {
+  const clamped = Math.min(100, Math.max(0, percent));
+  return (
+    FSRS_DIFFICULTY_MINIMUM + (clamped / 100) * (FSRS_DIFFICULTY_MAXIMUM - FSRS_DIFFICULTY_MINIMUM)
+  );
+}
+
 /** One eligible card's raw scheduling columns, before normalization. */
 export interface AnkiCardScheduling {
   readonly reps: number;
