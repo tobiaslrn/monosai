@@ -83,7 +83,6 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
       </header>
       <mn-reader-aids />
       <section class="content" aria-label="Content for this story">
-        <h3>Content for this story</h3>
         <div class="content-rows">
           @for (row of rows(); track row.layer) {
             <section class="content-row" [attr.aria-label]="row.name" [attr.data-layer]="row.layer">
@@ -106,7 +105,7 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
                         [disabled]="row.disabled || pending() === row.layer"
                         (click)="prepare.emit(row.layer)"
                       >
-                        {{ pending() === row.layer ? 'Saving…' : row.label }}
+                        {{ pending() === row.layer ? 'Working…' : row.label }}
                       </button>
                     }
                     @case ('cancel') {

@@ -626,13 +626,13 @@ describe('LibraryPageComponent', () => {
     expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(1);
   });
 
-  it('reports a load failure and states that nothing was changed', async () => {
+  it('reports a load failure without read-only boilerplate', async () => {
     repository.failListWith = storageError('unavailable', 'Storage is unavailable.');
     const fixture = await render();
 
     const alert = element(fixture).querySelector('[role="alert"]');
     expect(alert?.textContent).toContain('could not be loaded');
-    expect(alert?.textContent).toContain('Nothing was changed or deleted');
+    expect(alert?.textContent).not.toContain('Nothing was changed or deleted');
     expect(alert?.querySelector('button')?.textContent).toContain('Try again');
   });
 

@@ -23,8 +23,6 @@ import { TextInputStepComponent } from './text-input-step.component';
     <div class="mn-page">
       <mn-page-header heading="Add text" backTo="/library" backLabel="Back to library" />
 
-      <p class="mn-hint">Paste Japanese text to add a story.</p>
-
       <!--
         A card, like every other surface a learner types into: the Generate
         composer cards its textareas, and this one sat bare on the page
@@ -59,8 +57,7 @@ import { TextInputStepComponent } from './text-input-step.component';
           <div class="duplicate" role="alert">
             <p>
               <strong>This text is already in your library.</strong>
-              Adding it again will save a separate copy named “{{ store.resolvedTitle() }} (copy
-              {{ store.duplicates().length + 1 }})”.
+              Adding it again will save a separate copy.
             </p>
           </div>
         }
@@ -156,7 +153,7 @@ export class AddTextPageComponent {
       case 'idle':
         return null;
       case 'preparing-language':
-        return 'Preparing Japanese analysis. This happens once per device.';
+        return 'Preparing Japanese analysis…';
       case 'segmenting':
         return 'Dividing the text into sentences…';
       case 'analyzing':

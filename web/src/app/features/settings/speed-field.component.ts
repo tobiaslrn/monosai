@@ -46,9 +46,7 @@ let nextId = 0;
       (change)="commit()"
     />
     @if (invalid()) {
-      <p [id]="errorId" class="error" role="alert">
-        Use a number between {{ min }} and {{ max }}. Your saved speed is unchanged.
-      </p>
+      <p [id]="errorId" class="error" role="alert">Enter a number from {{ min }} to {{ max }}.</p>
     }
   `,
   styles: `

@@ -20,8 +20,6 @@ import { VocabularySyncService } from '../../application/vocabulary/vocabulary-s
 import { ANKI_PROVIDER_FACTORY } from '../../application/shared/anki-tokens';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import type { StaleReason } from '../../domain/anki/mapping-validation';
-import { HOST_PLATFORM } from '../../domain/platform/host-platform';
-import { technicalCode } from '../../domain/shared/errors';
 import type { VocabularySourceId } from '../../domain/shared/ids';
 import { vocabularySourceId } from '../../domain/shared/ids';
 import {
@@ -42,7 +40,6 @@ import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-sourc
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
-import { ANKI_LINKS } from './anki-links';
 import { PackageImportComponent } from './package-import.component';
 import { TextListSourceComponent } from './text-list-source.component';
 
@@ -189,7 +186,6 @@ const STALE_REASONS: Record<StaleReason, string> = {
             <div class="footline">
               <span class="label">
                 <strong>Your own words</strong>
-                <span class="mn-hint">Nothing reads this list but you.</span>
               </span>
               <button
                 type="button"
@@ -310,21 +306,11 @@ const STALE_REASONS: Record<StaleReason, string> = {
             <div class="rule"></div>
           }
 
-          @if (source.kind === 'anki-connect' && platform === 'android') {
-            <p class="mn-hint">
-              The bridge reads your collection and never writes to it —
-              <a [href]="links.bridgeSource" target="_blank" rel="noopener noreferrer"
-                >see the source (opens in a new tab)</a
-              >.
-            </p>
-          }
-
           @if (changeError(); as error) {
             <p class="stale" role="alert">{{ error }}</p>
           }
 
           <div class="footline">
-            <span class="mn-hint">Added {{ formatDate(source.createdAt) }}</span>
             <button
               type="button"
               class="mn-button mn-button--danger"
@@ -340,7 +326,6 @@ const STALE_REASONS: Record<StaleReason, string> = {
       } @else if (store.loaded()) {
         <section class="mn-panel">
           <p>This source is no longer here.</p>
-          <p class="mn-hint">It may have been removed in another tab.</p>
         </section>
       }
     </div>
@@ -446,8 +431,6 @@ export class SourcePageComponent {
   private readonly router = inject(Router);
   private readonly clock = inject(CLOCK);
   private readonly createConnection = inject(ANKI_PROVIDER_FACTORY);
-  protected readonly platform = inject(HOST_PLATFORM);
-  protected readonly links = ANKI_LINKS;
   protected readonly formatDate = formatDate;
 
   /** The route parameter, bound as an input by the router. */
@@ -492,9 +475,7 @@ export class SourcePageComponent {
       return null;
     }
     const failure = this.manual.failureFor(source.id);
-    return failure === null
-      ? null
-      : `${failure.message} (${technicalCode(failure)}) Your previous vocabulary is unchanged.`;
+    return failure === null ? null : `${failure.message} Your previous vocabulary is unchanged.`;
   });
 
   constructor() {
@@ -528,7 +509,7 @@ export class SourcePageComponent {
     switch (source.kind) {
       case 'anki-connect':
         return source.providerKind === 'android-connect'
-          ? 'Anki on this device, through the bridge'
+          ? 'Anki on this device'
           : 'Anki on this computer';
       case 'anki-package':
         return `From a file, imported ${formatDate(source.createdAt)}`;

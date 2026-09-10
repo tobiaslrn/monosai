@@ -21,7 +21,7 @@ import { describeEnrichmentFailure, enrichmentNeedsSettings } from './enrichment
             href="https://openrouter.ai/settings/credits"
             target="_blank"
             rel="noopener noreferrer"
-            >OpenRouter credit (new tab)</a
+            >OpenRouter credit</a
           >
         }
       </div>

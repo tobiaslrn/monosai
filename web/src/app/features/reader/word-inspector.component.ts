@@ -125,15 +125,11 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
               <p class="mn-hint" role="status">Looking up…</p>
             }
             @case ('not-found') {
-              <p class="mn-hint">
-                No bundled definition. Monosai ships a compact dictionary, so uncommon words are not
-                always covered.
-              </p>
+              <p class="mn-hint">No definition found.</p>
             }
             @case ('failed') {
               <p class="mn-error" role="alert">
-                The dictionary is unavailable ({{ failureCode() }}). The rest of this word's details
-                are unaffected.
+                The dictionary is unavailable. The rest of this word's details are unaffected.
               </p>
             }
             @case ('found') {
@@ -167,7 +163,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 
         @if (hasNotes() || grammar().stale) {
           <section class="grammar-section" aria-labelledby="mn-inspector-grammar">
-            <h3 class="mn-section-label" id="mn-inspector-grammar">Grammar here</h3>
+            <h3 class="mn-section-label" id="mn-inspector-grammar">Grammar</h3>
 
             @if (grammar().stale) {
               <p class="mn-hint">
@@ -486,11 +482,6 @@ export class WordInspectorComponent {
     const total = this.entries().reduce((count, entry) => count + entry.senses.length, 0);
     const shown = this.visibleEntries().reduce((count, entry) => count + entry.senses.length, 0);
     return total - shown;
-  });
-
-  protected readonly failureCode = computed(() => {
-    const state = this.store.dictionary();
-    return state.kind === 'failed' ? state.error.code : '';
   });
 
   /**

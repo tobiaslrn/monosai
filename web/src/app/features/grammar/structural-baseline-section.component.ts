@@ -38,10 +38,7 @@ interface CategoryGroup {
   selector: 'mn-structural-baseline-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <p class="mn-hint">
-      Monosai always treats these sentence-building forms as readable. They are grammar, not
-      vocabulary, so they are never counted as words you need in Anki and you cannot edit them.
-    </p>
+    <p class="mn-hint">These forms are treated as grammar, not vocabulary.</p>
 
     @if (groups().length === 0) {
       <p class="mn-hint">Language assets are still loading.</p>

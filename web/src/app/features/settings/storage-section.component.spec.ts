@@ -163,31 +163,32 @@ describe('StorageSectionComponent', () => {
       );
     }
 
-    it('says the browser granted it', () => {
-      expect(labelFor('granted', true)).toContain('Granted');
+    it('says the browser protects it', () => {
+      expect(labelFor('granted', true)).toBe('Protected');
     });
 
-    it('says it was asked and declined, and that it may still grant later', () => {
+    it('says the browser declined protection', () => {
       const label = labelFor('refused');
 
-      expect(label).toContain('the browser declined');
-      expect(label).toContain('may grant this later');
+      expect(label).toBe('Not protected — the browser declined');
     });
 
-    it('says the browser has nothing to offer rather than blaming the request', () => {
-      expect(labelFor('unsupported')).toContain('does not offer storage protection');
+    it('says protection is unavailable', () => {
+      expect(labelFor('unsupported')).toBe('Protection unavailable');
     });
 
-    it('says a failed request changed nothing', () => {
-      expect(labelFor('request-failed')).toContain('could not be completed');
+    it('says the protection request failed', () => {
+      expect(labelFor('request-failed')).toBe('Not protected — the request failed');
     });
 
-    it('keeps the plain eviction warning before anything is asked', () => {
-      expect(labelFor('not-asked')).toContain('may evict data');
+    it('warns that the browser may remove unprotected data', () => {
+      expect(labelFor('not-asked')).toBe(
+        'Not protected — the browser may remove data when space is low',
+      );
     });
 
-    it('claims nothing while the status is unknown', () => {
-      expect(labelFor('unknown')).toContain('Not reported by this browser');
+    it('keeps an unknown status explicit', () => {
+      expect(labelFor('unknown')).toBe('Protection status unknown');
     });
 
     it('leaves the request retryable, and asks when pressed', async () => {

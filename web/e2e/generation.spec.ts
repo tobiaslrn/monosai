@@ -289,7 +289,9 @@ test.describe('generating a story', () => {
     expect(atSave['sentences']).toBe(STRICT_STORY.sentences.length);
     expect(atSave['translations']).toBe(0);
     expect(atSave['grammarAnalyses']).toBe(0);
-    await expect(page.getByTestId('saved-preparation')).toContainText('You can start reading now');
+    await expect(page.getByTestId('saved-preparation')).toContainText(
+      'Preparing English and grammar notes.',
+    );
 
     await page.getByTestId('open-story').click();
     await expect(page).toHaveURL(/#\/reader\//);
@@ -319,9 +321,7 @@ test.describe('generating a story', () => {
     await page.getByTestId('premise').fill(PREMISE);
     await page.getByTestId('generate').click();
 
-    await expect(page.getByTestId('failure-context')).toContainText('writing your story', {
-      timeout: 60_000,
-    });
+    await expect(page.getByTestId('failure-context')).toHaveCount(0, { timeout: 60_000 });
     await expect(page.getByText('ai/authentication')).toBeVisible();
 
     const rows = await countOwnedRows(page);

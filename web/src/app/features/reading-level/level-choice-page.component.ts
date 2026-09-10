@@ -30,18 +30,15 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
       @if (language.status() === 'failed') {
         <div class="mn-card assets-failed" role="alert">
           <h2>Language assets are unavailable</h2>
-          <p class="mn-hint">
-            The reading levels ship with the language bundle, which could not be loaded. Your saved
-            level is unchanged.
-          </p>
+          <p class="mn-hint">Reading levels could not be loaded. Your saved level is unchanged.</p>
           <button type="button" class="mn-button" (click)="retryLanguage()">Try again</button>
         </div>
       } @else {
         <mn-preset-picker [selected]="draft()" (selectedChange)="choose($event)" />
 
-        @if (profile.lastError(); as error) {
+        @if (profile.lastError()) {
           <p class="mn-error" role="alert">
-            Your level could not be saved: {{ error.code }}. The level you had is unchanged.
+            Your level could not be saved. The level you had is unchanged.
           </p>
         }
 

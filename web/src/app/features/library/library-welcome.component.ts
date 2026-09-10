@@ -28,10 +28,8 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       <h2 id="mn-welcome-heading">Monosai writes Japanese you can actually read.</h2>
 
       <p class="lede">
-        I made this while studying a frequency deck, because I could not find anything simple enough
-        to read yet. Monosai builds stories from your word list — at least
-        {{ minimumWords }} words from Anki, an Anki package, or a pasted list — and adds readings,
-        spacing and a dictionary to anything else you paste.
+        Monosai builds readable stories from at least {{ minimumWords }} words from Anki, an Anki
+        package, or a pasted list. Paste Japanese text to add readings, spacing, and a dictionary.
       </p>
 
       <p class="local">Everything stays on this device.</p>
@@ -41,14 +39,12 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
           <mn-icon name="vocabulary" [size]="20" />
           <span>
             <strong>Add a word list</strong>
-            <small>Stories get written from words you know.</small>
           </span>
         </a>
         <a class="choice" routerLink="/add" [state]="libraryOriginState">
           <mn-icon name="add" [size]="20" />
           <span>
             <strong>Paste Japanese text</strong>
-            <small>Read something you already have.</small>
           </span>
         </a>
       </div>

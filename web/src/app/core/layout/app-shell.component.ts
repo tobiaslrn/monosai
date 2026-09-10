@@ -42,7 +42,7 @@ import { HelpIntroService } from './help-intro.service';
       }
       @if (intro.saveFailed()) {
         <div class="intro-error" role="alert">
-          <p>Your Help preference could not be saved. The introduction may appear next time.</p>
+          <p>Could not save your Help preference.</p>
           <button type="button" class="mn-button" (click)="intro.retrySave()">Try again</button>
         </div>
       }

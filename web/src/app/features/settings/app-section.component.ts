@@ -48,7 +48,9 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
       @if (!install.isStandalone() && !install.canInstall()) {
         <p class="mn-hint">Installation is not available from this browser right now.</p>
       }
-      <p class="mn-hint" aria-live="polite">{{ updateStatusLabel(update) }}</p>
+      @if (updateStatusLabel(update); as statusLabel) {
+        <p class="mn-hint" aria-live="polite">{{ statusLabel }}</p>
+      }
     </section>
   `,
   styles: `
@@ -75,11 +77,11 @@ export class AppSectionComponent {
   protected updateStatusLabel(status: ReturnType<AppUpdateStore['status']>): string {
     switch (status.kind) {
       case 'unsupported':
-        return 'Updates are not available in this environment.';
+        return 'Updates unavailable.';
       case 'idle':
-        return 'Monosai is up to date.';
+        return '';
       case 'available':
-        return 'An update has downloaded. Activate it from the banner at the top of the app.';
+        return 'Update available.';
       case 'activating':
         return 'Updating…';
       case 'failed':

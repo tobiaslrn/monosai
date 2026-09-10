@@ -311,6 +311,6 @@ describe('reader content state', () => {
         'ready',
         true,
       ),
-    ).toMatchObject({ status: 'Saving…', busy: true, action: 'cancel' });
+    ).toMatchObject({ status: 'Working…', busy: true, action: 'cancel' });
   });
 });

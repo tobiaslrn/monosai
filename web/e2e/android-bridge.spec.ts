@@ -31,8 +31,6 @@ test('connects, persists and refreshes the Android provider @smoke @mobile', asy
 
   await row.click();
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Anki');
-  // The one link that earns its place on a screen where nothing is broken.
-  await expect(page.getByRole('link', { name: /see the source/ })).toBeVisible();
 
   await page.getByTestId('sync-now').click();
   await page.goBack();
@@ -42,7 +40,9 @@ test('connects, persists and refreshes the Android provider @smoke @mobile', asy
   await refuseAnkiConnect(page);
   await row.click();
   await page.getByTestId('sync-now').click();
-  await expect(page.getByTestId('source-attention')).toContainText('bridge-not-running');
+  await expect(page.getByTestId('source-attention')).toContainText(
+    'bridge does not appear to be running',
+  );
   await page.goBack();
   await expect(page.getByTestId('words-standing')).toHaveText('1 word');
 });

@@ -20,7 +20,7 @@ export interface AnkiErrorCopy {
 }
 
 /** True for every variant: nothing is written until a refresh is confirmed. */
-export const NOTHING_SAVED = 'Nothing was changed. Your existing vocabulary is still current.';
+export const NOTHING_SAVED = 'Vocabulary unchanged.';
 
 const USE_PACKAGE = 'Export a package from Anki and import it here instead.';
 const TRY_AGAIN = 'Try again.';
@@ -144,7 +144,7 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
       'Monosai could not confirm which cards have been studied, and will not treat unreviewed cards as vocabulary you know.',
     whatDidNot: NOTHING_SAVED,
     primaryAction: USE_PACKAGE,
-    escape: 'Reading, furigana, and the dictionary work without any Anki connection.',
+    escape: '',
   },
   'query-failed': {
     heading: 'The vocabulary search failed',
@@ -187,7 +187,7 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
     whatFailed: 'The refresh was stopped before it finished.',
     whatDidNot: NOTHING_SAVED,
     primaryAction: 'Start the refresh again when you are ready.',
-    escape: 'Your existing vocabulary is unaffected.',
+    escape: '',
   },
   unknown: {
     heading: 'Something went wrong',
@@ -204,7 +204,7 @@ export const REFRESH_STORAGE_FAILURE: AnkiErrorCopy = {
   whatFailed: 'Monosai could not replace the current vocabulary.',
   whatDidNot: NOTHING_SAVED,
   primaryAction: 'Free up space on this device, then refresh again.',
-  escape: 'Everything you have already saved is unchanged.',
+  escape: '',
 };
 
 export const REFRESH_LANGUAGE_FAILURE: AnkiErrorCopy = {
@@ -212,7 +212,7 @@ export const REFRESH_LANGUAGE_FAILURE: AnkiErrorCopy = {
   whatFailed: 'Monosai could not prepare the tokenizer needed to read your vocabulary.',
   whatDidNot: NOTHING_SAVED,
   primaryAction: 'Check your connection and try again.',
-  escape: 'Your existing vocabulary is unaffected.',
+  escape: '',
 };
 
 export function copyForFailure(error: {

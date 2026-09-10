@@ -29,8 +29,5 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
   `,
 })
 export class BrokenReadingLinkComponent {
-  protected readonly explanation = [
-    'The address is not one Monosai issues, so there is nothing to open. It was probably mistyped or cut short on the way here.',
-    'Nothing in your library was changed.',
-  ];
+  protected readonly explanation = ['Nothing in your library was changed.'];
 }

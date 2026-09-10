@@ -1133,7 +1133,7 @@ test.describe('audio settings and readiness', () => {
     await expectReadiness(ttsReadiness(page), 'stale');
     await expect(audioStatus(page)).toHaveText('Settings changed');
     await expect(page.getByTestId('audio-readiness-note')).toContainText(
-      'Audio saved with the previous settings is kept',
+      'Existing audio uses different settings',
     );
 
     await page.goto(reader);

@@ -98,7 +98,6 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
       </section>
       <section aria-labelledby="help-audio">
         <h2 id="help-audio">Getting useful audio</h2>
-        <p>You can try other speech models, but Gemini TTS works by far the best in Monosai.</p>
         <p>
           Some speech models return unusable audio or ignore speed settings. Test the speech model
           in <a routerLink="/settings">Settings</a> and listen to the result before preparing a long

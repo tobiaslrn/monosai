@@ -74,9 +74,7 @@ function formatBytes(bytes: number | null): string {
         </button>
       </div>
       <p class="mn-hint">
-        Deleting saved audio removes every clip of every reading on this device, and stops anything
-        playing. Readings, translations, and grammar results stay in place, and you can generate the
-        audio again later.
+        Deletes all saved audio on this device and stops playback. Other reading aids stay.
       </p>
       <p aria-live="polite" class="mn-hint">
         @if (storage.audioCleared()) {
@@ -177,17 +175,17 @@ export class StorageSectionComponent {
   protected readonly persistenceLabel = computed(() => {
     switch (this.storage.persistence()) {
       case 'granted':
-        return 'Granted — the browser keeps Monosai data';
+        return 'Protected';
       case 'unsupported':
-        return 'Not available — this browser does not offer storage protection';
+        return 'Protection unavailable';
       case 'refused':
-        return 'Not granted — the browser declined. It may grant this later once you have used Monosai more.';
+        return 'Not protected — the browser declined';
       case 'request-failed':
-        return 'Not granted — the request could not be completed. Nothing was changed.';
+        return 'Not protected — the request failed';
       case 'not-asked':
-        return 'Not granted — the browser may evict data when space runs low';
+        return 'Not protected — the browser may remove data when space is low';
       case 'unknown':
-        return 'Not reported by this browser';
+        return 'Protection status unknown';
     }
   });
 

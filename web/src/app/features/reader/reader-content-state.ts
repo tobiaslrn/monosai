@@ -84,7 +84,7 @@ function layerState(
               ? progress.phase === 'requesting'
                 ? 'Analyzing…'
                 : progress.phase === 'saving'
-                  ? 'Saving…'
+                  ? 'Working…'
                   : completedDescription
               : completedDescription
             : progress.kind === 'preparing'

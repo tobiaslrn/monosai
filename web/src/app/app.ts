@@ -4,7 +4,6 @@ import { AppShellComponent } from './core/layout/app-shell.component';
 import { OpenReadingWatcher } from './core/platform/open-reading-watcher.service';
 import { PointerModalityService } from './core/platform/pointer-modality.service';
 import { ErrorScreenComponent } from './shared-ui/error-screen/error-screen.component';
-import { technicalCode } from './domain/shared/errors';
 
 @Component({
   selector: 'mn-root',
@@ -20,7 +19,6 @@ import { technicalCode } from './domain/shared/errors';
         heading="Monosai could not start"
         [description]="state.failure.error.message"
         dataStatus="Your saved stories have not been changed."
-        [code]="technicalCode(state.failure.error)"
       >
         <button data-actions type="button" class="mn-button mn-button--primary" (click)="retry()">
           Try again
@@ -51,8 +49,6 @@ export class App {
    * this one, whichever route is open when it happens. See ADR 0042.
    */
   private readonly openReadingWatcher = inject(OpenReadingWatcher);
-  protected readonly technicalCode = technicalCode;
-
   protected retry(): void {
     void this.initializer.run();
   }

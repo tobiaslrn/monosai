@@ -9,7 +9,6 @@ import {
 import type { ElementRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
-import { technicalCode } from '../../domain/shared/errors';
 import { vocabularySourceId } from '../../domain/shared/ids';
 import { ANKI_LINKS } from './anki-links';
 
@@ -54,15 +53,9 @@ import { ANKI_LINKS } from './anki-links';
                 Export the deck from Anki or AnkiDroid with scheduling information included, then
                 add it again —
                 <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
-                  >how to export (opens in a new tab)</a
+                  >how to export</a
                 >.
               }
-            </p>
-            <p class="mn-hint code">
-              {{ code() }} ·
-              <a [href]="links.troubleshooting" target="_blank" rel="noopener noreferrer"
-                >what this means (opens in a new tab)</a
-              >
             </p>
             <div class="actions">
               @if (current.canRetry) {
@@ -256,11 +249,6 @@ export class PackageImportComponent {
       default:
         return '';
     }
-  });
-
-  protected readonly code = computed(() => {
-    const state = this.state();
-    return state.kind === 'failed' ? technicalCode(state.error) : '';
   });
 
   protected readonly fieldNames = computed(() => {

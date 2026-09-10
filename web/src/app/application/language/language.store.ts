@@ -104,7 +104,7 @@ export class LanguageStore {
       return this.reportFailure({
         domain: 'language',
         code: 'unknown',
-        message: 'The verified language assets could not be recorded as active.',
+        message: 'Japanese language support could not be prepared.',
         cause: activated.error.code,
       });
     }
@@ -115,7 +115,7 @@ export class LanguageStore {
       return this.reportFailure({
         domain: 'language',
         code: 'unknown',
-        message: 'The verified language assets could not be activated.',
+        message: 'Japanese language support could not be prepared.',
         cause: safeErrorTypeOf(thrown),
       });
     }

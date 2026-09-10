@@ -43,9 +43,6 @@ export interface RenameDialogData {
           [value]="entry()"
           (input)="onInput($event)"
         />
-        <p class="mn-hint" id="mn-rename-message">
-          Only the name changes. The story, its analyses, and its aids stay as they are.
-        </p>
       </div>
 
       <div class="actions">

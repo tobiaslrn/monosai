@@ -51,10 +51,8 @@ export interface AiErrorCopy {
  * True for every variant: a test writes nothing until it passes, and no failure
  * here can reach readings, snapshots, or cached aids.
  */
-export const NOTHING_CHANGED =
-  'Nothing was changed. Your stories, vocabulary, and saved aids are untouched.';
+export const NOTHING_CHANGED = 'No saved data was changed.';
 
-const READ_WITHOUT_IT = 'Reading, importing, and your vocabulary work without this.';
 const TRY_TEST_AGAIN = 'Try the test again in a moment.';
 const TRY_AGAIN_SOON = 'Try again in a moment.';
 
@@ -72,7 +70,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: 'Reconnect, then run the test again.',
     retryAction: 'Reconnect, then try again.',
-    escape: READ_WITHOUT_IT,
+    escape: '',
   },
   timeout: {
     heading: 'OpenRouter did not answer in time',
@@ -80,7 +78,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: TRY_TEST_AGAIN,
     retryAction: TRY_AGAIN_SOON,
-    escape: 'A slower model may need a second attempt.',
+    escape: '',
   },
   cancelled: {
     // Not "Test cancelled": the same variant is reported mid-reading, where
@@ -90,7 +88,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: 'Run the test again when you are ready.',
     retryAction: 'Start it again when you are ready.',
-    escape: READ_WITHOUT_IT,
+    escape: '',
   },
   authentication: {
     heading: 'OpenRouter refused the key',
@@ -98,7 +96,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: 'Check the key on openrouter.ai, then save it again here.',
     retryAction: 'Check the key on openrouter.ai, then save it again in Settings.',
-    escape: READ_WITHOUT_IT,
+    escape: '',
   },
   'credit-exhausted': {
     heading: 'This OpenRouter account is out of credit',
@@ -106,7 +104,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: 'Add credit on openrouter.ai, then run the test again.',
     retryAction: 'Add credit on openrouter.ai, then try again.',
-    escape: 'Saving the key again cannot help. Reading and your vocabulary work without this.',
+    escape: 'Saving the key again cannot help.',
   },
   'model-not-found': {
     heading: 'That model was not found',
@@ -122,7 +120,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: 'Choose a different model or voice and test again.',
     retryAction: 'Choose a different model or voice in Settings, then try again.',
-    escape: 'Ordinary chat working is not enough; generation needs exact structured replies.',
+    escape: '',
   },
   'rate-limited': {
     heading: 'OpenRouter is rate limiting this key',
@@ -130,7 +128,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: 'Wait a moment, then run the test again.',
     retryAction: 'Wait a moment, then try again.',
-    escape: READ_WITHOUT_IT,
+    escape: '',
   },
   'provider-unavailable': {
     heading: 'OpenRouter could not be reached',
@@ -138,7 +136,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: TRY_TEST_AGAIN,
     retryAction: TRY_AGAIN_SOON,
-    escape: READ_WITHOUT_IT,
+    escape: '',
   },
   'malformed-response': {
     heading: 'The reply could not be used',
@@ -146,7 +144,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: 'Try a different model and test again.',
     retryAction: 'Choose a different model in Settings, then try again.',
-    escape: 'A model that fails this cannot be used for generation.',
+    escape: '',
   },
   'context-budget-exceeded': {
     heading: 'The request was too large for this model',
@@ -154,7 +152,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: 'Choose a model with a larger context and test again.',
     retryAction: 'Choose a model with a larger context in Settings, then try again.',
-    escape: READ_WITHOUT_IT,
+    escape: '',
   },
   'audio-invalid': {
     heading: 'The audio could not be played',
@@ -162,7 +160,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: 'Try a different audio model or voice.',
     retryAction: 'Choose a different audio model or voice in Settings, then try again.',
-    escape: 'Audio is optional and never blocks reading or generation.',
+    escape: 'Audio is optional.',
   },
   unknown: {
     heading: 'Something unexpected went wrong',
@@ -170,7 +168,7 @@ export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
     whatDidNot: NOTHING_CHANGED,
     primaryAction: TRY_TEST_AGAIN,
     retryAction: TRY_AGAIN_SOON,
-    escape: READ_WITHOUT_IT,
+    escape: '',
   },
 };
 
@@ -217,7 +215,7 @@ export function aiErrorCopy(error: AiError): AiErrorCopy {
       ...AI_ERROR_COPY['capability-unsupported'],
       primaryAction: 'Check the exact audio model and voice IDs, then test again.',
       retryAction: 'Check the audio model and voice IDs in Settings, then try again.',
-      escape: 'Voice names are model-specific and case sensitive. Audio is optional.',
+      escape: 'Voice names are case sensitive.',
     };
   }
   return AI_ERROR_COPY[error.code];

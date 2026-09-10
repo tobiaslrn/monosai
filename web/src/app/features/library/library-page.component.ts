@@ -89,7 +89,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         <section class="mn-panel" role="alert">
           <h2>Your library could not be loaded</h2>
           <p class="mn-hint">{{ store.lastError()?.message }}</p>
-          <p class="mn-hint">Nothing was changed or deleted.</p>
           <button type="button" class="mn-button" (click)="reload()">Try again</button>
         </section>
       } @else {
