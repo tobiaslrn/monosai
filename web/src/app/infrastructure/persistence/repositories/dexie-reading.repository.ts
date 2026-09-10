@@ -20,6 +20,7 @@ import type {
 } from '../../../domain/reading/reading-repository';
 import type { ReadingGraph, Sentence } from '../../../domain/reading/text-hierarchy';
 import type { TokenAnalysis } from '../../../domain/reading/token';
+import type { FrozenSentenceValidation } from '../../../domain/reading/validation';
 import { storageError, type StorageError } from '../../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../monosai-db';
 import { parseBulkRecords, parseRecord, parseRecords } from '../record-validation';
@@ -29,7 +30,9 @@ import {
   sentenceRowSchema,
   tokenAnalysisRowSchema,
 } from '../schemas/reading.schema';
+import { frozenValidationRowSchema } from '../schemas/generation.schema';
 import {
+  toFrozenValidation,
   toFrozenValidationRow,
   toGenerationProvenanceRow,
   toParagraph,
@@ -287,6 +290,22 @@ export class DexieReadingRepository implements ReadingRepository {
     }
     const parsed = parseBulkRecords(tokenAnalysisRowSchema, loaded.value, 'tokenAnalyses');
     return parsed.ok ? ok(parsed.value.map(toTokenAnalysis)) : parsed;
+  }
+
+  async loadFrozenValidations(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly FrozenSentenceValidation[], StorageError>> {
+    const loaded = await runStorage('frozenValidations.load', () =>
+      this.db.frozenValidations
+        .where('sentenceId')
+        .anyOf([...sentenceIds])
+        .toArray(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    const parsed = parseBulkRecords(frozenValidationRowSchema, loaded.value, 'frozenValidations');
+    return parsed.ok ? ok(parsed.value.map(toFrozenValidation)) : parsed;
   }
 
   /** Primary-key lookups, ordered by position so batches follow the reading. */

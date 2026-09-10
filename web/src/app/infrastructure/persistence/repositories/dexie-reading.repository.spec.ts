@@ -421,6 +421,22 @@ describe('DexieReadingRepository', () => {
       expect(analyses.value[0].sentenceId).toBe(draft.sentences[0].id);
     });
 
+    it('loads frozen validations for the requested sentences only', async () => {
+      const draft = generatedStoryDraftFixture(snapshotId(uuid(9_501)), {
+        firstTokenValidation: {
+          category: 'policy-exception',
+          exceptionId: 'candidate-1',
+          explanationEn: 'The policy allows character names the learner mentioned.',
+        },
+      });
+      await repository.saveGeneratedStory(draft);
+      const first = draft.frozenValidations[0];
+
+      const loaded = await repository.loadFrozenValidations([first.sentenceId]);
+
+      expect(loaded.ok && loaded.value).toEqual([first]);
+    });
+
     it('counts paragraphs without loading their text', async () => {
       const draft = importedReadingFixture({
         paragraphTexts: [['一。'], ['二。'], ['三。']],
@@ -598,6 +614,27 @@ describe('DexieReadingRepository', () => {
       expect(analyses.ok && analyses.value).toEqual([]);
     });
 
+    it('returns no frozen validations for sentences that have none', async () => {
+      const draft = importedReadingFixture();
+      await repository.saveImportedReading(draft);
+
+      const loaded = await repository.loadFrozenValidations([draft.sentences[0].id]);
+
+      expect(loaded.ok && loaded.value).toEqual([]);
+    });
+
+    it('reports a corrupt frozen validation row', async () => {
+      const draft = generatedStoryDraftFixture(snapshotId(uuid(9_502)));
+      await repository.saveGeneratedStory(draft);
+      const first = draft.frozenValidations[0];
+      await db.frozenValidations.update(first.sentenceId, { validatorVersion: '' });
+
+      const loaded = await repository.loadFrozenValidations([first.sentenceId]);
+
+      expect(loaded.ok).toBe(false);
+      expect(!loaded.ok && loaded.error.code).toBe('corrupt-record');
+    });
+
     it('reports a corrupt paragraph row when loading the graph', async () => {
       const draft = importedReadingFixture();
       await repository.saveImportedReading(draft);
@@ -650,6 +687,11 @@ describe('DexieReadingRepository', () => {
         throw failure;
       });
       expect((await repository.loadTokenAnalyses([draft.sentences[0].id])).ok).toBe(false);
+
+      vi.spyOn(db.frozenValidations, 'where').mockImplementationOnce(() => {
+        throw failure;
+      });
+      expect((await repository.loadFrozenValidations([draft.sentences[0].id])).ok).toBe(false);
     });
   });
 

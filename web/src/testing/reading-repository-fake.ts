@@ -36,6 +36,7 @@ export interface FakeReadingRows {
   readonly paragraphs: readonly Paragraph[];
   readonly sentences: readonly Sentence[];
   readonly tokenAnalyses: readonly TokenAnalysis[];
+  readonly frozenValidations?: readonly FrozenSentenceValidation[];
 }
 
 export interface BuildReadingOptions {
@@ -158,7 +159,9 @@ export class FakeReadingRepository implements ReadingRepository {
   readonly opened: { readonly id: ReadingId; readonly at: number }[] = [];
   readonly graphRequests: (ParagraphWindow | undefined)[] = [];
   readonly analysisRequests: (readonly SentenceId[])[] = [];
+  readonly frozenRequests: (readonly SentenceId[])[] = [];
   frozenValidations: FrozenSentenceValidation[] = [];
+  failFrozenWith: StorageError | null = null;
   provenance: GenerationProvenance[] = [];
   /** Set to make an accepted story fail to save, without losing the candidate. */
   failSaveGeneratedWith: StorageError | null = null;
@@ -185,6 +188,7 @@ export class FakeReadingRepository implements ReadingRepository {
     this.paragraphs.push(...rows.paragraphs);
     this.sentences.push(...rows.sentences);
     this.tokenAnalyses.push(...rows.tokenAnalyses);
+    this.frozenValidations.push(...(rows.frozenValidations ?? []));
     return rows;
   }
 
@@ -303,6 +307,19 @@ export class FakeReadingRepository implements ReadingRepository {
     const wanted = new Set(sentenceIds);
     return Promise.resolve(
       ok(this.tokenAnalyses.filter((analysis) => wanted.has(analysis.sentenceId))),
+    );
+  }
+
+  loadFrozenValidations(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly FrozenSentenceValidation[], StorageError>> {
+    this.frozenRequests.push(sentenceIds);
+    if (this.failFrozenWith !== null) {
+      return Promise.resolve(err(this.failFrozenWith));
+    }
+    const wanted = new Set(sentenceIds);
+    return Promise.resolve(
+      ok(this.frozenValidations.filter((validation) => wanted.has(validation.sentenceId))),
     );
   }
 

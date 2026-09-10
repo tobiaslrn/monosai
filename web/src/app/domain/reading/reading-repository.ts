@@ -103,6 +103,13 @@ export interface ReadingRepository {
   loadTokenAnalyses(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly TokenAnalysis[], StorageError>>;
+  /**
+   * The evidence generated sentences were accepted on, for specific sentences.
+   * A sentence without frozen validation, such as an imported one, is absent.
+   */
+  loadFrozenValidations(
+    sentenceIds: readonly SentenceId[],
+  ): Promise<Result<readonly FrozenSentenceValidation[], StorageError>>;
   /** Sentence identity, content hash, and position only — for cache-key checks. */
   listSentenceRefs(readingId: ReadingId): Promise<Result<readonly SentenceRef[], StorageError>>;
   /**

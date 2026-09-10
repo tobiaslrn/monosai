@@ -7,6 +7,7 @@ import {
   type ParagraphWindowState,
   type WindowDirection,
 } from '../../domain/reading/paragraph-window';
+import { withFrozenEvidence } from '../../domain/reading/frozen-evidence';
 import type { Reading } from '../../domain/reading/reading';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Paragraph, Sentence } from '../../domain/reading/text-hierarchy';
@@ -231,7 +232,7 @@ export class ReaderStore {
     }));
     const vocabulary = await this.classification.classify(forClassification);
     if (vocabulary.ok) {
-      this.vocabularySignal.set(vocabulary.value);
+      this.vocabularySignal.set(await this.withStoryEvidence(vocabulary.value, sentenceIds));
       this.languageErrorSignal.set(null);
     } else {
       // Markers are an aid, not the reading: a classification failure leaves the
@@ -245,6 +246,36 @@ export class ReaderStore {
       this.assemble(graph.value.paragraphs, graph.value.sentences, tokensBySentence),
     );
     return true;
+  }
+
+  /**
+   * Backs a generated story's current status with the evidence it was accepted
+   * on, so a policy exception or a word known when it was written is not marked
+   * merely because the current snapshot does not contain it.
+   *
+   * An imported reading has no such evidence and follows the snapshot alone. A
+   * failure to load the evidence leaves the current status in place: markers are
+   * an aid, and the text stays readable either way.
+   */
+  private async withStoryEvidence(
+    status: VocabularyStatus,
+    sentenceIds: readonly SentenceId[],
+  ): Promise<VocabularyStatus> {
+    if (status.kind !== 'classified' || this.readingSignal()?.kind !== 'generated') {
+      return status;
+    }
+    const frozen = await this.readings.loadFrozenValidations(sentenceIds);
+    if (!frozen.ok) {
+      return status;
+    }
+    const frozenBySentence = new Map<string, readonly TokenStatusAssignment[]>(
+      frozen.value.map((validation) => [validation.sentenceId, validation.tokenStatuses]),
+    );
+    const statusesBySentence = new Map<string, readonly TokenStatusAssignment[]>();
+    for (const [id, statuses] of status.statusesBySentence) {
+      statusesBySentence.set(id, withFrozenEvidence(statuses, frozenBySentence.get(id) ?? []));
+    }
+    return { ...status, statusesBySentence };
   }
 
   private assemble(

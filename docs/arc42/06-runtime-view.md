@@ -154,6 +154,11 @@ sequenceDiagram
     Repo-->>Reader: paragraphs, sentences, tokens
     Reader->>Classify: classify the mounted sentences
     Classify-->>Reader: known, exception, or unknown per token
+    opt a generated story
+        Reader->>Repo: load the window's frozen validation
+        Repo-->>Reader: the evidence each sentence was accepted on
+        Note over Reader: A token the snapshot does not cover<br/>falls back to its frozen status.
+    end
     Note over Reader: Scrolling moves the window.<br/>The rest of the reading stays unloaded.
     Learner->>Aids: ask for a translation of one sentence
     Aids->>Enrich: join the reading's plan-aware translation producer

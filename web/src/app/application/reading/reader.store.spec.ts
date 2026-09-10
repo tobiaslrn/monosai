@@ -2,11 +2,16 @@ import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CLOCK, READING_REPOSITORY } from '../shared/repository-tokens';
 import { fixedClock } from '../../domain/shared/clock';
-import { readingId } from '../../domain/shared/ids';
+import { readingId, snapshotId } from '../../domain/shared/ids';
 import { ok, type Result } from '../../domain/shared/result';
 import { storageError } from '../../domain/storage/storage-error';
-import { buildReading, FakeReadingRepository } from '../../../testing/reading-repository-fake';
+import {
+  buildReading,
+  FakeReadingRepository,
+  type FakeReadingRows,
+} from '../../../testing/reading-repository-fake';
 import type { LanguageError } from '../../domain/language/language-error';
+import type { TokenValidation } from '../../domain/reading/validation';
 import { ReaderStore } from './reader.store';
 import {
   VOCABULARY_NOT_CONFIGURED,
@@ -188,6 +193,85 @@ describe('ReaderStore', () => {
       // Only one extension's worth of loading happened even though both calls
       // were in flight at once.
       expect(repository.graphRequests.length).toBe(requestsBefore + 1);
+    });
+  });
+
+  describe('vocabulary status', () => {
+    const exception: TokenValidation = {
+      category: 'policy-exception',
+      exceptionId: 'ひかりくん',
+      explanationEn: 'Character names are allowed by the policy.',
+    };
+
+    /** Every token of the reading classified as outside the current snapshot. */
+    function classifyAsNotInSnapshot(rows: FakeReadingRows): void {
+      const classifier = TestBed.inject(
+        VocabularyClassificationService,
+      ) as unknown as StubVocabularyClassificationService;
+      classifier.status = {
+        kind: 'classified',
+        snapshotId: snapshotId('snap'),
+        statusesBySentence: new Map(
+          rows.tokenAnalyses.map((analysis) => [
+            analysis.sentenceId,
+            analysis.tokens.map((token) => ({
+              tokenId: token.id,
+              validation: { category: 'not-in-snapshot' } as const,
+            })),
+          ]),
+        ),
+      };
+    }
+
+    /** The same reading, with every token frozen as a policy exception. */
+    function withExceptions(rows: FakeReadingRows): FakeReadingRows {
+      return {
+        ...rows,
+        frozenValidations: rows.tokenAnalyses.map((analysis) => ({
+          sentenceId: analysis.sentenceId,
+          snapshotId: snapshotId('snap'),
+          validatorVersion: 'test',
+          tokenStatuses: analysis.tokens.map((token) => ({ tokenId: token.id, validation: exception })),
+        })),
+      };
+    }
+
+    function firstCategory(reader: ReaderStore): string | undefined {
+      const sentence = reader.paragraphs()[0].sentences[0];
+      return sentence.statuses?.get(sentence.tokens[0].id)?.validation.category;
+    }
+
+    it('keeps a generated story’s policy exception the snapshot does not cover', async () => {
+      const rows = repository.add(withExceptions(buildReading({ id: 'r1', kind: 'generated' })));
+      classifyAsNotInSnapshot(rows);
+      const reader = store();
+
+      await reader.open(rows.reading.id);
+
+      expect(firstCategory(reader)).toBe('policy-exception');
+    });
+
+    it('classifies an imported reading against the snapshot alone', async () => {
+      const rows = repository.add(withExceptions(buildReading({ id: 'r1' })));
+      classifyAsNotInSnapshot(rows);
+      const reader = store();
+
+      await reader.open(rows.reading.id);
+
+      expect(repository.frozenRequests).toEqual([]);
+      expect(firstCategory(reader)).toBe('not-in-snapshot');
+    });
+
+    it('keeps the current status when the frozen evidence cannot be read', async () => {
+      const rows = repository.add(withExceptions(buildReading({ id: 'r1', kind: 'generated' })));
+      classifyAsNotInSnapshot(rows);
+      repository.failFrozenWith = storageError('unavailable', 'Storage is unavailable.');
+      const reader = store();
+
+      await reader.open(rows.reading.id);
+
+      expect(reader.status()).toBe('ready');
+      expect(firstCategory(reader)).toBe('not-in-snapshot');
     });
   });
 

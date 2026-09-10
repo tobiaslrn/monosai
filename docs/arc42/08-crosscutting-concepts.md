@@ -35,7 +35,10 @@ Every token in the reader carries one of three statuses:
 
 An imported reading is classified against the current snapshot each time it is opened, so it follows
 the learner's progress. A generated story keeps the evidence it was judged against, so its history
-stays reproducible. The types live in `domain/reading/` and `domain/vocabulary/`.
+stays reproducible. On open it is classified against the current snapshot too, and any token the
+snapshot does not cover falls back to that frozen evidence: a policy exception, or a word known when
+the story was written, stays unmarked, while a word the learner has since reviewed stops being
+marked. The types live in `domain/reading/` and `domain/vocabulary/`.
 
 ## 8.2 Error handling
 
