@@ -49,12 +49,14 @@ export async function stubAndroidBridge(page: Page): Promise<void> {
     };
     answers[action] = envelope.result;
   }
-  const ordinaryFindCards = answers['findCards'];
+  const configuredFindCards = answers['findCards'];
+  const ordinaryFindCards =
+    typeof configuredFindCards === 'function' ? [] : (configuredFindCards ?? []);
   answers['findCards'] = (request: AnkiRequest) => {
     const query = request.params?.['query'];
     return typeof query === 'string' && query.includes('introduced:')
       ? []
-      : (ordinaryFindCards ?? []);
+      : ordinaryFindCards;
   };
   await stubAnkiConnect(page, answers);
 }
