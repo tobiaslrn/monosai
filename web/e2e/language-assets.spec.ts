@@ -146,6 +146,7 @@ test.describe('offline language assets', () => {
     corrupt = false;
     await page.getByRole('button', { name: 'Try again' }).click();
     await expectPrepared(page);
-    await expect(page.getByRole('radiogroup', { name: 'Reading level' })).toBeVisible();
+    // The reading level's example only renders once the bundle has loaded.
+    await expect(page.locator('mn-reading-level-page .example-ja')).toBeVisible();
   });
 });
