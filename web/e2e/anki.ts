@@ -54,9 +54,7 @@ export async function stubAndroidBridge(page: Page): Promise<void> {
     typeof configuredFindCards === 'function' ? [] : (configuredFindCards ?? []);
   answers['findCards'] = (request: AnkiRequest) => {
     const query = request.params?.['query'];
-    return typeof query === 'string' && query.includes('introduced:')
-      ? []
-      : ordinaryFindCards;
+    return typeof query === 'string' && query.includes('introduced:') ? [] : ordinaryFindCards;
   };
   await stubAnkiConnect(page, answers);
 }
