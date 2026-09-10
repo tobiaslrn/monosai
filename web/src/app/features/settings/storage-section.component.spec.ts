@@ -91,7 +91,7 @@ describe('StorageSectionComponent', () => {
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     [...element.querySelectorAll<HTMLButtonElement>('button')]
-      .find((button) => button.textContent.includes('Delete audio'))
+      .find((button) => button.textContent.includes('Delete saved audio'))
       ?.click();
     await settle(fixture);
     return fixture;

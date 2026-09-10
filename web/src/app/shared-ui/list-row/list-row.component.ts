@@ -3,6 +3,8 @@ import { RouterLink, type NavigationExtras, type UrlTree } from '@angular/router
 
 export type ListRowVariant = 'card' | 'flush' | 'muted' | 'plain';
 
+let nextListRowId = 0;
+
 /**
  * The shared shape for a row that leads somewhere.
  *
@@ -28,15 +30,17 @@ export type ListRowVariant = 'card' | 'flush' | 'muted' | 'plain';
         [routerLink]="routerLink()"
         [state]="state()"
         [attr.data-testid]="testId()"
+        [attr.aria-labelledby]="titleId"
+        [attr.aria-describedby]="metaId"
       >
         <span class="mn-list-row__leading">
           <ng-content select="[mn-list-row-leading]" />
         </span>
         <span class="mn-list-row__content">
-          <span class="mn-list-row__title">
+          <span class="mn-list-row__title" [id]="titleId">
             <ng-content select="[mn-list-row-title]" />
           </span>
-          <span class="mn-list-row__meta">
+          <span class="mn-list-row__meta" [id]="metaId">
             <ng-content select="[mn-list-row-meta]" />
           </span>
         </span>
@@ -189,6 +193,14 @@ export type ListRowVariant = 'card' | 'flush' | 'muted' | 'plain';
   `,
 })
 export class ListRowComponent {
+  /**
+   * The link is named by its title alone and described by its meta, so a
+   * screen reader hears a short name and a finder can match the title exactly.
+   */
+  private readonly instance = nextListRowId++;
+  protected readonly titleId = `mn-list-row-${this.instance}-title`;
+  protected readonly metaId = `mn-list-row-${this.instance}-meta`;
+
   readonly routerLink = input.required<readonly unknown[] | string | UrlTree>();
   readonly state = input<NavigationExtras['state']>(undefined);
   readonly variant = input<ListRowVariant>('card');

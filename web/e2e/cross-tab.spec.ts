@@ -21,12 +21,12 @@ test.describe('two tabs on one library', () => {
     await expect(second.getByRole('heading', { name: 'Cross-tab reading' })).toBeVisible();
 
     await first.goto('./#/library');
-    const card = first.getByRole('article').filter({ hasText: 'Cross-tab reading' });
+    const card = first.locator('mn-reading-card').filter({ hasText: 'Cross-tab reading' });
     await card.getByRole('button', { name: 'Actions for Cross-tab reading' }).click();
     await card.getByRole('menuitem', { name: 'Delete' }).click();
     await first.getByRole('button', { name: 'Delete permanently' }).click();
     // The row, not the words: both tabs name the reading as they announce it.
-    await expect(first.getByRole('article').filter({ hasText: 'Cross-tab reading' })).toHaveCount(
+    await expect(first.locator('mn-reading-card').filter({ hasText: 'Cross-tab reading' })).toHaveCount(
       0,
     );
 
@@ -44,12 +44,12 @@ test.describe('two tabs on one library', () => {
     await second.goto('./#/library');
     await expect(second.getByText('Shelf reading')).toBeVisible();
 
-    const card = first.getByRole('article').filter({ hasText: 'Shelf reading' });
+    const card = first.locator('mn-reading-card').filter({ hasText: 'Shelf reading' });
     await card.getByRole('button', { name: 'Actions for Shelf reading' }).click();
     await card.getByRole('menuitem', { name: 'Delete' }).click();
     await first.getByRole('button', { name: 'Delete permanently' }).click();
 
-    await expect(second.getByRole('article').filter({ hasText: 'Shelf reading' })).toHaveCount(0);
+    await expect(second.locator('mn-reading-card').filter({ hasText: 'Shelf reading' })).toHaveCount(0);
     // The other tab says why the row went, rather than silently dropping it.
     await expect(second.getByRole('status')).toContainText('Shelf reading');
   });

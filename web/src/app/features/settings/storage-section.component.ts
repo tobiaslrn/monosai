@@ -71,7 +71,7 @@ function formatBytes(bytes: number | null): string {
             [disabled]="storage.action() !== 'idle'"
             (click)="clearAudio()"
           >
-            Delete audio
+            Delete saved audio
           </button>
         </div>
         <p class="mn-hint">

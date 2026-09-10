@@ -1346,7 +1346,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     const groups = await page.locator('.date-group').evaluateAll((sections) =>
       sections.map((section) => {
         const bounds = section.getBoundingClientRect();
-        const cards = [...section.querySelectorAll('mn-reading-card article')].map((card) => {
+        const cards = [...section.querySelectorAll('mn-reading-card .mn-list-row')].map((card) => {
           const cardBounds = card.getBoundingClientRect();
           return { left: cardBounds.left, right: cardBounds.right };
         });
@@ -1565,7 +1565,9 @@ test('uses one keyboard stop per sentence and returns from word details @smoke',
     'ja',
   );
   await page.locator('#mn-after-story').click();
-  await expect(page.getByRole('link', { name: '動物', exact: true })).toHaveAttribute('lang', 'ja');
+  await expect(
+    page.getByRole('link', { name: '動物', exact: true }).locator('[mn-list-row-title]'),
+  ).toHaveAttribute('lang', 'ja');
 });
 
 test('renames a pasted reading from the library @smoke', async ({ page }) => {
@@ -1581,7 +1583,7 @@ test('renames a pasted reading from the library @smoke', async ({ page }) => {
 
   const renamed = page.getByRole('link', { name: '猫の一日', exact: true });
   await expect(renamed).toBeVisible();
-  await expect(renamed).toHaveAttribute('lang', 'ja');
+  await expect(renamed.locator('[mn-list-row-title]')).toHaveAttribute('lang', 'ja');
 
   // The name is stored, not just repainted, and the reading still opens.
   await page.reload();

@@ -39,5 +39,6 @@
 
 .mn-status-pill--accent {
   --pill-soft: var(--accent-secondary-soft);
-  --pill-ink: var(--accent-secondary);
+  /* The bare lavender misses text contrast on its own soft ground at pill size. */
+  --pill-ink: color-mix(in srgb, var(--accent-secondary) 70%, var(--text-primary));
 }

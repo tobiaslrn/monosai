@@ -162,7 +162,7 @@ test.describe('generating a story', () => {
     await expect(card).toContainText(STRICT_STORY.titleJa);
     // Home keeps a compact title and character count; the premise belongs to
     // the story, not the shelf row.
-    await expect(card.locator('.summary')).toContainText(/\d+ characters/);
+    await expect(card.locator('[mn-list-row-meta]')).toContainText(/\d+ characters/);
     await expect(card).not.toContainText(PREMISE);
     await expect(card).toContainText('Micro');
     await expect(card).not.toContainText('庭で遊びます');
