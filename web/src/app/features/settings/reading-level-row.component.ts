@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
 /**
@@ -22,67 +22,22 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
 @Component({
   selector: 'mn-reading-level-row',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [IconComponent, ListRowComponent],
   template: `
-    <a
-      class="row"
-      routerLink="/reading-level"
+    <mn-list-row
+      [routerLink]="'/reading-level'"
       [state]="settingsOriginState"
-      data-testid="settings-reading-level"
+      [testId]="'settings-reading-level'"
     >
-      <mn-icon name="vocabulary" [size]="20" />
-      <span class="labels">
-        <span class="title">What you can read</span>
-        <span class="mn-hint">{{ state() }}</span>
+      <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
+        <mn-icon name="vocabulary" [size]="20" />
       </span>
-      <mn-icon name="chevron-right" [size]="18" />
-    </a>
-  `,
-  styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
-    /*
-     * A panel like every other section on this page, so a signpost among boxes
-     * does not read as something that fell out of one. It is a single link, so
-     * the whole card is the control and the hover states say so.
-     */
-    .row {
-      display: flex;
-      gap: var(--space-3);
-      align-items: center;
-      min-height: var(--touch-target);
-      padding: var(--space-3) var(--space-4);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-panel);
-      color: var(--text-primary);
-      text-decoration: none;
-    }
-
-    .row:hover {
-      border-color: var(--border-strong);
-    }
-
-    .row:hover .title {
-      text-decoration: underline;
-    }
-
-    @media (max-width: breakpoints.$narrow-max) {
-      .row {
-        padding: var(--space-4);
+      <span mn-list-row-title>What you can read</span>
+      @if (state(); as line) {
+        <span mn-list-row-meta>{{ line }}</span>
       }
-    }
-
-    .labels {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
-      min-width: 0;
-    }
-
-    .title {
-      font-weight: var(--weight-semibold);
-    }
+      <mn-icon mn-list-row-trailing name="chevron-right" [size]="18" />
+    </mn-list-row>
   `,
 })
 export class ReadingLevelRowComponent {

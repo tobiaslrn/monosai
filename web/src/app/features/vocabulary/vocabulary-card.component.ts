@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { SourceStandingStore } from '../../application/vocabulary/source-standing.store';
 import { formatCountOf } from '../../domain/shared/locale';
 import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-source';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
 /**
@@ -18,73 +18,39 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
 @Component({
   selector: 'mn-vocabulary-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [IconComponent, ListRowComponent],
   template: `
-    <a class="mn-card card" routerLink="/reading-level/vocabulary" data-testid="browse-vocabulary">
-      <span class="mn-icon-badge" aria-hidden="true"
-        ><mn-icon name="vocabulary" [size]="24"
-      /></span>
-      <span class="copy" data-testid="source-standing">
-        <span class="title">Vocabulary</span>
-        <span class="count" data-testid="words-standing">{{ wordsValue() }}</span>
+    <mn-list-row
+      [routerLink]="'/reading-level/vocabulary'"
+      [testId]="'browse-vocabulary'"
+    >
+      <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
+        <mn-icon name="vocabulary" [size]="24" />
+      </span>
+      <span mn-list-row-title>Vocabulary</span>
+      <span mn-list-row-meta class="vocabulary-meta" data-testid="source-standing">
+        <span data-testid="words-standing">{{ wordsValue() }}</span>
         @if (detail(); as line) {
-          <span class="detail">{{ line }}</span>
+          <span class="vocabulary-detail">{{ line }}</span>
         }
       </span>
-      <mn-icon class="chevron" name="chevron-right" />
-    </a>
+      <mn-icon mn-list-row-trailing name="chevron-right" />
+    </mn-list-row>
   `,
   styles: `
     :host {
       display: block;
     }
 
-    .card {
-      display: flex;
-      gap: var(--space-3);
-      align-items: center;
-      min-height: 4.5rem;
-      padding: var(--space-3) var(--space-3) var(--space-3) var(--space-3);
-      color: inherit;
-      text-decoration: none;
-      transition: background-color var(--motion-fast) ease-out;
-    }
-
-    .card:hover {
-      background: var(--surface-sunken);
-    }
-
-    .mn-icon-badge {
-      width: 3.25rem;
-      height: 3.25rem;
-    }
-
-    .copy {
+    .vocabulary-meta {
       display: grid;
-      flex: 1;
-      gap: 0.1rem;
-      min-width: 0;
-    }
-
-    .title {
-      font-size: var(--text-xl);
-      font-weight: var(--weight-bold);
-      letter-spacing: -0.01em;
-    }
-
-    .count {
-      color: var(--text-secondary);
+      gap: 1px;
       font-variant-numeric: tabular-nums;
     }
 
-    .detail {
+    .vocabulary-detail {
       color: var(--text-secondary);
       font-size: var(--text-sm);
-    }
-
-    .chevron {
-      flex: none;
-      color: var(--text-secondary);
     }
   `,
 })

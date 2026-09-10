@@ -73,18 +73,18 @@ describe('ReadingCardComponent', () => {
    * the story is. It sat in the database and was rendered nowhere.
    */
   it('shows the character count even when a generated story has a premise', () => {
-    expect(textOf(generated(), '.summary')).toBe('940 characters');
+    expect(textOf(generated(), '[mn-list-row-meta]')).toContain('940 characters');
   });
 
   it('falls back to the size when a generated story has no premise', () => {
-    expect(textOf(generated({ premise: '   ' }), '.summary')).toBe('940 characters');
+    expect(textOf(generated({ premise: '   ' }), '[mn-list-row-meta]')).toContain('940 characters');
   });
 
   it('states an imported reading size even when there is a filename', () => {
-    expect(textOf(imported(), '.summary')).toBe('940 characters');
+    expect(textOf(imported(), '[mn-list-row-meta]')).toContain('940 characters');
     expect(
-      textOf(imported({ importSource: 'text-file', sourceFileName: 'kokoro.txt' }), '.summary'),
-    ).toBe('940 characters');
+      textOf(imported({ importSource: 'text-file', sourceFileName: 'kokoro.txt' }), '[mn-list-row-meta]'),
+    ).toContain('940 characters');
   });
 
   /**
@@ -93,22 +93,29 @@ describe('ReadingCardComponent', () => {
    * one format.
    */
   it('groups a long reading the way the import counter does', () => {
-    expect(textOf(imported({ characterCount: 3118 }), '.summary')).toBe('3,118 characters');
-    expect(textOf(imported({ characterCount: 1 }), '.summary')).toBe('1 character');
+    expect(textOf(imported({ characterCount: 3118 }), '[mn-list-row-meta]')).toContain(
+      '3,118 characters',
+    );
+    expect(textOf(imported({ characterCount: 1 }), '[mn-list-row-meta]')).toContain('1 character');
   });
 
   it('names how long a reading is in the words the screen that made it uses', () => {
-    expect(textOf(generated({ form: 'micro' }), '.meta')).toContain('Micro');
-    expect(textOf(generated({ form: 'long' }), '.meta')).toContain('Long');
-    expect(textOf(imported(), '.meta')).toContain('Pasted');
-    expect(textOf(imported({ importSource: 'text-file' }), '.meta')).toContain('Text file');
+    expect(textOf(generated({ form: 'micro' }), '[mn-list-row-meta]')).toContain('Micro');
+    expect(textOf(generated({ form: 'long' }), '[mn-list-row-meta]')).toContain('Long');
+    expect(textOf(imported(), '[mn-list-row-meta]')).toContain('Pasted');
+    expect(textOf(imported({ importSource: 'text-file' }), '[mn-list-row-meta]')).toContain(
+      'Text file',
+    );
   });
 
   /** When you last picked something up, not when it was filed. */
   it('reports when the reading was last read', () => {
-    expect(textOf(generated({ lastOpenedAt: NOW }), '.meta')).toContain('read today');
+    expect(textOf(generated({ lastOpenedAt: NOW }), '[mn-list-row-meta]')).toContain('read today');
     expect(
-      textOf(generated({ lastOpenedAt: new Date(2026, 7, 18, 9, 0, 0).getTime() }), '.meta'),
+      textOf(
+        generated({ lastOpenedAt: new Date(2026, 7, 18, 9, 0, 0).getTime() }),
+        '[mn-list-row-meta]',
+      ),
     ).toContain('read 3 days ago');
   });
 
@@ -117,7 +124,7 @@ describe('ReadingCardComponent', () => {
    * answer a question nobody asked of a shelf.
    */
   it('says a reading is unread rather than reporting when it was added', () => {
-    const meta = textOf(generated({ lastOpenedAt: null }), '.meta');
+    const meta = textOf(generated({ lastOpenedAt: null }), '[mn-list-row-meta]');
 
     expect(meta).toContain('unread');
     expect(meta).not.toContain('Aug 1');
@@ -125,9 +132,12 @@ describe('ReadingCardComponent', () => {
 
   it('marks available audio without spelling it out twice', () => {
     expect(
-      textOf(generated({ audioSummary: { total: 4, completed: 4, failed: 0 } }), '.meta'),
+      textOf(
+        generated({ audioSummary: { total: 4, completed: 4, failed: 0 } }),
+        '[mn-list-row-meta]',
+      ),
     ).toContain('Audio');
-    expect(textOf(generated(), '.meta')).not.toContain('Audio');
+    expect(textOf(generated(), '[mn-list-row-meta]')).not.toContain('Audio');
   });
 
   it('distinguishes opened and unread stories without claiming completion', () => {
@@ -135,10 +145,23 @@ describe('ReadingCardComponent', () => {
     expect(textOf(imported({ lastOpenedAt: NOW }), '.mn-status-pill')).toBe('Read');
   });
 
-  it('keeps the whole row a link to the reader and the actions out of it', () => {
+  it('keeps the whole row a native link and the actions out of it', () => {
     const element = render(generated());
+    const link = element.querySelector<HTMLAnchorElement>('a[data-testid="reading-row"]');
+    const menuButton = element.querySelector<HTMLButtonElement>('.menu-anchor .mn-icon-button');
 
-    expect(element.querySelector('h3 a')?.getAttribute('href')).toContain('/reader/');
-    expect(element.querySelector('.menu-anchor .mn-icon-button')).not.toBeNull();
+    expect(link?.getAttribute('href')).toContain('/reader/');
+    expect(menuButton).not.toBeNull();
+    expect(menuButton?.closest('a')).toBeNull();
+  });
+
+  it('shows the story origin in the leading icon badge', () => {
+    const generatedRow = render(generated());
+    const importedRow = render(imported());
+
+    expect(generatedRow.querySelector('.story-mark')).toBeNull();
+    expect(generatedRow.querySelector('[mn-list-row-leading] mn-icon')).not.toBeNull();
+    expect(generatedRow.querySelector('[mn-list-row-meta]')?.textContent).toContain('Generated');
+    expect(importedRow.querySelector('[mn-list-row-meta]')?.textContent).toContain('Imported');
   });
 });

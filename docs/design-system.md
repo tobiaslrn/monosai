@@ -150,11 +150,18 @@ inside a control do not change.
 ### Rows on a shelf
 
 A shelf is for choosing what to open, so a row answers that and nothing else. It
-carries the name, one line saying what is inside, and — opposite the name — how
-big the thing is and when it was last used. The row is one link, because a row
-is not a place to configure anything. Where a row has a handful of things to do
-to it, they live in an overflow menu; where what it opens is a surface of its
-own, they live there and the row carries none
+carries a leading icon when the thing has a meaningful origin, a name, one
+secondary line saying what is inside, and — opposite the name — its status,
+value, or way forward. `mn-list-row` is the shared implementation: its title is
+`text-md` semibold, its metadata is `text-sm` secondary text, and every row uses
+one shared minimum height. A long title wraps inside the content column; the
+trailing column stays separate, so the two never collide.
+
+The navigable row is one native link, because a row is not a place to configure
+anything. Where a row has a handful of things to do to it, the overflow menu is
+projected into the primitive's separate menu slot and remains a native button
+outside the link. Where what it opens is a surface of its own, it lives there
+and the row carries none
 ([ADR 0057](decisions/0057-one-anki-entry-and-a-page-per-source.md)).
 
 The line saying what is inside prefers **what the content already says about
@@ -202,11 +209,13 @@ snapshot is empty are separate states, and both offer the one action that can
 change that fact.
 
 The home Library is a compact shelf exception: date groups share one pair of
-card edges, with quiet flat cards, a small circular mark, a system-sans title,
-and a character count. A short Read or Unread badge and overflow sit opposite.
-Read means opened, not completed; the last-opened date, origin and available
-audio remain accessible metadata. Premises and filenames do not replace the
-character count here. Long titles wrap without colliding with the badge.
+card edges, with quiet flat `mn-list-row` cards. A generated or imported story
+uses its origin icon inside `.mn-icon-badge`; an empty decorative circle is not
+used. The row carries a system-sans title, character count, and origin metadata,
+with a short Read or Unread badge and overflow opposite. Read means opened, not
+completed; the last-opened date and available audio remain accessible metadata.
+Premises and filenames do not replace the character count here. Long titles
+wrap without colliding with the badge or menu.
 
 ## 3. Controls
 

@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import type { GenerationJob } from '../../application/generation/generation-jobs.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { generationWaitCopy } from '../generate/generation-wait.component';
 
 /**
@@ -18,23 +18,28 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
 @Component({
   selector: 'mn-generation-job-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [IconComponent, ListRowComponent],
   template: `
-    <article class="job-row" [class.needs-attention]="needsAttention()">
-      <div class="head">
-        <div class="copy">
-          <div class="title-row">
-            <h3>
-              <a [routerLink]="['/generate', job().id]" [state]="libraryOriginState">
-                {{ title() }}
-              </a>
-            </h3>
-            <p class="meta">
-              <span class="state">{{ stateLabel() }}</span>
-            </p>
-          </div>
-          <p class="summary">{{ stageLabel() }}</p>
-        </div>
+    <mn-list-row
+      variant="muted"
+      [class.needs-attention]="needsAttention()"
+      [routerLink]="['/generate', job().id]"
+      [state]="libraryOriginState"
+    >
+      <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
+        <mn-icon name="generate" [size]="20" />
+      </span>
+      <span mn-list-row-title>{{ title() }}</span>
+      <span mn-list-row-meta>{{ stageLabel() }}</span>
+      <span mn-list-row-trailing>
+        <span
+          class="mn-status-pill"
+          [class.mn-status-pill--danger]="needsAttention()"
+        >
+          {{ stateLabel() }}
+        </span>
+      </span>
+      <span mn-list-row-menu>
         <button
           type="button"
           class="mn-icon-button dismiss"
@@ -43,107 +48,8 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
         >
           <mn-icon name="close" [size]="20" />
         </button>
-      </div>
-    </article>
-  `,
-  styles: `
-    .job-row {
-      position: relative;
-      min-height: 3.75rem;
-      padding: var(--space-1) 0 var(--space-1) var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-sunken);
-      transition: background-color var(--motion-fast) ease-out;
-    }
-
-    .head {
-      display: flex;
-      gap: var(--space-3);
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .copy {
-      flex: 1;
-      min-width: 0;
-    }
-
-    /* The same two-part shape a reading row has, so nothing moves when the
-       story lands and this row becomes that one. */
-    .title-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-1) var(--space-3);
-      align-items: baseline;
-      justify-content: space-between;
-      min-width: 0;
-    }
-
-    h3 {
-      min-width: 0;
-      margin: 0;
-      font-family: var(--font-ui);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-semibold);
-      line-height: 1.35;
-      overflow-wrap: anywhere;
-    }
-
-    /*
-     * Muted, because this is not a reading yet. The state is also written out
-     * beside it, so the row never depends on the colour alone to say so.
-     */
-    h3 a {
-      color: var(--text-secondary);
-      text-decoration: none;
-    }
-
-    h3 a::after {
-      position: absolute;
-      inset: 0;
-      content: '';
-    }
-
-    .job-row:has(h3 a:focus-visible) {
-      outline: 3px solid var(--focus-ring);
-      outline-offset: 2px;
-    }
-
-    .meta {
-      display: flex;
-      flex: none;
-      flex-wrap: wrap;
-      gap: var(--space-1);
-      align-items: center;
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-xs);
-    }
-
-    .summary {
-      display: -webkit-box;
-      margin: 0;
-      overflow: hidden;
-      color: var(--text-secondary);
-      font-size: var(--text-xs);
-      line-height: 1.3;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 1;
-    }
-
-    .state {
-      font-weight: var(--weight-semibold);
-    }
-
-    .needs-attention .state {
-      color: var(--status-danger);
-    }
-
-    .dismiss {
-      position: relative;
-      z-index: 1;
-    }
+      </span>
+    </mn-list-row>
   `,
 })
 export class GenerationJobCardComponent {

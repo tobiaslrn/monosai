@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/automatic-anki-sync.coordinator';
 import { ManualSourceSyncStore } from '../../application/vocabulary/manual-source-sync.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
@@ -14,6 +13,7 @@ import {
 } from '../../domain/vocabulary/vocabulary-source';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import type { IconName } from '../../shared-ui/icon/icon-set';
+import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 
 /** One icon per kind of source, the same one the Add words sheet shows for it. */
 const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
@@ -34,32 +34,31 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
 @Component({
   selector: 'mn-source-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [IconComponent, ListRowComponent],
   template: `
     <div class="mn-card mn-card--flush">
       <ul class="sources">
         @for (source of sources(); track source.id) {
           <li>
-            <a
-              class="row"
+            <mn-list-row
+              variant="flush"
               [class.is-off]="!included(source)"
+              [mutedLeading]="!included(source)"
               [routerLink]="['/reading-level/source', source.id]"
-              data-testid="source-row"
+              [testId]="'source-row'"
             >
-              <span class="mn-icon-badge" aria-hidden="true">
+              <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
                 <mn-icon [name]="iconFor(source)" [size]="22" />
               </span>
-              <span class="rmain">
-                <span class="rname">{{ source.label }}</span>
-                <span class="rwhere">
-                  @if (needsAttention(source)) {
-                    <span class="warn-dot" aria-hidden="true"></span>
-                  }
-                  {{ whereLine(source) }}
-                </span>
+              <span mn-list-row-title>{{ source.label }}</span>
+              <span mn-list-row-meta>
+                @if (needsAttention(source)) {
+                  <span class="warn-dot" aria-hidden="true"></span>
+                }
+                {{ whereLine(source) }}
               </span>
-              <mn-icon class="chevron" name="chevron-right" />
-            </a>
+              <mn-icon mn-list-row-trailing name="chevron-right" />
+            </mn-list-row>
           </li>
         } @empty {
           <li class="empty mn-hint" data-testid="no-sources">
@@ -119,57 +118,6 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
 
     .sources li + li {
       border-top: 1px solid var(--border-subtle);
-    }
-
-    .row {
-      display: flex;
-      gap: var(--space-3);
-      align-items: center;
-      width: 100%;
-      min-height: 4rem;
-      padding: var(--space-3);
-      border-radius: var(--radius-card);
-      color: inherit;
-      text-decoration: none;
-      transition: background-color var(--motion-fast) ease-out;
-    }
-
-    .row:hover {
-      background: var(--surface-sunken);
-    }
-
-    .rmain {
-      display: grid;
-      flex: 1;
-      gap: 1px;
-      min-width: 0;
-    }
-
-    .rname {
-      overflow: hidden;
-      font-size: var(--text-lg);
-      font-weight: var(--weight-semibold);
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .rwhere {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      overflow-wrap: anywhere;
-    }
-
-    /*
-     * Left out of the vocabulary, not broken: the row keeps its full contrast
-     * for the name and dims only its mark.
-     */
-    .row.is-off .mn-icon-badge {
-      opacity: 0.55;
-    }
-
-    .chevron {
-      flex: none;
-      color: var(--text-secondary);
     }
 
     .warn-dot {

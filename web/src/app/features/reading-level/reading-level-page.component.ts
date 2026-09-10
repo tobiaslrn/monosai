@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
@@ -12,6 +12,7 @@ import {
   navigationOriginState,
 } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { conventionalLevel } from '../grammar/preset-level';
 import { StructuralBaselineSectionComponent } from '../grammar/structural-baseline-section.component';
@@ -48,8 +49,8 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
   // refresh in flight and releases the provider it was reading from.
   providers: [VocabularyRefreshStore, PackageImportStore],
   imports: [
-    RouterLink,
     IconComponent,
+    ListRowComponent,
     PageHeaderComponent,
     AddWordsComponent,
     PackageImportComponent,
@@ -113,27 +114,27 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
           </div>
         } @else {
           <div class="mn-card level-card">
-            <a
-              class="level-link"
-              routerLink="/reading-level/level"
+            <mn-list-row
+              variant="plain"
+              [routerLink]="'/reading-level/level'"
               [state]="levelOriginState"
-              data-testid="reading-level-link"
+              [testId]="'reading-level-link'"
             >
-              <span class="mn-icon-badge" aria-hidden="true">
+              <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
                 <mn-icon name="reading-level" [size]="24" />
               </span>
-              <span class="level-main">
-                <span class="level-title">Reading level</span>
+              <span mn-list-row-title>Reading level</span>
+              <span mn-list-row-meta>{{ grammarDetail() }}</span>
+              <span mn-list-row-trailing>
                 <span class="mn-status-pill mn-status-pill--accent">
                   <span data-testid="grammar-standing">{{ grammarValue() }}</span>
                   @if (grammarLevel(); as level) {
                     <span> · {{ level }}</span>
                   }
                 </span>
+                <mn-icon name="chevron-right" />
               </span>
-              <mn-icon class="chevron" name="chevron-right" />
-            </a>
-            <p class="level-detail">{{ grammarDetail() }}</p>
+            </mn-list-row>
             @if (profile.selectedPreset(); as preset) {
               <div class="example">
                 <p class="example-ja" lang="ja">{{ preset.exampleJa }}</p>
@@ -243,69 +244,9 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     }
 
     .level-card {
-      position: relative;
       display: grid;
       gap: var(--space-2);
       padding: var(--space-3);
-      transition: background-color var(--motion-fast) ease-out;
-    }
-
-    .level-card:hover {
-      background: var(--surface-sunken);
-    }
-
-    /* The whole card is the link; its outline is drawn on the card. */
-    .level-link {
-      display: flex;
-      gap: var(--space-3);
-      align-items: center;
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .level-link::after {
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      content: '';
-    }
-
-    .level-link:focus-visible {
-      outline: none;
-    }
-
-    .level-card:has(.level-link:focus-visible) {
-      outline: 3px solid var(--focus-ring);
-      outline-offset: 2px;
-    }
-
-    .level-card .mn-icon-badge {
-      width: 3.25rem;
-      height: 3.25rem;
-    }
-
-    .level-main {
-      display: grid;
-      flex: 1;
-      gap: var(--space-1);
-      justify-items: start;
-      min-width: 0;
-    }
-
-    .level-title {
-      font-size: var(--text-lg);
-      font-weight: var(--weight-bold);
-    }
-
-    .chevron {
-      flex: none;
-      color: var(--text-secondary);
-    }
-
-    .level-detail {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
     }
 
     .example {

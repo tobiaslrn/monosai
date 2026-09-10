@@ -267,8 +267,8 @@ describe('LibraryPageComponent', () => {
     ];
     const fixture = await render();
 
-    const titles = [...element(fixture).querySelectorAll('mn-reading-card h3')].map((node) =>
-      node.textContent.trim(),
+    const titles = [...element(fixture).querySelectorAll('mn-reading-card [mn-list-row-title]')].map(
+      (node) => node.textContent.trim(),
     );
     expect(titles).toEqual(['Reading b', 'Reading c', 'Reading a']);
   });
@@ -323,7 +323,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = [{ ...reading('long-title', 'imported', 1_000), title: longTitle }];
     const fixture = await render();
 
-    const title = element(fixture).querySelector('mn-reading-card h3 a');
+    const title = element(fixture).querySelector('mn-reading-card [mn-list-row-title]');
     expect((title?.textContent ?? '').trim()).toBe(longTitle);
   });
 
@@ -513,7 +513,9 @@ describe('LibraryPageComponent', () => {
       ?.click();
     await settle(fixture);
 
-    expect(element(fixture).querySelector('mn-reading-card h3')?.textContent.trim()).toBe(
+    expect(
+      element(fixture).querySelector('mn-reading-card [mn-list-row-title]')?.textContent.trim(),
+    ).toBe(
       '猫の一日',
     );
     expect(element(fixture).querySelector('[aria-live="polite"]')?.textContent).toContain(

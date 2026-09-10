@@ -102,7 +102,7 @@ describe('SourceListComponent', () => {
     const { element } = await render();
 
     expect(rows(element)[0].textContent).toContain('not counted');
-    expect(rows(element)[0].classList.contains('is-off')).toBe(true);
+    expect(rows(element)[0].closest('mn-list-row')?.classList.contains('is-off')).toBe(true);
   });
 
   /** The vocabulary card above the list states the count; the list does not repeat it. */

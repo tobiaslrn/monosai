@@ -9,12 +9,13 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import type { ImportSource, Reading, StoryForm } from '../../domain/reading/reading';
 import { formatCountOf, formatRelativeDay } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import type { IconName } from '../../shared-ui/icon/icon-set';
+import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 
 /** What a story's length is called, in the words the generate form uses. */
 const FORM_LABELS: Readonly<Record<StoryForm, string>> = {
@@ -34,44 +35,47 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
 @Component({
   selector: 'mn-reading-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [IconComponent, ListRowComponent],
   host: {
     '(document:pointerdown)': 'onDocumentPointerDown($event)',
     '(document:keydown.escape)': 'closeMenuOnEscape($event)',
   },
   template: `
-    <article class="reading-row">
-      <div class="head">
-        <span class="story-mark" aria-hidden="true"></span>
-        <div class="copy">
-          <div class="title-row">
-            <h3>
-              <a lang="ja" [routerLink]="['/reader', reading().id]" [state]="libraryOriginState">
-                {{ reading().title }}
-              </a>
-            </h3>
-            <p class="meta mn-visually-hidden">
-              <span class="shape-label">{{ shapeLabel() }}</span>
-              <span class="separator" aria-hidden="true">·</span>
-              <span>{{ lastReadLabel() }}</span>
-              @if (hasAudio()) {
-                <span class="separator" aria-hidden="true">·</span>
-                <span class="audio-available">
-                  <mn-icon name="audio" [size]="16" />
-                  <span>Audio</span>
-                </span>
-              }
-            </p>
-          </div>
-          <p class="summary">{{ characterLabel() }}</p>
-        </div>
+    <mn-list-row
+      [routerLink]="['/reader', reading().id]"
+      [state]="libraryOriginState"
+      [testId]="'reading-row'"
+    >
+      <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
+        <mn-icon [name]="originIcon()" [size]="20" />
+      </span>
+      <span mn-list-row-title lang="ja">{{ reading().title }}</span>
+      <span mn-list-row-meta>
+        <span>{{ characterLabel() }}</span>
+        <span class="separator" aria-hidden="true">·</span>
+        <span>{{ originLabel() }}</span>
+        <span class="separator" aria-hidden="true">·</span>
+        <span>{{ shapeLabel() }}</span>
+        <span class="separator" aria-hidden="true">·</span>
+        <span>{{ lastReadLabel() }}</span>
+        @if (hasAudio()) {
+          <span class="separator" aria-hidden="true">·</span>
+          <span class="audio-available">
+            <mn-icon name="audio" [size]="16" />
+            <span>Audio</span>
+          </span>
+        }
+      </span>
+      <span mn-list-row-trailing>
         <span
           class="mn-status-pill"
           [class.mn-status-pill--accent]="reading().lastOpenedAt === null"
         >
           {{ reading().lastOpenedAt === null ? 'Unread' : 'Read' }}
         </span>
-        <div class="menu-anchor">
+      </span>
+      <span mn-list-row-menu>
+        <span class="menu-anchor">
           <button
             #toggle
             type="button"
@@ -104,87 +108,14 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
               <span>Delete</span>
             </button>
           </div>
-        </div>
-      </div>
-    </article>
+        </span>
+      </span>
+    </mn-list-row>
   `,
   styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
-    .reading-row {
-      position: relative;
-      min-height: 3.75rem;
-      padding: var(--space-1) 0 var(--space-1) var(--space-3);
-      border: 1px solid color-mix(in srgb, var(--border-subtle) 35%, transparent);
-      border-radius: var(--radius-card);
-      background: var(--surface-raised);
-      transition: background-color var(--motion-fast) ease-out;
-    }
-
-    .reading-row:hover {
-      background: var(--surface-sunken);
-    }
-
-    .head {
-      display: flex;
-      gap: var(--space-2);
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .story-mark {
-      flex: 0 0 auto;
-      width: 1.5rem;
-      height: 1.5rem;
-      border-radius: 50%;
-      background: var(--action-primary-soft);
-    }
-
-    .copy {
-      flex: 1;
-      min-width: 0;
-    }
-
-    /* Detailed provenance remains available to assistive technology. */
-    .title-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-1) var(--space-3);
-      align-items: baseline;
-      justify-content: space-between;
-      min-width: 0;
-    }
-
-    h3 {
-      min-width: 0;
-      margin: 0;
-      font-family: var(--font-ui);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-medium);
-      line-height: 1.35;
-      overflow-wrap: anywhere;
-    }
-
-    h3 a {
-      color: var(--text-primary);
-      text-decoration: none;
-    }
-
-    h3 a::after {
-      position: absolute;
-      inset: 0;
-      content: '';
-    }
-
-    .reading-row:has(h3 a:focus-visible) {
-      outline: 3px solid var(--focus-ring);
-      outline-offset: 2px;
-    }
-
     .menu-anchor {
       position: relative;
       z-index: 1;
-      flex: none;
     }
 
     .menu {
@@ -229,59 +160,10 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       background: var(--surface-sunken);
     }
 
-    .meta {
-      display: flex;
-      flex: none;
-      flex-wrap: wrap;
-      gap: var(--space-1);
-      align-items: center;
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-xs);
-    }
-
-    @media (max-width: breakpoints.$narrow-max) {
-      .reading-row {
-        min-height: 3.75rem;
-      }
-
-      .head {
-        min-height: var(--touch-target);
-      }
-
-      .title-row {
-        display: block;
-      }
-
-      h3 {
-        font-size: var(--text-sm);
-        line-height: 1.3;
-      }
-    }
-
-    /* Keep the character count quiet beneath the title. */
-    .summary {
-      display: -webkit-box;
-      margin: 0;
-      overflow: hidden;
-      color: var(--text-secondary);
-      font-size: var(--text-xs);
-      line-height: 1.3;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 1;
-    }
-
     .audio-available {
       display: inline-flex;
       gap: var(--space-1);
       align-items: center;
-    }
-
-    @media (max-width: breakpoints.$narrow-max) {
-      .summary {
-        margin-top: 0;
-        -webkit-line-clamp: 1;
-      }
     }
   `,
 })
@@ -302,6 +184,14 @@ export class ReadingCardComponent {
 
   protected readonly characterLabel = computed(() =>
     formatCountOf(this.reading().characterCount, 'character'),
+  );
+
+  protected readonly originIcon = computed<IconName>(() =>
+    this.reading().kind === 'generated' ? 'generate' : 'file',
+  );
+
+  protected readonly originLabel = computed(() =>
+    this.reading().kind === 'generated' ? 'Generated' : 'Imported',
   );
 
   /** How long the reading is, said the way the screen that made it says it. */

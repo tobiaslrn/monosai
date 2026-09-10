@@ -23,9 +23,13 @@ describe('GenerationJobCardComponent', () => {
     const page = render(new FakeGenerationRun({ kind: 'exception-review', candidateCount: 2 }))
       .nativeElement as HTMLElement;
 
-    expect(page.querySelector('h3')?.textContent.trim()).toBe('A cat visits the market');
-    expect(page.querySelector('.meta')?.textContent).toContain('Being written');
-    expect(page.querySelector('.summary')?.textContent).toContain('Reviewing 2 unfamiliar words');
+    expect(page.querySelector('[mn-list-row-title]')?.textContent.trim()).toBe(
+      'A cat visits the market',
+    );
+    expect(page.querySelector('[mn-list-row-trailing]')?.textContent).toContain('Being written');
+    expect(page.querySelector('[mn-list-row-meta]')?.textContent).toContain(
+      'Reviewing 2 unfamiliar words',
+    );
     expect(page.querySelector('a')?.getAttribute('href')).toBe(`/generate/${JOB_ID}`);
   });
 
@@ -44,9 +48,9 @@ describe('GenerationJobCardComponent', () => {
       }),
     ).nativeElement as HTMLElement;
 
-    expect(page.querySelector('.meta')?.textContent).toContain('Needs attention');
-    expect(page.querySelector('.summary')?.textContent).toContain('Generation stopped');
-    expect(page.querySelector('article')?.classList.contains('needs-attention')).toBe(true);
+    expect(page.querySelector('[mn-list-row-trailing]')?.textContent).toContain('Needs attention');
+    expect(page.querySelector('[mn-list-row-meta]')?.textContent).toContain('Generation stopped');
+    expect(page.querySelector('mn-list-row')?.classList.contains('needs-attention')).toBe(true);
   });
 
   it('names what its one control does now', () => {
@@ -72,5 +76,13 @@ describe('GenerationJobCardComponent', () => {
     (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.dismiss')?.click();
 
     expect(dismissed).toEqual([JOB_ID]);
+  });
+
+  it('keeps the dismiss button separate from the navigation link', () => {
+    const page = render(new FakeGenerationRun({ kind: 'writing' }))
+      .nativeElement as HTMLElement;
+    const dismiss = page.querySelector<HTMLButtonElement>('.dismiss');
+
+    expect(dismiss?.closest('a')).toBeNull();
   });
 });
