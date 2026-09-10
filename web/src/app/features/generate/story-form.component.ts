@@ -288,7 +288,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
 
     .counter.is-over {
       color: var(--status-danger);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .limit-hint {
@@ -339,7 +339,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     }
 
     .setting-heading label {
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     output {
@@ -350,11 +350,11 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       padding: var(--space-2) var(--space-3);
       border-radius: 0.25rem;
       background: var(--action-primary-soft);
-      color: var(--action-primary);
+      color: var(--action-primary-text);
     }
 
     output strong {
-      font-size: 1.5rem;
+      font-size: var(--text-2xl);
       line-height: 1;
     }
 
@@ -564,7 +564,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
 
     .generation-sources a strong {
       overflow: hidden;
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
       text-decoration: underline;
       text-underline-offset: 3px;
       text-overflow: ellipsis;

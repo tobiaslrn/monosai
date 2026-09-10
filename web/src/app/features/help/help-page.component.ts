@@ -139,7 +139,7 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
     .lead {
       margin: 0;
       color: var(--text-secondary);
-      font-size: 1.125rem;
+      font-size: var(--text-lg);
     }
     section {
       border-top: 1px solid var(--border-subtle);
@@ -147,11 +147,11 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
     }
     h2 {
       margin: 0 0 var(--space-4);
-      font-size: 1.25rem;
+      font-size: var(--text-xl);
     }
     h3 {
       margin: var(--space-4) 0 var(--space-2);
-      font-size: 1rem;
+      font-size: var(--text-md);
     }
     p,
     li {

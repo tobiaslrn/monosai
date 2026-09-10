@@ -143,7 +143,7 @@ export interface VocabularyFilterSheetData {
 
     legend {
       margin-block-end: var(--space-2);
-      font-weight: 500;
+      font-weight: var(--weight-medium);
     }
 
     .actions {

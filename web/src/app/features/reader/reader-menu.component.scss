@@ -33,15 +33,15 @@ header {
 h2 {
   margin: 0;
   font-size: var(--text-lg);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 h3 {
   margin: 0 0 var(--space-3);
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 .row-copy strong {
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 .content {
   margin-top: var(--space-4);

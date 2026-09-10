@@ -164,7 +164,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
     /* Nothing chosen yet is a prompt, not a value; it should not read as one. */
     .trigger--unset strong {
       color: var(--text-secondary);
-      font-weight: 400;
+      font-weight: var(--weight-regular);
     }
     .chevron {
       flex: none;
@@ -178,8 +178,8 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
     }
     small {
       color: var(--text-secondary);
-      font-size: 0.75rem;
-      font-weight: 400;
+      font-size: var(--text-xs);
+      font-weight: var(--weight-regular);
     }
     .model-id {
       color: var(--text-primary);
@@ -222,7 +222,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       margin: 0;
       padding: var(--space-2) var(--space-3) var(--space-1);
       background: var(--action-primary-soft);
-      font-size: 0.6875rem;
+      font-size: var(--text-xs);
     }
     .results {
       min-height: 3rem;
@@ -263,7 +263,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
     .star {
       min-width: var(--touch-target);
       color: var(--action-primary);
-      font-size: 1.25rem;
+      font-size: var(--text-xl);
     }
     .fallback {
       width: 100%;

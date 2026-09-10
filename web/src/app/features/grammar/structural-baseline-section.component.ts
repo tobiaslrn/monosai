@@ -116,7 +116,7 @@ interface CategoryGroup {
     }
 
     .name {
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .forms {

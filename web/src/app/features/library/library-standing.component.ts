@@ -71,8 +71,8 @@ import {
       gap: var(--space-1);
       align-items: center;
       font-family: var(--font-ui);
-      font-size: 2.5rem;
-      font-weight: 700;
+      font-size: var(--text-display);
+      font-weight: var(--weight-bold);
       letter-spacing: -0.035em;
       line-height: 1.04;
     }
@@ -89,13 +89,13 @@ import {
 
     .detail {
       color: var(--text-secondary);
-      font-size: 0.75rem;
+      font-size: var(--text-xs);
       line-height: 1.4;
     }
 
     @media (max-width: breakpoints.$narrow-max) {
       .headline {
-        font-size: 1.875rem;
+        font-size: var(--text-2xl);
       }
     }
   `,

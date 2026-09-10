@@ -85,7 +85,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
       margin: 0;
       font-family: var(--font-ui);
       font-size: var(--text-sm);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
       line-height: 1.35;
       overflow-wrap: anywhere;
     }
@@ -118,7 +118,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
       align-items: center;
       margin: 0;
       color: var(--text-secondary);
-      font-size: 0.6875rem;
+      font-size: var(--text-xs);
     }
 
     .summary {
@@ -126,14 +126,14 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
       margin: 0;
       overflow: hidden;
       color: var(--text-secondary);
-      font-size: 0.75rem;
+      font-size: var(--text-xs);
       line-height: 1.3;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 1;
     }
 
     .state {
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .needs-attention .state {

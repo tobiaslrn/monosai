@@ -72,7 +72,7 @@ export function audioPreparationUnavailableReason(
       padding: 0;
       color: var(--text-primary);
       font-size: var(--text-sm);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     label {

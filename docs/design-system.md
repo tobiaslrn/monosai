@@ -78,10 +78,8 @@ whole reading character and books. Its proportions stay fixed as the column
 changes width. The home headline is tightly set beside it, above a quiet sync
 line. The creation action spans the column; filter pills share the available
 width on phones and stay compact on desktop.
-Home's primary action uses the dedicated home action tokens for a clearer green;
-the illustration is gently dimmed in the dark palette. These tokens belong to
-the home composition and do not recolour the other screens — except the pages
-composed like it, below, which opt in at their root with `.mn-home-palette`.
+Home's primary action uses the shared primary action colour; the illustration is
+gently dimmed in the dark palette.
 
 **What you can read is composed like the Library**
 ([ADR 0063](decisions/0063-what-you-can-read-is-composed-like-the-library.md)).
@@ -457,8 +455,11 @@ render Japanese until a network request completes is not local-first.
 
 The type scale is small on purpose: rank is carried by **size and weight within
 one scale**, not by a second system. All-caps micro-labels are not part of the
-language. A group inside a card is named the same way a section of a page is
-named, one step smaller.
+language. The page or surface title uses `--text-2xl`, a section uses
+`--text-xl`, and a group uses `--text-lg` one step below it. Body copy uses
+`--text-md`; metadata and supporting copy use `--text-sm` or `--text-xs`; the
+Library hero uses `--text-display`. Weight follows the same hierarchy through
+the regular, medium, semibold, and bold weight tokens.
 
 Three ranks exist: the page or surface title, the section within it, and the
 group within that. A fourth rank means the surface is doing too much. A group

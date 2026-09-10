@@ -61,7 +61,7 @@ import { IconComponent } from '../icon/icon.component';
       min-width: 0;
       margin: 0;
       overflow: hidden;
-      font-size: 1.625rem;
+      font-size: var(--text-2xl);
       white-space: nowrap;
       text-overflow: ellipsis;
     }
@@ -106,7 +106,7 @@ import { IconComponent } from '../icon/icon.component';
       }
 
       h1 {
-        font-size: 1.5rem;
+        font-size: var(--text-2xl);
       }
     }
   `,

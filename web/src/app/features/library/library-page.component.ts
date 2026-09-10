@@ -177,8 +177,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     .library-page {
       gap: var(--space-2);
       max-width: 42rem;
-      --action-primary: var(--home-action-primary);
-      --action-primary-hover: var(--home-action-hover);
     }
 
     .home-bar {
@@ -272,7 +270,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       width: 100%;
       border-radius: var(--radius-pill);
       font-size: var(--text-sm);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
       min-height: 3.25rem;
     }
 
@@ -290,7 +288,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       border: 0;
       background: transparent;
       color: var(--text-primary);
-      font: 500 0.75rem/1 var(--font-ui);
+      font: var(--weight-medium) var(--text-xs)/1 var(--font-ui);
       cursor: pointer;
     }
 
@@ -322,8 +320,8 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     .date-group h2 {
       margin: 0 0 var(--space-2);
       color: var(--text-secondary);
-      font-size: 0.75rem;
-      font-weight: 600;
+      font-size: var(--text-xs);
+      font-weight: var(--weight-semibold);
     }
 
     .reading-list {

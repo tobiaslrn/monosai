@@ -110,7 +110,7 @@ const STATUS_LABELS: Record<StepStatus, string> = {
     .step[data-status='active'] .name,
     .step[data-status='retrying'] .name {
       color: var(--text-primary);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .step[data-status='active'] .marker,

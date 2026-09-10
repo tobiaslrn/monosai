@@ -280,7 +280,7 @@ export interface UnknownWord {
       color: var(--text-primary);
       font: inherit;
       font-size: var(--text-sm);
-      font-weight: 500;
+      font-weight: var(--weight-medium);
       cursor: pointer;
       transition:
         background-color var(--motion-fast) ease-out,
@@ -355,7 +355,7 @@ export interface UnknownWord {
 
     .finding-label {
       margin: var(--space-2) 0 0;
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .finding-text {

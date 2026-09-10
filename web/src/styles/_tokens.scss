@@ -16,13 +16,10 @@
    * control boundaries (buttons, text inputs), not decorative dividers. */
   --border-strong: #778570;
 
-  --action-primary: #4f6b59;
-  --action-primary-hover: #405645;
+  --action-primary: #347e55;
+  --action-primary-hover: #2b6947;
   --action-primary-soft: #e4ede6;
-  --home-action-primary: #347e55;
-  --home-action-hover: #2b6947;
-  /* Green text on the home palette's surfaces, hovered ones included (4.5:1). */
-  --home-action-text: #2b6947;
+  --action-primary-text: #2b6947;
   --home-art-brightness: 1;
   --accent-secondary: #6f629a;
   --accent-secondary-soft: #ece8f5;
@@ -73,9 +70,7 @@
   --action-primary: #9dbfa8;
   --action-primary-hover: #b3d0bc;
   --action-primary-soft: #2c3730;
-  --home-action-primary: var(--action-primary);
-  --home-action-hover: var(--action-primary-hover);
-  --home-action-text: var(--action-primary);
+  --action-primary-text: var(--action-primary);
   --home-art-brightness: 0.78;
   --accent-secondary: #b6aada;
   --accent-secondary-soft: #322e42;
@@ -113,9 +108,18 @@
   --radius-sheet: 1.5rem;
   --radius-pill: 999px;
 
+  --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-md: 1rem;
   --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-display: 2.5rem;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
 
   --font-ui: system-ui, 'Segoe UI', roboto, helvetica, arial, sans-serif;
   --font-japanese: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Noto Sans JP', meiryo, sans-serif;

@@ -19,7 +19,7 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [PageHeaderComponent, PresetPickerComponent],
   template: `
-    <div class="mn-page mn-home-palette choice-page">
+    <div class="mn-page choice-page">
       <mn-page-header
         heading="Reading level"
         backTo="/reading-level"
@@ -78,7 +78,7 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
       width: 100%;
       min-height: 3.25rem;
       border-radius: var(--radius-pill);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .assets-failed {

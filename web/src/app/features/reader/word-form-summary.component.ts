@@ -65,7 +65,7 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
       padding: var(--space-1) var(--space-2);
       border-radius: var(--radius-pill);
       background: var(--action-primary-soft);
-      color: var(--action-primary);
+      color: var(--action-primary-text);
       font-size: var(--text-sm);
       line-height: 1.2;
     }
@@ -76,7 +76,7 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
       gap: var(--space-1);
       color: var(--text-primary);
       font-size: var(--text-sm);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
       line-height: 1.4;
     }
 
@@ -84,8 +84,8 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
       padding: var(--space-1) var(--space-2);
       border-radius: var(--radius-pill);
       background: var(--action-primary-soft);
-      color: var(--action-primary);
-      font-weight: 500;
+      color: var(--action-primary-text);
+      font-weight: var(--weight-medium);
     }
 
     .form-separator {

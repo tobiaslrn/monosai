@@ -269,9 +269,9 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       border: 0;
       border-radius: var(--radius-control);
       background: transparent;
-      color: var(--home-action-text);
+      color: var(--action-primary-text);
       font: inherit;
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
       cursor: pointer;
       anchor-name: --mn-add-words-anchor;
     }
@@ -358,7 +358,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
 
     .sheet-title {
       margin: 0;
-      font-size: 1.625rem;
+      font-size: var(--text-2xl);
       letter-spacing: -0.01em;
     }
 
@@ -388,7 +388,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
     }
 
     .headline {
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .code-line {
@@ -442,11 +442,11 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
 
     .choice-main strong {
       font-size: var(--text-lg);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .choice-hint {
-      color: var(--home-action-text);
+      color: var(--action-primary-text);
       font-size: var(--text-sm);
     }
 
@@ -488,8 +488,8 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       min-height: 3.25rem;
       border-color: var(--action-primary);
       border-radius: var(--radius-pill);
-      color: var(--home-action-text);
-      font-weight: 600;
+      color: var(--action-primary-text);
+      font-weight: var(--weight-semibold);
     }
 
     .file-input {

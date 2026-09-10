@@ -193,8 +193,8 @@ function readingKey(id: string): string {
     .date-group h2 {
       margin: 0;
       color: var(--text-secondary);
-      font-size: 0.75rem;
-      font-weight: 600;
+      font-size: var(--text-xs);
+      font-weight: var(--weight-semibold);
     }
 
     .reading-list {

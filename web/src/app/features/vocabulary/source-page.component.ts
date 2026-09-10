@@ -347,7 +347,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
     }
 
     .label strong {
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     /* A rule, not decoration: it is what stops two settings reading as one. */

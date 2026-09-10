@@ -552,7 +552,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     .node-head h3 {
       overflow: hidden;
       color: var(--text-primary);
-      font-weight: 700;
+      font-weight: var(--weight-bold);
       text-overflow: ellipsis;
     }
     /* A branch is subordinate to its node, and its label says so. */
@@ -560,7 +560,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       overflow: hidden;
       color: var(--text-secondary);
       font-size: var(--text-sm);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
       text-overflow: ellipsis;
     }
     .picker {
@@ -580,11 +580,11 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     }
     .option > span {
       color: var(--text-secondary);
-      font-size: 0.75rem;
+      font-size: var(--text-xs);
     }
     .hint {
       color: var(--text-secondary);
-      font-size: 0.75rem;
+      font-size: var(--text-xs);
     }
     .status {
       flex: none;
@@ -633,7 +633,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       min-height: 2rem;
       color: var(--text-secondary);
       font-size: var(--text-sm);
-      font-weight: 500;
+      font-weight: var(--weight-medium);
     }
     .branch {
       display: grid;

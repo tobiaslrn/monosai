@@ -48,7 +48,7 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
 
     legend {
       padding: 0;
-      font-weight: 500;
+      font-weight: var(--weight-medium);
     }
 
     .options {
@@ -68,7 +68,7 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
       border-radius: var(--radius-pill);
       background: var(--surface-canvas);
       font-size: var(--text-sm);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
       cursor: pointer;
     }
 

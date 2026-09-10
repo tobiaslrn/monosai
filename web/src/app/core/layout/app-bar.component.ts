@@ -78,8 +78,8 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       border-radius: var(--radius-control);
     }
     .wordmark {
-      font-size: 1.5rem;
-      font-weight: 700;
+      font-size: var(--text-2xl);
+      font-weight: var(--weight-bold);
       letter-spacing: -0.02em;
     }
     nav {

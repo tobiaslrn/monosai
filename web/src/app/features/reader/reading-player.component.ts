@@ -600,7 +600,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       min-inline-size: 4rem;
       padding-inline: var(--space-3);
       font-size: var(--text-sm);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
       text-decoration: none;
       white-space: nowrap;
     }

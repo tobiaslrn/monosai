@@ -49,7 +49,7 @@
 
 .result-screen h2 {
   margin: 0;
-  font-size: 2rem;
+  font-size: var(--text-2xl);
   letter-spacing: -0.025em;
 }
 
@@ -61,15 +61,15 @@
   border-radius: 1.375rem;
   background: var(--status-success-soft);
   color: var(--status-success);
-  font-size: 1.875rem;
-  font-weight: 700;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
 }
 
 .story-title {
   margin: var(--space-1) 0;
   font-family: var(--font-japanese);
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
 }
 
 @media (max-width: breakpoints.$narrow-max) {

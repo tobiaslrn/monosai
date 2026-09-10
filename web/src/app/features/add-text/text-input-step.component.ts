@@ -81,7 +81,7 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
 
     .count.is-over {
       color: var(--status-danger);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .limit-hint {

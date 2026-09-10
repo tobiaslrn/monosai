@@ -58,7 +58,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     StructuralBaselineSectionComponent,
   ],
   template: `
-    <div class="mn-page mn-home-palette level-page">
+    <div class="mn-page level-page">
       <mn-page-header
         heading="What you can read"
         subtitle="Manage the words and grammar in your stories."
@@ -192,7 +192,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
 
     .group h2 {
       margin: 0;
-      font-size: 1.375rem;
+      font-size: var(--text-xl);
       letter-spacing: -0.01em;
     }
 
@@ -297,16 +297,16 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
 
     .level-title {
       font-size: var(--text-lg);
-      font-weight: 700;
+      font-weight: var(--weight-bold);
     }
 
     .level-tag {
       padding: 0.2rem var(--space-3);
       border-radius: var(--radius-pill);
       background: var(--action-primary-soft);
-      color: var(--home-action-text);
+      color: var(--action-primary-text);
       font-size: var(--text-sm);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .chevron {
@@ -355,7 +355,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
       padding: var(--space-2) var(--space-3);
       list-style: none;
       cursor: pointer;
-      font-weight: 500;
+      font-weight: var(--weight-medium);
     }
 
     .fold > summary::-webkit-details-marker {

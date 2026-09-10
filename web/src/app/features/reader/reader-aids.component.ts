@@ -84,7 +84,7 @@ const AIDS: readonly AidOption[] = [
     h3 {
       margin: 0;
       font-size: var(--text-md);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
     .switches {
       display: flex;
@@ -134,6 +134,10 @@ const AIDS: readonly AidOption[] = [
       background: var(--status-warning-soft);
       color: var(--text-primary);
       font-size: var(--text-sm);
+    }
+
+    .vocabulary-notice a {
+      color: var(--action-primary-text);
     }
 
     .aid {

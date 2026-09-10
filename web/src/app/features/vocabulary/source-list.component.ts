@@ -148,7 +148,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
     .rname {
       overflow: hidden;
       font-size: var(--text-lg);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
       text-overflow: ellipsis;
       white-space: nowrap;
     }

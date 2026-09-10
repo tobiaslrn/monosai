@@ -67,8 +67,8 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
     }
 
     .title {
-      font-size: 1.25rem;
-      font-weight: 700;
+      font-size: var(--text-xl);
+      font-weight: var(--weight-bold);
       letter-spacing: -0.01em;
     }
 

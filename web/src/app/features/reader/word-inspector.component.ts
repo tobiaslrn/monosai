@@ -266,9 +266,9 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
     .surface {
       margin: 0;
       font-family: var(--font-japanese);
-      /* In rem, so the headword follows the reader's own text size. */
-      font-size: 1.75rem;
-      font-weight: 700;
+      /* Keep the headword in the shared display hierarchy. */
+      font-size: var(--text-2xl);
+      font-weight: var(--weight-bold);
       line-height: 1.15;
       overflow-wrap: anywhere;
     }
@@ -280,7 +280,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
     .surface rt {
       color: var(--text-secondary);
       font-size: 0.48em;
-      font-weight: 500;
+      font-weight: var(--weight-medium);
       line-height: 1;
     }
 
@@ -309,7 +309,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
     }
 
     .status .form-name {
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .status .form-example {
@@ -376,7 +376,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 
     .finding-label {
       margin: 0;
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .finding-text {
@@ -399,7 +399,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       background: var(--surface-sunken);
       color: var(--text-secondary);
       font-size: var(--text-sm);
-      font-weight: 400;
+      font-weight: var(--weight-regular);
     }
 
     section p + p {

@@ -63,8 +63,8 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     h2 {
       margin: 0;
       font-family: var(--font-ui);
-      font-size: 1.75rem;
-      font-weight: 700;
+      font-size: var(--text-2xl);
+      font-weight: var(--weight-bold);
       letter-spacing: -0.02em;
       line-height: 1.25;
     }
@@ -118,7 +118,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     }
 
     .choice strong {
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .choice small {
@@ -129,7 +129,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 
     @media (max-width: breakpoints.$narrow-max) {
       h2 {
-        font-size: 1.5rem;
+        font-size: var(--text-2xl);
       }
 
       .choices {

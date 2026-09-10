@@ -117,7 +117,7 @@ const HARD_DIFFICULTY_PERCENT = 50;
     .expression {
       overflow-wrap: anywhere;
       font-size: var(--text-lg);
-      font-weight: 650;
+      font-weight: var(--weight-semibold);
     }
 
     .meaning {
@@ -142,7 +142,7 @@ const HARD_DIFFICULTY_PERCENT = 50;
 
     .difficulty.is-hard {
       color: var(--status-warning);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .cell-label {
@@ -211,7 +211,7 @@ const HARD_DIFFICULTY_PERCENT = 50;
 
     /* The open row's tint darkens the page, so the link takes the darker green. */
     .sources a {
-      color: var(--home-action-text);
+      color: var(--action-primary-text);
     }
 
     @container vocabulary-list (max-width: 20rem) {
@@ -233,7 +233,7 @@ const HARD_DIFFICULTY_PERCENT = 50;
         overflow: visible;
         clip-path: none;
         color: var(--text-secondary);
-        font-weight: 400;
+        font-weight: var(--weight-regular);
       }
 
       .chevron {

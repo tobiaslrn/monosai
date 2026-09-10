@@ -157,7 +157,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       margin: 0;
       font-family: var(--font-ui);
       font-size: var(--text-sm);
-      font-weight: 500;
+      font-weight: var(--weight-medium);
       line-height: 1.35;
       overflow-wrap: anywhere;
     }
@@ -251,7 +251,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       align-items: center;
       margin: 0;
       color: var(--text-secondary);
-      font-size: 0.75rem;
+      font-size: var(--text-xs);
     }
 
     .status {
@@ -260,7 +260,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       border-radius: var(--radius-pill);
       background: var(--status-success-soft);
       color: var(--status-success);
-      font-size: 0.6875rem;
+      font-size: var(--text-xs);
       line-height: 1.2;
     }
 
@@ -294,7 +294,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       margin: 0;
       overflow: hidden;
       color: var(--text-secondary);
-      font-size: 0.75rem;
+      font-size: var(--text-xs);
       line-height: 1.3;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 1;

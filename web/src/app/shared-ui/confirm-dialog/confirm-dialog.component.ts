@@ -71,7 +71,7 @@ export interface ConfirmDialogData {
 
     h2 {
       margin: 0;
-      font-size: 1.25rem;
+      font-size: var(--text-xl);
     }
 
     p {

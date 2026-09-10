@@ -100,7 +100,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 
     .name {
       font-size: var(--text-lg);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
     }
 
     .caption,
@@ -113,7 +113,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     .example {
       margin-top: var(--space-2);
       font-family: var(--font-japanese);
-      font-weight: 600;
+      font-weight: var(--weight-semibold);
       line-height: 1.6;
     }
 

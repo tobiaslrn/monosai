@@ -52,7 +52,7 @@ interface VirtualVocabularyEntry {
     VocabularyBrowseRowComponent,
   ],
   template: `
-    <div class="mn-page mn-home-palette vocabulary-page">
+    <div class="mn-page vocabulary-page">
       <mn-page-header
         heading="Your vocabulary"
         backTo="/reading-level"
@@ -240,15 +240,15 @@ interface VirtualVocabularyEntry {
     .source-select {
       width: 100%;
       border-radius: var(--radius-pill);
-      font-weight: 500;
+      font-weight: var(--weight-medium);
     }
 
     .filters-button {
       flex: none;
       border-color: var(--action-primary);
       border-radius: var(--radius-pill);
-      color: var(--home-action-text);
-      font-weight: 600;
+      color: var(--action-primary-text);
+      font-weight: var(--weight-semibold);
     }
 
     .sort-line {
@@ -257,7 +257,7 @@ interface VirtualVocabularyEntry {
       align-items: center;
       margin: var(--space-2) 0 0;
       font-size: var(--text-sm);
-      font-weight: 500;
+      font-weight: var(--weight-medium);
     }
 
     .state-message {
