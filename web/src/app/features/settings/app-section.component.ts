@@ -14,49 +14,38 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="mn-card" aria-labelledby="mn-app-heading">
-      <h2 id="mn-app-heading" class="mn-card-title">App</h2>
+      <div class="mn-stack">
+        <h2 id="mn-app-heading" class="mn-card-title">App</h2>
 
-      <dl class="mn-facts">
-        <div>
-          <dt>Installed</dt>
-          <dd>{{ install.isStandalone() ? 'Yes' : 'No' }}</dd>
-        </div>
-      </dl>
+        <dl class="mn-facts">
+          <div>
+            <dt>Installed</dt>
+            <dd>{{ install.isStandalone() ? 'Yes' : 'No' }}</dd>
+          </div>
+        </dl>
 
-      @let update = updates.status();
-      <div class="mn-actions">
-        @if (!install.isStandalone()) {
+        @let update = updates.status();
+        <div class="mn-actions">
+          @if (!install.isStandalone() && install.canInstall()) {
+            <button type="button" class="mn-button" (click)="installApp()">
+              Install Monosai
+            </button>
+          }
           <button
             type="button"
             class="mn-button"
-            [disabled]="!install.canInstall()"
-            (click)="installApp()"
+            [disabled]="update.kind === 'activating'"
+            (click)="checkForUpdates()"
           >
-            Install Monosai
+            Check for updates
           </button>
-        }
-        <button
-          type="button"
-          class="mn-button"
-          [disabled]="update.kind === 'activating'"
-          (click)="checkForUpdates()"
-        >
-          Check for updates
-        </button>
-      </div>
+        </div>
 
-      @if (!install.isStandalone() && !install.canInstall()) {
-        <p class="mn-hint">Installation is not available from this browser right now.</p>
-      }
-      @if (updateStatusLabel(update); as statusLabel) {
-        <p class="mn-hint" aria-live="polite">{{ statusLabel }}</p>
-      }
+        @if (updateStatusLabel(update); as statusLabel) {
+          <p class="mn-hint" aria-live="polite">{{ statusLabel }}</p>
+        }
+      </div>
     </section>
-  `,
-  styles: `
-    p {
-      margin: 0;
-    }
   `,
 })
 export class AppSectionComponent {

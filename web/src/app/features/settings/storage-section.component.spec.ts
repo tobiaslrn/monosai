@@ -91,7 +91,7 @@ describe('StorageSectionComponent', () => {
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     [...element.querySelectorAll<HTMLButtonElement>('button')]
-      .find((button) => button.textContent.includes('Delete saved audio'))
+      .find((button) => button.textContent.includes('Delete audio'))
       ?.click();
     await settle(fixture);
     return fixture;
@@ -197,7 +197,7 @@ describe('StorageSectionComponent', () => {
       fixture.detectChanges();
 
       const button = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
-        (candidate) => candidate.textContent.includes('Ask the browser'),
+        (candidate) => candidate.textContent.includes('Keep data'),
       );
       expect(button?.disabled).toBe(false);
       button?.click();

@@ -16,56 +16,54 @@ import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnosti
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="mn-card" aria-labelledby="mn-diagnostics-heading">
-      <h2 id="mn-diagnostics-heading" class="mn-card-title">Troubleshooting</h2>
-      <p class="mn-hint">
-        Copy a privacy-safe diagnostic log when you need help. Logs stay in this tab, disappear on
-        reload, and never include your API key or reading content.
-      </p>
-      <div class="mn-actions">
-        <button type="button" class="mn-button" (click)="copyDiagnostics()">
-          Copy diagnostics
-        </button>
-        <button type="button" class="mn-button" (click)="clearDiagnostics()">
-          Clear diagnostics
-        </button>
+      <div class="mn-stack">
+        <h2 id="mn-diagnostics-heading" class="mn-card-title">Troubleshooting</h2>
+        <p class="mn-hint">
+          Copy a privacy-safe diagnostic log when you need help. Logs stay in this tab, disappear on
+          reload, and never include your API key or reading content.
+        </p>
+        <div class="mn-actions">
+          <button type="button" class="mn-button" (click)="copyDiagnostics()">
+            Copy diagnostics
+          </button>
+          <button type="button" class="mn-button" (click)="clearDiagnostics()">
+            Clear diagnostics
+          </button>
+        </div>
+        @if (copyStatus() === 'copied') {
+          <p class="mn-hint" role="status">Diagnostics copied.</p>
+        } @else if (copyStatus() === 'failed') {
+          <p class="mn-hint" role="status">Diagnostics could not be copied on this browser.</p>
+        }
+        <details class="mn-disclosure advanced">
+          <summary>Advanced technical details</summary>
+          <dl class="mn-facts">
+            <div>
+              <dt>App version</dt>
+              <dd>{{ build.appVersion }}</dd>
+            </div>
+            <div>
+              <dt>Build commit</dt>
+              <dd>{{ build.buildCommit }}</dd>
+            </div>
+            <div>
+              <dt>Database schema version</dt>
+              <dd>{{ schemaVersion }}</dd>
+            </div>
+            <div>
+              <dt>Provider protocol</dt>
+              <dd>{{ endpointVersion }}</dd>
+            </div>
+            <div>
+              <dt>Prompt versions</dt>
+              <dd>{{ promptVersions }}</dd>
+            </div>
+          </dl>
+        </details>
       </div>
-      @if (copyStatus() === 'copied') {
-        <p class="mn-hint" role="status">Diagnostics copied.</p>
-      } @else if (copyStatus() === 'failed') {
-        <p class="mn-hint" role="status">Diagnostics could not be copied on this browser.</p>
-      }
-      <details class="mn-disclosure advanced">
-        <summary>Advanced technical details</summary>
-        <dl class="mn-facts">
-          <div>
-            <dt>App version</dt>
-            <dd>{{ build.appVersion }}</dd>
-          </div>
-          <div>
-            <dt>Build commit</dt>
-            <dd>{{ build.buildCommit }}</dd>
-          </div>
-          <div>
-            <dt>Database schema version</dt>
-            <dd>{{ schemaVersion }}</dd>
-          </div>
-          <div>
-            <dt>Provider protocol</dt>
-            <dd>{{ endpointVersion }}</dd>
-          </div>
-          <div>
-            <dt>Prompt versions</dt>
-            <dd>{{ promptVersions }}</dd>
-          </div>
-        </dl>
-      </details>
     </section>
   `,
   styles: `
-    p {
-      margin: 0;
-    }
-
     .advanced {
       padding-top: var(--space-2);
       border-top: 1px solid var(--border-subtle);

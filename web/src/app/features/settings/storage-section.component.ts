@@ -36,86 +36,88 @@ function formatBytes(bytes: number | null): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="mn-card" aria-labelledby="mn-storage-heading">
-      <h2 id="mn-storage-heading" class="mn-card-title">Storage</h2>
+      <div class="mn-stack">
+        <h2 id="mn-storage-heading" class="mn-card-title">Storage</h2>
 
-      <dl class="mn-facts">
-        <div>
-          <dt>Browser storage protection</dt>
-          <!--
-            A live region because the answer to the request below appears here
-            and nowhere else; a refusal changed nothing on screen before.
-          -->
-          <dd aria-live="polite">{{ persistenceLabel() }}</dd>
-        </div>
-        <div>
-          <dt>Approximate usage</dt>
-          <dd>{{ usageLabel() }}</dd>
-        </div>
-      </dl>
+        <dl class="mn-facts">
+          <div>
+            <dt>Browser storage protection</dt>
+            <!--
+              A live region because the answer to the request below appears here
+              and nowhere else; a refusal changed nothing on screen before.
+            -->
+            <dd aria-live="polite">{{ persistenceLabel() }}</dd>
+          </div>
+          <div>
+            <dt>Approximate usage</dt>
+            <dd>{{ usageLabel() }}</dd>
+          </div>
+        </dl>
 
-      <div class="mn-actions">
-        @if (storage.status().canRequest) {
+        <div class="mn-actions">
+          @if (storage.status().canRequest) {
+            <button
+              type="button"
+              class="mn-button"
+              [disabled]="storage.action() !== 'idle'"
+              (click)="requestPersistence()"
+            >
+              Keep data
+            </button>
+          }
           <button
             type="button"
             class="mn-button"
             [disabled]="storage.action() !== 'idle'"
-            (click)="requestPersistence()"
+            (click)="clearAudio()"
           >
-            Ask the browser to keep Monosai data
+            Delete audio
           </button>
-        }
-        <button
-          type="button"
-          class="mn-button"
-          [disabled]="storage.action() !== 'idle'"
-          (click)="clearAudio()"
-        >
-          Delete saved audio
-        </button>
-      </div>
-      <p class="mn-hint">
-        Deletes all saved audio on this device and stops playback. Other reading aids stay.
-      </p>
-      <p aria-live="polite" class="mn-hint">
-        @if (storage.audioCleared()) {
-          Saved audio deleted{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
-        }
-      </p>
-
-      <details class="danger mn-disclosure" data-testid="danger-zone">
-        <summary>Danger zone</summary>
-        <div class="danger-content">
-          <p class="mn-hint">
-            A full reset permanently deletes every reading, snapshot, saved setting, and cached aid
-            on this device. It cannot be undone.
-          </p>
-
-          @if (resetStage() === 'idle') {
-            <button type="button" class="mn-button mn-button--danger" (click)="beginReset()">
-              Delete all Monosai data
-            </button>
-          } @else {
-            <p role="alert" class="mn-notice mn-notice--error">
-              This deletes everything Monosai has stored in this browser. Continue?
-            </p>
-            <div class="mn-actions">
-              <button
-                type="button"
-                class="mn-button mn-button--danger"
-                [disabled]="storage.action() === 'resetting'"
-                (click)="confirmReset()"
-              >
-                Yes, delete everything
-              </button>
-              <button type="button" class="mn-button" (click)="cancelReset()">Cancel</button>
-            </div>
-          }
         </div>
-      </details>
+        <p class="mn-hint">
+          Deletes all saved audio on this device and stops playback. Other reading aids stay.
+        </p>
+        <p aria-live="polite" class="mn-hint">
+          @if (storage.audioCleared()) {
+            Saved audio deleted{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
+          }
+        </p>
 
-      @if (storage.failure(); as failure) {
-        <p role="alert" class="mn-notice mn-notice--error">{{ failure.message }}</p>
-      }
+        <details class="danger mn-disclosure" data-testid="danger-zone">
+          <summary>Danger zone</summary>
+          <div class="danger-content mn-stack mn-stack--tight">
+            <p class="mn-hint">
+              A full reset permanently deletes every reading, snapshot, saved setting, and cached aid
+              on this device. It cannot be undone.
+            </p>
+
+            @if (resetStage() === 'idle') {
+              <button type="button" class="mn-button mn-button--danger" (click)="beginReset()">
+                Delete all Monosai data
+              </button>
+            } @else {
+              <p role="alert" class="mn-notice mn-notice--error">
+                This deletes everything Monosai has stored in this browser. Continue?
+              </p>
+              <div class="mn-actions">
+                <button
+                  type="button"
+                  class="mn-button mn-button--danger"
+                  [disabled]="storage.action() === 'resetting'"
+                  (click)="confirmReset()"
+                >
+                  Yes, delete everything
+                </button>
+                <button type="button" class="mn-button" (click)="cancelReset()">Cancel</button>
+              </div>
+            }
+          </div>
+        </details>
+
+        @if (storage.failure(); as failure) {
+          <p role="alert" class="mn-notice mn-notice--error">{{ failure.message }}</p>
+        }
+      </div>
     </section>
   `,
   styles: `
@@ -133,9 +135,6 @@ function formatBytes(bytes: number | null): string {
     }
 
     .danger-content {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
       align-items: flex-start;
       padding-top: var(--space-2);
     }

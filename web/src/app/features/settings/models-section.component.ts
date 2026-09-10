@@ -49,7 +49,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     '(document:keydown.escape)': 'connectionMenuOpen.set(false)',
   },
   template: `
-    <section class="mn-card" aria-labelledby="mn-models-heading">
+    <section class="mn-card mn-stack" aria-labelledby="mn-models-heading">
       <header class="section-head">
         <h2 id="mn-models-heading" class="mn-card-title">AI &amp; generation</h2>
         <div class="connection">
@@ -120,7 +120,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                   (input)="onKeyInput($event)"
                 />
               </label>
-              <div class="connection-actions">
+              <div class="connection-actions mn-actions">
                 <button
                   type="button"
                   class="mn-button mn-button--primary"
@@ -143,7 +143,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
 
       <div class="tree">
         <section
-          class="node"
+          class="node mn-inset mn-stack mn-stack--tight"
           aria-labelledby="mn-text-model-label"
           data-capability="text"
           [attr.data-readiness]="text.readiness()"
@@ -155,7 +155,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
               Audio head puts them in. Text used to show one or the other, so
               the two cards said different kinds of thing in the same place.
             -->
-            <div class="head-status">
+            <div class="head-status mn-actions">
               <span
                 class="mn-status-pill"
                 [class.mn-status-pill--success]="text.readiness() === 'ready'"
@@ -220,7 +220,11 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
             </div>
           </div>
 
-          <details class="mn-disclosure branches" [open]="hasOverrides()">
+          <details
+            class="mn-disclosure branches"
+            [open]="hasOverrides() || branchesOpen()"
+            (toggle)="setBranchesOpen($event)"
+          >
             <summary data-testid="task-models-toggle">
               Separate models for translation and grammar
             </summary>
@@ -303,7 +307,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
         </section>
 
         <section
-          class="node"
+          class="node mn-inset mn-stack mn-stack--tight"
           aria-labelledby="mn-audio-model-label"
           data-capability="audio"
           [attr.data-readiness]="tts.readiness()"
@@ -316,7 +320,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
               been previewed looks identical to one that has, and only the
               second of them can be generated with.
             -->
-            <div class="head-status">
+            <div class="head-status mn-actions">
               <span
                 class="mn-status-pill"
                 [class.mn-status-pill--success]="tts.readiness() === 'ready'"
@@ -496,9 +500,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       box-shadow: var(--shadow-overlay);
     }
     .connection-actions {
-      display: flex;
       justify-content: flex-end;
-      gap: var(--space-2);
     }
     /* Two jobs, two columns on a desktop; one column as soon as that is tight. */
     .tree {
@@ -511,16 +513,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       gap: var(--space-3);
     }
     .node {
-      display: grid;
-      /* Equal-height cards must not spread their rows to fill the difference:
-         the spare space belongs at the bottom, not between the fields. */
-      align-content: start;
-      gap: var(--space-2);
       min-width: 0;
-      padding: var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-canvas);
     }
     /*
      * A fixed height regardless of what sits on the right. Otherwise a pill
@@ -568,11 +561,9 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     }
     /* Where this stands, and the press that moves it on, on one line. */
     .head-status {
-      display: flex;
       flex: none;
-      align-items: center;
-      gap: var(--space-2);
       min-width: 0;
+      justify-content: flex-end;
     }
     .branches {
       margin-top: var(--space-1);
@@ -597,8 +588,10 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
         width: 100%;
       }
       .connection-menu {
-        inset-inline: 0;
+        position: static;
         width: 100%;
+        margin-top: var(--space-2);
+        box-shadow: none;
       }
     }
   `,
@@ -620,6 +613,7 @@ export class ModelsSectionComponent {
       : 'Key saved';
   });
   protected readonly connectionMenuOpen = signal(false);
+  protected readonly branchesOpen = signal(false);
   protected readonly textModels = signal<readonly ModelCapabilities[]>([]);
   protected readonly speechModels = signal<readonly ModelCapabilities[]>([]);
   protected readonly catalogLoading = signal(false);
@@ -777,6 +771,11 @@ export class ModelsSectionComponent {
   protected toggleConnectionMenu(): void {
     this.connectionMenuOpen.update((open) => !open);
   }
+
+  protected setBranchesOpen(event: Event): void {
+    this.branchesOpen.set((event.target as HTMLDetailsElement).open);
+  }
+
   protected closeConnectionMenuFromOutside(event: PointerEvent): void {
     if (!this.connectionMenuOpen() || !(event.target instanceof Node)) return;
     if (this.connectionMenu()?.nativeElement.contains(event.target)) return;

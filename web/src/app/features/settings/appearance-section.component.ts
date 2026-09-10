@@ -14,26 +14,28 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="mn-card" aria-labelledby="mn-appearance-heading">
-      <h2 id="mn-appearance-heading" class="mn-card-title">Appearance</h2>
+      <div class="mn-stack">
+        <h2 id="mn-appearance-heading" class="mn-card-title">Appearance</h2>
 
-      <fieldset>
-        <legend>Theme</legend>
-        <div class="mn-segmented">
-          @for (option of themeOptions; track option.value) {
-            <label>
-              <input
-                type="radio"
-                name="theme"
-                [value]="option.value"
-                [checked]="settings.theme() === option.value"
-                (change)="selectTheme(option.value)"
-              />
-              <span>{{ option.label }}</span>
-            </label>
-          }
-        </div>
-        <p class="mn-hint">System follows your device's light or dark setting.</p>
-      </fieldset>
+        <fieldset>
+          <legend>Theme</legend>
+          <div class="mn-segmented">
+            @for (option of themeOptions; track option.value) {
+              <label>
+                <input
+                  type="radio"
+                  name="theme"
+                  [value]="option.value"
+                  [checked]="settings.theme() === option.value"
+                  (change)="selectTheme(option.value)"
+                />
+                <span>{{ option.label }}</span>
+              </label>
+            }
+          </div>
+          <p class="mn-hint">System follows your device's light or dark setting.</p>
+        </fieldset>
+      </div>
     </section>
   `,
   styles: `
