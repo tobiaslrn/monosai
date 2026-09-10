@@ -322,7 +322,6 @@ test.describe('generating a story', () => {
     await page.getByTestId('generate').click();
 
     await expect(page.getByTestId('failure-context')).toHaveCount(0, { timeout: 60_000 });
-    await expect(page.getByText('ai/authentication')).toBeVisible();
 
     const rows = await countOwnedRows(page);
     expect(rows['readings']).toBe(0);

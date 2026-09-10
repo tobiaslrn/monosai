@@ -1192,7 +1192,7 @@ test.describe('audio settings and readiness', () => {
     await ttsSpeed(page).blur();
 
     await expect(ttsSpeed(page)).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.getByRole('alert')).toContainText('between 0.5 and 2');
+    await expect(page.getByRole('alert')).toContainText('Enter a number from 0.5 to 2.');
     expect(await storedSpeed(page), 'the minimum is never what clearing a box meant').toBe(1.5);
 
     await page.reload();

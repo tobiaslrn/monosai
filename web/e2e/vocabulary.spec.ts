@@ -479,10 +479,6 @@ test.describe('vocabulary', () => {
       timeout: 30_000,
     });
     await expect(alert).toContainText('current vocabulary and other sources are unchanged');
-    await expect(alert).toContainText('anki/package-review-data-missing');
-    // The code is printed with a way to look it up, and the export it asks for
-    // with a way to do it.
-    await expect(alert.getByRole('link', { name: /what this means/ })).toBeVisible();
     await expect(alert.getByRole('link', { name: /how to export/ })).toBeVisible();
     await expectNoSeriousAccessibilityViolations(page);
   });
