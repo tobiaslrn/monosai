@@ -97,6 +97,7 @@ export interface VocabularyEntry {
   readonly meaning?: string;
   readonly fsrsDifficulty?: number;
   readonly firstReviewedAt?: number;
+  readonly firstReviewedPrecision?: 'exact' | 'anki-day';
   readonly lastReviewedAt?: number;
   readonly sourceIds: readonly VocabularySourceId[];
 }

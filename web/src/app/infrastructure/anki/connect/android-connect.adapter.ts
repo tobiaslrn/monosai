@@ -38,7 +38,10 @@ export class AndroidConnectAdapter implements AnkiVocabularyProvider {
   private capabilities: AnkiCapabilities | null = null;
   private disposed = false;
 
-  constructor(private readonly client: AnkiConnectClient) {}
+  constructor(
+    private readonly client: AnkiConnectClient,
+    private readonly now: () => number = Date.now,
+  ) {}
 
   async probe(signal?: AbortSignal): Promise<Result<AnkiCapabilities, AnkiError>> {
     if (this.disposed) {
@@ -183,10 +186,14 @@ export class AndroidConnectAdapter implements AnkiVocabularyProvider {
 
     const batchSize = ready.value.maxBatchSize ?? ANDROID_BATCH_SIZE;
     for (const mapping of mappings) {
-      // AnkiDroid's content provider has no review log, so the bridge is never
-      // asked for one; recency falls back to the card interval on Android.
+      // AnkiDroid does not expose the review log itself, but its supported card
+      // search delegates `introduced:N` to the backend that reads the earliest
+      // real review. The resolver recovers that study day without a write or a
+      // private database read.
       for await (const event of extractMapping(this.client, mapping, batchSize, signal, {
         readsReviewHistory: false,
+        readsIntroducedHistory: true,
+        now: this.now,
       })) {
         yield event;
         if (event.kind === 'failed') {

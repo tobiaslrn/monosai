@@ -19,6 +19,13 @@ export interface AnkiSchedulingSignals {
    * thousands of notes at one instant and the learner meets them over years.
    */
   readonly firstReviewedAt?: number;
+  /**
+   * Precision of `firstReviewedAt` when the source cannot expose an instant.
+   *
+   * Omitted values are exact for compatibility with snapshots written before
+   * precision was recorded. AnkiDroid can prove only the collection study day.
+   */
+  readonly firstReviewedPrecision?: 'exact' | 'anki-day';
   /** Largest current scheduling interval, in days, over the eligible cards. */
   readonly intervalDays?: number;
   /** Largest FSRS difficulty, on Anki's 1-10 scale, over the eligible cards. */
@@ -48,8 +55,7 @@ export function difficultyPercent(fsrsDifficulty: number | undefined): number | 
     Math.max(FSRS_DIFFICULTY_MINIMUM, fsrsDifficulty),
   );
   return Math.round(
-    ((clamped - FSRS_DIFFICULTY_MINIMUM) /
-      (FSRS_DIFFICULTY_MAXIMUM - FSRS_DIFFICULTY_MINIMUM)) *
+    ((clamped - FSRS_DIFFICULTY_MINIMUM) / (FSRS_DIFFICULTY_MAXIMUM - FSRS_DIFFICULTY_MINIMUM)) *
       100,
   );
 }
@@ -60,6 +66,7 @@ export interface AnkiCardScheduling {
   readonly lapses?: number;
   readonly factor?: number;
   readonly firstReviewedAt?: number;
+  readonly firstReviewedPrecision?: AnkiSchedulingSignals['firstReviewedPrecision'];
   /** Anki's `ivl`: positive days, or negative seconds while a card is learning. */
   readonly intervalDays?: number;
   readonly fsrsDifficulty?: number;
@@ -89,6 +96,8 @@ export function normalizeSchedulingSignals(
   const lapseRatio = unitInterval(signals?.lapseRatio);
   const easeFactor = positiveFinite(signals?.easeFactor);
   const firstReviewedAt = positiveInteger(signals?.firstReviewedAt);
+  const firstReviewedPrecision =
+    firstReviewedAt === undefined ? undefined : reviewPrecision(signals?.firstReviewedPrecision);
   const intervalDays = positiveFinite(signals?.intervalDays);
   const fsrsDifficulty = withinRange(
     signals?.fsrsDifficulty,
@@ -101,6 +110,7 @@ export function normalizeSchedulingSignals(
     ...(lapseRatio === undefined ? {} : { lapseRatio }),
     ...(easeFactor === undefined ? {} : { easeFactor }),
     ...(firstReviewedAt === undefined ? {} : { firstReviewedAt }),
+    ...(firstReviewedPrecision === undefined ? {} : { firstReviewedPrecision }),
     ...(intervalDays === undefined ? {} : { intervalDays }),
     ...(fsrsDifficulty === undefined ? {} : { fsrsDifficulty }),
     ...(lastReviewedAt === undefined ? {} : { lastReviewedAt }),
@@ -120,7 +130,7 @@ export function mergeSchedulingSignals(
   // Earliest first review: the note entered the vocabulary when its first card
   // was first answered, and the earliest evidence is also the pessimistic one,
   // so a late-added sibling never makes a long-known note look freshly learned.
-  const firstReviewedAt = minimumDefined(a.firstReviewedAt, b.firstReviewedAt);
+  const firstReview = earliestFirstReview(a, b);
   // Largest interval: a note is as settled as its best-established card. Taking
   // the minimum would let one sibling in relearning, whose interval resets to a
   // day, present a long-known note as new.
@@ -134,7 +144,10 @@ export function mergeSchedulingSignals(
     ...(reps === undefined ? {} : { reps }),
     ...(lapseRatio === undefined ? {} : { lapseRatio }),
     ...(easeFactor === undefined ? {} : { easeFactor }),
-    ...(firstReviewedAt === undefined ? {} : { firstReviewedAt }),
+    ...(firstReview === undefined ? {} : { firstReviewedAt: firstReview.at }),
+    ...(firstReview?.precision === undefined
+      ? {}
+      : { firstReviewedPrecision: firstReview.precision }),
     ...(intervalDays === undefined ? {} : { intervalDays }),
     ...(fsrsDifficulty === undefined ? {} : { fsrsDifficulty }),
     ...(lastReviewedAt === undefined ? {} : { lastReviewedAt }),
@@ -150,14 +163,23 @@ export function mergeSchedulingSignals(
  * comparison then happens between values that all mean the same thing.
  */
 export function schedulingSignalsFromCard(card: AnkiCardScheduling): AnkiSchedulingSignals {
-  const { reps, lapses, factor, firstReviewedAt, intervalDays, fsrsDifficulty, lastReviewedAt } =
-    card;
+  const {
+    reps,
+    lapses,
+    factor,
+    firstReviewedAt,
+    firstReviewedPrecision,
+    intervalDays,
+    fsrsDifficulty,
+    lastReviewedAt,
+  } = card;
   return normalizeSchedulingSignals({
     reps,
     lapseRatio:
       Number.isFinite(lapses) && (lapses ?? 0) >= 0 && reps > 0 ? (lapses ?? 0) / reps : undefined,
     easeFactor: factor,
     firstReviewedAt,
+    firstReviewedPrecision,
     intervalDays:
       intervalDays === undefined || !Number.isFinite(intervalDays)
         ? undefined
@@ -165,6 +187,47 @@ export function schedulingSignalsFromCard(card: AnkiCardScheduling): AnkiSchedul
     fsrsDifficulty,
     lastReviewedAt,
   });
+}
+
+function reviewPrecision(
+  value: AnkiSchedulingSignals['firstReviewedPrecision'],
+): AnkiSchedulingSignals['firstReviewedPrecision'] {
+  return value === 'exact' || value === 'anki-day' ? value : undefined;
+}
+
+function earliestFirstReview(
+  left: AnkiSchedulingSignals,
+  right: AnkiSchedulingSignals,
+): { at: number; precision?: 'exact' | 'anki-day' } | undefined {
+  if (left.firstReviewedAt === undefined) {
+    return reviewOf(right);
+  }
+  if (right.firstReviewedAt === undefined) {
+    return reviewOf(left);
+  }
+  if (left.firstReviewedAt < right.firstReviewedAt) {
+    return reviewOf(left);
+  }
+  if (right.firstReviewedAt < left.firstReviewedAt) {
+    return reviewOf(right);
+  }
+  // Equal evidence keeps the stronger precision. Missing is legacy exact.
+  return left.firstReviewedPrecision === 'anki-day' && right.firstReviewedPrecision === 'anki-day'
+    ? { at: left.firstReviewedAt, precision: 'anki-day' }
+    : { at: left.firstReviewedAt };
+}
+
+function reviewOf(
+  signals: AnkiSchedulingSignals,
+): { at: number; precision?: 'exact' | 'anki-day' } | undefined {
+  return signals.firstReviewedAt === undefined
+    ? undefined
+    : {
+        at: signals.firstReviewedAt,
+        ...(signals.firstReviewedPrecision === undefined
+          ? {}
+          : { precision: signals.firstReviewedPrecision }),
+      };
 }
 
 function positiveInteger(value: number | undefined): number | undefined {

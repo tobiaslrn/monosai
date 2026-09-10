@@ -108,7 +108,7 @@ describe('schema v14 meaning fields', () => {
 
       await db.open();
 
-      expect(db.verno).toBe(14);
+      expect(db.verno).toBe(15);
       expect(await db.table('settings').get('app')).toEqual({
         key: 'app',
         v: 1,

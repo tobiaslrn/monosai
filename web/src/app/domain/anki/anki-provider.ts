@@ -29,6 +29,7 @@ export interface ExtractedEntry {
   readonly lapseRatio?: AnkiSchedulingSignals['lapseRatio'];
   readonly easeFactor?: AnkiSchedulingSignals['easeFactor'];
   readonly firstReviewedAt?: AnkiSchedulingSignals['firstReviewedAt'];
+  readonly firstReviewedPrecision?: AnkiSchedulingSignals['firstReviewedPrecision'];
   readonly intervalDays?: AnkiSchedulingSignals['intervalDays'];
   readonly fsrsDifficulty?: AnkiSchedulingSignals['fsrsDifficulty'];
   readonly lastReviewedAt?: AnkiSchedulingSignals['lastReviewedAt'];

@@ -91,6 +91,35 @@ describe('applyBrowseQuery', () => {
     ).toEqual(['inside-7', 'outside-7', 'inside-30', 'inside-90']);
   });
 
+  it('filters Anki study-day observations by local calendar day', () => {
+    const now = new Date(2026, 8, 9, 8).getTime();
+    const localDay = (daysAgo: number): number => {
+      const date = new Date(2026, 8, 9 - daysAgo);
+      date.setHours(0, 0, 0, 0);
+      return date.getTime();
+    };
+    const entries = [
+      entry('today', {
+        firstReviewedAt: localDay(0),
+        firstReviewedPrecision: 'anki-day',
+      }),
+      entry('inside-7-study-days', {
+        firstReviewedAt: localDay(6),
+        firstReviewedPrecision: 'anki-day',
+      }),
+      entry('outside-7-study-days', {
+        firstReviewedAt: localDay(7),
+        firstReviewedPrecision: 'anki-day',
+      }),
+    ];
+
+    expect(
+      applyBrowseQuery(entries, query({ firstStudied: 'last-7-days' }), now).map(
+        (item) => item.visibleExpression,
+      ),
+    ).toEqual(['today', 'inside-7-study-days']);
+  });
+
   it('uses deterministic tie-breakers for every sort', () => {
     const entries = [
       entry('same-b', { canonicalExpression: 'same', firstReviewedAt: NOW, fsrsDifficulty: 5 }),

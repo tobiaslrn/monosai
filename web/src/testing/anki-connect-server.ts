@@ -34,6 +34,8 @@ export interface FakeServerOptions {
    * cannot ask about recent study without losing the vocabulary itself.
    */
   readonly failingSearchTerms?: readonly string[];
+  /** Fixed clock for `introduced:` search fixtures. */
+  readonly now?: number;
 }
 
 interface ServerCard {
@@ -267,6 +269,22 @@ export class FakeAnkiConnectServer {
    * `note:Y` matches the note type. Terms combine with AND.
    */
   private findCards(query: string): number[] {
+    const introduced = [...query.matchAll(/\(cid:([0-9,]+) introduced:([0-9]+)\)/gu)].map(
+      (match) => ({
+        ids: new Set(match[1].split(',').map(Number)),
+        days: Number(match[2]),
+      }),
+    );
+    if (introduced.length > 0) {
+      return this.cards
+        .filter((card) =>
+          introduced.some(
+            (clause) => clause.ids.has(card.cardId) && this.wasIntroduced(card, clause.days),
+          ),
+        )
+        .map((card) => card.cardId);
+    }
+
     // Quoted terms and bare ones both count. Reading only the quoted half would
     // silently drop every `rated:` term and answer the scope search instead,
     // which is the same as claiming the learner answered their whole deck today.
@@ -326,6 +344,16 @@ export class FakeAnkiConnectServer {
       return card.answeredAgain === true;
     }
     return parts[1] === '2' ? card.answeredHard === true : false;
+  }
+
+  /** Anki's `introduced:N`: first real answer within the last N study days. */
+  private wasIntroduced(card: ServerCard, within: number): boolean {
+    if (card.firstReviewedAt === undefined || !Number.isFinite(within)) {
+      return false;
+    }
+    const now = this.options.now ?? Date.now();
+    const daysAgo = Math.floor(Math.max(0, now - card.firstReviewedAt) / 86_400_000);
+    return daysAgo < within;
   }
 }
 

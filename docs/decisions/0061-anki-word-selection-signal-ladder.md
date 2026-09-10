@@ -76,8 +76,9 @@ would buy obviousness at the price of two stories from one snapshot reading
 alike.
 
 **What each source can prove differs, and the ladder is how that is expressed.**
-A package and the desktop add-on can both produce a first review; AnkiDroid's
-content provider exposes no review log at all, so Android rests on the interval.
+A package and the desktop add-on produce an exact first-review instant. AnkiDroid
+does not expose the review log, but its supported `introduced:N` search proves
+the first-review study day ([ADR 0065](0065-ankidroid-first-review-study-day.md)).
 FSRS difficulty is currently package-only. Rather than gate the feature on the
 weakest source, each mode uses the best evidence available and says so in one
 place.

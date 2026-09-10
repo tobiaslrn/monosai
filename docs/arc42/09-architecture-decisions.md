@@ -61,6 +61,7 @@ files are already linked from code comments and from other records.
 | [0056](../decisions/0056-first-party-ankidroid-bridge.md)             | First-party read-only AnkiDroid bridge and shared wire contract    |
 | [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)     | One Anki entry chosen by platform, and a page per source           |
 | [0061](../decisions/0061-anki-word-selection-signal-ladder.md)        | Anki word selection weights a ladder of scheduling evidence        |
+| [0065](../decisions/0065-ankidroid-first-review-study-day.md)         | AnkiDroid first review uses the supported search language           |
 
 ### AI providers and generation
 

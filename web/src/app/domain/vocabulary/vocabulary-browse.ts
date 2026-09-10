@@ -86,7 +86,17 @@ function matchesFirstStudied(
     return false;
   }
   const days = firstStudied === 'last-7-days' ? 7 : firstStudied === 'last-30-days' ? 30 : 90;
+  if (entry.firstReviewedPrecision === 'anki-day') {
+    return entry.firstReviewedAt >= localDayStart(now, days - 1) && entry.firstReviewedAt <= now;
+  }
   return entry.firstReviewedAt >= now - days * DAY_MS && entry.firstReviewedAt <= now;
+}
+
+function localDayStart(now: number, daysAgo: number): number {
+  const date = new Date(now);
+  date.setDate(date.getDate() - daysAgo);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
 }
 
 function compareEntries(

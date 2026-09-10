@@ -105,6 +105,9 @@ transport compatibility or energy consumption. Before publishing the first APK:
   deck that was reset and restudied and a card answered across the study-day
   rollover. Read only; never answer or reschedule the learner's cards to produce
   evidence.
+- Compare `cid:<id> introduced:N` with AnkiDroid's browser for cards first
+  answered today, before and after the rollover, and years after creation. Confirm
+  the smallest matching N agrees and manual reschedules do not count as answers.
 - Check AnkiDroid absent, permission refused/revoked, and a 2.23 provider. Expect
   the specific installed/access/review-support error, never desktop permission advice.
 - Refuse the page origin and confirm `origin-not-allowed`; kill the listener

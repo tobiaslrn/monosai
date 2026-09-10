@@ -13,15 +13,17 @@ export const sourceKindSchema = z.enum(['anki-connect', 'anki-package', 'text-li
 
 /**
  * Optional because a row written before a signal existed legitimately lacks it,
- * and because no source can prove every signal: a package carries a review log
- * that AnkiDroid's provider cannot expose at all. Zod strips unknown keys, so a
- * signal missing from this shape would be silently dropped on read.
+ * and because no source can prove every signal. Android's first review is a
+ * study-day observation rather than an exact instant, so its representative
+ * timestamp carries an explicit precision marker. Zod strips unknown keys, so
+ * a signal missing from this shape would be silently dropped on read.
  */
 const schedulingSignalsShape = {
   reps: z.number().int().positive().optional(),
   lapseRatio: z.number().min(0).max(1).optional(),
   easeFactor: z.number().positive().optional(),
   firstReviewedAt: z.number().int().positive().optional(),
+  firstReviewedPrecision: z.enum(['exact', 'anki-day']).optional(),
   intervalDays: z.number().positive().optional(),
   fsrsDifficulty: z.number().min(1).max(10).optional(),
   lastReviewedAt: z.number().int().positive().optional(),

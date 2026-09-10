@@ -551,6 +551,9 @@ function toVocabularyBrowseEntry(
     ...(item.meaning === undefined ? {} : { meaning: item.meaning }),
     ...(item.fsrsDifficulty === undefined ? {} : { fsrsDifficulty: item.fsrsDifficulty }),
     ...(item.firstReviewedAt === undefined ? {} : { firstReviewedAt: item.firstReviewedAt }),
+    ...(item.firstReviewedPrecision === undefined
+      ? {}
+      : { firstReviewedPrecision: item.firstReviewedPrecision }),
     ...(item.lastReviewedAt === undefined ? {} : { lastReviewedAt: item.lastReviewedAt }),
     sourceIds,
   };

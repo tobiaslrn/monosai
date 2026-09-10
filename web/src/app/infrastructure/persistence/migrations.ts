@@ -341,6 +341,13 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
     version: 14,
     stores: V11_STORES,
   },
+  {
+    // Android first-review evidence carries day precision beside its representative
+    // timestamp. Existing rows omit the marker and therefore remain exact; no row
+    // or index needs rewriting.
+    version: 15,
+    stores: V11_STORES,
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].version;

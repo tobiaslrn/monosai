@@ -11,6 +11,10 @@ import { collectExtraction, mappingFor } from '../../../../testing/anki-provider
 import { AndroidConnectAdapter } from './android-connect.adapter';
 import { AnkiConnectClient, DESKTOP_ENDPOINTS } from './connect-client';
 import { DesktopConnectAdapter } from './desktop-connect.adapter';
+import { representativeLocalDate } from './introduced-first-review';
+
+const ANDROID_NOW = 1_800_000_000_000;
+const DAY_MS = 86_400_000;
 
 function serverAnd(options: FakeServerOptions = {}, collection = CONTRACT_COLLECTION) {
   const server = new FakeAnkiConnectServer(collection, options);
@@ -234,19 +238,46 @@ describe('AndroidConnectAdapter', () => {
     expect(probed.error.code).toBe('review-evidence-unsupported');
   });
 
-  it('never asks the bridge for a review log it cannot have', async () => {
+  it('recovers the first reviewed Anki day without asking for a review log', async () => {
     // AnkiDroid's content provider exposes no review log, so asking would spend
     // a guaranteed refusal and a misleading warning on every refresh.
-    const { server, client } = serverAnd();
-    const collected = await collectExtraction(new AndroidConnectAdapter(client), [mappingFor()]);
+    const { server, client } = serverAnd({ now: ANDROID_NOW });
+    const collected = await collectExtraction(
+      new AndroidConnectAdapter(client, () => ANDROID_NOW),
+      [mappingFor()],
+    );
 
     expect(server.requests.filter((request) => request.action === 'getReviewsOfCards')).toEqual([]);
     expect(collected.warnings).toEqual([]);
 
-    // Recency on Android rests on the interval instead.
+    expect(
+      server.requests.some(
+        (request) =>
+          request.action === 'findCards' && String(request.params['query']).includes('introduced:'),
+      ),
+    ).toBe(true);
     const neko = collected.entries.find((entry) => entry.rawFieldValue === '<b>ねこ</b>');
-    expect(neko).toMatchObject({ intervalDays: 23 });
-    expect(neko).not.toHaveProperty('firstReviewedAt');
+    const introducedDays = Math.floor((ANDROID_NOW - 1_760_000_000_000) / DAY_MS) + 1;
+    expect(neko).toMatchObject({
+      intervalDays: 23,
+      firstReviewedAt: representativeLocalDate(introducedDays, ANDROID_NOW),
+      firstReviewedPrecision: 'anki-day',
+    });
+  });
+
+  it('keeps the vocabulary and warns once when introduced search is unavailable', async () => {
+    const { server, client } = serverAnd({ failingSearchTerms: ['introduced:'] });
+    const collected = await collectExtraction(new AndroidConnectAdapter(client), [mappingFor()]);
+
+    expect(collected.entries.length).toBeGreaterThan(0);
+    expect(collected.warnings).toHaveLength(1);
+    expect(collected.entries.every((entry) => entry.firstReviewedAt === undefined)).toBe(true);
+    expect(
+      server.requests.filter(
+        (request) =>
+          request.action === 'findCards' && String(request.params['query']).includes('introduced:'),
+      ),
+    ).toHaveLength(1);
   });
 
   it('refuses to build a snapshot when note fields are unavailable', async () => {

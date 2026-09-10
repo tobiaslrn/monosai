@@ -26,6 +26,7 @@ describe('normalizeSchedulingSignals', () => {
         lapseRatio: 0.25,
         easeFactor: 2_100,
         firstReviewedAt: 1_760_000_000_000,
+        firstReviewedPrecision: 'anki-day',
         intervalDays: 12.5,
         fsrsDifficulty: 8.269,
       }),
@@ -34,6 +35,7 @@ describe('normalizeSchedulingSignals', () => {
       lapseRatio: 0.25,
       easeFactor: 2_100,
       firstReviewedAt: 1_760_000_000_000,
+      firstReviewedPrecision: 'anki-day',
       intervalDays: 12.5,
       fsrsDifficulty: 8.269,
     });
@@ -62,6 +64,10 @@ describe('normalizeSchedulingSignals', () => {
   it('accepts the exact bounds of the FSRS difficulty scale', () => {
     expect(normalizeSchedulingSignals({ fsrsDifficulty: 1 })).toEqual({ fsrsDifficulty: 1 });
     expect(normalizeSchedulingSignals({ fsrsDifficulty: 10 })).toEqual({ fsrsDifficulty: 10 });
+  });
+
+  it('drops review precision when there is no valid first review', () => {
+    expect(normalizeSchedulingSignals({ firstReviewedPrecision: 'anki-day' })).toEqual({});
   });
 });
 
@@ -114,6 +120,24 @@ describe('mergeSchedulingSignals', () => {
       fsrsDifficulty: 4,
     });
   });
+
+  it('keeps the precision of the earliest review and prefers exact on a tie', () => {
+    expect(
+      mergeSchedulingSignals(
+        { firstReviewedAt: 1_700_000_000_000, firstReviewedPrecision: 'anki-day' },
+        { firstReviewedAt: 1_760_000_000_000 },
+      ),
+    ).toEqual({
+      firstReviewedAt: 1_700_000_000_000,
+      firstReviewedPrecision: 'anki-day',
+    });
+    expect(
+      mergeSchedulingSignals(
+        { firstReviewedAt: 1_700_000_000_000, firstReviewedPrecision: 'anki-day' },
+        { firstReviewedAt: 1_700_000_000_000 },
+      ),
+    ).toEqual({ firstReviewedAt: 1_700_000_000_000 });
+  });
 });
 
 describe('schedulingSignalsFromCard', () => {
@@ -143,12 +167,14 @@ describe('schedulingSignalsFromCard', () => {
       schedulingSignalsFromCard({
         reps: 6,
         firstReviewedAt: 1_760_000_000_000,
+        firstReviewedPrecision: 'anki-day',
         intervalDays: 23,
         fsrsDifficulty: 8.269,
       }),
     ).toEqual({
       reps: 6,
       firstReviewedAt: 1_760_000_000_000,
+      firstReviewedPrecision: 'anki-day',
       intervalDays: 23,
       fsrsDifficulty: 8.269,
     });

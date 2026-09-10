@@ -110,6 +110,26 @@ describe('DexieVocabularyRepository', () => {
     expect(reloaded.filter((item) => 'practice' in (item as object))).toHaveLength(1);
   });
 
+  it('reloads Android first-review day precision with the timestamp', async () => {
+    const commit = snapshotFixture(53);
+    const first = {
+      ...commit.items[0],
+      firstReviewedAt: 1_700_000_000_000,
+      firstReviewedPrecision: 'anki-day' as const,
+    };
+    await repository.commitSnapshot({
+      ...commit,
+      items: [first, ...commit.items.slice(1)],
+    });
+
+    const reloaded: unknown[] = [];
+    for await (const batch of repository.streamItems(commit.snapshot.id, 10)) {
+      reloaded.push(...batch);
+    }
+
+    expect(reloaded).toContainEqual(expect.objectContaining(first));
+  });
+
   it('captures the vocabulary, its revision, and what its sources proved together', async () => {
     const commit = snapshotFixture(41);
     const sourceId = commit.provenance[0].sourceId;
@@ -213,6 +233,7 @@ describe('DexieVocabularyRepository', () => {
           ...first,
           meaning: 'cat',
           firstReviewedAt: 1_700_000_000_000,
+          firstReviewedPrecision: 'anki-day',
           lastReviewedAt: 1_700_100_000_000,
           fsrsDifficulty: 5.5,
           analyzedSequence: [{ surface: 'ねこ', readingHiragana: 'ねこ' }],
@@ -237,6 +258,7 @@ describe('DexieVocabularyRepository', () => {
       meaning: 'cat',
       fsrsDifficulty: 5.5,
       firstReviewedAt: 1_700_000_000_000,
+      firstReviewedPrecision: 'anki-day',
       lastReviewedAt: 1_700_100_000_000,
       sourceIds: [sourceId],
     });

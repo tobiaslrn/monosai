@@ -123,6 +123,9 @@ The foreground service owns Ktor CIO and optional boot restart. HTTP owns origin
 and PNA handling, input limits and envelope serialization. Its router can call
 only the eight `AllowedReads` through the read-only `AnkiReads` port. Query
 classes join cards, decks, notes and model fields through ContentProvider queries.
+The web Android adapter recovers a card's first reviewed study day through bounded
+parallel `introduced:N` searches over the same read-only `findCards` action; it
+never opens AnkiDroid's private collection or presents the result as an exact time.
 The update boundary makes bounded HTTPS requests to GitHub only on app launch or
 explicit download and verifies the APK signer before system installation.
 `protocol/fixtures/` is consumed by both JVM and web tests. See

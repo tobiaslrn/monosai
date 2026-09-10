@@ -122,6 +122,10 @@ no upgrade function: every new field is optional, and an absent value on an exis
 has the correct meaning of "not mapped". Versions 1 through 13 remain immutable
 ([ADR 0062](../decisions/0062-vocabulary-identity-is-expression-plus-meaning.md)).
 
+Schema version 15 adds optional first-review precision to vocabulary items and source caches.
+Existing timestamps remain exact when the marker is absent; Android study-day observations write
+`anki-day`. No index or row rewrite is needed because absence already has the legacy meaning.
+
 Translation plans are validated persisted state with three explicit forms: opening pending,
 glossary repair required, and ready with a frozen glossary. Establishing a ready plan and its
 accepted opening translations is one transaction. Provisional opening rows remain recoverable but

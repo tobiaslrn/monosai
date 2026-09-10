@@ -35,10 +35,12 @@ full card shape is pinned by the bridge's own router test.
 
 `getReviewsOfCards` is on Monosai's read allowlist for the desktop add-on but is
 deliberately not implemented here: AnkiDroid's content provider has no review
-log. Recency does not depend on one. `findCards` passes an Anki search through
-unchanged, so `rated:` searches answer which cards were actually answered in the
-last one, three or seven Anki study days, and `rated:7:1` and `rated:7:2` which
-of those were answered Again or Hard.
+log. `findCards` passes an Anki search through unchanged, so `introduced:N`
+recovers the first real review's Anki study-day bucket with parallel binary
+search; its representative timestamp is stored with `anki-day` precision.
+`rated:` searches answer which cards were actually answered in the last one,
+three or seven study days, and `rated:7:1` and `rated:7:2` which of those were
+answered Again or Hard.
 
 Unknown actions (including writes) return
 `{"result":null,"error":"unsupported action: <name>"}` without querying AnkiDroid.

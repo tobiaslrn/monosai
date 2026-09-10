@@ -19,6 +19,7 @@ import {
   type PracticeWindowDays,
 } from '../../../domain/anki/practice-evidence';
 import type { CardInfo } from './connect-client';
+import { resolveIntroducedFirstReviews } from './introduced-first-review';
 
 /** Ids per `cardsInfo` or `notesInfo` request when the endpoint states no limit. */
 export const DEFAULT_BATCH_SIZE = 200;
@@ -34,6 +35,10 @@ export interface ExtractionOptions {
    * it every time.
    */
   readonly readsReviewHistory?: boolean;
+  /** Whether first-review study days can be recovered through `introduced:N`. */
+  readonly readsIntroducedHistory?: boolean;
+  /** One timestamp per mapping keeps every recovered day internally consistent. */
+  readonly now?: () => number;
 }
 
 /**
@@ -70,6 +75,7 @@ export async function* extractMapping(
 
   const schedulingByNote = new Map<number, AnkiSchedulingSignals>();
   const practiceByNote = new Map<number, PracticeEvidence>();
+  const eligibleCards: CardInfo[] = [];
   // Availability of a column is proved by a value arriving, not by asking: the
   // wire cannot distinguish a build that never published the column from a
   // collection where every card happens to leave it null, and claiming the
@@ -97,6 +103,7 @@ export async function* extractMapping(
     const eligible = cards.value.filter(
       (card) => isEligibleReviewedCard(card.reps, card.queue) && inScope(card, mapping),
     );
+    eligibleCards.push(...eligible);
     examined += cards.value.length;
 
     // Asked only for the cards that survived eligibility, and only inside this
@@ -155,6 +162,37 @@ export async function* extractMapping(
     }
 
     yield { kind: 'progress', mappingId: mapping.id, examined, total: found.value.length };
+  }
+
+  if (options.readsIntroducedHistory === true && eligibleCards.length > 0) {
+    const firstReviews = await resolveIntroducedFirstReviews(
+      client,
+      eligibleCards.map((card) => card.cardId),
+      options.now?.() ?? Date.now(),
+      signal,
+    );
+    if (!firstReviews.ok && firstReviews.error.code === 'cancelled') {
+      yield { kind: 'failed', error: firstReviews.error };
+      return;
+    }
+    if (!firstReviews.ok) {
+      if (!warnedAboutReviews) {
+        yield {
+          kind: 'warning',
+          message:
+            'Anki could not provide first study dates, so recently learned words are estimated from card intervals.',
+        };
+      }
+    } else {
+      for (const card of eligibleCards) {
+        const firstReview = firstReviews.value.get(card.cardId);
+        if (firstReview === undefined) continue;
+        schedulingByNote.set(
+          card.note,
+          mergeSchedulingSignals(schedulingByNote.get(card.note), firstReview),
+        );
+      }
+    }
   }
 
   yield {
