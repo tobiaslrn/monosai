@@ -120,8 +120,13 @@ describe('schema v14 meaning fields', () => {
       expect(await db.vocabularySources.get(SOURCE_ID)).toEqual(SOURCE);
       expect(await db.vocabularySourceCaches.get(SOURCE_ID)).toEqual(CACHE);
       expect((await db.vocabularyItems.get(ITEM_ID))?.meaning).toBeUndefined();
-      expect((await db.vocabularySources.get(SOURCE_ID) as { meaningFieldName?: string } | undefined)?.meaningFieldName).toBeUndefined();
-      expect((await db.vocabularySourceCaches.get(SOURCE_ID))?.entries[0]?.rawMeaning).toBeUndefined();
+      expect(
+        ((await db.vocabularySources.get(SOURCE_ID)) as { meaningFieldName?: string } | undefined)
+          ?.meaningFieldName,
+      ).toBeUndefined();
+      expect(
+        (await db.vocabularySourceCaches.get(SOURCE_ID))?.entries[0]?.rawMeaning,
+      ).toBeUndefined();
       expect((await db.vocabularyProvenance.toArray())[0]?.meaningFieldName).toBeUndefined();
     } finally {
       old.close();

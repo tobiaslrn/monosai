@@ -17,10 +17,7 @@
               "indexes": [
                 {
                   "name": "[readingId+kind]",
-                  "keyPathArray": [
-                    "readingId",
-                    "kind"
-                  ],
+                  "keyPathArray": ["readingId", "kind"],
                   "multiEntry": false,
                   "unique": false
                 },
@@ -176,10 +173,7 @@
               "indexes": [
                 {
                   "name": "[readingId+position]",
-                  "keyPathArray": [
-                    "readingId",
-                    "position"
-                  ],
+                  "keyPathArray": ["readingId", "position"],
                   "multiEntry": false,
                   "unique": false
                 },
@@ -448,10 +442,7 @@
               "indexes": [
                 {
                   "name": "[kind+createdAt]",
-                  "keyPathArray": [
-                    "kind",
-                    "createdAt"
-                  ],
+                  "keyPathArray": ["kind", "createdAt"],
                   "multiEntry": false,
                   "unique": false
                 },
@@ -508,10 +499,7 @@
               "indexes": [
                 {
                   "name": "[readingId+positionInReading]",
-                  "keyPathArray": [
-                    "readingId",
-                    "positionInReading"
-                  ],
+                  "keyPathArray": ["readingId", "positionInReading"],
                   "multiEntry": false,
                   "unique": false
                 },
@@ -566,10 +554,7 @@
             {
               "name": "tokenAnalyses",
               "autoIncrement": false,
-              "keyPathArray": [
-                "sentenceId",
-                "analyzerVersion"
-              ],
+              "keyPathArray": ["sentenceId", "analyzerVersion"],
               "records": [
                 {
                   "value": {
@@ -586,10 +571,7 @@
                         "lemma": "犬",
                         "readingHiragana": "いぬ",
                         "partOfSpeech": "noun",
-                        "dictionaryKeys": [
-                          "犬",
-                          "いぬ"
-                        ],
+                        "dictionaryKeys": ["犬", "いぬ"],
                         "isPunctuation": false
                       },
                       {
@@ -600,9 +582,7 @@
                         "lemma": "も",
                         "readingHiragana": "も",
                         "partOfSpeech": "particle",
-                        "dictionaryKeys": [
-                          "も"
-                        ],
+                        "dictionaryKeys": ["も"],
                         "isPunctuation": false
                       },
                       {
@@ -613,10 +593,7 @@
                         "lemma": "好き",
                         "readingHiragana": "すき",
                         "partOfSpeech": "adjective-na",
-                        "dictionaryKeys": [
-                          "好き",
-                          "すき"
-                        ],
+                        "dictionaryKeys": ["好き", "すき"],
                         "isPunctuation": false
                       },
                       {
@@ -628,9 +605,7 @@
                         "readingHiragana": "です",
                         "partOfSpeech": "auxiliary",
                         "inflectionForm": "dictionary",
-                        "dictionaryKeys": [
-                          "です"
-                        ],
+                        "dictionaryKeys": ["です"],
                         "isPunctuation": false
                       },
                       {
@@ -641,9 +616,7 @@
                         "lemma": "。",
                         "readingHiragana": "。",
                         "partOfSpeech": "symbol",
-                        "dictionaryKeys": [
-                          "。"
-                        ],
+                        "dictionaryKeys": ["。"],
                         "isPunctuation": true
                       }
                     ]
@@ -664,10 +637,7 @@
                         "lemma": "猫",
                         "readingHiragana": "ねこ",
                         "partOfSpeech": "noun",
-                        "dictionaryKeys": [
-                          "猫",
-                          "ねこ"
-                        ],
+                        "dictionaryKeys": ["猫", "ねこ"],
                         "isPunctuation": false
                       },
                       {
@@ -678,9 +648,7 @@
                         "lemma": "が",
                         "readingHiragana": "が",
                         "partOfSpeech": "particle",
-                        "dictionaryKeys": [
-                          "が"
-                        ],
+                        "dictionaryKeys": ["が"],
                         "isPunctuation": false
                       },
                       {
@@ -691,10 +659,7 @@
                         "lemma": "好き",
                         "readingHiragana": "すき",
                         "partOfSpeech": "adjective-na",
-                        "dictionaryKeys": [
-                          "好き",
-                          "すき"
-                        ],
+                        "dictionaryKeys": ["好き", "すき"],
                         "isPunctuation": false
                       },
                       {
@@ -706,9 +671,7 @@
                         "readingHiragana": "です",
                         "partOfSpeech": "auxiliary",
                         "inflectionForm": "dictionary",
-                        "dictionaryKeys": [
-                          "です"
-                        ],
+                        "dictionaryKeys": ["です"],
                         "isPunctuation": false
                       },
                       {
@@ -719,9 +682,7 @@
                         "lemma": "。",
                         "readingHiragana": "。",
                         "partOfSpeech": "symbol",
-                        "dictionaryKeys": [
-                          "。"
-                        ],
+                        "dictionaryKeys": ["。"],
                         "isPunctuation": true
                       }
                     ]
@@ -791,10 +752,7 @@
               "indexes": [
                 {
                   "name": "[snapshotId+expressionHash]",
-                  "keyPathArray": [
-                    "snapshotId",
-                    "expressionHash"
-                  ],
+                  "keyPathArray": ["snapshotId", "expressionHash"],
                   "multiEntry": false,
                   "unique": false
                 },

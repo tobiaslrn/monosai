@@ -261,7 +261,10 @@ export class SnapshotBuilder {
 }
 
 /** Meaning is optional data: an unusable meaning never rejects its expression. */
-function extractMeaning(raw: string | undefined, extractor: MarkupTextExtractor): string | undefined {
+function extractMeaning(
+  raw: string | undefined,
+  extractor: MarkupTextExtractor,
+): string | undefined {
   const extracted = extractVisibleText(raw, extractor);
   return extracted.ok ? extracted.value : undefined;
 }

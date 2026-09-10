@@ -72,7 +72,10 @@ describe('mergeEntries', () => {
 
   it('keeps the same expression with different meanings in separate items', () => {
     const result = mergeEntries(
-      [entry({ meaning: 'eat', sourceRecordId: 'n1' }), entry({ meaning: 'consume', sourceRecordId: 'n2' })],
+      [
+        entry({ meaning: 'eat', sourceRecordId: 'n1' }),
+        entry({ meaning: 'consume', sourceRecordId: 'n2' }),
+      ],
       SNAPSHOT,
       idSequence(),
     );
@@ -83,7 +86,10 @@ describe('mergeEntries', () => {
 
   it('merges meanings that differ only in visible formatting', () => {
     const result = mergeEntries(
-      [entry({ meaning: 'eat', sourceRecordId: 'n1' }), entry({ meaning: '  EAT  ', sourceRecordId: 'n2' })],
+      [
+        entry({ meaning: 'eat', sourceRecordId: 'n1' }),
+        entry({ meaning: '  EAT  ', sourceRecordId: 'n2' }),
+      ],
       SNAPSHOT,
       idSequence(),
     );
