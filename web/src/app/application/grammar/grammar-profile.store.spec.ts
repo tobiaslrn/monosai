@@ -162,70 +162,35 @@ describe('GrammarProfileStore', () => {
       expect(reloaded.selection().presetId).toBe('mn-preset-everyday');
     });
 
-    it('persists a register change and folds it into the resolved guidance', async () => {
+    /**
+     * A register or edited wording saved before both were retired stays in the
+     * record but is not applied, and the next saved level writes it back
+     * without them (ADR 0064).
+     */
+    it('applies neither a stored register nor stored edited wording', async () => {
+      repository.selection = {
+        presetId: 'mn-preset-everyday',
+        registerPreference: 'written',
+        customGuidance: 'Only very short sentences.',
+      };
       const store = createStore();
+
       await store.load();
 
-      await store.selectRegister('written');
-
-      expect(repository.selection.registerPreference).toBe('written');
-      expect(store.resolvedGuidance()).toBe(
-        'Write single short clauses. Prefer polite written register.',
-      );
-      expect(store.lastChange()).toEqual({ kind: 'register', registerPreference: 'written' });
-    });
-
-    it('persists custom guidance, then restores the preset prose on reset', async () => {
-      const store = createStore();
-      await store.load();
-
-      await store.setCustomGuidance('  Only very short sentences.  ');
-
-      expect(repository.selection.customGuidance).toBe('Only very short sentences.');
-      expect(store.isCustomGuidance()).toBe(true);
-      expect(store.resolvedGuidance()).toBe('Only very short sentences.');
-
-      await store.resetToPreset();
-
-      expect(repository.selection.customGuidance).toBeUndefined();
-      expect(store.isCustomGuidance()).toBe(false);
-      expect(store.resolvedGuidance()).toBe('Write single short clauses.');
-      expect(store.lastChange()).toEqual({
-        kind: 'reset-to-preset',
-        presetId: DEFAULT_GRAMMAR_PRESET_ID,
+      expect(store.selection()).toEqual({
+        presetId: 'mn-preset-everyday',
+        registerPreference: 'either',
       });
-    });
-
-    it('rejects custom guidance beyond the bound rather than storing it whole', async () => {
-      const store = createStore();
-      await store.load();
-
-      await store.setCustomGuidance('あ'.repeat(1200));
-
-      expect(store.selection().customGuidance).toHaveLength(1000);
-      expect(repository.selection.customGuidance).toHaveLength(1000);
-    });
-
-    it('treats blank custom guidance as a reset rather than an empty override', async () => {
-      const store = createStore();
-      await store.load();
-      await store.setCustomGuidance('Only very short sentences.');
-
-      await store.setCustomGuidance('   ');
-
-      expect(store.isCustomGuidance()).toBe(false);
-      expect(repository.selection.customGuidance).toBeUndefined();
-    });
-
-    it('drops a fork when the learner moves to another preset', async () => {
-      const store = createStore();
-      await store.load();
-      await store.setCustomGuidance('Only very short sentences.');
-
-      await store.selectPreset('mn-preset-everyday');
-
-      expect(store.isCustomGuidance()).toBe(false);
       expect(store.resolvedGuidance()).toBe('Write at roughly N4 complexity.');
+      expect(repository.selection.customGuidance).toBe('Only very short sentences.');
+
+      await store.selectPreset(DEFAULT_GRAMMAR_PRESET_ID);
+
+      expect(repository.selection).toEqual({
+        presetId: DEFAULT_GRAMMAR_PRESET_ID,
+        registerPreference: 'either',
+      });
+      expect(store.resolvedGuidance()).toBe('Write single short clauses.');
     });
 
     it('surfaces a failed write and leaves the previous selection intact', async () => {
@@ -244,9 +209,15 @@ describe('GrammarProfileStore', () => {
 
   describe('captureProfile', () => {
     it('captures exactly the guidance the prompt would send', async () => {
+      // An older record's register and wording are not what is sent, so they
+      // are not what is captured either.
+      repository.selection = {
+        presetId: DEFAULT_GRAMMAR_PRESET_ID,
+        registerPreference: 'spoken',
+        customGuidance: 'Only very short sentences.',
+      };
       const store = createStore();
       await store.load();
-      await store.selectRegister('spoken');
 
       const captured = await store.captureProfile();
 
@@ -257,7 +228,8 @@ describe('GrammarProfileStore', () => {
       expect(captured.value.resolvedGuidance).toBe(store.resolvedGuidance());
       expect(captured.value).toMatchObject({
         presetId: DEFAULT_GRAMMAR_PRESET_ID,
-        registerPreference: 'spoken',
+        resolvedGuidance: 'Write single short clauses.',
+        registerPreference: 'either',
         isCustomGuidance: false,
         structuralBaselineVersion: BASELINE_VERSION,
         capturedAt: 1_700_000_000_000,

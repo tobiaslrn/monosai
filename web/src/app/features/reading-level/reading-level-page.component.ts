@@ -13,9 +13,7 @@ import {
 } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
-import { GuidanceSectionComponent } from '../grammar/guidance-section.component';
 import { conventionalLevel } from '../grammar/preset-level';
-import { REGISTER_LABELS } from '../grammar/register-labels';
 import { StructuralBaselineSectionComponent } from '../grammar/structural-baseline-section.component';
 import { AddWordsComponent } from '../vocabulary/add-words.component';
 import { PackageImportComponent } from '../vocabulary/package-import.component';
@@ -33,7 +31,7 @@ const STALE_NOTICE = 'Existing grammar analyses are now out of date.';
  * finds it as well; the page re-resolves it afterwards because the grammar half
  * does not exist until the language bundle has arrived.
  */
-const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'forms'];
+const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
 
 /**
  * What the learner can read: two facts, and the plumbing behind each.
@@ -57,7 +55,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
     PackageImportComponent,
     SourceListComponent,
     VocabularyCardComponent,
-    GuidanceSectionComponent,
     StructuralBaselineSectionComponent,
   ],
   template: `
@@ -149,18 +146,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
               </div>
             }
           </div>
-
-          <details id="wording" class="mn-card fold">
-            <summary>
-              <mn-icon class="fold-icon" name="settings" [size]="22" />
-              <span class="summary-label">Register &amp; wording</span>
-              <span class="summary-value">{{ wordingSummary() }}</span>
-              <mn-icon class="fold-chevron" name="chevron-right" />
-            </summary>
-            <div class="fold-body">
-              <mn-guidance-section />
-            </div>
-          </details>
 
           <details id="forms" class="mn-card fold">
             <summary>
@@ -529,22 +514,13 @@ export class ReadingLevelPageComponent {
     return preset === null ? null : conventionalLevel(preset);
   });
 
-  protected readonly grammarDetail = computed(() => {
-    const preset = this.profile.selectedPreset();
-    if (preset === null) {
-      return 'Reading levels arrive with the language bundle.';
-    }
-    return this.profile.isCustomGuidance()
-      ? `${preset.descriptionEn} Written in your own wording.`
-      : preset.descriptionEn;
-  });
+  protected readonly grammarDetail = computed(
+    () =>
+      this.profile.selectedPreset()?.descriptionEn ??
+      'Reading levels arrive with the language bundle.',
+  );
 
   /** A closed disclosure states its current value rather than hiding it. */
-  protected readonly wordingSummary = computed(() => {
-    const register = REGISTER_LABELS[this.profile.selection().registerPreference];
-    return this.profile.isCustomGuidance() ? `${register} · your own wording` : register;
-  });
-
   protected readonly formsSummary = computed(() => {
     const categories = new Set(this.language.structuralBaseline().map((entry) => entry.category));
     return categories.size === 0 ? 'Not loaded yet' : `${String(categories.size)} categories`;
@@ -558,19 +534,9 @@ export class ReadingLevelPageComponent {
    */
   protected readonly confirmation = computed(() => {
     const change = this.profile.lastChange();
-    if (change === null) {
-      return '';
-    }
-    switch (change.kind) {
-      case 'preset':
-        return `Reading level set to ${this.presetName(change.presetId)}. ${STALE_NOTICE}`;
-      case 'register':
-        return `Register set to ${REGISTER_LABELS[change.registerPreference]}. ${STALE_NOTICE}`;
-      case 'custom-guidance':
-        return `Your own wording saved. ${STALE_NOTICE}`;
-      case 'reset-to-preset':
-        return `Wording reset to ${this.presetName(change.presetId)}. ${STALE_NOTICE}`;
-    }
+    return change === null
+      ? ''
+      : `Reading level set to ${this.presetName(change.presetId)}. ${STALE_NOTICE}`;
   });
 
   constructor() {

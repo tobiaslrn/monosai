@@ -10,22 +10,10 @@ async function openLadder(page: Page): Promise<void> {
   await expect(page.getByRole('radio', { name: new RegExp(STARTER) })).toBeVisible();
 }
 
-/**
- * The overview states the level once the bundle has arrived; until then the
- * folds exist but hold no preset wording to read.
- */
+/** The overview shows the level's example once the bundle has arrived. */
 async function openOverview(page: Page): Promise<void> {
   await page.goto('./#/reading-level');
   await expect(page.locator('mn-reading-level-page .example-ja')).toBeVisible();
-}
-
-/**
- * Register and the wording escape hatch are set once and then left alone, so
- * they live behind a disclosure that names its current value.
- */
-async function openWording(page: Page): Promise<void> {
-  await page.locator('#wording > summary').click();
-  await expect(page.locator('#wording')).toHaveAttribute('open', /.*/);
 }
 
 async function backToOverview(page: Page): Promise<void> {
@@ -46,10 +34,8 @@ test.describe('grammar profile', () => {
 
     await openOverview(page);
     await expect(page.getByTestId('grammar-standing')).toHaveText(STARTER);
-    // A closed disclosure still answers the question it is hiding.
-    await expect(page.locator('#wording .summary-value')).toHaveText('Either');
-    await openWording(page);
-    await expect(page.getByRole('radio', { name: 'Either' })).toBeChecked();
+    // Every register is allowed, so there is nothing to choose between.
+    await expect(page.locator('#wording')).toHaveCount(0);
 
     await expectNoSeriousAccessibilityViolations(page);
   });
@@ -82,30 +68,6 @@ test.describe('grammar profile', () => {
     await expect(confirmation).toBeEmpty();
     await openLadder(page);
     await expect(page.getByRole('radio', { name: new RegExp(EVERYDAY) })).toBeChecked();
-  });
-
-  test('keeps custom wording across a reload and restores the preset on reset', async ({
-    page,
-  }) => {
-    await openOverview(page);
-    await openWording(page);
-    const guidance = page.locator('mn-guidance-section .guidance');
-    const presetWording = (await guidance.textContent())?.trim() ?? '';
-
-    await page.getByRole('button', { name: 'Use my own wording' }).click();
-    await page.locator('mn-guidance-section textarea').fill('Only very short sentences.');
-    await page.getByRole('button', { name: 'Save wording' }).click();
-
-    await expect(guidance).toHaveText('Only very short sentences.');
-
-    await page.reload();
-
-    await openWording(page);
-    await expect(guidance).toHaveText('Only very short sentences.');
-    await page.getByRole('button', { name: 'Reset to preset' }).click();
-
-    await expect(guidance).toHaveText(presetWording);
-    await expect(page.getByRole('button', { name: 'Reset to preset' })).toHaveCount(0);
   });
 
   test('publishes the always-known forms as a read-only list', async ({ page }) => {

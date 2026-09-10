@@ -38,8 +38,9 @@ The overview is a column of `.mn-card` surfaces on the Library's rail:
   wrong and **Try now**.
 - **Grammar** — the reading level as a card naming the preset and, beside the
   name, the level its caption says it is taught at, with its description and
-  example. Register and wording and the always-known forms stay folds that name
-  their current value.
+  example. The always-known forms stay a fold that names its current value.
+  Register and wording were a second fold until
+  [ADR 0064](0064-every-register-and-the-preset-wording.md) retired both.
 
 ### The ladder is a page, and choosing is a draft
 
@@ -69,5 +70,5 @@ the bottom edge over a dimmed page on narrow screens, with Cancel.
   Anki again, on the line that says when it last did.
 - The overview no longer states where the words came from in one line above the
   sources; the source rows say it one by one.
-- Deep links to `#words`, `#grammar`, `#wording`, and `#forms` keep working; a
-  link that meant the ladder now lands on the Grammar card that leads to it.
+- Deep links to `#words`, `#grammar`, and `#forms` keep working; a link that
+  meant the ladder now lands on the Grammar card that leads to it.

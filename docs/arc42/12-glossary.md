@@ -14,7 +14,7 @@ The terms Monosai's code and these chapters use. Where a term names a type, the 
 | **Vocabulary snapshot** | The one current, deduplicated set of eligible expressions, produced by the most recent successful refresh |
 | **Current snapshot** | The single snapshot row that is live. A refresh replaces it atomically. A failed or cancelled refresh leaves it unchanged |
 | **Structural baseline** | Curated grammar and function words that are always allowed, because Japanese sentences cannot be formed without them. It is not starter vocabulary. [ADR 0015](../decisions/0015-structural-baseline-stays-curated.md) |
-| **Grammar profile** | The learner's device-wide setting: one of six ordered difficulty presets, a register preference, and optional edited guidance. There is no rule catalog and no per-rule selection. [ADR 0008](../decisions/0008-grammar-profile-presets.md), [ADR 0014](../decisions/0014-remove-grammar-rule-catalog.md) |
+| **Grammar profile** | The learner's device-wide setting: one of six ordered difficulty presets. Every register is allowed and the preset's own prose is sent; there is no rule catalog and no per-rule selection. [ADR 0008](../decisions/0008-grammar-profile-presets.md), [ADR 0014](../decisions/0014-remove-grammar-rule-catalog.md), [ADR 0064](../decisions/0064-every-register-and-the-preset-wording.md) |
 | **Preset** | One of the six ordered difficulty levels, named for the grammar the learner commands rather than for a JLPT level. They are cumulative |
 | **Exception policy** | One device-wide sentence the learner writes, which the AI applies to generated words that Anki does not cover |
 | **Known** | Validated locally, against the current snapshot or against a generated story's frozen evidence |

@@ -48,6 +48,7 @@ files are already linked from code comments and from other records.
 | [0015](../decisions/0015-structural-baseline-stays-curated.md)       | The structural baseline stays curated, not derived from part-of-speech tags         |
 | [0026](../decisions/0026-word-derivation-ladder.md)                  | Word details read as a derivation ladder, built from the analyzer's inflection form |
 | [0029](../decisions/0029-ambiguous-kana-dictionary-ranking.md)       | Ambiguous kana dictionary lookup uses morphological ranking                         |
+| [0064](../decisions/0064-every-register-and-the-preset-wording.md)   | Every register is allowed, and the preset's wording is what is sent                 |
 
 ### Anki
 

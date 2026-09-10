@@ -1,7 +1,8 @@
 # 0008 — Grammar profile as difficulty presets
 
 Date: 2026-08-18
-Status: Accepted, with two paragraphs superseded
+Status: Accepted, with two paragraphs superseded; the register preference and
+edited guidance are retired by [ADR 0064](0064-every-register-and-the-preset-wording.md)
 Supersedes: the *selection* decisions in
 [0007](0007-grammar-catalog-and-structural-baseline.md). The catalog and
 structural baseline datasets, their licensing, ids, and build pipeline are

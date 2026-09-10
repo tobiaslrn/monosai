@@ -231,8 +231,6 @@ describe('ReadingLevelPageComponent', () => {
   it('names the current value of every closed disclosure', async () => {
     const { element } = await render();
 
-    expect(disclosure(element, 'wording').open).toBe(false);
-    expect(text(element, '#wording .summary-value')).toBe('Either');
     expect(disclosure(element, 'forms').open).toBe(false);
     expect(text(element, '#forms .summary-value')).toBe('2 categories');
   });
@@ -248,14 +246,23 @@ describe('ReadingLevelPageComponent', () => {
   });
 
   it('opens the disclosure a fragment points inside before scrolling to it', async () => {
-    arriveAt('wording');
+    arriveAt('forms');
     const { element, fixture } = await render();
     await settle(fixture);
 
     await vi.waitFor(() => {
-      expect(disclosure(element, 'wording').open).toBe(true);
+      expect(disclosure(element, 'forms').open).toBe(true);
     });
-    expect(scrolled).toContain('wording');
+    expect(scrolled).toContain('forms');
+  });
+
+  /** Every register is allowed and the preset's prose is sent, so neither is offered. */
+  it('offers no register or wording to change', async () => {
+    const { element } = await render();
+
+    expect(element.querySelector('#wording')).toBeNull();
+    expect(element.querySelector('mn-guidance-section')).toBeNull();
+    expect(element.textContent).not.toContain('Register');
   });
 
   /**

@@ -273,13 +273,13 @@ tells them.
 ### Disclosures
 
 A disclosure hides detail that is set once and rarely revisited — a mapping, a
-register, a list the learner is entitled to see but does not read. It is always
+list the learner is entitled to see but does not read. It is always
 native `details`/`summary`; it is never used to hide a control the surface's
 main action depends on, which is what a switch group is for.
 
 **A closed disclosure states its current value.** The summary carries the label
-and, opposite it, what is currently selected — a register, a count of what is
-inside. A fold that hides the answer to the question its label asks makes the
+and, opposite it, what is currently selected — a mapped field, a count of what
+is inside. A fold that hides the answer to the question its label asks makes the
 screen worse than no fold at all, and forces the learner to open every one to
 read the page. Disclosures do not nest: a section that already sits behind one
 presents its contents plainly.
