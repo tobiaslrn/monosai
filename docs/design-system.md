@@ -80,7 +80,18 @@ line. The creation action spans the column; filter pills share the available
 width on phones and stay compact on desktop.
 Home's primary action uses the dedicated home action tokens for a clearer green;
 the illustration is gently dimmed in the dark palette. These tokens belong to
-the home composition and do not recolour the other screens.
+the home composition and do not recolour the other screens — except the pages
+composed like it, below, which opt in at their root with `.mn-home-palette`.
+
+**What you can read is composed like the Library**
+([ADR 0063](decisions/0063-what-you-can-read-is-composed-like-the-library.md)).
+Its overview, the vocabulary list, the reading-level ladder, and a source's page
+wear no utility bar. Each has its own title row instead: Back, the title, and
+Help at its end as a bare icon link, with one quiet line beneath the title that
+says what the page holds or how much of it. They use the Library's rail and its
+row surface — quiet raised cards (`.mn-card`) led by a soft round mark
+(`.mn-icon-badge`) — and a section heading at the rank below the title, with its
+one verb opposite it as green text rather than as a filled button.
 
 Below the bar the Library states **where the learner stands** — how many words
 Monosai can write from, and at what level. That line is the screen's lead and
@@ -138,6 +149,12 @@ than substituting the other date.
 Rows on one shelf are the same height, and a row standing in for work still
 running matches the row it will become.
 
+The vocabulary sources are one card of such rows, where the count joins the
+line saying what is inside rather than sitting opposite the name, because a
+source's name is long and the card is narrow. The card's last line reports how
+current the sources are as a whole — when they were last read, or what is
+stopping them — and holds the one control that can change that.
+
 ### Lists with filters
 
 A list that helps the learner find a known item keeps one quiet column and a
@@ -147,7 +164,13 @@ visible as one line of text, and the result count is both visible near the list
 and announced through a polite live region.
 
 Rows show the value that makes them recognisable, the meaning or secondary
-line beneath it, and only the metadata needed to choose between rows. A row
+line beneath it, and only the metadata needed to choose between rows. Where
+every row carries the same few figures they are columns under a quiet header
+row; the header is presentation, so each figure also names itself to
+assistive technology. The columns are sized in `rem`, and a list too narrow
+for them lays its figures under the value instead — a container query on the
+list, not a breakpoint. A figure that says the learner still finds something
+hard takes the warning colour, and the figure itself says so too. A row
 that has more to say uses native `details`/`summary`; its closed summary still
 states the current value. Expanded detail may include provenance links, but it
 does not create a second row action hierarchy. Long lists may mount a measured
@@ -177,10 +200,13 @@ audio transport, close, back, and overflow. Everything else carries a visible
 label beside its icon: anything rare, anything destructive, and anything that
 spends money or sends a request.
 
-There are exactly two deliberate exceptions: the non-reader utility bar's three
-destinations, described above, and the trash icons on the Story options content
-rows, described under Saved-story controls. Neither grants other infrequent
-controls icon-only status.
+There are exactly three deliberate exceptions: the non-reader utility bar's
+destinations, described above, wherever they are worn; the trash icons on the
+Story options content rows, described under Saved-story controls; and the
+control that reads Anki again at the end of the vocabulary sources card. That
+last one sits on the line that already says what it acts on — "Synced today" —
+exists only where a source Monosai keeps up to date is listed, and turns while
+it works. None of them grants other infrequent controls icon-only status.
 
 This is narrower than it sounds, and deliberately so. Research on icon usability
 is consistent that only a small set of symbols is read reliably without a label,
@@ -261,6 +287,16 @@ presents its contents plainly.
 Where a link can point inside a disclosure, arriving there opens it. A deep link
 that lands the learner on a long page next to a closed fold has not arrived.
 
+### A choice that makes saved work stale
+
+Changing the reading level makes every stored grammar analysis out of date, so
+choosing one is a draft: the ladder is a page of its own, tapping a card opens
+its example and marks it chosen, and only **Save level** commits it. Leaving
+without saving keeps the level that was there. The chosen card alone shows its
+example so the ladder stays scannable; that costs nothing because choosing is
+free. The commit is the page's one filled control and stays in reach at the
+foot of the viewport while the ladder scrolls under it.
+
 ### App-level overlays and sheets
 
 An app-level modal surface uses the CDK Dialog pattern: focus moves into the
@@ -271,6 +307,13 @@ that is full width, owns its scrolling, and uses the sheet radius; it does not
 need an anchor in the page underneath it. The backdrop and focus treatment are
 shared, while the content decides whether its safe dismissal is Cancel, Close,
 or a committed primary action.
+
+Add words is the one sheet opened from a native popover rather than a dialog,
+because it must stay open while a file chooser is up. It follows the same
+placement — hanging from its control on a wide screen, docked to the bottom
+edge over a dimmed page on a phone — and the same dismissal: Escape, Cancel,
+and a press outside all close it, and Escape and Cancel return focus to Add
+source.
 
 ### Saved-story controls
 

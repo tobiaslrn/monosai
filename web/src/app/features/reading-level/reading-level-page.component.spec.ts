@@ -130,18 +130,31 @@ describe('ReadingLevelPageComponent', () => {
 
     expect(text(element, 'h1')).toBe('What you can read');
     expect(
-      [...element.querySelectorAll('section.mn-panel h2')].map((heading) =>
+      [...element.querySelectorAll('section.group h2')].map((heading) =>
         heading.textContent.trim(),
       ),
-    ).toEqual(['Words', 'Grammar']);
+    ).toEqual(['Word sources', 'Grammar']);
     expect(text(element, '[data-testid="words-standing"]')).toBe('No words yet');
     expect(text(element, '[data-testid="grammar-standing"]')).toBe('Starter forms');
+  });
+
+  /** The ladder is a page of its own; this one states the level and leads there. */
+  it('leads to the ladder rather than showing it', async () => {
+    const { element } = await render();
+
+    expect(element.querySelector('mn-preset-picker')).toBeNull();
+    expect(element.querySelector('[data-testid="reading-level-link"]')?.getAttribute('href')).toBe(
+      '/reading-level/level',
+    );
+    expect(element.querySelector('.example-ja')?.getAttribute('lang')).toBe('ja');
   });
 
   it('labels every section for assistive technology', async () => {
     const { element } = await render();
 
-    for (const section of element.querySelectorAll('section.mn-panel')) {
+    const sections = element.querySelectorAll('section.group');
+    expect(sections).toHaveLength(2);
+    for (const section of sections) {
       const labelledBy = section.getAttribute('aria-labelledby');
       expect(labelledBy).not.toBeNull();
       expect(element.querySelector(`#${String(labelledBy)}`)).not.toBeNull();
@@ -180,8 +193,9 @@ describe('ReadingLevelPageComponent', () => {
       await settle(fixture);
       expect(text(element, '[data-testid="words-standing"]')).toMatch(/\bwords?$/);
     });
-    expect(text(element, '[data-testid="source-standing"]')).toContain('from Anki');
-    expect(element.querySelectorAll('[data-testid="source-row"]')).toHaveLength(1);
+    const rows = element.querySelectorAll('[data-testid="source-row"]');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain('On this computer');
   });
 
   it('says how many words a story needs while there are too few', async () => {
@@ -358,5 +372,7 @@ describe('ReadingLevelPageComponent', () => {
     expect(confirmation?.textContent).toContain('Basic forms');
     expect(confirmation?.textContent).toContain('out of date');
     expect(text(element, '[data-testid="grammar-standing"]')).toBe('Basic forms');
+    // The level a caption names rides beside the name, never inside it.
+    expect(text(element, '.level-tag').replace(/\s+/g, ' ')).toBe('Basic forms · N5');
   });
 });

@@ -70,4 +70,11 @@ describe('navigation origin validation', () => {
     expect(readNavigationOrigin({ monosaiNavigationOrigin: '/reader/not/a/route' })).toBeNull();
     expect(() => navigationOriginState('//example.com')).toThrow(/Unsafe navigation origin/);
   });
+
+  it('accepts the reading-level overview, which the ladder returns to', () => {
+    const state = navigationOriginState('/reading-level');
+
+    expect(readNavigationOrigin(state)).toBe('/reading-level');
+    expect(readNavigationOrigin({ monosaiNavigationOrigin: '/reading-level/level' })).toBeNull();
+  });
 });

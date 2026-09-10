@@ -1,16 +1,21 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
+import type { GrammarPresetId } from '../../domain/grammar/presets';
+import { startSentence } from '../../domain/shared/locale';
 import { configureGrammarTestBed, TEST_PRESETS } from '../../../testing/grammar-fakes';
 import { PresetPickerComponent } from './preset-picker.component';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [PresetPickerComponent],
-  template: `<mn-preset-picker />`,
+  template: `<mn-preset-picker [selected]="selected()" (selectedChange)="chosen.set($event)" />`,
 })
-class HostComponent {}
+class HostComponent {
+  readonly selected = signal<GrammarPresetId | null>('mn-preset-starter');
+  readonly chosen = signal<GrammarPresetId | null>(null);
+}
 
 describe('PresetPickerComponent', () => {
   let store: GrammarProfileStore;
@@ -19,13 +24,16 @@ describe('PresetPickerComponent', () => {
     store = configureGrammarTestBed();
   });
 
-  async function render(): Promise<HTMLElement> {
+  async function render(): Promise<{
+    readonly fixture: ComponentFixture<HostComponent>;
+    readonly element: HTMLElement;
+  }> {
     await store.load();
     const fixture = TestBed.createComponent(HostComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    return fixture.nativeElement as HTMLElement;
+    return { fixture, element: fixture.nativeElement as HTMLElement };
   }
 
   function radios(element: HTMLElement): HTMLInputElement[] {
@@ -33,7 +41,7 @@ describe('PresetPickerComponent', () => {
   }
 
   it('exposes the ladder as a labelled radiogroup', async () => {
-    const element = await render();
+    const { element } = await render();
     const group = element.querySelector('[role="radiogroup"]');
 
     expect(group).not.toBeNull();
@@ -41,14 +49,14 @@ describe('PresetPickerComponent', () => {
     expect(radios(element)).toHaveLength(TEST_PRESETS.length);
   });
 
-  it('checks the stored preset and only that one', async () => {
-    const element = await render();
+  it('checks the preset it is given and only that one', async () => {
+    const { element } = await render();
 
     expect(radios(element).map((radio) => radio.checked)).toEqual([true, false]);
   });
 
-  it('shows each preset name, caption, and example without a JLPT level in the name', async () => {
-    const element = await render();
+  it('names and captions every preset without a JLPT level in the name', async () => {
+    const { element } = await render();
     const cards = [...element.querySelectorAll('.preset')];
 
     expect(cards).toHaveLength(TEST_PRESETS.length);
@@ -56,33 +64,45 @@ describe('PresetPickerComponent', () => {
       const preset = TEST_PRESETS[index];
       expect(card.querySelector('.name')?.textContent.trim()).toBe(preset.nameEn);
       expect(card.querySelector('.name')?.textContent).not.toMatch(/\bN[1-5]\b/);
-      expect(card.querySelector('.caption')?.textContent.trim()).toBe(preset.captionEn);
-      expect(card.querySelector('.example')?.textContent.trim()).toBe(preset.exampleJa);
+      expect(card.querySelector('.caption')?.textContent.trim()).toBe(
+        startSentence(preset.captionEn),
+      );
     }
   });
 
-  it('marks every Japanese example as Japanese for assistive technology', async () => {
-    const element = await render();
+  /**
+   * Learners choose by reading an example, so the chosen card opens its own;
+   * the rest stay one short card each so the ladder can be scanned.
+   */
+  it('opens the example of the chosen preset, in Japanese', async () => {
+    const { fixture, element } = await render();
+    const examples = (): Element[] => [...element.querySelectorAll('.example')];
 
-    for (const example of element.querySelectorAll('.example')) {
-      expect(example.getAttribute('lang')).toBe('ja');
-    }
+    expect(examples()).toHaveLength(1);
+    expect(examples()[0].textContent.trim()).toBe(TEST_PRESETS[0].exampleJa);
+    expect(examples()[0].getAttribute('lang')).toBe('ja');
+
+    fixture.componentInstance.selected.set('mn-preset-basic');
+    fixture.detectChanges();
+
+    expect(examples()).toHaveLength(1);
+    expect(examples()[0].textContent.trim()).toBe(TEST_PRESETS[1].exampleJa);
   });
 
-  it('round-trips a selection through the store', async () => {
-    const element = await render();
+  it('reports a choice without saving it', async () => {
+    const { fixture, element } = await render();
 
     radios(element)[1].click();
     await Promise.resolve();
 
-    expect(store.selection().presetId).toBe('mn-preset-basic');
-    expect(store.resolvedGuidance()).toBe(TEST_PRESETS[1].promptGuidance);
+    expect(fixture.componentInstance.chosen()).toBe('mn-preset-basic');
+    expect(store.selection().presetId).toBe('mn-preset-starter');
   });
 
   it('explains itself rather than rendering an empty group before assets load', async () => {
     TestBed.resetTestingModule();
     store = configureGrammarTestBed([]);
-    const element = await render();
+    const { element } = await render();
 
     expect(radios(element)).toHaveLength(0);
     expect(element.textContent).toContain('Language assets are still loading.');

@@ -34,8 +34,16 @@ import { IconComponent } from '../icon/icon.component';
       <h1>{{ heading() }}</h1>
       <div class="trailing">
         <ng-content />
+        @if (help()) {
+          <a class="help-link" routerLink="/help" aria-label="Help" title="Help">
+            <mn-icon name="help" [size]="24" />
+          </a>
+        }
       </div>
     </header>
+    @if (subtitle(); as line) {
+      <p class="subtitle" data-testid="page-subtitle">{{ line }}</p>
+    }
   `,
   styles: `
     @use '../../../styles/breakpoints' as breakpoints;
@@ -65,6 +73,33 @@ import { IconComponent } from '../icon/icon.component';
       align-items: center;
     }
 
+    .trailing:empty {
+      display: none;
+    }
+
+    /* Bare at rest, like the home header's own utilities. */
+    .help-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--touch-target);
+      height: var(--touch-target);
+      border: 1px solid transparent;
+      border-radius: var(--radius-control);
+      color: var(--text-primary);
+    }
+
+    .help-link:hover {
+      border-color: var(--border-subtle);
+      background: var(--surface-sunken);
+    }
+
+    .subtitle {
+      margin: var(--space-1) 0 0;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
     @media (max-width: breakpoints.$narrow-max) {
       .head {
         gap: var(--space-2);
@@ -82,6 +117,13 @@ export class PageHeaderComponent {
   /** Omitted only by the Library, which is where every other page goes back to. */
   readonly backTo = input<string | null>(null);
   readonly backLabel = input('Back');
+  /** One quiet line under the title: what the page holds, or how much of it. */
+  readonly subtitle = input<string | null>(null);
+  /**
+   * Help at the end of the title row, for the pages that wear no utility bar
+   * because they carry their own header, as the Library does.
+   */
+  readonly help = input(false);
   protected readonly usesHistoryBack = computed(() => {
     const target = this.backTo();
     return target !== null && this.navigation.canPopTo(target);

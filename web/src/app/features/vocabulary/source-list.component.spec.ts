@@ -105,13 +105,18 @@ describe('SourceListComponent', () => {
     expect(rows(element)[0].classList.contains('is-off')).toBe(true);
   });
 
-  it('states the standing once, above the rows', async () => {
+  /** The vocabulary card above the list states the count; the list does not repeat it. */
+  it('leaves the count to the vocabulary card', async () => {
     const { element } = await render();
 
-    expect(element.querySelectorAll('[data-testid="words-standing"]')).toHaveLength(1);
-    expect(element.querySelector('[data-testid="words-standing"]')?.textContent.trim()).toBe(
-      'No words yet',
-    );
+    expect(element.querySelector('[data-testid="words-standing"]')).toBeNull();
+  });
+
+  it('says nothing about how current the sources are before one has been read', async () => {
+    const { element } = await render();
+
+    expect(element.querySelector('[data-testid="source-synced"]')).toBeNull();
+    expect(element.querySelector('[data-testid="sync-again"]')).toBeNull();
   });
 
   it('says nothing about attention while nothing needs it', async () => {

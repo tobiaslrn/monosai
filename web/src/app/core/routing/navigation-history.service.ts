@@ -3,7 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 const ORIGIN_STATE_KEY = 'monosaiNavigationOrigin';
-const SAFE_ORIGIN = /^\/(?:library|settings|generate|add|vocabulary|grammar|reader\/[\w-]+)$/;
+const SAFE_ORIGIN =
+  /^\/(?:library|settings|generate|add|vocabulary|grammar|reading-level|reader\/[\w-]+)$/;
 
 export type NavigationOriginState = Readonly<Record<typeof ORIGIN_STATE_KEY, string>>;
 

@@ -27,7 +27,7 @@ test('connects, persists and refreshes the Android provider @smoke @mobile', asy
   await expect(row).toHaveCount(1);
   await page.reload();
   await expect(row).toHaveCount(1);
-  await expect(row).toContainText('Anki on this device');
+  await expect(row).toContainText('On this device');
 
   await row.click();
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Anki');

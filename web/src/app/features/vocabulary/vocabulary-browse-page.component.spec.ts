@@ -162,7 +162,6 @@ describe('VocabularyBrowsePageComponent', () => {
     await settle(fixture);
 
     expect(element.textContent).toContain('たべる');
-    expect(element.textContent).toContain('Meaning');
     expect(element.textContent).toContain('eat');
     expect(element.textContent).toContain('Contributing sources');
     expect(element.querySelector('a[href^="/reading-level/source/"]')).not.toBeNull();
@@ -175,14 +174,16 @@ describe('VocabularyBrowsePageComponent', () => {
     let shouldFail = false;
     repository.listVocabularyEntries = () =>
       shouldFail
-      ? Promise.resolve({
+        ? Promise.resolve({
             ok: false,
             error: storageError('unknown', 'Storage is unavailable.'),
           })
         : original();
 
     const { fixture, element } = await render();
-    expect(element.querySelector('h1')?.textContent).toContain('3 words');
+    const count = (): string =>
+      element.querySelector('[data-testid="page-subtitle"]')?.textContent.trim() ?? '';
+    expect(count()).toBe('3 words');
 
     shouldFail = true;
     await TestBed.inject(VocabularyBrowseStore).load();
@@ -190,8 +191,34 @@ describe('VocabularyBrowsePageComponent', () => {
 
     expect(element.textContent).toContain('Vocabulary could not be loaded.');
     expect(element.textContent).toContain('Saved vocabulary is unchanged.');
-    expect(element.querySelector('h1')?.textContent).toContain('0 words');
+    expect(count()).toBe('0 words');
     expect(element.textContent).not.toContain('3 words');
+  });
+
+  it('keeps the word count and adds how many rows a search leaves', async () => {
+    await seedVocabulary();
+    const { fixture, element } = await render();
+    const search = element.querySelector<HTMLInputElement>('[data-testid="vocabulary-search"]');
+    if (search === null) throw new Error('missing search');
+
+    search.value = 'drink';
+    search.dispatchEvent(new Event('input'));
+    await settle(fixture);
+
+    expect(element.querySelector('[data-testid="page-subtitle"]')?.textContent.trim()).toBe(
+      '3 words · 1 match',
+    );
+  });
+
+  it('marks a hard word by more than its colour', async () => {
+    await seedVocabulary();
+    const { element } = await render();
+    const eat = element.querySelector('mn-vocabulary-browse-row .difficulty');
+
+    // Anki's 5.5 on its 1-10 scale is half way: hard, and printed as a number.
+    expect(eat?.textContent).toContain('50%');
+    expect(eat?.classList.contains('is-hard')).toBe(true);
+    expect(eat?.textContent).toContain('Difficulty');
   });
 
   it('offers retry for a failed or unavailable read', async () => {

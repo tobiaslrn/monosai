@@ -204,10 +204,11 @@ export async function prepareGeneration(page: Page, options: StubOptions): Promi
 
   // Storage state restores the durable model and vocabulary records, but
   // Playwright intentionally does not serialize Cache Storage or a live WASM
-  // worker. Visit the grammar route to activate the verified language runtime
-  // before generation captures its profile.
+  // worker. Visit the reading-level page to activate the verified language
+  // runtime before generation captures its profile: the level's example only
+  // appears once the bundle has loaded.
   await page.goto('./#/reading-level');
-  await expect(page.getByRole('radio', { name: /Starter forms/ })).toBeVisible({
+  await expect(page.locator('mn-reading-level-page .example-ja')).toBeVisible({
     timeout: 120_000,
   });
 }

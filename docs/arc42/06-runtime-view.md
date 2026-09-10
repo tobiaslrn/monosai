@@ -226,7 +226,7 @@ rather than played, and the screens say so
 A reading declares the aid layers it should eventually contain
 ([ADR 0047](../decisions/0047-a-reading-declares-what-it-should-have.md)). Four moments, and only
 four, turn that declaration into work: a layer is switched on, a generated story is saved with the
-layers chosen for it, a reader is opened, and an explicit *Prepare*, *Retry*, or *Prepare again*.
+layers chosen for it, a reader is opened, and an explicit _Prepare_, _Retry_, or _Prepare again_.
 Each queues a job row covering the sentences that have never been given that layer under **any**
 configuration, so changing the model queues nothing.
 
@@ -315,7 +315,7 @@ ordering that fills the front of the reading first — exists.
 
 ## 6.6 Browse vocabulary
 
-The vocabulary standing on the reading-level page is the entry point to the
+The Vocabulary card on the reading-level page is the entry point to the
 browser. The page reads the active snapshot, item rows, provenance, and source
 observations in one repository transaction. Search, source, difficulty, date,
 and sort are then applied locally by pure domain rules; opening the filter

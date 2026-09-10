@@ -22,6 +22,8 @@ import { vocabularySourceId } from '../../domain/shared/ids';
 import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import type { BrowseQuery } from '../../domain/vocabulary/vocabulary-browse';
 import type { VocabularyEntry } from '../../domain/vocabulary/vocabulary-repository';
+import { IconComponent } from '../../shared-ui/icon/icon.component';
+import type { IconName } from '../../shared-ui/icon/icon-set';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import {
   VariableHeightVirtualListModel,
@@ -42,32 +44,42 @@ interface VirtualVocabularyEntry {
 @Component({
   selector: 'mn-vocabulary-browse-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PageHeaderComponent, VocabularyBrowseRowComponent],
+  imports: [
+    FormsModule,
+    RouterLink,
+    IconComponent,
+    PageHeaderComponent,
+    VocabularyBrowseRowComponent,
+  ],
   template: `
-    <div class="mn-page vocabulary-page">
+    <div class="mn-page mn-home-palette vocabulary-page">
       <mn-page-header
-        [heading]="'Vocabulary · ' + totalLabel()"
+        heading="Your vocabulary"
         backTo="/reading-level"
-        backLabel="Back to reading level"
+        backLabel="Back to what you can read"
+        [help]="true"
+        [subtitle]="countLabel()"
       />
 
+      <label class="search-field">
+        <span class="mn-visually-hidden">Search vocabulary</span>
+        <mn-icon class="search-icon" name="search" [size]="20" />
+        <input
+          class="mn-control"
+          type="search"
+          placeholder="Search Japanese or English"
+          aria-label="Search Japanese or English"
+          [ngModel]="store.query().search"
+          (ngModelChange)="store.setSearch($event)"
+          data-testid="vocabulary-search"
+        />
+      </label>
+
       <div class="toolbar">
-        <label class="search-field">
-          <span class="mn-visually-hidden">Search vocabulary</span>
-          <input
-            class="mn-control"
-            type="search"
-            placeholder="Search Japanese or English"
-            aria-label="Search Japanese or English"
-            [ngModel]="store.query().search"
-            (ngModelChange)="store.setSearch($event)"
-            data-testid="vocabulary-search"
-          />
-        </label>
         <label class="source-filter">
           <span class="mn-visually-hidden">Filter by source</span>
           <select
-            class="mn-control"
+            class="mn-control source-select"
             aria-label="Filter by source"
             [ngModel]="store.query().sourceId ?? ''"
             (ngModelChange)="setSource($event)"
@@ -81,16 +93,21 @@ interface VirtualVocabularyEntry {
         </label>
         <button
           type="button"
-          class="mn-button"
+          class="mn-button filters-button"
           aria-haspopup="dialog"
           (click)="openFilters()"
           data-testid="vocabulary-filters"
         >
-          Filters
+          <mn-icon name="filter" [size]="18" /> Filters
         </button>
       </div>
 
-      <p class="sort-line">{{ sortLabel() }}</p>
+      <p class="sort-line">
+        {{ sortLabel() }}
+        @if (sortIcon(); as icon) {
+          <mn-icon [name]="icon" [size]="16" />
+        }
+      </p>
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">
         {{ matchAnnouncement() }}
@@ -140,62 +157,138 @@ interface VirtualVocabularyEntry {
               <button type="button" class="reset" (click)="reset()">Reset filters</button>
             </section>
           } @else {
-            <div class="virtual-document">
-              <div
-                class="virtual-spacer"
-                aria-hidden="true"
-                [style.height.px]="range().topSpacer"
-              ></div>
-              <ul class="entry-list">
-                @for (item of visibleItems(); track item.key) {
-                  <li #virtualItem [attr.data-virtual-key]="item.key">
-                    <mn-vocabulary-browse-row
-                      [entry]="item.entry"
-                      [sources]="store.sources()"
-                      [expanded]="store.expandedId() === item.entry.itemId"
-                      (expandedChange)="setExpanded(item.entry.itemId, $event)"
-                    />
-                  </li>
-                }
-              </ul>
-              <div
-                class="virtual-spacer"
-                aria-hidden="true"
-                [style.height.px]="range().bottomSpacer"
-              ></div>
+            <div class="list-region">
+              <div class="columns" aria-hidden="true">
+                <span>Word</span>
+                <span>Difficulty</span>
+                <span>Studied</span>
+              </div>
+              <div class="virtual-document">
+                <div
+                  class="virtual-spacer"
+                  aria-hidden="true"
+                  [style.height.px]="range().topSpacer"
+                ></div>
+                <ul class="entry-list">
+                  @for (item of visibleItems(); track item.key) {
+                    <li #virtualItem [attr.data-virtual-key]="item.key">
+                      <mn-vocabulary-browse-row
+                        [entry]="item.entry"
+                        [sources]="store.sources()"
+                        [expanded]="store.expandedId() === item.entry.itemId"
+                        (expandedChange)="setExpanded(item.entry.itemId, $event)"
+                      />
+                    </li>
+                  }
+                </ul>
+                <div
+                  class="virtual-spacer"
+                  aria-hidden="true"
+                  [style.height.px]="range().bottomSpacer"
+                ></div>
+              </div>
             </div>
           }
         }
       }
-
-      <footer class="footer-count">{{ matchCountLabel() }}</footer>
     </div>
   `,
   styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
+    /* The Library's rail, so the list reads as part of the same application. */
     .vocabulary-page {
-      gap: var(--space-4);
+      gap: var(--space-3);
+      max-width: 42rem;
     }
 
-    .toolbar {
-      display: grid;
-      grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 0.7fr) auto;
-      gap: var(--space-2);
-      align-items: center;
-    }
-
-    .search-field,
-    .source-filter {
+    .search-field {
+      position: relative;
+      display: block;
       min-width: 0;
     }
 
-    .sort-line,
-    .footer-count,
+    .search-icon {
+      position: absolute;
+      top: 50%;
+      left: var(--space-3);
+      color: var(--text-secondary);
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .search-field input {
+      min-height: 3rem;
+      padding-inline-start: 2.75rem;
+    }
+
+    /*
+     * The picker and Filters share a line while the picker can keep a readable
+     * width; with the text too large for that, Filters wraps below it rather
+     * than the picker being squeezed until its value is cut off.
+     */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .source-filter {
+      flex: 1 1 9rem;
+      min-width: 0;
+      max-width: 16rem;
+    }
+
+    .source-select {
+      width: 100%;
+      border-radius: var(--radius-pill);
+      font-weight: 500;
+    }
+
+    .filters-button {
+      flex: none;
+      border-color: var(--action-primary);
+      border-radius: var(--radius-pill);
+      color: var(--home-action-text);
+      font-weight: 600;
+    }
+
+    .sort-line {
+      display: flex;
+      gap: var(--space-1);
+      align-items: center;
+      margin: var(--space-2) 0 0;
+      font-size: var(--text-sm);
+      font-weight: 500;
+    }
+
     .state-message {
       margin: 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);
+    }
+
+    /* Rows lay themselves out against this box, not against the window. */
+    .list-region {
+      container: vocabulary-list / inline-size;
+      min-width: 0;
+    }
+
+    /* The same tracks as a row's summary, so each label sits over its column. */
+    .columns {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 4.25rem 5.25rem 1.25rem;
+      gap: var(--space-3);
+      padding: 0 var(--space-3) var(--space-2);
+      border-block-end: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    @container vocabulary-list (max-width: 20rem) {
+      .columns {
+        display: none;
+      }
     }
 
     .virtual-document {
@@ -240,21 +333,6 @@ interface VirtualVocabularyEntry {
       text-underline-offset: 3px;
       cursor: pointer;
     }
-
-    .footer-count {
-      padding-block-start: var(--space-2);
-      border-block-start: 1px solid var(--border-subtle);
-    }
-
-    @media (max-width: breakpoints.$narrow-max) {
-      .toolbar {
-        grid-template-columns: 1fr auto;
-      }
-
-      .search-field {
-        grid-column: 1 / -1;
-      }
-    }
   `,
 })
 export class VocabularyBrowsePageComponent {
@@ -275,17 +353,24 @@ export class VocabularyBrowsePageComponent {
 
   protected readonly range = this.rangeSignal.asReadonly();
   protected readonly visibleItems = this.visibleItemsSignal.asReadonly();
-  protected readonly totalLabel = computed(() => {
+  /**
+   * How many words there are, and how many rows are showing once a search or a
+   * filter has narrowed them. A word with two meanings is one word and two
+   * rows, so the two are never written as "x of y".
+   */
+  protected readonly countLabel = computed(() => {
     const snapshot = this.store.snapshot();
-    return snapshot === null ? '0 words' : formatCountOf(snapshot.uniqueEntryCount, 'word');
+    const total = snapshot === null ? '0 words' : formatCountOf(snapshot.uniqueEntryCount, 'word');
+    if (this.store.state() !== 'ready' || this.store.matchCount() === this.store.entries().length) {
+      return total;
+    }
+    return `${total} · ${formatCountOf(this.store.matchCount(), 'match', 'matches')}`;
   });
   protected readonly sortLabel = computed(() => sortLabel(this.store.query().sort));
+  protected readonly sortIcon = computed(() => sortIcon(this.store.query().sort));
   protected readonly matchAnnouncement = computed(
     () =>
       `${formatCount(this.store.matchCount())} ${this.store.matchCount() === 1 ? 'word' : 'words'} shown.`,
-  );
-  protected readonly matchCountLabel = computed(() =>
-    this.store.matchCount() === 1 ? '1 word' : `${formatCount(this.store.matchCount())} words`,
   );
 
   constructor() {
@@ -443,17 +528,32 @@ export class VocabularyBrowsePageComponent {
   }
 }
 
+/** The current order, as one short line above the list. */
 function sortLabel(sort: BrowseQuery['sort']): string {
   switch (sort) {
     case 'first-studied-desc':
-      return 'Sorted by first studied, newest first';
+      return 'Recently studied';
     case 'first-studied-asc':
-      return 'Sorted by first studied, oldest first';
+      return 'First studied, oldest first';
     case 'difficulty-desc':
-      return 'Sorted by difficulty, high to low';
+      return 'Difficulty, high to low';
     case 'difficulty-asc':
-      return 'Sorted by difficulty, low to high';
+      return 'Difficulty, low to high';
     case 'expression':
-      return 'Sorted by expression';
+      return 'By word';
+  }
+}
+
+/** The direction glyph beside the sort line; an alphabetical order has none. */
+function sortIcon(sort: BrowseQuery['sort']): IconName | null {
+  switch (sort) {
+    case 'first-studied-desc':
+    case 'difficulty-desc':
+      return 'sort-descending';
+    case 'first-studied-asc':
+    case 'difficulty-asc':
+      return 'sort-ascending';
+    case 'expression':
+      return null;
   }
 }

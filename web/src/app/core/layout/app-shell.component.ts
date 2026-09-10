@@ -26,7 +26,7 @@ import { HelpIntroService } from './help-intro.service';
     <a class="mn-skip-link" href="#mn-main">Skip to main content</a>
 
     @if (!isReaderRoute()) {
-      @if (!isLibraryRoute()) {
+      @if (!ownsHeader()) {
         <mn-app-bar />
       }
       <mn-app-update-banner />
@@ -142,10 +142,14 @@ export class AppShellComponent {
     return classifyReadingLink(segment).kind === 'well-formed';
   });
 
-  /** The Library owns a quieter, image-led home header of its own. */
-  protected readonly isLibraryRoute = computed(() => {
+  /**
+   * The Library owns a quieter, image-led home header of its own, and the
+   * pages about what the learner can read follow it: each wears its own title
+   * row with Help at its end, so the utility bar would only repeat it.
+   */
+  protected readonly ownsHeader = computed(() => {
     const path = this.url().url.split(/[?#]/)[0];
-    return path === '/library';
+    return path === '/library' || path === '/reading-level' || path.startsWith('/reading-level/');
   });
 
   constructor() {

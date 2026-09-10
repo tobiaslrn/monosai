@@ -6,132 +6,108 @@ import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-hist
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { SourceStandingStore } from '../../application/vocabulary/source-standing.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
-import {
-  formatCount,
-  formatCountOf,
-  formatDate,
-  formatRelativeDay,
-} from '../../domain/shared/locale';
+import { formatCountOf, formatDate, formatRelativeDay } from '../../domain/shared/locale';
 import type { VocabularySource } from '../../domain/vocabulary/vocabulary-source';
-import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-source';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
 import {
-  vocabularyCountLabel,
-  vocabularySourceSummary,
-} from '../../shared-ui/vocabulary-standing/vocabulary-standing';
+  isAutomaticAnkiSource,
+  isIncludedInVocabulary,
+} from '../../domain/vocabulary/vocabulary-source';
+import { IconComponent } from '../../shared-ui/icon/icon.component';
+import type { IconName } from '../../shared-ui/icon/icon-set';
+
+/** One icon per kind of source, the same one the Add words sheet shows for it. */
+const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
+  'anki-connect': 'anki-source',
+  'anki-package': 'file',
+  'text-list': 'word-list',
+};
 
 /**
- * One line of standing, then one row per source.
+ * One card: a row per source, then how current they are.
  *
  * A row answers what it is, where it came from, and how many words — nothing
  * else, because everything a source can be configured to do lives on its own
- * page and the row is the way in. The dot on a row and the line under the list
- * are the same fact said twice: once where you scan, once where you can act on
- * it.
+ * page and the row is the way in. The last line of the card is the one thing
+ * the list as a whole can report: when it was last read, with the control that
+ * reads it again, or what is stopping it.
  */
 @Component({
   selector: 'mn-source-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, IconComponent],
   template: `
-    <p class="standing" data-testid="source-standing">
-      <a
-        class="standing-link"
-        routerLink="/reading-level/vocabulary"
-        data-testid="browse-vocabulary"
-      >
-        <b data-testid="words-standing">{{ wordsValue() }}</b>
-        @if (standingDetail(); as detail) {
-          <span>{{ detail }}</span>
-        }
-      </a>
-    </p>
-
-    <ul class="sources">
-      @for (source of sources(); track source.id) {
-        <li>
-          <a
-            class="row"
-            [class.is-off]="!included(source)"
-            [routerLink]="['/reading-level/source', source.id]"
-            data-testid="source-row"
-          >
-            <span class="rmain">
-              <span class="rname">{{ source.label }}</span>
-              <span class="rwhere">
-                @if (needsAttention(source)) {
-                  <span class="warn-dot" aria-hidden="true"></span>
-                }
-                {{ whereLine(source) }}
+    <div class="mn-card">
+      <ul class="sources">
+        @for (source of sources(); track source.id) {
+          <li>
+            <a
+              class="row"
+              [class.is-off]="!included(source)"
+              [routerLink]="['/reading-level/source', source.id]"
+              data-testid="source-row"
+            >
+              <span class="mn-icon-badge" aria-hidden="true">
+                <mn-icon [name]="iconFor(source)" [size]="22" />
               </span>
-            </span>
-            <span class="rnum">{{ countLabel(source) }}</span>
-            <mn-icon name="chevron-right" />
-          </a>
-        </li>
-      } @empty {
-        <li class="empty mn-hint" data-testid="no-sources">
-          No sources yet. Add words and Monosai reads them from wherever you keep them.
-        </li>
-      }
-    </ul>
+              <span class="rmain">
+                <span class="rname">{{ source.label }}</span>
+                <span class="rwhere">
+                  @if (needsAttention(source)) {
+                    <span class="warn-dot" aria-hidden="true"></span>
+                  }
+                  {{ whereLine(source) }}
+                </span>
+              </span>
+              <mn-icon class="chevron" name="chevron-right" />
+            </a>
+          </li>
+        } @empty {
+          <li class="empty mn-hint" data-testid="no-sources">
+            No sources yet. Add one and Monosai reads your words from wherever you keep them.
+          </li>
+        }
+      </ul>
 
-    @if (attention(); as message) {
-      <p class="flag" data-testid="source-attention">
-        <span>{{ message }}</span>
-        <button
-          type="button"
-          class="mn-button"
-          [disabled]="manual.isSyncing()"
-          (click)="tryNow()"
-          data-testid="attention-retry"
-        >
-          Try now
-        </button>
-      </p>
-    }
+      @if (attention(); as message) {
+        <p class="status is-attention" data-testid="source-attention">
+          <mn-icon name="warning" [size]="20" />
+          <span class="status-text">{{ message }}</span>
+          <button
+            type="button"
+            class="mn-button"
+            [disabled]="syncing()"
+            (click)="syncAgain()"
+            data-testid="attention-retry"
+          >
+            Try now
+          </button>
+        </p>
+      } @else if (syncedLabel(); as synced) {
+        <p class="status" data-testid="source-synced">
+          <mn-icon class="synced" name="synced" [size]="22" />
+          <span class="status-text">{{ synced }}</span>
+          @if (canSyncAgain()) {
+            <button
+              type="button"
+              class="sync"
+              [class.is-busy]="syncing()"
+              [disabled]="syncing()"
+              aria-label="Read Anki again"
+              title="Read Anki again"
+              (click)="syncAgain()"
+              data-testid="sync-again"
+            >
+              <mn-icon name="sync" [size]="20" />
+            </button>
+          }
+        </p>
+      }
+    </div>
   `,
   styles: `
     :host {
-      display: grid;
-      gap: var(--space-3);
+      display: block;
       min-width: 0;
-    }
-
-    /*
-     * The count and its detail are two type sizes on one line, so they are
-     * aligned on the baseline they share. Flex's default stretch centred each
-     * item in its own box instead, and the smaller half rode high.
-     */
-    .standing {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0 var(--space-2);
-      align-items: baseline;
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .standing b {
-      color: var(--text-primary);
-      font-size: var(--text-md);
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .standing-link {
-      display: inline-flex;
-      flex-wrap: wrap;
-      gap: 0 var(--space-2);
-      align-items: baseline;
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .standing-link:hover b {
-      text-decoration: underline;
-      text-underline-offset: 3px;
     }
 
     .sources {
@@ -146,58 +122,53 @@ import {
     }
 
     .row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
+      display: flex;
       gap: var(--space-3);
       align-items: center;
       width: 100%;
-      min-height: 3.5rem;
-      padding: var(--space-2) 0;
+      min-height: 4rem;
+      padding: var(--space-3);
+      border-radius: var(--radius-card);
       color: inherit;
       text-decoration: none;
+      transition: background-color var(--motion-fast) ease-out;
     }
 
-    .row:hover .rname {
-      text-decoration: underline;
-      text-underline-offset: 3px;
+    .row:hover {
+      background: var(--surface-sunken);
     }
 
     .rmain {
       display: grid;
+      flex: 1;
       gap: 1px;
       min-width: 0;
     }
 
     .rname {
       overflow: hidden;
+      font-size: var(--text-lg);
       font-weight: 600;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .rwhere {
-      overflow: hidden;
       color: var(--text-secondary);
       font-size: var(--text-sm);
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .rnum {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
     }
 
     /*
      * Left out of the vocabulary, not broken: the row keeps its full contrast
-     * for the name and dims only what is no longer counted.
+     * for the name and dims only its mark.
      */
-    .row.is-off .rnum {
-      opacity: 0.6;
+    .row.is-off .mn-icon-badge {
+      opacity: 0.55;
     }
 
-    mn-icon {
+    .chevron {
+      flex: none;
       color: var(--text-secondary);
     }
 
@@ -211,28 +182,84 @@ import {
       vertical-align: 0.05em;
     }
 
-    .flag {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+    .status {
+      display: flex;
       gap: var(--space-3);
       align-items: center;
-      margin: 0;
-      padding: var(--space-2) var(--space-3);
-      border-radius: var(--radius-control);
-      background: var(--status-warning-soft);
+      min-height: 3.5rem;
+      margin: 0 var(--space-3);
+      padding: var(--space-2) 0;
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+
+    .status-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .synced {
+      flex: none;
+      color: var(--status-success);
+    }
+
+    .status.is-attention {
       color: var(--status-warning);
       font-size: var(--text-sm);
     }
 
-    .flag .mn-button {
-      min-height: var(--touch-target);
-      padding: 0 var(--space-3);
+    .status.is-attention mn-icon {
+      flex: none;
+    }
+
+    .status.is-attention .mn-button {
+      flex: none;
       border-color: currentcolor;
+      border-radius: var(--radius-pill);
       color: inherit;
     }
 
+    .sync {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      width: var(--touch-target);
+      height: var(--touch-target);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-control);
+      background: var(--surface-raised);
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .sync:hover:not(:disabled) {
+      background: var(--surface-sunken);
+    }
+
+    .sync:disabled {
+      color: var(--text-secondary);
+      cursor: default;
+    }
+
+    .sync.is-busy mn-icon {
+      animation: mn-sync-turn 1s linear infinite;
+    }
+
+    @keyframes mn-sync-turn {
+      to {
+        transform: rotate(1turn);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sync.is-busy mn-icon {
+        animation: none;
+      }
+    }
+
     .empty {
-      padding: var(--space-4) 0;
+      padding: var(--space-4);
     }
   `,
 })
@@ -242,14 +269,14 @@ export class SourceListComponent {
   private readonly history = inject(SnapshotHistoryStore);
   private readonly automatic = inject(AutomaticAnkiSyncCoordinator, { optional: true });
   private readonly clock = inject(CLOCK);
-  protected readonly manual = inject(ManualSourceSyncStore);
+  private readonly manual = inject(ManualSourceSyncStore);
 
   protected readonly sources = this.store.sources;
 
   constructor() {
-    // Each row's number and date are its source's last complete read. The
-    // active snapshot is read here as well, because re-reading one source
-    // changes its cache without changing the list the rows come from.
+    // Each row's number is its source's last complete read. The active
+    // snapshot is read here as well, because re-reading one source changes its
+    // cache without changing the list the rows come from.
     effect(() => {
       const ids = this.sources().map((source) => source.id);
       this.history.active();
@@ -257,51 +284,26 @@ export class SourceListComponent {
     });
   }
 
-  protected readonly wordsValue = computed(() => {
-    if (this.history.lastFailure() !== null) {
-      return 'Words unavailable';
-    }
-    const snapshot = this.history.active();
-    // Removing the last source leaves an empty snapshot behind, which is the
-    // same standing as a fresh install and says so. Counting it as "0 words"
-    // contradicted the row underneath saying there were no sources at all.
-    // A snapshot that still has words keeps its count whatever the list shows:
-    // a number that exists is never hidden.
-    if (snapshot === null || (snapshot.uniqueEntryCount === 0 && this.sources().length === 0)) {
-      return 'No words yet';
-    }
-    const sourceTotal = this.sources().reduce(
-      (total, source) => total + (this.standings.standingFor(source.id)?.entryCount ?? 0),
-      0,
-    );
-    if (this.sources().some((source) => !this.included(source))) {
-      return `${formatCountOf(snapshot.uniqueEntryCount, 'counted word')} · ${formatCountOf(sourceTotal, 'word')} in ${formatCountOf(this.sources().length, 'source')}`;
-    }
-    return vocabularyCountLabel(snapshot.uniqueEntryCount);
-  });
-
-  /** `from Anki + Pasted list · checked today`, or what to do when there is nothing. */
-  protected readonly standingDetail = computed(() => {
-    if (this.history.lastFailure() !== null) {
-      return '· your saved words could not be read. Nothing was changed.';
-    }
-    const snapshot = this.history.active();
-    if (snapshot === null) {
-      return this.sources().length === 0 ? null : '· nothing has been read yet';
-    }
-    // Nothing left to be provenance for: the count above already said so.
-    if (snapshot.uniqueEntryCount === 0 && this.sources().length === 0) {
+  /** `Synced today`, once anything has been read at all. */
+  protected readonly syncedLabel = computed(() => {
+    const read = this.standings.lastReadAt();
+    if (read === null || this.sources().length === 0) {
       return null;
     }
-    const checked = this.standings.lastReadAt();
-    const from =
-      snapshot.sourceKinds.length === 0
-        ? '· counted from included sources'
-        : `· from ${vocabularySourceSummary(snapshot.sourceKinds)}`;
-    return checked === null
-      ? from
-      : `${from} · checked ${formatRelativeDay(checked, this.clock.now())}`;
+    return `Synced ${formatRelativeDay(read, this.clock.now())}`;
   });
+
+  /**
+   * Only a source Monosai keeps up to date by itself can be read again from
+   * here. A file never changes, and a source read by hand is read on its page.
+   */
+  protected readonly canSyncAgain = computed(
+    () => this.automatic !== null && this.sources().some(isAutomaticAnkiSource),
+  );
+
+  protected readonly syncing = computed(
+    () => this.automatic?.status().kind === 'checking' || this.manual.isSyncing(),
+  );
 
   /**
    * One line for a source that is not answering.
@@ -328,43 +330,41 @@ export class SourceListComponent {
     return isIncludedInVocabulary(source);
   }
 
+  protected iconFor(source: VocabularySource): IconName {
+    return SOURCE_ICONS[source.kind];
+  }
+
   protected needsAttention(source: VocabularySource): boolean {
     if (this.manual.failureFor(source.id) !== null) {
       return true;
     }
     const status = this.automatic?.status();
     const unsettled = status?.kind === 'waiting' || status?.kind === 'attention';
-    return unsettled && source.kind === 'anki-connect' && source.automaticSync;
-  }
-
-  protected countLabel(source: VocabularySource): string {
-    const standing = this.standings.standingFor(source.id);
-    return standing === null ? '—' : formatCount(standing.entryCount);
+    return unsettled && isAutomaticAnkiSource(source);
   }
 
   protected whereLine(source: VocabularySource): string {
+    const standing = this.standings.standingFor(source.id);
+    const count = standing === null ? '' : ` · ${formatCountOf(standing.entryCount, 'word')}`;
     const suffix = this.included(source) ? '' : ' · not counted';
-    return `${this.origin(source)}${suffix}`;
+    return `${this.origin(source)}${count}${suffix}`;
   }
 
   private origin(source: VocabularySource): string {
-    const now = this.clock.now();
     switch (source.kind) {
       case 'anki-connect': {
-        const where = source.providerKind === 'android-connect' ? 'Anki on this device' : 'Anki';
-        const read = this.standings.standingFor(source.id);
-        return read === null
-          ? `${where} · not read yet`
-          : `${where} · read ${formatRelativeDay(read.readAt, now)}`;
+        const where =
+          source.providerKind === 'android-connect' ? 'On this device' : 'On this computer';
+        return this.standings.standingFor(source.id) === null ? `${where} · not read yet` : where;
       }
       case 'anki-package':
         return `File · imported ${formatDate(source.createdAt)}`;
       case 'text-list':
-        return `Your list · edited ${formatRelativeDay(source.updatedAt, now)}`;
+        return `Your list · edited ${formatRelativeDay(source.updatedAt, this.clock.now())}`;
     }
   }
 
-  protected tryNow(): void {
+  protected syncAgain(): void {
     this.manual.dismiss();
     void this.automatic?.trigger(true);
   }

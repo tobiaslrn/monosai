@@ -24,7 +24,7 @@ describe('AppShellComponent', () => {
     TestBed.overrideTemplate(
       AppShellComponent,
       `<a class="mn-skip-link" href="#mn-main">Skip</a>
-      @if (!isReaderRoute() && !isLibraryRoute()) { <mn-app-bar /> }
+      @if (!isReaderRoute() && !ownsHeader()) { <mn-app-bar /> }
       <main id="mn-main" tabindex="-1"><router-outlet /></main>`,
     );
     const router = TestBed.inject(Router);
@@ -73,6 +73,21 @@ describe('AppShellComponent', () => {
     const { element } = await render('/library');
 
     expect(element.querySelector('mn-app-bar')).toBeNull();
+  });
+
+  it('leaves the pages about what you can read to their own title row', async () => {
+    for (const url of ['/reading-level', '/reading-level/vocabulary', '/reading-level/level']) {
+      TestBed.resetTestingModule();
+      const { element } = await render(url);
+
+      expect(element.querySelector('mn-app-bar')).toBeNull();
+    }
+  });
+
+  it('keeps the utility bar on a page that only shares the prefix', async () => {
+    const { element } = await render('/reading-levels');
+
+    expect(element.querySelector('mn-app-bar')).not.toBeNull();
   });
 
   /**

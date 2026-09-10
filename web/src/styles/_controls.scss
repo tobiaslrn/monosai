@@ -290,6 +290,38 @@ input.mn-switch:disabled {
 }
 
 /*
+ * The Library's row surface, for anything that sits on the canvas the way a
+ * story row does: a quiet raised card with an edge only just there.
+ */
+.mn-card {
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 35%, transparent);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+}
+
+/* The soft round mark a card leads with, carrying the icon of what it opens. */
+.mn-icon-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--action-primary-soft);
+  color: var(--action-primary);
+}
+
+/*
+ * The home composition's clearer green, for the pages that are composed like
+ * it. Scoped to a page root so no other screen is recoloured.
+ */
+.mn-home-palette {
+  --action-primary: var(--home-action-primary);
+  --action-primary-hover: var(--home-action-hover);
+}
+
+/*
  * Every page centres itself. Without a sidebar there is nothing else deciding
  * where a page sits, and a column pinned to the left edge of a wide window is
  * not a layout.

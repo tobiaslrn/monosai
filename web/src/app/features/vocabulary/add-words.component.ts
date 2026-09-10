@@ -31,6 +31,9 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
  * has to be installed for the row to work at all — which differs per platform,
  * so the platform decides the words and the adapter rather than the learner
  * choosing between two Anki entries that were never alternatives.
+ *
+ * The sheet hangs from its control on a wide screen and docks to the bottom
+ * edge on a phone, where it is a temporary surface over a dimmed page.
  */
 @Component({
   selector: 'mn-add-words',
@@ -48,14 +51,14 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
         <button
           #toggle
           type="button"
-          class="mn-button mn-button--primary"
+          class="add-source"
           aria-haspopup="dialog"
           aria-controls="mn-add-words-menu"
           [attr.aria-expanded]="mode() === 'choices' || mode() === 'anki'"
           popovertarget="mn-add-words-menu"
           data-testid="add-words"
         >
-          <mn-icon name="add" /> Add words
+          <mn-icon name="add" [size]="18" /> Add source
         </button>
 
         <div
@@ -67,6 +70,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
           aria-label="Add words"
           (toggle)="onMenuToggle($event)"
         >
+          <span class="grip" aria-hidden="true"></span>
           @if (mode() === 'anki') {
             <div class="sheet-head">
               <button
@@ -137,58 +141,83 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
               </div>
             }
           } @else {
-            @if (platform === 'ios') {
-              <button type="button" class="choice" disabled data-testid="choose-anki">
-                <span class="choice-main">
-                  <strong>Anki</strong>
-                  <span class="mn-hint">iOS cannot be read directly — export a file instead</span>
-                </span>
-              </button>
-              <p class="mn-hint aside">
-                <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
-                  >How to export from Anki (opens in a new tab)</a
+            <div class="sheet-intro">
+              <h3 class="sheet-title">Add words</h3>
+              <p class="sheet-lead">Choose how to import your vocabulary.</p>
+            </div>
+            <div class="choices">
+              @if (platform === 'ios') {
+                <button type="button" class="choice" disabled data-testid="choose-anki">
+                  <span class="mn-icon-badge" aria-hidden="true">
+                    <mn-icon name="anki-source" [size]="22" />
+                  </span>
+                  <span class="choice-main">
+                    <strong>Connect to Anki</strong>
+                    <span class="choice-hint"
+                      >iOS cannot be read directly — export a file instead</span
+                    >
+                  </span>
+                </button>
+                <p class="mn-hint aside">
+                  <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
+                    >How to export from Anki (opens in a new tab)</a
+                  >
+                </p>
+              } @else {
+                <button
+                  type="button"
+                  class="choice"
+                  [disabled]="refresh.isBusy()"
+                  (click)="chooseAnki()"
+                  data-testid="choose-anki"
                 >
-              </p>
-            } @else {
+                  <span class="mn-icon-badge" aria-hidden="true">
+                    <mn-icon name="anki-source" [size]="22" />
+                  </span>
+                  <span class="choice-main">
+                    <strong>Connect to Anki</strong>
+                    <span class="choice-hint">{{ ankiSubtitle }}</span>
+                  </span>
+                  <mn-icon class="chevron" name="chevron-right" />
+                </button>
+              }
               <button
                 type="button"
                 class="choice"
-                [disabled]="refresh.isBusy()"
-                (click)="chooseAnki()"
-                data-testid="choose-anki"
+                [disabled]="refresh.isBusy() || packageBusy()"
+                (click)="packageInput.click()"
+                data-testid="choose-package"
               >
-                <span class="choice-main">
-                  <strong>Anki</strong>
-                  <span class="mn-hint">{{ ankiSubtitle }}</span>
+                <span class="mn-icon-badge" aria-hidden="true">
+                  <mn-icon name="file" [size]="22" />
                 </span>
-                <mn-icon name="chevron-right" />
+                <span class="choice-main">
+                  <strong>Import from Anki</strong>
+                  <span class="choice-hint">{{ fileSubtitle }}</span>
+                </span>
+                <mn-icon class="chevron" name="chevron-right" />
               </button>
-            }
-            <button
-              type="button"
-              class="choice"
-              [disabled]="refresh.isBusy() || packageBusy()"
-              (click)="packageInput.click()"
-              data-testid="choose-package"
-            >
-              <span class="choice-main">
-                <strong>A file</strong>
-                <span class="mn-hint">{{ fileSubtitle }}</span>
-              </span>
-              <mn-icon name="chevron-right" />
-            </button>
-            <button
-              type="button"
-              class="choice"
-              (click)="chooseTextList()"
-              data-testid="add-text-source"
-            >
-              <span class="choice-main">
-                <strong>Your own list</strong>
-                <span class="mn-hint">One word per line</span>
-              </span>
-              <mn-icon name="chevron-right" />
-            </button>
+              <button
+                type="button"
+                class="choice"
+                (click)="chooseTextList()"
+                data-testid="add-text-source"
+              >
+                <span class="mn-icon-badge" aria-hidden="true">
+                  <mn-icon name="word-list" [size]="22" />
+                </span>
+                <span class="choice-main">
+                  <strong>Add a word list</strong>
+                  <span class="choice-hint">One word per line</span>
+                </span>
+                <mn-icon class="chevron" name="chevron-right" />
+              </button>
+            </div>
+            <p class="sheet-note">
+              <mn-icon name="info" [size]="18" />
+              <span>Your sources stay separate. Duplicate words are counted once.</span>
+            </p>
+            <button type="button" class="mn-button cancel" (click)="dismiss()">Cancel</button>
           }
         </div>
         <input
@@ -213,6 +242,8 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
     <mn-anki-mapping-draft />
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     :host {
       position: relative;
       display: block;
@@ -229,8 +260,25 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       gap: var(--space-2);
     }
 
-    [data-testid='add-words'] {
+    /* A quiet green verb beside its heading, like the home filters' weight. */
+    .add-source {
+      display: inline-flex;
+      gap: var(--space-1);
+      align-items: center;
+      min-height: var(--touch-target);
+      padding: var(--space-2) var(--space-1);
+      border: 0;
+      border-radius: var(--radius-control);
+      background: transparent;
+      color: var(--home-action-text);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
       anchor-name: --mn-add-words-anchor;
+    }
+
+    .add-source:hover {
+      background: var(--action-primary-soft);
     }
 
     .editor-head {
@@ -252,11 +300,12 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       z-index: 10;
       inset: auto;
       display: grid;
-      width: min(22rem, calc(100vw - var(--space-4)));
+      gap: var(--space-3);
+      width: min(24rem, calc(100vw - var(--space-4)));
       margin: var(--space-1) 0 0;
-      padding: var(--space-1);
+      padding: var(--space-4);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
+      border-radius: var(--radius-sheet);
       background: var(--surface-panel);
       box-shadow: var(--shadow-overlay);
     }
@@ -265,11 +314,64 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       display: none;
     }
 
+    .grip {
+      display: none;
+    }
+
+    /*
+     * On a phone the sheet docks to the bottom edge of the viewport, which is
+     * a placement rule and therefore the one honest use of a breakpoint here.
+     */
+    @media (max-width: breakpoints.$narrow-max) {
+      .menu {
+        position: fixed;
+        position-area: none;
+        inset: auto 0 0;
+        width: 100%;
+        max-height: 88dvh;
+        margin: 0;
+        overflow-y: auto;
+        padding: var(--space-3) var(--space-4)
+          calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+        border-width: 1px 0 0;
+        border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+      }
+
+      .menu::backdrop {
+        background: rgb(0 0 0 / 38%);
+      }
+
+      .grip {
+        display: block;
+        justify-self: center;
+        width: 2.5rem;
+        height: 0.3rem;
+        border-radius: var(--radius-pill);
+        background: var(--border-strong);
+        opacity: 0.6;
+      }
+    }
+
+    .sheet-intro {
+      display: grid;
+      gap: var(--space-1);
+    }
+
+    .sheet-title {
+      margin: 0;
+      font-size: 1.625rem;
+      letter-spacing: -0.01em;
+    }
+
+    .sheet-lead {
+      margin: 0;
+      color: var(--text-secondary);
+    }
+
     .sheet-head {
       display: flex;
       align-items: center;
       gap: var(--space-2);
-      padding: var(--space-1) var(--space-1) 0;
     }
 
     .sheet-head h3 {
@@ -280,13 +382,11 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
     .sheet-pad {
       display: grid;
       gap: var(--space-2);
-      padding: var(--space-3);
     }
 
     .sheet-foot {
       display: flex;
       justify-content: flex-end;
-      padding: 0 var(--space-3) var(--space-3);
     }
 
     .sheet-pad p {
@@ -309,7 +409,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
 
     .aside {
       margin: 0;
-      padding: 0 var(--space-2) var(--space-2);
+      padding: 0 var(--space-2);
     }
 
     .port {
@@ -317,18 +417,22 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       margin-top: var(--space-2);
     }
 
+    .choices {
+      display: grid;
+      gap: var(--space-2);
+    }
+
     /* A row, not a menu item: it says what it is and what it needs, then opens. */
     .choice {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      display: flex;
       gap: var(--space-3);
       align-items: center;
       width: 100%;
-      min-height: var(--touch-target);
-      padding: var(--space-2);
-      border: 0;
-      border-radius: var(--radius-control);
-      background: transparent;
+      min-height: 4.5rem;
+      padding: var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      background: var(--surface-raised);
       color: var(--text-primary);
       font: inherit;
       text-align: left;
@@ -337,20 +441,61 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
 
     .choice-main {
       display: grid;
+      flex: 1;
       gap: 0.15rem;
       min-width: 0;
     }
 
     .choice-main strong {
+      font-size: var(--text-lg);
       font-weight: 600;
     }
 
+    .choice-hint {
+      color: var(--home-action-text);
+      font-size: var(--text-sm);
+    }
+
+    .choice .chevron {
+      flex: none;
+      color: var(--text-secondary);
+    }
+
     .choice:hover:not(:disabled) {
-      background: var(--surface-raised);
+      background: var(--surface-sunken);
     }
 
     .choice:disabled {
       cursor: default;
+    }
+
+    .choice:disabled .choice-hint {
+      color: var(--text-secondary);
+    }
+
+    .sheet-note {
+      display: flex;
+      gap: var(--space-2);
+      align-items: flex-start;
+      margin: 0;
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    .sheet-note mn-icon {
+      flex: none;
+      margin-top: 0.05rem;
+    }
+
+    .cancel {
+      width: 100%;
+      min-height: 3.25rem;
+      border-color: var(--action-primary);
+      border-radius: var(--radius-pill);
+      color: var(--home-action-text);
+      font-weight: 600;
     }
 
     .file-input {
@@ -382,7 +527,9 @@ export class AddWordsComponent {
       : 'Through the AnkiConnect add-on';
 
   protected readonly fileSubtitle =
-    this.platform === 'android' ? 'An .apkg you exported or shared here' : 'An .apkg you exported';
+    this.platform === 'android'
+      ? 'Choose or share an Anki export file'
+      : 'Choose an Anki export file';
 
   protected readonly packageBusy = this.packageImport.isActive;
   protected readonly mode = signal<AddMode>('closed');
@@ -415,6 +562,12 @@ export class AddWordsComponent {
     this.mode.set('closed');
   }
 
+  /** Cancel: nothing was chosen, so focus goes back to the control that opened it. */
+  protected dismiss(): void {
+    this.hideMenu();
+    this.toggleButton()?.nativeElement.focus();
+  }
+
   protected onMenuToggle(event: Event): void {
     if (this.mode() === 'text') {
       return;
@@ -436,8 +589,7 @@ export class AddWordsComponent {
       return;
     }
     event.preventDefault();
-    this.hideMenu();
-    this.toggleButton()?.nativeElement.focus();
+    this.dismiss();
   }
 
   protected onDocumentPointerDown(event: PointerEvent): void {

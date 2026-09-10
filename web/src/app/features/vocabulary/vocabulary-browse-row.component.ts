@@ -2,69 +2,74 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output } f
 import { RouterLink } from '@angular/router';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { difficultyPercent } from '../../domain/anki/scheduling-signals';
-import { formatDate, formatRelativeDay } from '../../domain/shared/locale';
+import { formatDate, formatRelativeDay, startSentence } from '../../domain/shared/locale';
 import type {
   CapturedSourceObservation,
   VocabularyEntry,
 } from '../../domain/vocabulary/vocabulary-repository';
+import { IconComponent } from '../../shared-ui/icon/icon.component';
 
-/** One vocabulary item, with its compact value and native expandable detail. */
+/**
+ * From this difficulty up a word is marked as one the learner still finds
+ * hard. The number is printed either way, so the colour is never the only
+ * thing saying it.
+ */
+const HARD_DIFFICULTY_PERCENT = 50;
+
+/**
+ * One vocabulary item: a row of columns that opens into its detail.
+ *
+ * The summary's column widths match the list header in the page. Both are
+ * declared in rem so they grow with the text, and a list too narrow for them
+ * — a phone at a large text size — stacks the two figures under the word.
+ */
 @Component({
   selector: 'mn-vocabulary-browse-row',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, IconComponent],
   template: `
     <details
-      class="mn-disclosure"
+      class="entry"
       [attr.data-testid]="'vocabulary-row-' + entry().itemId"
       [open]="expanded()"
       (toggle)="toggle($event)"
     >
       <summary>
-        <span class="summary-content">
-          <span class="summary-main">
-            <span class="expression" lang="ja">{{ entry().visibleExpression }}</span>
-            <span class="meaning">{{ entry().meaning ?? '—' }}</span>
+        <span class="word">
+          <span class="expression" lang="ja">{{ entry().visibleExpression }}</span>
+          <span class="meaning">{{ entry().meaning ?? '—' }}</span>
+        </span>
+        <span class="figures">
+          <span class="difficulty" [class.is-hard]="isHard()">
+            <span class="cell-label">Difficulty </span>{{ difficultyLabel() }}
           </span>
-          <span class="summary-meta">
-            <span>Difficulty {{ difficultyLabel() }}</span>
-            <span>First studied · {{ firstStudiedLabel() }}</span>
+          <span class="studied">
+            <span class="cell-label">First studied </span>{{ firstStudiedLabel() }}
           </span>
         </span>
+        <mn-icon class="chevron" name="chevron-right" />
       </summary>
 
       <div class="detail">
-        <dl>
-          <div>
-            <dt>Reading</dt>
-            <dd lang="ja">{{ entry().readingHiragana ?? '—' }}</dd>
-          </div>
-          <div>
-            <dt>Meaning</dt>
-            <dd>{{ entry().meaning ?? '—' }}</dd>
-          </div>
-          <div>
-            <dt>First studied</dt>
-            <dd>{{ firstStudiedDate() }}</dd>
-          </div>
-        </dl>
-
-        <div class="sources">
-          <h3>Contributing sources</h3>
-          <ul>
-            @for (sourceId of entry().sourceIds; track sourceId) {
-              <li>
-                @if (sourceFor(sourceId); as source) {
-                  <a [routerLink]="['/reading-level/source', sourceId]">{{ source.label }}</a>
-                } @else {
-                  <span>Source no longer available</span>
-                }
-              </li>
-            } @empty {
-              <li>Source no longer available</li>
-            }
-          </ul>
-        </div>
+        @if (entry().readingHiragana; as reading) {
+          <p class="reading" lang="ja">{{ reading }}</p>
+        }
+        <p class="studied-date">First studied {{ firstStudiedDate() }}</p>
+        <h3 class="mn-visually-hidden">Contributing sources</h3>
+        <ul class="sources">
+          @for (sourceId of entry().sourceIds; track sourceId) {
+            <li>
+              <mn-icon name="anki-source" [size]="18" />
+              @if (sourceFor(sourceId); as source) {
+                <a [routerLink]="['/reading-level/source', sourceId]">{{ source.label }}</a>
+              } @else {
+                <span>Source no longer available</span>
+              }
+            </li>
+          } @empty {
+            <li>Source no longer available</li>
+          }
+        </ul>
       </div>
     </details>
   `,
@@ -74,40 +79,39 @@ import type {
       min-width: 0;
     }
 
-    .mn-disclosure {
+    .entry {
       border-block-end: 1px solid var(--border-subtle);
     }
 
-    .mn-disclosure > summary {
-      display: flex;
-      gap: var(--space-3);
-      align-items: center;
-      min-height: 4.5rem;
-      padding-block: var(--space-2);
+    .entry[open] {
+      border-radius: var(--radius-card);
+      border-block-end-color: transparent;
+      background: color-mix(in srgb, var(--surface-sunken) 70%, transparent);
     }
 
-    .summary-content,
-    .summary-main,
-    .summary-meta {
+    summary {
       display: grid;
-      gap: 0.2rem;
-      min-width: 0;
-    }
-
-    .summary-content {
-      display: flex;
-      flex: 1 1 auto;
-      align-items: center;
+      grid-template-columns: minmax(0, 1fr) 10.25rem 1.25rem;
       gap: var(--space-3);
+      align-items: center;
+      min-height: 3.75rem;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-card);
+      list-style: none;
+      cursor: pointer;
     }
 
-    .summary-main {
-      flex: 1 1 auto;
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary:hover {
+      background: color-mix(in srgb, var(--surface-sunken) 60%, transparent);
+    }
+
+    .word {
+      display: grid;
       min-width: 0;
-    }
-
-    .summary-meta {
-      flex: 0 0 auto;
     }
 
     .expression {
@@ -116,91 +120,125 @@ import type {
       font-weight: 650;
     }
 
-    .meaning,
-    .summary-meta,
-    dt {
+    .meaning {
+      overflow-wrap: anywhere;
       color: var(--text-secondary);
       font-size: var(--text-sm);
     }
 
-    .meaning {
-      overflow-wrap: anywhere;
-      white-space: normal;
+    /* Two columns while the list is wide enough, a quiet line under the word when not. */
+    .figures {
+      display: grid;
+      grid-template-columns: 4.25rem 5.25rem;
+      gap: var(--space-3);
+      align-items: center;
+      font-size: var(--text-sm);
+      font-variant-numeric: tabular-nums;
     }
 
-    .summary-meta {
-      max-width: 100%;
-      justify-items: end;
-      text-align: end;
-      white-space: normal;
-      overflow-wrap: anywhere;
+    .studied {
+      color: var(--text-secondary);
+    }
+
+    .difficulty.is-hard {
+      color: var(--status-warning);
+      font-weight: 600;
+    }
+
+    .cell-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .chevron {
+      color: var(--text-secondary);
+      transition: transform var(--motion-fast) ease-out;
+    }
+
+    .entry[open] .chevron {
+      transform: rotate(-90deg);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .chevron {
+        transition: none;
+      }
     }
 
     .detail {
       display: grid;
-      gap: var(--space-3);
-      padding: 0 0 var(--space-4) calc(0.55rem + var(--space-2));
+      gap: var(--space-1);
+      padding: 0 var(--space-3) var(--space-3);
     }
 
-    dl {
-      display: grid;
-      gap: var(--space-2);
+    .detail p {
       margin: 0;
     }
 
-    dl > div {
-      display: grid;
-      grid-template-columns: 8rem minmax(0, 1fr);
-      gap: var(--space-3);
+    .reading {
+      font-size: var(--text-lg);
     }
 
-    dt,
-    dd {
-      margin: 0;
-    }
-
-    dd {
-      overflow-wrap: anywhere;
+    .studied-date {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
     }
 
     .sources {
       display: grid;
       gap: var(--space-1);
+      margin: var(--space-2) 0 0;
+      padding: 0;
+      list-style: none;
     }
 
-    h3 {
-      margin: 0;
-      font-size: var(--text-sm);
-      font-weight: 650;
+    .sources li {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+      min-height: var(--touch-target);
+      overflow-wrap: anywhere;
     }
 
-    ul {
-      display: grid;
-      gap: var(--space-1);
-      margin: 0;
-      padding-inline-start: var(--space-4);
+    .sources mn-icon {
+      flex: none;
+      color: var(--text-secondary);
     }
 
-    @media (max-width: 32em) {
-      .mn-disclosure > summary {
-        align-items: stretch;
-        gap: var(--space-1);
+    /* The open row's tint darkens the page, so the link takes the darker green. */
+    .sources a {
+      color: var(--home-action-text);
+    }
+
+    @container vocabulary-list (max-width: 20rem) {
+      summary {
+        grid-template-columns: minmax(0, 1fr) 1.25rem;
       }
 
-      .summary-content {
-        display: grid;
-        gap: var(--space-1);
+      .figures {
+        display: flex;
+        flex-wrap: wrap;
+        grid-column: 1;
+        gap: 0 var(--space-3);
       }
 
-      .summary-meta {
-        grid-template-columns: 1fr;
-        justify-content: start;
-        justify-items: start;
-        text-align: start;
+      .cell-label {
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip-path: none;
+        color: var(--text-secondary);
+        font-weight: 400;
       }
 
-      .detail {
-        padding-inline-start: calc(0.55rem + var(--space-1));
+      .chevron {
+        grid-row: 1 / span 2;
+        grid-column: 2;
       }
     }
   `,
@@ -213,14 +251,23 @@ export class VocabularyBrowseRowComponent {
   readonly expanded = input(false);
   readonly expandedChange = output<boolean>();
 
+  private readonly percent = computed(() => difficultyPercent(this.entry().fsrsDifficulty));
+
   protected readonly difficultyLabel = computed(() => {
-    const percent = difficultyPercent(this.entry().fsrsDifficulty);
-    return percent === null ? '—' : `${String(percent)} %`;
+    const percent = this.percent();
+    return percent === null ? '—' : `${String(percent)}%`;
+  });
+
+  protected readonly isHard = computed(() => {
+    const percent = this.percent();
+    return percent !== null && percent >= HARD_DIFFICULTY_PERCENT;
   });
 
   protected firstStudiedLabel(): string {
     const timestamp = this.entry().firstReviewedAt;
-    return timestamp === undefined ? '—' : formatRelativeDay(timestamp, this.clock.now());
+    return timestamp === undefined
+      ? '—'
+      : startSentence(formatRelativeDay(timestamp, this.clock.now()));
   }
 
   protected firstStudiedDate(): string {

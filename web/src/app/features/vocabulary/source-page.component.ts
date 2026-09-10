@@ -76,7 +76,12 @@ const STALE_REASONS: Record<StaleReason, string> = {
   ],
   template: `
     <div class="mn-page">
-      <mn-page-header [heading]="heading()" backTo="/reading-level" backLabel="Back to words" />
+      <mn-page-header
+        [heading]="heading()"
+        backTo="/reading-level"
+        backLabel="Back to words"
+        [help]="true"
+      />
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
 

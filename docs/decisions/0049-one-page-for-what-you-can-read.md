@@ -1,7 +1,8 @@
 # 0049 — Vocabulary and Grammar are one page: what you can read
 
 Date: 2026-09-04
-Status: Accepted
+Status: Accepted; the inline ladder is superseded by
+[ADR 0063](0063-what-you-can-read-is-composed-like-the-library.md)
 
 ## Context
 

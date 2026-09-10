@@ -86,6 +86,16 @@ export const APP_ROUTES: Routes = [
       ),
   },
   {
+    // The ladder, on its own: choosing is a draft until Save level commits it,
+    // so a learner can read each example before anything goes stale.
+    path: 'reading-level/level',
+    title: 'Reading level · Monosai',
+    loadComponent: () =>
+      import('../../features/reading-level/level-choice-page.component').then(
+        (m) => m.LevelChoicePageComponent,
+      ),
+  },
+  {
     // One source, and everything it can be configured to do. A page rather
     // than a row, because the list is for choosing what to open.
     path: 'reading-level/source/:sourceId',

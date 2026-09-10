@@ -124,7 +124,7 @@ test.describe('vocabulary', () => {
     const sheet = page.getByRole('dialog', { name: 'Add words' });
 
     await openAddWords(page);
-    await page.getByRole('heading', { name: 'Words', level: 2 }).click();
+    await page.getByRole('heading', { name: 'Word sources', level: 2 }).click();
     await expect(sheet).toBeHidden();
 
     await toggle.click();
@@ -160,8 +160,6 @@ test.describe('vocabulary', () => {
     await expect(rows).toHaveCount(2);
     await expect(rows.nth(0)).toContainText('My textbook');
     await expect(rows.nth(1)).toContainText('Anki');
-    // The standing says where the words came from, once, above the rows.
-    await expect(page.getByTestId('source-standing')).toContainText('from Pasted list + Anki');
 
     const snapshots = await readSnapshots(page);
     expect(snapshots).toHaveLength(1);
@@ -193,13 +191,16 @@ test.describe('vocabulary', () => {
     });
 
     await page.getByTestId('browse-vocabulary').click();
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Vocabulary · 3 words');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your vocabulary');
+    await expect(page.getByTestId('page-subtitle')).toHaveText('3 words');
     await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(4);
     await expectNoSeriousAccessibilityViolations(page);
 
     await page.getByTestId('vocabulary-search').fill('食べる');
     await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(2);
-    await expect(page.locator('mn-vocabulary-browse-row').filter({ hasText: 'eat' })).toHaveCount(1);
+    await expect(page.locator('mn-vocabulary-browse-row').filter({ hasText: 'eat' })).toHaveCount(
+      1,
+    );
     await expect(
       page.locator('mn-vocabulary-browse-row').filter({ hasText: 'consume' }),
     ).toHaveCount(1);
@@ -223,7 +224,11 @@ test.describe('vocabulary', () => {
       document.documentElement.style.fontSize = '200%';
     });
     await expect
-      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))
+      .poll(() =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        ),
+      )
       .toBe(true);
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '';

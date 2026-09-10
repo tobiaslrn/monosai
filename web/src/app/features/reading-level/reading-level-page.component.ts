@@ -1,23 +1,26 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
-import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/automatic-anki-sync.coordinator';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
-import { CLOCK } from '../../application/shared/repository-tokens';
-import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
+import {
+  NavigationHistoryService,
+  navigationOriginState,
+} from '../../core/routing/navigation-history.service';
+import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { GuidanceSectionComponent } from '../grammar/guidance-section.component';
-import { PresetPickerComponent } from '../grammar/preset-picker.component';
+import { conventionalLevel } from '../grammar/preset-level';
 import { REGISTER_LABELS } from '../grammar/register-labels';
 import { StructuralBaselineSectionComponent } from '../grammar/structural-baseline-section.component';
 import { AddWordsComponent } from '../vocabulary/add-words.component';
 import { PackageImportComponent } from '../vocabulary/package-import.component';
 import { SourceListComponent } from '../vocabulary/source-list.component';
+import { VocabularyCardComponent } from '../vocabulary/vocabulary-card.component';
 import { generationShortfallLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
 /** Appended to every confirmation; changing the profile is what makes analyses stale. */
@@ -35,11 +38,10 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
 /**
  * What the learner can read: two facts, and the plumbing behind each.
  *
- * Vocabulary and grammar used to be two routes reachable only from inside
- * Settings, which filed the one thing that makes Monosai different under a
- * gear. They describe a single subject — how hard a reading may be before it
- * stops being readable — so they are one screen, ordered as the facts a learner
- * checks and then the things set once and never touched again.
+ * Vocabulary and grammar describe a single subject — how hard a reading may be
+ * before it stops being readable — so they are one screen, composed like the
+ * Library: quiet cards on the canvas, each fact leading to the page that holds
+ * all of it, and the things set once and never touched again folded beneath.
  */
 @Component({
   selector: 'mn-reading-level-page',
@@ -48,20 +50,24 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
   // refresh in flight and releases the provider it was reading from.
   providers: [VocabularyRefreshStore, PackageImportStore],
   imports: [
+    RouterLink,
+    IconComponent,
     PageHeaderComponent,
     AddWordsComponent,
     PackageImportComponent,
     SourceListComponent,
-    PresetPickerComponent,
+    VocabularyCardComponent,
     GuidanceSectionComponent,
     StructuralBaselineSectionComponent,
   ],
   template: `
-    <div class="mn-page">
+    <div class="mn-page mn-home-palette level-page">
       <mn-page-header
         heading="What you can read"
+        subtitle="Manage the words and grammar in your stories."
         [backTo]="backTarget()"
         [backLabel]="backLabel()"
+        [help]="true"
       />
 
       <p
@@ -73,26 +79,27 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
         {{ announcement() }}
       </p>
 
-      <section id="words" class="mn-panel" aria-labelledby="mn-words-heading">
+      <section id="words" class="group" aria-labelledby="mn-words-heading">
+        <mn-vocabulary-card />
+        @if (shortfall(); as note) {
+          <p class="note">{{ note }}</p>
+        }
+
         <div class="section-heading">
-          <h2 id="mn-words-heading">Words</h2>
+          <h2 id="mn-words-heading">Word sources</h2>
           <mn-add-words />
         </div>
 
         <mn-source-list />
         <p class="draft-status mn-hint" role="status">This list is not saved yet.</p>
-        @if (shortfall(); as note) {
-          <p class="mn-hint">{{ note }}</p>
+        @if (hasSources()) {
+          <p class="note sources-note">Words from all sources are combined.</p>
         }
         <mn-package-import />
       </section>
 
-      <section id="grammar" class="mn-panel" aria-labelledby="mn-grammar-heading">
-        <div class="section-heading">
-          <h2 id="mn-grammar-heading">Grammar</h2>
-          <span class="grammar-standing" data-testid="grammar-standing">{{ grammarValue() }}</span>
-        </div>
-        <p class="mn-hint">{{ grammarDetail() }}</p>
+      <section id="grammar" class="group" aria-labelledby="mn-grammar-heading">
+        <h2 id="mn-grammar-heading">Grammar</h2>
 
         <!--
           Announced rather than shown as a toast: the change has already been
@@ -104,7 +111,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
         </p>
 
         @if (language.status() === 'failed') {
-          <div class="assets-failed" role="alert">
+          <div class="mn-card assets-failed" role="alert">
             <h3>Language assets are unavailable</h3>
             <p class="mn-hint">
               The reading levels ship with the language bundle, which could not be loaded. Your
@@ -113,22 +120,58 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
             <button type="button" class="mn-button" (click)="retryLanguage()">Try again</button>
           </div>
         } @else {
-          <mn-preset-picker />
+          <div class="mn-card level-card">
+            <a
+              class="level-link"
+              routerLink="/reading-level/level"
+              [state]="levelOriginState"
+              data-testid="reading-level-link"
+            >
+              <span class="mn-icon-badge" aria-hidden="true">
+                <mn-icon name="reading-level" [size]="24" />
+              </span>
+              <span class="level-main">
+                <span class="level-title">Reading level</span>
+                <span class="level-tag">
+                  <span data-testid="grammar-standing">{{ grammarValue() }}</span>
+                  @if (grammarLevel(); as level) {
+                    <span> · {{ level }}</span>
+                  }
+                </span>
+              </span>
+              <mn-icon class="chevron" name="chevron-right" />
+            </a>
+            <p class="level-detail">{{ grammarDetail() }}</p>
+            @if (profile.selectedPreset(); as preset) {
+              <div class="example">
+                <p class="example-ja" lang="ja">{{ preset.exampleJa }}</p>
+                <p class="gloss" lang="en">{{ preset.exampleEn }}</p>
+              </div>
+            }
+          </div>
 
-          <details id="wording" class="mn-disclosure">
+          <details id="wording" class="mn-card fold">
             <summary>
-              <span class="summary-label">Register and wording</span>
+              <mn-icon class="fold-icon" name="settings" [size]="22" />
+              <span class="summary-label">Register &amp; wording</span>
               <span class="summary-value">{{ wordingSummary() }}</span>
+              <mn-icon class="fold-chevron" name="chevron-right" />
             </summary>
-            <mn-guidance-section />
+            <div class="fold-body">
+              <mn-guidance-section />
+            </div>
           </details>
 
-          <details id="forms" class="mn-disclosure">
+          <details id="forms" class="mn-card fold">
             <summary>
+              <mn-icon class="fold-icon" name="file" [size]="22" />
               <span class="summary-label">Always-known forms</span>
               <span class="summary-value">{{ formsSummary() }}</span>
+              <mn-icon class="fold-chevron" name="chevron-right" />
             </summary>
-            <mn-structural-baseline-section />
+            <div class="fold-body">
+              <mn-structural-baseline-section />
+            </div>
           </details>
         }
 
@@ -141,15 +184,33 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
   styles: `
     @use '../../../styles/breakpoints' as breakpoints;
 
+    /* The Library's rail, so the two screens read as one application. */
+    .level-page {
+      gap: var(--space-5);
+      max-width: 42rem;
+    }
+
     /*
      * A deep link used to put a section heading flush at y=0, scrolling the page
-     * title, the back link, and the standing summary out of view — so a learner
-     * arriving from Generate could not tell what page they had landed on. The
-     * margin is the height of that chrome.
+     * title and the back link out of view — so a learner arriving from Generate
+     * could not tell what page they had landed on. The margin is that chrome.
      */
     #words,
     #grammar {
-      scroll-margin-top: 12rem;
+      scroll-margin-top: 8rem;
+    }
+
+    .group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      min-width: 0;
+    }
+
+    .group h2 {
+      margin: 0;
+      font-size: 1.375rem;
+      letter-spacing: -0.01em;
     }
 
     .section-heading {
@@ -158,19 +219,21 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
       gap: var(--space-2);
       align-items: center;
       justify-content: space-between;
-    }
-
-    .section-heading h2 {
-      margin: 0;
+      margin-top: var(--space-3);
     }
 
     .section-heading mn-add-words {
       margin-left: auto;
     }
 
-    .grammar-standing {
+    .note {
+      margin: 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);
+    }
+
+    .sources-note {
+      margin-top: calc(var(--space-1) * -1);
     }
 
     .draft-status {
@@ -178,7 +241,8 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
       margin: 0;
     }
 
-    #words:has(mn-add-words.is-editor) mn-source-list {
+    #words:has(mn-add-words.is-editor) mn-source-list,
+    #words:has(mn-add-words.is-editor) .sources-note {
       display: none;
     }
 
@@ -190,19 +254,176 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
      * The heading and its Add source control share a line only while there is
      * nothing to put below them. An open editor asks for a full row of its own
      * (flex-basis: 100%), which nowrap silently refused — so opening
-     * Add source → Pasted list drew the editor over the "Words" heading.
+     * Add source → Pasted list drew the editor over the heading.
      */
     @media (min-width: breakpoints.$narrow) {
       .section-heading:not(:has(mn-add-words.is-editor)) {
         flex-wrap: nowrap;
-        align-items: flex-start;
       }
+    }
+
+    .level-card {
+      position: relative;
+      display: grid;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      transition: background-color var(--motion-fast) ease-out;
+    }
+
+    .level-card:hover {
+      background: var(--surface-sunken);
+    }
+
+    /* The whole card is the link; its outline is drawn on the card. */
+    .level-link {
+      display: flex;
+      gap: var(--space-3);
+      align-items: center;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .level-link::after {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      content: '';
+    }
+
+    .level-link:focus-visible {
+      outline: none;
+    }
+
+    .level-card:has(.level-link:focus-visible) {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    .level-card .mn-icon-badge {
+      width: 3.25rem;
+      height: 3.25rem;
+    }
+
+    .level-main {
+      display: grid;
+      flex: 1;
+      gap: var(--space-1);
+      justify-items: start;
+      min-width: 0;
+    }
+
+    .level-title {
+      font-size: var(--text-lg);
+      font-weight: 700;
+    }
+
+    .level-tag {
+      padding: 0.2rem var(--space-3);
+      border-radius: var(--radius-pill);
+      background: var(--action-primary-soft);
+      color: var(--home-action-text);
+      font-size: var(--text-sm);
+      font-weight: 600;
+    }
+
+    .chevron {
+      flex: none;
+      color: var(--text-secondary);
+    }
+
+    .level-detail {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    .example {
+      padding: var(--space-3);
+      border-radius: var(--radius-control);
+      background: color-mix(in srgb, var(--surface-sunken) 75%, var(--surface-raised));
+    }
+
+    .example-ja {
+      margin: 0;
+      font-family: var(--font-japanese);
+      font-size: var(--text-lg);
+      line-height: 1.6;
+    }
+
+    .gloss {
+      margin: var(--space-1) 0 0;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    /*
+     * Set once and left alone, so each is folded; a closed fold still names its
+     * current value opposite its label.
+     */
+    .fold {
+      overflow: clip;
+    }
+
+    .fold > summary {
+      display: flex;
+      gap: var(--space-3);
+      align-items: center;
+      min-height: 3.5rem;
+      padding: var(--space-2) var(--space-3);
+      list-style: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .fold > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .fold > summary:hover {
+      background: var(--surface-sunken);
+    }
+
+    .fold-icon {
+      flex: none;
+    }
+
+    .summary-label {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .summary-value {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      text-align: end;
+    }
+
+    .fold-chevron {
+      flex: none;
+      color: var(--text-secondary);
+      transition: transform var(--motion-fast) ease-out;
+    }
+
+    .fold[open] .fold-chevron {
+      transform: rotate(90deg);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fold-chevron {
+        transition: none;
+      }
+    }
+
+    .fold-body {
+      padding: var(--space-4);
+      border-top: 1px solid var(--border-subtle);
     }
 
     .assets-failed {
       display: grid;
       justify-items: start;
       gap: var(--space-2);
+      padding: var(--space-4);
     }
 
     .assets-failed h3,
@@ -219,26 +440,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'wording', 'for
       color: var(--text-secondary);
       font-size: var(--text-sm);
     }
-
-    /*
-     * A closed disclosure still answers the question it is hiding, so the
-     * current value sits opposite its label rather than inside the fold.
-     */
-    .mn-disclosure {
-      border-top: 1px solid var(--border-subtle);
-    }
-
-    .mn-disclosure > summary .summary-label {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .mn-disclosure > summary .summary-value {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      font-weight: 400;
-      text-align: end;
-    }
   `,
 })
 export class ReadingLevelPageComponent {
@@ -248,13 +449,11 @@ export class ReadingLevelPageComponent {
   private readonly mappings = inject(SourceMappingStore);
   private readonly packageImport = inject(PackageImportStore);
   private readonly history = inject(SnapshotHistoryStore);
-  protected readonly sourceWarnings = computed(
-    () => this.history.active()?.stats.sourceWarnings ?? [],
-  );
-  private readonly automatic = inject(AutomaticAnkiSyncCoordinator, { optional: true });
-  private readonly clock = inject(CLOCK);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+
+  /** The level page's Back and Save return here through history. */
+  protected readonly levelOriginState = navigationOriginState('/reading-level');
 
   /** The deep link's target, which survives a navigation within this route. */
   private readonly fragment = toSignal(this.route.fragment, { initialValue: null });
@@ -296,6 +495,8 @@ export class ReadingLevelPageComponent {
 
   protected readonly state = this.refresh.state;
 
+  protected readonly hasSources = computed(() => this.mappings.sources().length > 0);
+
   /**
    * One live region for what the page's work is doing. An import in progress
    * owns it, because it is the thing the learner just started; otherwise the
@@ -310,9 +511,9 @@ export class ReadingLevelPageComponent {
   /**
    * What a learner below the generation floor needs to know.
    *
-   * The only thing the section says about the vocabulary beyond the list's own
-   * standing line, and it disappears the moment there are enough words rather
-   * than congratulating anyone for passing a threshold they never saw.
+   * The only thing the section says about the vocabulary beyond the card's own
+   * count, and it disappears the moment there are enough words rather than
+   * congratulating anyone for passing a threshold they never saw.
    */
   protected readonly shortfall = computed(() => {
     const snapshot = this.history.active();
@@ -322,6 +523,11 @@ export class ReadingLevelPageComponent {
   protected readonly grammarValue = computed(
     () => this.profile.selectedPreset()?.nameEn ?? 'Not loaded yet',
   );
+
+  protected readonly grammarLevel = computed(() => {
+    const preset = this.profile.selectedPreset();
+    return preset === null ? null : conventionalLevel(preset);
+  });
 
   protected readonly grammarDetail = computed(() => {
     const preset = this.profile.selectedPreset();
@@ -397,11 +603,9 @@ export class ReadingLevelPageComponent {
       }
     });
 
-    // A deep link names the half of the page the caller had in mind. Landing at
-    // the top of a page longer than either half used to be would make the merge
-    // worse than the split, so the target is opened and then scrolled to — and
-    // re-resolved when the bundle arrives, because the grammar half does not
-    // exist until it has.
+    // A deep link names the half of the page the caller had in mind, so the
+    // target is opened and then scrolled to — and re-resolved when the bundle
+    // arrives, because the grammar half does not exist until it has.
     effect(() => {
       const fragment = this.fragment();
       const status = this.language.status();
