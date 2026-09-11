@@ -234,7 +234,8 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
     await toggle.click();
     await expect(menu).toBeVisible();
-    await page.getByRole('heading', { name: 'Reader actions', level: 1 }).click();
+    // An outside press on the bar's empty middle; the story heading lies under the anchored menu.
+    await page.locator('.bar-row').click();
     await expect(menu).toBeHidden();
 
     await toggle.click();
