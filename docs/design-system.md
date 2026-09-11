@@ -415,7 +415,9 @@ source.
 
 ### Saved-story controls
 
-The reader header has Back, the title, Listen, and Story options. It carries no
+The reader header has Back, the title, Listen, and Story options. Unlike a page
+header, its hairline lower edge is always drawn, because the reading begins
+directly beneath it in type as large as the title. It carries no
 story progress marker: the reading surface and audio transport already expose
 the positions they can report accurately. Appearance, preparation, and
 maintenance share Story options rather than separate header buttons. The

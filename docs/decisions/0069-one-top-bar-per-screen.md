@@ -30,7 +30,9 @@ labelled navigation landmark. Help ends its own bar with a labelled GitHub link.
 no bar of its own, and the `app-bar` component is removed.
 
 The reader keeps its own sticky bar, drawn in the same shape: the same height, title token,
-glyph alignment, and fading lower edge.
+and glyph alignment. Its hairline lower edge is always drawn rather than faded in: the
+reading starts directly beneath the bar in type as large as the title, and without the edge
+the two run together when a story opens.
 
 ## Consequences
 

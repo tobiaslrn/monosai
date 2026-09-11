@@ -403,9 +403,9 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
      * full viewport while text scrolls beneath it. Keep the backdrop in the
      * reader's own canvas token so it stays opaque in both themes.
      *
-     * Its lower edge is what separates the bar from the reading. It fades in
-     * once the text has started to pass beneath it, and is simply always there
-     * where scroll-driven animation is not supported.
+     * Its lower edge is what separates the bar from the reading. Unlike a page
+     * header's, it is always drawn: the reading starts directly beneath the bar
+     * in type as large as the title, so without the edge the two run together.
      */
     .bar::before {
       position: absolute;
@@ -416,14 +416,6 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       background: var(--surface-canvas);
       content: '';
       pointer-events: none;
-    }
-
-    @supports (animation-timeline: scroll()) {
-      .bar::before {
-        animation: mn-bar-edge linear both;
-        animation-timeline: scroll(root);
-        animation-range: 0 var(--space-4);
-      }
     }
 
     .bar-row {
