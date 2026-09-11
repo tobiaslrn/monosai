@@ -55,16 +55,19 @@ Rendering one bar in the shell above the outlet instead would have meant tab pag
 `mn-page-header`. Settings reached from Write with AI keeps its "Back to story", and that Back has
 to share one bar with the tabs, which only the page's own header can offer.
 
-In the top bar the tabs sit at the centre, so they stay in place when Home's Help icon comes and
-goes as the learner switches tabs.
+On a wide screen the three tab pages wear the same bar, the way a website wears one header: the
+Monosai mark and wordmark, the tabs at the bar's end, where a bar's controls go, then Help as an
+icon-only control. Nothing in it changes from tab to tab, so nothing in it moves. Tabs centred in
+the bar, with the brand and Help coming and going around them, were tried first and read as a
+different header on each page.
 
 Library and Settings show no visible title: the selected tab names the page. `mn-page-header`
 takes `titleHidden`, which keeps `h1#mn-page-title` for the heading landmark and visually hides
 it. Below `$wide` a bar left holding nothing visible takes no room.
 
-Home's bar leads with the Monosai mark and the wordmark, then the tabs on a wide screen, then Help
-as an icon-only control. Help is on Home and nowhere else in the frame. The Library's labelled
-"Utilities" navigation is removed.
+Below `$wide` only Home's bar carries the mark, the wordmark and Help; the Library's and Settings'
+bars hold nothing visible. The mark is not a link, because the Home tab already is one. Help's Back
+returns to the tab page that opened it. The Library's labelled "Utilities" navigation is removed.
 
 ### Home starts stories
 
@@ -118,7 +121,8 @@ uses the one fact it has as a stand-in: a story never opened is **New**, and an 
 ## Consequences
 
 - Home is one tap from wherever the tab bar is, and Settings becomes one tap rather than two from
-  Home. Help is one tap from Home and one Back from itself.
+  Home. Help is one tap from any tab page on a wide screen and from Home on a phone,
+  and one Back from itself.
 - Paste text, Write with AI and Help go back to Home. The reader pops to whichever tab page opened
   it and falls back to the Library for a deep link; its "Go to library" action at the end of a
   story is unchanged.

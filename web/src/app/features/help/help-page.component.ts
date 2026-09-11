@@ -1,8 +1,16 @@
 import { formatCount } from '../../domain/shared/locale';
 import { GENERATION_SNAPSHOT_MINIMUM } from '../../domain/vocabulary/snapshot';
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+
+/** The tab pages that carry Help, and what the way back to each is called. */
+const HELP_ORIGINS: ReadonlyMap<string, string> = new Map([
+  ['/home', 'Back to home'],
+  ['/library', 'Back to library'],
+  ['/settings', 'Back to settings'],
+]);
 
 /** Local, static guidance: reading the guide never invokes an AI provider. */
 @Component({
@@ -11,7 +19,7 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
   imports: [RouterLink, PageHeaderComponent],
   template: `
     <div class="mn-page help-page">
-      <mn-page-header heading="Help" backTo="/home" backLabel="Back to home">
+      <mn-page-header heading="Help" [backTo]="backTarget" [backLabel]="backLabel">
         <!-- Named, not drawn: no icon in the set reads as GitHub rather than a branch. -->
         <a
           class="mn-button mn-button--ghost"
@@ -192,4 +200,13 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
 export class HelpPageComponent {
   /** Read from the rule, so the three screens that state it cannot disagree. */
   protected readonly minimumWords = formatCount(GENERATION_SNAPSHOT_MINIMUM);
+
+  /**
+   * Back returns to the tab page that opened Help, and a link from anywhere
+   * else lands on Home. Read once, because the history entry does not change
+   * under the page.
+   */
+  private readonly origin = inject(NavigationHistoryService).currentOrigin() ?? '/home';
+  protected readonly backTarget = HELP_ORIGINS.has(this.origin) ? this.origin : '/home';
+  protected readonly backLabel = HELP_ORIGINS.get(this.backTarget) ?? 'Back to home';
 }

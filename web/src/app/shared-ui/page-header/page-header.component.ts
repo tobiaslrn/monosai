@@ -8,7 +8,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
  * The top bar every page outside the reader wears.
  *
  * It is the page's only bar: Back where the page has a parent, the Monosai mark
- * on Home, then the title, then whatever the page puts at its end. It sticks to
+ * on the tab pages, then the title, then whatever the page puts at its end. It sticks to
  * the top of the viewport, so the way back is always the first thing on the
  * screen.
  */
@@ -33,8 +33,11 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
             <mn-icon name="back" />
           </a>
         }
-      } @else if (home()) {
+      }
+      @if (home()) {
         <img class="mark" src="icons/icon-192.png" alt="" width="32" height="32" />
+      } @else if (titleHidden()) {
+        <img class="mark wide-only" src="icons/icon-192.png" alt="" width="32" height="32" />
       }
       <div class="titles">
         @if (home()) {
@@ -45,6 +48,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
         } @else if (titleHidden()) {
           <h1 id="mn-page-title">
             <span class="mn-visually-hidden">{{ heading() }}</span>
+            <mn-wordmark class="wide-only" />
           </h1>
         } @else {
           <h1 id="mn-page-title">{{ heading() }}</h1>
@@ -157,9 +161,14 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
     /*
      * A tab page's bar with no Back holds only its tabs, and below the wide
      * breakpoint those are docked to the bottom edge instead. What is left is
-     * the hidden heading, which needs no room.
+     * the hidden heading, which needs no room. On a wide screen the same bar
+     * carries the mark and wordmark, so every tab page wears one header.
      */
     @media (max-width: breakpoints.$wide-max) {
+      .wide-only {
+        display: none;
+      }
+
       .head.is-bare {
         position: static;
         min-height: 0;
@@ -182,7 +191,9 @@ export class PageHeaderComponent {
   readonly home = input(false);
   /**
    * A tab page shows no title, because the current tab names it. The heading
-   * stays in the bar for assistive technology.
+   * stays in the bar for assistive technology, and on a wide screen the bar
+   * carries the mark and wordmark like Home's, so the header does not change
+   * from tab to tab.
    */
   readonly titleHidden = input(false);
   /** One quiet line under the title: what the page holds, or how much of it. */

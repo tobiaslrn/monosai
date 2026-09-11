@@ -84,9 +84,9 @@ never shows the tabs.
 Below the wide breakpoint the tabs are a bar docked to the bottom edge of the
 viewport: an opaque panel ground, a hairline top edge, the safe-area inset
 beneath, and the page reserving the bar's height so its last row never sits
-under it. At and above the wide breakpoint the same three tabs sit at the centre
-of the tab page's top bar, where they stay put while the bar's other contents
-change from tab to tab. Each tab is an icon with a visible label at both widths:
+under it. At and above the wide breakpoint the same three tabs sit at the end of
+the tab page's top bar, where a bar's controls go, with Help after them. Each
+tab is an icon with a visible label at both widths:
 a tab names a place, and a place is not a repeated-press control. The current
 tab carries the selection tint and `aria-current="page"`. The bar is one
 component in two placements, only one of which is ever drawn, and each sits in
@@ -102,12 +102,15 @@ breakpoint a bar left holding nothing visible — the Library's, and Settings'
 unless it was reached from a form — takes no room at all. Settings reached from
 Write with AI keeps "Back to story" in the same bar as the tabs.
 
-Home's bar leads with the Monosai mark, then the Monosai wordmark in place of
-the hidden title, then the tabs on a wide screen, then **Help** as an icon-only
-control. Help is on Home and nowhere else in the frame. The wordmark is
-decoration. Help carries a labelled GitHub link at the end of its own bar,
-because Help is where a learner looks for where the application comes from, and
-no icon reads as GitHub rather than as a branch.
+**On a wide screen the three tab pages wear one header**, the way a website
+does, and nothing in it changes from tab to tab: the Monosai mark, the Monosai
+wordmark in place of the hidden title, the tabs at its end, then **Help** as an
+icon-only control. Below the wide breakpoint only Home's bar carries the mark,
+the wordmark and Help. The mark and wordmark are decoration, not a link: the
+Home tab is the way home. Help's Back returns to the tab page that opened it.
+Help carries a labelled GitHub link at the end of its own bar, because Help is
+where a learner looks for where the application comes from, and no icon reads
+as GitHub rather than as a branch.
 
 Help's icon is an explicit exception to the repetition rule: icon-only on both
 mobile and desktop, with an accessible name and a tooltip, a bare shared icon

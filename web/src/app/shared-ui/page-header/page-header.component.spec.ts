@@ -112,8 +112,17 @@ describe('PageHeaderComponent back control', () => {
     const heading = element.querySelector('h1#mn-page-title');
     expect(heading?.textContent.trim()).toBe('Library');
     expect(heading?.querySelector('.mn-visually-hidden')?.textContent).toBe('Library');
-    expect(element.querySelector('mn-wordmark')).toBeNull();
     expect(element.querySelector('.head')?.classList.contains('is-bare')).toBe(true);
+  });
+
+  /** On a wide screen every tab page wears Home's brand, so the header never changes. */
+  it('gives a hidden-title bar the mark and wordmark on wide screens only', () => {
+    const fixture = TestBed.createComponent(HiddenTitleHostComponent);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('img.mark')?.classList.contains('wide-only')).toBe(true);
+    expect(element.querySelector('h1 mn-wordmark')?.classList.contains('wide-only')).toBe(true);
   });
 
   it('keeps the bar in place when a hidden-title page still has a way back', () => {

@@ -120,19 +120,11 @@ const TABS: readonly Tab[] = [
       color: var(--action-primary-text);
     }
 
-    /*
-     * Centred on the page's bar rather than laid out after its title, so the
-     * tabs stay put when Home's Help icon comes and goes between tabs.
-     */
+    /* At the end of the page's bar, where its controls go, before Home's Help. */
     .tabs.is-top {
-      position: absolute;
-      inset: 0;
       display: flex;
       gap: var(--space-1);
       align-items: center;
-      width: fit-content;
-      height: fit-content;
-      margin: auto;
     }
 
     .is-top .tab {
