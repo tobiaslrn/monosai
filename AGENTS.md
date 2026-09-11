@@ -132,6 +132,31 @@ exactly CI's blocking gates; when you add a gate to one, add it to the other.
 - CI runs coverage, smoke E2E, and PWA checks on pull requests; pushes to `main`
   use the full browser lane.
 
+## Cloud sessions
+
+A Claude Code cloud session runs on a shared Ubuntu image that is not this
+project's environment, so two committed pieces close the gap.
+
+- `.claude/hooks/session-start.sh` runs on every cloud session and does nothing
+  locally. It selects the Node version `.nvmrc` pins, installs `web`
+  dependencies when the clone has none, and points Playwright at the sandbox
+  Chromium when the pinned build is missing.
+- `.claude/setup-script.sh` is a reference copy of the environment's setup
+  script, which lives at claude.ai/code rather than in the repository. It
+  installs the same things into the cached filesystem snapshot, which reduces
+  the hook to a series of no-ops. Changing the file means re-pasting it.
+
+Two limits are worth knowing before planning work in a cloud session.
+
+- There is no Android SDK, so `npm run bridge:verify` and therefore
+  `npm run verify` cannot run. CI owns those gates.
+- Playwright's download CDN is off the default network allowlist. Add
+  `cdn.playwright.dev` to the environment's allowed hosts to run the browser
+  suites against the pinned build. Without it they run against the older sandbox
+  Chromium, where a couple of selection- and timing-sensitive smoke tests fail
+  while passing in CI. Treat a failure there as a question, not a verdict, until
+  it reproduces against the pinned build.
+
 ## Git history
 
 Use one shared, predictable message style for human and agent work.
@@ -188,9 +213,10 @@ branch; do not create or switch branches. Keep commits focused, never rewrite
 history, and do not push unless explicitly requested.
 
 A push is not finished until CI is green. Having pushed, watch the run
-(`gh run watch` or `gh run list --branch main`), read the failing job's log,
-fix the cause on the same branch, push again, and keep going until `gate`
-passes. A red run you walked away from is an unfinished task, not a known
-issue — say so explicitly if you genuinely cannot fix it.
+(`gh run watch` or `gh run list --branch main`, or the GitHub MCP tools where
+`gh` is unavailable, as in a cloud session), read the failing job's log, fix
+the cause on the same branch, push again, and keep going until `gate` passes. A
+red run you walked away from is an unfinished task, not a known issue — say so
+explicitly if you genuinely cannot fix it.
 
 Use editing tools for multiline file content rather than shell string literals.

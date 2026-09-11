@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import { env } from 'node:process';
 import { INTRO_SEEN_STATE } from './e2e/state';
+import { CHROMIUM_EXECUTABLE_OVERRIDE } from './playwright.chromium';
 
 // Not 4200: `ng serve` owns that port, and the suite must never silently run
 // against a development server someone left running.
@@ -43,6 +44,7 @@ export default defineConfig({
   workers: IS_CI ? 4 : undefined,
   reporter: IS_CI ? [['blob'], ['github']] : [['list']],
   use: {
+    ...CHROMIUM_EXECUTABLE_OVERRIDE,
     baseURL: BASE_URL,
     trace: 'on-first-retry',
     // The shipped bundle registers `ngsw-worker.js`. Letting it install would

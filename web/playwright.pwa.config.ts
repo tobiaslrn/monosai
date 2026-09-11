@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import { env } from 'node:process';
+import { CHROMIUM_EXECUTABLE_OVERRIDE } from './playwright.chromium';
 
 const PORT = 4300;
 const BASE_URL = `http://127.0.0.1:${PORT}/monosai/`;
@@ -24,6 +25,7 @@ export default defineConfig({
   workers: IS_CI ? 4 : undefined,
   reporter: IS_CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
+    ...CHROMIUM_EXECUTABLE_OVERRIDE,
     baseURL: BASE_URL,
     trace: 'on-first-retry',
   },

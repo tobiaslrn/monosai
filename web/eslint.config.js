@@ -73,6 +73,7 @@ export default tseslint.config(
           // though `npm run typecheck:e2e` does check them through
           // e2e/tsconfig.json.
           allowDefaultProject: [
+            'playwright.chromium.ts',
             'playwright.config.ts',
             'playwright.full.config.ts',
             'playwright.pwa.config.ts',
