@@ -88,7 +88,7 @@ test.describe('settings persistence', () => {
     const intro = page.getByRole('complementary', { name: 'A little help getting started' });
     await expect(intro).toBeVisible();
     await intro.getByRole('button', { name: 'Got it' }).click();
-    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeAttached();
     await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.*/);
     await expect(page.getByRole('radio', { name: 'System' })).toBeChecked();
   });

@@ -120,7 +120,7 @@ export async function refuseAnkiConnect(page: Page): Promise<void> {
 
 export async function openVocabulary(page: Page): Promise<void> {
   await page.goto('./#/reading-level');
-  await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Words and level', level: 1 })).toBeVisible();
 }
 
 /** Reads the committed current vocabulary rows straight from IndexedDB. */

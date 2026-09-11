@@ -5,16 +5,14 @@ import { expectSettingPersisted } from './storage';
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe('first-use Help', () => {
-  test('keeps New story available on first paint and explains offline generation @smoke @mobile', async ({
+  test('keeps Write with AI available on first paint and explains offline generation @smoke @mobile', async ({
     page,
   }) => {
-    await page.goto('./#/library');
+    await page.goto('./#/home');
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(
-      page.getByRole('button', { name: 'Create a new story', exact: true }),
-    ).toBeVisible();
-    await page.getByRole('button', { name: 'Create a new story', exact: true }).click();
-    await page.getByRole('link', { name: 'Write with AI', exact: true }).click();
+    const writeWithAi = page.getByRole('link', { name: 'Write with AI', exact: true });
+    await expect(writeWithAi).toBeVisible();
+    await writeWithAi.click();
     await expect(page.locator('[data-check="text-model"] strong')).toHaveText('Text AI:');
     await expect(page.locator('[data-check="vocabulary"] strong')).toHaveText('Word list:');
     await expect(page.getByTestId('generate')).toBeDisabled();
@@ -52,7 +50,7 @@ test.describe('first-use Help', () => {
   });
 });
 
-test.describe('Help and utility bar', () => {
+test.describe('Help and the tab bar', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('./#/help');
     const dialog = page.getByRole('complementary', { name: 'A little help getting started' });
@@ -71,16 +69,13 @@ test.describe('Help and utility bar', () => {
     await page.getByRole('link', { name: 'Add text' }).click();
     await expect(page).toHaveURL(/#\/add$/);
 
-    await page.goto('./#/library');
-    const utilities = page.getByRole('navigation', { name: 'Utilities' });
-    await expect(utilities.getByRole('link')).toHaveCount(2);
-    const settings = utilities.getByRole('link', { name: 'Settings', exact: true });
-    await expect(settings).toHaveAttribute('title', 'Settings');
-    await expect(settings).toHaveText('');
-    await expect(utilities.getByRole('link', { name: 'Help', exact: true })).toHaveAttribute(
-      'title',
-      'Help',
-    );
+    // Tabs name places, so each carries its label; Help is Home's one icon.
+    await page.goto('./#/home');
+    const tabs = page.getByRole('navigation', { name: 'Main' });
+    await expect(tabs.getByRole('link')).toHaveText(['Home', 'Library', 'Settings']);
+    const help = page.getByRole('link', { name: 'Help', exact: true });
+    await expect(help).toHaveAttribute('title', 'Help');
+    await expect(help).toHaveText('');
   });
 
   test('supports keyboard focus, accessibility, reload, and a 320px viewport @mobile @smoke', async ({

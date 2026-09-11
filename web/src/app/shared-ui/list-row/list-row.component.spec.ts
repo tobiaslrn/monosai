@@ -16,7 +16,7 @@ import { ListRowComponent } from './list-row.component';
       <span mn-list-row-title>{{ longTitle }}</span>
       <span mn-list-row-meta>Imported · 940 characters</span>
       <span mn-list-row-trailing>
-        <span class="mn-status-pill">Unread</span>
+        <span class="mn-status-pill">New</span>
       </span>
       <span mn-list-row-menu>
         <button type="button" class="mn-icon-button" aria-label="Row actions">

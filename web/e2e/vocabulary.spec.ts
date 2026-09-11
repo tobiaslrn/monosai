@@ -33,7 +33,7 @@ async function backToWords(page: Page): Promise<void> {
     .getByRole('button', { name: 'Back to words' })
     .or(page.getByRole('link', { name: 'Back to words' }))
     .click();
-  await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Words and level', level: 1 })).toBeVisible();
 }
 
 async function addTextList(page: Page, name: string, content: string): Promise<void> {
@@ -474,7 +474,7 @@ test.describe('vocabulary', () => {
     const notice = page.getByTestId('reader-vocabulary-notice');
     await expect(notice).toBeVisible({ timeout: 60_000 });
     await expect(notice).toContainText('marked as new');
-    await expect(notice.getByRole('link', { name: 'What you can read' })).toBeVisible();
+    await expect(notice.getByRole('link', { name: 'Words and level' })).toBeVisible();
   });
 
   test('names the exact failure for a package it cannot read', async ({ page }) => {

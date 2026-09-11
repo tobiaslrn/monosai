@@ -23,7 +23,7 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
       <mn-page-header
         heading="Reading level"
         backTo="/reading-level"
-        backLabel="Back to what you can read"
+        backLabel="Back to words and level"
       />
 
       @if (language.status() === 'failed') {

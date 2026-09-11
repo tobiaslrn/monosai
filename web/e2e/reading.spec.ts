@@ -134,34 +134,26 @@ async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
 test.describe('scenario 1 — paste, save, inspect', () => {
   /**
    * A first visit is the one screen that has to say what Monosai is: it is what
-   * a stranger opening the public address sees. Both starting paths are on it,
-   * Anki first.
+   * a stranger opening the public address sees. Both starting paths are on it:
+   * Paste text among Home's actions, and the word list in the introduction.
    */
   test('a first visit explains Monosai and needs no setup', async ({ page }) => {
     await page.goto('./');
 
-    await expect(page).toHaveURL(/#\/library/);
+    await expect(page).toHaveURL(/#\/home/);
     await expect(
       page.getByRole('heading', { name: /Japanese you can actually read/, level: 2 }),
     ).toBeVisible();
     await expect(page.getByText('Everything stays on this device.')).toBeVisible();
     await expect(page.getByRole('link', { name: /Add a word list/ })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Paste Japanese text/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Paste text', exact: true })).toBeVisible();
   });
 
-  test('New story offers both ways in, and Paste text reaches the reader', async ({ page }) => {
-    // New story appears once the shelf has something on it; a first visit
-    // offers its two starting paths as cards instead. A different text, because
-    // re-importing the same one is not a second reading.
-    await importReading(page, '空が青いです。風が気持ちいいです。');
-    await page.goto('./#/library');
+  test('Home offers both ways in directly, and Paste text reaches the reader', async ({ page }) => {
+    await page.goto('./#/home');
 
-    await page.getByRole('button', { name: 'Create a new story' }).click();
-    const chooser = page.getByRole('dialog', { name: 'New story' });
-    await expect(chooser.getByRole('link', { name: 'Paste text' })).toBeVisible();
-    await expect(chooser.getByRole('link', { name: 'Write with AI' })).toBeVisible();
-
-    await chooser.getByRole('link', { name: 'Paste text' }).click();
+    await expect(page.getByRole('link', { name: 'Write with AI', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'Paste text', exact: true }).click();
     await expect(page).toHaveURL(/#\/add/);
 
     await pasteAndContinue(page, SAMPLE_TEXT);
@@ -191,7 +183,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await page.getByRole('link', { name: 'Set up audio model' }).click();
 
     await expect(page).toHaveURL(/#\/settings$/);
-    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeAttached();
   });
 
   test('does not leave reader controls on a missing reading', async ({ page }) => {
@@ -1187,25 +1179,25 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 /** End-to-end scenario 2: pasted text validation. */
 test.describe('scenario 2 — pasted text validation', () => {
   test('guards an unsaved import when navigating back', async ({ page }) => {
-    await page.goto('./#/library');
-    await page.getByRole('link', { name: /Paste Japanese text/ }).click();
+    await page.goto('./#/home');
+    await page.getByRole('link', { name: 'Paste text', exact: true }).click();
     await page.getByLabel('Japanese text').fill(SAMPLE_TEXT);
 
-    await page.getByRole('button', { name: 'Back to library' }).click();
+    await page.getByRole('button', { name: 'Back to home' }).click();
     await expect(page.getByRole('alertdialog')).toContainText('Leave without saving?');
     await page.getByRole('button', { name: 'Stay here' }).click();
     await expect(page).toHaveURL(/#\/add$/);
   });
 
   test('replaces the import form after saving', async ({ page }) => {
-    await page.goto('./#/library');
-    await page.getByRole('link', { name: /Paste Japanese text/ }).click();
+    await page.goto('./#/home');
+    await page.getByRole('link', { name: 'Paste text', exact: true }).click();
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
     await page.goBack();
 
-    await expect(page).toHaveURL(/#\/library$/);
-    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+    await expect(page).toHaveURL(/#\/home$/);
+    await expect(page.getByRole('link', { name: 'Paste text', exact: true })).toBeVisible();
     await expect(page).not.toHaveURL(/#\/add/);
   });
 
@@ -1250,8 +1242,8 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
   });
 
   test('says so rather than reopening a story deleted from another screen', async ({ page }) => {
-    await page.goto('./#/library');
-    await page.getByRole('link', { name: /Paste Japanese text/ }).click();
+    await page.goto('./#/home');
+    await page.getByRole('link', { name: 'Paste text', exact: true }).click();
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
     const deletedUrl = page.url();
@@ -1333,12 +1325,6 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
       'Yesterday',
       'Earlier this week',
     ]);
-    const illustration = page.locator('.hero-art img:visible');
-    await expect(illustration).toHaveCount(1);
-    await expect(illustration).toBeVisible();
-    expect(
-      await illustration.evaluate((image: HTMLImageElement) => image.naturalWidth),
-    ).toBeGreaterThan(0);
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);
@@ -1390,13 +1376,13 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     }
   });
 
-  /** Chips are chrome until there are enough readings for filtering to help. */
-  test('hides the filter chips on a shelf too small to need them @mobile', async ({ page }) => {
+  /** The Library is only the shelf, so its filters stay whatever it holds. */
+  test('keeps the filter chips on a shelf of one story @mobile', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
     await page.goto('./#/library');
 
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
-    await expect(page.getByRole('group', { name: 'Filter stories' })).toHaveCount(0);
+    await expect(page.getByRole('group', { name: 'Filter stories' })).toBeVisible();
   });
 
   test('dismisses a reading actions menu on outside press and Escape', async ({ page }) => {
@@ -1408,7 +1394,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
     await toggle.click();
     await expect(menu).toBeVisible();
-    await page.getByRole('heading', { name: 'Library', level: 1 }).click();
+    await page.locator('.date-group h2').first().click();
     await expect(menu).toBeHidden();
 
     await toggle.click();
@@ -1433,7 +1419,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
     await dialog.getByRole('button', { name: 'Delete permanently' }).click();
 
-    await expect(page.getByRole('link', { name: /Paste Japanese text/ })).toBeVisible();
+    await expect(page.getByText('No stories yet.')).toBeVisible();
     const counts = await countOwnedRows(page);
     for (const [store, count] of Object.entries(counts)) {
       expect(count, `rows left in ${store}`).toBe(0);
@@ -1465,11 +1451,11 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await expect(page.locator('mn-reading-card')).toContainText('第一章');
   });
 
-  test('a returning profile with readings opens the library', async ({ page }) => {
+  test('a returning profile with readings opens Home', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
 
     await page.goto('./');
-    await expect(page).toHaveURL(/#\/library/);
+    await expect(page).toHaveURL(/#\/home/);
   });
 
   test('has no serious accessibility violations in the library @mobile', async ({ page }) => {
@@ -1600,5 +1586,5 @@ test('gives an unrecognised reading link the app chrome and a way back', async (
   await expect(page.getByRole('link', { name: 'Back to library' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Link not recognised' })).toBeVisible();
   await page.getByRole('link', { name: 'Go to library' }).click();
-  await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Library' })).toBeAttached();
 });
