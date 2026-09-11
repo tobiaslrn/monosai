@@ -105,30 +105,35 @@ describe('ReadingLevelPageComponent', () => {
   }
 
   /**
-   * Three screens lead here, and each gets its own place back. Landing on the
-   * Library after arriving from Settings loses where the learner was.
+   * Three screens lead here, and each gets its own place back. A link from
+   * outside lands in Settings, whose first row this page is.
    */
   it('goes back to wherever it was reached from', async () => {
     const { element } = await render();
-    expect(element.querySelector('.head a')?.getAttribute('aria-label')).toBe('Back to home');
+    const fallback = element.querySelector('.head a');
+    expect(fallback?.getAttribute('aria-label')).toBe('Back to settings');
+    expect(fallback?.getAttribute('href')).toBe('/settings');
 
-    history.replaceState({ monosaiNavigationOrigin: '/settings' }, '');
-    TestBed.resetTestingModule();
-    beds = configureReadingLevelTestBed();
-    TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, { useValue: () => provider });
-    TestBed.overrideProvider(PACKAGE_PROVIDER_FACTORY, { useValue: () => provider });
-    const fromSettings = await render();
+    for (const [origin, label] of [
+      ['/settings', 'Back to settings'],
+      ['/home', 'Back to home'],
+    ] as const) {
+      history.replaceState({ monosaiNavigationOrigin: origin }, '');
+      TestBed.resetTestingModule();
+      beds = configureReadingLevelTestBed();
+      TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, { useValue: () => provider });
+      TestBed.overrideProvider(PACKAGE_PROVIDER_FACTORY, { useValue: () => provider });
+      const reached = await render();
 
-    expect(fromSettings.element.querySelector('.head button')?.getAttribute('aria-label')).toBe(
-      'Back to settings',
-    );
+      expect(reached.element.querySelector('.head button')?.getAttribute('aria-label')).toBe(label);
+    }
     history.replaceState({}, '');
   });
 
   it('states both facts under one heading', async () => {
     const { element } = await render();
 
-    expect(text(element, 'h1')).toBe('What you can read');
+    expect(text(element, 'h1')).toBe('Words and level');
     expect(
       [...element.querySelectorAll('section.group h2')].map((heading) =>
         heading.textContent.trim(),

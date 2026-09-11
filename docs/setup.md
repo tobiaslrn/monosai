@@ -61,7 +61,8 @@ It never writes to your collection.
    ```
 
    Restart Anki after editing the config.
-3. In Monosai, open **What you can read → Add words → Anki**. Pressing it just
+
+3. In Monosai, open **Settings → Words and level → Add words → Anki**. Pressing it just
    tries; a successful connection lists your decks and note types, and Monosai
    suggests which field holds the Japanese.
 
@@ -110,7 +111,7 @@ its existing service-worker updates independently. See the
 Without a live Anki connection — a different device, a bridge that will not
 cooperate, or simply not wanting to keep Anki open — export a package
 (`.apkg` or `.colpkg`) from Anki (`File → Export`, "Include scheduling
-information" checked) and open it from **What you can read → Add words → A file**
+information" checked) and open it from **Settings → Words and level → Add words → A file**
 instead. Monosai reads the package fully offline; nothing is uploaded. A
 package without scheduling information cannot tell Monosai which cards you
 have actually reviewed, so export with it included.

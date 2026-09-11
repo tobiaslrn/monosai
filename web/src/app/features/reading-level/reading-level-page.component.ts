@@ -60,11 +60,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
   ],
   template: `
     <div class="mn-page level-page">
-      <mn-page-header
-        heading="What you can read"
-        [backTo]="backTarget()"
-        [backLabel]="backLabel()"
-      />
+      <mn-page-header heading="Words and level" [backTo]="backTarget()" [backLabel]="backLabel()" />
 
       <p
         class="mn-visually-hidden"
@@ -392,9 +388,10 @@ export class ReadingLevelPageComponent {
    * Where this page goes back to.
    *
    * Three screens lead here and each expects to get its own place back: the
-   * generate form says so in a query parameter, Settings marks the navigation
-   * with its origin, and everything else came from Home. Read once at
-   * construction, because the history entry does not change under the page.
+   * generate form says so in a query parameter, and Home and Settings mark the
+   * navigation with their origin. A link from anywhere else lands in Settings,
+   * whose first row this page is. Read once at construction, because the
+   * history entry does not change under the page.
    */
   private readonly origin = inject(NavigationHistoryService).currentOrigin();
 
@@ -402,14 +399,14 @@ export class ReadingLevelPageComponent {
     if (this.from() === 'generate') {
       return '/generate';
     }
-    return this.origin === '/settings' ? '/settings' : '/home';
+    return this.origin === '/home' ? '/home' : '/settings';
   });
 
   protected readonly backLabel = computed(() => {
     if (this.from() === 'generate') {
       return 'Back to story';
     }
-    return this.origin === '/settings' ? 'Back to settings' : 'Back to home';
+    return this.origin === '/home' ? 'Back to home' : 'Back to settings';
   });
 
   protected readonly state = this.refresh.state;

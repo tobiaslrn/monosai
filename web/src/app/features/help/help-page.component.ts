@@ -34,7 +34,7 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
         </p>
         <h3>Tell Monosai which words you know</h3>
         <p>
-          Open <a routerLink="/reading-level" fragment="words">What you can read</a> and add a word
+          Open <a routerLink="/reading-level" fragment="words">Words and level</a> and add a word
           source: connect Anki, import an Anki package, or paste a list of your own. For Anki,
           choose the decks and fields containing Japanese; Monosai takes the words you have reviewed
           and never changes your cards.
