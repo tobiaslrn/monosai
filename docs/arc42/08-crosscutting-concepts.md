@@ -208,9 +208,12 @@ learner activates the new version from a banner. See
 units, motion, voice, and state. It holds rules and intent. The values live in
 `web/src/styles/_tokens.scss`, the form fields in `web/src/styles/_controls.scss`, and each shared
 primitive — button, card and inset, notice, status pill, facts, stack and actions, segmented control,
-page frame and page header — in its own file under `web/src/styles/components/` or the shared UI
-folder. Components compose those classes and keep only placement in their own styles. A change that
-departs from the design system changes that document first, in the same commit.
+list row, page frame, and icon badge — in its own file under
+`web/src/styles/components/`. The shared page-header component owns the title structure, while
+components compose the style classes and keep only placement in their own styles. The static style
+audit extracts Angular inline style blocks and applies the same token and primitive-ownership rules
+to them. A change that departs from the design system changes that document first, in the same
+commit.
 
 Two rules from it reach into the code directly: colour is never the only carrier of meaning, and
 dates and numbers format in one fixed locale, which

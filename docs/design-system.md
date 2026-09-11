@@ -135,6 +135,31 @@ A read-only list of **facts** puts each label on the left and its value on the
 right, on one line at every width; a row wraps only when its value is too long to
 fit, and the value keeps to the right edge.
 
+### Shared primitives
+
+Shared classes own the visual role they name. Feature styles may position a
+primitive or add state-specific placement, but they do not redefine its
+silhouette, palette, type, or interaction treatment. The source of each role is
+kept beside the tokens in `web/src/styles/components/`:
+
+| Role | Use | Source |
+| --- | --- | --- |
+| Button | Reversible, primary, quiet, danger, and icon-only actions | [`_button.scss`](../web/src/styles/components/_button.scss) |
+| Card | One raised surface; `mn-inset` is its borderless sunken group | [`_card.scss`](../web/src/styles/components/_card.scss) |
+| Notice | A soft, named status or warning beside the thing it describes | [`_notice.scss`](../web/src/styles/components/_notice.scss) |
+| Status | A non-pressable compact state such as Ready or Unread | [`_status.scss`](../web/src/styles/components/_status.scss) |
+| Facts | Read-only label/value pairs | [`_facts.scss`](../web/src/styles/components/_facts.scss) |
+| Segmented | One native choice out of a small, stable set | [`_segmented.scss`](../web/src/styles/components/_segmented.scss) |
+| List row | One shelf destination with leading, title, meta, trailing, and menu slots | [`_list-row.scss`](../web/src/styles/components/_list-row.scss) |
+| Page frame | The centred non-reader measure, stacks, and action rows | [`_layout.scss`](../web/src/styles/components/_layout.scss) |
+| Text | Secondary text and sentence-case group titles | [`_text.scss`](../web/src/styles/components/_text.scss) |
+| Icon badge | A meaningful leading icon for a row or card | [`_icon-badge.scss`](../web/src/styles/components/_icon-badge.scss) |
+
+The shared page-header component supplies the non-reader title structure; the
+app bar and page header use the same `--page-measure` as the page frame. The
+reader remains outside this primitive set where its text measure and sticky
+chrome are intentionally separate.
+
 ### Density
 
 Interactive targets are **one size at every width and every pointer**. There is
@@ -307,10 +332,9 @@ stale, or failed configuration. The whole labelled row meets the touch-target
 floor while the switch itself stays compact.
 
 **A surface never shows a control the thing in front of it cannot answer.** A
-file has no freshness to configure, so it does not get a disabled refresh
-switch — it gets the sentence saying what it does instead ("A file never
-changes"). A disabled control invites a learner to work out why; a sentence
-tells them.
+file has no freshness to configure, so its source row offers no refresh control.
+A disabled control invites a learner to work out why; a fixed import instead
+states its mapping and lets the learner replace it with a new export.
 
 ### Disclosures
 
