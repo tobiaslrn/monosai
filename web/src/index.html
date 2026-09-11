@@ -7,8 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Local-first Japanese reading practice." />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#f8f6f1" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1b1d1a" media="(prefers-color-scheme: dark)" />
+    <!--
+      Installed Android apps paint the status bar with the manifest colour but pick its icon
+      contrast from this tag, so both stay the same dark value in every theme.
+    -->
+    <meta name="theme-color" content="#1b1d1a" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
     <link rel="manifest" href="manifest.webmanifest" />
