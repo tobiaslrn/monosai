@@ -224,7 +224,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       width: 100%;
       height: 100%;
       object-fit: contain;
-      filter: brightness(var(--home-art-brightness));
     }
 
     .hero-art-dark {

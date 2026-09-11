@@ -110,8 +110,8 @@ size, so the stories come up the screen; only its size changes, never its crop.
 The home headline is tightly set beside it, above a quiet sync
 line. The creation action spans the column; filter pills share the available
 width on phones and stay compact on desktop.
-Home's primary action uses the shared primary action colour; the illustration is
-gently dimmed in the dark palette.
+Home's primary action uses the shared primary action colour; each palette shows
+its own illustration unfiltered, as drawn.
 
 Below the bar the Library states **where the learner stands** — how many words
 Monosai can write from, and at what level. That line is the screen's lead and
