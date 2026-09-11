@@ -89,7 +89,7 @@ import {
 
     .detail {
       color: var(--text-secondary);
-      font-size: var(--text-xs);
+      font-size: var(--text-sm);
       line-height: 1.4;
     }
 

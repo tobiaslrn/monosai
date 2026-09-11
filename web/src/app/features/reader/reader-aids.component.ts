@@ -36,8 +36,8 @@ const AIDS: readonly AidOption[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink],
   template: `
-    <section class="appearance" role="group" aria-label="Reading appearance">
-      <h3>Reading appearance</h3>
+    <section class="appearance mn-inset" role="group" aria-label="Reading appearance">
+      <h3 class="mn-group-title">Reading appearance</h3>
       <div class="scale">
         <label for="mn-text-scale">Text size</label>
         <input
@@ -83,16 +83,11 @@ const AIDS: readonly AidOption[] = [
 
     h3 {
       margin: 0;
-      font-size: var(--text-md);
-      font-weight: var(--weight-semibold);
     }
     .switches {
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-canvas);
     }
     .scale input {
       min-width: 0;
@@ -111,10 +106,6 @@ const AIDS: readonly AidOption[] = [
       gap: var(--space-3);
       align-items: center;
       min-height: var(--touch-target);
-      padding: var(--space-2) var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-canvas);
     }
 
     .scale input {
@@ -132,7 +123,6 @@ const AIDS: readonly AidOption[] = [
       align-items: center;
       justify-content: space-between;
       min-height: var(--touch-target);
-      padding: var(--space-2) var(--space-3);
       cursor: pointer;
     }
 

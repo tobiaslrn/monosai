@@ -114,7 +114,7 @@ function readingKey(id: string): string {
               [class.is-first]="group.firstHeading"
               [attr.data-virtual-key]="group.headingKey"
             >
-              <h2 [id]="group.headingId">{{ group.label }}</h2>
+              <h2 [id]="group.headingId" class="mn-group-title">{{ group.label }}</h2>
             </div>
           } @else {
             <h2 class="mn-visually-hidden" [id]="group.headingId">{{ group.label }}</h2>
@@ -190,13 +190,6 @@ function readingKey(id: string): string {
 
     .virtual-heading.is-first {
       padding-block-start: 0;
-    }
-
-    .date-group h2 {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-xs);
-      font-weight: var(--weight-semibold);
     }
 
     .reading-list {

@@ -132,7 +132,7 @@ export interface UnknownWord {
         </section>
       }
 
-      <div class="tray">
+      <div class="tray mn-actions mn-actions--fill">
         <button type="button" class="mn-button" (click)="copySentence()">
           <mn-icon [name]="copyStatus() === 'copied' ? 'check' : 'copy'" [size]="18" />
           <span>{{ copyStatus() === 'copied' ? 'Copied' : 'Copy' }}</span>
@@ -257,6 +257,7 @@ export interface UnknownWord {
       z-index: 1;
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      flex-wrap: nowrap;
       gap: var(--space-2);
       align-self: stretch;
       width: calc(100% + 2 * var(--space-4));

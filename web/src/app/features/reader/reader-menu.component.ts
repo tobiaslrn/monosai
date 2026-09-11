@@ -82,16 +82,16 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
         }
       </header>
       <mn-reader-aids />
-      <section class="content" aria-label="Content for this story">
-        <div class="content-rows">
+      <section class="content mn-inset" aria-label="Content for this story">
+        <div class="content-rows mn-stack mn-stack--tight">
           @for (row of rows(); track row.layer) {
             <section class="content-row" [attr.aria-label]="row.name" [attr.data-layer]="row.layer">
               <div class="row-main">
                 <div class="row-copy">
                   <strong>{{ row.name }}</strong>
-                  <p role="status">{{ row.status }}</p>
+                  <span class="mn-status-pill" role="status">{{ row.status }}</span>
                 </div>
-                <div class="row-actions">
+                <div class="row-actions mn-actions">
                   @switch (row.action) {
                     @case ('settings') {
                       <a class="mn-button" routerLink="/settings" (click)="close()">{{

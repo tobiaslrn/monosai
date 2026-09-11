@@ -124,7 +124,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         -->
         @if (generationJobs().length > 0) {
           <section class="date-group" aria-labelledby="library-group-generating">
-            <h2 id="library-group-generating">Story generations</h2>
+            <h2 id="library-group-generating" class="mn-group-title">Story generations</h2>
             <ul class="reading-list">
               @for (job of generationJobs(); track job.id) {
                 <li>
@@ -222,13 +222,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     .reading-list {
       width: 100%;
       min-width: 0;
-    }
-
-    .date-group h2 {
-      margin: 0 0 var(--space-2);
-      color: var(--text-secondary);
-      font-size: var(--text-xs);
-      font-weight: var(--weight-semibold);
     }
 
     .reading-list {

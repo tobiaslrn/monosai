@@ -47,13 +47,10 @@ h3 {
   margin-top: var(--space-4);
 }
 .content-rows {
-  overflow: hidden;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-card);
-  background: var(--surface-canvas);
+  width: 100%;
 }
 .content-row {
-  padding: var(--space-3);
+  padding-block: var(--space-2);
 }
 .content-row + .content-row {
   border-top: 1px solid var(--border-subtle);
@@ -81,10 +78,10 @@ h3 {
   flex: 0 0 auto;
   margin-left: auto;
 }
-.row-copy p {
-  margin: var(--space-1) 0 0;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
+.row-copy > .mn-status-pill {
+  display: flex;
+  width: fit-content;
+  margin-top: var(--space-1);
 }
 /*
  * Bare at rest, and named by its label rather than by a word beside it: three
