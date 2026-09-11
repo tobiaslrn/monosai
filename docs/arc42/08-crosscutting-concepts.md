@@ -278,8 +278,7 @@ application to the prefix match. Every other page wears the shared page frame an
 one top bar, its page header
 ([ADR 0069](../decisions/0069-one-top-bar-per-screen.md)).
 
-The reader's own not-found state keeps the reader's bar rather than the masthead: it
+The reader's own not-found state keeps the reader's bar rather than a page header: it
 is reached only after a reading has begun loading, and swapping the chrome in when a
-load fails would make the masthead appear and disappear as a reading opens. Its bar
-carries the same back control and names what was not found, so the two differ in
-identity row alone.
+load fails would make one bar replace another as a reading opens. Its bar carries the
+same back control and names what was not found, so the two read alike.

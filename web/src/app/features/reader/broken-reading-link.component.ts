@@ -11,8 +11,8 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
  * claim the application can make about an id that never existed. This screen
  * says only what is true, in the same panel every other dead link gets.
  *
- * It is not the reader, so it keeps the application's chrome: the masthead the
- * shell renders, and a page header naming what was not found.
+ * It is not the reader, so it keeps an ordinary page's chrome: the page header
+ * as its top bar, with the way back and a title naming what was not found.
  */
 @Component({
   selector: 'mn-broken-reading-link',

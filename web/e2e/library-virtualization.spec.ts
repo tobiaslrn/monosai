@@ -38,6 +38,8 @@ async function seedMoreLibraryRows(
                 ...template,
                 id: crypto.randomUUID(),
                 title: `Page story ${String(index)} ${'語'.repeat(32)}`,
+                // Unread, so each row carries the status pill its layout is checked against.
+                lastOpenedAt: null,
                 createdAt: now - index * 1_000,
                 updatedAt: now - index * 1_000,
               });

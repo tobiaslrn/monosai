@@ -1593,7 +1593,8 @@ test('renames a pasted reading from the library @smoke', async ({ page }) => {
 test('gives an unrecognised reading link the app chrome and a way back', async ({ page }) => {
   await page.goto('./#/reader/not-a-real-id');
 
-  await expect(page.getByRole('link', { name: 'Monosai' })).toBeVisible();
+  // Its chrome is an ordinary page's top bar, with the way back first.
+  await expect(page.getByRole('link', { name: 'Back to library' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Link not recognised' })).toBeVisible();
   await page.getByRole('link', { name: 'Go to library' }).click();
   await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();

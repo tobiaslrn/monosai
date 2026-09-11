@@ -32,7 +32,7 @@ test.describe('first-use Help', () => {
   }) => {
     await page.goto('./#/reader/2f8d3f4e-1b6a-4f7c-9c2e-0d5a6b7c8d9e');
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page.locator('mn-app-bar')).toHaveCount(0);
+    await expect(page.locator('mn-page-header')).toHaveCount(0);
 
     await page.goto('./#/library');
     const dialog = page.getByRole('complementary', { name: 'A little help getting started' });
