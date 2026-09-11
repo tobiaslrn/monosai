@@ -70,6 +70,7 @@ jobs:
       - run: npm run lint
       - name: Component style token and selector check
         run: npm run stylelint
+        working-directory: web
       - name: Formatting check (advisory)
         run: npm run format:check
         continue-on-error: true
