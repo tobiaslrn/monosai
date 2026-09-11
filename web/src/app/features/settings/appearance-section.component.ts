@@ -33,7 +33,6 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
               </label>
             }
           </div>
-          <p class="mn-hint">System follows your device's light or dark setting.</p>
         </fieldset>
       </div>
     </section>

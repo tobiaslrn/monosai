@@ -137,8 +137,7 @@ export async function* extractMapping(
           warnedAboutReviews = true;
           yield {
             kind: 'warning',
-            message:
-              'Anki could not provide review dates, so recently learned words are estimated from card intervals.',
+            message: 'Anki could not provide review dates; recent words are estimated.',
           };
         }
       }
@@ -188,8 +187,7 @@ export async function* extractMapping(
       if (!warnedAboutReviews) {
         yield {
           kind: 'warning',
-          message:
-            'Anki could not provide first study dates, so recently learned words are estimated from card intervals.',
+          message: 'Anki could not provide first study dates; recent words are estimated.',
         };
       }
     } else {

@@ -100,7 +100,6 @@ const STALE_REASONS: Record<StaleReason, string> = {
           <label class="setting">
             <span class="label">
               <strong>Count these words</strong>
-              <span class="mn-hint">Monosai writes using them.</span>
             </span>
             <input
               type="checkbox"
@@ -119,7 +118,6 @@ const STALE_REASONS: Record<StaleReason, string> = {
             <label class="setting">
               <span class="label">
                 <strong>Keep it up to date</strong>
-                <span class="mn-hint">Re-reads Anki while Monosai is open.</span>
               </span>
               <input
                 type="checkbox"
@@ -150,10 +148,6 @@ const STALE_REASONS: Record<StaleReason, string> = {
             </div>
           } @else if (source.kind === 'anki-package') {
             <div class="footline">
-              <span class="label">
-                <strong>A file never changes</strong>
-                <span class="mn-hint">Import a newer export to replace these words.</span>
-              </span>
               <button
                 type="button"
                 class="mn-button"
@@ -208,12 +202,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
               <summary>
                 <span class="summary-label">{{ mappingSummary(source) }}</span>
               </summary>
-              @if (source.kind === 'anki-package') {
-                <p class="mn-hint fold">
-                  A file's mapping is fixed at import. Replace it with a fresh export to read a
-                  different field.
-                </p>
-              } @else if (configurable(source)) {
+              @if (configurable(source)) {
                 <div class="fieldgrid">
                   <label class="mn-field">
                     <span>Deck</span>
@@ -281,7 +270,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
                     <span>Include the subdecks</span>
                   </label>
                 }
-              } @else {
+              } @else if (source.kind === 'anki-connect') {
                 <p class="mn-hint fold" role="status">
                   {{
                     refresh.isBusy()

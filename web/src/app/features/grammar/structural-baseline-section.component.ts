@@ -38,8 +38,6 @@ interface CategoryGroup {
   selector: 'mn-structural-baseline-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <p class="mn-hint">These forms are treated as grammar, not vocabulary.</p>
-
     @if (groups().length === 0) {
       <p class="mn-hint">Language assets are still loading.</p>
     } @else {

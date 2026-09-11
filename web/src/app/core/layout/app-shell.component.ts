@@ -31,7 +31,6 @@ import { HelpIntroService } from './help-intro.service';
       <mn-vocabulary-sync-banner />
       @if (intro.visible()) {
         <aside class="intro-error intro-offer" aria-label="A little help getting started">
-          <p class="mn-hint">Help explains word lists, stories, and reading aids.</p>
           <button type="button" class="mn-button" (click)="intro.finish('dismiss')">Got it</button>
           <button type="button" class="mn-button" (click)="intro.finish('guide')">
             Read the guide

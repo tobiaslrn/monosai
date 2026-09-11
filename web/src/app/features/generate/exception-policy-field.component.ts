@@ -25,13 +25,13 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
           rows="3"
           data-testid="policy-input"
           placeholder="Names or words the story may use outside your vocabulary"
-          [attr.aria-describedby]="
-            policy.isTooLong() ? 'mn-policy-count mn-policy-error' : 'mn-policy-count'
-          "
+          [attr.aria-describedby]="policyDescriptionIds()"
           [value]="policy.draft()"
           (input)="onInput($event)"
         ></textarea>
-        <p id="mn-policy-count" class="mn-hint">{{ countLabel() }}</p>
+        @if (policyCounterVisible()) {
+          <p id="mn-policy-count" class="mn-hint">{{ countLabel() }}</p>
+        }
       </div>
 
       @if (policy.isTooLong()) {
@@ -71,6 +71,15 @@ export class ExceptionPolicyFieldComponent {
     () =>
       `${formatCount(this.policy.draft().length)} of ${formatCount(MAX_POLICY_LENGTH)} characters`,
   );
+  protected readonly policyCounterVisible = computed(
+    () => this.policy.draft().length >= Math.ceil(MAX_POLICY_LENGTH * 0.8),
+  );
+  protected readonly policyDescriptionIds = computed(() => {
+    const ids: string[] = [];
+    if (this.policyCounterVisible()) ids.push('mn-policy-count');
+    if (this.policy.isTooLong()) ids.push('mn-policy-error');
+    return ids.length > 0 ? ids.join(' ') : null;
+  });
   protected readonly overLimitLabel = computed(() =>
     formatCountOf(this.policy.draft().length - MAX_POLICY_LENGTH, 'character'),
   );

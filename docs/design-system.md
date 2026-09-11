@@ -636,6 +636,9 @@ Four exceptions:
 
 A format used in two places is used the same way in both. A counter, a count, a
 character limit, and a duration each have one form across the application.
+Character counters stay hidden until a field is roughly 80% full, then remain
+visible and are always shown when the limit is exceeded. A hidden counter is
+also omitted from that field's accessible description.
 
 ### Numbers, dates, and one locale
 

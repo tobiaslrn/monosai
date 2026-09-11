@@ -24,7 +24,6 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
         heading="Reading level"
         backTo="/reading-level"
         backLabel="Back to what you can read"
-        subtitle="Choose the hardest example you can read comfortably."
       />
 
       @if (language.status() === 'failed') {

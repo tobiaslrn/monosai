@@ -19,8 +19,7 @@ import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnosti
       <div class="mn-stack">
         <h2 id="mn-diagnostics-heading" class="mn-card-title">Troubleshooting</h2>
         <p class="mn-hint">
-          Copy a privacy-safe diagnostic log when you need help. Logs stay in this tab, disappear on
-          reload, and never include your API key or reading content.
+          Logs stay in this tab and never include your API key or reading content.
         </p>
         <div class="mn-actions">
           <button type="button" class="mn-button" (click)="copyDiagnostics()">

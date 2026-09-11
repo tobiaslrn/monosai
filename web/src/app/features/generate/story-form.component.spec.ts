@@ -101,14 +101,19 @@ describe('StoryFormComponent', () => {
     expect(draft.premise()).toBe('ねこが旅に出る話。');
   });
 
-  it('counts characters against the stated limit', () => {
+  it('keeps character counters hidden until a field nears its limit', () => {
     const { element, fixture } = render();
 
-    type(element, 'premise', 'ねこ');
-    fixture.detectChanges();
+    expect(element.querySelector('#mn-premise-count')).toBeNull();
 
+    type(element, 'premise', 'あ'.repeat(799));
+    fixture.detectChanges();
+    expect(element.querySelector('#mn-premise-count')).toBeNull();
+
+    type(element, 'premise', 'あ'.repeat(800));
+    fixture.detectChanges();
     expect(element.querySelector('#mn-premise-count')?.textContent).toContain(
-      '2 of 1,000 characters',
+      '800 of 1,000 characters',
     );
   });
 
@@ -131,13 +136,17 @@ describe('StoryFormComponent', () => {
   });
 
   it('uses the same counter wording and alignment for both story fields', () => {
-    const { element } = render();
+    const { element, fixture } = render();
+
+    type(element, 'premise', 'あ'.repeat(800));
+    type(element, 'special-instructions', 'い'.repeat(800));
+    fixture.detectChanges();
 
     expect(element.querySelector('#mn-premise-count')?.textContent).toContain(
-      '0 of 1,000 characters',
+      '800 of 1,000 characters',
     );
     expect(element.querySelector('#mn-instructions-count')?.textContent).toContain(
-      '0 of 1,000 characters',
+      '800 of 1,000 characters',
     );
     expect(element.querySelectorAll('.counter')).toHaveLength(2);
   });
@@ -307,12 +316,14 @@ describe('StoryFormComponent', () => {
     expect(draft.isValid()).toBe(true);
   });
 
-  it('keeps premise and instruction guidance inside the text boxes', () => {
+  it('uses one optional marker and keeps useful instruction guidance in the text box', () => {
     const { element } = render();
 
-    expect(element.querySelector<HTMLTextAreaElement>('[data-testid="premise"]')?.placeholder).toBe(
-      'Optional premise',
-    );
+    expect(
+      element
+        .querySelector<HTMLTextAreaElement>('[data-testid="premise"]')
+        ?.getAttribute('placeholder'),
+    ).toBeNull();
     expect(
       element.querySelector<HTMLTextAreaElement>('[data-testid="special-instructions"]')
         ?.placeholder,

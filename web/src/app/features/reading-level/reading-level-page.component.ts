@@ -62,7 +62,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     <div class="mn-page level-page">
       <mn-page-header
         heading="What you can read"
-        subtitle="Manage the words and grammar in your stories."
         [backTo]="backTarget()"
         [backLabel]="backLabel()"
       />

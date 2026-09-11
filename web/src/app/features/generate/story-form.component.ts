@@ -48,17 +48,18 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             id="mn-premise"
             rows="5"
             data-testid="premise"
-            placeholder="Optional premise"
             [value]="draft.premise()"
             [attr.aria-describedby]="premiseDescriptionIds()"
             [attr.aria-invalid]="premiseTooLong()"
             [disabled]="disabled()"
             (input)="onPremise($event)"
           ></textarea>
-          <p id="mn-premise-count" class="counter" [class.is-over]="premiseTooLong()">
-            {{ formatCount(draft.premiseLength()) }} of
-            {{ formatCount(draft.premiseLimit) }} characters
-          </p>
+          @if (premiseCounterVisible()) {
+            <p id="mn-premise-count" class="counter" [class.is-over]="premiseTooLong()">
+              {{ formatCount(draft.premiseLength()) }} of
+              {{ formatCount(draft.premiseLimit) }} characters
+            </p>
+          }
           @if (premiseTooLong()) {
             <p id="mn-premise-limit" class="mn-field-error" role="alert">
               {{ premiseLimitMessage() }}
@@ -79,10 +80,12 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
             [disabled]="disabled()"
             (input)="onInstructions($event)"
           ></textarea>
-          <p id="mn-instructions-count" class="counter" [class.is-over]="instructionsTooLong()">
-            {{ formatCount(draft.instructionsLength()) }} of
-            {{ formatCount(draft.instructionsLimit) }} characters
-          </p>
+          @if (instructionsCounterVisible()) {
+            <p id="mn-instructions-count" class="counter" [class.is-over]="instructionsTooLong()">
+              {{ formatCount(draft.instructionsLength()) }} of
+              {{ formatCount(draft.instructionsLimit) }} characters
+            </p>
+          }
           @if (instructionsTooLong()) {
             <p id="mn-instructions-limit" class="mn-field-error" role="alert">
               {{ instructionsLimitMessage() }}
@@ -568,14 +571,24 @@ export class StoryFormComponent {
   protected readonly instructionsTooLong = computed(
     () => this.draft.instructionsLength() > this.draft.instructionsLimit,
   );
-  protected readonly premiseDescriptionIds = computed(() =>
-    this.premiseTooLong() ? 'mn-premise-count mn-premise-limit' : 'mn-premise-count',
+  protected readonly premiseCounterVisible = computed(() =>
+    this.counterVisible(this.draft.premiseLength(), this.draft.premiseLimit),
   );
-  protected readonly instructionsDescriptionIds = computed(() =>
-    this.instructionsTooLong()
-      ? 'mn-instructions-count mn-instructions-limit'
-      : 'mn-instructions-count',
+  protected readonly instructionsCounterVisible = computed(() =>
+    this.counterVisible(this.draft.instructionsLength(), this.draft.instructionsLimit),
   );
+  protected readonly premiseDescriptionIds = computed(() => {
+    const ids: string[] = [];
+    if (this.premiseCounterVisible()) ids.push('mn-premise-count');
+    if (this.premiseTooLong()) ids.push('mn-premise-limit');
+    return ids.length > 0 ? ids.join(' ') : null;
+  });
+  protected readonly instructionsDescriptionIds = computed(() => {
+    const ids: string[] = [];
+    if (this.instructionsCounterVisible()) ids.push('mn-instructions-count');
+    if (this.instructionsTooLong()) ids.push('mn-instructions-limit');
+    return ids.length > 0 ? ids.join(' ') : null;
+  });
   protected readonly premiseLimitMessage = computed(() =>
     this.limitMessage(this.draft.premiseLength() - this.draft.premiseLimit),
   );
@@ -622,5 +635,9 @@ export class StoryFormComponent {
 
   private limitMessage(overBy: number): string {
     return `Remove ${formatCountOf(overBy, 'character')} to continue.`;
+  }
+
+  private counterVisible(length: number, limit: number): boolean {
+    return length >= Math.ceil(limit * 0.8) || length > limit;
   }
 }

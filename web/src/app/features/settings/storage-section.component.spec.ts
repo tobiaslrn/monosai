@@ -167,24 +167,22 @@ describe('StorageSectionComponent', () => {
       expect(labelFor('granted', true)).toBe('Protected');
     });
 
-    it('says the browser declined protection', () => {
+    it('shows an unprotected status after the browser declines', () => {
       const label = labelFor('refused');
 
-      expect(label).toBe('Not protected — the browser declined');
+      expect(label).toBe('Not protected');
     });
 
     it('says protection is unavailable', () => {
       expect(labelFor('unsupported')).toBe('Protection unavailable');
     });
 
-    it('says the protection request failed', () => {
-      expect(labelFor('request-failed')).toBe('Not protected — the request failed');
+    it('shows an unprotected status when the request fails', () => {
+      expect(labelFor('request-failed')).toBe('Not protected');
     });
 
-    it('warns that the browser may remove unprotected data', () => {
-      expect(labelFor('not-asked')).toBe(
-        'Not protected — the browser may remove data when space is low',
-      );
+    it('shows an unprotected status before protection is requested', () => {
+      expect(labelFor('not-asked')).toBe('Not protected');
     });
 
     it('keeps an unknown status explicit', () => {

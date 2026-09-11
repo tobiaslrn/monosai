@@ -118,8 +118,11 @@ test.describe('generating a story', () => {
       .toBe('sticky');
     await generate.scrollIntoViewIfNeeded();
     await expect(generate).toBeInViewport();
-    await expect(page.getByText('0 of 1,000 characters')).toHaveCount(2);
-    await expect(page.getByText('0 of 2,000 characters')).toBeVisible();
+    await expect(page.locator('#mn-premise-count')).toHaveCount(0);
+    await expect(page.locator('#mn-instructions-count')).toHaveCount(0);
+
+    await page.getByTestId('premise').fill('あ'.repeat(800));
+    await expect(page.locator('#mn-premise-count')).toContainText('800 of 1,000 characters');
 
     await page.getByTestId('premise').fill('あ'.repeat(1_001));
     await expect(page.getByRole('alert')).toContainText('Remove 1 character to continue.');

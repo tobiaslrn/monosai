@@ -74,9 +74,6 @@ function formatBytes(bytes: number | null): string {
             Delete saved audio
           </button>
         </div>
-        <p class="mn-hint">
-          Deletes all saved audio on this device and stops playback. Other reading aids stay.
-        </p>
         <p aria-live="polite" class="mn-hint">
           @if (storage.audioCleared()) {
             Saved audio deleted{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
@@ -87,8 +84,8 @@ function formatBytes(bytes: number | null): string {
           <summary>Danger zone</summary>
           <div class="danger-content mn-stack mn-stack--tight">
             <p class="mn-hint">
-              A full reset permanently deletes every reading, snapshot, saved setting, and cached aid
-              on this device. It cannot be undone.
+              A full reset permanently deletes every reading, snapshot, saved setting, and cached
+              aid on this device. It cannot be undone.
             </p>
 
             @if (resetStage() === 'idle') {
@@ -149,14 +146,7 @@ export class StorageSectionComponent {
   /** Whether the clear that just ran also had to stop something playing. */
   protected readonly stoppedPlayback = signal(false);
 
-  /**
-   * What storage protection is, said without promising browser behaviour.
-   *
-   * Each state gets its own sentence. A refusal in particular says that the
-   * browser was asked and declined, and that it may still grant later — which
-   * is why the button stays enabled — rather than repeating the sentence that
-   * was already there before the button was pressed.
-   */
+  /** The compact status for the browser's current storage-protection answer. */
   protected readonly persistenceLabel = computed(() => {
     switch (this.storage.persistence()) {
       case 'granted':
@@ -164,11 +154,11 @@ export class StorageSectionComponent {
       case 'unsupported':
         return 'Protection unavailable';
       case 'refused':
-        return 'Not protected — the browser declined';
+        return 'Not protected';
       case 'request-failed':
-        return 'Not protected — the request failed';
+        return 'Not protected';
       case 'not-asked':
-        return 'Not protected — the browser may remove data when space is low';
+        return 'Not protected';
       case 'unknown':
         return 'Protection status unknown';
     }
