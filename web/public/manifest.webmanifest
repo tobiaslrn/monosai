@@ -33,8 +33,8 @@
       ]
     }
   },
-  "theme_color": "#f8f6f1",
-  "background_color": "#f8f6f1",
+  "theme_color": "#1b1d1a",
+  "background_color": "#1b1d1a",
   "icons": [
     {
       "src": "icons/icon-192.png",
