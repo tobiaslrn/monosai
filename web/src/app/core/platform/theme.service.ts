@@ -1,4 +1,4 @@
-import { DOCUMENT, Injectable, inject, signal } from '@angular/core';
+import { DOCUMENT, Injectable, effect, inject, signal } from '@angular/core';
 import { mediaQuerySignal } from './media-query';
 import type { ThemeSetting } from '../../domain/settings/settings';
 
@@ -16,6 +16,23 @@ export class ThemeService {
   private readonly preferenceSignal = signal<ThemeSetting>('system');
 
   readonly preference = this.preferenceSignal.asReadonly();
+
+  constructor() {
+    // The browser chrome (Android status bar) follows `theme-color`, which the
+    // stylesheet cannot reach; mirror the resolved canvas colour into it.
+    effect(() => {
+      this.resolved();
+      const canvas = getComputedStyle(this.document.documentElement)
+        .getPropertyValue('--surface-canvas')
+        .trim();
+      if (!canvas) {
+        return;
+      }
+      for (const meta of this.document.querySelectorAll('meta[name="theme-color"]')) {
+        meta.setAttribute('content', canvas);
+      }
+    });
+  }
 
   apply(preference: ThemeSetting): void {
     this.preferenceSignal.set(preference);
