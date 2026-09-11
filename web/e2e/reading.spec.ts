@@ -543,7 +543,8 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(token).toBeFocused();
 
     await openFromKeyboard();
-    await page.locator('.bar h1').click();
+    // The middle of the bar holds nothing interactive until the title tucks into it.
+    await page.locator('.bar-row').click();
     await expect(page.locator('mn-sentence-popover')).not.toBeAttached();
     await expect(token).toBeFocused();
   });

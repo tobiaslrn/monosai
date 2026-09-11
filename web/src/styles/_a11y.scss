@@ -21,11 +21,17 @@
   border-radius: var(--radius-control);
   background: var(--surface-raised);
   color: var(--text-primary);
+  /*
+   * Clipped as well as parked: how far -200% carries it depends on what sits
+   * above its container, and a heading there once left it showing unfocused.
+   */
+  clip-path: inset(50%);
   transform: translateY(-200%);
 }
 
 /* The shadow only while shown: parked above the viewport, its blur still bled in. */
 .mn-skip-link:focus-visible {
   box-shadow: var(--shadow-overlay);
+  clip-path: none;
   transform: translateY(0);
 }

@@ -69,6 +69,8 @@ the way back never scrolls away. Its lower edge is a hairline that fades in once
 content has begun to pass beneath it. The bar's title column shares the page's
 bounded `--page-measure`, and Back and the last trailing control are pulled out
 by their own inset so their glyphs, not their hit areas, align with the column.
+The title tucks into Back's inset as well, so the arrow and the title read as
+one unit rather than two separate items.
 
 The Library is the home destination and therefore has no Back: its bar leads
 with the Monosai mark, then the title, then the application's utilities in a
@@ -415,9 +417,13 @@ source.
 
 ### Saved-story controls
 
-The reader header has Back, the title, Listen, and Story options. Unlike a page
-header, its hairline lower edge is always drawn, because the reading begins
-directly beneath it in type as large as the title. It carries no
+The reader header has Back, Listen, and Story options. The story's full title is
+the page heading above the reading, in the page-title token, wrapping as far as
+it needs. Once that heading has scrolled beneath the header, the header repeats
+it on one truncated line; the repeat is hidden from assistive technology, so the
+heading stays the one title. Unlike a page header, its hairline lower edge is
+always drawn, so the header stays distinct from what begins beneath it. It
+carries no
 story progress marker: the reading surface and audio transport already expose
 the positions they can report accurately. Appearance, preparation, and
 maintenance share Story options rather than separate header buttons. The

@@ -29,8 +29,10 @@ Library leads with the Monosai mark and ends with the utilities — Help and Set
 labelled navigation landmark. Help ends its own bar with a labelled GitHub link. The shell renders
 no bar of its own, and the `app-bar` component is removed.
 
-The reader keeps its own sticky bar, drawn in the same shape: the same height, title token,
-and glyph alignment. Its hairline lower edge is always drawn rather than faded in: the
+The reader keeps its own sticky bar, drawn in the same shape: the same height and glyph
+alignment. Its title is the page heading above the reading, in the page-title token and
+wrapped in full, because a story's name is often longer than a bar can hold; once the heading
+scrolls beneath the bar, the bar repeats it on one truncated line. Its hairline lower edge is always drawn rather than faded in: the
 reading starts directly beneath the bar in type as large as the title, and without the edge
 the two run together when a story opens.
 

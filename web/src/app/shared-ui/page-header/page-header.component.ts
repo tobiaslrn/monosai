@@ -93,9 +93,12 @@ import { IconComponent } from '../icon/icon.component';
       }
     }
 
-    /* Glyphs, not hit areas, line up with the column's edges. */
+    /*
+     * Glyphs, not hit areas, line up with the column's edges. The title tucks
+     * into Back's inset too, so the arrow and the title read as one unit.
+     */
     .back {
-      margin-inline-start: calc(-1 * var(--space-2));
+      margin-inline: calc(-1 * var(--space-2));
     }
 
     .mark {

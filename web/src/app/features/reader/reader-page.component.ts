@@ -146,7 +146,18 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           >
             <mn-icon name="back" />
           </a>
-          <h1 [attr.lang]="store.status() === 'ready' ? 'ja' : 'en'">{{ readerHeading() }}</h1>
+          <!--
+            A visual echo of the page heading below, shown once that heading has
+            scrolled beneath the bar. The heading stays the one real title.
+          -->
+          <p
+            class="bar-title"
+            aria-hidden="true"
+            [class.is-shown]="titleTucked()"
+            [attr.lang]="store.status() === 'ready' ? 'ja' : 'en'"
+          >
+            {{ readerHeading() }}
+          </p>
           @if (store.status() === 'ready') {
             <div class="bar-actions">
               <!--
@@ -195,6 +206,10 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           }
         }
       </header>
+
+      <h1 #pageTitle class="title" [attr.lang]="store.status() === 'ready' ? 'ja' : 'en'">
+        {{ readerHeading() }}
+      </h1>
 
       @if (audio.playerOpen() && store.status() === 'ready') {
         <div
@@ -349,8 +364,8 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       --reader-paragraph-gap: clamp(1.75rem, calc(2.25rem * var(--reader-scale)), 6rem);
 
       display: grid;
-      grid-template-rows: auto 1fr;
-      grid-template-areas: 'bar' 'content';
+      grid-template-rows: auto auto 1fr;
+      grid-template-areas: 'bar' 'title' 'content';
       gap: var(--space-4);
       max-width: var(--reader-measure);
       margin-inline: auto;
@@ -425,19 +440,61 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       min-width: 0;
     }
 
-    /* Glyphs, not hit areas, line up with the reading's edges. */
+    /*
+     * Glyphs, not hit areas, line up with the reading's edges. The title tucks
+     * into Back's inset too, so the arrow and the title read as one unit.
+     */
     .bar-row > .back {
-      margin-inline-start: calc(-1 * var(--space-2));
+      margin-inline: calc(-1 * var(--space-2));
     }
 
-    h1 {
+    /*
+     * The story's whole name, above the reading and wrapping as far as it
+     * needs to. It scrolls away with the text and hands over to the bar.
+     */
+    .title {
+      grid-area: title;
+      min-width: 0;
+      margin: 0;
+      font-size: var(--text-page-title);
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    /*
+     * One line in the bar, present only once the heading has gone beneath it.
+     * It keeps its space while hidden, so the actions never shift.
+     */
+    .bar-title {
       flex: 1;
       min-width: 0;
+      margin: 0;
       overflow: hidden;
-      /* The story's own name, kept a step below the Japanese it heads. */
       font-size: var(--text-xl);
+      font-weight: var(--weight-bold);
       white-space: nowrap;
       text-overflow: ellipsis;
+      opacity: 0;
+      transform: translateY(var(--space-1));
+      visibility: hidden;
+      transition:
+        opacity var(--motion-fast) ease-out,
+        transform var(--motion-fast) ease-out,
+        visibility 0s linear var(--motion-fast);
+    }
+
+    .bar-title.is-shown {
+      opacity: 1;
+      transform: none;
+      visibility: visible;
+      transition-delay: 0s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .bar-title {
+        transform: none;
+        transition: none;
+      }
     }
 
     .bar-actions {
@@ -520,15 +577,6 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       }
     }
 
-    @media (max-width: breakpoints.$narrow-max) {
-      h1 {
-        display: -webkit-box;
-        white-space: normal;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
-      }
-    }
-
     /* Room for the ruby above the first line of the reading. */
     .text {
       max-width: var(--reader-measure);
@@ -595,6 +643,9 @@ export class ReaderPageComponent {
   private readonly content = viewChild<ElementRef<HTMLElement>>('content');
   private readonly audioPlayerShell = viewChild<ElementRef<HTMLElement>>('audioPlayerShell');
   private readonly readerBar = viewChild<ElementRef<HTMLElement>>('readerBar');
+  private readonly pageTitle = viewChild<ElementRef<HTMLElement>>('pageTitle');
+  /** Whether the page heading has scrolled beneath the bar, which then carries it. */
+  protected readonly titleTucked = signal(false);
   private readonly wordPopover = viewChild.required<TemplateRef<unknown>>('wordPopover');
   private readonly wordPreview = viewChild.required<TemplateRef<unknown>>('wordPreview');
   private readonly sentencePopover = viewChild.required<TemplateRef<unknown>>('sentencePopover');
@@ -912,6 +963,32 @@ export class ReaderPageComponent {
         if (this.audio.playerOpen() && shell !== undefined) {
           this.trackPlayerHeight(shell);
         }
+      });
+    });
+
+    effect((onCleanup) => {
+      // The bar takes over the title once the heading is wholly beneath it.
+      // The bar is measured rather than assumed: a maintenance notice grows it.
+      const title = this.pageTitle()?.nativeElement;
+      const bar = this.readerBar()?.nativeElement;
+      if (title === undefined || bar === undefined) {
+        return;
+      }
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            // Gone above the bar, not merely out of view below the fold.
+            const barBottom = entry.rootBounds?.top ?? bar.offsetHeight;
+            this.titleTucked.set(
+              !entry.isIntersecting && entry.boundingClientRect.bottom <= barBottom,
+            );
+          }
+        },
+        { rootMargin: `-${bar.offsetHeight}px 0px 0px 0px` },
+      );
+      observer.observe(title);
+      onCleanup(() => {
+        observer.disconnect();
       });
     });
 
