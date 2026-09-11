@@ -33,8 +33,7 @@ describe('WordmarkComponent', () => {
     const all = frames(host);
 
     expect(host.querySelector('.reel.is-spinning')).not.toBeNull();
-    // The last frame is the settle's overshoot; the reel rests on the one before it.
-    expect(all[all.length - 2]).toBe(kana.viewBox);
+    expect(all.at(-1)).toBe(kana.viewBox);
   });
 
   it('stands still on a later appearance', async () => {

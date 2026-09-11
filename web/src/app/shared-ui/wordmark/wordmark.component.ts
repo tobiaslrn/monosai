@@ -75,7 +75,8 @@ function other(variant: WordmarkVariant): WordmarkVariant {
     }
 
     .is-spinning .strip {
-      animation: mn-reel-spin 900ms cubic-bezier(0.2, 0.75, 0.25, 1.12) both;
+      /* Decelerates onto the landing without overshooting, so no neighbour peeks in. */
+      animation: mn-reel-spin 900ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
     }
 
     .frame {
@@ -114,12 +115,12 @@ export class WordmarkComponent {
   protected readonly landed = computed(() => GLYPHS[this.landing()]);
   /** The frame the reel comes to rest on. */
   protected readonly stop = computed(() => (this.run() > 0 ? SPIN_FRAMES : 0));
-  /** Alternating back from the landing, plus one frame past it for the settle to overshoot into. */
+  /** Alternating back from the landing, which is the last frame. */
   protected readonly frames = computed(() => {
     const landing = this.landing();
     const stop = this.stop();
     return Array.from(
-      { length: stop + 2 },
+      { length: stop + 1 },
       (_, index) => GLYPHS[(stop - index) % 2 === 0 ? landing : other(landing)],
     );
   });
