@@ -7,21 +7,29 @@ import { safeErrorTypeOf } from '../../domain/shared/errors';
 import { classifyReadingLink } from '../../domain/reading/reading-link';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AppUpdateBannerComponent } from './app-update-banner.component';
+import { MainNavComponent } from './main-nav.component';
 import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.component';
 import { HelpIntroService } from './help-intro.service';
 
 /**
  * The application frame.
  *
- * The shell draws no bar of its own: every page's top bar is its
+ * The shell draws no top bar of its own: every page's top bar is its
  * `mn-page-header`, and the reader keeps its own. Banners and the first-use
- * guide belong to non-reader surfaces only.
+ * guide belong to non-reader surfaces only, and the docked tab bar to the three
+ * tab pages only.
  */
 @Component({
   selector: 'mn-app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, AppUpdateBannerComponent, VocabularySyncBannerComponent],
+  imports: [
+    RouterOutlet,
+    AppUpdateBannerComponent,
+    MainNavComponent,
+    VocabularySyncBannerComponent,
+  ],
   providers: [HelpIntroService],
+  host: { '[class.has-tab-bar]': 'isTabRoute()' },
   template: `
     <a class="mn-skip-link" href="#mn-main">Skip to main content</a>
 
@@ -49,6 +57,10 @@ import { HelpIntroService } from './help-intro.service';
     <main id="mn-main" class="main" tabindex="-1">
       <router-outlet />
     </main>
+
+    @if (isTabRoute()) {
+      <mn-main-nav placement="bottom" />
+    }
   `,
   styles: `
     @use '../../../styles/breakpoints' as breakpoints;
@@ -56,6 +68,21 @@ import { HelpIntroService } from './help-intro.service';
     :host {
       display: block;
       min-height: 100dvh;
+    }
+
+    /*
+     * Below the wide breakpoint a tab page has the tab bar docked beneath it.
+     * The page reserves that height so its last row is never under the bar,
+     * and the offset is published for anything else docked to the bottom edge.
+     */
+    @media (max-width: breakpoints.$wide-max) {
+      :host(.has-tab-bar) {
+        --bottom-dock: calc(var(--tab-bar-height) + env(safe-area-inset-bottom));
+      }
+
+      :host(.has-tab-bar) .main {
+        padding-bottom: calc(var(--space-6) + var(--bottom-dock));
+      }
     }
 
     /* No top padding: each page's sticky top bar starts at the viewport edge. */
@@ -119,10 +146,19 @@ export class AppShellComponent {
       filter((event) => event instanceof NavigationEnd),
       // Keep the completed navigation as an event, even when its URL matches
       // Router.url. The first NavigationEnd must wake the intro effect.
-      map((event) => ({ url: event.urlAfterRedirects, completed: true })),
+      map((event) => ({ url: event.urlAfterRedirects, completed: true, tab: this.isTabPage() })),
     ),
-    { initialValue: { url: this.router.url, completed: this.router.navigated } },
+    {
+      initialValue: {
+        url: this.router.url,
+        completed: this.router.navigated,
+        tab: this.isTabPage(),
+      },
+    },
   );
+
+  /** Home, Library and Settings declare themselves tab pages in their route data. */
+  protected readonly isTabRoute = computed(() => this.url().tab);
 
   /**
    * Only the reader itself goes without application chrome.
@@ -140,6 +176,14 @@ export class AppShellComponent {
     const segment = url.slice('/reader/'.length).split(/[/?#]/)[0];
     return classifyReadingLink(segment).kind === 'well-formed';
   });
+
+  private isTabPage(): boolean {
+    let route = this.router.routerState.snapshot.root;
+    while (route.firstChild !== null) {
+      route = route.firstChild;
+    }
+    return route.data['tab'] === true;
+  }
 
   constructor() {
     effect(() => {

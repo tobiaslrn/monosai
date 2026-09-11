@@ -163,6 +163,8 @@
   --motion-fast: 120ms;
   --motion-medium: 200ms;
   --touch-target: max(44px, 2.75rem);
+  /* The docked tab bar above the safe-area inset; the page reserves the same. */
+  --tab-bar-height: 4rem;
 
   color-scheme: light;
 }

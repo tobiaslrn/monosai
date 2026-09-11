@@ -19,6 +19,7 @@ import {
   LucideFileText,
   LucideGitFork,
   LucideCircleQuestionMark,
+  LucideHouse,
   type LucideIcon,
   LucideInfo,
   LucideLanguages,
@@ -55,6 +56,7 @@ import {
  * icon library, so the set can be replaced in one place.
  */
 export const ICON_SET = {
+  home: LucideHouse,
   library: LucideLibrary,
   add: LucidePlus,
   generate: LucideSparkles,

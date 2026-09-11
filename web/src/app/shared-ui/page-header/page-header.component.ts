@@ -7,17 +7,17 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
 /**
  * The top bar every page outside the reader wears.
  *
- * It is the page's only bar: Back where the page has a parent, otherwise the
- * Monosai mark, then the title, then whatever the page puts at its end. It
- * sticks to the top of the viewport, so the way back is always the first
- * thing on the screen.
+ * It is the page's only bar: Back where the page has a parent, the Monosai mark
+ * on Home, then the title, then whatever the page puts at its end. It sticks to
+ * the top of the viewport, so the way back is always the first thing on the
+ * screen.
  */
 @Component({
   selector: 'mn-page-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, IconComponent, WordmarkComponent],
   template: `
-    <header class="head">
+    <header class="head" [class.is-bare]="isBare()">
       @if (backTo(); as target) {
         @if (usesHistoryBack()) {
           <button
@@ -42,6 +42,10 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
             <span class="mn-visually-hidden">{{ heading() }}</span>
             <mn-wordmark />
           </h1>
+        } @else if (titleHidden()) {
+          <h1 id="mn-page-title">
+            <span class="mn-visually-hidden">{{ heading() }}</span>
+          </h1>
         } @else {
           <h1 id="mn-page-title">{{ heading() }}</h1>
         }
@@ -55,6 +59,8 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
     </header>
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     /*
      * No box of its own, so the bar's sticky containing block is the page
      * column rather than this element — otherwise it could never stick.
@@ -72,7 +78,8 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
       gap: var(--space-2);
       align-items: center;
       min-width: 0;
-      min-height: var(--touch-target);
+      /* One height whatever the bar holds, so tabs do not move between pages. */
+      min-height: calc(var(--touch-target) + 2 * var(--space-2));
       padding-block: var(--space-2);
       background: var(--surface-canvas);
     }
@@ -146,18 +153,43 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
     .trailing:empty {
       display: none;
     }
+
+    /*
+     * A tab page's bar with no Back holds only its tabs, and below the wide
+     * breakpoint those are docked to the bottom edge instead. What is left is
+     * the hidden heading, which needs no room.
+     */
+    @media (max-width: breakpoints.$wide-max) {
+      .head.is-bare {
+        position: static;
+        min-height: 0;
+        padding-block: 0;
+      }
+
+      .head.is-bare::before {
+        display: none;
+      }
+    }
   `,
 })
 export class PageHeaderComponent {
   private readonly navigation = inject(NavigationHistoryService);
   readonly heading = input.required<string>();
-  /** Omitted only by the Library, which is where every other page goes back to. */
+  /** Omitted by the tab pages, which are where every other page goes back to. */
   readonly backTo = input<string | null>(null);
   readonly backLabel = input('Back');
-  /** The home page leads with the Monosai mark where others lead with Back. */
+  /** Home leads with the Monosai mark and wordmark in place of its title. */
   readonly home = input(false);
+  /**
+   * A tab page shows no title, because the current tab names it. The heading
+   * stays in the bar for assistive technology.
+   */
+  readonly titleHidden = input(false);
   /** One quiet line under the title: what the page holds, or how much of it. */
   readonly subtitle = input<string | null>(null);
+  protected readonly isBare = computed(
+    () => this.titleHidden() && this.backTo() === null && !this.home(),
+  );
   protected readonly usesHistoryBack = computed(() => {
     const target = this.backTo();
     return target !== null && this.navigation.canPopTo(target);

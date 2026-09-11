@@ -31,12 +31,14 @@ export const APP_ROUTES: Routes = [
   {
     path: 'home',
     title: 'Home · Monosai',
+    data: { tab: true },
     loadComponent: () =>
       import('../../features/home/home-page.component').then((m) => m.HomePageComponent),
   },
   {
     path: 'library',
     title: 'Library · Monosai',
+    data: { tab: true },
     loadComponent: () =>
       import('../../features/library/library-page.component').then((m) => m.LibraryPageComponent),
   },
@@ -57,7 +59,7 @@ export const APP_ROUTES: Routes = [
   },
   {
     // A generation the learner left running. Same screen, addressed by job, so
-    // a row in the library can lead back to the run it started.
+    // a row on Home can lead back to the run it started.
     path: 'generate/:jobId',
     title: 'Generate · Monosai',
     canMatch: [wellFormedGenerationJobLink],
@@ -126,6 +128,7 @@ export const APP_ROUTES: Routes = [
   {
     path: 'settings',
     title: 'Settings · Monosai',
+    data: { tab: true },
     loadComponent: () =>
       import('../../features/settings/settings-page.component').then(
         (m) => m.SettingsPageComponent,

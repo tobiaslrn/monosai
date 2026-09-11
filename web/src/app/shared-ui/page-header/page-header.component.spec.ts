@@ -26,6 +26,25 @@ class HostComponent {}
 })
 class TrailingHostComponent {}
 
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [PageHeaderComponent],
+  template: `<mn-page-header heading="Library" [titleHidden]="true" />`,
+})
+class HiddenTitleHostComponent {}
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [PageHeaderComponent],
+  template: `<mn-page-header
+    heading="Settings"
+    [titleHidden]="true"
+    backTo="/generate"
+    backLabel="Back to story"
+  />`,
+})
+class HiddenTitleWithBackHostComponent {}
+
 describe('PageHeaderComponent back control', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
@@ -82,5 +101,27 @@ describe('PageHeaderComponent back control', () => {
     const element = fixture.nativeElement as HTMLElement;
 
     expect(element.querySelector('.trailing [data-testid="trailing"]')?.textContent).toBe('Action');
+  });
+
+  /** A tab page's title is the selected tab; the heading survives for screen readers. */
+  it('keeps a hidden title as the page heading', () => {
+    const fixture = TestBed.createComponent(HiddenTitleHostComponent);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    const heading = element.querySelector('h1#mn-page-title');
+    expect(heading?.textContent.trim()).toBe('Library');
+    expect(heading?.querySelector('.mn-visually-hidden')?.textContent).toBe('Library');
+    expect(element.querySelector('mn-wordmark')).toBeNull();
+    expect(element.querySelector('.head')?.classList.contains('is-bare')).toBe(true);
+  });
+
+  it('keeps the bar in place when a hidden-title page still has a way back', () => {
+    const fixture = TestBed.createComponent(HiddenTitleWithBackHostComponent);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('.head')?.classList.contains('is-bare')).toBe(false);
+    expect(element.querySelector('.back')?.getAttribute('aria-label')).toBe('Back to story');
   });
 });

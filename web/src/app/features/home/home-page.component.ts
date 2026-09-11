@@ -6,6 +6,7 @@ import {
   type GenerationJob,
 } from '../../application/generation/generation-jobs.store';
 import { LibraryStore } from '../../application/reading/library.store';
+import { MainNavComponent } from '../../core/layout/main-nav.component';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
@@ -24,6 +25,7 @@ import { HomeWelcomeComponent } from './home-welcome.component';
   imports: [
     RouterLink,
     IconComponent,
+    MainNavComponent,
     PageHeaderComponent,
     GenerationJobCardComponent,
     HomeStandingComponent,
@@ -32,23 +34,16 @@ import { HomeWelcomeComponent } from './home-welcome.component';
   template: `
     <div class="mn-page home-page">
       <mn-page-header heading="Home" [home]="true">
-        <nav class="utilities" aria-label="Utilities">
-          <a class="mn-icon-button" routerLink="/library" aria-label="Library" title="Library">
-            <mn-icon name="library" />
-          </a>
-          <a
-            class="mn-icon-button"
-            routerLink="/help"
-            [state]="homeOriginState"
-            aria-label="Help"
-            title="Help"
-          >
-            <mn-icon name="help" />
-          </a>
-          <a class="mn-icon-button" routerLink="/settings" aria-label="Settings" title="Settings">
-            <mn-icon name="settings" />
-          </a>
-        </nav>
+        <mn-main-nav placement="top" />
+        <a
+          class="mn-icon-button"
+          routerLink="/help"
+          [state]="homeOriginState"
+          aria-label="Help"
+          title="Help"
+        >
+          <mn-icon name="help" />
+        </a>
       </mn-page-header>
 
       <section class="home-hero" aria-labelledby="mn-page-title" [class.is-compact]="!isFirstRun()">
@@ -115,11 +110,6 @@ import { HomeWelcomeComponent } from './home-welcome.component';
 
     .home-page {
       gap: var(--space-4);
-    }
-
-    .utilities {
-      display: flex;
-      gap: var(--space-1);
     }
 
     .home-hero {

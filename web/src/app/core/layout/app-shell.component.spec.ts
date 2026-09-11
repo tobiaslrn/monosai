@@ -14,7 +14,11 @@ describe('AppShellComponent', () => {
     const intro = { offer: vi.fn(), saveFailed: signal(false), retrySave: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: '**', component: Page }]),
+        provideRouter([
+          { path: 'home', component: Page, data: { tab: true } },
+          { path: 'settings', component: Page, data: { tab: true } },
+          { path: '**', component: Page },
+        ]),
         { provide: AppUpdateStore, useValue: {} },
       ],
     });
@@ -25,7 +29,8 @@ describe('AppShellComponent', () => {
       AppShellComponent,
       `<a class="mn-skip-link" href="#mn-main">Skip</a>
       @if (!isReaderRoute()) { <p class="chrome">non-reader</p> }
-      <main id="mn-main" tabindex="-1"><router-outlet /></main>`,
+      <main id="mn-main" tabindex="-1"><router-outlet /></main>
+      @if (isTabRoute()) { <mn-main-nav placement="bottom" /> }`,
     );
     const router = TestBed.inject(Router);
     await router.navigateByUrl(url);
@@ -64,5 +69,33 @@ describe('AppShellComponent', () => {
 
     expect(element.querySelector('.chrome')).not.toBeNull();
     expect(intro.offer).toHaveBeenCalled();
+  });
+
+  /** The tabs belong to the three tab pages, after the page, and nowhere else. */
+  it('docks the tab bar after main on a tab page and reserves room for it', async () => {
+    const { element } = await render('/home');
+
+    const nav = element.querySelector('mn-main-nav');
+    expect(nav?.classList.contains('is-bottom')).toBe(true);
+    expect(element.querySelector('main')?.compareDocumentPosition(nav as Node)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(element.classList.contains('has-tab-bar')).toBe(true);
+  });
+
+  it('has no tab bar in the reader or on a sub-page', async () => {
+    const { fixture, element, router } = await render(
+      '/reader/2f8d3f4e-1b6a-4f7c-9c2e-0d5a6b7c8d9e',
+    );
+    expect(element.querySelector('mn-main-nav')).toBeNull();
+
+    await router.navigateByUrl('/help');
+    fixture.detectChanges();
+    expect(element.querySelector('mn-main-nav')).toBeNull();
+    expect(element.classList.contains('has-tab-bar')).toBe(false);
+
+    await router.navigateByUrl('/settings?from=generate');
+    fixture.detectChanges();
+    expect(element.querySelector('mn-main-nav')).not.toBeNull();
   });
 });
