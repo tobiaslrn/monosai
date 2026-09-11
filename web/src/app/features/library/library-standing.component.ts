@@ -1,14 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
-import { CLOCK } from '../../application/shared/repository-tokens';
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
+import { CountingCountComponent } from '../../shared-ui/counting-count/counting-count.component';
 import {
-  readingLevelPhrase,
+  readingLevelName,
   vocabularyCountLabel,
-  vocabularySyncedLabel,
 } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
+
+/** What the headline says: a standing to state, or a single plain sentence. */
+type StandingHeadline =
+  | { readonly kind: 'standing'; readonly count: number; readonly level: string | null }
+  | { readonly kind: 'plain'; readonly text: string };
 
 /**
  * Where the learner stands, on the screen they look at most.
@@ -19,14 +23,15 @@ import {
  * self-explanatory — a story from *these* words — and it is the reason the
  * learner profile is worth a destination at all.
  *
- * Two lines, always the same two lines. Every state of the snapshot read fills
- * them; none of them adds, removes, or moves one, so the block is laid out
- * identically before, during, and after it resolves.
+ * The two facts it names are the two the page behind it holds, so each is
+ * underlined where it is said: the sentence reads as a sentence, and the parts
+ * of it that lead somewhere look like they do. The block holds its space
+ * before the read answers, so nothing below it moves when it does.
  */
 @Component({
   selector: 'mn-library-standing',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, CountingCountComponent],
   template: `
     <a
       class="standing"
@@ -37,9 +42,27 @@ import {
     >
       @if (headline(); as line) {
         <span class="headline">
-          <span>{{ line }}</span>
+          @switch (line.kind) {
+            @case ('standing') {
+              @if (line.level !== null) {
+                <span
+                  >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" /> and
+                  read {{ line.level }}.</span
+                >
+              } @else {
+                <span
+                  >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" />.</span
+                >
+              }
+            }
+            @case ('plain') {
+              <span>{{ line.text }}</span>
+            }
+          }
         </span>
-        <span class="detail">{{ detail() }}</span>
+        @if (detail(); as note) {
+          <span class="detail">{{ note }}</span>
+        }
       }
     </a>
   `,
@@ -77,6 +100,13 @@ import {
       line-height: 1.04;
     }
 
+    /*
+     * The sentence is the link, and it says so under a pointer and nowhere
+     * else. Marking the two facts permanently was tried: at display size two
+     * underlines read as heavier than the words they were under, and the level
+     * name has to stay breakable on a narrow screen, so the mark fragmented
+     * across lines instead of pointing anywhere.
+     */
     .standing:hover .headline span {
       text-decoration: underline;
     }
@@ -104,49 +134,63 @@ export class LibraryStandingComponent {
   protected readonly libraryOriginState = navigationOriginState('/library');
   private readonly vocabulary = inject(VocabularyAvailabilityStore);
   private readonly grammar = inject(GrammarProfileStore);
-  private readonly clock = inject(CLOCK);
+
+  /** The one formatter that says a number of words, intermediate ones included. */
+  protected readonly wordsLabel = vocabularyCountLabel;
 
   /**
-   * One sentence, not two facts stapled together.
+   * One sentence, naming what the learner knows and what they read.
    *
-   * The count and the level are the same fact from the learner's side — how
-   * hard a story Monosai can write for them — so they are said as one clause.
-   * The level is dropped rather than guessed at while the language bundle is
-   * still loading; the sentence stays a sentence either way.
+   * The count is measured from their own collection; the level is the preset
+   * they chose. Said as two clauses of one sentence, neither reads as a
+   * qualifier on the other — `515 words at a basic level` had the level
+   * qualifying the words, as though 515 were half-known. The level clause is
+   * dropped rather than guessed at while the language bundle is still loading,
+   * and the sentence stays a sentence.
    *
    * Null only while the read has not answered, which holds the space blank.
    */
-  protected readonly headline = computed<string | null>(() => {
+  protected readonly headline = computed<StandingHeadline | null>(() => {
     const state = this.vocabulary.state();
     switch (state.kind) {
       case 'unknown':
         return null;
       case 'unavailable':
-        return 'Your words could not be read.';
+        return { kind: 'plain', text: 'Your words could not be read.' };
       case 'known': {
         if (state.snapshot === null || state.snapshot.uniqueEntryCount === 0) {
-          return 'No words yet.';
+          return { kind: 'plain', text: 'No words yet.' };
         }
-        const count = vocabularyCountLabel(state.snapshot.uniqueEntryCount);
-        const level = readingLevelPhrase(this.grammar.selectedPreset()?.id);
-        return level === null ? `You know ${count}.` : `You know ${count} ${level}.`;
+        return {
+          kind: 'standing',
+          count: state.snapshot.uniqueEntryCount,
+          level: readingLevelName(this.grammar.selectedPreset()?.nameEn),
+        };
       }
     }
   });
 
-  protected readonly detail = computed(() => this.vocabularyDetail(this.vocabulary.state()) ?? '');
+  protected readonly detail = computed(() => this.vocabularyDetail(this.vocabulary.state()));
 
   constructor() {
     void this.vocabulary.refresh();
     void this.grammar.load();
   }
 
+  /**
+   * Only the states that have something to say fill the second line.
+   *
+   * A learner with words used to be told when they last synced. It said
+   * nothing on the day they synced, which is most days, and where the words
+   * came from and how current they are is stated on the page this line leads
+   * to. The sentence above is the standing; the second line is for a learner
+   * who cannot generate a story yet and needs to know why.
+   */
   private vocabularyDetail(state: ReturnType<VocabularyAvailabilityStore['state']>): string | null {
     switch (state.kind) {
       case 'unknown':
-        return null;
       case 'unavailable':
-        return '';
+        return null;
       case 'known': {
         const snapshot = state.snapshot;
         if (snapshot === null) {
@@ -155,7 +199,7 @@ export class LibraryStandingComponent {
         if (snapshot.uniqueEntryCount === 0) {
           return 'A source is connected but has no words in it yet.';
         }
-        return vocabularySyncedLabel(snapshot.createdAt, this.clock.now());
+        return null;
       }
     }
   }

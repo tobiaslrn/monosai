@@ -7,6 +7,11 @@ Amended by the first-run review: the Library heading and New story action remain
 visible when the shelf is empty. Welcome prose fills the shelf body and names
 all three word sources. It never replaces the action that creates a story.
 
+Amended again on the standing line's wording: the count and the level are two
+clauses of one sentence rather than one clause, the count rises to its value,
+and the line no longer states the last sync. The section below records the
+wording it replaced.
+
 ## Context
 
 [ADR 0025](0025-reader-as-the-centre.md) deleted Monosai's navigation outright:
@@ -24,7 +29,7 @@ the whole page. Two problems followed:
   Settings, the sync banner, the generate form, and the reader's aids panel.
   Nothing on the screen a learner looks at most led to it.
 - **The home screen said nothing about the learner.** Monosai's one genuinely
-  distinctive fact — that it knows which words *you* have reviewed and writes to
+  distinctive fact — that it knows which words _you_ have reviewed and writes to
   them — was invisible. `New story` sat there as a bare verb, with nothing
   saying what it would write from.
 
@@ -57,29 +62,50 @@ a better door, because it says why anyone would go.
 
 Above the shelf, and above the row that carries `New story`:
 
-> **You can read 340 words at a starter level.**
-> From Anki · synced today
+> **You know 340 words and read starter forms.**
 
-The whole line links to `/reading-level`, and carries a chevron so that a
-sentence which reads as a statement still says it goes somewhere. It makes
-`New story` mean something — a story from *these* words — and it is the one line
-no other Japanese reading application could show.
+The whole line links to `/reading-level`. It makes `New story` mean something —
+a story from _these_ words — and it is the one line no other Japanese reading
+application could show.
 
-The count and the level are one clause, not two facts stapled together: from
-the learner's side they are the same fact — how hard a story Monosai can write
-for them. The level is said in plain words derived from the preset's own name,
-so there is no second difficulty vocabulary to drift from the first, and still
-no JLPT band in it. A bundle that has not loaded drops the clause rather than
-holding the count back or guessing.
+The two facts are said as two clauses of one sentence. Stapling them into one
+— `You know 340 words at a starter level` — read as though the level qualified
+the words, as if 340 of them were half-known, and it made a level the learner
+_chose_ sound like a verdict on a count that was _measured_. Each clause names
+the fact plainly instead: what they know, and what Monosai writes for them.
 
-Every state of the snapshot read fills the same two lines. A count below the
-generation floor replaces the provenance with the floor, because where the words
-came from does not help someone who cannot generate yet. A connected source with
-nothing in it is not the same sentence as no source at all. A read that failed
-says so and says nothing was changed. While the read has not answered, the block
-holds its two lines of space and prints nothing: skeletons are ruled out, and
-the alternative — a line that appears and pushes the shelf down — is the exact
-shift the state rules forbid.
+The level is the preset's own name, lowercased for mid-sentence use, so the
+level chooser, Settings, and this line name a level identically; there is no
+second difficulty vocabulary to drift from the first, and still no JLPT band in
+it. A bundle that has not loaded drops the clause rather than holding the count
+back or guessing.
+
+The sentence is underlined under a pointer and carries no mark of its own
+otherwise. Marking the count and the level permanently was built and rejected:
+at display size two underlines read as heavier than the words above them, and
+because the level name must stay breakable on a narrow screen the mark
+fragmented across lines rather than pointing anywhere. The line keeps no icon
+either, for the reason the masthead link was dropped — a glyph outside the
+sentence says only that something, somewhere, is a link.
+
+The count rises to its value rather than appearing at it, once per launch and
+whenever it changes; the design system's motion rules govern it.
+
+**The last sync is not stated here.** It said `synced today` on every day a
+learner synced, which is most of them, and the one state worth acting on — a
+collection gone stale — is a line the Library never offered an action for. Where
+the words came from and how current they are is stated on the page this line
+leads to, beside the button that re-reads them. The second line is left for a
+learner who has no words yet, or a source with nothing in it: the states that
+have something to say.
+
+Every state of the snapshot read fits the same block, and the block holds two
+lines of space whichever one it is in, so nothing below it moves as the read
+resolves. A connected source with nothing in it is not the same sentence as no
+source at all. A read that failed says so and says nothing was changed. While
+the read has not answered, the block prints nothing: skeletons are ruled out,
+and the alternative — a line that appears and pushes the shelf down — is the
+exact shift the state rules forbid.
 
 `Library` survives as the shelf's own heading, smaller than it was, and
 `New story` sits beside it rather than beside the standing line: the action
@@ -95,7 +121,7 @@ application is something people come to Settings looking for, and finding
 nothing there would say it cannot be done.
 
 That is not the defect ADR 0049 named. Its complaint was that Settings was the
-*only* way in; a signpost, when the primary door is on the home screen, is
+_only_ way in; a signpost, when the primary door is on the home screen, is
 ordinary redundancy.
 
 ### Before there is anything to read, the Library introduces Monosai
