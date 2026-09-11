@@ -17,7 +17,7 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
   selector: 'mn-exception-policy-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="policy">
+    <div class="mn-stack">
       <div class="mn-field">
         <label for="mn-policy-text">Vocabulary exceptions (optional)</label>
         <textarea
@@ -61,16 +61,6 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
         <p role="alert" class="mn-notice mn-notice--error">{{ failure.message }}</p>
       }
     </div>
-  `,
-  styles: `
-    .policy {
-      display: grid;
-      gap: var(--space-3);
-    }
-
-    p {
-      margin: 0;
-    }
   `,
 })
 export class ExceptionPolicyFieldComponent {

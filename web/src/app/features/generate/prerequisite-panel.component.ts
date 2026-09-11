@@ -25,7 +25,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
   imports: [RouterLink, IconComponent],
   template: `
     @if (unmet().length > 0) {
-      <ul class="checks">
+      <ul class="checks mn-stack">
         @for (check of unmet(); track check.id) {
           <li class="check" [attr.data-check]="check.id">
             <mn-icon name="warning" [size]="18" />
@@ -62,9 +62,6 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     }
 
     .checks {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
       margin: 0;
       padding: 0;
       list-style: none;

@@ -115,7 +115,7 @@ test.describe('generating a story', () => {
       .poll(() =>
         generate.evaluate((element) => getComputedStyle(element.closest('.action-bar')!).position),
       )
-      .toBe('static');
+      .toBe('sticky');
     await generate.scrollIntoViewIfNeeded();
     await expect(generate).toBeInViewport();
     await expect(page.getByText('0 of 1,000 characters')).toHaveCount(2);

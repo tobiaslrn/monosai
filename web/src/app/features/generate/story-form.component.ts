@@ -40,8 +40,8 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
   imports: [RouterLink, IconComponent, PreparationTargetsComponent],
   template: `
     <div class="composer-grid">
-      <div class="text-fields" role="region" aria-labelledby="mn-this-story">
-        <h3 id="mn-this-story">This story</h3>
+      <div class="mn-card mn-stack text-fields" role="region" aria-labelledby="mn-this-story">
+        <h2 id="mn-this-story" class="mn-card-title">This story</h2>
         <div class="mn-field">
           <label for="mn-premise">What should the story be about? (optional)</label>
           <textarea
@@ -91,13 +91,9 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         </div>
 
         <div class="setting-heading">
-          <div>
-            <label for="mn-story-length">Length</label>
-          </div>
+          <label for="mn-story-length">Length</label>
           <output for="mn-story-length" aria-live="polite">
-            <span>about</span>
-            <strong>{{ draft.sentenceCount() }}</strong>
-            <span>sentences</span>
+            about {{ draft.sentenceCount() }} sentences
           </output>
         </div>
         <input
@@ -133,8 +129,8 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         }
       </div>
 
-      <aside class="story-settings" aria-label="Story settings">
-        <h3>Defaults for every story</h3>
+      <aside class="mn-card mn-stack story-settings" aria-label="Story settings">
+        <h2 class="mn-card-title">Defaults for every story</h2>
         <ng-content select="[story-defaults]" />
 
         <mn-preparation-targets
@@ -146,7 +142,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           (targetsChanged)="preparationTargetsChanged.emit($event)"
         />
 
-        <div class="word-selection">
+        <div class="word-selection mn-stack mn-stack--tight">
           <div class="mn-field">
             <label for="mn-word-selection">Anki word selection</label>
             <select
@@ -221,31 +217,41 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           <p class="mn-hint" role="status">{{ defaultFeedback() }}</p>
         }
 
-        <div class="generation-sources" data-testid="form-sources">
-          <p class="mn-group-title setting-section-title">Uses</p>
-          <a
-            routerLink="/reading-level"
-            fragment="words"
-            [queryParams]="{ from: 'generate' }"
-            [state]="generateOriginState"
-          >
-            <span>Vocabulary</span>
-            <strong>{{ snapshotSummary() }}</strong>
-          </a>
-          <a
-            routerLink="/reading-level"
-            fragment="grammar"
-            [queryParams]="{ from: 'generate' }"
-            [state]="generateOriginState"
-          >
-            <span>Grammar</span>
-            <strong>{{ presetName() }}</strong>
-          </a>
+        <div class="generation-sources mn-stack" data-testid="form-sources">
+          <p class="mn-group-title">Uses</p>
+          <dl class="mn-facts">
+            <div>
+              <dt>
+                <a
+                  routerLink="/reading-level"
+                  fragment="words"
+                  [queryParams]="{ from: 'generate' }"
+                  [state]="generateOriginState"
+                >
+                  Vocabulary
+                </a>
+              </dt>
+              <dd>{{ snapshotSummary() }}</dd>
+            </div>
+            <div>
+              <dt>
+                <a
+                  routerLink="/reading-level"
+                  fragment="grammar"
+                  [queryParams]="{ from: 'generate' }"
+                  [state]="generateOriginState"
+                >
+                  Grammar
+                </a>
+              </dt>
+              <dd>{{ presetName() }}</dd>
+            </div>
+          </dl>
         </div>
       </aside>
     </div>
 
-    <div class="action-bar">
+    <div class="action-bar mn-stack">
       <ng-content select="[generation-blockers]" />
       <div class="mn-actions">
         <button
@@ -279,11 +285,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       gap: var(--space-4);
     }
 
-    h3 {
-      margin: 0 0 var(--space-4);
-      font-size: var(--text-lg);
-    }
-
     .counter {
       margin: 0;
       color: var(--text-secondary);
@@ -304,35 +305,14 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       align-items: start;
     }
 
-    .text-fields,
-    .story-settings {
-      padding: var(--space-5);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-raised);
-      box-shadow: var(--shadow-raised);
-    }
-
-    .story-settings {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .text-fields {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-5);
-      min-width: 0;
-    }
-
     .text-fields textarea {
       background: var(--surface-panel);
     }
 
     .setting-heading {
       display: flex;
-      gap: var(--space-4);
-      align-items: flex-start;
+      gap: var(--space-3);
+      align-items: baseline;
       justify-content: space-between;
     }
 
@@ -341,29 +321,15 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     }
 
     output {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-width: 4.75rem;
-      padding: var(--space-2) var(--space-3);
-      border-radius: 0.25rem;
-      background: var(--action-primary-soft);
-      color: var(--action-primary-text);
-    }
-
-    output strong {
-      font-size: var(--text-2xl);
-      line-height: 1;
-    }
-
-    output span {
+      color: var(--text-secondary);
       font-size: var(--text-sm);
+      text-align: end;
     }
 
     .length-slider {
-      width: 100%;
+      width: calc(100% - 1.375rem);
       height: var(--touch-target);
-      margin: var(--space-3) 0 0;
+      margin: 0 0.6875rem;
       padding: 0;
       appearance: none;
       background: transparent;
@@ -418,8 +384,8 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     }
 
     .length-slider::-moz-range-thumb {
-      width: 14px;
-      height: 14px;
+      width: 22px;
+      height: 22px;
       border: 4px solid var(--surface-raised);
       border-radius: 50%;
       background: var(--action-primary);
@@ -433,41 +399,44 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     }
 
     .length-scale {
-      display: flex;
-      justify-content: space-between;
-      margin-top: calc(-1 * var(--space-2));
+      position: relative;
+      width: calc(100% - 1.375rem);
+      min-height: 1.5em;
+      margin: var(--space-1) 0.6875rem 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);
+      line-height: 1.5;
     }
 
     .length-scale span {
-      width: 25%;
-      text-align: center;
+      position: absolute;
+      top: 0;
+      white-space: nowrap;
+      transform: translateX(-50%);
     }
 
     .length-scale span:first-child {
-      text-align: left;
+      left: 0;
+      transform: none;
+    }
+
+    .length-scale span:nth-child(2) {
+      left: 33.333333%;
+    }
+
+    .length-scale span:nth-child(3) {
+      left: 66.666667%;
     }
 
     .length-scale span:last-child {
-      text-align: right;
-    }
-
-    .length-warning {
-      margin-top: var(--space-3);
+      right: 0;
+      transform: none;
     }
 
     .word-selection {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
       margin-top: var(--space-5);
       padding-top: var(--space-4);
       border-top: 1px solid var(--border-subtle);
-    }
-
-    .strictness {
-      margin-top: var(--space-3);
     }
 
     .preparation-targets {
@@ -507,52 +476,12 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       .composer-grid {
         grid-template-columns: minmax(0, 1fr);
       }
-
-      .text-fields,
-      .story-settings {
-        padding: var(--space-4);
-      }
     }
 
     .generation-sources {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
       margin-top: var(--space-5);
       padding-top: var(--space-4);
       border-top: 1px solid var(--border-subtle);
-    }
-
-    .setting-section-title {
-      margin-bottom: var(--space-1);
-    }
-
-    .generation-sources a {
-      display: flex;
-      gap: var(--space-3);
-      align-items: baseline;
-      justify-content: space-between;
-      min-height: var(--touch-target);
-      color: var(--text-primary);
-      font-size: var(--text-sm);
-      text-decoration: none;
-    }
-
-    .generation-sources a:hover strong {
-      text-decoration-thickness: 2px;
-    }
-
-    .generation-sources a span {
-      color: var(--text-secondary);
-    }
-
-    .generation-sources a strong {
-      overflow: hidden;
-      font-weight: var(--weight-semibold);
-      text-decoration: underline;
-      text-underline-offset: 3px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
 
     /*
@@ -560,14 +489,18 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
      * its prerequisite copy never covers the fields it explains.
      */
     .action-bar {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      padding-block: var(--space-2);
+      position: sticky;
+      z-index: 2;
+      bottom: 0;
+      width: 100%;
+      margin-top: calc(var(--space-2) * -1);
+      padding: var(--space-4) 0 calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+      background: linear-gradient(to top, var(--surface-canvas) 72%, transparent);
     }
 
-    .action-bar p {
-      margin: 0;
+    .action-bar > .mn-actions,
+    .action-bar > .mn-actions > .mn-button {
+      width: 100%;
     }
   `,
 })
