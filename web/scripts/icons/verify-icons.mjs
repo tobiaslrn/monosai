@@ -2,7 +2,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sha256 } from '../assets/lib/fs-json.mjs';
-import { FAVICON_PATH, ICON_TARGETS, ICONS_OUTPUT_DIR, MARK_SOURCE_PATH } from './lib/layout.mjs';
+import { FAVICON_PATH, ICON_SOURCE_PATH, ICON_TARGETS, ICONS_OUTPUT_DIR } from './lib/layout.mjs';
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const MIN_BYTES = 200;
@@ -42,19 +42,21 @@ function readIcoPng(buffer) {
  * versions, so a byte-equality check would fail in CI on Linux against icons
  * generated on Windows. Instead this asserts: every declared file exists, is
  * a real PNG, has exactly the declared pixel dimensions, is non-trivially
- * sized, and that the committed source SVG has not drifted from what was
- * last built (its digest is recorded in icons.lock.json by build-icons.mjs).
+ * sized, and that the committed source PNG has not drifted from what was last
+ * built (its digest is recorded in icons.lock.json by build-icons.mjs).
  */
 async function main() {
   const failures = [];
 
-  const sourceSvg = await readFile(MARK_SOURCE_PATH, 'utf8');
+  const sourcePng = await readFile(ICON_SOURCE_PATH).catch(() => null);
   const lock = JSON.parse(await readFile(LOCK_PATH, 'utf8').catch(() => 'null'));
   if (lock === null) {
     failures.push('scripts/icons/icons.lock.json is missing; run npm run icons:build');
-  } else if (sha256(Buffer.from(sourceSvg, 'utf8')) !== lock.markSha256) {
+  } else if (sourcePng === null) {
+    failures.push('data/brand/monosai-icon.png is missing; run npm run icons:build');
+  } else if (sha256(sourcePng) !== lock.sourceSha256) {
     failures.push(
-      'data/brand/monosai-mark.svg has changed since icons were last built; run npm run icons:build',
+      'data/brand/monosai-icon.png has changed since icons were last built; run npm run icons:build',
     );
   }
 

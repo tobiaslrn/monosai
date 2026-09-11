@@ -229,6 +229,16 @@ describe('LibraryPageComponent', () => {
     expect(element(fixture).querySelector('mn-library-standing')).not.toBeNull();
   });
 
+  it('provides day and night artwork for the theme-specific hero', async () => {
+    const fixture = await render();
+
+    expect(
+      [...element(fixture).querySelectorAll<HTMLImageElement>('.hero-art img')].map((image) =>
+        image.getAttribute('src'),
+      ),
+    ).toEqual(['assets/home-reader.png', 'assets/home-reader-dark.png']);
+  });
+
   it('offers both ways in from the one New story button', async () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
@@ -267,9 +277,9 @@ describe('LibraryPageComponent', () => {
     ];
     const fixture = await render();
 
-    const titles = [...element(fixture).querySelectorAll('mn-reading-card [mn-list-row-title]')].map(
-      (node) => node.textContent.trim(),
-    );
+    const titles = [
+      ...element(fixture).querySelectorAll('mn-reading-card [mn-list-row-title]'),
+    ].map((node) => node.textContent.trim());
     expect(titles).toEqual(['Reading b', 'Reading c', 'Reading a']);
   });
 
@@ -515,9 +525,7 @@ describe('LibraryPageComponent', () => {
 
     expect(
       element(fixture).querySelector('mn-reading-card [mn-list-row-title]')?.textContent.trim(),
-    ).toBe(
-      '猫の一日',
-    );
+    ).toBe('猫の一日');
     expect(element(fixture).querySelector('[aria-live="polite"]')?.textContent).toContain(
       'is now called 猫の一日',
     );

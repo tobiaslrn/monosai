@@ -98,7 +98,20 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         >
           <mn-library-standing />
           <div class="hero-art" aria-hidden="true">
-            <img src="assets/home-reader.png" alt="" width="941" height="1672" />
+            <img
+              class="hero-art-light"
+              src="assets/home-reader.png"
+              alt=""
+              width="1254"
+              height="1254"
+            />
+            <img
+              class="hero-art-dark"
+              src="assets/home-reader-dark.png"
+              alt=""
+              width="1254"
+              height="1254"
+            />
           </div>
         </section>
 
@@ -189,7 +202,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       isolation: isolate;
       display: flex;
       align-items: flex-start;
-      min-height: 15rem;
+      min-height: 16rem;
       margin-bottom: calc(var(--space-2) * -1);
       padding-block: var(--space-2);
     }
@@ -200,22 +213,40 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       inset: 0 0 auto auto;
       width: 55%;
       max-width: 16rem;
-      aspect-ratio: 941 / 850;
+      aspect-ratio: 1;
       overflow: hidden;
       pointer-events: none;
     }
 
     .hero-art img {
       position: absolute;
-      top: 0;
-      right: 0;
+      inset: 0;
       width: 100%;
-      height: auto;
-      transform: translateY(-35.5%);
+      height: 100%;
+      object-fit: contain;
       filter: brightness(var(--home-art-brightness));
-      /* Follow the illustration's arch and low book-shaped foot, not an oval. */
-      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 941 1672'%3E%3Cdefs%3E%3Cfilter id='soft'%3E%3CfeGaussianBlur stdDeviation='9'/%3E%3C/filter%3E%3C/defs%3E%3Cpath fill='white' filter='url(%23soft)' d='M941 650 C800 553 556 606 428 700 C342 762 324 839 324 927 L324 1053 C273 1022 261 1060 277 1100 C214 1055 244 1167 252 1175 C196 1189 172 1242 180 1280 C92 1292 75 1338 150 1370 C320 1434 720 1444 941 1426 Z'/%3E%3C/svg%3E");
-      mask-size: 100% 100%;
+    }
+
+    .hero-art-dark {
+      display: none;
+    }
+
+    :host-context(html[data-theme='dark']) .hero-art-light {
+      display: none;
+    }
+
+    :host-context(html[data-theme='dark']) .hero-art-dark {
+      display: block;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :host-context(html:not([data-theme='light'])) .hero-art-light {
+        display: none;
+      }
+
+      :host-context(html:not([data-theme='light'])) .hero-art-dark {
+        display: block;
+      }
     }
 
     .home-hero mn-library-standing {
@@ -227,7 +258,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
      * screen. The art keeps its proportions; only its size changes.
      */
     .home-hero.is-compact {
-      min-height: 9.25rem;
+      min-height: 10rem;
     }
 
     .home-hero.is-compact .hero-art {
@@ -260,7 +291,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
     @media (max-width: breakpoints.$wide-max) {
       .home-hero {
-        min-height: 11.5rem;
+        min-height: 12.5rem;
       }
 
       .home-hero mn-library-standing {

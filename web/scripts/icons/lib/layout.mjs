@@ -3,19 +3,16 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
-export const MARK_SOURCE_PATH = join(ROOT, 'data', 'brand', 'monosai-mark.svg');
+export const ICON_SOURCE_PATH = join(ROOT, 'data', 'brand', 'monosai-icon.png');
 export const ICONS_OUTPUT_DIR = join(ROOT, 'public', 'icons');
 export const FAVICON_PATH = join(ROOT, 'public', 'favicon.ico');
 
-/** The safe-zone inset applied to the maskable variant, per the maskable icon spec. */
-export const MASKABLE_SAFE_ZONE_SCALE = 0.8;
-
 /**
  * The generated browser, PWA, and Apple icon targets. `variant` selects how
- * `build-icons.mjs` composes the source mark for that target:
- *  - "any": the mark rendered as authored, filling the canvas.
- *  - "maskable": a full-bleed square background with the mark inset to the
- *    maskable safe zone.
+ * `build-icons.mjs` composes the source mascot for that target:
+ *  - "any": the mascot rendered as authored, filling the canvas.
+ *  - "maskable": the same full-canvas mascot, allowing the platform to apply
+ *    its own launcher mask without introducing a second background colour.
  *  - "apple": same composition as "any", flattened so no alpha channel ships.
  */
 export const ICON_TARGETS = [

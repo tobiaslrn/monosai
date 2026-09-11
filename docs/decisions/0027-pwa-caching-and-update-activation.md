@@ -59,7 +59,7 @@ criteria (`testing-and-delivery.md` §10) name explicitly.
 
 ### Icons are verified structurally, not by digest
 
-`web/scripts/icons/build-icons.mjs` rasterises `web/data/brand/monosai-mark.svg`
+`web/scripts/icons/build-icons.mjs` resizes `web/data/brand/monosai-icon.png`
 using the Chromium already installed for Playwright. Chromium's PNG encoder
 is not guaranteed byte-identical across platforms, versions, or even repeated
 runs on the same machine — unlike the language bundle's source files, which
@@ -67,7 +67,7 @@ are fetched bytes with a canonical digest to verify against.
 `web/scripts/icons/verify-icons.mjs` therefore checks what actually matters for
 correctness — every declared file exists, is a real PNG (signature + IHDR),
 has exactly the declared pixel dimensions, and is non-trivially sized — and
-separately checks that the *source* SVG has not drifted from what was last
+separately checks that the *source* PNG has not drifted from what was last
 built, via a digest recorded in `web/scripts/icons/icons.lock.json` by the build
 script. A CI run on Linux against icons built on Windows would fail a
 byte-equality check for a reason that has nothing to do with whether the
@@ -82,7 +82,7 @@ icons are correct; it does not fail this one.
   `AppBusyRegistry.isBusy()`, and the update banner reflects that refusal
   visibly rather than silently declining the click.
 - `icons:verify` asserts PNG structure, exact dimensions, and the source
-  SVG's digest — never pixel-for-pixel or byte-for-byte equality against a
+  PNG's digest — never pixel-for-pixel or byte-for-byte equality against a
   previously generated PNG.
 
 ## Consequences

@@ -1333,7 +1333,8 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
       'Yesterday',
       'Earlier this week',
     ]);
-    const illustration = page.locator('.hero-art img');
+    const illustration = page.locator('.hero-art img:visible');
+    await expect(illustration).toHaveCount(1);
     await expect(illustration).toBeVisible();
     expect(
       await illustration.evaluate((image: HTMLImageElement) => image.naturalWidth),
