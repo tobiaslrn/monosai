@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ThemeService } from './theme.service';
 import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/match-media';
 
-const LIGHT = '#f8f6f1';
-const DARK = '#1b1d1a';
+const LIGHT = 'light-canvas';
+const DARK = 'dark-canvas';
 
 function themeColors(): (string | null)[] {
   return [...document.querySelectorAll('meta[name="theme-color"]')].map((meta) =>
