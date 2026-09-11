@@ -46,6 +46,16 @@
    */
   --playing-sentence-soft: #f2e6d2;
 
+  /*
+   * The streak calendar's five steps, from no reading to the most: the action
+   * colour's ramp, with the calendar also saying its streak in words.
+   */
+  --heat-0: #ebe8e0;
+  --heat-1: #cfe0d3;
+  --heat-2: #97c1a4;
+  --heat-3: #5e9d75;
+  --heat-4: #347e55;
+
   --focus-ring: #4a3c86;
   --shadow-raised: 0 1px 2px rgb(37 40 36 / 8%), 0 4px 12px rgb(37 40 36 / 6%);
   --shadow-overlay: 0 8px 32px rgb(37 40 36 / 16%);
@@ -85,6 +95,12 @@
 
   --playing-sentence-soft: #3b3324;
 
+  --heat-0: #262924;
+  --heat-1: #2f4235;
+  --heat-2: #4c6f57;
+  --heat-3: #749c81;
+  --heat-4: #9dbfa8;
+
   --focus-ring: #b7a9f0;
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 40%);
   --shadow-overlay: 0 8px 32px rgb(0 0 0 / 55%);
@@ -101,6 +117,8 @@
   --space-6: 2rem;
   --space-7: 3rem;
 
+  /* One day of the streak calendar: small enough to read as a square. */
+  --radius-cell: 0.1875rem;
   --radius-control: 0.75rem;
   --radius-card: 1rem;
   --radius-mark: 1.375rem;

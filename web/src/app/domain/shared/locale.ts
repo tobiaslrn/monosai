@@ -16,6 +16,10 @@
 export const APP_LOCALE = 'en';
 
 const COUNT_FORMAT = new Intl.NumberFormat(APP_LOCALE);
+const COMPACT_COUNT_FORMAT = new Intl.NumberFormat(APP_LOCALE, {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
 const DATE_FORMAT = new Intl.DateTimeFormat(APP_LOCALE, { dateStyle: 'medium' });
 const DATE_TIME_FORMAT = new Intl.DateTimeFormat(APP_LOCALE, {
   dateStyle: 'medium',
@@ -26,6 +30,14 @@ const RELATIVE_DAY_FORMAT = new Intl.RelativeTimeFormat(APP_LOCALE, { numeric: '
 /** A whole count, grouped: `3,118`. Used for every number the learner reads. */
 export function formatCount(value: number): string {
   return COUNT_FORMAT.format(value);
+}
+
+/**
+ * A count shortened to fit a figure tile: `940`, `12.5K`, `1.2M`. Only where
+ * the exact number would crowd its tile; a count in a sentence stays whole.
+ */
+export function formatCompactCount(value: number): string {
+  return COMPACT_COUNT_FORMAT.format(value);
 }
 
 /**

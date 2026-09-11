@@ -225,6 +225,44 @@ describe('HomePageComponent', () => {
     expect(jobs.dismissed).toHaveLength(0);
   });
 
+  it('offers no way back and no figures while no story has been opened', async () => {
+    repository.readings = [reading('a')];
+    const element = await render();
+
+    expect(element.querySelector('#home-group-continue')).toBeNull();
+    expect(element.querySelector('#home-group-reading')).toBeNull();
+    expect(element.textContent).not.toContain('Sample');
+  });
+
+  it('continues the story opened most recently, under a Sample pill', async () => {
+    repository.readings = [
+      { ...reading('a'), lastOpenedAt: 1_500 },
+      { ...reading('b'), lastOpenedAt: 2_500 },
+    ];
+    const element = await render();
+
+    const group = element.querySelector('#home-group-continue')?.closest('section');
+    expect(group?.querySelector('.mn-status-pill--warning')?.textContent.trim()).toBe('Sample');
+    const row = group?.querySelector<HTMLAnchorElement>('a[data-testid="continue-reading"]');
+    expect(row?.getAttribute('href')).toBe('/reader/b');
+    expect(row?.textContent).toContain('Reading b');
+    expect(row?.textContent).toContain('Paragraph 3 of 5');
+  });
+
+  it('shows the reading figures and the streak under a Sample pill', async () => {
+    repository.readings = [{ ...reading('a'), lastOpenedAt: 1_500 }];
+    const element = await render();
+
+    const group = element.querySelector('#home-group-reading')?.closest('section');
+    expect(group?.querySelector('.mn-status-pill--warning')?.textContent.trim()).toBe('Sample');
+    expect(group?.querySelectorAll('mn-home-stat-tiles li')).toHaveLength(3);
+    expect(
+      group?.querySelector('mn-streak-calendar [role="img"]')?.getAttribute('aria-label'),
+    ).toBe('Sample: 5-day reading streak');
+    // The headline already says how many words are known; no tile repeats it.
+    expect(group?.textContent).not.toContain('words');
+  });
+
   it('reports a library that could not be read and keeps both ways to start', async () => {
     repository.failListWith = storageError('unavailable', 'Storage is unavailable.');
     const element = await render();

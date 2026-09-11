@@ -221,6 +221,24 @@ export class DexieReadingRepository implements ReadingRepository {
     );
   }
 
+  /**
+   * One step along the `lastOpenedAt` index. IndexedDB leaves a row out of an
+   * index whose key is null, so a reading never opened cannot be the answer.
+   */
+  async findLastOpened(): Promise<Result<Reading | null, StorageError>> {
+    const loaded = await runStorage('readings.findLastOpened', () =>
+      this.db.readings.orderBy('lastOpenedAt').last(),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    if (!loaded.value) {
+      return ok(null);
+    }
+    const parsed = parseRecord(readingRowSchema, loaded.value, 'readings');
+    return parsed.ok ? ok(toReading(parsed.value)) : parsed;
+  }
+
   async loadGraph(
     id: ReadingId,
     window?: ParagraphWindow,

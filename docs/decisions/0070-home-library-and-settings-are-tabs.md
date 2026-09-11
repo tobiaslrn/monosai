@@ -101,8 +101,9 @@ Monosai records when a reading was last opened and nothing else about reading: n
 finished date. The owner chose to ship Home's layout now with placeholder figures rather than wait.
 Every group showing one carries a **Sample** status pill: Your reading, and Continue reading's
 progress line. The story Continue reading names is real — the reading with the latest
-`lastOpenedAt`, found through the index that field already has. The first run shows no sample
-figures, because someone who has read nothing must not be told they have a streak.
+`lastOpenedAt`, found through the index that field already has. Neither group appears until a
+story has been opened, so the first run shows no sample figures: someone who has read nothing must
+not be told they have a streak.
 
 The placeholders live in one presentation file, `features/home/sample-reading-progress.ts`, and
 not in `domain/`: they describe no rule and no data. The arrangement is temporary. Recording

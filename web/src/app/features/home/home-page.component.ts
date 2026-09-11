@@ -5,31 +5,45 @@ import {
   GenerationJobsStore,
   type GenerationJob,
 } from '../../application/generation/generation-jobs.store';
+import { ContinueReadingStore } from '../../application/reading/continue-reading.store';
 import { LibraryStore } from '../../application/reading/library.store';
 import { MainNavComponent } from '../../core/layout/main-nav.component';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+import { ContinueReadingRowComponent } from './continue-reading-row.component';
 import { GenerationJobCardComponent } from './generation-job-card.component';
 import { HomeStandingComponent } from './home-standing.component';
+import { HomeStatTilesComponent } from './home-stat-tiles.component';
 import { HomeWelcomeComponent } from './home-welcome.component';
+import {
+  SAMPLE_READING_FIGURES,
+  SAMPLE_READING_POSITION,
+  sampleHeatLevels,
+} from './sample-reading-progress';
+import { StreakCalendarComponent } from './streak-calendar.component';
 
 /**
  * Where Monosai opens: where the learner stands, and the two ways to start a
- * story, with whatever is still being written beneath them.
+ * story, with whatever is still being written beneath them and, once a story
+ * has been opened, the way back into it and how much has been read.
  */
 @Component({
   selector: 'mn-home-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [ContinueReadingStore],
   imports: [
     RouterLink,
     IconComponent,
     MainNavComponent,
     PageHeaderComponent,
+    ContinueReadingRowComponent,
     GenerationJobCardComponent,
     HomeStandingComponent,
+    HomeStatTilesComponent,
     HomeWelcomeComponent,
+    StreakCalendarComponent,
   ],
   template: `
     <div class="mn-page home-page">
@@ -98,6 +112,31 @@ import { HomeWelcomeComponent } from './home-welcome.component';
         </section>
       } @else if (isFirstRun()) {
         <mn-home-welcome />
+      } @else if (lastOpened(); as reading) {
+        <!--
+          Both groups wait until a story has been opened: sample figures beside
+          nothing read would tell someone they have a streak they do not have.
+        -->
+        <section class="home-group" aria-labelledby="home-group-continue">
+          <div class="group-head">
+            <h2 id="home-group-continue" class="mn-group-title">Continue reading</h2>
+            <span class="mn-status-pill mn-status-pill--warning">Sample</span>
+          </div>
+          <ul class="mn-list-group">
+            <li>
+              <mn-continue-reading-row [reading]="reading" [position]="samplePosition" />
+            </li>
+          </ul>
+        </section>
+
+        <section class="home-group" aria-labelledby="home-group-reading">
+          <div class="group-head">
+            <h2 id="home-group-reading" class="mn-group-title">Your reading</h2>
+            <span class="mn-status-pill mn-status-pill--warning">Sample</span>
+          </div>
+          <mn-home-stat-tiles [figures]="sampleFigures" />
+          <mn-streak-calendar [levels]="sampleHeat" [streakDays]="sampleFigures.streakDays" />
+        </section>
       }
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">
@@ -206,6 +245,13 @@ import { HomeWelcomeComponent } from './home-welcome.component';
       padding-block-start: var(--space-2);
     }
 
+    .group-head {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+      justify-content: space-between;
+    }
+
     @media (max-width: breakpoints.$wide-max) {
       .home-hero {
         min-height: 12.5rem;
@@ -221,10 +267,30 @@ export class HomePageComponent {
   protected readonly library = inject(LibraryStore);
   private readonly jobs = inject(GenerationJobsStore);
   private readonly dialog = inject(Dialog);
+  private readonly continueReading = inject(ContinueReadingStore);
 
   protected readonly homeOriginState = navigationOriginState('/home');
+  protected readonly sampleFigures = SAMPLE_READING_FIGURES;
+  protected readonly samplePosition = SAMPLE_READING_POSITION;
+  protected readonly sampleHeat = sampleHeatLevels();
 
   protected readonly generationJobs = computed(() => this.jobs.libraryEntries());
+
+  /**
+   * The story opened most recently, or null. A lookup that failed shows
+   * nothing: the row is a shortcut, and the Library still holds the story.
+   */
+  protected readonly lastOpened = computed(() => {
+    const state = this.continueReading.state();
+    switch (state.kind) {
+      case 'ready':
+        return state.reading;
+      case 'loading':
+      case 'none':
+      case 'failed':
+        return null;
+    }
+  });
 
   /**
    * Nothing saved and nothing being written: the screen a stranger lands on.
@@ -238,10 +304,12 @@ export class HomePageComponent {
 
   constructor() {
     void this.library.load();
+    void this.continueReading.load();
   }
 
   protected reload(): void {
     void this.library.load();
+    void this.continueReading.load();
   }
 
   /**

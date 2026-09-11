@@ -145,7 +145,8 @@ Then, when there is something to show: the stories being written, one row to
 continue the story opened most recently, and the learner's reading figures —
 three figures and a streak calendar. The number of words known is not a figure;
 the headline already says it. Before anything is saved or being written, the
-first-run introduction takes the place of the last two.
+first-run introduction takes the place of the last two, and neither appears
+until a story has been opened.
 
 **A destination is named once per screen.** The tab bar supplies the common
 destinations, and every sub-page's bar names the current one. Where a prominent
@@ -588,6 +589,11 @@ legibility.
 
 Colour is never the sole carrier of meaning. The two reading markers are drawn
 as squiggles as well as colours; status is named as well as tinted.
+
+Home's streak calendar is the one quantity drawn in colour: its five heat steps
+are the action colour's ramp, from the sunken ground to the action colour
+itself. It is never pressable, and it states its streak in words beside the
+grid, so the ramp is a picture of a figure the screen already says.
 
 ## 5. Typography and units
 
