@@ -80,7 +80,7 @@
     "@types/emscripten": "^1.41.5",
     "@types/node": "^26.2.0",
     "@types/sql.js": "^1.4.11",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.0.0",
     "angular-eslint": "^22.1.0",
     "eslint": "^10.9.0",
     "eslint-import-resolver-typescript": "^4.4.4",
