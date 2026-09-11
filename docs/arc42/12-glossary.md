@@ -7,6 +7,11 @@ The terms Monosai's code and these chapters use. Where a term names a type, the 
 | **Reading** | Any saved content that opens in the reader. It is either imported or generated, and it is immutable once saved |
 | **Imported reading** | A reading made from Japanese the learner supplied, by pasting it or opening a `.txt` file |
 | **Generated story** | A reading written by the text provider and validated against the learner's vocabulary before it was saved |
+| **Home** | The screen `/` opens: the learner's standing, the two ways to start a story, stories being written, and reading figures. [ADR 0070](../decisions/0070-home-library-and-settings-are-tabs.md) |
+| **Library** | The shelf of saved readings, grouped by day and filtered by origin. It holds stories and does not create them |
+| **Tab page** | Home, Library, or Settings: the three peers that carry the tab bar. Every other screen is a sub-page with Back and no tab bar |
+| **Tab bar** | `mn-main-nav`, the three tabs, docked to the bottom edge below the wide breakpoint and centred in the tab page's top bar above it |
+| **Sample figure** | A placeholder Home shows until reading history is recorded, always under a group marked with a Sample pill |
 | **Paragraph window** | The bounded run of paragraphs the reader has mounted. It moves as the learner scrolls; it does not grow without limit. [ADR 0011](../decisions/0011-paragraph-window-bounds.md) |
 | **Token** | One word as the tokenizer identified it, with its surface, reading, lemma, and part of speech |
 | **Vocabulary source** | One configured way to read reviewed vocabulary: a desktop connection, an Android bridge, a package file, or a text list |

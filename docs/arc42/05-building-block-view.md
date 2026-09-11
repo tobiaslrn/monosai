@@ -99,6 +99,13 @@ one source, and everything it can be configured to do, so the list above it can 
 ([ADR 0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)).
 The area names still line up across the layers; only the screen that renders them moved.
 
+`features/home/` is the other screen folder that is not an area. Home composes the learner's
+standing, the rows of generations still running, the most recently opened reading from
+`application/reading/`, and reading figures. Until reading history is recorded those figures are
+placeholders, kept in one presentation-only file in that folder rather than in `domain/`
+([ADR 0070](../decisions/0070-home-library-and-settings-are-tabs.md)). `features/library/` is the
+shelf alone.
+
 The other vocabulary route is `features/vocabulary/vocabulary-browse-page.component.ts`. It reads
 `VocabularyRepository.listVocabularyEntries()` once, then keeps search, source, difficulty, date,
 and sort state in `application/vocabulary/vocabulary-browse.store.ts`. The page's row and filter
@@ -167,17 +174,22 @@ kept clear of the docked player.
 
 ### Whitebox: non-reader shell and Help
 
-`core/layout/` owns the shell, its banners, and the first-use offer; it draws no
-bar. The shell only renders after successful startup and waits for a completed
-non-reader route before offering Help. Each page owns its single top bar,
-`mn-page-header` from `shared-ui/`; the Library projects the utility navigation
-into its own. Reader routes show neither banners nor the introduction and keep
-the reader's own bar. `features/help/` is a lazy static prose screen.
+`core/layout/` owns the shell, its banners, the first-use offer, and the tab bar,
+`mn-main-nav`; it draws no top bar. The shell only renders after successful startup
+and waits for a completed non-reader route before offering Help. Each page owns its
+single top bar, `mn-page-header` from `shared-ui/`. Home, Library and Settings are
+tab pages, marked by route data `tab: true`: on those routes the shell renders the
+tab bar's bottom placement after `main` and reserves its height, and each tab page
+projects the top placement into its own header. Only one placement is ever drawn.
+Reader routes show neither banners, the introduction, nor tabs, and keep the
+reader's own bar. `features/help/` is a lazy static prose screen, reached from
+Home's Help icon.
 Dismissal goes through `AppSettingsStore` and the settings repository; schema v9
 adds `helpIntroSeen` transactionally, defaulting to false. Write failures expose
 retry in the shell. See [ADR 0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)
-[ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md), and
-[ADR 0069](../decisions/0069-one-top-bar-per-screen.md).
+[ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md),
+[ADR 0069](../decisions/0069-one-top-bar-per-screen.md), and
+[ADR 0070](../decisions/0070-home-library-and-settings-are-tabs.md).
 
 Two seams deserve a closer look, because a mistake in either crosses a boundary the rest of the
 system relies on.

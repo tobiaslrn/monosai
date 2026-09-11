@@ -1,7 +1,9 @@
 # 0050 — The Library states where the learner stands, and that line is the way in
 
 Date: 2026-09-04
-Status: Accepted
+Status: Accepted; amended by [ADR 0070](0070-home-library-and-settings-are-tabs.md), which
+supersedes the masthead: the standing line moves to Home, and the utilities become tabs and a
+Help icon on Home
 
 Amended by the first-run review: the Library heading and New story action remain
 visible when the shelf is empty. Welcome prose fills the shelf body and names
