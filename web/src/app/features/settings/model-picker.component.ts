@@ -237,7 +237,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       border-bottom: 0;
     }
     .model-row.is-selected {
-      box-shadow: inset 3px 0 var(--action-primary);
+      box-shadow: var(--shadow-model-indicator);
     }
     .model-choice,
     .star,

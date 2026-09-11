@@ -105,6 +105,7 @@
 
   --radius-control: 0.75rem;
   --radius-card: 1rem;
+  --radius-mark: 1.375rem;
   --radius-sheet: 1.5rem;
   --radius-pill: 999px;
 
@@ -142,6 +143,24 @@
   --reader-measure: 36em;
   /* Every non-reader page and the application bar share this column. */
   --page-measure: 60rem;
+
+  /* Shared composite surfaces keep component styles token-only. */
+  --backdrop-scrim: rgb(0 0 0 / 38%);
+  --border-subtle-faint: color-mix(in srgb, var(--border-subtle) 35%, transparent);
+  --surface-sunken-faint: color-mix(in srgb, var(--surface-sunken) 70%, transparent);
+  --surface-sunken-hover: color-mix(in srgb, var(--surface-sunken) 60%, transparent);
+  --surface-sunken-muted: color-mix(in srgb, var(--surface-sunken) 78%, var(--surface-raised));
+  --surface-sunken-example: color-mix(in srgb, var(--surface-sunken) 75%, var(--surface-raised));
+  --surface-action-selected: color-mix(
+    in srgb,
+    var(--action-primary-soft) 45%,
+    var(--surface-raised)
+  );
+  --surface-reader-progress: color-mix(in srgb, var(--border-strong) 50%, var(--surface-sunken));
+  --surface-canvas-fade: linear-gradient(to top, var(--surface-canvas) 72%, transparent);
+  --shadow-focus: 0 0 0 1px var(--action-primary);
+  --shadow-model-indicator: inset 3px 0 var(--action-primary);
+  --radius-token: 0.25rem;
 
   --motion-fast: 120ms;
   --motion-medium: 200ms;

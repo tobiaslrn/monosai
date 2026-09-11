@@ -276,6 +276,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 
     .surface rt {
       color: var(--text-secondary);
+      /* stylelint-disable-next-line declaration-property-value-allowed-list -- reading surface follows the reader scale */
       font-size: 0.48em;
       font-weight: var(--weight-medium);
       line-height: 1;

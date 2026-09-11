@@ -86,7 +86,7 @@ const HARD_DIFFICULTY_PERCENT = 50;
     .entry[open] {
       border-radius: var(--radius-card);
       border-block-end-color: transparent;
-      background: color-mix(in srgb, var(--surface-sunken) 70%, transparent);
+      background: var(--surface-sunken-faint);
     }
 
     summary {
@@ -106,7 +106,7 @@ const HARD_DIFFICULTY_PERCENT = 50;
     }
 
     summary:hover {
-      background: color-mix(in srgb, var(--surface-sunken) 60%, transparent);
+      background: var(--surface-sunken-hover);
     }
 
     .word {

@@ -251,7 +251,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     .example {
       padding: var(--space-3);
       border-radius: var(--radius-control);
-      background: color-mix(in srgb, var(--surface-sunken) 75%, var(--surface-raised));
+      background: var(--surface-sunken-example);
     }
 
     .example-ja {

@@ -362,10 +362,10 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       height: 22px;
       margin-top: -6px;
       border: 4px solid var(--surface-raised);
-      border-radius: 50%;
+      border-radius: var(--radius-pill);
       appearance: none;
       background: var(--action-primary);
-      box-shadow: 0 0 0 1px var(--action-primary);
+      box-shadow: var(--shadow-focus);
     }
 
     .length-slider::-moz-range-track {
@@ -390,9 +390,9 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       width: 22px;
       height: 22px;
       border: 4px solid var(--surface-raised);
-      border-radius: 50%;
+      border-radius: var(--radius-pill);
       background: var(--action-primary);
-      box-shadow: 0 0 0 1px var(--action-primary);
+      box-shadow: var(--shadow-focus);
     }
 
     .length-slider:focus-visible {
@@ -498,7 +498,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       width: 100%;
       margin-top: calc(var(--space-2) * -1);
       padding: var(--space-4) 0 calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
-      background: linear-gradient(to top, var(--surface-canvas) 72%, transparent);
+      background: var(--surface-canvas-fade);
     }
 
     .action-bar > .mn-actions,

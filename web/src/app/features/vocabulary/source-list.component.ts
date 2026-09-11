@@ -125,7 +125,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
       width: 7px;
       height: 7px;
       margin-right: 0.35em;
-      border-radius: 50%;
+      border-radius: var(--radius-pill);
       background: var(--status-warning);
       vertical-align: 0.05em;
     }

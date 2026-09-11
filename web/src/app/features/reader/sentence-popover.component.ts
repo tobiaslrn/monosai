@@ -201,7 +201,7 @@ export interface UnknownWord {
       margin: 0;
       padding-inline-end: var(--mn-popover-close-inset, 0px);
       font-family: var(--font-japanese);
-      font-size: var(--reader-font-size, 1.25rem);
+      font-size: var(--reader-font-size);
       line-height: 1.7;
       user-select: text;
       -webkit-user-select: text;

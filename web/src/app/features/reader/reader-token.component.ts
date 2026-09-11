@@ -161,7 +161,7 @@ export interface TokenActivationSource {
     button.token.is-previewed,
     button.token.is-selected {
       background: var(--accent-secondary-soft);
-      border-radius: 4px;
+      border-radius: var(--radius-token);
     }
 
     /*
@@ -172,7 +172,7 @@ export interface TokenActivationSource {
      */
     :host-context(html[data-pointer='mouse']) button.token:hover {
       background: var(--accent-secondary-soft);
-      border-radius: 4px;
+      border-radius: var(--radius-token);
     }
 
     /*
@@ -182,7 +182,7 @@ export interface TokenActivationSource {
      */
     button.token:active {
       background: var(--accent-secondary-soft);
-      border-radius: 4px;
+      border-radius: var(--radius-token);
     }
 
     /*
@@ -230,6 +230,7 @@ export interface TokenActivationSource {
      * legible, which would trade one failure for a worse one.
      */
     rt {
+      /* stylelint-disable-next-line declaration-property-value-allowed-list -- ruby scales with reader text */
       font-size: 0.55em;
       letter-spacing: -0.02em;
       /* Ruby remains announced, but copied Japanese contains only its base. */

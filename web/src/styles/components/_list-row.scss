@@ -1,0 +1,132 @@
+/* A shelf row: one destination, one content column, and an optional menu. */
+.mn-list-row {
+  display: flex;
+  min-width: 0;
+  min-height: 4.5rem;
+  border: 1px solid var(--border-subtle-faint);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+  transition: background-color var(--motion-fast) ease-out;
+}
+
+.mn-list-row:hover {
+  background: var(--surface-sunken);
+}
+
+.mn-list-row--flush,
+.mn-list-row--plain {
+  border-color: transparent;
+  background: transparent;
+}
+
+.mn-list-row--flush:hover,
+.mn-list-row--plain:hover {
+  background: var(--surface-sunken);
+}
+
+.mn-list-row--muted {
+  background: var(--surface-sunken);
+}
+
+.mn-list-row--muted:hover {
+  background: var(--surface-sunken-muted);
+}
+
+.mn-list-row__link {
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--space-3);
+  align-items: center;
+  min-width: 0;
+  min-height: 4.5rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: inherit;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.mn-list-row__link:focus-visible {
+  outline: none;
+}
+
+.mn-list-row:has(.mn-list-row__link:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.mn-list-row__leading {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.mn-list-row__leading:empty,
+.mn-list-row__meta:empty,
+.mn-list-row__trailing:empty,
+.mn-list-row__menu:empty {
+  display: none;
+}
+
+.mn-list-row--muted-leading .mn-list-row__leading {
+  opacity: 0.55;
+}
+
+.mn-list-row__content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.mn-list-row__title {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: 1.35;
+}
+
+.mn-list-row--muted .mn-list-row__title {
+  color: var(--text-secondary);
+}
+
+.mn-list-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+}
+
+.mn-list-row__trailing {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+  align-items: center;
+  max-width: 40%;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.mn-list-row__menu {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mn-list-row,
+  .mn-list-row__link {
+    transition: none;
+  }
+}

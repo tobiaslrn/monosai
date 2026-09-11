@@ -58,7 +58,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       align-items: flex-start;
       min-height: var(--touch-target);
       padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
-      border: 1px solid color-mix(in srgb, var(--border-subtle) 35%, transparent);
+      border: 1px solid var(--border-subtle-faint);
       border-radius: var(--radius-card);
       background: var(--surface-raised);
       cursor: pointer;
@@ -73,7 +73,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 
     .preset.is-selected {
       border-color: var(--action-primary);
-      background: color-mix(in srgb, var(--action-primary-soft) 45%, var(--surface-raised));
+      background: var(--surface-action-selected);
     }
 
     /* The keyboard's ring only: a tap or a click already shows as the selection. */

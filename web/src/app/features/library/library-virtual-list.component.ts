@@ -222,7 +222,7 @@ function readingKey(id: string): string {
     .loading-dot {
       width: 0.5rem;
       height: 0.5rem;
-      border-radius: 50%;
+      border-radius: var(--radius-pill);
       background: var(--action-primary);
       animation: library-loading-pulse 900ms ease-in-out infinite alternate;
     }

@@ -68,6 +68,8 @@ jobs:
         working-directory: web
       - run: npm run typecheck
       - run: npm run lint
+      - name: Component style token and selector check
+        run: npm run stylelint
       - name: Formatting check (advisory)
         run: npm run format:check
         continue-on-error: true

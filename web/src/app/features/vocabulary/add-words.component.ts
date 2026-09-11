@@ -320,7 +320,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       }
 
       .menu::backdrop {
-        background: rgb(0 0 0 / 38%);
+        background: var(--backdrop-scrim);
       }
 
       .grip {

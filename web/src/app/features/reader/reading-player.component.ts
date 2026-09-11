@@ -369,7 +369,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
      * prepared reading that had never been played looked finished.
      */
     .fill.generated {
-      background: color-mix(in srgb, var(--border-strong) 50%, var(--surface-sunken));
+      background: var(--surface-reader-progress);
     }
 
     .fill.played {

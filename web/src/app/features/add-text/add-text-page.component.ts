@@ -95,7 +95,7 @@ import { TextInputStepComponent } from './text-input-step.component';
       height: 1em;
       border: 2px solid var(--border-strong);
       border-block-start-color: var(--action-primary);
-      border-radius: 50%;
+      border-radius: var(--radius-pill);
       animation: mn-spin 800ms linear infinite;
     }
 

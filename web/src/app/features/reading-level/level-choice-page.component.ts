@@ -69,7 +69,7 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
       bottom: 0;
       margin-top: calc(var(--space-2) * -1);
       padding: var(--space-4) 0 calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
-      background: linear-gradient(to top, var(--surface-canvas) 72%, transparent);
+      background: var(--surface-canvas-fade);
     }
 
     .save-bar > .mn-button {
