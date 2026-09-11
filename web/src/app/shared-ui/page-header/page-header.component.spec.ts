@@ -36,6 +36,13 @@ class HiddenTitleHostComponent {}
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [PageHeaderComponent],
+  template: `<mn-page-header heading="Home" [home]="true" />`,
+})
+class HomeHostComponent {}
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [PageHeaderComponent],
   template: `<mn-page-header
     heading="Settings"
     [titleHidden]="true"
@@ -111,18 +118,39 @@ describe('PageHeaderComponent back control', () => {
 
     const heading = element.querySelector('h1#mn-page-title');
     expect(heading?.textContent.trim()).toBe('Library');
-    expect(heading?.querySelector('.mn-visually-hidden')?.textContent).toBe('Library');
+    expect(heading?.classList.contains('mn-visually-hidden')).toBe(true);
     expect(element.querySelector('.head')?.classList.contains('is-bare')).toBe(true);
   });
 
-  /** On a wide screen every tab page wears Home's brand, so the header never changes. */
-  it('gives a hidden-title bar the mark and wordmark on wide screens only', () => {
+  /** On a wide screen every tab page wears one site header, whose mark goes home. */
+  it('makes a hidden-title bar mark a wide-only link home, outside the heading', () => {
     const fixture = TestBed.createComponent(HiddenTitleHostComponent);
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
 
-    expect(element.querySelector('img.mark')?.classList.contains('wide-only')).toBe(true);
-    expect(element.querySelector('h1 mn-wordmark')?.classList.contains('wide-only')).toBe(true);
+    const brands = element.querySelectorAll('.brand');
+    expect(brands).toHaveLength(1);
+    const brand = brands[0] as HTMLAnchorElement;
+    expect(brand.tagName).toBe('A');
+    expect(brand.classList.contains('wide-only')).toBe(true);
+    expect(brand.getAttribute('href')).toBe('/home');
+    expect(brand.getAttribute('aria-label')).toBe('Home');
+    expect(brand.querySelector('img.mark')).not.toBeNull();
+    expect(brand.querySelector('mn-wordmark')).not.toBeNull();
+    expect(element.querySelector('h1 a, h1 mn-wordmark')).toBeNull();
+  });
+
+  /** Below the wide breakpoint Home's mark is decoration: the docked Home tab goes home. */
+  it("gives Home's bar a decorative mark for narrow screens beside the wide link", () => {
+    const fixture = TestBed.createComponent(HomeHostComponent);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('a.brand.wide-only')).not.toBeNull();
+    const decoration = element.querySelector('.brand.narrow-only');
+    expect(decoration?.tagName).toBe('SPAN');
+    expect(decoration?.querySelector('img.mark')?.getAttribute('alt')).toBe('');
+    expect(element.querySelector('h1#mn-page-title')?.textContent.trim()).toBe('Home');
   });
 
   it('keeps the bar in place when a hidden-title page still has a way back', () => {

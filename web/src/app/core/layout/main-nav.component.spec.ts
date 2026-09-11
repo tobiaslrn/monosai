@@ -38,12 +38,28 @@ describe('MainNavComponent', () => {
     ]);
   });
 
+  /** On a wide screen the mark goes home, and Help is a labelled place after the tabs. */
+  it('leaves Home out of the top placement and ends it with Help', async () => {
+    const element = await render('/library', 'top');
+
+    expect(
+      [...element.querySelectorAll<HTMLAnchorElement>('a')].map((link) => ({
+        label: link.textContent.trim(),
+        href: link.getAttribute('href'),
+      })),
+    ).toEqual([
+      { label: 'Library', href: '/library' },
+      { label: 'Settings', href: '/settings' },
+      { label: 'Help', href: '/help' },
+    ]);
+  });
+
   it('marks only the current page, including when it carries a query', async () => {
     const element = await render('/settings?from=generate', 'top');
 
     expect(
       [...element.querySelectorAll('a')].map((link) => link.getAttribute('aria-current')),
-    ).toEqual([null, null, 'page']);
+    ).toEqual([null, 'page', null]);
   });
 
   it('marks nothing on a page that is not a tab', async () => {

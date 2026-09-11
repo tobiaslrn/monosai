@@ -8,11 +8,9 @@ import {
   inject,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { NavigationStart, Router, RouterLink } from '@angular/router';
+import { NavigationStart, Router } from '@angular/router';
 import { MainNavComponent } from '../../core/layout/main-nav.component';
 import { LibraryScrollMemoryService } from '../../core/routing/library-scroll-memory.service';
-import { navigationOriginState } from '../../core/routing/navigation-history.service';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { LibraryStore } from '../../application/reading/library.store';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
@@ -42,8 +40,6 @@ const FILTERS: readonly FilterOption[] = [
   selector: 'mn-library-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    RouterLink,
-    IconComponent,
     MainNavComponent,
     PageHeaderComponent,
     LibraryVirtualListComponent,
@@ -51,16 +47,7 @@ const FILTERS: readonly FilterOption[] = [
   template: `
     <div class="mn-page library-page">
       <mn-page-header heading="Library" [titleHidden]="true">
-        <mn-main-nav placement="top" />
-        <a
-          class="mn-icon-button wide-help"
-          routerLink="/help"
-          [state]="libraryOriginState"
-          aria-label="Help"
-          title="Help"
-        >
-          <mn-icon name="help" />
-        </a>
+        <mn-main-nav placement="top" helpOrigin="/library" />
       </mn-page-header>
 
       @if (store.status() === 'failed') {
@@ -116,17 +103,11 @@ const FILTERS: readonly FilterOption[] = [
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
-
-      /* Help is in every tab page's bar on a wide screen, and on Home's alone below it. */
-      .wide-help {
-        display: none;
-      }
     }
   `,
 })
 export class LibraryPageComponent {
   protected readonly store = inject(LibraryStore);
-  protected readonly libraryOriginState = navigationOriginState('/library');
   private readonly clock = inject(CLOCK);
   private readonly dialog = inject(Dialog);
   private restorationCancelled = false;

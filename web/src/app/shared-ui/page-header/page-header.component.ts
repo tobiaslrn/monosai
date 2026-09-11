@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../icon/icon.component';
 import { WordmarkComponent } from '../wordmark/wordmark.component';
@@ -15,7 +15,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
 @Component({
   selector: 'mn-page-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, WordmarkComponent],
+  imports: [RouterLink, RouterLinkActive, IconComponent, WordmarkComponent],
   template: `
     <header class="head" [class.is-bare]="isBare()">
       @if (backTo(); as target) {
@@ -34,22 +34,28 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
           </a>
         }
       }
+      @if (home() || titleHidden()) {
+        <a
+          class="brand wide-only"
+          routerLink="/home"
+          routerLinkActive
+          ariaCurrentWhenActive="page"
+          aria-label="Home"
+        >
+          <img class="mark" src="icons/icon-192.png" alt="" width="32" height="32" />
+          <mn-wordmark />
+        </a>
+      }
       @if (home()) {
-        <img class="mark" src="icons/icon-192.png" alt="" width="32" height="32" />
-      } @else if (titleHidden()) {
-        <img class="mark wide-only" src="icons/icon-192.png" alt="" width="32" height="32" />
+        <!-- Below the wide breakpoint the docked Home tab is the way home. -->
+        <span class="brand narrow-only">
+          <img class="mark" src="icons/icon-192.png" alt="" width="32" height="32" />
+          <mn-wordmark />
+        </span>
       }
       <div class="titles">
-        @if (home()) {
-          <h1 id="mn-page-title">
-            <span class="mn-visually-hidden">{{ heading() }}</span>
-            <mn-wordmark />
-          </h1>
-        } @else if (titleHidden()) {
-          <h1 id="mn-page-title">
-            <span class="mn-visually-hidden">{{ heading() }}</span>
-            <mn-wordmark class="wide-only" />
-          </h1>
+        @if (home() || titleHidden()) {
+          <h1 id="mn-page-title" class="mn-visually-hidden">{{ heading() }}</h1>
         } @else {
           <h1 id="mn-page-title">{{ heading() }}</h1>
         }
@@ -120,9 +126,36 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
       margin-inline: calc(-1 * var(--space-2));
     }
 
+    /* On a wide screen a link home, the way a site's mark is; below it, decoration. */
+    .brand {
+      display: flex;
+      flex: 0 1 auto;
+      gap: var(--space-1);
+      align-items: center;
+      min-width: 0;
+      min-height: var(--touch-target);
+      border-radius: var(--radius-control);
+      color: inherit;
+      text-decoration: none;
+    }
+
+    a.brand:focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    /*
+     * The wordmark sizes itself to its container, so outside the title column
+     * it needs a width of its own: the widest spelling at the full frame.
+     */
+    .brand mn-wordmark {
+      flex: 0 1 auto;
+      width: calc(4.3 * 1.875rem);
+      min-width: 0;
+    }
+
     .mark {
       flex: none;
-      margin-inline-end: var(--space-1);
       border-radius: var(--radius-token);
     }
 
@@ -164,6 +197,12 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
      * the hidden heading, which needs no room. On a wide screen the same bar
      * carries the mark and wordmark, so every tab page wears one header.
      */
+    @media (min-width: breakpoints.$wide) {
+      .narrow-only {
+        display: none;
+      }
+    }
+
     @media (max-width: breakpoints.$wide-max) {
       .wide-only {
         display: none;

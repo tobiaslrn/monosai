@@ -1,8 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { MainNavComponent } from '../../core/layout/main-nav.component';
-import { navigationOriginState } from '../../core/routing/navigation-history.service';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { AppSectionComponent } from './app-section.component';
 import { AppearanceSectionComponent } from './appearance-section.component';
@@ -20,8 +17,6 @@ import { StorageSectionComponent } from './storage-section.component';
   selector: 'mn-settings-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    RouterLink,
-    IconComponent,
     MainNavComponent,
     PageHeaderComponent,
     ReadingLevelRowComponent,
@@ -39,16 +34,7 @@ import { StorageSectionComponent } from './storage-section.component';
         [backTo]="fromGenerate() ? '/generate' : null"
         backLabel="Back to story"
       >
-        <mn-main-nav placement="top" />
-        <a
-          class="mn-icon-button wide-help"
-          routerLink="/help"
-          [state]="settingsOriginState"
-          aria-label="Help"
-          title="Help"
-        >
-          <mn-icon name="help" />
-        </a>
+        <mn-main-nav placement="top" helpOrigin="/settings" />
       </mn-page-header>
 
       <!--
@@ -68,19 +54,8 @@ import { StorageSectionComponent } from './storage-section.component';
       <mn-diagnostics-section />
     </div>
   `,
-  styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
-    /* Help is in every tab page's bar on a wide screen, and on Home's alone below it. */
-    @media (max-width: breakpoints.$wide-max) {
-      .wide-help {
-        display: none;
-      }
-    }
-  `,
 })
 export class SettingsPageComponent {
-  protected readonly settingsOriginState = navigationOriginState('/settings');
   readonly from = input<string | undefined>();
   protected readonly fromGenerate = computed(() => this.from() === 'generate');
 }

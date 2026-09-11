@@ -69,13 +69,15 @@ test.describe('Help and the tab bar', () => {
     await page.getByRole('link', { name: 'Add text' }).click();
     await expect(page).toHaveURL(/#\/add$/);
 
-    // Tabs name places, so each carries its label; Help is Home's one icon.
+    // Places carry their labels, Help included; on a wide screen the mark is Home.
     await page.goto('./#/home');
     const tabs = page.getByRole('navigation', { name: 'Main' });
-    await expect(tabs.getByRole('link')).toHaveText(['Home', 'Library', 'Settings']);
-    const help = page.getByRole('link', { name: 'Help', exact: true });
-    await expect(help).toHaveAttribute('title', 'Help');
-    await expect(help).toHaveText('');
+    await expect(tabs.getByRole('link')).toHaveText(['Library', 'Settings', 'Help']);
+    await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute(
+      'href',
+      /#\/home$/,
+    );
+    await expect(page.getByRole('link', { name: 'Help', exact: true })).toHaveText('Help');
   });
 
   test('supports keyboard focus, accessibility, reload, and a 320px viewport @mobile @smoke', async ({

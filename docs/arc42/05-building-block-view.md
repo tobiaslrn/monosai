@@ -183,13 +183,14 @@ tab bar's bottom placement after `main` and reserves its height, and each tab pa
 projects the top placement into its own header. Only one placement is ever drawn.
 Reader routes show neither banners, the introduction, nor tabs, and keep the
 reader's own bar. `features/help/` is a lazy static prose screen, reached from
-Home's Help icon.
+the labelled Help in every tab page's wide header and in Home's bar on a phone.
 Dismissal goes through `AppSettingsStore` and the settings repository; schema v9
 adds `helpIntroSeen` transactionally, defaulting to false. Write failures expose
 retry in the shell. See [ADR 0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)
 [ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md),
-[ADR 0069](../decisions/0069-one-top-bar-per-screen.md), and
-[ADR 0070](../decisions/0070-home-library-and-settings-are-tabs.md).
+[ADR 0069](../decisions/0069-one-top-bar-per-screen.md),
+[ADR 0070](../decisions/0070-home-library-and-settings-are-tabs.md), and
+[ADR 0071](../decisions/0071-a-wide-header-is-a-site-header.md).
 
 Two seams deserve a closer look, because a mistake in either crosses a boundary the rest of the
 system relies on.

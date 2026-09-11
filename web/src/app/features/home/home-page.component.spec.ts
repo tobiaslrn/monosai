@@ -119,15 +119,16 @@ describe('HomePageComponent', () => {
     expect(element.querySelector('[aria-haspopup]')).toBeNull();
   });
 
-  it('ends its bar with the tabs and then Help, which is on Home alone', async () => {
+  it('ends its bar with the navigation and a labelled Help for narrow screens', async () => {
     const element = await render();
 
     const trailing = [...(element.querySelector('.trailing')?.children ?? [])];
     expect(trailing.map((child) => child.tagName.toLowerCase())).toEqual(['mn-main-nav', 'a']);
     const help = element.querySelector<HTMLAnchorElement>('.trailing > a');
+    expect(help?.classList.contains('narrow-help')).toBe(true);
     expect(help?.getAttribute('href')).toBe('/help');
-    expect(help?.getAttribute('aria-label')).toBe('Help');
-    expect(help?.getAttribute('title')).toBe('Help');
+    expect(help?.textContent.trim()).toBe('Help');
+    expect(help?.hasAttribute('aria-label')).toBe(false);
     expect(element.querySelector('nav[aria-label="Utilities"]')).toBeNull();
   });
 

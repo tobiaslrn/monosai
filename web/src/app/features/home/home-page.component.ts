@@ -48,15 +48,10 @@ import { StreakCalendarComponent } from './streak-calendar.component';
   template: `
     <div class="mn-page home-page">
       <mn-page-header heading="Home" [home]="true">
-        <mn-main-nav placement="top" />
-        <a
-          class="mn-icon-button"
-          routerLink="/help"
-          [state]="homeOriginState"
-          aria-label="Help"
-          title="Help"
-        >
-          <mn-icon name="help" />
+        <mn-main-nav placement="top" helpOrigin="/home" />
+        <a class="mn-button mn-button--ghost narrow-help" routerLink="/help" [state]="homeOriginState">
+          <mn-icon name="help" [size]="18" />
+          <span>Help</span>
         </a>
       </mn-page-header>
 
@@ -250,6 +245,13 @@ import { StreakCalendarComponent } from './streak-calendar.component';
       gap: var(--space-2);
       align-items: center;
       justify-content: space-between;
+    }
+
+    /* On a wide screen Help is in the header's navigation with the tabs. */
+    @media (min-width: breakpoints.$wide) {
+      .narrow-help {
+        display: none;
+      }
     }
 
     @media (max-width: breakpoints.$wide-max) {

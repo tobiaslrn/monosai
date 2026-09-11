@@ -21,21 +21,26 @@ test.describe('tab navigation', () => {
     await expect
       .poll(() => illustration.evaluate((image: HTMLImageElement) => image.naturalWidth))
       .toBeGreaterThan(0);
-    await expect(tabs(page).getByRole('link')).toHaveText(['Home', 'Library', 'Settings']);
-    await expect(tabs(page).getByRole('link', { name: 'Home' })).toHaveAttribute(
-      'aria-current',
-      'page',
+    // A phone docks the three tabs; a wide screen's mark is Home and Help joins the tabs (ADR 0071).
+    const wide = (page.viewportSize()?.width ?? 0) >= 960;
+    await expect(tabs(page).getByRole('link')).toHaveText(
+      wide ? ['Library', 'Settings', 'Help'] : ['Home', 'Library', 'Settings'],
     );
+    // Exactly one visible link home in either layout: the mark or the docked tab.
+    const home = page.getByRole('link', { name: 'Home', exact: true });
+    await expect(home).toHaveCount(1);
+    await expect(home).toHaveAttribute('aria-current', 'page');
 
     for (const [name, path] of [
       ['Library', /#\/library$/],
       ['Settings', /#\/settings$/],
       ['Home', /#\/home$/],
     ] as const) {
-      await tabs(page).getByRole('link', { name }).click();
+      const link = page.getByRole('link', { name, exact: true });
+      await link.click();
       await expect(page).toHaveURL(path);
-      await expect(tabs(page).getByRole('link', { name })).toHaveAttribute('aria-current', 'page');
-      await expect(tabs(page).locator('[aria-current="page"]')).toHaveCount(1);
+      await expect(link).toHaveAttribute('aria-current', 'page');
+      await expect(page.locator('[aria-current="page"]:visible')).toHaveCount(1);
     }
     // The selected tab names the page; a screen reader still gets a heading.
     await tabs(page).getByRole('link', { name: 'Library' }).click();

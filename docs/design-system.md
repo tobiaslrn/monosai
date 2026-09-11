@@ -84,13 +84,19 @@ never shows the tabs.
 Below the wide breakpoint the tabs are a bar docked to the bottom edge of the
 viewport: an opaque panel ground, a hairline top edge, the safe-area inset
 beneath, and the page reserving the bar's height so its last row never sits
-under it. At and above the wide breakpoint the same three tabs sit at the end of
-the tab page's top bar, where a bar's controls go, with Help after them. Each
-tab is an icon with a visible label at both widths:
-a tab names a place, and a place is not a repeated-press control. The current
-tab carries the selection tint and `aria-current="page"`. The bar is one
-component in two placements, only one of which is ever drawn, and each sits in
-the document where it is drawn, so focus order follows visual order.
+under it. At and above the wide breakpoint the tab page's top bar is a site
+header: the Monosai mark and wordmark at its start are the way Home, and
+Library, Settings and Help sit at its end, where a bar's controls go
+([ADR 0071](decisions/0071-a-wide-header-is-a-site-header.md)). Every item is
+an icon with a visible label at both widths: a tab names a place, and a place is
+not a repeated-press control. The current page carries `aria-current="page"`.
+At the foot it also carries the selection tint behind its icon, the docked
+bar's usual mark. In the top bar it takes the primary text colour and a short
+rule on the bar's lower edge beneath its icon and label, never a fill: a filled
+pill at the top of a page reads as a pressed button and competes with the
+page's own primary action. The bar is one component in two placements, only
+one of which is ever drawn, and each sits in the document where it is drawn, so
+focus order follows visual order.
 
 The reader never has a tab bar. Its bottom edge belongs to the docked audio
 player and the word and sentence sheets, which is why the tabs are kept to the
@@ -103,18 +109,16 @@ unless it was reached from a form — takes no room at all. Settings reached fro
 Write with AI keeps "Back to story" in the same bar as the tabs.
 
 **On a wide screen the three tab pages wear one header**, the way a website
-does, and nothing in it changes from tab to tab: the Monosai mark, the Monosai
-wordmark in place of the hidden title, the tabs at its end, then **Help** as an
-icon-only control. Below the wide breakpoint only Home's bar carries the mark,
-the wordmark and Help. The mark and wordmark are decoration, not a link: the
-Home tab is the way home. Help's Back returns to the tab page that opened it.
-Help carries a labelled GitHub link at the end of its own bar, because Help is
-where a learner looks for where the application comes from, and no icon reads
-as GitHub rather than as a branch.
-
-Help's icon is an explicit exception to the repetition rule: icon-only on both
-mobile and desktop, with an accessible name and a tooltip, a bare shared icon
-control with an unchanged touch target and visible keyboard focus.
+does, and nothing in it changes from tab to tab: the Monosai mark and wordmark,
+one link named Home in place of the hidden title, then **Library**,
+**Settings** and **Help** at its end. There is no Home item beside the mark:
+the mark already goes home, and one visible control per action. Below the wide
+breakpoint only Home's bar carries the mark, the wordmark and a labelled
+**Help**; there the mark is decoration, because the docked Home tab is the way
+home. Help's Back returns to the tab page that opened it. Help carries a
+labelled GitHub link at the end of its own bar, because Help is where a learner
+looks for where the application comes from, and no icon reads as GitHub rather
+than as a branch.
 
 A control that does nothing is not shown. There is no search on the shelf until
 the shelf can search.
@@ -326,8 +330,7 @@ audio transport, close, back, and overflow. Everything else carries a visible
 label beside its icon: anything rare, anything destructive, and anything that
 spends money or sends a request.
 
-There are exactly three deliberate exceptions: Home's Help icon, described
-above; the trash icons on the
+There are exactly two deliberate exceptions: the trash icons on the
 Story options content rows, described under Saved-story controls; and the
 control that reads Anki again at the end of the vocabulary sources card. That
 last one sits on the line that already says what it acts on — "Synced today" —

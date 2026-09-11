@@ -1,7 +1,8 @@
 # 0070 — Home, Library and Settings are tabs
 
 Date: 2026-09-11
-Status: Accepted
+Status: Accepted; the wide header and Help's label are amended by
+[ADR 0071](0071-a-wide-header-is-a-site-header.md)
 
 Amends [ADR 0069](0069-one-top-bar-per-screen.md), whose rejection of bottom navigation this
 supersedes, and [ADR 0050](0050-the-library-wears-the-navigation.md), whose masthead this
