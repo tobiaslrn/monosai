@@ -20,7 +20,7 @@ an AnkiConnect endpoint you point at).
    in the app and use **Install Monosai** under the **App** section; it uses
    the same browser prompt.
 3. Installed, Monosai launches in its own window at the same `/monosai/`
-   address, with the open-book icon and no browser chrome.
+   address, with the Monosai mascot icon and no browser chrome.
 
 If Chrome's DevTools → Application → Manifest panel reports errors, the
 deployed build is broken in a way this guide cannot fix from the browser side —

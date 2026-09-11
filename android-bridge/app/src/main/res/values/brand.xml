@@ -1,4 +1,4 @@
 <resources>
-    <color name="bridge_background">#669360</color>
+    <color name="bridge_background">#347E55</color>
     <string name="app_name" translatable="false">Monosai Anki bridge</string>
 </resources>

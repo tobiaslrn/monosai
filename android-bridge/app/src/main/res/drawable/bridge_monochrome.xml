@@ -1,2 +1,4 @@
 <!-- Generated from web/data/brand/monosai-icon.png by scripts/bridge/icons.mjs -->
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android" android:src="@drawable/monosai_icon" android:gravity="fill" />
+<inset xmlns:android="http://schemas.android.com/apk/res/android" android:insetLeft="20%" android:insetRight="20%" android:insetTop="23.333%" android:insetBottom="16.667%">
+    <bitmap android:src="@drawable/monosai_icon" android:gravity="fill" />
+</inset>

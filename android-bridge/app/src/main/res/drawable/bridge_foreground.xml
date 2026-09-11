@@ -1,2 +1,4 @@
-<!-- Generated from web/data/brand/monosai-icon.png by scripts/bridge/icons.mjs -->
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android" android:src="@drawable/monosai_icon" android:gravity="fill" />
+<!-- Generated from web/public/icons/icon-maskable-512.png by scripts/bridge/icons.mjs -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android" android:inset="8.333%">
+    <bitmap android:src="@drawable/monosai_icon_maskable" android:gravity="fill" />
+</inset>

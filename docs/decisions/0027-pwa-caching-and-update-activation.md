@@ -59,8 +59,10 @@ criteria (`testing-and-delivery.md` §10) name explicitly.
 
 ### Icons are verified structurally, not by digest
 
-`web/scripts/icons/build-icons.mjs` resizes `web/data/brand/monosai-icon.png`
-using the Chromium already installed for Playwright. Chromium's PNG encoder
+`web/scripts/icons/build-icons.mjs` composes the transparent
+`web/data/brand/monosai-icon.png` onto the brand green, shrinking it for the
+maskable icon so a launcher mask keeps its face whole, using the Chromium
+already installed for Playwright. Chromium's PNG encoder
 is not guaranteed byte-identical across platforms, versions, or even repeated
 runs on the same machine — unlike the language bundle's source files, which
 are fetched bytes with a canonical digest to verify against.
