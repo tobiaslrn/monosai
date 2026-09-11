@@ -11,7 +11,7 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
   imports: [RouterLink, PageHeaderComponent],
   template: `
     <div class="mn-page help-page">
-      <mn-page-header heading="Help" backTo="/library" backLabel="Back to library">
+      <mn-page-header heading="Help" backTo="/home" backLabel="Back to home">
         <!-- Named, not drawn: no icon in the set reads as GitHub rather than a branch. -->
         <a
           class="mn-button mn-button--ghost"

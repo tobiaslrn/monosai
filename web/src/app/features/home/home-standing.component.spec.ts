@@ -13,7 +13,7 @@ import type { GrammarPreset } from '../../domain/grammar/presets';
 import { snapshotId } from '../../domain/shared/ids';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
 import type { VocabularySourceKind } from '../../domain/vocabulary/vocabulary-source';
-import { LibraryStandingComponent } from './library-standing.component';
+import { HomeStandingComponent } from './home-standing.component';
 
 const NOW = new Date(2026, 7, 21, 12, 0, 0).getTime();
 
@@ -30,8 +30,8 @@ const PRESET: GrammarPreset = {
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LibraryStandingComponent],
-  template: `<mn-library-standing />`,
+  imports: [HomeStandingComponent],
+  template: `<mn-home-standing />`,
 })
 class HostComponent {}
 
@@ -62,7 +62,7 @@ function snapshotOf(
   };
 }
 
-describe('LibraryStandingComponent', () => {
+describe('HomeStandingComponent', () => {
   let state: WritableSignal<VocabularyAvailabilityState>;
   let preset: WritableSignal<GrammarPreset | null>;
 
@@ -97,7 +97,7 @@ describe('LibraryStandingComponent', () => {
     height: string;
   } {
     const element = fixture.nativeElement as HTMLElement;
-    const standing = element.querySelector<HTMLElement>('[data-testid="library-standing"]');
+    const standing = element.querySelector<HTMLElement>('[data-testid="home-standing"]');
     return {
       headline: standing?.querySelector('.headline')?.textContent.trim() ?? '',
       detail: standing?.querySelector('.detail')?.textContent.trim() ?? '',
@@ -183,7 +183,7 @@ describe('LibraryStandingComponent', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
     const element = render().nativeElement as HTMLElement;
 
-    const link = element.querySelector<HTMLAnchorElement>('[data-testid="library-standing"]');
+    const link = element.querySelector<HTMLAnchorElement>('[data-testid="home-standing"]');
     expect(link?.tagName).toBe('A');
     expect(link?.getAttribute('href')).toContain('/reading-level#words');
   });

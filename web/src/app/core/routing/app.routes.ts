@@ -29,6 +29,12 @@ export const APP_ROUTES: Routes = [
       import('../../features/help/help-page.component').then((m) => m.HelpPageComponent),
   },
   {
+    path: 'home',
+    title: 'Home · Monosai',
+    loadComponent: () =>
+      import('../../features/home/home-page.component').then((m) => m.HomePageComponent),
+  },
+  {
     path: 'library',
     title: 'Library · Monosai',
     loadComponent: () =>
@@ -125,8 +131,7 @@ export const APP_ROUTES: Routes = [
         (m) => m.SettingsPageComponent,
       ),
   },
-  // Root always resolves to the Library, which shows its own way in when it is
-  // empty.
+  // Root always resolves to Home, which introduces Monosai when nothing is saved.
   { path: '', pathMatch: 'full', canActivate: [firstUseRedirect], children: [] },
   { path: '**', redirectTo: '' },
 ];

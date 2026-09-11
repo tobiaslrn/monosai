@@ -104,9 +104,7 @@ describe('GeneratePageComponent', () => {
     expect(page.querySelector('[data-testid="generation-screen"]')?.textContent).toContain(
       'Generating your story',
     );
-    expect(page.querySelector('[data-testid="leave-hint"]')?.textContent).toContain(
-      'return to the library',
-    );
+    expect(page.querySelector('[data-testid="leave-hint"]')?.textContent).toContain('return home');
     expect(page.querySelector('[data-testid="cancel-generation"]')).not.toBeNull();
     expect(page.querySelector('mn-story-form')).toBeNull();
     // The registry has to know a screen is showing this run, or a story that

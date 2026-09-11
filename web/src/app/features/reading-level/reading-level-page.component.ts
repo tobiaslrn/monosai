@@ -393,7 +393,7 @@ export class ReadingLevelPageComponent {
    *
    * Three screens lead here and each expects to get its own place back: the
    * generate form says so in a query parameter, Settings marks the navigation
-   * with its origin, and everything else came from the Library. Read once at
+   * with its origin, and everything else came from Home. Read once at
    * construction, because the history entry does not change under the page.
    */
   private readonly origin = inject(NavigationHistoryService).currentOrigin();
@@ -402,14 +402,14 @@ export class ReadingLevelPageComponent {
     if (this.from() === 'generate') {
       return '/generate';
     }
-    return this.origin === '/settings' ? '/settings' : '/library';
+    return this.origin === '/settings' ? '/settings' : '/home';
   });
 
   protected readonly backLabel = computed(() => {
     if (this.from() === 'generate') {
       return 'Back to story';
     }
-    return this.origin === '/settings' ? 'Back to settings' : 'Back to library';
+    return this.origin === '/settings' ? 'Back to settings' : 'Back to home';
   });
 
   protected readonly state = this.refresh.state;

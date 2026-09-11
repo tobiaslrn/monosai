@@ -6,21 +6,21 @@ import { GENERATION_SNAPSHOT_MINIMUM } from '../../domain/vocabulary/snapshot';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
 /**
- * The Library before there is anything on it.
+ * Home before anything has been saved or started.
  *
  * This is the screen a stranger lands on at the public address, so it has to
- * say what Monosai is rather than only offering two buttons. An empty surface
- * has nothing but words to work with, which is the one place the prose budget
+ * say what Monosai is rather than only offering buttons. An empty surface has
+ * nothing but words to work with, which is the one place the prose budget
  * stretches — and the one surface where the fact that a person made this is
  * allowed to show.
  *
- * Word sources come first, with Anki the first suggested source. The shelf's
- * New story action stays above this empty body, so setup never hides writing.
+ * Its one choice is a word source. Paste text already stands directly above it
+ * among Home's actions, so it is not offered a second time here.
  *
- * It ends the moment the library has a reading in it.
+ * It ends the moment there is a reading or a story being written.
  */
 @Component({
-  selector: 'mn-library-welcome',
+  selector: 'mn-home-welcome',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, IconComponent],
   template: `
@@ -34,25 +34,13 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 
       <p class="local">Everything stays on this device.</p>
 
-      <div class="choices">
-        <a class="choice" routerLink="/reading-level" fragment="words" [state]="libraryOriginState">
-          <mn-icon name="vocabulary" [size]="20" />
-          <span>
-            <strong>Add a word list</strong>
-          </span>
-        </a>
-        <a class="choice" routerLink="/add" [state]="libraryOriginState">
-          <mn-icon name="add" [size]="20" />
-          <span>
-            <strong>Paste Japanese text</strong>
-          </span>
-        </a>
-      </div>
+      <a class="choice" routerLink="/reading-level" fragment="words" [state]="homeOriginState">
+        <mn-icon name="vocabulary" [size]="20" />
+        <strong>Add a word list</strong>
+      </a>
     </section>
   `,
   styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
     .welcome {
       display: flex;
       flex-direction: column;
@@ -80,18 +68,12 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       color: var(--text-primary);
     }
 
-    .choices {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--space-3);
-      margin-top: var(--space-2);
-    }
-
     .choice {
       display: flex;
       gap: var(--space-3);
-      align-items: flex-start;
+      align-items: center;
       min-width: 0;
+      margin-top: var(--space-2);
       padding: var(--space-3);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-card);
@@ -110,36 +92,13 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       color: var(--action-primary);
     }
 
-    .choice span {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-1);
-      min-width: 0;
-    }
-
     .choice strong {
       font-weight: var(--weight-semibold);
     }
-
-    .choice small {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      line-height: 1.45;
-    }
-
-    @media (max-width: breakpoints.$narrow-max) {
-      h2 {
-        font-size: var(--text-2xl);
-      }
-
-      .choices {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
   `,
 })
-export class LibraryWelcomeComponent {
-  protected readonly libraryOriginState = navigationOriginState('/library');
+export class HomeWelcomeComponent {
+  protected readonly homeOriginState = navigationOriginState('/home');
   /** The generation floor, said once here and defined once in the domain. */
   protected readonly minimumWords = formatCount(GENERATION_SNAPSHOT_MINIMUM);
 }

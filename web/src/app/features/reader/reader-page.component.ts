@@ -140,9 +140,9 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
         <div class="bar-row">
           <a
             class="mn-icon-button back"
-            routerLink="/library"
-            aria-label="Back to library"
-            (click)="backToLibrary($event)"
+            [routerLink]="backTarget"
+            [attr.aria-label]="backLabel"
+            (click)="goBack($event)"
           >
             <mn-icon name="back" />
           </a>
@@ -639,6 +639,15 @@ export class ReaderPageComponent {
   private readonly router = inject(Router);
   private readonly navigation = inject(NavigationHistoryService);
   private readonly viewContainerRef = inject(ViewContainerRef);
+
+  /**
+   * Where the bar's Back leads: Home when Home opened this reading, otherwise
+   * the Library, which is also where a link from outside the application goes.
+   * Read once, because the history entry does not change under the page.
+   */
+  private readonly openedFromHome = this.navigation.currentOrigin() === '/home';
+  protected readonly backTarget = this.openedFromHome ? '/home' : '/library';
+  protected readonly backLabel = this.openedFromHome ? 'Back to home' : 'Back to library';
 
   private readonly content = viewChild<ElementRef<HTMLElement>>('content');
   private readonly audioPlayerShell = viewChild<ElementRef<HTMLElement>>('audioPlayerShell');
@@ -1515,6 +1524,11 @@ export class ReaderPageComponent {
       clearTimeout(this.previewTimer);
       this.previewTimer = null;
     }
+  }
+
+  protected goBack(event: Event): void {
+    event.preventDefault();
+    void this.navigation.backOrNavigate(this.backTarget);
   }
 
   protected backToLibrary(event: Event): void {

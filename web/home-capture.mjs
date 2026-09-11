@@ -61,8 +61,9 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible({ timeout: 60000 });
     await page.getByRole('link', { name: 'Back to library', exact: true }).click();
     await expect(page.locator('mn-reading-card')).toHaveCount(8);
-    await expect(page.getByTestId('library-standing')).toContainText('You know 340 words');
-    await expect(page.getByTestId('library-standing')).toContainText('at a basic level', {
+    await page.goto(`${base}#/home`);
+    await expect(page.getByTestId('home-standing')).toContainText('You know 340 words');
+    await expect(page.getByTestId('home-standing')).toContainText('at a basic level', {
       timeout: 60000,
     });
     await page.locator('.hero-art img').evaluate((img) => img.decode());
@@ -71,7 +72,7 @@ for (const theme of ['light', 'dark']) {
     console.log(
       name,
       theme,
-      await page.getByTestId('library-standing').innerText(),
+      await page.getByTestId('home-standing').innerText(),
       await page.evaluate(() => ({
         width: innerWidth,
         scroll: document.documentElement.scrollWidth,

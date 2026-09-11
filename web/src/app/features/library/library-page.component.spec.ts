@@ -1,14 +1,10 @@
-import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
-import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
-import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LibraryStore } from '../../application/reading/library.store';
-import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import {
   CLOCK,
   READING_MUTATION_CHANNEL,
@@ -24,12 +20,7 @@ import { storageError } from '../../domain/storage/storage-error';
 import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/match-media';
 import { FakeReadingMutationChannel } from '../../../testing/reading-mutation-channel-fake';
 import { FakeReadingRepository } from '../../../testing/reading-repository-fake';
-import {
-  FakeGenerationJobsStore,
-  FakeGenerationRun,
-  fakeGenerationJob,
-} from '../../../testing/generation-job-fakes';
-import { FILTER_VISIBILITY_THRESHOLD, LibraryPageComponent } from './library-page.component';
+import { LibraryPageComponent } from './library-page.component';
 
 function reading(
   id: string,
@@ -105,7 +96,6 @@ describe('LibraryPageComponent', () => {
   let translationJob: FakeJobStore;
   let audioJob: FakeJobStore;
   let playback: FakePlaybackStore;
-  let jobs: FakeGenerationJobsStore;
 
   beforeEach(() => {
     media = installFakeMatchMedia(1280);
@@ -113,7 +103,6 @@ describe('LibraryPageComponent', () => {
     translationJob = new FakeJobStore();
     audioJob = new FakeJobStore();
     playback = new FakePlaybackStore();
-    jobs = new FakeGenerationJobsStore();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -124,21 +113,6 @@ describe('LibraryPageComponent', () => {
         { provide: TranslationJobStore, useValue: translationJob },
         { provide: AudioJobStore, useValue: audioJob },
         { provide: AudioPlaybackStore, useValue: playback },
-        { provide: GenerationJobsStore, useValue: jobs },
-        // The standing line has its own spec for the states it renders; here it
-        // only has to exist without reaching the database.
-        {
-          provide: VocabularyAvailabilityStore,
-          useValue: {
-            state: signal({ kind: 'unknown' as const }),
-            uniqueEntryCount: signal(null),
-            refresh: () => Promise.resolve(),
-          },
-        },
-        {
-          provide: GrammarProfileStore,
-          useValue: { selectedPreset: signal(null), load: () => Promise.resolve() },
-        },
       ],
     });
   });
@@ -176,13 +150,9 @@ describe('LibraryPageComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  function newReadingButton(fixture: Awaited<ReturnType<typeof render>>): HTMLButtonElement | null {
-    return element(fixture).querySelector<HTMLButtonElement>('.shelf-head button');
-  }
-
-  /** Enough readings that the filter chips are worth showing. */
+  /** Eight readings, half of each origin. */
   function shelf(): Reading[] {
-    return Array.from({ length: FILTER_VISIBILITY_THRESHOLD }, (_unused, index) =>
+    return Array.from({ length: 8 }, (_unused, index) =>
       reading(`r${String(index)}`, index % 2 === 0 ? 'imported' : 'generated', 1_000 + index),
     );
   }
@@ -197,76 +167,40 @@ describe('LibraryPageComponent', () => {
     );
   }
 
-  /**
-   * The first-run screen has to explain what Monosai is: it is what a stranger
-   * lands on at the public address, and nothing else on it says so.
-   */
-  it('explains what Monosai is when nothing is saved yet, Anki first', async () => {
-    const fixture = await render();
-
-    expect(element(fixture).querySelector('mn-library-welcome h2')?.textContent).toContain(
-      'Japanese you can actually read',
-    );
-    expect(element(fixture).textContent).toContain('an Anki package, or a pasted list');
-    expect(element(fixture).textContent).toContain('Everything stays on this device.');
-    expect(
-      [...element(fixture).querySelectorAll<HTMLAnchorElement>('.choice')].map((link) =>
-        link.getAttribute('href'),
-      ),
-    ).toEqual(['/reading-level#words', '/add']);
-    expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(0);
-  });
-
-  /**
-   * Nothing about a shelf until there is one. The standing line describes words
-   * the learner does not have yet, and there is no shelf to add to.
-   */
-  it('keeps the story action and vocabulary setup door above the empty shelf', async () => {
-    const fixture = await render();
-
-    expect(newReadingButton(fixture)).not.toBeNull();
-    expect(element(fixture).querySelector('mn-library-welcome')).not.toBeNull();
-    expect(element(fixture).querySelector('mn-library-standing')).not.toBeNull();
-  });
-
-  it('provides day and night artwork for the theme-specific hero', async () => {
-    const fixture = await render();
-
-    expect(
-      [...element(fixture).querySelectorAll<HTMLImageElement>('.hero-art img')].map((image) =>
-        image.getAttribute('src'),
-      ),
-    ).toEqual(['assets/home-reader.png', 'assets/home-reader-dark.png']);
-  });
-
-  it('offers both ways in from the one New story button', async () => {
+  it('keeps the shelf to itself: no hero, no create action, no generation rows', async () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
-    newReadingButton(fixture)?.click();
+    expect(element(fixture).querySelector('.home-hero')).toBeNull();
+    expect(element(fixture).querySelector('mn-home-standing')).toBeNull();
+    expect(element(fixture).querySelector('mn-generation-job-card')).toBeNull();
+    expect(element(fixture).textContent).not.toContain('Create a new story');
+    expect(element(fixture).querySelector('mn-page-header h1')?.textContent.trim()).toBe('Library');
+  });
+
+  it('shows the filters however small the shelf is', async () => {
+    repository.readings = [reading('a', 'imported', 1_000)];
+    const fixture = await render();
+
+    expect(
+      [...element(fixture).querySelectorAll('button[aria-pressed]')].map((filter) =>
+        filter.textContent.trim(),
+      ),
+    ).toEqual(['All', 'Imported', 'Generated']);
+  });
+
+  it('says an empty shelf is empty, naming the filter that emptied it', async () => {
+    const fixture = await render();
+
+    expect(element(fixture).querySelector('.mn-hint')?.textContent.trim()).toBe('No stories yet.');
+    expect(element(fixture).querySelectorAll('button[aria-pressed]')).toHaveLength(3);
+
+    element(fixture).querySelectorAll<HTMLButtonElement>('button[aria-pressed]')[1].click();
     await settle(fixture);
 
-    const menu = document.querySelector('mn-new-reading-menu');
-    const links = [...(menu?.querySelectorAll('a') ?? [])];
-    expect(links.map((link) => link.textContent.trim())).toEqual(['Paste text', 'Write with AI']);
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/add', '/generate']);
-  });
-
-  it('leaves shared destinations to the shell and keeps the standing line as the level door', async () => {
-    repository.readings = [reading('a', 'imported', 1_000)];
-    const fixture = await render();
-
-    expect(element(fixture).querySelector('mn-library-standing a')?.getAttribute('href')).toBe(
-      '/reading-level#words',
+    expect(element(fixture).querySelector('.mn-hint')?.textContent.trim()).toBe(
+      'No imported stories yet.',
     );
-    expect(element(fixture).querySelector('mn-page-header h1')?.textContent).toBe('Library');
-  });
-
-  it('hides the filter buttons until the shelf is large enough to need them', async () => {
-    repository.readings = [reading('a', 'imported', 1_000), reading('b', 'generated', 2_000)];
-    const fixture = await render();
-
-    expect(element(fixture).querySelectorAll('button[aria-pressed]')).toHaveLength(0);
   });
 
   it('lists saved readings newest first', async () => {
@@ -642,81 +576,5 @@ describe('LibraryPageComponent', () => {
     expect(alert?.textContent).toContain('could not be loaded');
     expect(alert?.textContent).not.toContain('Nothing was changed or deleted');
     expect(alert?.querySelector('button')?.textContent).toContain('Try again');
-  });
-
-  it('lists a story being written above the shelf, naming its stage', async () => {
-    repository.readings = [reading('a', 'imported', 1_000)];
-    jobs.setJobs([fakeGenerationJob('job-1', new FakeGenerationRun({ kind: 'writing' }))]);
-    const fixture = await render();
-
-    const card = element(fixture).querySelector('mn-generation-job-card');
-    expect(card?.textContent).toContain('A cat visits the market');
-    expect(card?.textContent).toContain('Being written');
-    expect(card?.textContent).toContain('Generating your story');
-    expect(card?.querySelector('a')?.getAttribute('href')).toBe('/generate/job-1');
-    // Above the shelf, so starting one and leaving has a visible result.
-    const rows = [...element(fixture).querySelectorAll('mn-generation-job-card, mn-reading-card')];
-    expect(rows[0]?.tagName.toLowerCase()).toBe('mn-generation-job-card');
-  });
-
-  it('keeps a stopped generation on the shelf and marks it as needing attention', async () => {
-    jobs.setJobs([
-      fakeGenerationJob(
-        'job-2',
-        new FakeGenerationRun({
-          kind: 'failed',
-          error: { domain: 'ai', task: 'story-generation', code: 'unknown', message: 'No.' },
-          during: 'writing',
-        }),
-      ),
-    ]);
-    const fixture = await render();
-
-    const card = element(fixture).querySelector('mn-generation-job-card');
-    expect(card?.textContent).toContain('Needs attention');
-    // The shelf is empty, but the run is not nothing: the way in is not shown
-    // in place of a result the learner still has to deal with.
-    expect(element(fixture).querySelector('.empty-state')).toBeNull();
-  });
-
-  it('dismisses a stopped generation without asking, and says nothing was saved', async () => {
-    jobs.setJobs([
-      fakeGenerationJob('job-3', new FakeGenerationRun({ kind: 'cancelled', during: 'writing' })),
-    ]);
-    const fixture = await render();
-
-    element(fixture).querySelector<HTMLButtonElement>('.dismiss')?.click();
-    await settle(fixture);
-
-    expect(jobs.dismissed.map(String)).toEqual(['job-3']);
-    expect(element(fixture).querySelector('[role="status"]')?.textContent).toContain(
-      'Nothing was saved',
-    );
-  });
-
-  it('confirms before stopping a story that is still being written', async () => {
-    jobs.setJobs([fakeGenerationJob('job-4', new FakeGenerationRun({ kind: 'writing' }))]);
-    const fixture = await render();
-
-    element(fixture).querySelector<HTMLButtonElement>('.dismiss')?.click();
-    await settle(fixture);
-
-    const dialog = document.querySelector('.cdk-overlay-container');
-    expect(dialog?.textContent).toContain('Stop writing this story?');
-    expect(jobs.dismissed).toHaveLength(0);
-  });
-
-  it('hides generations while the shelf is filtered to imported readings', async () => {
-    repository.readings = shelf();
-    jobs.setJobs([fakeGenerationJob('job-5')]);
-    const fixture = await render();
-
-    const filters = [
-      ...element(fixture).querySelectorAll<HTMLButtonElement>('button[aria-pressed]'),
-    ];
-    filters.find((filter) => filter.textContent.trim() === 'Imported')?.click();
-    await settle(fixture);
-
-    expect(element(fixture).querySelectorAll('mn-generation-job-card')).toHaveLength(0);
   });
 });

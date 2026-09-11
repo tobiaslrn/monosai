@@ -44,9 +44,9 @@ import { StorageSectionComponent } from './storage-section.component';
 export class SettingsPageComponent {
   readonly from = input<string | undefined>();
   protected readonly backTarget = computed(() =>
-    this.from() === 'generate' ? '/generate' : '/library',
+    this.from() === 'generate' ? '/generate' : '/home',
   );
   protected readonly backLabel = computed(() =>
-    this.from() === 'generate' ? 'Back to story' : 'Back to library',
+    this.from() === 'generate' ? 'Back to story' : 'Back to home',
   );
 }

@@ -54,7 +54,8 @@ await page.evaluate(
 );
 await page.goto('http://localhost:4200/#/library');
 await expect(page.locator('mn-reading-card')).toHaveCount(8);
-await expect(page.getByTestId('library-standing')).toContainText('No words yet.');
+await page.goto('http://localhost:4200/#/home');
+await expect(page.getByTestId('home-standing')).toContainText('No words yet.');
 await page.screenshot({ path: '../.home-before.png', fullPage: true });
 await context.storageState({ path: '.home-review-state.json', indexedDB: true });
 await browser.close();

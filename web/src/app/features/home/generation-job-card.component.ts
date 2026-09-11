@@ -6,12 +6,11 @@ import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { generationWaitCopy } from '../generate/generation-wait.component';
 
 /**
- * One library row for a story that is still being written, or one that stopped
+ * One Home row for a story that is still being written, or one that stopped
  * without producing anything.
  *
- * It is deliberately the same shape and height as a reading row, so the shelf
- * is laid out identically before, during, and after a generation and nothing
- * jumps when the story lands. The row is quiet rather than empty: it names the
+ * It is deliberately the same shape and height as the Library row the story
+ * will become. The row is quiet rather than empty: it names the
  * stage the run is actually in, because a bar or a spinner would promise
  * progress the pipeline cannot measure.
  */
@@ -24,7 +23,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
       variant="muted"
       [class.needs-attention]="needsAttention()"
       [routerLink]="['/generate', job().id]"
-      [state]="libraryOriginState"
+      [state]="homeOriginState"
     >
       <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
         <mn-icon name="generate" [size]="18" />
@@ -50,7 +49,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
   `,
 })
 export class GenerationJobCardComponent {
-  protected readonly libraryOriginState = navigationOriginState('/library');
+  protected readonly homeOriginState = navigationOriginState('/home');
   readonly job = input.required<GenerationJob>();
   readonly dismissRequested = output<GenerationJob>();
 

@@ -15,7 +15,7 @@ import {
  *
  * This is the line no other Japanese reading application can show: Monosai
  * knows which words *this* learner has reviewed, and everything it writes is
- * pitched at them. Stating it above the shelf is what makes New story
+ * pitched at them. Stating it above Write with AI is what makes that action
  * self-explanatory — a story from *these* words — and it is the reason the
  * learner profile is worth a destination at all.
  *
@@ -24,7 +24,7 @@ import {
  * identically before, during, and after it resolves.
  */
 @Component({
-  selector: 'mn-library-standing',
+  selector: 'mn-home-standing',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink],
   template: `
@@ -32,8 +32,8 @@ import {
       class="standing"
       routerLink="/reading-level"
       fragment="words"
-      [state]="libraryOriginState"
-      data-testid="library-standing"
+      [state]="homeOriginState"
+      data-testid="home-standing"
     >
       @if (headline(); as line) {
         <span class="headline">
@@ -100,8 +100,8 @@ import {
     }
   `,
 })
-export class LibraryStandingComponent {
-  protected readonly libraryOriginState = navigationOriginState('/library');
+export class HomeStandingComponent {
+  protected readonly homeOriginState = navigationOriginState('/home');
   private readonly vocabulary = inject(VocabularyAvailabilityStore);
   private readonly grammar = inject(GrammarProfileStore);
   private readonly clock = inject(CLOCK);
