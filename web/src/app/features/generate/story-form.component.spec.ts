@@ -155,11 +155,12 @@ describe('StoryFormComponent', () => {
     const { element } = render();
 
     const text = element.querySelector('.text-fields')?.textContent ?? '';
-    expect(text).toContain('Tiny');
-    expect(text).toContain('Short');
-    expect(text).toContain('Medium');
-    expect(text).toContain('Long');
-    expect(element.querySelectorAll('.length-scale span')).toHaveLength(4);
+    // The current stop is named beside its count; four words under seven
+    // stops could not sit on the stops they named.
+    expect(element.querySelector('output[for="mn-story-length"]')?.textContent).toContain(
+      'Short · about 15 sentences',
+    );
+    expect(element.querySelector('.length-scale')).toBeNull();
     expect(element.querySelector<HTMLInputElement>('[data-testid="story-length"]')?.max).toBe('7');
     expect(text).toContain('15');
     expect(element.querySelector('#mn-length-help')).toBeNull();

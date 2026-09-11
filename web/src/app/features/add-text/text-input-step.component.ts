@@ -27,9 +27,11 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
         [value]="store.rawText()"
         (input)="onPaste($event)"
       ></textarea>
-      <p id="mn-import-count" class="count" [class.is-over]="isOverLimit()">
-        {{ formatCount(store.characterCount()) }} of {{ formatCount(limit) }} characters
-      </p>
+      @if (counterVisible()) {
+        <p id="mn-import-count" class="count" [class.is-over]="isOverLimit()">
+          {{ formatCount(store.characterCount()) }} of {{ formatCount(limit) }} characters
+        </p>
+      }
       @if (isOverLimit()) {
         <p id="mn-import-limit-hint" class="mn-field-error" role="alert">
           {{ overLimitMessage() }}
@@ -97,15 +99,22 @@ export class TextInputStepComponent {
     () =>
       `Remove ${formatCountOf(this.store.characterCount() - this.limit, 'character')} to continue.`,
   );
+  /** Like every counter: out of the way until the field is roughly 80% full. */
+  protected readonly counterVisible = computed(
+    () => this.store.characterCount() >= Math.ceil(MAXIMUM_IMPORT_CHARACTERS * 0.8),
+  );
   protected readonly descriptionIds = computed(() => {
-    const ids = ['mn-import-count'];
+    const ids: string[] = [];
+    if (this.counterVisible()) {
+      ids.push('mn-import-count');
+    }
     if (this.isOverLimit()) {
       ids.push('mn-import-limit-hint');
     }
     if (this.store.advisories().length > 0) {
       ids.push('mn-import-advisories');
     }
-    return ids.join(' ');
+    return ids.length > 0 ? ids.join(' ') : null;
   });
   /** Keep the empty form and its action together; grow once there is real prose to work with. */
   protected readonly editorRows = computed(() => (this.store.characterCount() >= 500 ? 12 : 4));

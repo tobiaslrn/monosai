@@ -83,20 +83,35 @@ const SHEET_DISMISS_DISTANCE_PX = 80;
       </header>
       <mn-reader-aids />
       <section class="content mn-inset" aria-label="Content for this story">
+        <!--
+          One missing setup step blocks several layers at once — typically no
+          OpenRouter key. It is said once, with its one way forward, instead of
+          as the same sentence and the same button on every row.
+        -->
+        @if (sharedSetup(); as setup) {
+          <div class="setup-notice mn-notice mn-notice--info" data-testid="shared-setup">
+            <p>{{ setup.status }}</p>
+            <a class="mn-button" routerLink="/settings" (click)="close()">{{ setup.label }}</a>
+          </div>
+        }
         <div class="content-rows mn-stack mn-stack--tight">
           @for (row of rows(); track row.layer) {
             <section class="content-row" [attr.aria-label]="row.name" [attr.data-layer]="row.layer">
               <div class="row-main">
                 <div class="row-copy">
                   <strong>{{ row.name }}</strong>
-                  <span class="mn-status-pill" role="status">{{ row.status }}</span>
+                  <span class="mn-status-pill" role="status">{{
+                    sharedSetup() !== null && row.setup ? 'Not set up' : row.status
+                  }}</span>
                 </div>
                 <div class="row-actions mn-actions">
                   @switch (row.action) {
                     @case ('settings') {
-                      <a class="mn-button" routerLink="/settings" (click)="close()">{{
-                        row.label
-                      }}</a>
+                      @if (sharedSetup() === null || !row.setup) {
+                        <a class="mn-button" routerLink="/settings" (click)="close()">{{
+                          row.label
+                        }}</a>
+                      }
                     }
                     @case ('prepare') {
                       <button
@@ -172,6 +187,21 @@ export class ReaderMenuComponent {
   });
   private dragStartY: number | null = null;
   private dragged = false;
+
+  /**
+   * The setup step two or more rows are waiting on, when they all wait on the
+   * same one. Its label is the text layers' way to Settings, since audio's
+   * own voice setup lives on the player.
+   */
+  protected readonly sharedSetup = computed(() => {
+    const waiting = this.rows().filter((row) => row.setup);
+    const first = waiting[0];
+    if (waiting.length < 2 || waiting.some((row) => row.status !== first.status)) {
+      return null;
+    }
+    const text = waiting.find((row) => row.layer !== 'audio') ?? first;
+    return { status: first.status, label: text.label };
+  });
 
   open(): void {
     this.panel().nativeElement.showPopover();

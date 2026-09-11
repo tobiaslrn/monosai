@@ -48,7 +48,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
               [testId]="'source-row'"
             >
               <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-                <mn-icon [name]="iconFor(source)" [size]="22" />
+                <mn-icon [name]="iconFor(source)" [size]="18" />
               </span>
               <span mn-list-row-title>{{ source.label }}</span>
               <span mn-list-row-meta>

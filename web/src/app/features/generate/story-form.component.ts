@@ -52,7 +52,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           <label for="mn-premise">What should the story be about? (optional)</label>
           <textarea
             id="mn-premise"
-            rows="5"
+            rows="3"
             data-testid="premise"
             [value]="draft.premise()"
             [attr.aria-describedby]="premiseDescriptionIds()"
@@ -77,7 +77,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           <label for="mn-instructions">Special instructions (optional)</label>
           <textarea
             id="mn-instructions"
-            rows="4"
+            rows="2"
             data-testid="special-instructions"
             placeholder="Tone, viewpoint, dialogue, or register"
             [value]="draft.specialInstructions()"
@@ -102,7 +102,7 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         <div class="setting-heading">
           <label for="mn-story-length">Length</label>
           <output for="mn-story-length" aria-live="polite">
-            about {{ draft.sentenceCount() }} sentences
+            {{ selectedLengthLabel() }} · about {{ draft.sentenceCount() }} sentences
           </output>
         </div>
         <input
@@ -121,11 +121,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
           [style.--slider-step.%]="sliderStep()"
           (input)="onSentenceCount($event)"
         />
-        <div class="length-scale" aria-hidden="true">
-          @for (label of lengthLabels; track label) {
-            <span>{{ label }}</span>
-          }
-        </div>
         @if (showLengthWarning()) {
           <p
             id="mn-length-warning"
@@ -407,41 +402,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       border-radius: var(--radius-pill);
     }
 
-    .length-scale {
-      position: relative;
-      width: calc(100% - 1.375rem);
-      min-height: 1.5em;
-      margin: var(--space-1) 0.6875rem 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      line-height: 1.5;
-    }
-
-    .length-scale span {
-      position: absolute;
-      top: 0;
-      white-space: nowrap;
-      transform: translateX(-50%);
-    }
-
-    .length-scale span:first-child {
-      left: 0;
-      transform: none;
-    }
-
-    .length-scale span:nth-child(2) {
-      left: 33.333333%;
-    }
-
-    .length-scale span:nth-child(3) {
-      left: 66.666667%;
-    }
-
-    .length-scale span:last-child {
-      right: 0;
-      transform: none;
-    }
-
     .word-selection {
       margin-top: var(--space-5);
       padding-top: var(--space-4);
@@ -539,7 +499,6 @@ export class StoryFormComponent {
 
   protected readonly focusSizes = RECENT_FOCUS_SIZES;
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
-  protected readonly lengthLabels = LENGTH_LABELS;
   protected readonly formatCount = formatCount;
 
   protected readonly selectedLengthIndex = computed(() => {

@@ -17,8 +17,9 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
       <div class="mn-stack">
         <h2 id="mn-appearance-heading" class="mn-card-title">Appearance</h2>
 
+        <!-- The only choice in the card: a second visible heading said nothing new. -->
         <fieldset>
-          <legend>Theme</legend>
+          <legend class="mn-visually-hidden">Theme</legend>
           <div class="mn-segmented">
             @for (option of themeOptions; track option.value) {
               <label>

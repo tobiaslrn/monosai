@@ -27,15 +27,12 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
       [state]="libraryOriginState"
     >
       <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-        <mn-icon name="generate" [size]="20" />
+        <mn-icon name="generate" [size]="18" />
       </span>
       <span mn-list-row-title>{{ title() }}</span>
       <span mn-list-row-meta>{{ stageLabel() }}</span>
       <span mn-list-row-trailing>
-        <span
-          class="mn-status-pill"
-          [class.mn-status-pill--danger]="needsAttention()"
-        >
+        <span class="mn-status-pill" [class.mn-status-pill--danger]="needsAttention()">
           {{ stateLabel() }}
         </span>
       </span>

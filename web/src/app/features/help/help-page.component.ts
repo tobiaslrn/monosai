@@ -2,26 +2,26 @@ import { formatCount } from '../../domain/shared/locale';
 import { GENERATION_SNAPSHOT_MINIMUM } from '../../domain/vocabulary/snapshot';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 
 /** Local, static guidance: reading the guide never invokes an AI provider. */
 @Component({
   selector: 'mn-help-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, PageHeaderComponent],
+  imports: [RouterLink, PageHeaderComponent],
   template: `
     <div class="mn-page help-page">
       <mn-page-header heading="Help" backTo="/library" backLabel="Back to library">
+        <!-- Named, not drawn: no icon in the set reads as GitHub rather than a branch. -->
         <a
-          class="mn-icon-button"
+          class="mn-button mn-button--ghost"
           href="https://github.com/tobiaslrn/monosai"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="GitHub (opens in a new tab)"
           title="GitHub (opens in a new tab)"
         >
-          <mn-icon name="github" />
+          GitHub
         </a>
       </mn-page-header>
       <p class="lead">Japanese reading, from the words you know.</p>
@@ -183,7 +183,7 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
     li + li {
       margin-top: var(--space-3);
     }
-    a:not(.mn-icon-button) {
+    a:not(.mn-button) {
       color: var(--action-primary);
       text-underline-offset: 0.15em;
     }

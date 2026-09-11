@@ -148,7 +148,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
               @if (platform === 'ios') {
                 <button type="button" class="choice" disabled data-testid="choose-anki">
                   <span class="mn-icon-badge" aria-hidden="true">
-                    <mn-icon name="anki-source" [size]="22" />
+                    <mn-icon name="anki-source" [size]="18" />
                   </span>
                   <span class="choice-main">
                     <strong>Connect to Anki</strong>
@@ -171,7 +171,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
                   data-testid="choose-anki"
                 >
                   <span class="mn-icon-badge" aria-hidden="true">
-                    <mn-icon name="anki-source" [size]="22" />
+                    <mn-icon name="anki-source" [size]="18" />
                   </span>
                   <span class="choice-main">
                     <strong>Connect to Anki</strong>
@@ -188,7 +188,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
                 data-testid="choose-package"
               >
                 <span class="mn-icon-badge" aria-hidden="true">
-                  <mn-icon name="file" [size]="22" />
+                  <mn-icon name="file" [size]="18" />
                 </span>
                 <span class="choice-main">
                   <strong>Import from Anki</strong>
@@ -203,7 +203,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
                 data-testid="add-text-source"
               >
                 <span class="mn-icon-badge" aria-hidden="true">
-                  <mn-icon name="word-list" [size]="22" />
+                  <mn-icon name="word-list" [size]="18" />
                 </span>
                 <span class="choice-main">
                   <strong>Add a word list</strong>

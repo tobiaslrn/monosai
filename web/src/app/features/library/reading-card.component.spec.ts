@@ -83,7 +83,10 @@ describe('ReadingCardComponent', () => {
   it('states an imported reading size even when there is a filename', () => {
     expect(textOf(imported(), '[mn-list-row-meta]')).toContain('940 characters');
     expect(
-      textOf(imported({ importSource: 'text-file', sourceFileName: 'kokoro.txt' }), '[mn-list-row-meta]'),
+      textOf(
+        imported({ importSource: 'text-file', sourceFileName: 'kokoro.txt' }),
+        '[mn-list-row-meta]',
+      ),
     ).toContain('940 characters');
   });
 
@@ -140,9 +143,9 @@ describe('ReadingCardComponent', () => {
     expect(textOf(generated(), '[mn-list-row-meta]')).not.toContain('Audio');
   });
 
-  it('distinguishes opened and unread stories without claiming completion', () => {
+  it('marks only a story that is still unread, without claiming completion', () => {
     expect(textOf(imported(), '.mn-status-pill')).toBe('Unread');
-    expect(textOf(imported({ lastOpenedAt: NOW }), '.mn-status-pill')).toBe('Read');
+    expect(render(imported({ lastOpenedAt: NOW })).querySelector('.mn-status-pill')).toBeNull();
   });
 
   it('keeps the whole row a native link and the actions out of it', () => {

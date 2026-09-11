@@ -25,8 +25,8 @@ reader already gives to the docked audio player and the word and sentence sheets
 Every screen has exactly one bar. For non-reader routes it is `mn-page-header`, which now
 sticks to the top of the viewport on an opaque, full-width canvas ground whose hairline lower
 edge fades in once content passes beneath it. A page with a parent leads with Back; the
-Library leads with the Monosai mark and ends with the utilities — Search, Help, Settings — in
-a labelled navigation landmark. Help ends its own bar with the GitHub link. The shell renders
+Library leads with the Monosai mark and ends with the utilities — Help and Settings — in a
+labelled navigation landmark. Help ends its own bar with a labelled GitHub link. The shell renders
 no bar of its own, and the `app-bar` component is removed.
 
 The reader keeps its own sticky bar, drawn in the same shape: the same height, title token,

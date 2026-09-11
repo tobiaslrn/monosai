@@ -40,19 +40,24 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
         </p>
       }
 
-      <div class="mn-actions">
-        <button
-          type="button"
-          class="mn-button"
-          data-testid="save-policy"
-          [disabled]="
-            policy.action() !== 'idle' || policy.isTooLong() || !policy.hasUnsavedChanges()
-          "
-          (click)="save()"
-        >
-          Save exceptions
-        </button>
-      </div>
+      <!--
+        Everything else in this panel saves the moment it changes. The one
+        field that needs a press offers it only while there is something to
+        save, rather than standing disabled beside settings that need none.
+      -->
+      @if (policy.hasUnsavedChanges() || policy.action() !== 'idle') {
+        <div class="mn-actions">
+          <button
+            type="button"
+            class="mn-button"
+            data-testid="save-policy"
+            [disabled]="policy.action() !== 'idle' || policy.isTooLong()"
+            (click)="save()"
+          >
+            Save exceptions
+          </button>
+        </div>
+      }
 
       @if (saved() && !policy.hasUnsavedChanges()) {
         <p class="mn-hint" role="status">Exceptions saved as a default.</p>

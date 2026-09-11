@@ -14,6 +14,8 @@ export interface ReaderContentState {
   readonly disabled: boolean;
   readonly busy: boolean;
   readonly error: string | null;
+  /** The status is a setup step in Settings, which rows may share. */
+  readonly setup: boolean;
 }
 
 const NAMES: Record<PreparationLayer, string> = {
@@ -69,7 +71,14 @@ function layerState(
   completed = Math.min(completed, reading.sentenceCount);
   const completionNoun = layer === 'grammar' ? 'sentences analyzed' : 'sentences saved';
   const completedDescription = `${formatCount(completed)} of ${formatCount(reading.sentenceCount)} ${completionNoun}`;
-  const base = { layer, name: NAMES[layer], disabled: false, busy: false, error: null };
+  const base = {
+    layer,
+    name: NAMES[layer],
+    disabled: false,
+    busy: false,
+    error: null,
+    setup: false,
+  };
   switch (progress.kind) {
     case 'queued':
     case 'preparing':
@@ -143,6 +152,7 @@ function layerState(
     };
     return {
       ...base,
+      setup: true,
       status: messages[readiness],
       action: 'settings',
       label: layer === 'audio' ? 'Voice settings' : 'Model settings',

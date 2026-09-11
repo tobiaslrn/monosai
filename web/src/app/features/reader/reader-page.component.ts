@@ -442,7 +442,8 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       flex: 1;
       min-width: 0;
       overflow: hidden;
-      font-size: var(--text-page-title);
+      /* The story's own name, kept a step below the Japanese it heads. */
+      font-size: var(--text-xl);
       white-space: nowrap;
       text-overflow: ellipsis;
     }

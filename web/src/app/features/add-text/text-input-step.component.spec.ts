@@ -68,20 +68,15 @@ describe('TextInputStepComponent', () => {
     expect(element.querySelector('[role="tablist"]')).toBeNull();
   });
 
-  it('keeps the textarea labelled and described by its counter', () => {
+  it('keeps the textarea labelled and hides its counter while far from the limit', () => {
     const element = render();
     const textarea = element.querySelector('textarea');
 
     expect(element.querySelector('label[for="mn-import-text"]')?.textContent).toContain(
       'Japanese text',
     );
-    expect(textarea?.getAttribute('aria-describedby')).toBe('mn-import-count');
-    expect(element.querySelector('#mn-import-count')).not.toBeNull();
-  });
-
-  it('groups the character limit the way the rest of the application does', () => {
-    const element = render();
-
-    expect(element.querySelector('#mn-import-count')?.textContent).toContain('0 of 50,000');
+    // A hidden counter is also left out of the field's description.
+    expect(element.querySelector('#mn-import-count')).toBeNull();
+    expect(textarea?.hasAttribute('aria-describedby')).toBe(false);
   });
 });

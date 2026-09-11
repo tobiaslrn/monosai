@@ -68,14 +68,12 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
         }
         <span class="mn-visually-hidden">{{ originLabel() }}, {{ lastReadLabel() }}</span>
       </span>
-      <span mn-list-row-trailing>
-        <span
-          class="mn-status-pill"
-          [class.mn-status-pill--accent]="reading().lastOpenedAt === null"
-        >
-          {{ reading().lastOpenedAt === null ? 'Unread' : 'Read' }}
+      <!-- Only what is still new is marked; a pill on every opened row was noise. -->
+      @if (reading().lastOpenedAt === null) {
+        <span mn-list-row-trailing>
+          <span class="mn-status-pill mn-status-pill--accent">Unread</span>
         </span>
-      </span>
+      }
       <span mn-list-row-menu>
         <span class="menu-anchor">
           <button

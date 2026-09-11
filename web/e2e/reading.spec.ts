@@ -1331,9 +1331,6 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
       'Yesterday',
       'Earlier this week',
     ]);
-    await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Search', exact: true }).click();
-    await expect(page).toHaveURL(/#\/library$/);
     const illustration = page.locator('.hero-art img');
     await expect(illustration).toBeVisible();
     expect(
@@ -1408,7 +1405,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
     await toggle.click();
     await expect(menu).toBeVisible();
-    await page.getByRole('button', { name: 'Search', exact: true }).click();
+    await page.getByRole('heading', { name: 'Library', level: 1 }).click();
     await expect(menu).toBeHidden();
 
     await toggle.click();

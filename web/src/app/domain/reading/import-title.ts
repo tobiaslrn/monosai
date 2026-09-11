@@ -5,7 +5,7 @@
  * the title field starts as and what is small enough to store.
  */
 
-export const FALLBACK_READING_TITLE = 'Untitled reading';
+export const FALLBACK_READING_TITLE = 'Untitled story';
 
 /** Longest derived title. Longer text is truncated with an ellipsis. */
 export const MAXIMUM_DERIVED_TITLE_LENGTH = 60;

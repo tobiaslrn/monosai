@@ -120,7 +120,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
               [testId]="'reading-level-link'"
             >
               <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-                <mn-icon name="reading-level" [size]="24" />
+                <mn-icon name="reading-level" [size]="18" />
               </span>
               <span mn-list-row-title>Reading level</span>
               <span mn-list-row-meta>{{ grammarDetail() }}</span>
@@ -144,7 +144,9 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
 
           <details id="forms" class="mn-card fold">
             <summary>
-              <mn-icon class="fold-icon" name="file" [size]="22" />
+              <span class="mn-icon-badge fold-icon" aria-hidden="true">
+                <mn-icon name="file" [size]="18" />
+              </span>
               <span class="summary-label">Always-known forms</span>
               <span class="summary-value">{{ formsSummary() }}</span>
               <mn-icon class="fold-chevron" name="chevron-right" />
@@ -271,7 +273,13 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
      * Set once and left alone, so each is folded; a closed fold still names its
      * current value opposite its label.
      */
+    /*
+     * The summary carries its own padding, like a list row. The card's padding
+     * and gap around a closed fold's hidden body drew an empty band under it.
+     */
     .fold {
+      gap: 0;
+      padding: 0;
       overflow: clip;
     }
 
@@ -279,7 +287,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
       display: flex;
       gap: var(--space-3);
       align-items: center;
-      min-height: 3.5rem;
+      min-height: 3.75rem;
       padding: var(--space-2) var(--space-3);
       list-style: none;
       cursor: pointer;

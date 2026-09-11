@@ -72,10 +72,16 @@ by their own inset so their glyphs, not their hit areas, align with the column.
 
 The Library is the home destination and therefore has no Back: its bar leads
 with the Monosai mark, then the title, then the application's utilities in a
-labelled navigation landmark — Search, Help, and Settings. Every other page is
-reached from the Library and leads back to it, so the utilities live there and
-nowhere else. Help carries the GitHub link at the end of its own bar, because
-Help is where a learner looks for where the application comes from.
+labelled navigation landmark — Help and Settings. Every other page is reached
+from the Library and leads back to it, so the utilities live there and nowhere
+else. The shelf's own Create button is the one way to start a story; the bar does
+not repeat it once it has scrolled away. Help carries a
+labelled GitHub link at the end of its own bar, because Help is where a learner
+looks for where the application comes from, and no icon reads as GitHub rather
+than as a branch.
+
+A control that does nothing is not shown. There is no search on the shelf until
+the shelf can search.
 
 The Reader keeps its own sticky bar with the same shape: Back, title, and its
 own controls, the same height, the same fading lower edge.
@@ -87,17 +93,17 @@ permanently cost the reader its bottom edge, which belongs to the docked audio
 player and the word and sentence sheets.
 
 These utilities are an explicit exception to the repetition rule: they are
-icon-only on both mobile and desktop, with accessible names and tooltips. GitHub
-names its new-tab behavior. They are bare shared icon controls with unchanged
-touch targets and visible keyboard focus. Search remains a no-op until the shelf
-has a real search interaction, but keeps native button semantics, accessible
-name, tooltip, touch target, and focus treatment.
+icon-only on both mobile and desktop, with accessible names and tooltips. They
+are bare shared icon controls with unchanged touch targets and visible keyboard
+focus.
 
 The home illustration blends into the canvas through an organic crop; the hero
 is not a card and therefore has no panel boundary or elevation.
 The crop follows the illustration's arch and low foreground, preserving the
 whole reading character and books. Its proportions stay fixed as the column
-changes width. The home headline is tightly set beside it, above a quiet sync
+changes width. Once the shelf holds a story the hero steps down to a compact
+size, so the stories come up the screen; only its size changes, never its crop.
+The home headline is tightly set beside it, above a quiet sync
 line. The creation action spans the column; filter pills share the available
 width on phones and stay compact on desktop.
 Home's primary action uses the shared primary action colour; the illustration is
@@ -125,7 +131,11 @@ Settings uses the same page frame as every other non-reader screen. Each
 top-level group is one quiet raised card with a compact section heading; actions
 use the same pill silhouette as the Library's filters and creation control.
 Complex model fields may use sunken groups inside that card, but may not
-introduce a second competing hierarchy of raised panels.
+introduce a second competing hierarchy of raised panels. The model fields appear
+once OpenRouter is connected: drawn disabled before that, they read as values
+nobody had chosen. The connection control is an ordinary outline action, not the
+page's filled primary, because it is pressed once. A card with one self-evident
+choice, such as the theme, carries its card title and no second group title.
 
 ### Surfaces and groups
 
@@ -256,11 +266,13 @@ The home Library is a compact shelf exception: each date group is one
 generated or imported story uses its origin icon inside `.mn-icon-badge`; an
 empty decorative circle is not used. The row carries a system-sans title and one
 visible line of metadata — the character count and the story's shape (its length,
-or how it was imported), with an audio glyph when audio exists — and a short Read
-or Unread badge and overflow opposite. The origin is already the icon and
-opened-or-not is already the badge, so neither is repeated in the visible line;
-both, with the last-opened day, remain accessible metadata. Read means opened,
-not completed. Premises and filenames do not replace the character count here.
+or how it was imported), with an audio glyph when audio exists — and, opposite,
+an Unread badge on a story never opened, then the overflow. Only what is still
+new is marked: a Read badge on every opened row was the same word down the whole
+shelf. The origin is already the icon and opened-or-not is already the badge's
+presence, so neither is repeated in the visible line; both, with the last-opened
+day, remain accessible metadata. Opened is not completed. Premises and filenames
+do not replace the character count here.
 
 ## 3. Controls
 
@@ -272,8 +284,8 @@ audio transport, close, back, and overflow. Everything else carries a visible
 label beside its icon: anything rare, anything destructive, and anything that
 spends money or sends a request.
 
-There are exactly three deliberate exceptions: the Library's utilities and
-Help's GitHub link, described above; the trash icons on the
+There are exactly three deliberate exceptions: the Library's utilities,
+described above; the trash icons on the
 Story options content rows, described under Saved-story controls; and the
 control that reads Anki again at the end of the vocabulary sources card. That
 last one sits on the line that already says what it acts on — "Synced today" —

@@ -30,7 +30,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
       [testId]="'settings-reading-level'"
     >
       <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-        <mn-icon name="vocabulary" [size]="20" />
+        <mn-icon name="vocabulary" [size]="18" />
       </span>
       <span mn-list-row-title>What you can read</span>
       @if (state(); as line) {

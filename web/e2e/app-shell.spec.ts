@@ -114,7 +114,6 @@ test.describe('application shell', () => {
 
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
     const utilities = page.getByRole('navigation', { name: 'Utilities' });
-    await expect(utilities.getByRole('button', { name: 'Search' })).toBeVisible();
     await expect(utilities.getByRole('link', { name: 'Help', exact: true })).toBeVisible();
     await expect(utilities.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
     await expect(page.getByTestId('library-standing')).toBeVisible();

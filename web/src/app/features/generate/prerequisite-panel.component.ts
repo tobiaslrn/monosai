@@ -67,20 +67,29 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       list-style: none;
     }
 
+    /*
+     * Every check has the same shape: the icon, the sentence, and the way to
+     * fix it beneath the sentence. Wrapping by width put one button beside its
+     * text and the next one below, which read as two different kinds of row.
+     */
     .check {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
       gap: var(--space-2) var(--space-3);
-      align-items: center;
+      align-items: start;
     }
 
     .check mn-icon {
+      margin-top: 0.125rem;
       color: var(--status-warning);
     }
 
+    .check .mn-button {
+      grid-column: 2;
+      justify-self: start;
+    }
+
     .detail {
-      flex: 1;
-      min-width: 12rem;
       margin: 0;
       color: var(--text-secondary);
       font-size: var(--text-sm);

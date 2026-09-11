@@ -75,9 +75,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     <div class="mn-page library-page">
       <mn-page-header heading="Library" [home]="true">
         <nav class="utilities" aria-label="Utilities">
-          <button type="button" class="mn-icon-button" aria-label="Search" title="Search">
-            <mn-icon name="search" />
-          </button>
           <a class="mn-icon-button" routerLink="/help" aria-label="Help" title="Help">
             <mn-icon name="help" />
           </a>
@@ -94,7 +91,11 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           <button type="button" class="mn-button" (click)="reload()">Try again</button>
         </section>
       } @else {
-        <section class="home-hero" aria-labelledby="mn-page-title">
+        <section
+          class="home-hero"
+          aria-labelledby="mn-page-title"
+          [class.is-compact]="!isFirstRun()"
+        >
           <mn-library-standing />
           <div class="hero-art" aria-hidden="true">
             <img src="assets/home-reader.png" alt="" width="941" height="1672" />
@@ -219,6 +220,18 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
     .home-hero mn-library-standing {
       width: 57%;
+    }
+
+    /*
+     * Once there is a shelf, the hero steps back so the stories come up the
+     * screen. The art keeps its proportions; only its size changes.
+     */
+    .home-hero.is-compact {
+      min-height: 9.25rem;
+    }
+
+    .home-hero.is-compact .hero-art {
+      max-width: 10rem;
     }
 
     /* The action sits directly below the invitation it acts on. */

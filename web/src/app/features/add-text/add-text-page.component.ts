@@ -66,7 +66,8 @@ import { TextInputStepComponent } from './text-input-step.component';
           </p>
         }
 
-        <div class="mn-actions mn-actions--end">
+        <!-- The commit spans the form, as Generate's does. -->
+        <div class="mn-actions mn-actions--fill">
           <button
             type="button"
             class="mn-button mn-button--primary"

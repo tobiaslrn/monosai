@@ -26,9 +26,9 @@ test.describe('two tabs on one library', () => {
     await card.getByRole('menuitem', { name: 'Delete' }).click();
     await first.getByRole('button', { name: 'Delete permanently' }).click();
     // The row, not the words: both tabs name the reading as they announce it.
-    await expect(first.locator('mn-reading-card').filter({ hasText: 'Cross-tab reading' })).toHaveCount(
-      0,
-    );
+    await expect(
+      first.locator('mn-reading-card').filter({ hasText: 'Cross-tab reading' }),
+    ).toHaveCount(0);
 
     // No reload in the second tab: it must correct itself.
     await expect(second).toHaveURL(/#\/library/);
@@ -49,7 +49,9 @@ test.describe('two tabs on one library', () => {
     await card.getByRole('menuitem', { name: 'Delete' }).click();
     await first.getByRole('button', { name: 'Delete permanently' }).click();
 
-    await expect(second.locator('mn-reading-card').filter({ hasText: 'Shelf reading' })).toHaveCount(0);
+    await expect(
+      second.locator('mn-reading-card').filter({ hasText: 'Shelf reading' }),
+    ).toHaveCount(0);
     // The other tab says why the row went, rather than silently dropping it.
     await expect(second.getByRole('status')).toContainText('Shelf reading');
   });
@@ -88,7 +90,8 @@ test.describe('Add text semantics', () => {
     await expect(page.getByLabel('Japanese text')).toBeVisible();
 
     expect(await page.locator('[role="tabpanel"], [role="tab"], [role="tablist"]').count()).toBe(0);
-    await expect(page.getByText('0 of 50,000 characters')).toBeVisible();
+    // The counter waits until the text is near its limit.
+    await expect(page.getByText('of 50,000 characters')).toHaveCount(0);
     await expectNoSeriousAccessibilityViolations(page);
   });
 });

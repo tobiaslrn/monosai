@@ -14,16 +14,30 @@ const ROW: ReaderContentState = {
   busy: false,
   disabled: false,
   error: null,
+  setup: false,
 };
+
+/** A layer waiting on the same missing key as the others. */
+function waitingOnKey(layer: ReaderContentState['layer']): ReaderContentState {
+  return {
+    ...ROW,
+    layer,
+    name: layer,
+    status: 'Add an OpenRouter key.',
+    action: layer === 'audio' ? null : 'settings',
+    label: layer === 'audio' ? '' : 'Model settings',
+    setup: true,
+  };
+}
 
 describe('Story options', () => {
   beforeEach(() => {
     configureVocabularyTestBed();
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
   });
-  function render(row = ROW) {
+  function render(row: ReaderContentState | readonly ReaderContentState[] = ROW) {
     const fixture = TestBed.createComponent(ReaderMenuComponent);
-    fixture.componentRef.setInput('rows', [row]);
+    fixture.componentRef.setInput('rows', Array.isArray(row) ? row : [row]);
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     const hide = vi.fn();
@@ -48,6 +62,33 @@ describe('Story options', () => {
     expect(element.textContent).not.toContain('Content for this story');
     expect(element.textContent).not.toMatch(/cost|charges|OpenRouter/);
   });
+  it('says a setup step every layer shares once, with one way to Settings', () => {
+    const { element } = render([
+      waitingOnKey('english'),
+      waitingOnKey('grammar'),
+      waitingOnKey('audio'),
+    ]);
+
+    const notice = element.querySelector('[data-testid="shared-setup"]');
+    expect(notice?.textContent).toContain('Add an OpenRouter key.');
+    expect(notice?.querySelector('a')?.getAttribute('href')).toBe('/settings');
+    expect(element.querySelectorAll('a[href="/settings"]')).toHaveLength(1);
+    expect(
+      [...element.querySelectorAll('.content-row .mn-status-pill')].map((pill) =>
+        pill.textContent.trim(),
+      ),
+    ).toEqual(['Not set up', 'Not set up', 'Not set up']);
+  });
+
+  it('keeps a lone setup step on its own row', () => {
+    const { element } = render(waitingOnKey('english'));
+
+    expect(element.querySelector('[data-testid="shared-setup"]')).toBeNull();
+    expect(element.querySelector('.content-row .mn-status-pill')?.textContent).toContain(
+      'Add an OpenRouter key.',
+    );
+  });
+
   it('starts a layer without closing its progress surface', () => {
     const { fixture, hide, press } = render();
     const prepare = vi.fn();
