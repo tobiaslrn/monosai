@@ -31,25 +31,19 @@ export function vocabularySyncedLabel(createdAt: number, now: number): string {
 }
 
 /**
- * How a reading level is said in a sentence rather than as a label.
+ * The level as it reads inside a sentence: `basic forms`, `literary patterns`.
  *
- * Derived from the preset's own name, so there is no second difficulty
- * taxonomy to drift from the first, and still no JLPT level in it
+ * It is the preset's own name, lowercased for mid-sentence use, rather than a
+ * second wording of the same ladder: the level chooser, Settings, and this line
+ * name a level identically, and there is still no JLPT level in it
  * ([ADR 0008](../../../../../docs/decisions/0008-grammar-profile-presets.md)).
+ * Null while no preset has loaded, so the clause is dropped rather than guessed.
  */
-const LEVEL_PHRASES: Readonly<Record<string, string>> = {
-  'mn-preset-starter': 'a starter level',
-  'mn-preset-basic': 'a basic level',
-  'mn-preset-everyday': 'an everyday level',
-  'mn-preset-explanatory': 'an explanatory level',
-  'mn-preset-formal': 'a formal level',
-  'mn-preset-literary': 'a literary level',
-};
-
-/** `at a starter level`, or null for a preset with no phrase and no loaded bundle. */
-export function readingLevelPhrase(presetId: string | undefined): string | null {
-  const phrase = presetId === undefined ? undefined : LEVEL_PHRASES[presetId];
-  return phrase === undefined ? null : `at ${phrase}`;
+export function readingLevelName(presetName: string | undefined): string | null {
+  if (presetName === undefined || presetName.length === 0) {
+    return null;
+  }
+  return `${presetName[0].toLowerCase()}${presetName.slice(1)}`;
 }
 
 /** The count on its own: `340 words`, `1 word`. */

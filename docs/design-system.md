@@ -653,6 +653,14 @@ Beyond that, **a little character is allowed, and only on apparatus**: a spring
 on the play control, a settle on a popover arriving. The budget for it is small
 and it is spent on things the learner acts on or waits for.
 
+A **count the learner has earned rises to its value** rather than appearing at
+it: the Library's standing line counts up to the number of words they know. It
+rises once per launch, and again whenever the number itself changes — the
+second is motion doing its plainest job, saying a value moved. It never replays
+on returning to a screen that already showed it. The moving number is hidden
+from assistive technology while it moves, and the settled value is what is
+read, so a rise never states a count the learner does not have.
+
 The wordmark is the one flourish outside that: the word spins like a slot reel
 through its romaji and kana spellings and lands on one of them — never a mix —
 once per launch, and again only when the learner taps it. It is never replayed

@@ -3,12 +3,10 @@ import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
-import { CLOCK } from '../../application/shared/repository-tokens';
 import {
   VocabularyAvailabilityStore,
   type VocabularyAvailabilityState,
 } from '../../application/vocabulary/vocabulary-availability.store';
-import { fixedClock } from '../../domain/shared/clock';
 import type { GrammarPreset } from '../../domain/grammar/presets';
 import { snapshotId } from '../../domain/shared/ids';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
@@ -72,7 +70,6 @@ describe('LibraryStandingComponent', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: CLOCK, useValue: fixedClock(NOW) },
         {
           provide: VocabularyAvailabilityStore,
           useValue: { state, refresh: () => Promise.resolve() },
@@ -105,25 +102,26 @@ describe('LibraryStandingComponent', () => {
     };
   }
 
-  it('leads with the count and keeps the last sync quiet', () => {
+  /**
+   * Two clauses, so neither fact qualifies the other: the count is measured
+   * and the level is chosen.
+   */
+  it('names what the learner knows and what they read', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
 
     expect(lines(render())).toMatchObject({
-      headline: 'You know 340 words at a starter level.',
-      detail: 'synced today',
+      headline: 'You know 340 words and read starter forms.',
+      detail: '',
     });
   });
 
-  /**
-   * Below the floor the shortfall replaces the provenance: where the words came
-   * from does not help anyone who cannot generate a story yet.
-   */
-  it('keeps the sync visible even while there are too few words', () => {
+  /** The sync line is gone: it said nothing on the day the learner synced. */
+  it('says nothing more once there are words to read', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(12) });
 
     expect(lines(render())).toMatchObject({
-      headline: 'You know 12 words at a starter level.',
-      detail: 'synced today',
+      headline: 'You know 12 words and read starter forms.',
+      detail: '',
     });
   });
 
@@ -168,7 +166,7 @@ describe('LibraryStandingComponent', () => {
 
     expect(lines(render())).toMatchObject({
       headline: 'You know 340 words.',
-      detail: 'synced today',
+      detail: '',
     });
   });
 
