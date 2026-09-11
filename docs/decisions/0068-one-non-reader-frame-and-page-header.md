@@ -1,7 +1,7 @@
 # 0068 — One non-reader frame and page header
 
 Date: 2026-09-10
-Status: Accepted
+Status: Accepted; application bar superseded by [ADR 0069](0069-one-top-bar-per-screen.md)
 
 Supersedes the header exceptions in [ADR 0050](0050-the-library-wears-the-navigation.md)
 and [ADR 0063](0063-what-you-can-read-is-composed-like-the-library.md). Those records

@@ -8,10 +8,19 @@ import { expect, type Page } from '@playwright/test';
  * a primary button fading from its disabled treatment to its enabled one —
  * measures as whatever blend the sampler caught, which axe reports as a contrast
  * failure of colours the screen never rests on.
+ *
+ * Only animations that run in time are waited for. One driven by the scroll
+ * position — a top bar's edge fading in — is `running` for as long as the page
+ * exists, and its value is already the one the screen rests on.
  */
 export async function expectNoSeriousAccessibilityViolations(page: Page): Promise<void> {
   await page.waitForFunction(() =>
-    document.getAnimations().every((animation) => animation.playState !== 'running'),
+    document
+      .getAnimations()
+      .every(
+        (animation) =>
+          !(animation.timeline instanceof DocumentTimeline) || animation.playState !== 'running',
+      ),
   );
 
   const results = await new AxeBuilder({ page })

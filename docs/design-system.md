@@ -2,7 +2,7 @@
 
 This document holds the design language: what Monosai's surfaces mean, which
 choice applies when, and what each rule rules out. It is the authority for
-*why* an interface looks and behaves the way it does.
+_why_ an interface looks and behaves the way it does.
 
 It deliberately carries **no values**. There are no hex codes, no pixel counts,
 no type scale, and no component API here, because a document that repeats them
@@ -10,7 +10,7 @@ goes stale the first time one is tuned. Values live in `web/src/styles/_tokens.s
 the named thresholds in `web/src/styles/_breakpoints.scss`, the form fields in
 `web/src/styles/_controls.scss`, and one file per shared primitive in
 `web/src/styles/components/`; this document
-names the *roles* those tokens fill and the rules that govern their use. When
+names the _roles_ those tokens fill and the rules that govern their use. When
 these disagree, this document describes the intent and the tokens describe the
 current state — reconcile by changing the tokens.
 
@@ -54,30 +54,44 @@ express — Generate's length and word-selection panel is the case this exists
 for. The aside stacks below the fields when the width no longer supports it. It
 is available to forms only; reading surfaces, lists, and prose never take one.
 
-### The non-reader utility bar and page frame
+### One top bar per screen, and the page frame
 
-Every non-reader screen shares one compact application bar: the Monosai mark and
-wordmark link to the Library, followed by Settings, Help, and GitHub in a
-labelled utility navigation landmark. The wordmark may hide at the existing
-narrow breakpoint. The bar and the page below it use the same bounded
-`--page-measure`, so their left and right edges remain aligned at every
-supported width.
-The Reader has no application bar and keeps its own controls.
+Every screen has **exactly one bar**, and it is the first thing on the screen.
+There is no application bar above a page's own header: two stacked bars put the
+way back second and spent a phone's first hundred pixels on chrome
+([ADR 0069](decisions/0069-one-top-bar-per-screen.md)).
 
-These three destinations are an explicit exception to the repetition rule: they
-are icon-only on both mobile and desktop, with accessible names and tooltips.
-GitHub names its new-tab behavior. Local destinations identify the current page.
-The bar sits in the document flow and uses bare shared icon controls with
-unchanged touch targets and visible keyboard focus. The Library may add its
-reserved Search control to this same utility row; Search remains a no-op until
-the shelf has a real search interaction, but keeps native button semantics,
-accessible name, tooltip, touch target, and focus treatment.
+Every non-reader screen's bar is its `mn-page-header`: Back where the page has a
+parent destination, the page title in the page-title token, and an optional
+trailing element for controls that belong to that page. The bar sticks to the
+top of the viewport on an opaque canvas ground that spans the full width, so
+the way back never scrolls away. Its lower edge is a hairline that fades in once
+content has begun to pass beneath it. The bar's title column shares the page's
+bounded `--page-measure`, and Back and the last trailing control are pulled out
+by their own inset so their glyphs, not their hit areas, align with the column.
 
-Below the bar, every non-reader screen uses `mn-page-header`: a Back control
-where the page has a parent destination, the page title, and an optional trailing
-element. The title uses the shared page-title token. The Library is the home
-destination and therefore has no Back control; its image-led hero follows the
-shared header. Reader routes keep their own sticky header instead.
+The Library is the home destination and therefore has no Back: its bar leads
+with the Monosai mark, then the title, then the application's utilities in a
+labelled navigation landmark — Search, Help, and Settings. Every other page is
+reached from the Library and leads back to it, so the utilities live there and
+nowhere else. Help carries the GitHub link at the end of its own bar, because
+Help is where a learner looks for where the application comes from.
+
+The Reader keeps its own sticky bar with the same shape: Back, title, and its
+own controls, the same height, the same fading lower edge.
+
+Monosai does not use a bottom navigation bar. A bottom bar is for three to five
+peers a learner moves between constantly; Monosai has one home, a reader under
+it, and a handful of pages visited rarely. A bar that is always there would
+permanently cost the reader its bottom edge, which belongs to the docked audio
+player and the word and sentence sheets.
+
+These utilities are an explicit exception to the repetition rule: they are
+icon-only on both mobile and desktop, with accessible names and tooltips. GitHub
+names its new-tab behavior. They are bare shared icon controls with unchanged
+touch targets and visible keyboard focus. Search remains a no-op until the shelf
+has a real search interaction, but keeps native button semantics, accessible
+name, tooltip, touch target, and focus treatment.
 
 The home illustration blends into the canvas through an organic crop; the hero
 is not a card and therefore has no panel boundary or elevation.
@@ -96,8 +110,8 @@ plain copy without a trailing navigation glyph; hover, focus, and link semantics
 identify the interaction without interrupting the headline. It states current
 facts and never becomes a control that changes them.
 
-**A destination is named once per screen.** The utility bar supplies common
-destinations, and the page header names the current one. Where a prominent line
+**A destination is named once per screen.** The Library's bar supplies the
+common destinations, and every other page's bar names the current one. Where a prominent line
 already leads somewhere, that is the door; a second link to the same place in
 nearly the same words makes both harder to see.
 
@@ -142,23 +156,23 @@ primitive or add state-specific placement, but they do not redefine its
 silhouette, palette, type, or interaction treatment. The source of each role is
 kept beside the tokens in `web/src/styles/components/`:
 
-| Role | Use | Source |
-| --- | --- | --- |
-| Button | Reversible, primary, quiet, danger, and icon-only actions | [`_button.scss`](../web/src/styles/components/_button.scss) |
-| Card | One raised surface; `mn-inset` is its borderless sunken group | [`_card.scss`](../web/src/styles/components/_card.scss) |
-| Notice | A soft, named status or warning beside the thing it describes | [`_notice.scss`](../web/src/styles/components/_notice.scss) |
-| Status | A non-pressable compact state such as Ready or Unread | [`_status.scss`](../web/src/styles/components/_status.scss) |
-| Facts | Read-only label/value pairs | [`_facts.scss`](../web/src/styles/components/_facts.scss) |
-| Segmented | One native choice out of a small, stable set | [`_segmented.scss`](../web/src/styles/components/_segmented.scss) |
-| List row | One shelf destination with leading, title, meta, trailing, and menu slots | [`_list-row.scss`](../web/src/styles/components/_list-row.scss) |
-| Page frame | The centred non-reader measure, stacks, and action rows | [`_layout.scss`](../web/src/styles/components/_layout.scss) |
-| Text | Secondary text and sentence-case group titles | [`_text.scss`](../web/src/styles/components/_text.scss) |
-| Icon badge | A meaningful leading icon for a row or card | [`_icon-badge.scss`](../web/src/styles/components/_icon-badge.scss) |
+| Role       | Use                                                                                                                          | Source                                                              |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Button     | Reversible, primary, quiet, danger, and icon-only actions                                                                    | [`_button.scss`](../web/src/styles/components/_button.scss)         |
+| Card       | One raised surface; `mn-inset` is its borderless sunken group                                                                | [`_card.scss`](../web/src/styles/components/_card.scss)             |
+| Notice     | A soft, named status or warning beside the thing it describes                                                                | [`_notice.scss`](../web/src/styles/components/_notice.scss)         |
+| Status     | A non-pressable compact state such as Ready or Unread                                                                        | [`_status.scss`](../web/src/styles/components/_status.scss)         |
+| Facts      | Read-only label/value pairs                                                                                                  | [`_facts.scss`](../web/src/styles/components/_facts.scss)           |
+| Segmented  | One native choice out of a small, stable set                                                                                 | [`_segmented.scss`](../web/src/styles/components/_segmented.scss)   |
+| List row   | One shelf destination with leading, title, meta, trailing, and menu slots; `mn-list-group` gives rows one pair of card edges | [`_list-row.scss`](../web/src/styles/components/_list-row.scss)     |
+| Page frame | The centred non-reader measure, stacks, and action rows                                                                      | [`_layout.scss`](../web/src/styles/components/_layout.scss)         |
+| Text       | Secondary text and sentence-case group titles                                                                                | [`_text.scss`](../web/src/styles/components/_text.scss)             |
+| Icon badge | A meaningful leading icon for a row or card                                                                                  | [`_icon-badge.scss`](../web/src/styles/components/_icon-badge.scss) |
 
-The shared page-header component supplies the non-reader title structure; the
-app bar and page header use the same `--page-measure` as the page frame. The
-reader remains outside this primitive set where its text measure and sticky
-chrome are intentionally separate.
+The shared page-header component supplies every non-reader top bar on the same
+`--page-measure` as the page frame. The reader remains outside this primitive
+set where its text measure and sticky chrome are intentionally separate, but
+its bar follows the same shape.
 
 ### Density
 
@@ -179,8 +193,12 @@ carries a leading icon when the thing has a meaningful origin, a name, one
 secondary line saying what is inside, and — opposite the name — its status,
 value, or way forward. `mn-list-row` is the shared implementation: its title is
 `text-md` semibold, its metadata is `text-sm` secondary text, and every row uses
-one shared minimum height. A long title wraps inside the content column; the
-trailing column stays separate, so the two never collide.
+one shared minimum height. A long title wraps once inside the content column and
+then ends in an ellipsis; the full title stays the link's accessible name. The
+trailing column stays separate, so the two never collide. The metadata is one
+line of facts separated by a middle dot, and it breaks between facts, never
+inside a word. Hover tints a row only under a mouse: a phone reports hover after
+a tap and would leave the row it opened tinted.
 
 The navigable row is one native link, because a row is not a place to configure
 anything. Where a row has a handful of things to do to it, the overflow menu is
@@ -233,14 +251,16 @@ near the result. A list that has never been filled and a list whose current
 snapshot is empty are separate states, and both offer the one action that can
 change that fact.
 
-The home Library is a compact shelf exception: date groups share one pair of
-card edges, with quiet flat `mn-list-row` cards. A generated or imported story
-uses its origin icon inside `.mn-icon-badge`; an empty decorative circle is not
-used. The row carries a system-sans title, character count, and origin metadata,
-with a short Read or Unread badge and overflow opposite. Read means opened, not
-completed; the last-opened date and available audio remain accessible metadata.
-Premises and filenames do not replace the character count here. Long titles
-wrap without colliding with the badge or menu.
+The home Library is a compact shelf exception: each date group is one
+`mn-list-group`, one pair of card edges with a hairline between its rows. A
+generated or imported story uses its origin icon inside `.mn-icon-badge`; an
+empty decorative circle is not used. The row carries a system-sans title and one
+visible line of metadata — the character count and the story's shape (its length,
+or how it was imported), with an audio glyph when audio exists — and a short Read
+or Unread badge and overflow opposite. The origin is already the icon and
+opened-or-not is already the badge, so neither is repeated in the visible line;
+both, with the last-opened day, remain accessible metadata. Read means opened,
+not completed. Premises and filenames do not replace the character count here.
 
 ## 3. Controls
 
@@ -252,8 +272,8 @@ audio transport, close, back, and overflow. Everything else carries a visible
 label beside its icon: anything rare, anything destructive, and anything that
 spends money or sends a request.
 
-There are exactly three deliberate exceptions: the non-reader utility bar's
-destinations, described above, wherever they are worn; the trash icons on the
+There are exactly three deliberate exceptions: the Library's utilities and
+Help's GitHub link, described above; the trash icons on the
 Story options content rows, described under Saved-story controls; and the
 control that reads Anki again at the end of the vocabulary sources card. That
 last one sits on the line that already says what it acts on — "Synced today" —
@@ -431,15 +451,15 @@ that has to be opened to reach them.
 
 One gesture means one thing, and it is decided while it is being made.
 
-| On a touch device | What happens |
-| --- | --- |
-| Short tap on a word | Its details open at once |
-| Tap the same word again | The details stay exactly as they are |
-| Tap a different word | Its details replace the open ones |
-| Hold a sentence for 450ms | Sentence details open, under the finger |
-| Hold the same sentence again | The details stay open |
-| Short tap on anything else | Whatever is open is dismissed |
-| Drag on the reading | The page scrolls; an open sheet stays |
+| On a touch device            | What happens                            |
+| ---------------------------- | --------------------------------------- |
+| Short tap on a word          | Its details open at once                |
+| Tap the same word again      | The details stay exactly as they are    |
+| Tap a different word         | Its details replace the open ones       |
+| Hold a sentence for 450ms    | Sentence details open, under the finger |
+| Hold the same sentence again | The details stay open                   |
+| Short tap on anything else   | Whatever is open is dismissed           |
+| Drag on the reading          | The page scrolls; an open sheet stays   |
 
 The held press applies to words, furigana, punctuation, and the leading around
 them alike. There is no double tap. A press is cancelled by movement past 10
@@ -547,15 +567,15 @@ usable by someone who has changed their device's text size. Each unit expresses
 a different intention, and using the wrong one silently removes a setting from
 the user.
 
-| What | Unit | Intention |
-| --- | --- | --- |
-| All type, UI and reader alike | `rem` | Honour the browser and OS font-size preference |
-| Spacing and layout gaps | `rem` | Layout breathes with the text rather than cramping around it |
-| The reading measure | `em` | Hold characters-per-line constant across the learner's scale |
-| Breakpoints | `em` | Layout changes when the *text* outgrows the width, not the window |
-| Borders, hairlines, shadow geometry | `px` | A one-pixel rule is one pixel; tripling it at 200% is a defect |
-| Touch-target floor | `px` floor, `rem` growth | A physical minimum that may grow but never shrink |
-| Full-height surfaces | `dvh` | The viewport a mobile browser actually leaves after its chrome |
+| What                                | Unit                     | Intention                                                         |
+| ----------------------------------- | ------------------------ | ----------------------------------------------------------------- |
+| All type, UI and reader alike       | `rem`                    | Honour the browser and OS font-size preference                    |
+| Spacing and layout gaps             | `rem`                    | Layout breathes with the text rather than cramping around it      |
+| The reading measure                 | `em`                     | Hold characters-per-line constant across the learner's scale      |
+| Breakpoints                         | `em`                     | Layout changes when the _text_ outgrows the width, not the window |
+| Borders, hairlines, shadow geometry | `px`                     | A one-pixel rule is one pixel; tripling it at 200% is a defect    |
+| Touch-target floor                  | `px` floor, `rem` growth | A physical minimum that may grow but never shrink                 |
+| Full-height surfaces                | `dvh`                    | The viewport a mobile browser actually leaves after its chrome    |
 
 Four rules follow from that table, and each of them is a thing not to do:
 
@@ -593,8 +613,8 @@ and not a new viewport breakpoint, which would be a lie about what the component
 depends on.
 
 Placement rules are the small set of cases where the viewport is the honest
-question: a bar docked to the bottom edge is docked to the *viewport's* edge, and
-a sheet bounded to a fraction of the screen is bounded by the *screen*.
+question: a bar docked to the bottom edge is docked to the _viewport's_ edge, and
+a sheet bounded to a fraction of the screen is bounded by the _screen_.
 
 ## 7. Motion
 
@@ -645,7 +665,8 @@ Four exceptions:
   links close to the actions they explain. It needs no cards around each topic.
   A quiet, non-modal first-use banner offers Help on a non-reader
   surface without moving focus or covering the app. Dismissal records the preference for this local installation;
-  the guide remains in the utility bar. Reader deep links are never interrupted.
+  the guide remains among the Library's utilities. Reader deep links are never
+  interrupted.
 
 - **Empty states teach.** An empty surface has nothing but words to work with,
   so any empty list explains what belongs there and how to fill it. The

@@ -21,10 +21,11 @@
   border-radius: var(--radius-control);
   background: var(--surface-raised);
   color: var(--text-primary);
-  box-shadow: var(--shadow-overlay);
   transform: translateY(-200%);
 }
 
+/* The shadow only while shown: parked above the viewport, its blur still bled in. */
 .mn-skip-link:focus-visible {
+  box-shadow: var(--shadow-overlay);
   transform: translateY(0);
 }

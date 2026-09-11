@@ -47,24 +47,26 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       [testId]="'reading-row'"
     >
       <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-        <mn-icon [name]="originIcon()" [size]="20" />
+        <mn-icon [name]="originIcon()" [size]="18" />
       </span>
       <span mn-list-row-title lang="ja">{{ reading().title }}</span>
+      <!--
+        One visible line: size and shape. The origin is the leading icon and
+        opened-or-not is the status pill, so both are said here only to
+        assistive technology, together with when it was last read.
+      -->
       <span mn-list-row-meta>
         <span>{{ characterLabel() }}</span>
-        <span class="separator" aria-hidden="true">·</span>
-        <span>{{ originLabel() }}</span>
-        <span class="separator" aria-hidden="true">·</span>
+        <span aria-hidden="true">·</span>
         <span>{{ shapeLabel() }}</span>
-        <span class="separator" aria-hidden="true">·</span>
-        <span>{{ lastReadLabel() }}</span>
         @if (hasAudio()) {
-          <span class="separator" aria-hidden="true">·</span>
-          <span class="audio-available">
-            <mn-icon name="audio" [size]="16" />
-            <span>Audio</span>
+          <span aria-hidden="true">·</span>
+          <span class="audio-available" title="Audio">
+            <mn-icon name="audio" [size]="14" />
+            <span class="mn-visually-hidden">Audio</span>
           </span>
         }
+        <span class="mn-visually-hidden">{{ originLabel() }}, {{ lastReadLabel() }}</span>
       </span>
       <span mn-list-row-trailing>
         <span

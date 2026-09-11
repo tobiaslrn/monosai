@@ -39,6 +39,12 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, IconComponent, PreparationTargetsComponent],
   template: `
+    <!--
+      What is missing leads the form, in the document flow: it is why the
+      button at the foot is disabled, so it is read before the fields are
+      filled. Inside the sticky bar it rode up over the fields themselves.
+    -->
+    <ng-content select="[generation-blockers]" />
     <div class="composer-grid">
       <div class="mn-card mn-stack text-fields" role="region" aria-labelledby="mn-this-story">
         <h2 id="mn-this-story" class="mn-card-title">This story</h2>
@@ -255,7 +261,6 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     </div>
 
     <div class="action-bar mn-stack">
-      <ng-content select="[generation-blockers]" />
       <div class="mn-actions">
         <button
           type="button"
@@ -270,7 +275,8 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
         </button>
       </div>
       @if (!canGenerate() && disabledReason()) {
-        <p id="mn-generate-disabled-reason" class="mn-hint">{{ disabledReason() }}</p>
+        <!-- The panel above already says this on screen; this is the button's description. -->
+        <p id="mn-generate-disabled-reason" class="mn-visually-hidden">{{ disabledReason() }}</p>
       }
       @if (atGenerationLimit()) {
         <p class="mn-hint" data-testid="generation-limit">

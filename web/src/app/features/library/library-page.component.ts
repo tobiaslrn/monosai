@@ -12,7 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { NavigationStart, Router } from '@angular/router';
+import { NavigationStart, Router, RouterLink } from '@angular/router';
 import { LibraryScrollMemoryService } from '../../core/routing/library-scroll-memory.service';
 import { LibraryStore } from '../../application/reading/library.store';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
@@ -61,6 +61,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   selector: 'mn-library-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    RouterLink,
     IconComponent,
     PageHeaderComponent,
     ReaderPopoverComponent,
@@ -72,7 +73,19 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   ],
   template: `
     <div class="mn-page library-page">
-      <mn-page-header heading="Library" />
+      <mn-page-header heading="Library" [home]="true">
+        <nav class="utilities" aria-label="Utilities">
+          <button type="button" class="mn-icon-button" aria-label="Search" title="Search">
+            <mn-icon name="search" />
+          </button>
+          <a class="mn-icon-button" routerLink="/help" aria-label="Help" title="Help">
+            <mn-icon name="help" />
+          </a>
+          <a class="mn-icon-button" routerLink="/settings" aria-label="Settings" title="Settings">
+            <mn-icon name="settings" />
+          </a>
+        </nav>
+      </mn-page-header>
 
       @if (store.status() === 'failed') {
         <section class="mn-card" role="alert">
@@ -125,7 +138,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         @if (generationJobs().length > 0) {
           <section class="date-group" aria-labelledby="library-group-generating">
             <h2 id="library-group-generating" class="mn-group-title">Story generations</h2>
-            <ul class="reading-list">
+            <ul class="reading-list mn-list-group">
               @for (job of generationJobs(); track job.id) {
                 <li>
                   <mn-generation-job-card [job]="job" (dismissRequested)="confirmDismiss($event)" />
@@ -162,7 +175,12 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
     /* The home header, action, and every date group share the same rail. */
     .library-page {
-      gap: var(--space-2);
+      gap: var(--space-3);
+    }
+
+    .utilities {
+      display: flex;
+      gap: var(--space-1);
     }
 
     .home-hero {
@@ -218,27 +236,16 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       gap: var(--space-2);
     }
 
-    .date-group,
-    .reading-list {
+    .date-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
       width: 100%;
       min-width: 0;
-    }
-
-    .reading-list {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .reading-list li + li {
-      margin-top: var(--space-1);
+      padding-block-start: var(--space-2);
     }
 
     @media (max-width: breakpoints.$wide-max) {
-      .library-page {
-        gap: var(--space-2);
-      }
-
       .home-hero {
         min-height: 11.5rem;
       }

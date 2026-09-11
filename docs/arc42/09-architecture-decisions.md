@@ -20,19 +20,19 @@ files are already linked from code comments and from other records.
 
 ### Persistence and data integrity
 
-| ADR                                                                      | Decision                                                              |
-| ------------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| [0002](../decisions/0002-hashing-and-canonical-serialization.md)         | Hashing algorithm and canonical serialization                         |
-| [0004](../decisions/0004-persistence-shape.md)                           | Persistence shape decisions                                           |
-| [0012](../decisions/0012-resume-basis.md)                                | Resume basis: exact, nearest, or beginning, stated rather than hidden |
-| [0042](../decisions/0042-cross-tab-reading-mutations.md)                 | Tabs tell each other about deleted readings, and format in one locale |
-| [0047](../decisions/0047-a-reading-declares-what-it-should-have.md)      | A reading declares what it should have                                |
-| [0048](../decisions/0048-the-preparation-lane-yields.md)                 | The preparation lane yields, and is never busy                        |
-| [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md)   | Grammar preparation uses bounded batches and resumable recovery       |
-| [0054](../decisions/0054-parallel-text-preparation.md)                   | Text preparation uses sparse adaptive batches and bounded waves       |
-| [0059](../decisions/0059-preparation-fills-the-reading-in-order.md)      | Preparation fills the reading in order, from one shared pool          |
-| [0060](../decisions/0060-progressive-translation-freezes-terminology.md) | Progressive translation freezes a persisted terminology plan          |
-| [0062](../decisions/0062-vocabulary-identity-is-expression-plus-meaning.md) | Vocabulary identity is expression plus meaning                    |
+| ADR                                                                         | Decision                                                              |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [0002](../decisions/0002-hashing-and-canonical-serialization.md)            | Hashing algorithm and canonical serialization                         |
+| [0004](../decisions/0004-persistence-shape.md)                              | Persistence shape decisions                                           |
+| [0012](../decisions/0012-resume-basis.md)                                   | Resume basis: exact, nearest, or beginning, stated rather than hidden |
+| [0042](../decisions/0042-cross-tab-reading-mutations.md)                    | Tabs tell each other about deleted readings, and format in one locale |
+| [0047](../decisions/0047-a-reading-declares-what-it-should-have.md)         | A reading declares what it should have                                |
+| [0048](../decisions/0048-the-preparation-lane-yields.md)                    | The preparation lane yields, and is never busy                        |
+| [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md)      | Grammar preparation uses bounded batches and resumable recovery       |
+| [0054](../decisions/0054-parallel-text-preparation.md)                      | Text preparation uses sparse adaptive batches and bounded waves       |
+| [0059](../decisions/0059-preparation-fills-the-reading-in-order.md)         | Preparation fills the reading in order, from one shared pool          |
+| [0060](../decisions/0060-progressive-translation-freezes-terminology.md)    | Progressive translation freezes a persisted terminology plan          |
+| [0062](../decisions/0062-vocabulary-identity-is-expression-plus-meaning.md) | Vocabulary identity is expression plus meaning                        |
 
 ### Language processing
 
@@ -61,9 +61,9 @@ files are already linked from code comments and from other records.
 | [0056](../decisions/0056-first-party-ankidroid-bridge.md)             | First-party read-only AnkiDroid bridge and shared wire contract    |
 | [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)     | One Anki entry chosen by platform, and a page per source           |
 | [0061](../decisions/0061-anki-word-selection-signal-ladder.md)        | Anki word selection weights a ladder of scheduling evidence        |
-| [0065](../decisions/0065-ankidroid-first-review-study-day.md)         | AnkiDroid first review uses the supported search language           |
-| [0066](../decisions/0066-desktop-fsrs-difficulty-by-search.md)        | Desktop FSRS difficulty uses the supported search language          |
-| [0067](../decisions/0067-recently-learned-is-a-focus-list.md)         | Recently learned sends the newest words as an ordered focus list    |
+| [0065](../decisions/0065-ankidroid-first-review-study-day.md)         | AnkiDroid first review uses the supported search language          |
+| [0066](../decisions/0066-desktop-fsrs-difficulty-by-search.md)        | Desktop FSRS difficulty uses the supported search language         |
+| [0067](../decisions/0067-recently-learned-is-a-focus-list.md)         | Recently learned sends the newest words as an ordered focus list   |
 
 ### AI providers and generation
 
@@ -86,24 +86,25 @@ files are already linked from code comments and from other records.
 
 ### The reader
 
-| ADR                                                                    | Decision                                                                          |
-| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| [0011](../decisions/0011-paragraph-window-bounds.md)                   | Paragraph window bound, radius, step, and moving rather than growing              |
-| [0022](../decisions/0022-reader-floating-popover.md)                   | One floating popover replaces the reader's side panel and bottom sheet            |
-| [0023](../decisions/0023-japanese-only-reading-surface.md)             | The reading surface carries Japanese and nothing else                             |
-| [0025](../decisions/0025-reader-as-the-centre.md)                      | The reader is the centre: no navigation, no reading position, one place for audio |
-| [0028](../decisions/0028-word-form-summary-popup.md)                   | Word details use a compact form summary                                           |
-| [0031](../decisions/0031-touch-reading-gestures-and-docked-details.md) | On touch, a long press selects a sentence and details dock as a sheet             |
-| [0032](../decisions/0032-touch-word-taps-and-one-selection-colour.md)  | A tap on a phone is one press, one colour, and one open thing                     |
-| [0049](../decisions/0049-one-page-for-what-you-can-read.md)            | Vocabulary and Grammar are one page: what you can read                            |
-| [0050](../decisions/0050-the-library-wears-the-navigation.md)          | The Library standing line is the way to the learner's level                       |
-| [0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)   | Non-reader utilities and first-use Help; amends 0050 and 0025                     |
-| [0053](../decisions/0053-reader-touch-details-and-measured-sheets.md)  | Native touch selection, sentence double taps, and measured detail sheets          |
-| [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)      | One Anki entry chosen by platform, and a page per source                          |
-| [0061](../decisions/0061-anki-word-selection-signal-ladder.md)         | Anki word selection weights a ladder of scheduling evidence                       |
-| [0058](../decisions/0058-one-gesture-per-meaning-on-touch.md)          | On touch, a tap opens a word and a held press opens its sentence                  |
-| [0063](../decisions/0063-what-you-can-read-is-composed-like-the-library.md) | What you can read is composed like the Library; the ladder saves on request |
-| [0068](../decisions/0068-one-non-reader-frame-and-page-header.md)            | All non-reader pages share one utility bar, frame, and page header          |
+| ADR                                                                         | Decision                                                                          |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| [0011](../decisions/0011-paragraph-window-bounds.md)                        | Paragraph window bound, radius, step, and moving rather than growing              |
+| [0022](../decisions/0022-reader-floating-popover.md)                        | One floating popover replaces the reader's side panel and bottom sheet            |
+| [0023](../decisions/0023-japanese-only-reading-surface.md)                  | The reading surface carries Japanese and nothing else                             |
+| [0025](../decisions/0025-reader-as-the-centre.md)                           | The reader is the centre: no navigation, no reading position, one place for audio |
+| [0028](../decisions/0028-word-form-summary-popup.md)                        | Word details use a compact form summary                                           |
+| [0031](../decisions/0031-touch-reading-gestures-and-docked-details.md)      | On touch, a long press selects a sentence and details dock as a sheet             |
+| [0032](../decisions/0032-touch-word-taps-and-one-selection-colour.md)       | A tap on a phone is one press, one colour, and one open thing                     |
+| [0049](../decisions/0049-one-page-for-what-you-can-read.md)                 | Vocabulary and Grammar are one page: what you can read                            |
+| [0050](../decisions/0050-the-library-wears-the-navigation.md)               | The Library standing line is the way to the learner's level                       |
+| [0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)        | Non-reader utilities and first-use Help; amends 0050 and 0025                     |
+| [0053](../decisions/0053-reader-touch-details-and-measured-sheets.md)       | Native touch selection, sentence double taps, and measured detail sheets          |
+| [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)           | One Anki entry chosen by platform, and a page per source                          |
+| [0061](../decisions/0061-anki-word-selection-signal-ladder.md)              | Anki word selection weights a ladder of scheduling evidence                       |
+| [0058](../decisions/0058-one-gesture-per-meaning-on-touch.md)               | On touch, a tap opens a word and a held press opens its sentence                  |
+| [0063](../decisions/0063-what-you-can-read-is-composed-like-the-library.md) | What you can read is composed like the Library; the ladder saves on request       |
+| [0068](../decisions/0068-one-non-reader-frame-and-page-header.md)           | All non-reader pages share one utility bar, frame, and page header                |
+| [0069](../decisions/0069-one-top-bar-per-screen.md)                         | Every screen has one sticky top bar; utilities live on the Library                |
 
 ### Audio
 

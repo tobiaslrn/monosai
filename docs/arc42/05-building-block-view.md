@@ -51,15 +51,15 @@ the providers, and owns the shell and the router, so it must be allowed to see e
 
 ### Contained building blocks
 
-| Building block | Responsibility | How the rest of the system reaches it |
-| --- | --- | --- |
-| **`domain/`** | Types, rules, and port interfaces. Knows nothing about the framework, storage, or the network | Exported types and pure functions |
-| **`application/`** | Use cases and signal stores. Declares every port as an injection token | Injectable services and stores. The tokens live in `application/shared/` |
-| **`infrastructure/`** | Adapters that satisfy the ports: persistence, the AI provider, Anki, language assets, the service worker | One `provide*()` function per area, binding adapters to tokens |
-| **`features/`** | One folder per screen, lazily loaded | Route definitions in `core/routing/` |
-| **`core/`** | Composition root, ordered startup, application shell, routing, platform services | The application config, which is the only place the layers are wired together |
-| **`shared-ui/`** | Presentation components used by more than one screen. Holds no use case | Component selectors |
-| **`web/src/workers/`** | Work that must not block the main thread | A versioned message protocol, validated on both sides |
+| Building block         | Responsibility                                                                                           | How the rest of the system reaches it                                         |
+| ---------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **`domain/`**          | Types, rules, and port interfaces. Knows nothing about the framework, storage, or the network            | Exported types and pure functions                                             |
+| **`application/`**     | Use cases and signal stores. Declares every port as an injection token                                   | Injectable services and stores. The tokens live in `application/shared/`      |
+| **`infrastructure/`**  | Adapters that satisfy the ports: persistence, the AI provider, Anki, language assets, the service worker | One `provide*()` function per area, binding adapters to tokens                |
+| **`features/`**        | One folder per screen, lazily loaded                                                                     | Route definitions in `core/routing/`                                          |
+| **`core/`**            | Composition root, ordered startup, application shell, routing, platform services                         | The application config, which is the only place the layers are wired together |
+| **`shared-ui/`**       | Presentation components used by more than one screen. Holds no use case                                  | Component selectors                                                           |
+| **`web/src/workers/`** | Work that must not block the main thread                                                                 | A versioned message protocol, validated on both sides                         |
 
 ## 5.2 Level 2: how each layer is divided
 
@@ -75,19 +75,19 @@ appears in `domain/`, in `application/`, and as a screen in `features/`; the lay
 of those may import which. Reading across a row below therefore shows where one concern lives at each
 altitude.
 
-| Area | In `domain/` | In `application/` | Adapter area in `infrastructure/` |
-| --- | --- | --- | --- |
-| **reading** | Readings, paragraphs, sentences, tokens, the paragraph window, token status, the declared preparation targets | Import, open, list, rename, delete, declare targets. Classification against the current snapshot, backed by a generated story's frozen evidence | Persistence |
-| **vocabulary** | Snapshots, sources, mappings, deduplication of expressions | Read a source and build one replacement snapshot | Anki, persistence |
-| **language** | Tokenizer and runtime interfaces, segmentation, dictionary, kana, the structural baseline | Prepare the tokenizer and the assets, and report readiness | The language worker client and asset loader |
-| **ai** | Provider interfaces, tasks, prompt versions, configuration fingerprints, story structure | Run a generation as a job. Test and select models | The AI provider adapters |
-| **enrichment** | Translation, grammar, and audio records, translation plans, cache keys, staleness, the job model, the preparation layers a reading declares | Produce and cache aids in resumable whole-reading jobs; translation first freezes locally selected terminology | Persistence, the AI provider |
-| **audio** | — | Own playback and the platform media session for one reading, including the native resource a continuous reading is played from and grown in | The AI provider, for synthesis |
-| **grammar** | Difficulty presets, the profile, the profile hash | Hold the selected preset, register, and optional edited guidance | Persistence |
-| **settings** | Settings and credential shapes | Hold configuration that startup loads before routes render | Persistence |
-| **storage** | The storage error type, persistence status, maintenance | Report and reclaim space | Persistence |
-| **platform** | Application update, network status, shared package inbox, and the host platform | Surface an available update, pick up a shared package, and say which Anki adapter this device can reach | The service worker adapters, the shell |
-| **shared** | `Result`, typed errors, branded ids, clock, hashing, canonical JSON, locale | The port tokens, the busy registry, the logger interface | Hashing, diagnostics |
+| Area           | In `domain/`                                                                                                                                | In `application/`                                                                                                                               | Adapter area in `infrastructure/`           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| **reading**    | Readings, paragraphs, sentences, tokens, the paragraph window, token status, the declared preparation targets                               | Import, open, list, rename, delete, declare targets. Classification against the current snapshot, backed by a generated story's frozen evidence | Persistence                                 |
+| **vocabulary** | Snapshots, sources, mappings, deduplication of expressions                                                                                  | Read a source and build one replacement snapshot                                                                                                | Anki, persistence                           |
+| **language**   | Tokenizer and runtime interfaces, segmentation, dictionary, kana, the structural baseline                                                   | Prepare the tokenizer and the assets, and report readiness                                                                                      | The language worker client and asset loader |
+| **ai**         | Provider interfaces, tasks, prompt versions, configuration fingerprints, story structure                                                    | Run a generation as a job. Test and select models                                                                                               | The AI provider adapters                    |
+| **enrichment** | Translation, grammar, and audio records, translation plans, cache keys, staleness, the job model, the preparation layers a reading declares | Produce and cache aids in resumable whole-reading jobs; translation first freezes locally selected terminology                                  | Persistence, the AI provider                |
+| **audio**      | —                                                                                                                                           | Own playback and the platform media session for one reading, including the native resource a continuous reading is played from and grown in     | The AI provider, for synthesis              |
+| **grammar**    | Difficulty presets, the profile, the profile hash                                                                                           | Hold the selected preset, register, and optional edited guidance                                                                                | Persistence                                 |
+| **settings**   | Settings and credential shapes                                                                                                              | Hold configuration that startup loads before routes render                                                                                      | Persistence                                 |
+| **storage**    | The storage error type, persistence status, maintenance                                                                                     | Report and reclaim space                                                                                                                        | Persistence                                 |
+| **platform**   | Application update, network status, shared package inbox, and the host platform                                                             | Surface an available update, pick up a shared package, and say which Anki adapter this device can reach                                         | The service worker adapters, the shell      |
+| **shared**     | `Result`, typed errors, branded ids, clock, hashing, canonical JSON, locale                                                                 | The port tokens, the busy registry, the logger interface                                                                                        | Hashing, diagnostics                        |
 
 A screen folder is not always an area folder. `features/reading-level/` holds the overview composed
 from the components in `features/vocabulary/` and `features/grammar/`, which hold no page of their
@@ -167,15 +167,17 @@ kept clear of the docked player.
 
 ### Whitebox: non-reader shell and Help
 
-`core/layout/` owns the shared utility bar and first-use CDK dialog. The shell
-only renders after successful startup and waits for a completed non-reader route
-before offering Help; the utility bar is present on every non-reader route and
-the page itself owns its `mn-page-header`. Reader routes show neither the bar
-nor the introduction. `features/help/` is a lazy static prose screen.
+`core/layout/` owns the shell, its banners, and the first-use offer; it draws no
+bar. The shell only renders after successful startup and waits for a completed
+non-reader route before offering Help. Each page owns its single top bar,
+`mn-page-header` from `shared-ui/`; the Library projects the utility navigation
+into its own. Reader routes show neither banners nor the introduction and keep
+the reader's own bar. `features/help/` is a lazy static prose screen.
 Dismissal goes through `AppSettingsStore` and the settings repository; schema v9
 adds `helpIntroSeen` transactionally, defaulting to false. Write failures expose
 retry in the shell. See [ADR 0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)
-and [ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md).
+[ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md), and
+[ADR 0069](../decisions/0069-one-top-bar-per-screen.md).
 
 Two seams deserve a closer look, because a mistake in either crosses a boundary the rest of the
 system relies on.
@@ -238,13 +240,13 @@ flowchart TB
     client -->|HTTPS| net([the AI service])
 ```
 
-| Building block | Responsibility |
-| --- | --- |
-| **The client** | The only outbound path. Reads the credential, checks the host, caps the response size, applies the timeout, classifies the failure, and decides whether a retry is allowed. It never logs a key or a response body |
+| Building block               | Responsibility                                                                                                                                                                                                                |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The client**               | The only outbound path. Reads the credential, checks the host, caps the response size, applies the timeout, classifies the failure, and decides whether a retry is allowed. It never logs a key or a response body            |
 | **The port implementations** | Compose a port from a capability tester and its task adapters, so no file carries another's job. Task adapters load lazily, which keeps prompt assets out of the initial bundle for a learner who only imports their own text |
-| **The task adapters** | Turn a domain request into a provider request, and validate the reply before returning it |
-| **The prompts** | Assembled from immutable layers, with a version per task. Changing a version invalidates the cached results that used it |
-| **The model catalog** | Reads the capabilities a model declares, which a probe then confirms. See [ADR 0040](../decisions/0040-speech-capabilities-are-declared.md) |
+| **The task adapters**        | Turn a domain request into a provider request, and validate the reply before returning it                                                                                                                                     |
+| **The prompts**              | Assembled from immutable layers, with a version per task. Changing a version invalidates the cached results that used it                                                                                                      |
+| **The model catalog**        | Reads the capabilities a model declares, which a probe then confirms. See [ADR 0040](../decisions/0040-speech-capabilities-are-declared.md)                                                                                   |
 
 This is one client rather than one per task because of
 [ADR 0018](../decisions/0018-openrouter-request-boundary.md): the credential boundary, the retry

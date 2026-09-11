@@ -11,6 +11,18 @@
   margin-inline: auto;
 }
 
+/*
+ * The lower edge of a sticky top bar, faded in as content starts to pass
+ * beneath it. Global rather than per component: Angular renames a component's
+ * own keyframes but not a reference to them inside `@supports`, which left the
+ * edge permanently drawn.
+ */
+@keyframes mn-bar-edge {
+  from {
+    border-bottom-color: transparent;
+  }
+}
+
 /* A vertical run of blocks with one gap between them. */
 .mn-stack {
   display: flex;

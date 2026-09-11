@@ -120,11 +120,10 @@ function readingKey(id: string): string {
             <h2 class="mn-visually-hidden" [id]="group.headingId">{{ group.label }}</h2>
           }
 
-          <ul class="reading-list">
+          <ul class="reading-list mn-list-group">
             @for (item of group.readings; track item.key) {
               <li
                 #virtualItem
-                [class.is-last]="item.isLastInGroup"
                 [attr.data-virtual-key]="item.key"
                 [attr.aria-posinset]="item.positionInGroup"
                 [attr.aria-setsize]="item.groupSize"
@@ -184,29 +183,15 @@ function readingKey(id: string): string {
     }
 
     .virtual-heading {
-      padding-block-start: var(--space-3);
-      padding-block-end: var(--space-2);
+      padding-block: var(--space-5) var(--space-2);
     }
 
     .virtual-heading.is-first {
-      padding-block-start: 0;
+      padding-block-start: var(--space-2);
     }
 
     .reading-list {
       width: 100%;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .reading-list li {
-      width: 100%;
-      min-width: 0;
-      padding-block-end: var(--space-1);
-    }
-
-    .reading-list li.is-last {
-      padding-block-end: 0;
     }
 
     .load-status {
@@ -256,7 +241,7 @@ export class LibraryVirtualListComponent {
   readonly renameRequested = output<Reading>();
 
   private readonly model = new VariableHeightVirtualListModel<LibraryVirtualItem>({
-    estimateHeight: (item) => (item.kind === 'heading' ? 36 : 76),
+    estimateHeight: (item) => (item.kind === 'heading' ? 48 : 62),
     overscanPx: LIBRARY_VIRTUAL_OVERSCAN_PX,
     loadMoreThresholdPx: LIBRARY_LOAD_MORE_THRESHOLD_PX,
   });

@@ -4,13 +4,14 @@ import { importReading } from './reading';
 
 test.describe('application shell', () => {
   /**
-   * Non-reader pages share utility navigation while retaining their own Back.
+   * A page below the Library has one bar: its way back and its title. The
+   * utilities belong to the Library, which every such page leads back to.
    */
-  test('renders the settings route with a way back and utility bar @smoke', async ({ page }) => {
+  test('renders the settings route with a way back and no second bar @smoke', async ({ page }) => {
     await page.goto('./#/settings');
 
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Utilities' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Utilities' })).toHaveCount(0);
     await expect(page.getByRole('main')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Back to library' })).toBeVisible();
     await expect(page).toHaveURL(/#\/settings$/);
@@ -105,18 +106,18 @@ test.describe('application shell', () => {
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   });
 
-  /** The shared app bar, page header, standing line, and shelf at 320px. */
+  /** The Library's top bar, standing line, and shelf at 320px. */
   test('keeps the shared Library frame usable at 320px @mobile', async ({ page }) => {
     await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('./#/library');
 
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Monosai library' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
+    const utilities = page.getByRole('navigation', { name: 'Utilities' });
+    await expect(utilities.getByRole('button', { name: 'Search' })).toBeVisible();
+    await expect(utilities.getByRole('link', { name: 'Help', exact: true })).toBeVisible();
+    await expect(utilities.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
     await expect(page.getByTestId('library-standing')).toBeVisible();
-    await expect(page.locator('mn-app-bar')).toHaveCount(1);
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);

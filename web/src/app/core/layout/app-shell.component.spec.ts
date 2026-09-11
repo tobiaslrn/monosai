@@ -24,7 +24,7 @@ describe('AppShellComponent', () => {
     TestBed.overrideTemplate(
       AppShellComponent,
       `<a class="mn-skip-link" href="#mn-main">Skip</a>
-      @if (!isReaderRoute()) { <mn-app-bar [showSearch]="isLibraryRoute()" /> }
+      @if (!isReaderRoute()) { <p class="chrome">non-reader</p> }
       <main id="mn-main" tabindex="-1"><router-outlet /></main>`,
     );
     const router = TestBed.inject(Router);
@@ -35,72 +35,34 @@ describe('AppShellComponent', () => {
     return { fixture, intro, router, element: fixture.nativeElement as HTMLElement };
   }
 
-  it('renders identity and accessible icon-only utilities', async () => {
+  it('renders the skip link and a focusable main landmark, and offers the guide', async () => {
     const { element, intro } = await render();
     expect(element.querySelector('.mn-skip-link')?.getAttribute('href')).toBe('#mn-main');
     expect(element.querySelector('main')?.getAttribute('tabindex')).toBe('-1');
-    expect(element.querySelector('.identity')?.getAttribute('href')).toBe('/library');
-    const links = [...element.querySelectorAll('nav a')];
-    expect(links.map((a) => a.getAttribute('aria-label'))).toEqual([
-      'Settings',
-      'Help',
-      'GitHub (opens in a new tab)',
-    ]);
-    for (const link of links) {
-      expect(link.textContent.trim()).toBe('');
-      expect(link.getAttribute('title')).toBe(link.getAttribute('aria-label'));
-    }
-    expect(links[0].getAttribute('aria-current')).toBe('page');
-    expect(links[2].getAttribute('href')).toBe('https://github.com/tobiaslrn/monosai');
-    expect(links[2].getAttribute('target')).toBe('_blank');
-    expect(links[2].getAttribute('rel')).toContain('noopener');
     expect(intro.offer).toHaveBeenCalled();
   });
 
-  it('defers the intro and hides utilities on a reader deep link, then offers on exit', async () => {
+  it('defers the intro and drops non-reader chrome on a reader deep link', async () => {
     const { fixture, element, intro, router } = await render(
       '/reader/2f8d3f4e-1b6a-4f7c-9c2e-0d5a6b7c8d9e',
     );
-    expect(element.querySelector('mn-app-bar')).toBeNull();
+    expect(element.querySelector('.chrome')).toBeNull();
     expect(intro.offer).not.toHaveBeenCalled();
     await router.navigateByUrl('/help');
     fixture.detectChanges();
-    expect(element.querySelector('mn-app-bar')).not.toBeNull();
+    expect(element.querySelector('.chrome')).not.toBeNull();
     expect(intro.offer).toHaveBeenCalledOnce();
-  });
-
-  it('uses the shared utility bar on the Library and reserves Search there', async () => {
-    const { element } = await render('/library');
-
-    expect(element.querySelector('mn-app-bar')).not.toBeNull();
-    expect(element.querySelector('nav button[aria-label="Search"]')).not.toBeNull();
-  });
-
-  it('uses the shared utility bar on the pages about what you can read', async () => {
-    for (const url of ['/reading-level', '/reading-level/vocabulary', '/reading-level/level']) {
-      TestBed.resetTestingModule();
-      const { element } = await render(url);
-
-      expect(element.querySelector('mn-app-bar')).not.toBeNull();
-      expect(element.querySelector('nav button[aria-label="Search"]')).toBeNull();
-    }
-  });
-
-  it('keeps the utility bar on a page that only shares the prefix', async () => {
-    const { element } = await render('/reading-levels');
-
-    expect(element.querySelector('mn-app-bar')).not.toBeNull();
   });
 
   /**
    * Only the reader goes without chrome. A `/reader/` segment that is not an id
-   * never reaches it, and that screen was losing the masthead — and with it
-   * every way out of the application — to a prefix match on the URL.
+   * never reaches it, and that screen was losing every way out of the
+   * application to a prefix match on the URL.
    */
-  it('keeps the masthead on a reader link that names no reading', async () => {
+  it('keeps non-reader chrome on a reader link that names no reading', async () => {
     const { element, intro } = await render('/reader/example');
 
-    expect(element.querySelector('mn-app-bar')).not.toBeNull();
+    expect(element.querySelector('.chrome')).not.toBeNull();
     expect(intro.offer).toHaveBeenCalled();
   });
 });

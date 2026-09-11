@@ -27,11 +27,11 @@ the revision it was prepared against so a slow build cannot overwrite a newer on
 
 Every token in the reader carries one of three statuses:
 
-| Status | Meaning |
-| --- | --- |
-| **Known** | Matched locally, either against the current snapshot or against a generated story's frozen evidence |
+| Status        | Meaning                                                                                                                                                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Known**     | Matched locally, either against the current snapshot or against a generated story's frozen evidence                                                                                                 |
 | **Exception** | Not known through Anki, but accepted by the AI exception review under the policy the learner wrote. The writer sees the same policy and may use what it clearly allows, but only the review accepts |
-| **Unknown** | Accepted by no authoritative check. It is marked, not hidden |
+| **Unknown**   | Accepted by no authoritative check. It is marked, not hidden                                                                                                                                        |
 
 An imported reading is classified against the current snapshot each time it is opened, so it follows
 the learner's progress. A generated story keeps the evidence it was judged against, so its history
@@ -62,13 +62,13 @@ Adding a state breaks the compile rather than falling through a screen.
 
 All external data is untrusted until a Zod schema accepts it. This applies to:
 
-| Source | Schema |
-| --- | --- |
-| AI provider responses | A schema per task, beside the adapter that makes the request |
-| AnkiConnect responses | A schema beside the connection adapters |
+| Source                              | Schema                                                        |
+| ----------------------------------- | ------------------------------------------------------------- |
+| AI provider responses               | A schema per task, beside the adapter that makes the request  |
+| AnkiConnect responses               | A schema beside the connection adapters                       |
 | Worker messages, in both directions | A versioned protocol schema per worker, applied on both sides |
-| Rows read back from storage | A schema per table, applied on read as well as on write |
-| Downloaded language assets | A manifest schema, plus an integrity check before use |
+| Rows read back from storage         | A schema per table, applied on read as well as on write       |
+| Downloaded language assets          | A manifest schema, plus an integrity check before use         |
 
 Stored rows are validated on read because storage is external too. A browser can be inspected, and a
 schema version can be edited by hand.
@@ -152,11 +152,11 @@ Every AI result is stored under a **configuration fingerprint**: a stable hash o
 could change the answer. If the fingerprint matches, the stored result is used and no request is
 made. If it does not match, the stored result is not shown as current.
 
-| Result | Keyed by |
-| --- | --- |
-| Translation | Sentence content hash, ready-plan fingerprint, stable Japanese passage-window fingerprint, model and prompt version. The plan covers title, premise, register, ordered source identity, candidate-selection policy and the canonically ordered frozen glossary |
-| Grammar review | Sentence content hash, grammar profile hash, model, prompt version |
-| Audio clip | Sentence content hash, model, voice, options fingerprint, and whether speech instructions are supported. No prompt version |
+| Result         | Keyed by                                                                                                                                                                                                                                                       |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Translation    | Sentence content hash, ready-plan fingerprint, stable Japanese passage-window fingerprint, model and prompt version. The plan covers title, premise, register, ordered source identity, candidate-selection policy and the canonically ordered frozen glossary |
+| Grammar review | Sentence content hash, grammar profile hash, model, prompt version                                                                                                                                                                                             |
+| Audio clip     | Sentence content hash, model, voice, options fingerprint, and whether speech instructions are supported. No prompt version                                                                                                                                     |
 
 The key functions are pure and live in `domain/enrichment/`; hashing is over a canonical
 serialization, so the same inputs always produce the same key
@@ -192,15 +192,15 @@ learner activates the new version from a banner. See
 
 ## 8.8 Security and privacy
 
-| Rule | Where it is enforced |
-| --- | --- |
-| The API key is never displayed, logged, exported, or put in an error report | One client is the only reader of the credential |
-| Requests go only to the expected host | The client checks the host before every request |
-| Responses cannot exhaust memory | Declared size caps on JSON and audio responses, and resource limits in the package worker |
-| Anki access cannot write | An action allowlist with no write action on it |
-| Anki field markup is never trusted as HTML | Visible text is extracted behind a port, so the one place that parses untrusted markup stays replaceable and out of the domain |
-| No content is sent anywhere except in response to a learner action | Every provider call traces to a named act, which may have been taken earlier: a layer switched on, a generated story saved with the layers chosen for it, a reader opened, or an explicit *Prepare*, *Retry*, or *Prepare again*. Nothing else creates work — not a launch, not a configuration change |
-| Nothing is collected about the learner | There is no analytics code and no reporting endpoint |
+| Rule                                                                        | Where it is enforced                                                                                                                                                                                                                                                                                   |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The API key is never displayed, logged, exported, or put in an error report | One client is the only reader of the credential                                                                                                                                                                                                                                                        |
+| Requests go only to the expected host                                       | The client checks the host before every request                                                                                                                                                                                                                                                        |
+| Responses cannot exhaust memory                                             | Declared size caps on JSON and audio responses, and resource limits in the package worker                                                                                                                                                                                                              |
+| Anki access cannot write                                                    | An action allowlist with no write action on it                                                                                                                                                                                                                                                         |
+| Anki field markup is never trusted as HTML                                  | Visible text is extracted behind a port, so the one place that parses untrusted markup stays replaceable and out of the domain                                                                                                                                                                         |
+| No content is sent anywhere except in response to a learner action          | Every provider call traces to a named act, which may have been taken earlier: a layer switched on, a generated story saved with the layers chosen for it, a reader opened, or an explicit _Prepare_, _Retry_, or _Prepare again_. Nothing else creates work — not a launch, not a configuration change |
+| Nothing is collected about the learner                                      | There is no analytics code and no reporting endpoint                                                                                                                                                                                                                                                   |
 
 ## 8.9 User interface
 
@@ -233,13 +233,13 @@ binding cannot synchronize asynchronous options. Static selects need no change.
 
 The architecture is shaped so that tests do not need the outside world.
 
-| Seam | What it makes testable |
-| --- | --- |
-| Port tokens | Any adapter can be replaced with a fake in a TestBed |
-| `CLOCK`, `ID_GENERATOR`, `RANDOM_SOURCE` | A run produces the same ids, timestamps, and hashes every time |
-| `fetchFn`, `isOnline`, and `sleep` injected into the OpenRouter client | Offline states are deterministic and backoff is instant |
-| Contract tests beside each adapter | A fake and a real adapter are held to the same contract |
-| Fake IndexedDB with real Dexie | Repository tests run real transactions and real migrations |
+| Seam                                                                   | What it makes testable                                         |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Port tokens                                                            | Any adapter can be replaced with a fake in a TestBed           |
+| `CLOCK`, `ID_GENERATOR`, `RANDOM_SOURCE`                               | A run produces the same ids, timestamps, and hashes every time |
+| `fetchFn`, `isOnline`, and `sleep` injected into the OpenRouter client | Offline states are deterministic and backoff is instant        |
+| Contract tests beside each adapter                                     | A fake and a real adapter are held to the same contract        |
+| Fake IndexedDB with real Dexie                                         | Repository tests run real transactions and real migrations     |
 
 [Chapter 10](10-quality-requirements.md) lists the suites and the thresholds.
 
@@ -270,12 +270,13 @@ that ended with the tab that owned it. All three render `mn-not-found-panel` —
 same alert panel, the same explanation shape, and the application's ordinary primary
 and secondary buttons — so a dead link never looks like a different product.
 
-Application chrome follows the same rule. The shell drops its utility bar only for
-the reader itself, which is decided by classifying the URL's id rather than by
-matching the `/reader/` prefix: a segment that is not an id never reaches the
-reader, and that screen previously lost every way out of the application to the
-prefix match. All other pages pair the bar with their shared page frame and page
-header ([ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md)).
+Application chrome follows the same rule. The shell drops its banners and
+first-use offer only for the reader itself, which is decided by classifying the
+URL's id rather than by matching the `/reader/` prefix: a segment that is not an
+id never reaches the reader, and that screen previously lost every way out of the
+application to the prefix match. Every other page wears the shared page frame and
+one top bar, its page header
+([ADR 0069](../decisions/0069-one-top-bar-per-screen.md)).
 
 The reader's own not-found state keeps the reader's bar rather than the masthead: it
 is reached only after a reading has begun loading, and swapping the chrome in when a

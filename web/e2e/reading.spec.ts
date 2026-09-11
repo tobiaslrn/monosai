@@ -1346,7 +1346,8 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     const groups = await page.locator('.date-group').evaluateAll((sections) =>
       sections.map((section) => {
         const bounds = section.getBoundingClientRect();
-        const cards = [...section.querySelectorAll('mn-reading-card .mn-list-row')].map((card) => {
+        // Each dated group is one pair of card edges; its rows sit inside them.
+        const cards = [...section.querySelectorAll('.reading-list')].map((card) => {
           const cardBounds = card.getBoundingClientRect();
           return { left: cardBounds.left, right: cardBounds.right };
         });

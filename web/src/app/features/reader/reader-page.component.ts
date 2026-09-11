@@ -139,7 +139,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       <header #readerBar class="bar">
         <div class="bar-row">
           <a
-            class="mn-icon-button"
+            class="mn-icon-button back"
             routerLink="/library"
             aria-label="Back to library"
             (click)="backToLibrary($event)"
@@ -357,18 +357,6 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     }
 
     /*
-     * Reader routes keep their own controls, so the shell's top padding must
-     * not leave a strip of canvas above the sticky bar on a phone. Pull the
-     * reader back into that padding; the bar can then start and remain at the
-     * viewport edge while the reading keeps the shell's horizontal inset.
-     */
-    @media (max-width: breakpoints.$wide-max) {
-      .reader {
-        margin-top: calc(-1 * var(--space-5));
-      }
-    }
-
-    /*
      * Clearance for the floating player, so the last line of a reading is never
      * parked permanently underneath it. Its published height rather than an
      * estimate of it, with a fallback for the frame before the first
@@ -406,7 +394,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
        * and push the actions off the screen.
        */
       min-width: 0;
-      padding-block: var(--space-2) var(--space-3);
+      padding-block: var(--space-2);
       background: var(--surface-canvas);
     }
 
@@ -414,15 +402,28 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
      * The reader is measured, but its sticky furniture must still cover the
      * full viewport while text scrolls beneath it. Keep the backdrop in the
      * reader's own canvas token so it stays opaque in both themes.
+     *
+     * Its lower edge is what separates the bar from the reading. It fades in
+     * once the text has started to pass beneath it, and is simply always there
+     * where scroll-driven animation is not supported.
      */
     .bar::before {
       position: absolute;
       z-index: -1;
       inset-block: 0;
       inset-inline: -100vw;
+      border-bottom: 1px solid var(--border-subtle);
       background: var(--surface-canvas);
       content: '';
       pointer-events: none;
+    }
+
+    @supports (animation-timeline: scroll()) {
+      .bar::before {
+        animation: mn-bar-edge linear both;
+        animation-timeline: scroll(root);
+        animation-range: 0 var(--space-4);
+      }
     }
 
     .bar-row {
@@ -432,11 +433,16 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       min-width: 0;
     }
 
+    /* Glyphs, not hit areas, line up with the reading's edges. */
+    .bar-row > .back {
+      margin-inline-start: calc(-1 * var(--space-2));
+    }
+
     h1 {
       flex: 1;
       min-width: 0;
       overflow: hidden;
-      font-size: var(--text-lg);
+      font-size: var(--text-page-title);
       white-space: nowrap;
       text-overflow: ellipsis;
     }
@@ -444,8 +450,9 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     .bar-actions {
       display: flex;
       flex: none;
-      gap: var(--space-2);
+      gap: var(--space-1);
       align-items: center;
+      margin-inline-end: calc(-1 * var(--space-2));
     }
 
     .audio-maintenance-message {

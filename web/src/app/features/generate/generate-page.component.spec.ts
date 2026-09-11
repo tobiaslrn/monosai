@@ -88,11 +88,9 @@ describe('GeneratePageComponent', () => {
     const button = page.querySelector<HTMLButtonElement>('[data-testid="generate"]');
     expect(button?.disabled).toBe(true);
     expect(button?.getAttribute('aria-describedby')).toBe('mn-generate-disabled-reason');
-    // The blockers sit in the composer's action bar, beside the button they
-    // are the reason for, rather than at the foot of the defaults card.
-    expect(page.querySelector('.action-bar mn-prerequisite-panel')?.textContent).toContain(
-      'You are offline',
-    );
+    // The blockers lead the form in the document flow, never inside the sticky
+    // action bar, where they rode up over the fields they explain.
+    expect(page.querySelector('mn-prerequisite-panel')?.textContent).toContain('You are offline');
     expect(page.querySelector('[data-check="network"] strong')?.textContent).toContain(
       'Connection',
     );

@@ -8,25 +8,24 @@ import { classifyReadingLink } from '../../domain/reading/reading-link';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AppUpdateBannerComponent } from './app-update-banner.component';
 import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.component';
-import { AppBarComponent } from './app-bar.component';
 import { HelpIntroService } from './help-intro.service';
 
 /**
  * The application frame.
  *
- * Utilities and the first-use guide belong to non-reader surfaces only.
- * Reader routes retain their own controls without application chrome.
+ * The shell draws no bar of its own: every page's top bar is its
+ * `mn-page-header`, and the reader keeps its own. Banners and the first-use
+ * guide belong to non-reader surfaces only.
  */
 @Component({
   selector: 'mn-app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, AppUpdateBannerComponent, VocabularySyncBannerComponent, AppBarComponent],
+  imports: [RouterOutlet, AppUpdateBannerComponent, VocabularySyncBannerComponent],
   providers: [HelpIntroService],
   template: `
     <a class="mn-skip-link" href="#mn-main">Skip to main content</a>
 
     @if (!isReaderRoute()) {
-      <mn-app-bar [showSearch]="isLibraryRoute()" />
       <mn-app-update-banner />
       <mn-vocabulary-sync-banner />
       @if (intro.visible()) {
@@ -59,9 +58,10 @@ import { HelpIntroService } from './help-intro.service';
       min-height: 100dvh;
     }
 
+    /* No top padding: each page's sticky top bar starts at the viewport edge. */
     .main {
       min-width: 0;
-      padding: var(--space-5) var(--space-4);
+      padding: 0 var(--space-4) var(--space-6);
       /* Clip stray paint without turning this sticky ancestor into a scrollport. */
       overflow-x: clip;
     }
@@ -88,7 +88,7 @@ import { HelpIntroService } from './help-intro.service';
 
     @media (min-width: breakpoints.$wide) {
       .main {
-        padding: var(--space-6);
+        padding: 0 var(--space-6) var(--space-6);
       }
     }
   `,
@@ -140,11 +140,6 @@ export class AppShellComponent {
     const segment = url.slice('/reader/'.length).split(/[/?#]/)[0];
     return classifyReadingLink(segment).kind === 'well-formed';
   });
-
-  /** Search is a reserved Library utility; every other non-reader route keeps the common set. */
-  protected readonly isLibraryRoute = computed(
-    () => this.url().url.split(/[?#]/)[0] === '/library',
-  );
 
   constructor() {
     effect(() => {
