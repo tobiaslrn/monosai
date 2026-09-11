@@ -90,23 +90,15 @@ describe('ReadingLevelRowComponent', () => {
     const element = render();
 
     expect(row(element)?.getAttribute('href')).toBe('/reading-level');
-    expect(row(element)?.textContent).toContain('Words and level');
+    expect(row(element)?.textContent).toContain('What you can read');
   });
 
-  it('states the count, the level, and the source in one line', () => {
+  it('states the current standing in one line', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
 
     expect(row(render())?.textContent.replaceAll(/\s+/g, ' ')).toContain(
-      '340 words · Starter forms · Anki',
+      '340 words · Starter forms',
     );
-  });
-
-  it('names no source for a connected source with nothing in it', () => {
-    state.set({ kind: 'known', availability: 'empty', snapshot: snapshotOf(0) });
-
-    const text = row(render())?.textContent.replaceAll(/\s+/g, ' ') ?? '';
-    expect(text).toContain('No words yet · Starter forms');
-    expect(text).not.toContain('Anki');
   });
 
   it('distinguishes no words from a read that failed', () => {
@@ -121,7 +113,7 @@ describe('ReadingLevelRowComponent', () => {
   it('says only what it knows before the read answers', () => {
     const text = row(render())?.textContent.replaceAll(/\s+/g, ' ').trim();
 
-    expect(text).toContain('Words and level');
+    expect(text).toContain('What you can read');
     expect(text).toContain('Starter forms');
     expect(text).not.toContain('·');
   });

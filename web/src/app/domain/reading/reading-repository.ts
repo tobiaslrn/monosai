@@ -94,11 +94,6 @@ export interface ReadingRepository {
   renameReading(id: ReadingId, title: string): Promise<Result<Reading, StorageError>>;
   listLibraryPage(request: LibraryPageRequest): Promise<Result<LibraryPage, StorageError>>;
   countReadings(filter: LibraryFilter): Promise<Result<number, StorageError>>;
-  /**
-   * The reading opened most recently, or `null` when none has been opened.
-   * A reading never opened has no `lastOpenedAt` and is never the answer.
-   */
-  findLastOpened(): Promise<Result<Reading | null, StorageError>>;
   loadGraph(id: ReadingId, window?: ParagraphWindow): Promise<Result<ReadingGraph, StorageError>>;
   /**
    * Number of paragraphs, so the reader can size its window without loading the

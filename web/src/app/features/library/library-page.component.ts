@@ -1,15 +1,18 @@
+import type { ElementRef, TemplateRef } from '@angular/core';
 import { formatList, startSentence } from '../../domain/shared/locale';
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ViewContainerRef,
   computed,
   effect,
   inject,
+  signal,
+  viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { NavigationStart, Router } from '@angular/router';
-import { MainNavComponent } from '../../core/layout/main-nav.component';
+import { NavigationStart, Router, RouterLink } from '@angular/router';
 import { LibraryScrollMemoryService } from '../../core/routing/library-scroll-memory.service';
 import { LibraryStore } from '../../application/reading/library.store';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
@@ -20,7 +23,18 @@ import { describeDeletion } from '../../domain/reading/deletion-plan';
 import type { LibraryFilter, Reading } from '../../domain/reading/reading';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { openRenameDialog } from '../../shared-ui/rename-dialog/rename-dialog.component';
+import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { PopoverService } from '../../shared-ui/popover/popover.service';
+import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
+import {
+  GenerationJobsStore,
+  type GenerationJob,
+} from '../../application/generation/generation-jobs.store';
+import { NewReadingMenuComponent } from './new-reading-menu.component';
+import { GenerationJobCardComponent } from './generation-job-card.component';
 import { groupLibraryReadings } from './library-date-groups';
+import { LibraryStandingComponent } from './library-standing.component';
+import { LibraryWelcomeComponent } from './library-welcome.component';
 import { LibraryVirtualListComponent } from './library-virtual-list.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 
@@ -35,19 +49,39 @@ const FILTERS: readonly FilterOption[] = [
   { value: 'generated', label: 'Generated' },
 ];
 
-/** The library: the shelf of saved readings. Starting a story is Home's. */
+/**
+ * How many readings a shelf has to hold before filtering it is worth a row of
+ * controls. Below this the chips only ever hide one or two cards the learner
+ * can already see.
+ */
+export const FILTER_VISIBILITY_THRESHOLD = 8;
+
+/** The library: the shelf of readings, and the one way to add another. */
 @Component({
   selector: 'mn-library-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    MainNavComponent,
+    RouterLink,
+    IconComponent,
     PageHeaderComponent,
+    ReaderPopoverComponent,
+    NewReadingMenuComponent,
+    GenerationJobCardComponent,
+    LibraryStandingComponent,
+    LibraryWelcomeComponent,
     LibraryVirtualListComponent,
   ],
   template: `
     <div class="mn-page library-page">
-      <mn-page-header heading="Library" [titleHidden]="true">
-        <mn-main-nav placement="top" helpOrigin="/library" />
+      <mn-page-header heading="Library" [home]="true">
+        <nav class="utilities" aria-label="Utilities">
+          <a class="mn-icon-button" routerLink="/help" aria-label="Help" title="Help">
+            <mn-icon name="help" />
+          </a>
+          <a class="mn-icon-button" routerLink="/settings" aria-label="Settings" title="Settings">
+            <mn-icon name="settings" />
+          </a>
+        </nav>
       </mn-page-header>
 
       @if (store.status() === 'failed') {
@@ -57,21 +91,81 @@ const FILTERS: readonly FilterOption[] = [
           <button type="button" class="mn-button" (click)="reload()">Try again</button>
         </section>
       } @else {
-        <div class="filters" role="group" aria-label="Filter stories">
-          @for (option of filters; track option.value) {
-            <button
-              type="button"
-              class="mn-button"
-              [attr.aria-pressed]="store.filter() === option.value"
-              (click)="setFilter(option.value)"
-            >
-              {{ option.label }}
-            </button>
-          }
+        <section
+          class="home-hero"
+          aria-labelledby="mn-page-title"
+          [class.is-compact]="!isFirstRun()"
+        >
+          <mn-library-standing />
+          <div class="hero-art" aria-hidden="true">
+            <img
+              class="hero-art-light"
+              src="assets/home-reader.png"
+              alt=""
+              width="1254"
+              height="1254"
+            />
+            <img
+              class="hero-art-dark"
+              src="assets/home-reader-dark.png"
+              alt=""
+              width="1254"
+              height="1254"
+            />
+          </div>
+        </section>
+
+        <div class="shelf-head">
+          <button
+            type="button"
+            class="mn-button mn-button--primary"
+            #newReading
+            [attr.aria-expanded]="menuOpen()"
+            aria-haspopup="dialog"
+            (click)="openNewReading()"
+          >
+            <mn-icon name="add" [size]="18" />
+            <span>Create a new story</span>
+          </button>
         </div>
 
-        @if (store.isEmpty()) {
-          <p class="mn-hint">{{ emptyShelf() }}</p>
+        @if (showsFilters()) {
+          <div class="filters" role="group" aria-label="Filter stories">
+            @for (option of filters; track option.value) {
+              <button
+                type="button"
+                class="mn-button"
+                [attr.aria-pressed]="store.filter() === option.value"
+                (click)="setFilter(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            }
+          </div>
+        }
+
+        <!--
+          Stories still being written sit above the shelf, in the same row
+          shape, so starting one and leaving has a visible result and the
+          layout does not move when the story arrives.
+        -->
+        @if (generationJobs().length > 0) {
+          <section class="date-group" aria-labelledby="library-group-generating">
+            <h2 id="library-group-generating" class="mn-group-title">Story generations</h2>
+            <ul class="reading-list mn-list-group">
+              @for (job of generationJobs(); track job.id) {
+                <li>
+                  <mn-generation-job-card [job]="job" (dismissRequested)="confirmDismiss($event)" />
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (isFirstRun()) {
+          <mn-library-welcome />
+        } @else if (store.isEmpty() && generationJobs().length === 0) {
+          <p class="mn-hint">No {{ store.filter() }} stories yet.</p>
         } @else {
           <mn-library-virtual-list
             [groups]="readingGroups()"
@@ -83,13 +177,100 @@ const FILTERS: readonly FilterOption[] = [
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ store.announcement() }}</p>
     </div>
+
+    <ng-template #newReadingMenu>
+      <mn-reader-popover label="New story" (closed)="closeNewReading()">
+        <mn-new-reading-menu (chosen)="closeNewReading()" />
+      </mn-reader-popover>
+    </ng-template>
   `,
   styles: `
     @use '../../../styles/breakpoints' as breakpoints;
 
-    /* The filters and every date group share the same rail. */
+    /* The home header, action, and every date group share the same rail. */
     .library-page {
       gap: var(--space-3);
+    }
+
+    .utilities {
+      display: flex;
+      gap: var(--space-1);
+    }
+
+    .home-hero {
+      position: relative;
+      isolation: isolate;
+      display: flex;
+      align-items: flex-start;
+      min-height: 16rem;
+      margin-bottom: calc(var(--space-2) * -1);
+      padding-block: var(--space-2);
+    }
+
+    .hero-art {
+      position: absolute;
+      z-index: -1;
+      inset: 0 0 auto auto;
+      width: 55%;
+      max-width: 16rem;
+      aspect-ratio: 1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .hero-art img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .hero-art-dark {
+      display: none;
+    }
+
+    :host-context(html[data-theme='dark']) .hero-art-light {
+      display: none;
+    }
+
+    :host-context(html[data-theme='dark']) .hero-art-dark {
+      display: block;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :host-context(html:not([data-theme='light'])) .hero-art-light {
+        display: none;
+      }
+
+      :host-context(html:not([data-theme='light'])) .hero-art-dark {
+        display: block;
+      }
+    }
+
+    .home-hero mn-library-standing {
+      width: 57%;
+    }
+
+    /*
+     * Once there is a shelf, the hero steps back so the stories come up the
+     * screen. The art keeps its proportions; only its size changes.
+     */
+    .home-hero.is-compact {
+      min-height: 10rem;
+    }
+
+    .home-hero.is-compact .hero-art {
+      max-width: 10rem;
+    }
+
+    /* The action sits directly below the invitation it acts on. */
+    .shelf-head {
+      display: block;
+    }
+
+    .shelf-head .mn-button {
+      width: 100%;
     }
 
     .filters {
@@ -98,7 +279,24 @@ const FILTERS: readonly FilterOption[] = [
       gap: var(--space-2);
     }
 
+    .date-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      width: 100%;
+      min-width: 0;
+      padding-block-start: var(--space-2);
+    }
+
     @media (max-width: breakpoints.$wide-max) {
+      .home-hero {
+        min-height: 12.5rem;
+      }
+
+      .home-hero mn-library-standing {
+        width: 59%;
+      }
+
       .filters {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -110,6 +308,8 @@ export class LibraryPageComponent {
   protected readonly store = inject(LibraryStore);
   private readonly clock = inject(CLOCK);
   private readonly dialog = inject(Dialog);
+  private readonly popover = inject(PopoverService);
+  private readonly viewContainerRef = inject(ViewContainerRef);
   private restorationCancelled = false;
   private restorationPosition: number | null = null;
   private restorationFrame: number | null = null;
@@ -117,18 +317,42 @@ export class LibraryPageComponent {
   private readonly audioJob = inject(AudioJobStore);
   private readonly playback = inject(AudioPlaybackStore);
   private readonly scrollMemory = inject(LibraryScrollMemoryService);
+  private readonly jobs = inject(GenerationJobsStore);
+
+  private readonly newReading = viewChild<ElementRef<HTMLElement>>('newReading');
+  private readonly newReadingMenu = viewChild.required<TemplateRef<unknown>>('newReadingMenu');
 
   protected readonly filters = FILTERS;
+
+  private readonly menuOpenSignal = signal(false);
+  protected readonly menuOpen = this.menuOpenSignal.asReadonly();
+
+  /** Chips are chrome until there are enough readings for filtering to help. */
+  protected readonly showsFilters = computed(
+    () => this.store.totalReadings() >= FILTER_VISIBILITY_THRESHOLD,
+  );
+  /**
+   * Nothing saved and nothing being written: the screen a stranger lands on.
+   *
+   * `hasNoReadings` is false until the shelf has actually been read, so the
+   * welcome cannot flash before the library answers.
+   */
+  protected readonly isFirstRun = computed(
+    () => this.store.hasNoReadings() && this.generationJobs().length === 0,
+  );
 
   protected readonly readingGroups = computed(() =>
     groupLibraryReadings(this.store.items(), this.clock.now()),
   );
 
-  /** An empty shelf names the filter that emptied it, if any. */
-  protected readonly emptyShelf = computed(() => {
-    const filter = this.store.filter();
-    return filter === 'all' ? 'No stories yet.' : `No ${filter} stories yet.`;
-  });
+  /**
+   * The generations worth a row here. Every one of them would become a
+   * generated story, so the Imported filter hides them rather than showing
+   * rows the filter says are excluded.
+   */
+  protected readonly generationJobs = computed(() =>
+    this.store.filter() === 'imported' ? [] : this.jobs.libraryEntries(),
+  );
 
   constructor() {
     const destroyRef = inject(DestroyRef);
@@ -155,6 +379,7 @@ export class LibraryPageComponent {
         this.restorationFrame = null;
       }
       navigationEvents.unsubscribe();
+      this.popover.close();
     });
   }
 
@@ -209,14 +434,54 @@ export class LibraryPageComponent {
   }
 
   /**
-   * Renaming touches the title and nothing else, so it needs no warning and no
-   * confirmation beyond the learner pressing Save on what they typed.
+   * Anchored to the button on desktop and docked as a sheet on a phone, using
+   * the same surface the reader's own popovers open in.
    */
-  protected async promptRename(reading: Reading): Promise<void> {
-    const title = await openRenameDialog(this.dialog, { currentTitle: reading.title });
-    if (title !== null && title !== reading.title) {
-      await this.store.rename(reading.id, title);
+  protected openNewReading(): void {
+    const origin = this.newReading()?.nativeElement;
+    if (origin === undefined) {
+      return;
     }
+    this.menuOpenSignal.set(true);
+    this.popover.open({
+      origin,
+      template: this.newReadingMenu(),
+      viewContainerRef: this.viewContainerRef,
+      returnFocusTo: origin,
+      onClosed: () => {
+        this.menuOpenSignal.set(false);
+      },
+    });
+  }
+
+  protected closeNewReading(): void {
+    this.popover.close();
+  }
+
+  /**
+   * Removes a generation's row.
+   *
+   * A run still working is confirmed first: dismissing it stops requests that
+   * have already been paid for and produces nothing. A run that has stopped has
+   * nothing left to lose, so its row goes without a question.
+   */
+  protected async confirmDismiss(job: GenerationJob): Promise<void> {
+    if (job.store.isBusy()) {
+      const confirmed = await openConfirmDialog(this.dialog, {
+        title: 'Stop writing this story?',
+        message: 'This cannot be undone. It permanently removes:',
+        details: ['The story being written', 'The requests already spent on it'],
+        footnote: 'Your vocabulary, grammar profile, and other stories are not affected.',
+        confirmLabel: 'Stop and remove',
+        cancelLabel: 'Keep writing',
+        tone: 'danger',
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+    this.jobs.dismiss(job.id);
+    this.store.noteExternalChange('The generation was removed. Nothing was saved.');
   }
 
   /**
@@ -227,6 +492,17 @@ export class LibraryPageComponent {
    * before the rows it writes to are removed, so nothing survives the delete
    * looking for them.
    */
+  /**
+   * Renaming touches the title and nothing else, so it needs no warning and no
+   * confirmation beyond the learner pressing Save on what they typed.
+   */
+  protected async promptRename(reading: Reading): Promise<void> {
+    const title = await openRenameDialog(this.dialog, { currentTitle: reading.title });
+    if (title !== null && title !== reading.title) {
+      await this.store.rename(reading.id, title);
+    }
+  }
+
   protected async confirmDelete(reading: Reading): Promise<void> {
     const plan = describeDeletion(reading, {
       translationRunning: this.translationJob.isRunningFor(reading.id),

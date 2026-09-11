@@ -27,7 +27,9 @@ import { InstallPromptService } from '../../core/platform/install-prompt.service
         @let update = updates.status();
         <div class="mn-actions">
           @if (!install.isStandalone() && install.canInstall()) {
-            <button type="button" class="mn-button" (click)="installApp()">Install Monosai</button>
+            <button type="button" class="mn-button" (click)="installApp()">
+              Install Monosai
+            </button>
           }
           <button
             type="button"

@@ -105,35 +105,30 @@ describe('ReadingLevelPageComponent', () => {
   }
 
   /**
-   * Three screens lead here, and each gets its own place back. A link from
-   * outside lands in Settings, whose first row this page is.
+   * Three screens lead here, and each gets its own place back. Landing on the
+   * Library after arriving from Settings loses where the learner was.
    */
   it('goes back to wherever it was reached from', async () => {
     const { element } = await render();
-    const fallback = element.querySelector('.head a');
-    expect(fallback?.getAttribute('aria-label')).toBe('Back to settings');
-    expect(fallback?.getAttribute('href')).toBe('/settings');
+    expect(element.querySelector('.head a')?.getAttribute('aria-label')).toBe('Back to library');
 
-    for (const [origin, label] of [
-      ['/settings', 'Back to settings'],
-      ['/home', 'Back to home'],
-    ] as const) {
-      history.replaceState({ monosaiNavigationOrigin: origin }, '');
-      TestBed.resetTestingModule();
-      beds = configureReadingLevelTestBed();
-      TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, { useValue: () => provider });
-      TestBed.overrideProvider(PACKAGE_PROVIDER_FACTORY, { useValue: () => provider });
-      const reached = await render();
+    history.replaceState({ monosaiNavigationOrigin: '/settings' }, '');
+    TestBed.resetTestingModule();
+    beds = configureReadingLevelTestBed();
+    TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, { useValue: () => provider });
+    TestBed.overrideProvider(PACKAGE_PROVIDER_FACTORY, { useValue: () => provider });
+    const fromSettings = await render();
 
-      expect(reached.element.querySelector('.head button')?.getAttribute('aria-label')).toBe(label);
-    }
+    expect(fromSettings.element.querySelector('.head button')?.getAttribute('aria-label')).toBe(
+      'Back to settings',
+    );
     history.replaceState({}, '');
   });
 
   it('states both facts under one heading', async () => {
     const { element } = await render();
 
-    expect(text(element, 'h1')).toBe('Words and level');
+    expect(text(element, 'h1')).toBe('What you can read');
     expect(
       [...element.querySelectorAll('section.group h2')].map((heading) =>
         heading.textContent.trim(),
@@ -386,10 +381,12 @@ describe('ReadingLevelPageComponent', () => {
     expect(text(element, '[data-testid="grammar-standing"]')).toBe('Basic forms');
     // The level a caption names rides beside the name, never inside it.
     expect(
-      text(
-        element,
-        '[data-testid="reading-level-link"] [mn-list-row-trailing] .mn-status-pill',
-      ).replace(/\s+/g, ' '),
-    ).toBe('Basic forms · N5');
+      text(element, '[data-testid="reading-level-link"] [mn-list-row-trailing] .mn-status-pill').replace(
+        /\s+/g,
+        ' ',
+      ),
+    ).toBe(
+      'Basic forms · N5',
+    );
   });
 });

@@ -274,19 +274,6 @@ export class FakeReadingRepository implements ReadingRepository {
     );
   }
 
-  /** Set to make the last-opened lookup fail with a typed storage error. */
-  failLastOpenedWith: StorageError | null = null;
-
-  findLastOpened(): Promise<Result<Reading | null, StorageError>> {
-    if (this.failLastOpenedWith !== null) {
-      return Promise.resolve(err(this.failLastOpenedWith));
-    }
-    const opened = this.readings
-      .filter((reading) => reading.lastOpenedAt !== null)
-      .sort((left, right) => (right.lastOpenedAt ?? 0) - (left.lastOpenedAt ?? 0));
-    return Promise.resolve(ok(opened[0] ?? null));
-  }
-
   loadGraph(id: ReadingId, window?: ParagraphWindow): Promise<Result<ReadingGraph, StorageError>> {
     this.graphRequests.push(window);
     if (this.failGraphWith !== null) {

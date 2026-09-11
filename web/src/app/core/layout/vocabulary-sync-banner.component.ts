@@ -39,8 +39,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
     .toast {
       position: fixed;
       right: max(var(--space-4), env(safe-area-inset-right));
-      /* Above the tab bar on a tab page, whose height the shell publishes. */
-      bottom: max(calc(var(--bottom-dock, 0px) + var(--space-4)), env(safe-area-inset-bottom));
+      bottom: max(var(--space-4), env(safe-area-inset-bottom));
       z-index: 90;
       width: min(30rem, calc(100vw - 2 * var(--space-4)));
       padding: var(--space-3) var(--space-4);

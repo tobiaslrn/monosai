@@ -38,7 +38,7 @@ async function seedMoreLibraryRows(
                 ...template,
                 id: crypto.randomUUID(),
                 title: `Page story ${String(index)} ${'語'.repeat(32)}`,
-                // Never opened, so each row carries the wider New pill its layout is checked against.
+                // Unread, so each row carries the status pill its layout is checked against.
                 lastOpenedAt: null,
                 createdAt: now - index * 1_000,
                 updatedAt: now - index * 1_000,
@@ -67,7 +67,7 @@ test('loads the next library page at the window end without Show more @smoke @mo
   await seedMoreLibraryRows(page);
   await page.goto('./#/library');
 
-  await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeAttached();
+  await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Seed story' })).toBeVisible();
   const lastRow = page.getByRole('link', { name: /Page story 24/ });
   await expect(lastRow).toHaveCount(0);
@@ -135,7 +135,7 @@ test('restores a deep window position after leaving and returning @smoke @mobile
   await seedMoreLibraryRows(page, 48);
   await page.goto('./#/library');
 
-  await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeAttached();
+  await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Seed story' })).toBeVisible();
   const lastRow = page.getByRole('link', { name: /Page story 48/ });
   await expect
@@ -152,20 +152,13 @@ test('restores a deep window position after leaving and returning @smoke @mobile
   const savedPosition = await page.evaluate(() => window.scrollY);
   expect(savedPosition).toBeGreaterThan(1_000);
 
-  // Clicked in the page, not through Playwright, which would scroll the bar
-  // into view first and change the position being restored.
-  const pressTab = (label: string): Promise<void> =>
-    page.evaluate((name) => {
-      const tabs = document.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Main"] a');
-      [...tabs]
-        .find((tab) => tab.textContent.trim() === name && tab.getClientRects().length > 0)
-        ?.click();
-    }, label);
-  await pressTab('Settings');
+  await page.evaluate(() => {
+    document.querySelector<HTMLAnchorElement>('a[aria-label="Settings"]')?.click();
+  });
   await expect(page).toHaveURL(/#\/settings$/);
-  await pressTab('Library');
+  await page.getByRole('link', { name: 'Back to library' }).click();
   await expect(page).toHaveURL(/#\/library$/);
-  await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeAttached();
+  await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
 
   await expect
     .poll(() => page.evaluate(() => window.scrollY), { timeout: 20_000 })

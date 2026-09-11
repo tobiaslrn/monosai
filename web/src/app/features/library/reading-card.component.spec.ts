@@ -112,26 +112,24 @@ describe('ReadingCardComponent', () => {
   });
 
   /** When you last picked something up, not when it was filed. */
-  it('reports when the reading was last opened', () => {
-    expect(textOf(generated({ lastOpenedAt: NOW }), '[mn-list-row-meta]')).toContain(
-      'Generated, opened today',
-    );
+  it('reports when the reading was last read', () => {
+    expect(textOf(generated({ lastOpenedAt: NOW }), '[mn-list-row-meta]')).toContain('read today');
     expect(
       textOf(
         generated({ lastOpenedAt: new Date(2026, 7, 18, 9, 0, 0).getTime() }),
         '[mn-list-row-meta]',
       ),
-    ).toContain('opened 3 days ago');
+    ).toContain('read 3 days ago');
   });
 
   /**
-   * Never opened is its own fact, and the New marker states it. Falling back to
-   * the date it was added would answer a question nobody asked of a shelf.
+   * Never opened is its own fact. Falling back to the date it was added would
+   * answer a question nobody asked of a shelf.
    */
-  it('reports no day for a reading never opened, not the day it was added', () => {
+  it('says a reading is unread rather than reporting when it was added', () => {
     const meta = textOf(generated({ lastOpenedAt: null }), '[mn-list-row-meta]');
 
-    expect(meta).not.toContain('opened');
+    expect(meta).toContain('unread');
     expect(meta).not.toContain('Aug 1');
   });
 
@@ -145,21 +143,9 @@ describe('ReadingCardComponent', () => {
     expect(textOf(generated(), '[mn-list-row-meta]')).not.toContain('Audio');
   });
 
-  it('marks a story never opened as new, in the accent pill', () => {
-    const pill = render(imported()).querySelector('[mn-list-row-trailing] .mn-status-pill');
-
-    expect(pill?.textContent.trim()).toBe('New');
-    expect(pill?.classList.contains('mn-status-pill--accent')).toBe(true);
-  });
-
-  it('marks an opened story as read, quietly and with a check', () => {
-    const pill = render(imported({ lastOpenedAt: NOW })).querySelector(
-      '[mn-list-row-trailing] .mn-status-pill',
-    );
-
-    expect(pill?.textContent.trim()).toBe('Read');
-    expect(pill?.classList.contains('mn-status-pill--accent')).toBe(false);
-    expect(pill?.querySelector('mn-icon')).not.toBeNull();
+  it('marks only a story that is still unread, without claiming completion', () => {
+    expect(textOf(imported(), '.mn-status-pill')).toBe('Unread');
+    expect(render(imported({ lastOpenedAt: NOW })).querySelector('.mn-status-pill')).toBeNull();
   });
 
   it('keeps the whole row a native link and the actions out of it', () => {

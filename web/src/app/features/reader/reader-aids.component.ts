@@ -69,7 +69,7 @@ const AIDS: readonly AidOption[] = [
       @if (vocabularyNotice(); as notice) {
         <p class="mn-notice mn-notice--warning" data-testid="reader-vocabulary-notice">
           {{ notice }}
-          <a routerLink="/reading-level" fragment="words">Words and level</a>
+          <a routerLink="/reading-level" fragment="words">What you can read</a>
         </p>
       }
     </section>

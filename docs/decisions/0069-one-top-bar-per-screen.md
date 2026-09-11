@@ -1,8 +1,7 @@
 # 0069 — One top bar per screen
 
 Date: 2026-09-11
-Status: Accepted; amended by [ADR 0070](0070-home-library-and-settings-are-tabs.md), which
-supersedes the rejection of bottom navigation below and moves the utilities off the Library
+Status: Accepted
 
 Supersedes the application bar in [ADR 0068](0068-one-non-reader-frame-and-page-header.md).
 Its shared page frame, `--page-measure`, and `mn-page-header` stand.

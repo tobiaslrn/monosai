@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   APP_LOCALE,
-  formatCompactCount,
   formatCount,
   formatCountOf,
   formatDate,
@@ -29,12 +28,6 @@ describe('application locale', () => {
 
   it('agrees with the number a bare English format would produce', () => {
     expect(formatCount(50_000)).toBe((50_000).toLocaleString('en'));
-  });
-
-  it('shortens a count for a figure tile, and only above a thousand', () => {
-    expect(formatCompactCount(940)).toBe('940');
-    expect(formatCompactCount(12_500)).toBe('12.5K');
-    expect(formatCompactCount(1_234_567)).toBe('1.2M');
   });
 
   it('keeps the singular for exactly one', () => {

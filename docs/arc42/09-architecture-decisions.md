@@ -105,8 +105,6 @@ files are already linked from code comments and from other records.
 | [0063](../decisions/0063-what-you-can-read-is-composed-like-the-library.md) | What you can read is composed like the Library; the ladder saves on request       |
 | [0068](../decisions/0068-one-non-reader-frame-and-page-header.md)           | All non-reader pages share one utility bar, frame, and page header                |
 | [0069](../decisions/0069-one-top-bar-per-screen.md)                         | Every screen has one sticky top bar; utilities live on the Library                |
-| [0070](../decisions/0070-home-library-and-settings-are-tabs.md)             | Home, Library and Settings are tabs; Home starts stories, with sample figures     |
-| [0071](../decisions/0071-a-wide-header-is-a-site-header.md)                 | On a wide screen the mark goes home, and Help is a labelled place after the tabs  |
 
 ### Audio
 

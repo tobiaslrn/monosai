@@ -5,14 +5,16 @@ import { expectSettingPersisted } from './storage';
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe('first-use Help', () => {
-  test('keeps Write with AI available on first paint and explains offline generation @smoke @mobile', async ({
+  test('keeps New story available on first paint and explains offline generation @smoke @mobile', async ({
     page,
   }) => {
-    await page.goto('./#/home');
+    await page.goto('./#/library');
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    const writeWithAi = page.getByRole('link', { name: 'Write with AI', exact: true });
-    await expect(writeWithAi).toBeVisible();
-    await writeWithAi.click();
+    await expect(
+      page.getByRole('button', { name: 'Create a new story', exact: true }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Create a new story', exact: true }).click();
+    await page.getByRole('link', { name: 'Write with AI', exact: true }).click();
     await expect(page.locator('[data-check="text-model"] strong')).toHaveText('Text AI:');
     await expect(page.locator('[data-check="vocabulary"] strong')).toHaveText('Word list:');
     await expect(page.getByTestId('generate')).toBeDisabled();
@@ -50,7 +52,7 @@ test.describe('first-use Help', () => {
   });
 });
 
-test.describe('Help and the tab bar', () => {
+test.describe('Help and utility bar', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('./#/help');
     const dialog = page.getByRole('complementary', { name: 'A little help getting started' });
@@ -69,15 +71,16 @@ test.describe('Help and the tab bar', () => {
     await page.getByRole('link', { name: 'Add text' }).click();
     await expect(page).toHaveURL(/#\/add$/);
 
-    // Places carry their labels, Help included; on a wide screen the mark is Home.
-    await page.goto('./#/home');
-    const tabs = page.getByRole('navigation', { name: 'Main' });
-    await expect(tabs.getByRole('link')).toHaveText(['Library', 'Settings', 'Help']);
-    await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute(
-      'href',
-      /#\/home$/,
+    await page.goto('./#/library');
+    const utilities = page.getByRole('navigation', { name: 'Utilities' });
+    await expect(utilities.getByRole('link')).toHaveCount(2);
+    const settings = utilities.getByRole('link', { name: 'Settings', exact: true });
+    await expect(settings).toHaveAttribute('title', 'Settings');
+    await expect(settings).toHaveText('');
+    await expect(utilities.getByRole('link', { name: 'Help', exact: true })).toHaveAttribute(
+      'title',
+      'Help',
     );
-    await expect(page.getByRole('link', { name: 'Help', exact: true })).toHaveText('Help');
   });
 
   test('supports keyboard focus, accessibility, reload, and a 320px viewport @mobile @smoke', async ({

@@ -163,8 +163,8 @@ test.describe('generating a story', () => {
     await page.goto('./#/library');
     const card = page.locator('mn-reading-card').first();
     await expect(card).toContainText(STRICT_STORY.titleJa);
-    // The shelf keeps a compact title and character count; the premise belongs
-    // to the story, not the shelf row.
+    // Home keeps a compact title and character count; the premise belongs to
+    // the story, not the shelf row.
     await expect(card.locator('[mn-list-row-meta]')).toContainText(/\d+ characters/);
     await expect(card).not.toContainText(PREMISE);
     await expect(card).toContainText('Micro');
@@ -209,7 +209,7 @@ test.describe('generating a story', () => {
     await expect(marked.first()).toContainText('図書館');
 
     await page.getByRole('link', { name: 'Back to library' }).click();
-    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeAttached();
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
     await expect(page).not.toHaveURL(/#\/generate/);
   });
 
@@ -346,7 +346,7 @@ test.describe('generating a story', () => {
 test.describe('generating in the background', () => {
   test.use({ storageState: GENERATION_READY_STATE });
 
-  test('keeps writing while the learner is on Home @smoke', async ({ page }) => {
+  test('keeps writing while the learner is in the library @smoke', async ({ page }) => {
     test.setTimeout(SETUP_TIMEOUT);
     await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
     // The story request never answers, so the run is still working for as long
@@ -363,8 +363,8 @@ test.describe('generating in the background', () => {
 
     // Leaving used to abandon the run. In-app navigation only: a reload cannot
     // resume a request that is already open.
-    await page.getByLabel('Back to home').click();
-    await expect(page).toHaveURL(/#\/home$/);
+    await page.getByLabel('Back to library').click();
+    await expect(page).toHaveURL(/#\/library$/);
 
     const row = page.locator('mn-generation-job-card');
     await expect(row).toContainText(PREMISE);
@@ -380,7 +380,7 @@ test.describe('generating in the background', () => {
     // still there to deal with.
     await page.getByTestId('cancel-generation').click();
     await expect(page.getByRole('heading', { name: 'Generation stopped', level: 2 })).toBeVisible();
-    await page.getByLabel('Back to home').click();
+    await page.getByLabel('Back to library').click();
     await expect(row).toContainText('Needs attention');
 
     await row.getByRole('button', { name: `Dismiss ${PREMISE}` }).click();
@@ -388,7 +388,7 @@ test.describe('generating in the background', () => {
     expect((await countOwnedRows(page))['readings']).toBe(0);
   });
 
-  test('puts the finished story in the library while the learner is home', async ({ page }) => {
+  test('puts the finished story in the library the learner walked back to', async ({ page }) => {
     test.setTimeout(SETUP_TIMEOUT);
     await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
 
@@ -398,16 +398,13 @@ test.describe('generating in the background', () => {
     await page.getByTestId('generate').click();
     await expect(page.getByTestId('generation-screen')).toBeVisible();
 
-    await page.getByLabel('Back to home').click();
+    await page.getByLabel('Back to library').click();
 
-    // The row on Home goes once the story is saved, and the story is on the
-    // shelf one tab away.
-    await expect(page.locator('mn-generation-job-card')).toHaveCount(0, { timeout: 60_000 });
-    await page
-      .getByRole('navigation', { name: 'Main' })
-      .getByRole('link', { name: 'Library' })
-      .click();
-    await expect(page.getByRole('link', { name: STRICT_STORY.titleJa })).toBeVisible();
+    // The story arrives where the learner is, and the row it replaces goes.
+    await expect(page.getByRole('link', { name: STRICT_STORY.titleJa })).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.locator('mn-generation-job-card')).toHaveCount(0);
     expect((await countOwnedRows(page))['readings']).toBe(1);
   });
 });

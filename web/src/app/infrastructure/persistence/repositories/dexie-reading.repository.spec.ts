@@ -501,37 +501,6 @@ describe('DexieReadingRepository', () => {
       expect(await db.readings.count()).toBe(2);
     });
 
-    it('finds no last-opened reading while nothing has been opened', async () => {
-      await repository.saveImportedReading(importedReadingFixture({ seed: 1 }));
-
-      const found = await repository.findLastOpened();
-
-      expect(found).toEqual({ ok: true, value: null });
-    });
-
-    it('finds the reading opened most recently, whenever it was saved', async () => {
-      for (let index = 0; index < 3; index += 1) {
-        await repository.saveImportedReading(
-          importedReadingFixture({
-            seed: index + 1,
-            title: `Reading ${index}`,
-            createdAt: 1_700_000_000_000 + index * 1000,
-          }),
-        );
-      }
-      const page = await repository.listLibraryPage({ filter: 'all', limit: 3 });
-      if (!page.ok) {
-        throw new Error('The shelf could not be read.');
-      }
-      const [newest, middle] = page.value.items;
-      await repository.markOpened(middle.id, 1_700_000_500_000);
-      await repository.markOpened(newest.id, 1_700_000_400_000);
-
-      const found = await repository.findLastOpened();
-
-      expect(found.ok && found.value?.title).toBe('Reading 1');
-    });
-
     it('reads a bounded number of rows and never touches audio or text tables', async () => {
       for (let index = 0; index < 30; index += 1) {
         await repository.saveImportedReading(

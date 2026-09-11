@@ -21,7 +21,7 @@ import { TextInputStepComponent } from './text-input-step.component';
   providers: [ImportStore],
   template: `
     <div class="mn-page">
-      <mn-page-header heading="Add text" backTo="/home" backLabel="Back to home" />
+      <mn-page-header heading="Add text" backTo="/library" backLabel="Back to library" />
 
       <!--
         A card, like every other surface a learner types into: the Generate
@@ -158,7 +158,7 @@ export class AddTextPageComponent {
     if (id !== null) {
       await this.router.navigate(['/reader', id], {
         replaceUrl: true,
-        state: this.navigation.preservedOriginState('/home'),
+        state: this.navigation.preservedOriginState('/library'),
       });
     }
   }

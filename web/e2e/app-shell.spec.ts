@@ -4,62 +4,62 @@ import { importReading } from './reading';
 
 test.describe('application shell', () => {
   /**
-   * Settings is a tab: the selected tab names it, so its bar holds no visible
-   * title and no way back, yet the page still has its heading.
+   * A page below the Library has one bar: its way back and its title. The
+   * utilities belong to the Library, which every such page leads back to.
    */
-  test('renders the settings tab with no way back and one bar @smoke', async ({ page }) => {
+  test('renders the settings route with a way back and no second bar @smoke', async ({ page }) => {
     await page.goto('./#/settings');
 
-    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeAttached();
-    const tabs = page.getByRole('navigation', { name: 'Main' });
-    await expect(tabs.getByRole('link', { name: 'Settings' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Utilities' })).toHaveCount(0);
     await expect(page.getByRole('main')).toBeVisible();
-    await expect(page.getByRole('link', { name: /^Back to/ })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Back to library' })).toBeVisible();
     await expect(page).toHaveURL(/#\/settings$/);
   });
 
   /**
-   * The line Home leads with is the way to the words and the level. There is
-   * no second link to it: a label repeating the sentence beneath it in nearly
-   * the same words is what this replaced.
+   * The line the Library leads with is the way to what the learner can read.
+   * The masthead carries no second link to it: a label repeating the sentence
+   * beneath it in nearly the same words is what this replaced.
    */
-  test('reaches words and level from the Home standing line and back @smoke', async ({ page }) => {
+  test('reaches what you can read from the Library standing line and back @smoke', async ({
+    page,
+  }) => {
     await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
-    await page.goto('./#/home');
+    await page.goto('./#/library');
 
-    const standing = page.getByTestId('home-standing');
+    const standing = page.getByTestId('library-standing');
     await expect(standing).toContainText('No words yet.');
     await expect(standing).toContainText('Connect Anki to write stories');
 
     await standing.click();
 
     await expect(page).toHaveURL(/#\/reading-level#words$/);
-    await expect(page.getByRole('heading', { name: 'Words and level', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Back to home' }).click();
-    await expect(page).toHaveURL(/#\/home$/);
+    await page.getByRole('button', { name: 'Back to library' }).click();
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
   });
 
   /**
-   * Settings holds no learner data, but its first row points at the page that
-   * does: connecting an external application is something people come here to
-   * look for, and finding nothing would say it cannot be done.
+   * Settings holds no learner data, but it does point at the page that does:
+   * connecting an external application is something people come here to look
+   * for, and finding nothing would say it cannot be done.
    */
-  test('signposts words and level from Settings without describing it there', async ({ page }) => {
+  test('signposts what you can read from Settings without describing it there', async ({
+    page,
+  }) => {
     await page.goto('./#/settings');
 
     await expect(page.getByText('Your setup')).toHaveCount(0);
     await expect(page.getByRole('link', { name: /Vocabulary/ })).toHaveCount(0);
 
     const row = page.getByTestId('settings-reading-level');
-    await expect(row).toContainText('Words and level');
+    await expect(row).toContainText('What you can read');
     await expect(row).toContainText('No words yet');
     await row.click();
 
-    await expect(page.getByRole('heading', { name: 'Words and level', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
     await page.getByRole('button', { name: 'Back to settings' }).click();
     await expect(page).toHaveURL(/#\/settings$/);
   });
@@ -74,9 +74,9 @@ test.describe('application shell', () => {
 
     await expect(page).toHaveURL(/#\/reading-level/);
     await expect(page).toHaveURL(/#words$/);
-    await expect(page.getByRole('heading', { name: 'Words and level', level: 1 })).toBeVisible();
-    await page.getByRole('link', { name: 'Back to settings' }).click();
-    await expect(page).toHaveURL(/#\/settings$/);
+    await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
+    await page.getByRole('link', { name: 'Back to library' }).click();
+    await expect(page).toHaveURL(/#\/library$/);
 
     await page.goto('./#/grammar?from=generate');
 
@@ -103,21 +103,20 @@ test.describe('application shell', () => {
   test('deep links restore after reload', async ({ page }) => {
     await page.goto('./#/settings');
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeAttached();
+    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   });
 
-  /** Home's bar, standing line, and tab bar at 320px. */
-  test('keeps the Home frame usable at 320px @mobile', async ({ page }) => {
+  /** The Library's top bar, standing line, and shelf at 320px. */
+  test('keeps the shared Library frame usable at 320px @mobile', async ({ page }) => {
     await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
     await page.setViewportSize({ width: 320, height: 640 });
-    await page.goto('./#/home');
+    await page.goto('./#/library');
 
-    await expect(page.getByRole('link', { name: 'Help', exact: true })).toBeVisible();
-    const tabs = page.getByRole('navigation', { name: 'Main' });
-    for (const name of ['Home', 'Library', 'Settings']) {
-      await expect(tabs.getByRole('link', { name, exact: true })).toBeVisible();
-    }
-    await expect(page.getByTestId('home-standing')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+    const utilities = page.getByRole('navigation', { name: 'Utilities' });
+    await expect(utilities.getByRole('link', { name: 'Help', exact: true })).toBeVisible();
+    await expect(utilities.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
+    await expect(page.getByTestId('library-standing')).toBeVisible();
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);

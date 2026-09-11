@@ -72,50 +72,14 @@ by their own inset so their glyphs, not their hit areas, align with the column.
 The title tucks into Back's inset as well, so the arrow and the title read as
 one unit rather than two separate items.
 
-### Tab pages and sub-pages
-
-Three destinations are peers — **Home**, **Library**, and **Settings**, in that
-order — and they are the only screens with a tab bar
-([ADR 0070](decisions/0070-home-library-and-settings-are-tabs.md)). Every other
-screen is a sub-page: the reader, Write with AI, Paste text, Help, Words and
-level, and the pages beneath it. A sub-page keeps its single bar with Back and
-never shows the tabs.
-
-Below the wide breakpoint the tabs are a bar docked to the bottom edge of the
-viewport: an opaque panel ground, a hairline top edge, the safe-area inset
-beneath, and the page reserving the bar's height so its last row never sits
-under it. At and above the wide breakpoint the tab page's top bar is a site
-header: the Monosai mark and wordmark at its start are the way Home, and
-Library, Settings and Help sit at its end, where a bar's controls go
-([ADR 0071](decisions/0071-a-wide-header-is-a-site-header.md)). Every item is
-an icon with a visible label at both widths: a tab names a place, and a place is
-not a repeated-press control. The current page carries `aria-current="page"`.
-At the foot it also carries the selection tint behind its icon, the docked
-bar's usual mark. In the top bar it takes the primary text colour and a short
-rule on the bar's lower edge beneath its icon and label, never a fill: a filled
-pill at the top of a page reads as a pressed button and competes with the
-page's own primary action. The bar is one component in two placements, only
-one of which is ever drawn, and each sits in the document where it is drawn, so
-focus order follows visual order.
-
-The reader never has a tab bar. Its bottom edge belongs to the docked audio
-player and the word and sentence sheets, which is why the tabs are kept to the
-three pages that have neither.
-
-**A tab page shows no title**; the current tab names it. Its bar still carries
-the page's `h1`, visually hidden, for assistive technology. Below the wide
-breakpoint a bar left holding nothing visible — the Library's, and Settings'
-unless it was reached from a form — takes no room at all. Settings reached from
-Write with AI keeps "Back to story" in the same bar as the tabs.
-
-**On a wide screen the three tab pages wear one header**, the way a website
-does, and nothing in it changes from tab to tab: the Monosai mark and wordmark,
-one link named Home in place of the hidden title, then **Library**,
-**Settings** and **Help** at its end. There is no Home item beside the mark:
-the mark already goes home, and one visible control per action. Below the wide
-breakpoint only Home's bar carries the mark, the wordmark and a labelled
-**Help**; there the mark is decoration, because the docked Home tab is the way
-home. Help's Back returns to the tab page that opened it. Help carries a
+The Library is the home destination and therefore has no Back: its bar leads
+with the Monosai mark, then the Monosai wordmark in place of a visible title,
+then the application's utilities in a labelled navigation landmark — Help and
+Settings. The wordmark is decoration; the bar's heading still names the page
+"Library" for assistive technology. Every other page is reached
+from the Library and leads back to it, so the utilities live there and nowhere
+else. The shelf's own Create button is the one way to start a story; the bar does
+not repeat it once it has scrolled away. Help carries a
 labelled GitHub link at the end of its own bar, because Help is where a learner
 looks for where the application comes from, and no icon reads as GitHub rather
 than as a branch.
@@ -126,39 +90,40 @@ the shelf can search.
 The Reader keeps its own sticky bar with the same shape: Back, title, and its
 own controls, the same height, the same fading lower edge.
 
-### Home
+Monosai does not use a bottom navigation bar. A bottom bar is for three to five
+peers a learner moves between constantly; Monosai has one home, a reader under
+it, and a handful of pages visited rarely. A bar that is always there would
+permanently cost the reader its bottom edge, which belongs to the docked audio
+player and the word and sentence sheets.
 
-Home is where a story starts. Below its bar Home states **where the learner
-stands** — how many words Monosai can write from, and at what level. That line
-is the screen's lead and also the way to Words and level, the page that explains
-it. In the image-led hero it remains plain copy without a trailing navigation
-glyph; hover, focus, and link semantics identify the interaction without
-interrupting the headline. It states current facts and never becomes a control
-that changes them.
+These utilities are an explicit exception to the repetition rule: they are
+icon-only on both mobile and desktop, with accessible names and tooltips. They
+are bare shared icon controls with unchanged touch targets and visible keyboard
+focus.
 
 The home illustration blends into the canvas through an organic crop; the hero
 is not a card and therefore has no panel boundary or elevation.
 The crop follows the illustration's arch and low foreground, preserving the
 whole reading character and books. Its proportions stay fixed as the column
-changes width. Once the Library holds a story the hero steps down to a compact
-size, so what follows comes up the screen; only its size changes, never its
-crop. The home headline is tightly set beside it, above a quiet sync line. Each
-palette shows its own illustration unfiltered, as drawn.
+changes width. Once the shelf holds a story the hero steps down to a compact
+size, so the stories come up the screen; only its size changes, never its crop.
+The home headline is tightly set beside it, above a quiet sync
+line. The creation action spans the column; filter pills share the available
+width on phones and stay compact on desktop.
+Home's primary action uses the shared primary action colour; each palette shows
+its own illustration unfiltered, as drawn.
 
-Directly below the hero the two ways to start a story sit side by side as
-direct links, with no menu between them: **Write with AI**, the screen's one
-filled primary, on the slightly wider track, and **Paste text** as the outline.
-Then, when there is something to show: the stories being written, one row to
-continue the story opened most recently, and the learner's reading figures —
-three figures and a streak calendar. The number of words known is not a figure;
-the headline already says it. Before anything is saved or being written, the
-first-run introduction takes the place of the last two, and neither appears
-until a story has been opened.
+Below the bar the Library states **where the learner stands** — how many words
+Monosai can write from, and at what level. That line is the screen's lead and
+also the way to the page that explains it. In the image-led home hero it remains
+plain copy without a trailing navigation glyph; hover, focus, and link semantics
+identify the interaction without interrupting the headline. It states current
+facts and never becomes a control that changes them.
 
-**A destination is named once per screen.** The tab bar supplies the common
-destinations, and every sub-page's bar names the current one. Where a prominent
-line already leads somewhere, that is the door; a second link to the same place
-in nearly the same words makes both harder to see.
+**A destination is named once per screen.** The Library's bar supplies the
+common destinations, and every other page's bar names the current one. Where a prominent line
+already leads somewhere, that is the door; a second link to the same place in
+nearly the same words makes both harder to see.
 
 ### Vertical composition
 
@@ -168,7 +133,7 @@ the space below it empty, which is the honest result of having little to say.
 
 Settings uses the same page frame as every other non-reader screen. Each
 top-level group is one quiet raised card with a compact section heading; actions
-use the same pill silhouette as the Library's filters and Home's actions.
+use the same pill silhouette as the Library's filters and creation control.
 Complex model fields may use sunken groups inside that card, but may not
 introduce a second competing hierarchy of raised panels. The model fields appear
 once OpenRouter is connected: drawn disabled before that, they read as values
@@ -210,7 +175,7 @@ kept beside the tokens in `web/src/styles/components/`:
 | Button     | Reversible, primary, quiet, danger, and icon-only actions                                                                    | [`_button.scss`](../web/src/styles/components/_button.scss)         |
 | Card       | One raised surface; `mn-inset` is its borderless sunken group                                                                | [`_card.scss`](../web/src/styles/components/_card.scss)             |
 | Notice     | A soft, named status or warning beside the thing it describes                                                                | [`_notice.scss`](../web/src/styles/components/_notice.scss)         |
-| Status     | A non-pressable compact state such as Ready or New                                                                           | [`_status.scss`](../web/src/styles/components/_status.scss)         |
+| Status     | A non-pressable compact state such as Ready or Unread                                                                        | [`_status.scss`](../web/src/styles/components/_status.scss)         |
 | Facts      | Read-only label/value pairs                                                                                                  | [`_facts.scss`](../web/src/styles/components/_facts.scss)           |
 | Segmented  | One native choice out of a small, stable set                                                                                 | [`_segmented.scss`](../web/src/styles/components/_segmented.scss)   |
 | List row   | One shelf destination with leading, title, meta, trailing, and menu slots; `mn-list-group` gives rows one pair of card edges | [`_list-row.scss`](../web/src/styles/components/_list-row.scss)     |
@@ -240,8 +205,7 @@ inside a control do not change.
 A shelf is for choosing what to open, so a row answers that and nothing else. It
 carries a leading icon when the thing has a meaningful origin, a name, one
 secondary line saying what is inside, and — opposite the name — its status,
-value, or way forward. A story's status is whether it has been read: every
-story row says Read or New. `mn-list-row` is the shared implementation: its title is
+value, or way forward. `mn-list-row` is the shared implementation: its title is
 `text-md` semibold, its metadata is `text-sm` secondary text, and every row uses
 one shared minimum height. A long title wraps once inside the content column and
 then ends in an ellipsis; the full title stays the link's accessible name. The
@@ -301,24 +265,18 @@ near the result. A list that has never been filled and a list whose current
 snapshot is empty are separate states, and both offer the one action that can
 change that fact.
 
-The Library is a compact shelf exception. It has no search, and its three
-filters — All, Imported, Generated — are always visible, whatever the shelf
-holds, sharing the available width on phones and staying compact on desktop.
-Each date group is one `mn-list-group`, one pair of card edges with a hairline
-between its rows. A generated or imported story uses its origin icon inside
-`.mn-icon-badge`; an empty decorative circle is not used. The row carries a
-system-sans title and one visible line of metadata — the character count and the
-story's shape (its length, or how it was imported), with an audio glyph when
-audio exists — and, opposite, its Read or New marker, then the overflow. New is
-the accent status pill; Read is the quiet status pill with a check glyph, so the
-shelf still shows at a glance what is waiting. The marker stays compact so a long
-title ends in its ellipsis before it. Read means the learner reached the end of
-the story; until that is recorded, a story that has been opened stands in for one
-that has been read ([ADR 0070](decisions/0070-home-library-and-settings-are-tabs.md)).
-The origin is already the icon, so it is not repeated in the visible line; it and
-the last-opened day remain accessible metadata. Premises and filenames do not
-replace the character count here. The shelf holds stories and does not create
-them: starting a story is Home's, and the Library carries no create button.
+The home Library is a compact shelf exception: each date group is one
+`mn-list-group`, one pair of card edges with a hairline between its rows. A
+generated or imported story uses its origin icon inside `.mn-icon-badge`; an
+empty decorative circle is not used. The row carries a system-sans title and one
+visible line of metadata — the character count and the story's shape (its length,
+or how it was imported), with an audio glyph when audio exists — and, opposite,
+an Unread badge on a story never opened, then the overflow. Only what is still
+new is marked: a Read badge on every opened row was the same word down the whole
+shelf. The origin is already the icon and opened-or-not is already the badge's
+presence, so neither is repeated in the visible line; both, with the last-opened
+day, remain accessible metadata. Opened is not completed. Premises and filenames
+do not replace the character count here.
 
 ## 3. Controls
 
@@ -330,7 +288,8 @@ audio transport, close, back, and overflow. Everything else carries a visible
 label beside its icon: anything rare, anything destructive, and anything that
 spends money or sends a request.
 
-There are exactly two deliberate exceptions: the trash icons on the
+There are exactly three deliberate exceptions: the Library's utilities,
+described above; the trash icons on the
 Story options content rows, described under Saved-story controls; and the
 control that reads Anki again at the end of the vocabulary sources card. That
 last one sits on the line that already says what it acts on — "Synced today" —
@@ -596,11 +555,6 @@ legibility.
 Colour is never the sole carrier of meaning. The two reading markers are drawn
 as squiggles as well as colours; status is named as well as tinted.
 
-Home's streak calendar is the one quantity drawn in colour: its five heat steps
-are the action colour's ramp, from the sunken ground to the action colour
-itself. It is never pressable, and it states its streak in words beside the
-grid, so the ramp is a picture of a figure the screen already says.
-
 ## 5. Typography and units
 
 ### Type
@@ -618,7 +572,7 @@ one scale**, not by a second system. All-caps micro-labels are not part of the
 language. The shared page or surface title uses the semantic
 `--text-page-title` token, a section uses `--text-xl`, and a group uses
 `--text-lg` one step below it. Body copy uses `--text-md`; metadata and
-supporting copy use `--text-sm` or `--text-xs`; the Home hero uses
+supporting copy use `--text-sm` or `--text-xs`; the Library hero uses
 `--text-display`. Weight follows the same hierarchy through the regular,
 medium, semibold, and bold weight tokens.
 
@@ -702,7 +656,7 @@ and it is spent on things the learner acts on or waits for.
 The wordmark is the one flourish outside that: the word spins like a slot reel
 through its romaji and kana spellings and lands on one of them — never a mix —
 once per launch, and again only when the learner taps it. It is never replayed
-on returning to Home.
+on returning to the Library.
 
 The reading surface is exempt. Nothing on it animates, and nothing on it moves
 under the pointer — hovering a word or a sentence changes its colour and nothing
@@ -742,14 +696,14 @@ Four exceptions:
   links close to the actions they explain. It needs no cards around each topic.
   A quiet, non-modal first-use banner offers Help on a non-reader
   surface without moving focus or covering the app. Dismissal records the preference for this local installation;
-  the guide remains one tap away behind Home's Help icon. Reader deep links are never
+  the guide remains among the Library's utilities. Reader deep links are never
   interrupted.
 
 - **Empty states teach.** An empty surface has nothing but words to work with,
   so any empty list explains what belongs there and how to fill it. The
   exception ends the moment the surface has content.
-- **The first run introduces the application.** Home with nothing saved and
-  nothing being written is what a stranger opening the public address sees, so it says what Monosai is and what
+- **The first run introduces the application.** An empty Library is what a
+  stranger opening the public address sees, so it says what Monosai is and what
   it would do for them before it offers a way in. This is the one surface
   written in the first person: that a person made this is allowed to show here
   and nowhere else. It ends, like any empty state, the moment there is content.
@@ -802,7 +756,7 @@ What a result says is drawn one of three ways. A sentence that belongs to a
 surface — a failure, a warning, a success, or a fact to know before acting — is
 a **notice**: the status's soft background with its words in the status colour,
 an optional leading icon, and at most one action at its end. A short word that
-says where something stands — Ready, New, Test failed, a word's form — is a
+says where something stands — Ready, Unread, Test failed, a word's form — is a
 **status pill**, which is never pressable and so never takes the action colour.
 What is wrong with the value of one field is plain danger-coloured text directly
 under that field, not a notice.
@@ -825,17 +779,6 @@ says what the browser did, never what it will do — "it may grant this later" i
 as far as a promise about browser behaviour is allowed to go, and a retryable
 request stays enabled to match.
 
-### Placeholder figures
-
-A figure Monosai cannot measure yet may stand on screen as a placeholder only
-under a group heading that carries a **Sample** status pill, in the warning
-pair. The pill marks the whole group rather than each figure, and a group that
-mixes real and placeholder content still carries it. Placeholders are shown only
-where the learner has real content beside them: a first run shows none. The
-pill is removed with the placeholder when real data lands, and real values take
-the placeholders' places without moving anything
-([ADR 0070](decisions/0070-home-library-and-settings-are-tabs.md)).
-
 ### Waiting
 
 Work that resolves quickly is shown **on the control that started it**: the
@@ -851,9 +794,10 @@ used; where one does not, none is invented.
 Skeleton placeholders are not used. Monosai's slow work is generation and
 analysis, which have no shape to promise in advance.
 
-**Work the learner walked away from keeps a row where they will look for it.**
-A story being written is a row on Home, under Being written, of the same shape
-and height as the Library row it will become. The row is muted — secondary text on the sunken surface — and states in
+**Work the learner walked away from keeps a row where its result will appear.**
+A story being written is a Library row of the same shape and height as the
+story it will become, so the shelf is laid out identically before, during, and
+after. The row is muted — secondary text on the sunken surface — and states in
 words both that it is not a story yet and which stage it is in; the muting is
 never the only thing saying so. It leads back to the screen that shows the run
 in full. A run that stopped without producing anything keeps its row, marked as

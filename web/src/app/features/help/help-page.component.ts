@@ -1,16 +1,8 @@
 import { formatCount } from '../../domain/shared/locale';
 import { GENERATION_SNAPSHOT_MINIMUM } from '../../domain/vocabulary/snapshot';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
-
-/** The tab pages that carry Help, and what the way back to each is called. */
-const HELP_ORIGINS: ReadonlyMap<string, string> = new Map([
-  ['/home', 'Back to home'],
-  ['/library', 'Back to library'],
-  ['/settings', 'Back to settings'],
-]);
 
 /** Local, static guidance: reading the guide never invokes an AI provider. */
 @Component({
@@ -19,7 +11,7 @@ const HELP_ORIGINS: ReadonlyMap<string, string> = new Map([
   imports: [RouterLink, PageHeaderComponent],
   template: `
     <div class="mn-page help-page">
-      <mn-page-header heading="Help" [backTo]="backTarget" [backLabel]="backLabel">
+      <mn-page-header heading="Help" backTo="/library" backLabel="Back to library">
         <!-- Named, not drawn: no icon in the set reads as GitHub rather than a branch. -->
         <a
           class="mn-button mn-button--ghost"
@@ -42,7 +34,7 @@ const HELP_ORIGINS: ReadonlyMap<string, string> = new Map([
         </p>
         <h3>Tell Monosai which words you know</h3>
         <p>
-          Open <a routerLink="/reading-level" fragment="words">Words and level</a> and add a word
+          Open <a routerLink="/reading-level" fragment="words">What you can read</a> and add a word
           source: connect Anki, import an Anki package, or paste a list of your own. For Anki,
           choose the decks and fields containing Japanese; Monosai takes the words you have reviewed
           and never changes your cards.
@@ -200,13 +192,4 @@ const HELP_ORIGINS: ReadonlyMap<string, string> = new Map([
 export class HelpPageComponent {
   /** Read from the rule, so the three screens that state it cannot disagree. */
   protected readonly minimumWords = formatCount(GENERATION_SNAPSHOT_MINIMUM);
-
-  /**
-   * Back returns to the tab page that opened Help, and a link from anywhere
-   * else lands on Home. Read once, because the history entry does not change
-   * under the page.
-   */
-  private readonly origin = inject(NavigationHistoryService).currentOrigin() ?? '/home';
-  protected readonly backTarget = HELP_ORIGINS.has(this.origin) ? this.origin : '/home';
-  protected readonly backLabel = HELP_ORIGINS.get(this.backTarget) ?? 'Back to home';
 }

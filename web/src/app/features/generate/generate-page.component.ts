@@ -82,7 +82,7 @@ function formatList(items: readonly string[]): string {
   ],
   template: `
     <div class="mn-page">
-      <mn-page-header [heading]="pageHeading()" backTo="/home" backLabel="Back to home" />
+      <mn-page-header [heading]="pageHeading()" backTo="/library" backLabel="Back to library" />
 
       <p class="mn-visually-hidden" role="status" aria-live="polite" data-testid="generate-status">
         {{ announcement() }}
@@ -122,7 +122,7 @@ function formatList(items: readonly string[]): string {
               class="mn-button mn-button--primary"
               [routerLink]="['/reader', reading.id]"
               [replaceUrl]="true"
-              [state]="navigation.preservedOriginState('/home')"
+              [state]="navigation.preservedOriginState('/library')"
               data-testid="open-story"
               >Open story</a
             >
@@ -145,7 +145,7 @@ function formatList(items: readonly string[]): string {
         >
           <mn-generation-wait [state]="state()" />
           <p class="mn-hint leave-hint" data-testid="leave-hint">
-            You can return home; generation continues.
+            You can return to the library; generation continues.
           </p>
           @if (canCancel()) {
             <button
@@ -492,7 +492,7 @@ export class GeneratePageComponent {
     }
     await this.router.navigate(['/generate', started], {
       replaceUrl: true,
-      state: this.navigation.preservedOriginState('/home'),
+      state: this.navigation.preservedOriginState('/library'),
     });
   }
 
@@ -517,7 +517,7 @@ export class GeneratePageComponent {
     }
     await this.router.navigate(['/generate'], {
       replaceUrl: true,
-      state: this.navigation.preservedOriginState('/home'),
+      state: this.navigation.preservedOriginState('/library'),
     });
   }
 }

@@ -71,11 +71,6 @@ describe('navigation origin validation', () => {
     expect(() => navigationOriginState('//example.com')).toThrow(/Unsafe navigation origin/);
   });
 
-  it('accepts Home, which the pages it starts return to', () => {
-    expect(readNavigationOrigin(navigationOriginState('/home'))).toBe('/home');
-    expect(readNavigationOrigin({ monosaiNavigationOrigin: '/home/extra' })).toBeNull();
-  });
-
   it('accepts the reading-level overview, which the ladder returns to', () => {
     const state = navigationOriginState('/reading-level');
 

@@ -56,7 +56,7 @@ interface VirtualVocabularyEntry {
       <mn-page-header
         heading="Your vocabulary"
         backTo="/reading-level"
-        backLabel="Back to words and level"
+        backLabel="Back to what you can read"
         [subtitle]="countLabel()"
       />
 
