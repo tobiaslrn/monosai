@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { RouterLink } from '@angular/router';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../icon/icon.component';
+import { WordmarkComponent } from '../wordmark/wordmark.component';
 
 /**
  * The top bar every page outside the reader wears.
@@ -14,7 +15,7 @@ import { IconComponent } from '../icon/icon.component';
 @Component({
   selector: 'mn-page-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink, IconComponent, WordmarkComponent],
   template: `
     <header class="head">
       @if (backTo(); as target) {
@@ -36,7 +37,14 @@ import { IconComponent } from '../icon/icon.component';
         <img class="mark" src="icons/icon-192.png" alt="" width="32" height="32" />
       }
       <div class="titles">
-        <h1 id="mn-page-title">{{ heading() }}</h1>
+        @if (home()) {
+          <h1 id="mn-page-title">
+            <span class="mn-visually-hidden">{{ heading() }}</span>
+            <mn-wordmark />
+          </h1>
+        } @else {
+          <h1 id="mn-page-title">{{ heading() }}</h1>
+        }
         @if (subtitle(); as line) {
           <p class="subtitle" data-testid="page-subtitle">{{ line }}</p>
         }

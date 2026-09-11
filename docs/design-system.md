@@ -73,8 +73,10 @@ The title tucks into Back's inset as well, so the arrow and the title read as
 one unit rather than two separate items.
 
 The Library is the home destination and therefore has no Back: its bar leads
-with the Monosai mark, then the title, then the application's utilities in a
-labelled navigation landmark — Help and Settings. Every other page is reached
+with the Monosai mark, then the Monosai wordmark in place of a visible title,
+then the application's utilities in a labelled navigation landmark — Help and
+Settings. The wordmark is decoration; the bar's heading still names the page
+"Library" for assistive technology. Every other page is reached
 from the Library and leads back to it, so the utilities live there and nowhere
 else. The shelf's own Create button is the one way to start a story; the bar does
 not repeat it once it has scrolled away. Help carries a
@@ -561,6 +563,10 @@ UI text uses a local system sans-serif stack. Japanese uses a system Japanese
 gothic stack. No font is downloaded, ever — a reading application that cannot
 render Japanese until a network request completes is not local-first.
 
+The one display face is the wordmark: _monosai_ in Pacifico,
+ものさい in Zen Maru Gothic Black. It ships as outlined SVG paths, not as a
+font, and it is never used for text.
+
 The type scale is small on purpose: rank is carried by **size and weight within
 one scale**, not by a second system. All-caps micro-labels are not part of the
 language. The shared page or surface title uses the semantic
@@ -646,6 +652,11 @@ into its new state rather than cutting to it.
 Beyond that, **a little character is allowed, and only on apparatus**: a spring
 on the play control, a settle on a popover arriving. The budget for it is small
 and it is spent on things the learner acts on or waits for.
+
+The wordmark is the one flourish outside that: the word spins like a slot reel
+through its romaji and kana spellings and lands on one of them — never a mix —
+once per launch, and again only when the learner taps it. It is never replayed
+on returning to the Library.
 
 The reading surface is exempt. Nothing on it animates, and nothing on it moves
 under the pointer — hovering a word or a sentence changes its colour and nothing
