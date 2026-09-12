@@ -79,8 +79,7 @@ describe('GenerationJobCardComponent', () => {
   });
 
   it('keeps the dismiss button separate from the navigation link', () => {
-    const page = render(new FakeGenerationRun({ kind: 'writing' }))
-      .nativeElement as HTMLElement;
+    const page = render(new FakeGenerationRun({ kind: 'writing' })).nativeElement as HTMLElement;
     const dismiss = page.querySelector<HTMLButtonElement>('.dismiss');
 
     expect(dismiss?.closest('a')).toBeNull();

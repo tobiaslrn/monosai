@@ -381,12 +381,10 @@ describe('ReadingLevelPageComponent', () => {
     expect(text(element, '[data-testid="grammar-standing"]')).toBe('Basic forms');
     // The level a caption names rides beside the name, never inside it.
     expect(
-      text(element, '[data-testid="reading-level-link"] [mn-list-row-trailing] .mn-status-pill').replace(
-        /\s+/g,
-        ' ',
-      ),
-    ).toBe(
-      'Basic forms · N5',
-    );
+      text(
+        element,
+        '[data-testid="reading-level-link"] [mn-list-row-trailing] .mn-status-pill',
+      ).replace(/\s+/g, ' '),
+    ).toBe('Basic forms · N5');
   });
 });

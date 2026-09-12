@@ -231,7 +231,10 @@ describe('ReaderStore', () => {
           sentenceId: analysis.sentenceId,
           snapshotId: snapshotId('snap'),
           validatorVersion: 'test',
-          tokenStatuses: analysis.tokens.map((token) => ({ tokenId: token.id, validation: exception })),
+          tokenStatuses: analysis.tokens.map((token) => ({
+            tokenId: token.id,
+            validation: exception,
+          })),
         })),
       };
     }

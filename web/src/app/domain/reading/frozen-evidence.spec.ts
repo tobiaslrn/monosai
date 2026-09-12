@@ -12,7 +12,10 @@ const exception: TokenValidation = {
   exceptionId: 'ひかりくん',
   explanationEn: 'Character names are allowed by the policy.',
 };
-const known: TokenValidation = { category: 'anki-exact', vocabularyItemIds: [vocabularyItemId('v1')] };
+const known: TokenValidation = {
+  category: 'anki-exact',
+  vocabularyItemIds: [vocabularyItemId('v1')],
+};
 const notInSnapshot: TokenValidation = { category: 'not-in-snapshot' };
 const unresolved: TokenValidation = { category: 'unknown', reason: 'unresolved-after-repair' };
 
