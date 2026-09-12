@@ -1,4 +1,5 @@
 import { DOCUMENT, InjectionToken, inject } from '@angular/core';
+import { parseWave, type WaveFormat } from '../../domain/audio/wave';
 
 /** How a clip is loaded: playing at once, or held at its start. */
 export interface PlayOptions {
@@ -113,63 +114,6 @@ export interface AudioPlayer {
   onStalled(handler: () => void): void;
   /** Called when the element starts producing sound again. */
   onResumed(handler: () => void): void;
-}
-
-interface WaveFormat {
-  readonly channels: number;
-  readonly sampleRate: number;
-  readonly byteRate: number;
-  readonly blockAlign: number;
-  readonly bitsPerSample: number;
-}
-
-interface ParsedWave {
-  readonly format: WaveFormat;
-  readonly data: Uint8Array;
-}
-
-function ascii(view: DataView, offset: number, length: number): string {
-  return String.fromCharCode(...new Uint8Array(view.buffer, view.byteOffset + offset, length));
-}
-
-function parseWave(bytes: ArrayBuffer): ParsedWave {
-  const view = new DataView(bytes);
-  if (view.byteLength < 44 || ascii(view, 0, 4) !== 'RIFF' || ascii(view, 8, 4) !== 'WAVE') {
-    throw new Error('Invalid WAV container');
-  }
-
-  let format: WaveFormat | null = null;
-  let data: Uint8Array | null = null;
-  for (let offset = 12; offset + 8 <= view.byteLength;) {
-    const id = ascii(view, offset, 4);
-    const size = view.getUint32(offset + 4, true);
-    const body = offset + 8;
-    if (body + size > view.byteLength) {
-      throw new Error('Truncated WAV chunk');
-    }
-    if (id === 'fmt ') {
-      if (size < 16 || view.getUint16(body, true) !== 1) {
-        throw new Error('Unsupported WAV encoding');
-      }
-      format = {
-        channels: view.getUint16(body + 2, true),
-        sampleRate: view.getUint32(body + 4, true),
-        byteRate: view.getUint32(body + 8, true),
-        blockAlign: view.getUint16(body + 12, true),
-        bitsPerSample: view.getUint16(body + 14, true),
-      };
-    } else if (id === 'data') {
-      data = new Uint8Array(bytes, body, size);
-    }
-    offset = body + size + (size % 2);
-  }
-  if (format === null || data === null || format.byteRate === 0 || format.blockAlign === 0) {
-    throw new Error('Incomplete WAV container');
-  }
-  if (data.byteLength % format.blockAlign !== 0) {
-    throw new Error('Misaligned WAV audio data');
-  }
-  return { format, data };
 }
 
 function sameWaveFormat(left: WaveFormat, right: WaveFormat): boolean {
