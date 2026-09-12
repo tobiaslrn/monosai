@@ -18,7 +18,7 @@ flowchart TB
     sharedui["shared-ui/<br/>reusable presentation"]
     application["application/<br/>use cases, stores, ports"]
     infrastructure["infrastructure/<br/>adapters"]
-    workers["web/src/workers/<br/>tokenizer, package reader"]
+    workers["web/src/workers/<br/>tokenizer, package reader, speech encoder"]
     domain["domain/<br/>types, rules, port interfaces"]
 
     core --> features
@@ -82,7 +82,7 @@ altitude.
 | **language**   | Tokenizer and runtime interfaces, segmentation, dictionary, kana, the structural baseline                                                   | Prepare the tokenizer and the assets, and report readiness                                                                                      | The language worker client and asset loader |
 | **ai**         | Provider interfaces, tasks, prompt versions, configuration fingerprints, story structure                                                    | Run a generation as a job. Test and select models                                                                                               | The AI provider adapters                    |
 | **enrichment** | Translation, grammar, and audio records, translation plans, cache keys, staleness, the job model, the preparation layers a reading declares | Produce and cache aids in resumable whole-reading jobs; translation first freezes locally selected terminology                                  | Persistence, the AI provider                |
-| **audio**      | Reading WAV compatibility responses and the stored clip's pace marker                                                                        | Own playback and the platform media session for one reading, including the native resource a continuous reading is played from and grown in, local playback-rate preferences, and pace-kind boundaries | The AI provider for synthesis |
+| **audio**      | Reading and writing the containers speech is stored in, the encoder port that compresses it, and the stored clip's pace marker              | Own playback and the platform media session for one reading, including the native resource a continuous reading is played from and grown in, local playback-rate preferences, pace-kind boundaries, and re-encode clips stored before speech was compressed | The AI provider for synthesis, the speech encoder worker |
 | **grammar**    | Difficulty presets, the profile, the profile hash                                                                                           | Hold the selected preset, register, and optional edited guidance                                                                                | Persistence                                 |
 | **settings**   | Settings and credential shapes                                                                                                              | Hold configuration that startup loads before routes render                                                                                      | Persistence                                 |
 | **storage**    | The storage error type, persistence status, maintenance                                                                                     | Report and reclaim space                                                                                                                        | Persistence                                 |
@@ -110,11 +110,12 @@ row.
 
 Two entries are worth a note. `domain/audio` holds no playback, because playback is a platform
 behaviour rather than a rule about Japanese, and nothing durable about a clip either — the clip and
-its cache key belong to `enrichment`. It holds the byte-level WAV reader used by the compatibility
-path and the decoder port used at the provider boundary. Provider MP3 is stored without a local
-transcode ([ADR 0074](../decisions/0074-provider-mp3-preserves-speech-quality.md)). And `shared` is
-not a catch-all: it holds only the primitives every other area needs, and everything in it is either
-a type or a pure function.
+its cache key belong to `enrichment`. What it does hold is the byte-level reading and writing of the
+containers speech is stored in, and the encoder port, because three layers reach the same rules: the
+synthesis adapters, the worker that encodes, and the maintenance pass that re-encodes
+([ADR 0070](../decisions/0070-gemini-speech-is-stored-compressed.md)). And `shared` is not a
+catch-all: it holds only the primitives every other area needs, and everything in it is either a type
+or a pure function.
 
 The application audio store resolves current rows first and then safe same-content
 fallback rows, while keeping current-settings coverage separate from playable

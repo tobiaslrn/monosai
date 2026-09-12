@@ -8,9 +8,9 @@ export const BITS_PER_SAMPLE = 16;
  * Wraps Gemini's headerless 24 kHz, 16-bit mono PCM in a browser-decodable WAV
  * container.
  *
- * The lossless fallback for a Gemini route that answers with PCM despite being
- * asked for MP3. Provider-encoded MP3 is stored unchanged; raw PCM gets only a
- * WAV header and is never passed through a browser encoder.
+ * The uncompressed fallback. Speech is normally compressed on the way in (see
+ * `gemini-audio.ts`); this is what a browser with no audio encoder stores
+ * instead, because an expensive clip is still better than no clip.
  */
 export function geminiPcmToWav(response: AudioResponse): AudioResponse {
   if (!response.mimeType.toLowerCase().startsWith('audio/pcm')) {

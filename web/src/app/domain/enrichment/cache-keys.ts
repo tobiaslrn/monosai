@@ -3,8 +3,8 @@ import { hashCanonical } from '../shared/hashing';
 import { SPEECH_INSTRUCTION_VERSION } from '../ai/speech-instructions';
 import type { SpeechStyle } from '../ai/speech-instructions';
 
-/** Changes whenever the stored speech representation changes incompatibly. */
-export const SPEECH_STORAGE_VERSION = 'provider-mp3/1';
+/** Changes whenever locally stored speech is encoded incompatibly. */
+export const SPEECH_STORAGE_VERSION = 'webm-opus/2';
 
 /**
  * Cache keys and fingerprints for translation, grammar review, and audio.

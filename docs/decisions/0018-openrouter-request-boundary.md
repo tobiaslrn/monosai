@@ -62,12 +62,11 @@ compatible with, and those are fixed here.
 
 ### Speech uses the OpenAI-compatible `/audio/speech` shape
 
-Monosai posts to `{base}/audio/speech` with `model`, `voice`, `input`, and
-`response_format: 'mp3'` — the OpenAI-compatible shape whose response is a plain
-audio body rather than a base64 payload inside a chat message. Every model is asked
-for provider-encoded MP3. If a Gemini-family route returns raw PCM despite that
-request, Monosai wraps it losslessly as WAV rather than transcoding it
-([ADR 0074](0074-provider-mp3-preserves-speech-quality.md)).
+OpenRouter does not document one canonical synthesis endpoint. Monosai posts to
+`{base}/audio/speech` with `model`, `voice`, `input`, and
+`response_format: 'mp3'` — the OpenAI-compatible shape most providers behind
+OpenRouter expose, and the one whose response is a plain audio body rather than
+a base64 payload inside a chat message.
 
 The path is a constant in `openrouter-endpoints.ts` and the request is built in
 one adapter, so moving to a different shape is a change in two files. The

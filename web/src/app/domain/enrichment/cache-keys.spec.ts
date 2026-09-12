@@ -102,13 +102,13 @@ describe('audioOptionsFingerprint', () => {
   /**
    * The playback pace is part of the current clip identity, while the
    * instruction version is conditional on the instruction channel. This value
-   * therefore changes once for the new provider-MP3 storage contract but
+   * therefore changes for the high-quality local Opus storage contract but
    * remains stable across future instruction wording changes for uninstructed
    * clips.
    */
   it('includes the local playback pace without an instruction version', () => {
     expect(audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' })).toBe(
-      '46234b88',
+      '22c5208a',
     );
   });
 });

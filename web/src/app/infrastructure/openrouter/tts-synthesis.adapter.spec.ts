@@ -87,25 +87,46 @@ describe('OpenRouterTtsSynthesizer', () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.mimeType).toBe('audio/mpeg');
+    expect(result.value.mimeType).toBe('audio/webm');
     expect(result.value.speechInstructionsApplied).toBe(true);
     expect(harness.server.callCount).toBe(1);
     expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
-    expect(harness.server.requests[0]?.body['response_format']).toBe('mp3');
+    expect(harness.server.requests[0]?.body['response_format']).toBe('pcm');
     expect(String(harness.server.requests[0]?.body['input'])).toContain('a short even pause');
     expect(String(harness.server.requests[0]?.body['input']).endsWith(SENTENCE)).toBe(true);
   });
 
-  it('keeps PCM as WAV when the Gemini route does not return MP3', async () => {
+  it('compresses Gemini speech, and keeps it as WAV without an encoder', async () => {
     const modelId = 'google/gemini-3.1-flash-tts-preview';
-    const result = await run({ knownTtsModels: [modelId], audio: 'pcm' }).tts.synthesize(
+    const compressed = await run({ knownTtsModels: [modelId] }).tts.synthesize(
+      { ...REQUEST, modelId },
+      new AbortController().signal,
+    );
+    expect(compressed.ok).toBe(true);
+    if (!compressed.ok) return;
+    expect(compressed.value.mimeType).toBe('audio/webm');
+    expect(compressed.value.bytes.byteLength).toBeLessThan(2048);
+
+    const uncompressed = await run({
+      knownTtsModels: [modelId],
+      encoder: 'unsupported',
+    }).tts.synthesize({ ...REQUEST, modelId }, new AbortController().signal);
+    expect(uncompressed.ok).toBe(true);
+    if (!uncompressed.ok) return;
+    expect(uncompressed.value.mimeType).toBe('audio/wav');
+  });
+
+  it('refuses Gemini audio when encoding fails', async () => {
+    const modelId = 'google/gemini-3.1-flash-tts-preview';
+    const result = await run({ knownTtsModels: [modelId], encoder: 'fails' }).tts.synthesize(
       { ...REQUEST, modelId },
       new AbortController().signal,
     );
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.mimeType).toBe('audio/wav');
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('audio-invalid');
+    expect(result.error.detail?.issueCode).toBe('encode-failed');
   });
 
   it('rejects the same malformed and undecodable audio as the test adapter', async () => {

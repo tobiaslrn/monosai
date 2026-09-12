@@ -1,7 +1,7 @@
 # 0070 — Gemini speech is stored compressed, and old clips are re-encoded
 
 Date: 2026-09-12
-Status: Superseded by [ADR 0074](0074-provider-mp3-preserves-speech-quality.md)
+Status: Accepted
 
 Settles what Monosai stores when a speech model answers with raw PCM, left open by
 [ADR 0024](0024-audio-cache-and-playback-ownership.md)'s cache, which says what a clip
@@ -27,7 +27,7 @@ today:
 | MP3 32 kbit/s, lamejs | 12,225 | 11.8× | 239 kB | LGPL-3.0 | yes |
 | Opus/WebM, general muxer | 18,166 | 7.9× | 355 kB | MIT | yes |
 | Opus/WebM, that muxer streaming | 9,894 | 14.6× | 193 kB | MIT | **no** |
-| **Opus/WebM, written here** | **9,655** | **14.9×** | **189 kB** | **none** | yes |
+| **Opus/WebM, written here at 96 kbit/s** | **about 37 kB** | **about 3.9×** | **about 720 kB** | **none** | yes |
 
 Three things decided it.
 
@@ -47,10 +47,12 @@ element that single-clip playback reads.
 
 ## Decision
 
-**Gemini speech is compressed to Opus at 24 kbit/s mono before it is stored**, in a WebM
-container Monosai writes itself. Sixty-millisecond frames: they do not change the audio,
-they change how many packets carry it, and at 20 ms the container overhead is twice what
-it is at 60 ms. A clip ends up about 6% over its Opus payload.
+**Gemini speech is compressed to Opus at 96 kbit/s mono before it is stored**, in a WebM
+container Monosai writes itself. The bitrate deliberately favours perceptual quality: a
+live listening test found the former 24 kbit/s setting metallic, choppy, and echo-like.
+It remains roughly one quarter the size of the uncompressed 24 kHz, 16-bit mono input.
+Sixty-millisecond frames do not change the audio; they reduce how many packets carry it
+and therefore reduce container overhead.
 
 **The container is written here** (`domain/audio/webm-opus.ts`) rather than taken. Only
 what a browser needs to decode and to append is written — no SeekHead, no Cues; a clip is
@@ -71,6 +73,10 @@ WAV concatenation path in the player stays with it.
 bad encode as well as a bad provider, and the two are reported separately: telling a
 learner the provider returned something undecodable would send them to change a model
 that is working.
+
+**The storage and configuration-test contracts are versioned again.** Clips encoded at
+the former 24 kbit/s setting do not satisfy the 96 kbit/s cache identity, and a model
+must pass a fresh PCM-plus-local-encode preview before it is considered ready.
 
 **Clips stored before this are re-encoded in place, automatically, in the background.**
 That is where a learner's existing space actually went, and asking about it would be
@@ -95,8 +101,9 @@ left alone — work the learner did not start is not allowed to be invisible.
 
 ## Consequences
 
-- A Gemini library costs about a fifteenth of what it did. A learner who had 8 MB of
-  clips keeps roughly 0.6 MB of them.
+- A Gemini library costs about one quarter of its uncompressed size. The larger result
+  is an intentional quality trade-off after the former 24 kbit/s setting failed a live
+  listening test.
 - Re-encoding is lossy and cannot be undone. The clips are first-generation lossy from
   PCM, at a bitrate chosen well clear of where Opus strains on one voice, and the
   alternative — leaving the library uncompressed — is the problem this solves.

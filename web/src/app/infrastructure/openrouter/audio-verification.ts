@@ -15,18 +15,23 @@ import type { AudioResponse } from './openrouter-client';
  */
 
 /**
- * MP3 is requested from every provider. `audio/wav` is the lossless fallback
- * when Gemini still answers with PCM. Legacy WebM support belongs to playback,
- * not this boundary for accepting newly generated clips.
+ * MP3 is what is requested of the providers that offer a choice; `audio/webm`
+ * is what Gemini's PCM becomes once Monosai has compressed it, and `audio/wav`
+ * what it becomes on a browser that cannot compress at all.
  */
-export const ACCEPTED_MIME_TYPES: readonly string[] = ['audio/mpeg', 'audio/mp3', 'audio/wav'];
+export const ACCEPTED_MIME_TYPES: readonly string[] = [
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/webm',
+];
 
 /** The stored MIME type every accepted response normalizes to. */
 function storedMimeType(declared: string): AudioMimeType {
   if (declared === 'audio/wav') {
     return 'audio/wav';
   }
-  return 'audio/mpeg';
+  return declared === 'audio/webm' ? 'audio/webm' : 'audio/mpeg';
 }
 
 export interface VerifiedAudio {
@@ -40,6 +45,14 @@ export interface AudioContext {
   readonly task: AiTask;
   readonly modelId: string;
   readonly voiceId: string;
+  /**
+   * Who produced the bytes being checked.
+   *
+   * Compressed Gemini clips are Monosai's own output, so "the provider returned
+   * something undecodable" would be a false accusation — and would send a
+   * learner to change a model that is working.
+   */
+  readonly origin?: 'provider' | 'encoder';
 }
 
 /** Strips parameters from a content type, so `audio/mpeg; rate=…` still matches. */
@@ -73,16 +86,19 @@ export async function verifyAudio(
     );
   }
   if (!(await decoder.canDecode(response.bytes, declaredMimeType))) {
+    const fromEncoder = context.origin === 'encoder';
     return err(
       aiError(
         'audio-invalid',
         context.task,
-        'The returned clip could not be decoded for playback.',
+        fromEncoder
+          ? 'The compressed clip could not be decoded for playback.'
+          : 'The returned clip could not be decoded for playback.',
         {
           detail: {
             modelId: context.modelId,
             voiceId: context.voiceId,
-            issueCode: 'undecodable',
+            issueCode: fromEncoder ? 'reencoded-undecodable' : 'undecodable',
           },
         },
       ),

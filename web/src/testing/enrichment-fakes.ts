@@ -1,5 +1,6 @@
 import type { EnrichmentRepository } from '../app/domain/enrichment/enrichment-repository';
 import type {
+  AudioMimeType,
   AudioAsset,
   AudioAssetSummary,
   GrammarAnalysisRecord,
@@ -224,6 +225,37 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
   deleteAudio(id: AssetId): Promise<Result<void, StorageError>> {
     this.audio = this.audio.filter((asset) => asset.id !== id);
     return Promise.resolve(ok(undefined));
+  }
+
+  listAudioCacheKeys(): Promise<Result<readonly string[], StorageError>> {
+    return Promise.resolve(ok(this.audio.map((asset) => asset.cacheKey)));
+  }
+
+  replaceAudioBytes(replacement: {
+    readonly cacheKey: string;
+    readonly expectedMimeType: AudioMimeType;
+    readonly expectedByteLength: number;
+    readonly bytes: ArrayBuffer;
+    readonly mimeType: AudioMimeType;
+  }): Promise<Result<'replaced' | 'skipped', StorageError>> {
+    const current = this.audio.find((asset) => asset.cacheKey === replacement.cacheKey);
+    if (
+      current?.mimeType !== replacement.expectedMimeType ||
+      current.byteLength !== replacement.expectedByteLength
+    ) {
+      return Promise.resolve(ok('skipped'));
+    }
+    this.audio = this.audio.map((asset) =>
+      asset === current
+        ? {
+            ...asset,
+            mimeType: replacement.mimeType,
+            byteLength: replacement.bytes.byteLength,
+            blob: new Blob([replacement.bytes], { type: replacement.mimeType }),
+          }
+        : asset,
+    );
+    return Promise.resolve(ok('replaced'));
   }
 
   summarizeTranslations(

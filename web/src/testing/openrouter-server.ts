@@ -42,7 +42,7 @@ export type ChatContentKind =
   | 'translations-opening'
   | 'translations-glossary-repair';
 
-export type AudioKind = 'valid' | 'pcm' | 'empty' | 'wrong-mime' | 'oversized';
+export type AudioKind = 'valid' | 'empty' | 'wrong-mime' | 'oversized';
 
 export interface FakeOpenRouterOptions {
   /** Keys the server accepts. Anything else is a 401. */
@@ -475,11 +475,6 @@ export class FakeOpenRouterServer {
     }
 
     switch (this.options.audio ?? 'valid') {
-      case 'pcm':
-        return new Response(new ArrayBuffer(2048), {
-          status: 200,
-          headers: { 'Content-Type': 'audio/pcm;rate=24000' },
-        });
       case 'empty':
         return new Response(new ArrayBuffer(0), {
           status: 200,

@@ -68,10 +68,9 @@ describe('OpenRouterTtsTester', () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.mimeType).toBe('audio/mpeg');
+    expect(result.value.mimeType).toBe('audio/webm');
     expect(harness.server.callCount).toBe(1);
     expect(harness.server.requests[0]?.body['instructions']).toBeUndefined();
-    expect(harness.server.requests[0]?.body['response_format']).toBe('mp3');
     expect(String(harness.server.requests[0]?.body['input'])).toContain('a short even pause');
     expect(String(harness.server.requests[0]?.body['input']).endsWith(TTS_TEST_PHRASE)).toBe(true);
     expect(result.value.speechInstructionsApplied).toBe(true);

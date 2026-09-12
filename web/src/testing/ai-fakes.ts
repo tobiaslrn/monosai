@@ -46,6 +46,7 @@ import {
 } from '../app/domain/settings/settings';
 import { err, ok, type Result } from '../app/domain/shared/result';
 import { storageError, type StorageError } from '../app/domain/storage/storage-error';
+import { speechEncodeError, type SpeechEncoder } from '../app/domain/audio/speech-encoder';
 import {
   FAKE_OPENROUTER,
   FakeOpenRouterServer,
@@ -124,6 +125,38 @@ export function fakeAudioDecoder(decodable = true): AudioDecoder {
   return { canDecode: () => Promise.resolve(decodable) };
 }
 
+/** What a fake encoder should do: compress, refuse for want of a codec, or fail. */
+export type FakeEncoderBehaviour = 'encodes' | 'unsupported' | 'fails';
+
+/**
+ * Encoder that answers without WebCodecs.
+ *
+ * The compressed bytes are a stand-in, not real Opus — a tenth of the input, so
+ * a test can assert that compression happened without carrying a codec.
+ */
+export function fakeSpeechEncoder(behaviour: FakeEncoderBehaviour = 'encodes'): SpeechEncoder {
+  return {
+    encode: (input) => {
+      if (behaviour === 'unsupported') {
+        return Promise.resolve(
+          err(speechEncodeError('unsupported', 'This browser cannot compress audio for storage.')),
+        );
+      }
+      if (behaviour === 'fails') {
+        return Promise.resolve(
+          err(speechEncodeError('encode-failed', 'The audio encoder failed on this clip.')),
+        );
+      }
+      return Promise.resolve(
+        ok({
+          bytes: new ArrayBuffer(Math.max(1, Math.ceil(input.samples.byteLength / 10))),
+          mimeType: 'audio/webm' as const,
+        }),
+      );
+    },
+  };
+}
+
 export interface OpenRouterHarness {
   readonly server: FakeOpenRouterServer;
   readonly client: OpenRouterClient;
@@ -137,6 +170,7 @@ export interface HarnessOptions extends FakeOpenRouterOptions {
   readonly credentials?: CredentialRepository;
   readonly online?: boolean;
   readonly decodable?: boolean;
+  readonly encoder?: FakeEncoderBehaviour;
   readonly timeoutMs?: number;
   readonly sessionIdFactory?: () => string;
 }
@@ -175,8 +209,10 @@ export function openRouterHarness(options: HarnessOptions = {}): OpenRouterHarne
     ),
     tts: (() => {
       const decoder = fakeAudioDecoder(options.decodable ?? true);
-      return new OpenRouterTextToSpeechProvider(new OpenRouterTtsTester(client, decoder), () =>
-        Promise.resolve(new OpenRouterTtsSynthesizer(client, decoder)),
+      const encoder = fakeSpeechEncoder(options.encoder ?? 'encodes');
+      return new OpenRouterTextToSpeechProvider(
+        new OpenRouterTtsTester(client, decoder, encoder),
+        () => Promise.resolve(new OpenRouterTtsSynthesizer(client, decoder, encoder)),
       );
     })(),
   };
