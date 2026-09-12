@@ -4,7 +4,6 @@ import {
   MODEL_CATALOG,
   STRUCTURED_OUTPUT_MEMO,
   TEXT_GENERATION_PROVIDER,
-  SPEECH_ENCODER,
   TEXT_TO_SPEECH_PROVIDER,
 } from '../../application/shared/ai-tokens';
 import { StructuredOutputMemoService } from '../../application/settings/structured-output-memo.service';
@@ -82,20 +81,12 @@ export function provideOpenRouter(): Provider[] {
         const view = inject(DOCUMENT).defaultView;
         const shared = client();
         const decoder = createAudioDecoder(view ?? globalThis.window);
-        // Injected, never imported: the tester is constructed eagerly, so a
-        // static import of the encoder would pull the codec worker into the
-        // initial bundle for every learner.
-        const encoder = inject(SPEECH_ENCODER);
         return new OpenRouterTextToSpeechProvider(
-          new OpenRouterTtsTester(shared, decoder, encoder),
+          new OpenRouterTtsTester(shared, decoder),
           // Loaded on the first synthesis, so a learner who never turns on
           // speech never pays for it in the initial bundle.
           async () =>
-            new (await import('./tts-synthesis.adapter')).OpenRouterTtsSynthesizer(
-              shared,
-              decoder,
-              encoder,
-            ),
+            new (await import('./tts-synthesis.adapter')).OpenRouterTtsSynthesizer(shared, decoder),
         );
       },
     },

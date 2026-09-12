@@ -34,9 +34,10 @@ export interface SpeechRequestInput {
  * so the two adapters differ only in what they put in, never in how it is laid
  * out.
  *
- * Two families, one function: Gemini takes its direction through the prompt and
- * returns raw PCM, while everything OpenAI-compatible takes `instructions` as
- * a top-level field.
+ * Two instruction channels, one function: Gemini takes its direction through
+ * the prompt, while everything OpenAI-compatible takes `instructions` as a
+ * top-level field. Every model is asked for provider-encoded MP3; a provider
+ * that still answers with PCM is normalized losslessly after the request.
  */
 export function buildSpeechRequestBody(input: SpeechRequestInput): Record<string, unknown> {
   const gemini = isGeminiTtsModel(input.modelId);
@@ -53,7 +54,7 @@ export function buildSpeechRequestBody(input: SpeechRequestInput): Record<string
       gemini && instructed
         ? `${buildSpeechInstructions(instruction, 'prefix')}${GEMINI_TEXT_SEPARATOR}${input.text}`
         : input.text,
-    response_format: gemini ? 'pcm' : input.responseFormat,
+    response_format: input.responseFormat,
     ...(instructed && !gemini
       ? { instructions: buildSpeechInstructions(instruction, 'field') }
       : {}),

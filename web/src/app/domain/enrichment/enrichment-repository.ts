@@ -5,7 +5,6 @@ import type { CompletionSummary, GrammarSummary } from '../reading/summaries';
 import type {
   AudioAsset,
   AudioAssetSummary,
-  AudioMimeType,
   GrammarAnalysisRecord,
   TranslationRecord,
 } from './records';
@@ -95,33 +94,6 @@ export interface EnrichmentRepository {
     currentCacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<AudioAssetSummary, StorageError>>;
   deleteAudio(id: AssetId): Promise<Result<void, StorageError>>;
-  /**
-   * Every stored clip's cache key, and nothing else.
-   *
-   * Primary keys only, because a clip's metadata shares its row with its bytes:
-   * anything that reads metadata across the whole table reads every clip in it,
-   * which for a library of readings is hundreds of megabytes. The maintenance
-   * pass pages through these instead.
-   */
-  listAudioCacheKeys(): Promise<Result<readonly string[], StorageError>>;
-  /**
-   * Replaces one clip's bytes, and only while the stored row is still the row
-   * that was read.
-   *
-   * Answers `'skipped'` rather than failing when the row has gone or changed
-   * underneath, so re-encoding can never overwrite a newer clip and can never
-   * remove audio it did not manage to replace. The cache key is deliberately
-   * unchanged: the clip is the same speech in the same voice, so nothing that
-   * counts or finds it should notice.
-   */
-  replaceAudioBytes(replacement: {
-    readonly cacheKey: string;
-    readonly expectedMimeType: AudioMimeType;
-    readonly expectedByteLength: number;
-    readonly bytes: ArrayBuffer;
-    readonly mimeType: AudioMimeType;
-  }): Promise<Result<'replaced' | 'skipped', StorageError>>;
-
   summarizeTranslations(
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,

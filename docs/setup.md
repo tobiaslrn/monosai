@@ -153,8 +153,9 @@ the dialog offers OpenRouter's advertised voices and defaults to `Kore` when no
 voice is selected. Reading speed is applied locally during playback, with pitch
 preservation, so it is consistent across sentences and does not trigger
 regeneration. The selected speaking style is sent as a prompt instruction when
-the model supports that channel. Monosai converts Gemini's PCM response to
-browser-playable WAV audio locally before saving it.
+the model supports that channel. Monosai requests provider-generated MP3 for every
+speech model and stores it without transcoding. If a Gemini route still returns
+raw PCM, Monosai wraps it losslessly as browser-playable WAV before saving it.
 
 The **Add model** dialog reads OpenRouter's normalized metadata through its
 official TypeScript SDK. Monosai shows the advertised modalities, context

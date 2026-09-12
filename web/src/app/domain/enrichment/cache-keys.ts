@@ -3,6 +3,9 @@ import { hashCanonical } from '../shared/hashing';
 import { SPEECH_INSTRUCTION_VERSION } from '../ai/speech-instructions';
 import type { SpeechStyle } from '../ai/speech-instructions';
 
+/** Changes whenever the stored speech representation changes incompatibly. */
+export const SPEECH_STORAGE_VERSION = 'provider-mp3/1';
+
 /**
  * Cache keys and fingerprints for translation, grammar review, and audio.
  *
@@ -104,6 +107,7 @@ export function audioOptionsFingerprint(
   const speechInstructions = options.speechInstructions ?? 'unsupported';
   return hashCanonical(hasher, 'tts-options', {
     responseFormat: options.responseFormat,
+    storageVersion: SPEECH_STORAGE_VERSION,
     speechStyle: options.speechStyle,
     pace: 'playback',
     speechInstructions,

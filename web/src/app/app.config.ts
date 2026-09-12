@@ -1,10 +1,4 @@
-import {
-  DOCUMENT,
-  EnvironmentInjector,
-  isDevMode,
-  provideAppInitializer,
-  inject,
-} from '@angular/core';
+import { DOCUMENT, isDevMode, provideAppInitializer, inject } from '@angular/core';
 import { provideServiceWorker } from '@angular/service-worker';
 import type { ApplicationConfig } from '@angular/core';
 import {
@@ -18,12 +12,10 @@ import { AutomaticAnkiSyncCoordinator } from './application/vocabulary/automatic
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
 import { provideInitializationSteps } from './core/bootstrap/initialization-steps';
 import { NetworkStatusService } from './core/platform/network-status.service';
-import { LOGGER, type Logger } from './application/shared/diagnostics';
 import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
 import { NETWORK_STATUS } from './domain/platform/network-status.port';
 import { HOST_PLATFORM, detectHostPlatform } from './domain/platform/host-platform';
 import { APP_ROUTES } from './core/routing/app.routes';
-import { provideAudioEncoding } from './infrastructure/audio/audio.providers';
 import { provideAnki } from './infrastructure/anki/anki.providers';
 import { provideDiagnosticsLogging } from './infrastructure/diagnostics/diagnostics.providers';
 import { provideLanguage } from './infrastructure/language/language.providers';
@@ -62,7 +54,6 @@ export const appConfig: ApplicationConfig = {
     providePersistence(),
     provideLanguage(),
     provideAnki(),
-    provideAudioEncoding(),
     provideOpenRouter(),
     providePwa(),
     provideInitializationSteps(),
@@ -72,8 +63,6 @@ export const appConfig: ApplicationConfig = {
       const initializer = inject(AppInitializerService);
       const language = inject(LanguageStore);
       const automaticAnkiSync = inject(AutomaticAnkiSyncCoordinator);
-      const injector = inject(EnvironmentInjector);
-      const logger = inject<Logger>(LOGGER);
       void initializer.run().then(() => {
         // Every reading path needs the tokenizer, so preparation starts on its
         // own once startup succeeds. It is deliberately not awaited and not a
@@ -82,23 +71,6 @@ export const appConfig: ApplicationConfig = {
         if (initializer.state().status === 'ready') {
           void language.initialize();
           automaticAnkiSync.start();
-          // Clips stored before Monosai compressed speech are re-encoded in
-          // the background. Not a startup step and not awaited: it touches
-          // nothing any screen is waiting for, and it stands aside the moment
-          // the learner plays something. Imported here rather than at the top,
-          // so none of the compression code is in the bundle every learner
-          // downloads to read their first sentence.
-          void import('./application/settings/audio-compression.store')
-            .then(({ AudioCompressionStore }) => injector.get(AudioCompressionStore).run())
-            .catch((thrown: unknown) => {
-              // Background work nothing is waiting on, so it must not take the
-              // application down with it — but a pass that never ran is not
-              // allowed to look like a pass that found nothing to do.
-              logger.error('worker.operation.failed', {
-                worker: 'audio-compression',
-                errorType: String(thrown),
-              });
-            });
         }
       });
     }),

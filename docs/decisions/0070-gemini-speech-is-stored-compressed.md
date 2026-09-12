@@ -1,7 +1,7 @@
 # 0070 — Gemini speech is stored compressed, and old clips are re-encoded
 
 Date: 2026-09-12
-Status: Accepted
+Status: Superseded by [ADR 0074](0074-provider-mp3-preserves-speech-quality.md)
 
 Settles what Monosai stores when a speech model answers with raw PCM, left open by
 [ADR 0024](0024-audio-cache-and-playback-ownership.md)'s cache, which says what a clip

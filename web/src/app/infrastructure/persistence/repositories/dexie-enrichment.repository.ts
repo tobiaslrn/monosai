@@ -9,7 +9,6 @@ import {
 } from '../../../domain/reading/summaries';
 import { concernCount } from '../../../domain/enrichment/grammar-normalization';
 import type {
-  AudioMimeType,
   AudioAsset,
   AudioAssetSummary,
   GrammarAnalysisRecord,
@@ -356,45 +355,6 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     return runStorage('audioAssets.delete', async () => {
       await this.db.audioAssets.where('id').equals(id).delete();
     });
-  }
-
-  /**
-   * Read through the primary index only. Dexie answers this without
-   * deserializing a row, so it never pulls a clip's bytes into memory.
-   */
-  listAudioCacheKeys(): Promise<Result<readonly string[], StorageError>> {
-    return runStorage('audioAssets.cacheKeys', async () => {
-      return this.db.audioAssets.toCollection().primaryKeys();
-    });
-  }
-
-  replaceAudioBytes(replacement: {
-    readonly cacheKey: string;
-    readonly expectedMimeType: AudioMimeType;
-    readonly expectedByteLength: number;
-    readonly bytes: ArrayBuffer;
-    readonly mimeType: AudioMimeType;
-  }): Promise<Result<'replaced' | 'skipped', StorageError>> {
-    return runStorage('audioAssets.replaceBytes', () =>
-      // `audioAssets` alone: the cache key does not change, so the reading's
-      // summary counts exactly what it counted before and must not be touched.
-      this.db.transaction('rw', this.db.audioAssets, async () => {
-        const current = await this.db.audioAssets.get(replacement.cacheKey);
-        if (
-          current?.mimeType !== replacement.expectedMimeType ||
-          current.byteLength !== replacement.expectedByteLength
-        ) {
-          return 'skipped' as const;
-        }
-        await this.db.audioAssets.put({
-          ...current,
-          bytes: replacement.bytes,
-          mimeType: replacement.mimeType,
-          byteLength: replacement.bytes.byteLength,
-        });
-        return 'replaced' as const;
-      }),
-    );
   }
 
   async summarizeTranslations(

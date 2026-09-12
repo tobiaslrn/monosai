@@ -41,7 +41,7 @@ describe('buildSpeechRequestBody', () => {
     expect(body['input']).toBe(SENTENCE);
   });
 
-  it('gives Gemini a prefixed style direction, native PCM, and no speed', () => {
+  it('gives Gemini a prefixed style direction, provider MP3, and no speed', () => {
     const body = buildSpeechRequestBody({
       ...BASE,
       modelId: 'google/gemini-3.1-flash-tts-preview',
@@ -49,7 +49,7 @@ describe('buildSpeechRequestBody', () => {
       instruction: { beforeJa: '雨が強くなりました。' },
     });
 
-    expect(body['response_format']).toBe('pcm');
+    expect(body['response_format']).toBe('mp3');
     expect(body['speed']).toBeUndefined();
     expect(body['instructions']).toBeUndefined();
     const input = String(body['input']);
@@ -68,6 +68,6 @@ describe('buildSpeechRequestBody', () => {
     });
 
     expect(body['input']).toBe(SENTENCE);
-    expect(body['response_format']).toBe('pcm');
+    expect(body['response_format']).toBe('mp3');
   });
 });

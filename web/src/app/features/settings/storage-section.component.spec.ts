@@ -1,12 +1,8 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { TestBed } from '@angular/core/testing';
-import { computed, signal } from '@angular/core';
+import { signal } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
-import {
-  AudioCompressionStore,
-  type AudioCompressionState,
-} from '../../application/settings/audio-compression.store';
 import { StorageStore, type PersistenceState } from '../../application/settings/storage.store';
 import { UNKNOWN_PERSISTENCE } from '../../domain/storage/persistence-status';
 import { StorageSectionComponent } from './storage-section.component';
@@ -55,18 +51,6 @@ class FakePlaybackStore {
   }
 }
 
-/** The background pass that re-encodes clips stored before speech was compressed. */
-class FakeCompressionStore {
-  readonly stateSignal = signal<AudioCompressionState>({ kind: 'idle' });
-  readonly state = this.stateSignal.asReadonly();
-  readonly running = computed(() => this.stateSignal().kind === 'running');
-  stopped = 0;
-
-  stop(): void {
-    this.stopped += 1;
-  }
-}
-
 /**
  * Deleting saved audio is the widest destructive action in Settings — every
  * clip of every reading — and it used to run on one unguarded click, next to a
@@ -75,21 +59,15 @@ class FakeCompressionStore {
 describe('StorageSectionComponent', () => {
   let storage: FakeStorageStore;
   let playback: FakePlaybackStore;
-  let compression: FakeCompressionStore;
 
   beforeEach(() => {
     TestBed.resetTestingModule();
     storage = new FakeStorageStore();
     playback = new FakePlaybackStore();
-    compression = new FakeCompressionStore();
     TestBed.configureTestingModule({
       providers: [
         { provide: StorageStore, useValue: storage },
         { provide: AudioPlaybackStore, useValue: playback },
-        {
-          provide: AudioCompressionStore,
-          useValue: compression as unknown as AudioCompressionStore,
-        },
       ],
     });
   });
@@ -224,82 +202,6 @@ describe('StorageSectionComponent', () => {
       await settle(fixture);
 
       expect(storage.calls).toContain('requestPersistence');
-    });
-  });
-
-  /** The rendered card, typed, so assertions are not made against `any`. */
-  function host(fixture: { nativeElement: unknown }): HTMLElement {
-    return fixture.nativeElement as HTMLElement;
-  }
-
-  function stopButton(fixture: { nativeElement: unknown }): HTMLButtonElement | undefined {
-    return [...host(fixture).querySelectorAll('button')].find(
-      (button) => button.textContent.trim() === 'Stop',
-    );
-  }
-
-  describe('the background compression pass', () => {
-    it('says nothing while it has nothing to report', async () => {
-      const fixture = TestBed.createComponent(StorageSectionComponent);
-      await settle(fixture);
-
-      expect(host(fixture).textContent).not.toContain('Saved audio');
-    });
-
-    it('names a real count while it runs, and offers a way to stop it', async () => {
-      compression.stateSignal.set({ kind: 'running', done: 11, total: 42 });
-      const fixture = TestBed.createComponent(StorageSectionComponent);
-      await settle(fixture);
-
-      const text = host(fixture).textContent;
-      expect(text).toContain('Compressing 12 of 42');
-      // A percentage of an internal step count is not what is happening now.
-      expect(text).not.toContain('%');
-
-      const stop = stopButton(fixture);
-      expect(stop).toBeDefined();
-      stop?.click();
-      expect(compression.stopped).toBe(1);
-    });
-
-    it('reports what it reclaimed when it finishes', async () => {
-      compression.stateSignal.set({
-        kind: 'finished',
-        compressed: 41,
-        skipped: 0,
-        freedBytes: 111_149_056,
-      });
-      const fixture = TestBed.createComponent(StorageSectionComponent);
-      await settle(fixture);
-
-      expect(host(fixture).textContent).toContain('Compressed 41 clips and freed 106 MB.');
-    });
-
-    it('says what it left alone, because those clips are still there', async () => {
-      compression.stateSignal.set({
-        kind: 'finished',
-        compressed: 41,
-        skipped: 1,
-        freedBytes: 1024,
-      });
-      const fixture = TestBed.createComponent(StorageSectionComponent);
-      await settle(fixture);
-
-      expect(host(fixture).textContent).toContain('1 clip was left as it was.');
-    });
-
-    it('offers no Stop once it is finished', async () => {
-      compression.stateSignal.set({
-        kind: 'finished',
-        compressed: 1,
-        skipped: 0,
-        freedBytes: 10,
-      });
-      const fixture = TestBed.createComponent(StorageSectionComponent);
-      await settle(fixture);
-
-      const stop = stopButton(fixture);
-      expect(stop).toBeUndefined();
     });
   });
 });

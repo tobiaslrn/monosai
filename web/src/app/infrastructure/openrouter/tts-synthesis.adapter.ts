@@ -3,11 +3,10 @@ import type { AudioPayload, TtsRequest } from '../../domain/ai/text-to-speech-pr
 import { isGeminiTtsModel, resolveTtsVoice } from '../../domain/ai/tts-configuration';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { AudioDecoder } from './audio-decode';
-import { verifyAudio, type AudioContext } from './audio-verification';
+import { verifyAudio } from './audio-verification';
 import type { AudioResponse, OpenRouterClient } from './openrouter-client';
 import { AUDIO_REQUEST_TIMEOUT_MS, AUDIO_SPEECH_PATH } from './openrouter-endpoints';
-import type { SpeechEncoder } from '../../domain/audio/speech-encoder';
-import { normalizeGeminiAudio } from './gemini-audio';
+import { geminiPcmToWav } from './pcm-audio';
 import { buildSpeechRequestBody } from './speech-request';
 
 const TASK = 'tts-synthesis';
@@ -31,7 +30,6 @@ export class OpenRouterTtsSynthesizer {
   constructor(
     private readonly client: OpenRouterClient,
     private readonly decoder: AudioDecoder,
-    private readonly encoder: SpeechEncoder,
   ) {}
 
   async synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
@@ -97,20 +95,11 @@ export class OpenRouterTtsSynthesizer {
      */
     speechInstructionsApplied: boolean,
   ): Promise<Result<AudioPayload, AiError>> {
-    const context: AudioContext = {
+    const normalized = isGeminiTtsModel(input.modelId) ? geminiPcmToWav(response) : response;
+    const verified = await verifyAudio(normalized, this.decoder, {
       task: TASK,
       modelId: input.modelId,
       voiceId: input.voiceId,
-    };
-    const normalized = isGeminiTtsModel(input.modelId)
-      ? await normalizeGeminiAudio(response, this.encoder, context)
-      : ok(response);
-    if (!normalized.ok) {
-      return normalized;
-    }
-    const verified = await verifyAudio(normalized.value, this.decoder, {
-      ...context,
-      origin: normalized.value.mimeType === 'audio/webm' ? 'encoder' : 'provider',
     });
     return verified.ok
       ? ok({

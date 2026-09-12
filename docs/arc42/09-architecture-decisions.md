@@ -107,7 +107,8 @@ files are already linked from code comments and from other records.
 | [0063](../decisions/0063-what-you-can-read-is-composed-like-the-library.md) | What you can read is composed like the Library; the ladder saves on request       |
 | [0068](../decisions/0068-one-non-reader-frame-and-page-header.md)           | All non-reader pages share one utility bar, frame, and page header                |
 | [0069](../decisions/0069-one-top-bar-per-screen.md)                         | Every screen has one sticky top bar; utilities live on the Library                |
-| [0070](../decisions/0070-gemini-speech-is-stored-compressed.md)             | Speech that arrives as raw PCM is stored compressed, and old clips are re-encoded |
+| [0070](../decisions/0070-gemini-speech-is-stored-compressed.md)             | Superseded: raw PCM was locally compressed and old clips re-encoded                |
+| [0074](../decisions/0074-provider-mp3-preserves-speech-quality.md)          | Provider MP3 is stored directly; raw PCM is wrapped losslessly                     |
 
 ### Audio
 
@@ -125,6 +126,7 @@ files are already linked from code comments and from other records.
 | [0045](../decisions/0045-a-reading-is-extended-while-it-is-generated.md) | A continuous reading is extended while it is generated       |
 | [0072](../decisions/0072-older-clips-play-until-regenerated.md)         | Older same-content clips play until regenerated              |
 | [0073](../decisions/0073-pace-at-playback-style-in-prompt.md)            | Pace is applied at playback and runs split by pace kind       |
+| [0074](../decisions/0074-provider-mp3-preserves-speech-quality.md)       | Provider MP3 preserves speech quality                          |
 
 ### Platform and toolchain
 
