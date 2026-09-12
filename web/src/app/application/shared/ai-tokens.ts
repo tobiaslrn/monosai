@@ -3,6 +3,7 @@ import type { TextGenerationProvider } from '../../domain/ai/text-generation-pro
 import type { TextToSpeechProvider } from '../../domain/ai/text-to-speech-provider';
 import type { ModelCatalog } from '../../domain/ai/model-catalog';
 import type { StructuredOutputMemo } from '../../domain/ai/structured-output-memo';
+import type { SpeechEncoder } from '../../domain/audio/speech-encoder';
 
 /**
  * Injection tokens for the AI ports.
@@ -20,6 +21,15 @@ export const TEXT_TO_SPEECH_PROVIDER = new InjectionToken<TextToSpeechProvider>(
 );
 
 export const MODEL_CATALOG = new InjectionToken<ModelCatalog>('monosai.model-catalog');
+
+/**
+ * Where speech is compressed before it is stored.
+ *
+ * A token because two unrelated callers need it and neither may reach into
+ * infrastructure for it: the synthesis adapters, which compress a clip on its
+ * way in, and the maintenance pass, which re-encodes clips already on disk.
+ */
+export const SPEECH_ENCODER = new InjectionToken<SpeechEncoder>('monosai.speech-encoder');
 
 /**
  * Where the request boundary records and reads structured-output downgrades.

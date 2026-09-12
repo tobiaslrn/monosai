@@ -16,6 +16,7 @@ import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
 import { NETWORK_STATUS } from './domain/platform/network-status.port';
 import { HOST_PLATFORM, detectHostPlatform } from './domain/platform/host-platform';
 import { APP_ROUTES } from './core/routing/app.routes';
+import { provideAudioEncoding } from './infrastructure/audio/audio.providers';
 import { provideAnki } from './infrastructure/anki/anki.providers';
 import { provideDiagnosticsLogging } from './infrastructure/diagnostics/diagnostics.providers';
 import { provideLanguage } from './infrastructure/language/language.providers';
@@ -54,6 +55,7 @@ export const appConfig: ApplicationConfig = {
     providePersistence(),
     provideLanguage(),
     provideAnki(),
+    provideAudioEncoding(),
     provideOpenRouter(),
     providePwa(),
     provideInitializationSteps(),
