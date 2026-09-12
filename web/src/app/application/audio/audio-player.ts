@@ -21,16 +21,16 @@ export interface SequencePlayOptions extends PlayOptions {
   /**
    * Leaves the resource open, so later sentences can be appended to it.
    *
-   * MPEG only. A RIFF header states its own data length, so a WAV sequence
-   * cannot grow without being rewritten and reloaded — which is the very
-   * source swap a growing resource exists to avoid.
+   * Compressed formats only. A RIFF header states its own data length, so a
+   * WAV sequence cannot grow without being rewritten and reloaded — which is
+   * the very source swap a growing resource exists to avoid.
    */
   readonly open?: boolean;
 }
 
 export interface AudioSequenceClip {
   readonly blob: Blob;
-  readonly mimeType: 'audio/mpeg' | 'audio/wav';
+  readonly mimeType: 'audio/mpeg' | 'audio/wav' | 'audio/webm';
 }
 
 export interface AudioTimeline {
@@ -248,9 +248,24 @@ function isQuotaError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'QuotaExceededError';
 }
 
+/** The two stored formats MediaSource can take appended clip by clip. */
+type AppendableMimeType = 'audio/mpeg' | 'audio/webm';
+
+/** What MediaSource has to be asked about, which is not what a clip is stored as. */
+const SOURCE_BUFFER_TYPES: Readonly<Record<AppendableMimeType, string>> = {
+  'audio/mpeg': 'audio/mpeg',
+  'audio/webm': 'audio/webm; codecs="opus"',
+};
+
 interface OpenSequence {
   readonly source: MediaSource;
   readonly buffer: SourceBuffer;
+  /**
+   * What this resource takes. An open sequence cannot change format part-way:
+   * the clips were all made by one configuration, so a mismatch means a stale
+   * caller, not a mixed reading.
+   */
+  readonly mimeType: AppendableMimeType;
   /** The `operationToken` this resource was built under. */
   readonly token: number;
   readonly starts: number[];
@@ -355,11 +370,15 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
     floor: sequence.floor,
   });
 
-  const openMpegSequence = async (token: number): Promise<OpenSequence> => {
+  const openAppendableSequence = async (
+    token: number,
+    mimeType: AppendableMimeType,
+  ): Promise<OpenSequence> => {
+    const sourceType = SOURCE_BUFFER_TYPES[mimeType];
     const MediaSourceConstructor = Reflect.get(view, 'MediaSource') as
       typeof MediaSource | undefined;
-    if (MediaSourceConstructor?.isTypeSupported('audio/mpeg') !== true) {
-      throw new Error('MPEG MediaSource is unavailable');
+    if (MediaSourceConstructor?.isTypeSupported(sourceType) !== true) {
+      throw new Error(`MediaSource cannot take ${mimeType}`);
     }
     release();
     const source = new MediaSourceConstructor();
@@ -371,9 +390,9 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
     if (token !== operationToken) {
       throw new Error('Audio load was superseded');
     }
-    const buffer = source.addSourceBuffer('audio/mpeg');
+    const buffer = source.addSourceBuffer(sourceType);
     buffer.mode = 'sequence';
-    return { source, buffer, token, starts: [], end: 0, floor: 0 };
+    return { source, buffer, mimeType, token, starts: [], end: 0, floor: 0 };
   };
 
   /** Makes room for an append the browser refused, keeping the recent past. */
@@ -457,7 +476,7 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       // A WAV request is always built closed: the container states its own
       // length, so growing one means rewriting the blob and reassigning the
       // source, which is the interruption an open resource exists to avoid.
-      const keepOpen = options?.open === true && mimeType === 'audio/mpeg';
+      const keepOpen = options?.open === true && mimeType !== 'audio/wav';
       const timeline =
         mimeType === 'audio/wav'
           ? await combineWaveClips(clips.map((clip) => clip.blob)).then((combined) => {
@@ -468,7 +487,7 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
               return combined.timeline;
             })
           : await queueSequenceWork(async () => {
-              const sequence = await openMpegSequence(token);
+              const sequence = await openAppendableSequence(token, mimeType);
               await appendClips(
                 sequence,
                 clips.map((clip) => clip.blob),
@@ -496,8 +515,12 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       if (clips.length === 0) {
         throw new Error('A sequence extension needs at least one clip');
       }
-      if (!clips.every((clip) => clip.mimeType === 'audio/mpeg')) {
-        throw new Error('An open sequence takes MPEG clips only');
+      const open = openSequence;
+      if (open === null) {
+        throw new Error('No audio sequence is open');
+      }
+      if (!clips.every((clip) => clip.mimeType === open.mimeType)) {
+        throw new Error('An open sequence takes the format it was opened with');
       }
       const timeline = await queueSequenceWork(async () => {
         const sequence = openSequence;

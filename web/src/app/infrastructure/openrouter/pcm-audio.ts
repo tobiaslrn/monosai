@@ -1,10 +1,17 @@
 import type { AudioResponse } from './openrouter-client';
 
-const GEMINI_SAMPLE_RATE = 24_000;
-const CHANNELS = 1;
-const BITS_PER_SAMPLE = 16;
+export const GEMINI_SAMPLE_RATE = 24_000;
+export const CHANNELS = 1;
+export const BITS_PER_SAMPLE = 16;
 
-/** Wraps Gemini's headerless 24 kHz, 16-bit mono PCM in a browser-decodable WAV container. */
+/**
+ * Wraps Gemini's headerless 24 kHz, 16-bit mono PCM in a browser-decodable WAV
+ * container.
+ *
+ * The uncompressed fallback. Speech is normally compressed on the way in (see
+ * `gemini-audio.ts`); this is what a browser with no audio encoder stores
+ * instead, because an expensive clip is still better than no clip.
+ */
 export function geminiPcmToWav(response: AudioResponse): AudioResponse {
   if (!response.mimeType.toLowerCase().startsWith('audio/pcm')) {
     return response;
