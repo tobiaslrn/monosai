@@ -3,6 +3,7 @@ import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
+import { LanguageStore, type LanguageStatus } from '../../application/language/language.store';
 import {
   VocabularyAvailabilityStore,
   type VocabularyAvailabilityState,
@@ -63,10 +64,14 @@ function snapshotOf(
 describe('LibraryStandingComponent', () => {
   let state: WritableSignal<VocabularyAvailabilityState>;
   let preset: WritableSignal<GrammarPreset | null>;
+  let profileLoaded: WritableSignal<boolean>;
+  let languageStatus: WritableSignal<LanguageStatus>;
 
   beforeEach(() => {
     state = signal<VocabularyAvailabilityState>({ kind: 'unknown' });
     preset = signal<GrammarPreset | null>(PRESET);
+    profileLoaded = signal(true);
+    languageStatus = signal<LanguageStatus>('ready');
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -76,7 +81,16 @@ describe('LibraryStandingComponent', () => {
         },
         {
           provide: GrammarProfileStore,
-          useValue: { selectedPreset: preset, load: () => Promise.resolve() },
+          useValue: {
+            selectedPreset: preset,
+            loaded: profileLoaded,
+            lastError: signal(null),
+            load: () => Promise.resolve(),
+          },
+        },
+        {
+          provide: LanguageStore,
+          useValue: { status: languageStatus, initialize: () => Promise.resolve(true) },
         },
       ],
     });
@@ -96,7 +110,9 @@ describe('LibraryStandingComponent', () => {
     const element = fixture.nativeElement as HTMLElement;
     const standing = element.querySelector<HTMLElement>('[data-testid="library-standing"]');
     return {
-      headline: standing?.querySelector('.headline')?.textContent.trim() ?? '',
+      headline: (standing?.querySelector('.headline')?.textContent ?? '')
+        .replace(/\s+/g, ' ')
+        .trim(),
       detail: standing?.querySelector('.detail')?.textContent.trim() ?? '',
       height: standing === null ? '' : getComputedStyle(standing).minHeight,
     };
@@ -152,15 +168,25 @@ describe('LibraryStandingComponent', () => {
 
     expect(measured.headline).toBe('');
     expect(measured.detail).toBe('');
-    // Two lines of space, in a unit that follows the reader's own font size.
-    expect(measured.height).toBe('54.4px');
+    // The sentence's own four lines, in a unit that follows the reader's font.
+    expect(measured.height).toBe('166.4px');
   });
 
   /**
-   * The count arrives first. Rather than guess at a level or hold the count
-   * back, the sentence drops the clause and stays a sentence.
+   * The sentence is written once. Saying the count and adding the level a few
+   * seconds later rewrote the line under the learner, so it waits instead.
    */
-  it('states the count without a level while the bundle is still loading', () => {
+  it('holds the sentence back until the level it names has been read', () => {
+    languageStatus.set('initializing');
+    preset.set(null);
+    state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
+
+    expect(lines(render()).headline).toBe('');
+  });
+
+  /** A level that cannot be read is dropped; the sentence still reads as one. */
+  it('states the count alone once the level is known not to be coming', () => {
+    languageStatus.set('failed');
     preset.set(null);
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
 
@@ -168,6 +194,17 @@ describe('LibraryStandingComponent', () => {
       headline: 'You know 340 words.',
       detail: '',
     });
+  });
+
+  /** Four clauses, four lines, so the break never lands inside one of them. */
+  it('sets the sentence as one line per clause', () => {
+    state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
+    const element = render().nativeElement as HTMLElement;
+
+    const clauses = [...element.querySelectorAll('.headline .line')].map((line) =>
+      line.textContent.trim(),
+    );
+    expect(clauses).toEqual(['You know', '340 words', 'and read', 'starter forms.']);
   });
 
   it('keeps the hero copy free of navigation chrome', () => {

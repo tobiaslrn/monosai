@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
+import { LanguageStore } from '../../application/language/language.store';
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { CountingCountComponent } from '../../shared-ui/counting-count/counting-count.component';
@@ -44,14 +45,16 @@ type StandingHeadline =
         <span class="headline">
           @switch (line.kind) {
             @case ('standing') {
+              <span class="line">You know&ngsp;</span>
               @if (line.level !== null) {
-                <span
-                  >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" /> and
-                  read {{ line.level }}.</span
+                <span class="line"
+                  ><mn-counting-count [count]="line.count" [format]="wordsLabel" />&ngsp;</span
                 >
+                <span class="line">and read&ngsp;</span>
+                <span class="line">{{ line.level }}.</span>
               } @else {
-                <span
-                  >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" />.</span
+                <span class="line"
+                  ><mn-counting-count [count]="line.count" [format]="wordsLabel" />.</span
                 >
               }
             }
@@ -75,29 +78,44 @@ type StandingHeadline =
     }
 
     /*
-     * Two lines of space are held whether or not the read has answered yet, so
-     * nothing below moves when it does. A skeleton would be the alternative,
-     * and the design system rules those out.
+     * The sentence's own four lines of space are held whether or not the reads
+     * have answered yet, so nothing moves when they do. A skeleton would be the
+     * alternative, and the design system rules those out.
      */
     .standing {
       display: flex;
       flex-direction: column;
       gap: var(--space-3);
-      min-height: 3.4rem;
+      min-height: 10.4rem;
       min-width: 0;
       color: var(--text-primary);
       text-decoration: none;
     }
 
+    /*
+     * The sentence is set as its clauses, one per line, rather than reflowed
+     * to the column: "You know 515 words and / read basic forms." broke
+     * between a verb and its object, and every different count moved the
+     * break somewhere else. Four short lines read as a standing rather than
+     * as a paragraph, and they stay put whatever the number is.
+     */
     .headline {
-      display: flex;
-      gap: var(--space-1);
-      align-items: center;
+      display: block;
       font-family: var(--font-ui);
       font-size: var(--text-display);
       font-weight: var(--weight-bold);
       letter-spacing: -0.035em;
       line-height: 1.04;
+      text-wrap: balance;
+    }
+
+    /*
+     * Each clause is a line of its own. The space that ends it is kept in the
+     * markup — a block swallows it — so the sentence is still one sentence
+     * when it is read out rather than looked at.
+     */
+    .headline .line {
+      display: block;
     }
 
     /*
@@ -107,7 +125,7 @@ type StandingHeadline =
      * name has to stay breakable on a narrow screen, so the mark fragmented
      * across lines instead of pointing anywhere.
      */
-    .standing:hover .headline span {
+    .standing:hover .headline {
       text-decoration: underline;
     }
 
@@ -124,6 +142,10 @@ type StandingHeadline =
     }
 
     @media (max-width: breakpoints.$narrow-max) {
+      .standing {
+        min-height: 6.24rem;
+      }
+
       .headline {
         font-size: var(--text-2xl);
       }
@@ -134,9 +156,25 @@ export class LibraryStandingComponent {
   protected readonly libraryOriginState = navigationOriginState('/library');
   private readonly vocabulary = inject(VocabularyAvailabilityStore);
   private readonly grammar = inject(GrammarProfileStore);
+  private readonly language = inject(LanguageStore);
 
   /** The one formatter that says a number of words, intermediate ones included. */
   protected readonly wordsLabel = vocabularyCountLabel;
+
+  /**
+   * Whether the level clause can be stated, or is known never to arrive.
+   *
+   * The level is the learner's stored preset said in the bundle's own words,
+   * so two reads have to answer before the sentence can be written: the
+   * profile, and the language bundle the preset name comes from. Either one
+   * failing settles it too — the sentence is then written without the clause
+   * rather than waiting on a read that has already given up.
+   */
+  private readonly levelSettled = computed(() => {
+    const profileSettled = this.grammar.loaded() || this.grammar.lastError() !== null;
+    const status = this.language.status();
+    return profileSettled && (status === 'ready' || status === 'failed');
+  });
 
   /**
    * One sentence, naming what the learner knows and what they read.
@@ -144,11 +182,15 @@ export class LibraryStandingComponent {
    * The count is measured from their own collection; the level is the preset
    * they chose. Said as two clauses of one sentence, neither reads as a
    * qualifier on the other — `515 words at a basic level` had the level
-   * qualifying the words, as though 515 were half-known. The level clause is
-   * dropped rather than guessed at while the language bundle is still loading,
-   * and the sentence stays a sentence.
+   * qualifying the words, as though 515 were half-known.
    *
-   * Null only while the read has not answered, which holds the space blank.
+   * The whole sentence waits on both facts. Stating the count first and adding
+   * the level when the bundle finished meant the line rewrote itself under the
+   * learner seconds after they arrived; a sentence that is not ready is better
+   * held than shown twice. A level that cannot be read is dropped and the
+   * sentence still reads as one.
+   *
+   * Null while either read has not answered, which holds the space blank.
    */
   protected readonly headline = computed<StandingHeadline | null>(() => {
     const state = this.vocabulary.state();
@@ -160,6 +202,9 @@ export class LibraryStandingComponent {
       case 'known': {
         if (state.snapshot === null || state.snapshot.uniqueEntryCount === 0) {
           return { kind: 'plain', text: 'No words yet.' };
+        }
+        if (!this.levelSettled()) {
+          return null;
         }
         return {
           kind: 'standing',
@@ -175,6 +220,10 @@ export class LibraryStandingComponent {
   constructor() {
     void this.vocabulary.refresh();
     void this.grammar.load();
+    // The level is named from the bundle, so this line asks for it rather than
+    // waiting on whoever else happens to. Initialization is shared and returns
+    // immediately once it has run.
+    void this.language.initialize();
   }
 
   /**

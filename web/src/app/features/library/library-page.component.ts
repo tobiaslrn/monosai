@@ -197,23 +197,30 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       gap: var(--space-1);
     }
 
+    /*
+     * The sentence and the art are one composition, so they share a centre
+     * line: the reader sits opposite the standing rather than above it.
+     */
     .home-hero {
       position: relative;
       isolation: isolate;
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       min-height: 16rem;
       margin-bottom: calc(var(--space-2) * -1);
       padding-block: var(--space-2);
     }
 
+    /*
+     * Full height and centred within it, so the art meets whatever height the
+     * sentence takes on the same centre line. Contain keeps it square.
+     */
     .hero-art {
       position: absolute;
       z-index: -1;
-      inset: 0 0 auto auto;
+      inset: 0 0 0 auto;
       width: 55%;
       max-width: 16rem;
-      aspect-ratio: 1;
       overflow: hidden;
       pointer-events: none;
     }
@@ -257,7 +264,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
      * screen. The art keeps its proportions; only its size changes.
      */
     .home-hero.is-compact {
-      min-height: 10rem;
+      min-height: 12rem;
     }
 
     .home-hero.is-compact .hero-art {
@@ -291,6 +298,10 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     @media (max-width: breakpoints.$wide-max) {
       .home-hero {
         min-height: 12.5rem;
+      }
+
+      .home-hero.is-compact {
+        min-height: 10rem;
       }
 
       .home-hero mn-library-standing {

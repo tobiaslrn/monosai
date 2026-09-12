@@ -3,7 +3,6 @@ import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatCountOf } from '../../domain/shared/locale';
 import { CountingCountComponent } from './counting-count.component';
-import { CountingCountState } from './counting-count.state';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,11 +50,6 @@ describe('CountingCountComponent', () => {
 
   beforeEach(() => {
     clock = frames();
-    // A launch rise is claimed once per run of the application, so each test
-    // starts from a state that has not claimed one.
-    TestBed.configureTestingModule({
-      providers: [{ provide: CountingCountState, useValue: new CountingCountState() }],
-    });
   });
 
   afterEach(() => {
@@ -86,28 +80,30 @@ describe('CountingCountComponent', () => {
     expect(text(render())).toBe('340 words');
   });
 
-  /** Same digit count throughout, so no word after the number moves. */
-  it('rises to the value from the smallest number of the same width', () => {
+  /**
+   * Nothing has moved yet, so nothing rises: the first value of a launch is
+   * the number the learner already had.
+   */
+  it('states the first value instead of counting up to it', () => {
     const fixture = render();
 
     clock.advance(0);
     fixture.detectChanges();
-    expect(tick(fixture)).toBe('100 words');
-
-    clock.advance(1000);
-    fixture.detectChanges();
     expect(tick(fixture)).toBe('340 words');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.mn-visually-hidden')).toBeNull();
   });
 
   /** A moving number is decoration over the fact, and is not read as one. */
   it('keeps the settled value available while the number is moving', () => {
     const fixture = render();
+    fixture.componentInstance.count.set(360);
+    fixture.detectChanges();
 
     clock.advance(0);
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('.tick')?.getAttribute('aria-hidden')).toBe('true');
-    expect(element.querySelector('.mn-visually-hidden')?.textContent).toBe('340 words');
+    expect(element.querySelector('.mn-visually-hidden')?.textContent).toBe('360 words');
 
     clock.advance(1000);
     fixture.detectChanges();
@@ -116,11 +112,8 @@ describe('CountingCountComponent', () => {
   });
 
   /** Motion's job here is to say the number moved, so a change always rises. */
-  it('rises again from the number it was showing when the value changes', () => {
+  it('rises from the number it was showing when the value changes', () => {
     const fixture = render();
-    clock.advance(0);
-    clock.advance(1000);
-    fixture.detectChanges();
 
     fixture.componentInstance.count.set(360);
     fixture.detectChanges();
@@ -133,9 +126,11 @@ describe('CountingCountComponent', () => {
     expect(text(fixture)).toBe('360 words');
   });
 
-  /** Like the wordmark's spin: once per launch, not on every visit. */
-  it('does not replay the launch rise for a second count', () => {
+  /** A second count of the same launch states its value like the first. */
+  it('does not rise when a later count renders for the first time', () => {
     const first = render();
+    first.componentInstance.count.set(360);
+    first.detectChanges();
     clock.advance(0);
     clock.advance(1000);
     first.destroy();

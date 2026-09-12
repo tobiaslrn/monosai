@@ -7,6 +7,7 @@ import { GenerationJobsStore } from '../../application/generation/generation-job
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
+import { LanguageStore } from '../../application/language/language.store';
 import { LibraryStore } from '../../application/reading/library.store';
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import {
@@ -137,7 +138,16 @@ describe('LibraryPageComponent', () => {
         },
         {
           provide: GrammarProfileStore,
-          useValue: { selectedPreset: signal(null), load: () => Promise.resolve() },
+          useValue: {
+            selectedPreset: signal(null),
+            loaded: signal(true),
+            lastError: signal(null),
+            load: () => Promise.resolve(),
+          },
+        },
+        {
+          provide: LanguageStore,
+          useValue: { status: signal('ready' as const), initialize: () => Promise.resolve(true) },
         },
       ],
     });

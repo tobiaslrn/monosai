@@ -107,8 +107,11 @@ The crop follows the illustration's arch and low foreground, preserving the
 whole reading character and books. Its proportions stay fixed as the column
 changes width. Once the shelf holds a story the hero steps down to a compact
 size, so the stories come up the screen; only its size changes, never its crop.
-The home headline is tightly set beside it, above a quiet sync
-line. The creation action spans the column; filter pills share the available
+The home headline is tightly set beside it, on the art's own
+centre line, one clause per line so the break never lands inside a clause and
+a changed count never moves it. The sentence is written once, when every fact
+in it has been read; a clause that cannot be read is dropped rather than added
+later. The creation action spans the column; filter pills share the available
 width on phones and stay compact on desktop.
 Home's primary action uses the shared primary action colour; each palette shows
 its own illustration unfiltered, as drawn.
@@ -653,13 +656,14 @@ Beyond that, **a little character is allowed, and only on apparatus**: a spring
 on the play control, a settle on a popover arriving. The budget for it is small
 and it is spent on things the learner acts on or waits for.
 
-A **count the learner has earned rises to its value** rather than appearing at
-it: the Library's standing line counts up to the number of words they know. It
-rises once per launch, and again whenever the number itself changes — the
-second is motion doing its plainest job, saying a value moved. It never replays
-on returning to a screen that already showed it. The moving number is hidden
-from assistive technology while it moves, and the settled value is what is
-read, so a rise never states a count the learner does not have.
+A **count that has moved rises to its new value** rather than cutting to it:
+the Library's standing line counts up when a sync changes how many words
+Monosai can write from. That is motion doing its plainest job, saying a value
+moved. A count is not animated the first time it is shown — nothing has moved
+yet, and counting up to a figure the learner already had is decoration that
+delays the sentence it sits in. The moving number is hidden from assistive
+technology while it moves, and the settled value is what is read, so a rise
+never states a count the learner does not have.
 
 The wordmark is the one flourish outside that: the word spins like a slot reel
 through its romaji and kana spellings and lands on one of them — never a mix —

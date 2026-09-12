@@ -8,23 +8,9 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { CountingCountState } from './counting-count.state';
 
 /** Long enough to read as a rise, short enough not to delay the sentence. */
 const RISE_MS = 700;
-
-/**
- * The floor a rise starts from, chosen to keep the number's width constant.
- *
- * Counting `515` up from zero would render one digit, then two, then three, and
- * every word after it in the sentence would shift twice while it did. Starting
- * at the smallest number of the same width — `100` here — keeps the glyph count
- * fixed for the whole rise, so only the digits move.
- */
-function sameWidthFloor(target: number): number {
-  const digits = Math.trunc(Math.abs(target)).toString().length;
-  return digits <= 1 ? 0 : 10 ** (digits - 1);
-}
 
 /** Decelerating, so the number arrives rather than stopping dead. */
 function easeOut(progress: number): number {
@@ -32,13 +18,13 @@ function easeOut(progress: number): number {
 }
 
 /**
- * A count that rises to its value instead of appearing at it.
+ * A count that rises when it changes instead of cutting to its new value.
  *
- * Motion here does the job the design system asks of it — saying that a value
- * changed — so a number that moves while the learner is looking at it always
- * rises. The first count of a launch rises too, because arriving at the number
- * is the moment it means something; returning to the same screen does not
- * replay it (`CountingCountState`).
+ * Motion here does the one job the design system asks of it — saying that a
+ * value moved — so a rise means the number is not what it was. The first value
+ * of a launch is simply stated: nothing has moved yet, and counting up to a
+ * figure the learner already had reads as an animation for its own sake and
+ * delays the sentence it sits in.
  *
  * The settled value is the text, and it is rendered before any frame runs: an
  * environment that never paints, and reduced motion, both read the true number
@@ -69,7 +55,7 @@ function easeOut(progress: number): number {
 
     /*
      * Tabular figures so each digit occupies the same width as the one that
-     * replaces it: with the width floor above, a rise moves no other word.
+     * replaces it, and a rise moves no other word.
      */
     .tick {
       font-variant-numeric: tabular-nums;
@@ -82,7 +68,6 @@ export class CountingCountComponent {
   /** How the value is said. Passed in so one formatter states it everywhere. */
   readonly format = input.required<(value: number) => string>();
 
-  private readonly state = inject(CountingCountState);
   private readonly reduceMotion =
     typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   private frame: number | null = null;
@@ -107,15 +92,11 @@ export class CountingCountComponent {
   private riseTo(target: number): void {
     this.cancel();
     const first = !this.settled;
+    const from = this.displayed();
     this.settled = true;
-
-    const from = first ? sameWidthFloor(target) : this.displayed();
     this.displayed.set(target);
 
-    if (this.reduceMotion || from === target) {
-      return;
-    }
-    if (first && !this.state.claimLaunchRise()) {
+    if (first || this.reduceMotion || from === target) {
       return;
     }
 
