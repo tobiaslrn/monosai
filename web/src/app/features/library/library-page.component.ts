@@ -189,7 +189,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
     /* The home header, action, and every date group share the same rail. */
     .library-page {
-      gap: var(--space-1);
+      gap: var(--space-3);
     }
 
     .utilities {
@@ -202,6 +202,10 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
      * the other's axis: the sentence is centred in the hero and the picture is
      * centred in it too, rather than both hanging from the top edge and
      * drifting apart as the sentence grows a line.
+     *
+     * The hero pulls in at both edges rather than the page rail closing up:
+     * the picture sits nearer the bar above it than the page's own rhythm
+     * would place it, while the action below keeps the rail's full gap.
      */
     .home-hero {
       position: relative;
@@ -209,7 +213,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       display: flex;
       align-items: center;
       min-height: 15rem;
-      margin-bottom: calc(var(--space-2) * -1);
+      margin-block: calc(var(--space-1) * -1) calc(var(--space-2) * -1);
       padding-block: 0 var(--space-2);
     }
 
