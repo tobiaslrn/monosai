@@ -197,11 +197,17 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       gap: var(--space-1);
     }
 
+    /*
+     * The standing and the illustration are one composition, so each sits on
+     * the other's axis: the sentence is centred in the hero and the picture is
+     * centred in it too, rather than both hanging from the top edge and
+     * drifting apart as the sentence grows a line.
+     */
     .home-hero {
       position: relative;
       isolation: isolate;
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       min-height: 16rem;
       margin-bottom: calc(var(--space-2) * -1);
       padding-block: var(--space-2);
@@ -210,9 +216,12 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     .hero-art {
       position: absolute;
       z-index: -1;
-      inset: 0 0 auto auto;
+      inset-block: 0;
+      inset-inline-end: 0;
+      margin-block: auto;
       width: 55%;
       max-width: 16rem;
+      height: auto;
       aspect-ratio: 1;
       overflow: hidden;
       pointer-events: none;

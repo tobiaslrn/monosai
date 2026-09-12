@@ -107,9 +107,12 @@ The crop follows the illustration's arch and low foreground, preserving the
 whole reading character and books. Its proportions stay fixed as the column
 changes width. Once the shelf holds a story the hero steps down to a compact
 size, so the stories come up the screen; only its size changes, never its crop.
-The home headline is tightly set beside it, above a quiet sync
-line. The creation action spans the column; filter pills share the available
-width on phones and stay compact on desktop.
+The home headline is tightly set beside it, one clause to a line
+and centred on the illustration's own axis, so the two read as one composition
+rather than a sentence hanging from the top edge. It is stated whole, once every
+fact in it has been read; it never states one clause and appends the next. The
+creation action spans the column; filter pills share the available width on
+phones and stay compact on desktop.
 Home's primary action uses the shared primary action colour; each palette shows
 its own illustration unfiltered, as drawn.
 
@@ -653,13 +656,13 @@ Beyond that, **a little character is allowed, and only on apparatus**: a spring
 on the play control, a settle on a popover arriving. The budget for it is small
 and it is spent on things the learner acts on or waits for.
 
-A **count the learner has earned rises to its value** rather than appearing at
-it: the Library's standing line counts up to the number of words they know. It
-rises once per launch, and again whenever the number itself changes — the
-second is motion doing its plainest job, saying a value moved. It never replays
-on returning to a screen that already showed it. The moving number is hidden
-from assistive technology while it moves, and the settled value is what is
-read, so a rise never states a count the learner does not have.
+A **count the learner has earned rises when it changes**: the Library's standing
+line counts up to the number of words they know whenever a sync finds words they
+did not have. It does not rise on arriving at the screen, on a reload, or on
+returning to it — nothing moved, and a rise there competed with the sentence the
+number sits in for the learner's attention. The moving number is hidden from
+assistive technology while it moves, and the settled value is what is read, so a
+rise never states a count the learner does not have.
 
 The wordmark is the one flourish outside that: the word spins like a slot reel
 through its romaji and kana spellings and lands on one of them — never a mix —

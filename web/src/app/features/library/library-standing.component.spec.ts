@@ -3,6 +3,7 @@ import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
+import { LanguageStore, type LanguageStatus } from '../../application/language/language.store';
 import {
   VocabularyAvailabilityStore,
   type VocabularyAvailabilityState,
@@ -63,10 +64,12 @@ function snapshotOf(
 describe('LibraryStandingComponent', () => {
   let state: WritableSignal<VocabularyAvailabilityState>;
   let preset: WritableSignal<GrammarPreset | null>;
+  let languageStatus: WritableSignal<LanguageStatus>;
 
   beforeEach(() => {
     state = signal<VocabularyAvailabilityState>({ kind: 'unknown' });
     preset = signal<GrammarPreset | null>(PRESET);
+    languageStatus = signal<LanguageStatus>('ready');
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -78,6 +81,7 @@ describe('LibraryStandingComponent', () => {
           provide: GrammarProfileStore,
           useValue: { selectedPreset: preset, load: () => Promise.resolve() },
         },
+        { provide: LanguageStore, useValue: { status: languageStatus } },
       ],
     });
   });
@@ -147,21 +151,40 @@ describe('LibraryStandingComponent', () => {
     });
   });
 
-  it('holds its two lines of space while the read has not answered', () => {
+  it('holds the height of the settled sentence while the read has not answered', () => {
     const measured = lines(render());
 
     expect(measured.headline).toBe('');
     expect(measured.detail).toBe('');
-    // Two lines of space, in a unit that follows the reader's own font size.
-    expect(measured.height).toBe('54.4px');
+    // Four clauses at the display size, in a unit that follows the reader's
+    // own font size, so nothing below moves when the sentence arrives.
+    expect(measured.height).toBe('calc(4.16 * var(--text-display))');
   });
 
   /**
-   * The count arrives first. Rather than guess at a level or hold the count
-   * back, the sentence drops the clause and stays a sentence.
+   * A headline that rewrites itself a second after the learner starts reading
+   * it is the one thing a line this size cannot do, so the count waits for the
+   * level rather than being stated and then appended to.
    */
-  it('states the count without a level while the bundle is still loading', () => {
+  it('states nothing until the level clause can be stated with the count', () => {
     preset.set(null);
+    languageStatus.set('initializing');
+    state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
+    const fixture = render();
+
+    expect(lines(fixture).headline).toBe('');
+
+    preset.set(PRESET);
+    languageStatus.set('ready');
+    fixture.detectChanges();
+
+    expect(lines(fixture).headline).toBe('You know 340 words and read starter forms.');
+  });
+
+  /** A bundle that failed is not a level still coming; the clause is dropped. */
+  it('states the count alone once the level is established not to be coming', () => {
+    preset.set(null);
+    languageStatus.set('failed');
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
 
     expect(lines(render())).toMatchObject({
