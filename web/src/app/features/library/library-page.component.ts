@@ -189,7 +189,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
     /* The home header, action, and every date group share the same rail. */
     .library-page {
-      gap: var(--space-2);
+      gap: var(--space-1);
     }
 
     .utilities {
