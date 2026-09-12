@@ -10,16 +10,16 @@ import {
   vocabularyCountLabel,
 } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
-/** What the headline says: a standing to state, or a single plain sentence. */
-type StandingHeadline =
-  | { readonly kind: 'standing'; readonly count: number; readonly level: string | null }
-  | { readonly kind: 'plain'; readonly text: string };
-
 /** The level clause: still coming, known, or established not to be coming. */
 type LevelClause =
   | { readonly kind: 'pending' }
   | { readonly kind: 'known'; readonly name: string }
   | { readonly kind: 'absent' };
+
+/** What the headline says: a standing to state, or a single plain sentence. */
+type StandingHeadline =
+  | { readonly kind: 'standing'; readonly count: number; readonly level: string | null }
+  | { readonly kind: 'plain'; readonly text: string };
 
 /**
  * Where the learner stands, on the screen they look at most.
@@ -30,10 +30,11 @@ type LevelClause =
  * self-explanatory — a story from *these* words — and it is the reason the
  * learner profile is worth a destination at all.
  *
- * The sentence is set one clause to a line, beside the illustration, so the
- * facts stack the way a poster states them rather than reflowing around the
- * art. The block holds that space before the read answers, and states the
- * sentence whole when it does.
+ * The two facts it names are the two the page behind it holds, so each is
+ * underlined where it is said: the sentence reads as a sentence, and the parts
+ * of it that lead somewhere look like they do. It is centred on the
+ * illustration beside it, holds its space before the read answers, and states
+ * the sentence whole when it does.
  */
 @Component({
   selector: 'mn-library-standing',
@@ -51,25 +52,19 @@ type LevelClause =
         <span class="headline">
           @switch (line.kind) {
             @case ('standing') {
-              <!--
-                The clauses are blocks, so the whitespace between them is
-                dropped from the rendered text; the explicit non-removable
-                spaces keep the sentence a sentence for anything that reads it
-                rather than sees it.
-              -->
-              <span class="clause">You know</span>&ngsp;<span class="clause"
-                ><mn-counting-count [count]="line.count" [format]="wordsLabel" />{{
-                  line.level === null ? '.' : ''
-                }}</span
-              >
               @if (line.level !== null) {
-                &ngsp;<span class="clause">and read</span>&ngsp;<span class="clause"
-                  >{{ line.level }}.</span
+                <span
+                  >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" /> and
+                  read {{ line.level }}.</span
+                >
+              } @else {
+                <span
+                  >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" />.</span
                 >
               }
             }
             @case ('plain') {
-              <span class="clause">{{ line.text }}</span>
+              <span>{{ line.text }}</span>
             }
           }
         </span>
@@ -88,37 +83,30 @@ type LevelClause =
     }
 
     /*
-     * The four lines of the settled sentence are held whether or not the read
-     * has answered yet — the same line height they are set in — so nothing
-     * below moves when it does. A skeleton would be the alternative, and the
-     * design system rules those out.
+     * Two lines of space are held whether or not the read has answered yet, so
+     * nothing below moves when it does. A skeleton would be the alternative,
+     * and the design system rules those out.
      */
     .standing {
       display: flex;
       flex-direction: column;
       justify-content: center;
       gap: var(--space-3);
-      min-height: calc(4 * 1.04 * var(--text-display));
+      min-height: 3.4rem;
       min-width: 0;
       color: var(--text-primary);
       text-decoration: none;
     }
 
     .headline {
+      display: flex;
+      gap: var(--space-1);
+      align-items: center;
       font-family: var(--font-ui);
       font-size: var(--text-display);
       font-weight: var(--weight-bold);
       letter-spacing: -0.035em;
       line-height: 1.04;
-    }
-
-    /*
-     * One clause to a line. Wrapping placed the break wherever the art left
-     * room, which ran the count and the level together across a line end; set
-     * this way each line is one thing the learner knows.
-     */
-    .clause {
-      display: block;
     }
 
     /*
@@ -128,7 +116,7 @@ type LevelClause =
      * name has to stay breakable on a narrow screen, so the mark fragmented
      * across lines instead of pointing anywhere.
      */
-    .standing:hover .headline .clause {
+    .standing:hover .headline span {
       text-decoration: underline;
     }
 
@@ -147,10 +135,6 @@ type LevelClause =
     @media (max-width: breakpoints.$narrow-max) {
       .headline {
         font-size: var(--text-2xl);
-      }
-
-      .standing {
-        min-height: calc(4 * 1.04 * var(--text-2xl));
       }
     }
   `,

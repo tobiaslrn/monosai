@@ -12,9 +12,9 @@ clauses of one sentence rather than one clause, the count rises when it changes,
 and the line no longer states the last sync. The section below records the
 wording it replaced.
 
-Amended again on how that sentence is set and when it is said: one clause to a
-line beside the illustration, centred on it, and stated whole once both facts
-have been read rather than count first and level after.
+Amended again on how that sentence is set and when it is said: centred on the
+illustration beside it, and stated whole once both facts have been read rather
+than count first and level after.
 
 ## Context
 
@@ -88,11 +88,9 @@ the level a second or two later rewrote the largest line on the screen while the
 learner was reading it. A bundle that has settled without naming a level — it
 failed — drops the clause rather than waiting on it or guessing.
 
-The sentence is set one clause to a line, beside the illustration and centred on
-it, so each line is one thing the learner knows. Wrapping put the break wherever
-the art left room, which ran the count and the level together across a line end.
-The block holds the height of the settled four lines while the read is out, so
-nothing below it moves when the sentence arrives.
+The sentence and the illustration are centred on each other rather than both
+hanging from the top edge of the hero, so they stay one composition as the
+sentence grows or loses a line.
 
 The sentence is underlined under a pointer and carries no mark of its own
 otherwise. Marking the count and the level permanently was built and rejected:

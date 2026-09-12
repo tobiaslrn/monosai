@@ -107,12 +107,12 @@ The crop follows the illustration's arch and low foreground, preserving the
 whole reading character and books. Its proportions stay fixed as the column
 changes width. Once the shelf holds a story the hero steps down to a compact
 size, so the stories come up the screen; only its size changes, never its crop.
-The home headline is tightly set beside it, one clause to a line
-and centred on the illustration's own axis, so the two read as one composition
-rather than a sentence hanging from the top edge. It is stated whole, once every
-fact in it has been read; it never states one clause and appends the next. The
-creation action spans the column; filter pills share the available width on
-phones and stay compact on desktop.
+The home headline is tightly set beside it, centred on the
+illustration's own axis so the two read as one composition rather than a
+sentence hanging from the top edge. It is stated whole, once every fact in it
+has been read; it never states one clause and appends the next. The creation
+action spans the column; filter pills share the available width on phones and
+stay compact on desktop.
 Home's primary action uses the shared primary action colour; each palette shows
 its own illustration unfiltered, as drawn.
 

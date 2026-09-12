@@ -208,9 +208,9 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       isolation: isolate;
       display: flex;
       align-items: center;
-      min-height: 16rem;
+      min-height: 15rem;
       margin-bottom: calc(var(--space-2) * -1);
-      padding-block: var(--space-2);
+      padding-block: 0 var(--space-2);
     }
 
     .hero-art {
@@ -266,11 +266,11 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
      * screen. The art keeps its proportions; only its size changes.
      */
     .home-hero.is-compact {
-      min-height: 10rem;
+      min-height: 9rem;
     }
 
     .home-hero.is-compact .hero-art {
-      max-width: 10rem;
+      max-width: 9rem;
     }
 
     /* The action sits directly below the invitation it acts on. */

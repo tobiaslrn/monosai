@@ -151,14 +151,13 @@ describe('LibraryStandingComponent', () => {
     });
   });
 
-  it('holds the height of the settled sentence while the read has not answered', () => {
+  it('holds its two lines of space while the read has not answered', () => {
     const measured = lines(render());
 
     expect(measured.headline).toBe('');
     expect(measured.detail).toBe('');
-    // Four clauses at the display size, in a unit that follows the reader's
-    // own font size, so nothing below moves when the sentence arrives.
-    expect(measured.height).toBe('calc(4.16 * var(--text-display))');
+    // Two lines of space, in a unit that follows the reader's own font size.
+    expect(measured.height).toBe('54.4px');
   });
 
   /**
