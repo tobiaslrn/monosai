@@ -85,6 +85,15 @@ and never eligible for the format recovery
 ([ADR 0018](../decisions/0018-openrouter-request-boundary.md)); anything else
 malformed remains a typed provider failure.
 
+Text-task input uses a small provider-facing Markdown wire format. Headings identify sections,
+ordinary entries occupy one line, and backslashes, carriage returns, line feeds, and leading
+Markdown controls are escaped deterministically after line escaping. Configuration and data blocks
+cannot override the surrounding rules. Indexed wires use request-local ordinal ids; adapters restore
+the real domain ids and apply task-specific checks for unknown, duplicate, and partial entries.
+Responses remain task-specific JSON,
+including separate opening, tail, and glossary-repair translation schemas
+([ADR 0071](../decisions/0071-markdown-input-wire-and-cache-friendly-text-requests.md)).
+
 How many such requests are in flight is not this layer's decision. All three
 preparation layers draw permits from one `PreparationPacer`, capped at ten
 together and granted to the lowest waiting sentence position, so a reading fills
@@ -171,6 +180,13 @@ Translation separates the input fingerprint from the ready plan fingerprint: cre
 progress affect neither. A retry may narrow its target ids without changing passage-window identity,
 so successful sibling rows remain cache hits. Old rows stay available as history but never satisfy
 a different active plan.
+
+Translation prompts place their stable plan and captured context before the changing passage window,
+so related requests share a reusable prefix. Long story generation uses one random content-free
+session id for the blueprint, segments, and format recovery; it is not part of cache identity. The
+OpenRouter client accepts optional usage metadata and logs only prompt, completion, total, cached,
+and cache-write token counts alongside task and model, never prompt or response content. See
+[ADR 0071](../decisions/0071-markdown-input-wire-and-cache-friendly-text-requests.md).
 
 The preparation lane writes each accepted grammar record before advancing its
 job row. Story options therefore reports the real queue/request/save outcome:

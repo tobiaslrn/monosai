@@ -12,11 +12,11 @@
  * change behaviour keeps its version.
  */
 export const PROMPT_VERSIONS = {
-  story: 'story/5',
-  repair: 'repair/5',
-  'exception-review': 'exception-review/3',
-  grammar: 'grammar/4',
-  translation: 'translation/4',
+  story: 'story/6',
+  repair: 'repair/6',
+  'exception-review': 'exception-review/4',
+  grammar: 'grammar/5',
+  translation: 'translation/5',
 } as const;
 
 export type PromptTaskName = keyof typeof PROMPT_VERSIONS;

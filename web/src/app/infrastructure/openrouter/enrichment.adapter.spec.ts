@@ -123,6 +123,30 @@ describe('OpenRouterEnricher grammar review', () => {
     expect(result.error.detail?.issueCode).toBe('response-too-large');
     expect(context.server.callCount).toBe(2);
   });
+
+  it('maps ordinal findings back to domain sentence ids', async () => {
+    const context = harness({ content: 'grammar-complete' });
+
+    const result = await context.text.reviewGrammar(GRAMMAR_REQUEST, NATIVE);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.findings.map((finding) => finding.sentenceId)).toEqual([S0, S1]);
+  });
+
+  it.each([
+    ['grammar-unknown-sentence', 'grammar-unknown-sentence'],
+    ['grammar-duplicate-sentence', 'grammar-duplicate-sentence'],
+  ] as const)('rejects %s ordinals at the provider boundary', async (content, issueCode) => {
+    const context = harness({ content, recoveryContent: content });
+
+    const result = await context.text.reviewGrammar(GRAMMAR_REQUEST, NATIVE);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.detail?.issueCode).toBe(issueCode);
+    expect(context.server.callCount).toBe(2);
+  });
 });
 
 describe('OpenRouterEnricher translation', () => {
@@ -162,10 +186,12 @@ describe('OpenRouterEnricher translation', () => {
     const user = messages[1].content;
     // No generated ids on the wire, and each sentence appears exactly once.
     expect(user).not.toContain('s0');
-    expect(user).toContain('"targetIds":["1","2"]');
-    expect(user).toContain('"readingTitleJa":"ねこの一日"');
-    expect(user).toContain('"register":"polite"');
-    expect(user).toContain('"textEn":"The sentence before."');
+    expect(user).toContain('[1] TARGET: ねこがいます。');
+    expect(user).toContain('[2] TARGET: ねこはねます。');
+    expect(user).toContain('## Reading title\n\nねこの一日');
+    expect(user).toContain('Register: polite');
+    expect(user).not.toContain('targetIds');
+    expect(user).toContain('English: The sentence before.');
     expect(user.match(/ねこがいます。/gu)).toHaveLength(1);
   });
 
@@ -229,5 +255,92 @@ describe('OpenRouterEnricher translation', () => {
       return;
     }
     expect(result.error.code).toBe('malformed-response');
+  });
+
+  it('uses the opening contract with a required glossary and no provider ids for candidates', async () => {
+    const request: TranslationBatchRequest = {
+      ...TRANSLATION_REQUEST,
+      kind: 'opening',
+      glossaryCandidates: [
+        {
+          surfaceJa: 'ねこ',
+          kind: 'recurring-term',
+          examples: [{ sentenceId: S0, textJa: 'ねこがいます。' }],
+        },
+      ],
+    };
+    const context = harness({ content: 'translations-opening' });
+
+    const result = await context.text.translate(request, NATIVE);
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        translations: [
+          { id: S0, textEn: 'The cat is here.' },
+          { id: S1, textEn: 'The cat sleeps.' },
+        ],
+        glossary: [{ surfaceJa: 'ねこ', renderingEn: 'cat' }],
+      },
+    });
+    const body = context.server.requests[0]?.body ?? {};
+    expect(body['response_format']).toMatchObject({
+      json_schema: { name: 'monosai_translations' },
+    });
+    expect(JSON.stringify(body['response_format'])).toContain('TARGET ordinal');
+    expect((body['messages'] as readonly { content: string }[])[1]?.content).not.toContain(S0);
+  });
+
+  it('uses the tail contract without requiring or returning a glossary', async () => {
+    const request: TranslationBatchRequest = { ...TRANSLATION_REQUEST, kind: 'tail' };
+    const context = harness({ content: 'translations-full' });
+
+    const result = await context.text.translate(request, NATIVE);
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        translations: [
+          { id: S0, textEn: 'The cat is here.' },
+          { id: S1, textEn: 'The cat sleeps.' },
+        ],
+      },
+    });
+    const schema = JSON.stringify(context.server.requests[0]?.body['response_format']);
+    expect(schema).not.toContain('glossary');
+  });
+
+  it('uses a glossary-only response for glossary repair', async () => {
+    const request: TranslationBatchRequest = {
+      kind: 'glossary-repair',
+      window: [{ targetId: null, textJa: 'ねこがいます。' }],
+      glossaryCandidates: [
+        {
+          surfaceJa: 'ねこ',
+          kind: 'recurring-term',
+          examples: [{ sentenceId: S0, textJa: 'ねこがいます。' }],
+        },
+      ],
+      openingTranslations: [{ textJa: 'ねこがいます。', textEn: 'The cat is here.' }],
+      promptVersion: 'translation/5',
+    };
+    const context = harness({ content: 'translations-glossary-repair' });
+
+    const result = await context.text.translate(request, NATIVE);
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        translations: [],
+        glossary: [{ surfaceJa: 'ねこ', renderingEn: 'cat' }],
+      },
+    });
+    const schema = JSON.stringify(context.server.requests[0]?.body['response_format']);
+    expect(schema).toContain('glossary');
+    expect(schema).not.toContain('translations');
+    const user = (context.server.requests[0]?.body['messages'] as readonly { content: string }[])[1]
+      ?.content;
+    expect(user).toContain('# Saved opening translations');
+    expect(user).toContain('English: The cat is here.');
   });
 });

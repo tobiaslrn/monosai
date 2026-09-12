@@ -61,6 +61,8 @@ export const chatCompletionSchema = z.object({
       }),
     )
     .min(1),
+  /** OpenRouter may omit usage or add provider-specific fields to it. */
+  usage: z.unknown().optional(),
 });
 
 export type ChatCompletion = z.infer<typeof chatCompletionSchema>;
@@ -126,14 +128,7 @@ export const COMPATIBILITY_PROBE_JSON_SCHEMA = {
  */
 export const storyCandidateSchema = z.object({
   titleJa: z.string(),
-  sentences: z
-    .array(
-      z.object({
-        index: z.number().int().nonnegative(),
-        textJa: z.string(),
-      }),
-    )
-    .max(MAX_STORY_SEGMENT_SENTENCES),
+  sentences: z.array(z.string()).max(MAX_STORY_SEGMENT_SENTENCES),
 });
 
 export type StoryCandidatePayload = z.infer<typeof storyCandidateSchema>;
@@ -165,20 +160,8 @@ export function storyCandidateJsonSchema(requestedSentenceCount: number): Record
           maxItems: Math.min(requestedSentenceCount, MAX_STORY_SEGMENT_SENTENCES),
           description: 'The story in reading order, one sentence per entry.',
           items: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['index', 'textJa'],
-            properties: {
-              index: {
-                type: 'integer',
-                minimum: 0,
-                description: 'Reading position, starting at 0 and contiguous.',
-              },
-              textJa: {
-                type: 'string',
-                description: 'Exactly one Japanese sentence. Never two, never a fragment of one.',
-              },
-            },
+            type: 'string',
+            description: 'Exactly one Japanese sentence. Never two, never a fragment of one.',
           },
         },
       },
@@ -243,14 +226,8 @@ export function storyRepairPatchJsonSchema(targetCount: number): Record<string, 
 
 export const storyBlueprintSchema = z.object({
   titleJa: z.string(),
-  segments: z
-    .array(
-      z.object({
-        index: z.number().int().nonnegative(),
-        sentenceCount: z.number().int().positive().max(MAX_STORY_SEGMENT_SENTENCES),
-        beatEn: z.string().min(1).max(1_000),
-      }),
-    )
+  beatsEn: z
+    .array(z.string().min(1).max(1_000))
     .max(Math.ceil(MAX_STORY_SENTENCES / MAX_STORY_SEGMENT_SENTENCES)),
 });
 
@@ -261,36 +238,22 @@ export function storyBlueprintJsonSchema(segmentCount: number): Record<string, u
     schema: {
       type: 'object',
       additionalProperties: false,
-      required: ['titleJa', 'segments'],
+      required: ['titleJa', 'beatsEn'],
       properties: {
         titleJa: {
           type: 'string',
           description:
             "The finished story's Japanese title. No romaji, furigana, translation, or gloss.",
         },
-        segments: {
+        beatsEn: {
           type: 'array',
           minItems: segmentCount,
           maxItems: segmentCount,
-          description: 'One entry per supplied segment, in the supplied order.',
+          description: 'One beat per supplied segment, in the supplied order.',
           items: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['index', 'sentenceCount', 'beatEn'],
-            properties: {
-              index: { type: 'integer', minimum: 0, description: 'The supplied index, unchanged.' },
-              sentenceCount: {
-                type: 'integer',
-                minimum: 1,
-                maximum: MAX_STORY_SEGMENT_SENTENCES,
-                description: 'The supplied sentence count, unchanged.',
-              },
-              beatEn: {
-                type: 'string',
-                description:
-                  'What happens in this segment, in one or two plain English sentences. Planning data, never shown to the learner, and not subject to the Japanese allowlist.',
-              },
-            },
+            type: 'string',
+            description:
+              'What happens in this segment, in one or two plain English sentences. Planning data, never shown to the learner, and not subject to the Japanese allowlist.',
           },
         },
       },
@@ -299,14 +262,7 @@ export function storyBlueprintJsonSchema(segmentCount: number): Record<string, u
 }
 
 export const storySegmentCandidateSchema = z.object({
-  sentences: z
-    .array(
-      z.object({
-        index: z.number().int().nonnegative(),
-        textJa: z.string(),
-      }),
-    )
-    .max(MAX_STORY_SEGMENT_SENTENCES),
+  sentences: z.array(z.string()).max(MAX_STORY_SEGMENT_SENTENCES),
   continuitySummaryEn: z.string().min(1).max(2_000),
 });
 
@@ -325,20 +281,8 @@ export function storySegmentJsonSchema(sentenceCount: number): Record<string, un
           maxItems: sentenceCount,
           description: 'This segment only, in reading order, one sentence per entry.',
           items: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['index', 'textJa'],
-            properties: {
-              index: {
-                type: 'integer',
-                minimum: 0,
-                description: 'Position within this segment, starting at 0 and contiguous.',
-              },
-              textJa: {
-                type: 'string',
-                description: 'Exactly one Japanese sentence.',
-              },
-            },
+            type: 'string',
+            description: 'Exactly one Japanese sentence.',
           },
         },
         continuitySummaryEn: {
@@ -499,87 +443,116 @@ export function grammarReviewJsonSchema(sentenceCount: number): Record<string, u
 }
 
 /**
- * The translation batch's answer.
- *
- * Matching returned ids back to the request — rejecting a missing, extra,
- * duplicate, or blank translation — is `matchTranslations` in
- * `domain/ai/translation-request`, not this schema: this only checks that the
- * reply is shaped like a list of `{ id, textEn }` pairs.
- *
- * For the same reason the JSON Schema below states its entry count in the
- * array's description rather than in `minItems`/`maxItems`: strict Structured
- * Outputs rejects those keywords, and the count was never enforced here anyway.
+ * Translation wire responses are task-specific. Glossary repair deliberately
+ * has no redundant `translations` array; the adapter restores the unchanged
+ * domain envelope after validating this compact provider shape.
  */
+const translationEntrySchema = z.object({
+  id: z.string(),
+  textEn: z.string(),
+});
+
+const glossaryEntrySchema = z.object({
+  surfaceJa: z.string(),
+  renderingEn: z.string(),
+});
+
+export const translationOpeningSchema = z
+  .object({
+    translations: z.array(translationEntrySchema).max(64),
+    glossary: z.array(glossaryEntrySchema).max(20),
+  })
+  .strict();
+
+export const translationTailSchema = z
+  .object({ translations: z.array(translationEntrySchema).max(64) })
+  .strict();
+
+export const translationGlossaryRepairSchema = z
+  .object({ glossary: z.array(glossaryEntrySchema).max(20) })
+  .strict();
+
+/** Compatibility shape for callers that do not specify a request kind. */
 export const translationsSchema = z.object({
-  translations: z
-    .array(
-      z.object({
-        id: z.string(),
-        textEn: z.string(),
-      }),
-    )
-    .max(64),
-  glossary: z
-    .array(
-      z.object({
-        surfaceJa: z.string(),
-        renderingEn: z.string(),
-      }),
-    )
-    .max(20)
-    .optional(),
+  translations: z.array(translationEntrySchema).max(64),
+  glossary: z.array(glossaryEntrySchema).max(20).optional(),
 });
 
 export type TranslationsPayload = z.infer<typeof translationsSchema>;
 
-export function translationsJsonSchema(
+export function translationOpeningJsonSchema(targetCount: number): Record<string, unknown> {
+  return translationJsonSchema('opening', targetCount);
+}
+
+export function translationTailJsonSchema(targetCount: number): Record<string, unknown> {
+  return translationJsonSchema('tail', targetCount);
+}
+
+export function translationGlossaryRepairJsonSchema(): Record<string, unknown> {
+  return translationJsonSchema('glossary-repair', 0);
+}
+
+export function translationJsonSchema(
+  kind: 'opening' | 'tail' | 'glossary-repair',
   targetCount: number,
-  includeGlossary = false,
 ): Record<string, unknown> {
+  const includeTranslations = kind !== 'glossary-repair';
+  const includeGlossary = kind === 'opening' || kind === 'glossary-repair';
+  const properties: Record<string, unknown> = {};
+  if (includeTranslations) {
+    properties['translations'] = {
+      type: 'array',
+      description: `One entry per requested TARGET ordinal, and no entry for any other ordinal — exactly ${targetCount} of them.`,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['id', 'textEn'],
+        properties: {
+          id: { type: 'string', description: 'A requested TARGET ordinal, copied exactly.' },
+          textEn: {
+            type: 'string',
+            description:
+              'Natural English for that one Japanese sentence, readable beside it as a comprehension check. No notes, no glosses, no added detail.',
+          },
+        },
+      },
+    };
+  }
+  if (includeGlossary) {
+    properties['glossary'] = {
+      type: 'array',
+      description:
+        'Zero or more confident terminology choices, using only supplied candidate surfaces.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['surfaceJa', 'renderingEn'],
+        properties: {
+          surfaceJa: { type: 'string' },
+          renderingEn: { type: 'string' },
+        },
+      },
+    };
+  }
   return {
-    name: 'monosai_translations',
+    name: `monosai_${kind === 'glossary-repair' ? 'glossary_repair' : 'translations'}`,
     strict: true,
     schema: {
       type: 'object',
       additionalProperties: false,
-      required: includeGlossary ? ['translations', 'glossary'] : ['translations'],
-      properties: {
-        translations: {
-          type: 'array',
-          description: `One entry per requested target id, and no entry for any other id — exactly ${targetCount} of them.`,
-          items: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['id', 'textEn'],
-            properties: {
-              id: { type: 'string', description: 'A requested target id, copied exactly.' },
-              textEn: {
-                type: 'string',
-                description:
-                  'Natural English for that one Japanese sentence, readable beside it as a comprehension check. No notes, no glosses, no added detail.',
-              },
-            },
-          },
-        },
-        ...(includeGlossary
-          ? {
-              glossary: {
-                type: 'array',
-                description:
-                  'Zero or more confident terminology choices, using only supplied candidate surfaces.',
-                items: {
-                  type: 'object',
-                  additionalProperties: false,
-                  required: ['surfaceJa', 'renderingEn'],
-                  properties: {
-                    surfaceJa: { type: 'string' },
-                    renderingEn: { type: 'string' },
-                  },
-                },
-              },
-            }
-          : {}),
-      },
+      required: [
+        ...(includeTranslations ? ['translations'] : []),
+        ...(includeGlossary ? ['glossary'] : []),
+      ],
+      properties,
     },
   };
+}
+
+/** Backwards-compatible factory used by older adapter tests. */
+export function translationsJsonSchema(
+  targetCount: number,
+  includeGlossary = false,
+): Record<string, unknown> {
+  return translationJsonSchema(includeGlossary ? 'opening' : 'tail', targetCount);
 }

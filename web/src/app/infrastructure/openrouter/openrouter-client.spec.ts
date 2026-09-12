@@ -306,6 +306,83 @@ describe('OpenRouterClient redaction', () => {
   });
 });
 
+describe('OpenRouterClient usage diagnostics', () => {
+  function logger(): Logger & { readonly infoSpy: ReturnType<typeof vi.fn> } {
+    const infoSpy = vi.fn();
+    return {
+      debug: vi.fn(),
+      info: infoSpy,
+      warn: vi.fn(),
+      error: vi.fn(),
+      snapshot: () => [],
+      clear: vi.fn(),
+      infoSpy,
+    };
+  }
+
+  it('records only numeric OpenRouter usage fields with task and model metadata', async () => {
+    const diagnostics = logger();
+    const harness = openRouterHarness({
+      usage: {
+        prompt_tokens: 120,
+        completion_tokens: 24,
+        total_tokens: 144,
+        prompt_tokens_details: {
+          cached_tokens: 80,
+          cache_write_tokens: 8,
+          prompt: 'must not be logged',
+        },
+        provider_specific: 'ignored',
+      },
+    });
+    const client = new OpenRouterClient({
+      fetchFn: harness.server.fetch,
+      credentials: new FakeCredentialRepository(),
+      isOnline: () => true,
+      sleep: () => Promise.resolve(),
+      logger: diagnostics,
+    });
+
+    const result = await client.postJson(probe, chatCompletionSchema);
+
+    expect(result.ok).toBe(true);
+    const usageCall = diagnostics.infoSpy.mock.calls.find(
+      ([event]) => event === 'ai.request.usage',
+    );
+    expect(usageCall?.[1]).toEqual({
+      task: 'text-model-test',
+      modelId: FAKE_OPENROUTER.textModel,
+      promptTokens: 120,
+      completionTokens: 24,
+      totalTokens: 144,
+      cachedTokens: 80,
+      cacheWriteTokens: 8,
+    });
+    expect(JSON.stringify(usageCall)).not.toContain('must not be logged');
+  });
+
+  it('ignores missing or malformed optional usage without invalidating the completion', async () => {
+    for (const usage of [undefined, { prompt_tokens: '120' }, { prompt_tokens_details: null }]) {
+      const diagnostics = logger();
+      const harness = openRouterHarness({ usage });
+      const client = new OpenRouterClient({
+        fetchFn: harness.server.fetch,
+        credentials: new FakeCredentialRepository(),
+        isOnline: () => true,
+        sleep: () => Promise.resolve(),
+        logger: diagnostics,
+      });
+
+      const result = await client.postJson(probe, chatCompletionSchema);
+
+      expect(result.ok).toBe(true);
+      expect(diagnostics.infoSpy.mock.calls.some(([event]) => event === 'ai.request.usage')).toBe(
+        false,
+      );
+    }
+  });
+});
+
 describe('OpenRouterClient edge responses', () => {
   function clientWith(fetchFn: typeof fetch): OpenRouterClient {
     return new OpenRouterClient({

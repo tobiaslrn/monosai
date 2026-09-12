@@ -17,7 +17,10 @@ const NATIVE: TextTaskConfig = {
 const REQUEST: GrammarReviewRequest = {
   profileGuidance: 'Plain, short clauses only.',
   registerPreference: 'either',
-  sentences: [{ id: sentenceId('s0'), textJa: 'ねこがいます。' }],
+  sentences: [
+    { id: sentenceId('s0'), textJa: 'ねこがいます。' },
+    { id: sentenceId('s1'), textJa: 'ねこはねます。' },
+  ],
   promptVersion: 'grammar/1',
 };
 

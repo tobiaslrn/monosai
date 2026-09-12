@@ -23,6 +23,8 @@ export interface StructuredRequest<T> {
   readonly prompt: AssembledPrompt;
   readonly jsonSchema: Record<string, unknown>;
   readonly maxTokens: number;
+  /** Shared only across the requests that make up one long-story run. */
+  readonly sessionId?: string;
   /** Overrides the task default when one task contains both creative and judgement calls. */
   readonly temperature?: number;
   /**
@@ -123,6 +125,7 @@ export class StructuredTaskRunner {
         ...(request.signal === undefined ? {} : { signal: request.signal }),
         body: {
           model: request.config.modelId,
+          ...(request.sessionId === undefined ? {} : { session_id: request.sessionId }),
           max_tokens: request.maxTokens,
           ...(temperature === undefined ? {} : { temperature }),
           ...reasoningRequest(request.task, request.config.modelId, request.config.reasoningEffort),

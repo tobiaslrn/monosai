@@ -134,6 +134,15 @@ length is guidance to the writer rather than a local acceptance rule, while malf
 replies are refused at the provider boundary
 ([ADR 0046](../decisions/0046-length-is-a-guideline.md)).
 
+The text requests use provider-facing Markdown for their input blocks: headings name the following
+section, each ordinary value occupies one escaped line, and indexed repair or segment windows use
+local ordinals. The adapters restore those ordinals to domain ids and apply the existing
+task-specific checks for unknown, duplicate, and partial entries. JSON is retained for every
+response contract. One content-free session id is created for a
+long run and sent with its blueprint, segments, and any format recovery; optional numeric token
+usage is diagnostic metadata only. See
+[ADR 0071](../decisions/0071-markdown-input-wire-and-cache-friendly-text-requests.md).
+
 A job is not persisted, and it belongs to the tab that started it. An open provider request cannot be
 resumed, and nothing is written before the final transaction, so a reload ends every run. The
 application warns before a reload it can see.
@@ -201,6 +210,13 @@ accepted opening rows in one transaction before any tail request starts. If only
 invalid, the English is stored provisionally and Retry repairs only the glossary. Later requests
 use stable Japanese passage windows, identical captured story context, and the identical frozen
 glossary. At most three translation requests roll concurrently; each also holds a shared permit.
+
+Translation keeps the stable settings, premise, glossary, and established renderings before the
+changing reading window. Opening, tail, and glossary-repair responses have separate JSON contracts;
+window entries use local ordinals on the wire and are mapped back to the actual sentence ids by the
+adapter. A glossary repair therefore returns only glossary entries and cannot accidentally replace
+sentence translations. These details are part of
+[ADR 0071](../decisions/0071-markdown-input-wire-and-cache-friendly-text-requests.md).
 
 The reader combines appearance preferences, per-layer content status, and maintenance in Story
 options. Explicit preparation and retry actions use the existing layer producers; stopping a layer

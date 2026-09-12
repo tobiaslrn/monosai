@@ -248,13 +248,21 @@ flowchart TB
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **The client**               | The only outbound path. Reads the credential, checks the host, caps the response size, applies the timeout, classifies the failure, and decides whether a retry is allowed. It never logs a key or a response body            |
 | **The port implementations** | Compose a port from a capability tester and its task adapters, so no file carries another's job. Task adapters load lazily, which keeps prompt assets out of the initial bundle for a learner who only imports their own text |
-| **The task adapters**        | Turn a domain request into a provider request, and validate the reply before returning it                                                                                                                                     |
-| **The prompts**              | Assembled from immutable layers, with a version per task. Changing a version invalidates the cached results that used it                                                                                                      |
+| **The task adapters**        | Turn a domain request into a provider request, render provider-facing Markdown input, and validate the reply before returning it                                                                                            |
+| **The prompts**              | Assemble immutable layers into a stable Markdown prefix and a changing window, with a version per task. Changing a version invalidates the cached results that used it                                                     |
 | **The model catalog**        | Reads the capabilities a model declares, which a probe then confirms. See [ADR 0040](../decisions/0040-speech-capabilities-are-declared.md)                                                                                   |
 
 This is one client rather than one per task because of
 [ADR 0018](../decisions/0018-openrouter-request-boundary.md): the credential boundary, the retry
 limits, and the error model are single concerns, and duplicating them is how one of them drifts.
+
+Text tasks keep their provider input compact and inspectable: headings identify sections, ordinary
+vocabulary is emitted as one escaped line per entry, and indexed windows use local ordinal ids.
+The response remains a validated JSON contract, so the wire format reduces input tokens without
+weakening the boundary. Long story runs create one content-free session id and reuse it for the
+blueprint, segments, and format recovery; the client also records only numeric token usage fields
+when the provider supplies them. These concerns belong to the outbound adapter and are recorded in
+[ADR 0071](../decisions/0071-markdown-input-wire-and-cache-friendly-text-requests.md).
 
 ### Practice words for a story
 

@@ -172,6 +172,7 @@ export interface HarnessOptions extends FakeOpenRouterOptions {
   readonly decodable?: boolean;
   readonly encoder?: FakeEncoderBehaviour;
   readonly timeoutMs?: number;
+  readonly sessionIdFactory?: () => string;
 }
 
 /**
@@ -202,7 +203,8 @@ export function openRouterHarness(options: HarnessOptions = {}): OpenRouterHarne
     sleeps,
     text: new OpenRouterTextProvider(
       new OpenRouterTextModelTester(client),
-      () => Promise.resolve(new OpenRouterStoryGenerator(client)),
+      () =>
+        Promise.resolve(new OpenRouterStoryGenerator(client, undefined, options.sessionIdFactory)),
       () => Promise.resolve(new OpenRouterEnricher(client)),
     ),
     tts: (() => {

@@ -44,7 +44,7 @@ describe('estimateTokens', () => {
 describe('estimateRequestTokens', () => {
   it('counts the learner exception policy', () => {
     const policy = 'English loanwords in katakana are fine.';
-    expect(estimateRequestTokens(request({ exceptionPolicy: policy }))).toBe(
+    expect(estimateRequestTokens(request({ exceptionPolicy: policy }))).toBeGreaterThan(
       estimateRequestTokens(request()) + estimateTokens(policy),
     );
   });
@@ -52,13 +52,15 @@ describe('estimateRequestTokens', () => {
   it('grows with the allowlist rather than ignoring it', () => {
     const small = estimateRequestTokens(request());
     const large = estimateRequestTokens(
-      request({ allowedVocabulary: Array.from({ length: 1_800 }, () => '勉強') }),
+      request({
+        allowedVocabulary: Array.from({ length: 1_800 }, (_value, index) => `語${String(index)}`),
+      }),
     );
 
     expect(large).toBeGreaterThan(small);
   });
 
-  it('includes the fixed layers plus the actual compact JSON field structure', () => {
+  it('includes the fixed layers plus the actual Markdown field structure', () => {
     expect(
       estimateRequestTokens(
         request({

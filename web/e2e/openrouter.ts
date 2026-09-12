@@ -159,26 +159,100 @@ const PROBE_ANSWER = '{"items": [{"id": "a", "note": "ok"}, {"id": "b", "note": 
 
 const GRAMMAR_SCHEMA = 'monosai_grammar_review';
 const TRANSLATIONS_SCHEMA = 'monosai_translations';
+const GLOSSARY_REPAIR_SCHEMA = 'monosai_glossary_repair';
+const BLUEPRINT_SCHEMA = 'monosai_story_blueprint';
+const SEGMENT_SCHEMA = 'monosai_story_segment';
 
 /**
  * The sentence ids a grammar or translation request carries.
  *
- * Both prompts list their sentences as `id: …` / `text: …` pairs, so the stub
- * can answer per requested id without the test having to know which sentences
- * a run accepted.
+ * The current prompts use ordinal Markdown entries. The legacy parser remains
+ * below because a few compatibility tests deliberately exercise the previous
+ * line-oriented wire shape.
  */
-function requestedSentences(text: string): readonly { id: string; textJa: string }[] {
-  // Enrichment prompts carry their targets as JSON inside a data block. Keep
-  // the parser tolerant of the old line-oriented representation as well: the
-  // route is shared by tests that exercise prompt compatibility and by the
-  // current production prompt contract.
-  const dataBlock =
-    /<<<MONOSAI_DATA\s+(?:reading window|translation targets|sentences in reading order)\n([\s\S]*?)\nMONOSAI_DATA>>>/.exec(
+interface RequestedEntry {
+  readonly id: string;
+  readonly textJa: string;
+  readonly target: boolean;
+}
+
+function dataBlock(text: string, label: string): string | null {
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return (
+    new RegExp(`<<<MONOSAI_DATA\\s+${escapedLabel}\\r?\\n([\\s\\S]*?)\\r?\\nMONOSAI_DATA>>>`).exec(
       text,
-    );
-  if (dataBlock?.[1] !== undefined) {
+    )?.[1] ?? null
+  );
+}
+
+function markdownUnescape(value: string): string {
+  let result = '';
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (character !== '\\' || index + 1 >= value.length) {
+      result += character;
+      continue;
+    }
+    const next = value[index + 1];
+    if (next === 'n') {
+      result += '\n';
+    } else if (next === 'r') {
+      result += '\r';
+    } else {
+      result += next;
+    }
+    index += 1;
+  }
+  return result;
+}
+
+function markdownRequestedEntries(text: string): readonly RequestedEntry[] | null {
+  const window = dataBlock(text, 'reading window');
+  if (window !== null) {
+    const entries: RequestedEntry[] = [];
+    let current: RequestedEntry | undefined;
+    for (const line of window.split(/\r?\n/)) {
+      const match = /^\[(\d+)\]\s+(CONTEXT|TARGET):\s?(.*)$/.exec(line);
+      if (match === null) {
+        continue;
+      }
+      if (current !== undefined) {
+        entries.push(current);
+      }
+      current = {
+        id: match[1],
+        textJa: markdownUnescape(match[3]),
+        target: match[2] === 'TARGET',
+      };
+    }
+    if (current !== undefined) {
+      entries.push(current);
+    }
+    return entries;
+  }
+
+  const sentences = dataBlock(text, 'sentences');
+  if (sentences !== null) {
+    return sentences.split(/\r?\n/).flatMap((line) => {
+      const match = /^\[(\d+)\]\s+(.*)$/.exec(line);
+      return match === null
+        ? []
+        : [{ id: match[1], textJa: markdownUnescape(match[2]), target: true }];
+    });
+  }
+  return null;
+}
+
+function legacyRequestedEntries(text: string): readonly RequestedEntry[] {
+  const labels = ['reading window', 'translation targets', 'sentences in reading order'];
+  const dataBlockMatch = labels
+    .map((label) =>
+      new RegExp(`<<<MONOSAI_DATA\\s+${label}\\n([\\s\\S]*?)\\nMONOSAI_DATA>>>`).exec(text),
+    )
+    .find((match) => match !== null);
+  if (dataBlockMatch?.[1] !== undefined) {
     try {
-      const parsed: unknown = JSON.parse(dataBlock[1]);
+      const parsed: unknown = JSON.parse(dataBlockMatch[1]);
       if (Array.isArray(parsed)) {
         return parsed.flatMap((value) => {
           if (
@@ -189,26 +263,44 @@ function requestedSentences(text: string): readonly { id: string; textJa: string
           ) {
             return [];
           }
-          const sentence = value as { id: string; textJa: string };
-          return [{ id: sentence.id, textJa: sentence.textJa }];
+          const sentence = value as { id: string; textJa: string; targetId?: unknown };
+          return [
+            {
+              id: sentence.id,
+              textJa: sentence.textJa,
+              target: sentence.targetId !== null,
+            },
+          ];
         });
       }
     } catch {
-      // Fall through to the legacy parser so a malformed test prompt remains
-      // observable as an empty request rather than breaking the route itself.
+      // Fall through to the legacy line parser so a malformed test prompt
+      // remains observable as an empty request rather than breaking the route.
     }
   }
 
   const lines = text.split('\n');
-  const found: { id: string; textJa: string }[] = [];
+  const found: RequestedEntry[] = [];
   lines.forEach((line, index) => {
     const next = lines[index + 1] as string | undefined;
     if (!line.startsWith('id: ') || next?.startsWith('text: ') !== true) {
       return;
     }
-    found.push({ id: line.slice('id: '.length).trim(), textJa: next.slice('text: '.length) });
+    found.push({
+      id: line.slice('id: '.length).trim(),
+      textJa: next.slice('text: '.length),
+      target: true,
+    });
   });
   return found;
+}
+
+function requestedWindow(text: string): readonly RequestedEntry[] {
+  return markdownRequestedEntries(text) ?? legacyRequestedEntries(text);
+}
+
+function requestedSentences(text: string): readonly { id: string; textJa: string }[] {
+  return requestedWindow(text).map(({ id, textJa }) => ({ id, textJa }));
 }
 
 interface ChatBody {
@@ -224,6 +316,11 @@ interface ChatBody {
  * would.
  */
 function requestedTargetIds(text: string): readonly string[] | null {
+  const window = markdownRequestedEntries(text);
+  if (window !== null) {
+    return window.filter((entry) => entry.target).map((entry) => entry.id);
+  }
+
   const block = /<<<MONOSAI_CONFIG\s+translation requirements\n([\s\S]*?)\nMONOSAI_CONFIG>>>/.exec(
     text,
   );
@@ -246,6 +343,31 @@ function requestedTargetIds(text: string): readonly string[] | null {
  * the stub answers the patch shape the adapter splices in.
  */
 function repairTargets(text: string): { indexes: readonly number[]; title: boolean } {
+  const window = dataBlock(text, 'story window');
+  if (window !== null) {
+    let inTargets = false;
+    let title = false;
+    const indexes: number[] = [];
+    for (const line of window.split(/\r?\n/)) {
+      if (line === '## Targets') {
+        inTargets = true;
+        continue;
+      }
+      if (!inTargets) {
+        continue;
+      }
+      if (/^Title:\s/.test(line)) {
+        title = true;
+        continue;
+      }
+      const match = /^\[(\d+)\]\s/.exec(line);
+      if (match !== null) {
+        indexes.push(Number(match[1]));
+      }
+    }
+    return { indexes, title };
+  }
+
   const block = /<<<MONOSAI_CONFIG\s+repair requirements\n([\s\S]*?)\nMONOSAI_CONFIG>>>/.exec(text);
   if (block?.[1] === undefined) {
     return { indexes: [], title: false };
@@ -267,8 +389,18 @@ function repairTargets(text: string): { indexes: readonly number[]; title: boole
 function storyPayload(reply: StoryReply): string {
   return JSON.stringify({
     titleJa: reply.titleJa,
-    sentences: reply.sentences.map((textJa, index) => ({ index, textJa })),
+    sentences: reply.sentences,
   });
+}
+
+function requestedSegmentCounts(text: string): readonly number[] {
+  const block = /<<<MONOSAI_CONFIG\s+segment plan\r?\n([\s\S]*?)\r?\nMONOSAI_CONFIG>>>/.exec(text);
+  if (block?.[1] === undefined) {
+    return [];
+  }
+  return [...block[1].matchAll(/^-\s+Segment\s+\d+:\s+(\d+)\s+sentences$/gm)].map((match) =>
+    Number(match[1]),
+  );
 }
 
 function nextOf<T>(queue: readonly T[] | undefined, index: number): T | undefined {
@@ -339,7 +471,15 @@ export async function stubOpenRouter(
 ): Promise<ProviderCalls> {
   const urls: string[] = [];
   const translationRequests: { id: string; textJa: string }[][] = [];
-  const served = { story: 0, repair: 0, decisions: 0, grammar: 0, translations: 0 };
+  const served = {
+    story: 0,
+    repair: 0,
+    decisions: 0,
+    grammar: 0,
+    translations: 0,
+    blueprint: 0,
+    segment: 0,
+  };
   let audioRequests = 0;
   let inFlightAudio = 0;
   const calls: ProviderCalls = {
@@ -452,7 +592,11 @@ export async function stubOpenRouter(
   /** Whether this request is a grammar review or a translation batch. */
   function isAidRequest(body: ChatBody): boolean {
     const schema = body.response_format?.json_schema?.name;
-    return schema === GRAMMAR_SCHEMA || schema === TRANSLATIONS_SCHEMA;
+    return (
+      schema === GRAMMAR_SCHEMA ||
+      schema === TRANSLATIONS_SCHEMA ||
+      schema === GLOSSARY_REPAIR_SCHEMA
+    );
   }
 
   /**
@@ -468,11 +612,7 @@ export async function stubOpenRouter(
     // Matched on the task instruction, not on the guidance block: the story and
     // repair prompts carry the same grammar guidance and must not be answered
     // with a review.
-    if (
-      schema === GRAMMAR_SCHEMA ||
-      text.includes('review each given Japanese sentence') ||
-      text.includes('sentences in reading order')
-    ) {
+    if (schema === GRAMMAR_SCHEMA || text.includes('review each given Japanese sentence')) {
       const outcome = nextOf(options.generation?.grammar, served.grammar) ?? 'ok';
       served.grammar += 1;
       if (outcome === 'hang') {
@@ -507,19 +647,25 @@ export async function stubOpenRouter(
     ) {
       const outcome = nextOf(options.generation?.translations, served.translations) ?? 'ok';
       served.translations += 1;
-      const window = requestedSentences(text);
+      const window = requestedWindow(text);
       const targetIds = requestedTargetIds(text);
       const sentences =
-        targetIds === null ? window : window.filter((sentence) => targetIds.includes(sentence.id));
-      translationRequests.push(sentences.map((sentence) => ({ ...sentence })));
+        targetIds === null
+          ? window.filter((entry) => entry.target)
+          : window.filter((entry) => targetIds.includes(entry.id));
+      translationRequests.push(sentences.map(({ id, textJa }) => ({ id, textJa })));
       if (outcome === 'hang') {
         return HANG;
       }
       if (outcome === 'unavailable') {
         return 'Sure, happy to help!';
       }
+      if (schema === GLOSSARY_REPAIR_SCHEMA) {
+        return JSON.stringify({ glossary: [] });
+      }
       const answered = outcome === 'partial' ? sentences.slice(0, -1) : sentences;
       const establishesGlossary =
+        text.includes('Request kind: opening') ||
         text.includes('"requestKind":"opening"') ||
         text.includes('"requestKind":"glossary-repair"');
       return JSON.stringify({
@@ -550,10 +696,42 @@ export async function stubOpenRouter(
         })),
       });
     }
+    if (schema === BLUEPRINT_SCHEMA) {
+      const reply = nextOf(options.generation?.stories, served.blueprint);
+      served.blueprint += 1;
+      if (reply === undefined) {
+        return null;
+      }
+      const counts = requestedSegmentCounts(text);
+      return JSON.stringify({
+        titleJa: reply.titleJa,
+        beatsEn: counts.map((_count, index) => `Continue the story in segment ${index}.`),
+      });
+    }
+    if (schema === SEGMENT_SCHEMA) {
+      const reply = nextOf(options.generation?.stories, served.segment);
+      served.segment += 1;
+      if (reply === undefined) {
+        return null;
+      }
+      const segmentIndex = Number(/\bIndex:\s*(\d+)/.exec(text)?.[1] ?? 0);
+      const sentenceCount = Number(/\bRequested sentences:\s*(\d+)/.exec(text)?.[1] ?? 1);
+      const offset = segmentIndex * 50;
+      const sentences = Array.from(
+        { length: sentenceCount },
+        (_value, index) =>
+          reply.sentences[offset + index] ?? `これは第${String(offset + index + 1)}の文です。`,
+      );
+      return JSON.stringify({
+        sentences,
+        continuitySummaryEn: 'The story continues coherently.',
+      });
+    }
+    const fullRepair = text.includes('<<<MONOSAI_DATA current story');
     if (schema !== STORY_SCHEMA && !text.includes('vocabulary inventory')) {
       return null;
     }
-    if (text.includes('repair requirements')) {
+    if (fullRepair || text.includes('repair requirements')) {
       const reply = nextOf(options.generation?.repairs, served.repair);
       served.repair += 1;
       return reply === undefined ? null : storyPayload(reply);

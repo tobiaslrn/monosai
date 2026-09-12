@@ -12,17 +12,21 @@ import {
   type TranslationProviderResult,
   type TranslationResult,
 } from '../../domain/ai/translation-request';
-import { sentenceId } from '../../domain/shared/ids';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { OpenRouterClient } from './openrouter-client';
 import { ENRICHMENT_REQUEST_TIMEOUT_MS } from './openrouter-endpoints';
 import {
   grammarReviewJsonSchema,
   grammarReviewSchema,
+  translationGlossaryRepairJsonSchema,
+  translationGlossaryRepairSchema,
+  translationOpeningJsonSchema,
+  translationOpeningSchema,
+  translationTailJsonSchema,
+  translationTailSchema,
   translationsSchema,
-  translationsJsonSchema,
 } from './openrouter-response.schema';
-import { buildGrammarPrompt } from './prompts/grammar-prompt';
+import { buildGrammarPrompt, grammarSentenceWireId } from './prompts/grammar-prompt';
 import { buildTranslationPrompt, translationWireId } from './prompts/translation-prompt';
 import { StructuredTaskRunner } from './structured-request';
 
@@ -86,7 +90,7 @@ export class OpenRouterEnricher {
         MAX_GRAMMAR_TOKENS,
       ),
       timeoutMs: ENRICHMENT_REQUEST_TIMEOUT_MS,
-      read: readGrammarReview,
+      read: readGrammarReview(request),
       ...(signal === undefined ? {} : { signal }),
     });
   }
@@ -97,14 +101,17 @@ export class OpenRouterEnricher {
     signal?: AbortSignal,
   ): Promise<Result<TranslationProviderResult, AiError>> {
     const targetCount = translationTargets(request).length;
+    const kind = request.kind ?? 'tail';
     return this.runner.run<TranslationProviderResult>({
       task: 'translation',
       config,
       prompt: buildTranslationPrompt(request),
-      jsonSchema: translationsJsonSchema(
-        targetCount,
-        request.kind === 'opening' || request.kind === 'glossary-repair',
-      ),
+      jsonSchema:
+        kind === 'opening'
+          ? translationOpeningJsonSchema(targetCount)
+          : kind === 'glossary-repair'
+            ? translationGlossaryRepairJsonSchema()
+            : translationTailJsonSchema(targetCount),
       maxTokens: replyBudget(
         TRANSLATION_BASE_TOKENS,
         TRANSLATION_TOKENS_PER_SENTENCE,
@@ -118,23 +125,44 @@ export class OpenRouterEnricher {
   }
 }
 
-function readGrammarReview(parsed: unknown): Result<GrammarReviewResult, string> {
-  const payload = grammarReviewSchema.safeParse(parsed);
-  if (!payload.success) {
-    return err('grammar-review-shape');
-  }
-  return ok({
-    findings: payload.data.findings.map((finding) => ({
-      sentenceId: sentenceId(finding.sentenceId),
-      label: finding.label,
-      explanationEn: finding.explanationEn,
-      confidence: finding.confidence,
-      inProfile: finding.inProfile,
-      ...(finding.spanJa === undefined || finding.spanJa === null
-        ? {}
-        : { spanJa: finding.spanJa }),
-    })),
-  });
+function readGrammarReview(
+  request: GrammarReviewRequest,
+): (parsed: unknown) => Result<GrammarReviewResult, string> {
+  const byWireId = new Map(
+    request.sentences.map(
+      (sentence, index) => [grammarSentenceWireId(index), sentence.id] as const,
+    ),
+  );
+
+  return (parsed: unknown): Result<GrammarReviewResult, string> => {
+    const payload = grammarReviewSchema.safeParse(parsed);
+    if (!payload.success) {
+      return err('grammar-review-shape');
+    }
+    const seen = new Set<string>();
+    const findings: GrammarReviewResult['findings'][number][] = [];
+    for (const finding of payload.data.findings) {
+      const sentenceId = byWireId.get(finding.sentenceId);
+      if (sentenceId === undefined) {
+        return err('grammar-unknown-sentence');
+      }
+      if (seen.has(finding.sentenceId)) {
+        return err('grammar-duplicate-sentence');
+      }
+      seen.add(finding.sentenceId);
+      findings.push({
+        sentenceId,
+        label: finding.label,
+        explanationEn: finding.explanationEn,
+        confidence: finding.confidence,
+        inProfile: finding.inProfile,
+        ...(finding.spanJa === undefined || finding.spanJa === null
+          ? {}
+          : { spanJa: finding.spanJa }),
+      });
+    }
+    return ok({ findings });
+  };
 }
 
 /**
@@ -143,6 +171,34 @@ function readGrammarReview(parsed: unknown): Result<GrammarReviewResult, string>
  * An ordinal the request never issued is an extra translation, which
  * `matchTranslations` already defines as untrustworthy for the whole batch.
  */
+function parseTranslations(
+  parsed: unknown,
+  kind: TranslationBatchRequest['kind'] | undefined,
+): Result<
+  {
+    readonly translations: readonly { readonly id: string; readonly textEn: string }[];
+    readonly glossary?: readonly { readonly surfaceJa: string; readonly renderingEn: string }[];
+  },
+  string
+> {
+  if (kind === 'opening') {
+    const payload = translationOpeningSchema.safeParse(parsed);
+    return payload.success ? ok(payload.data) : err('translations-shape');
+  }
+  if (kind === 'glossary-repair') {
+    const payload = translationGlossaryRepairSchema.safeParse(parsed);
+    return payload.success
+      ? ok({ translations: [], glossary: payload.data.glossary })
+      : err('glossary-repair-shape');
+  }
+  if (kind === undefined) {
+    const payload = translationsSchema.safeParse(parsed);
+    return payload.success ? ok(payload.data) : err('translations-shape');
+  }
+  const payload = translationTailSchema.safeParse(parsed);
+  return payload.success ? ok(payload.data) : err('translations-shape');
+}
+
 function readTranslations(
   request: TranslationBatchRequest,
 ): (parsed: unknown) => Result<TranslationProviderResult, string> {
@@ -154,12 +210,15 @@ function readTranslations(
   );
 
   return (parsed: unknown) => {
-    const payload = translationsSchema.safeParse(parsed);
-    if (!payload.success) {
-      return err('translations-shape');
+    const payload = parseTranslations(parsed, request.kind);
+    if (!payload.ok) {
+      return payload;
+    }
+    if (request.kind === 'glossary-repair') {
+      return ok({ translations: [], glossary: payload.value.glossary ?? [] });
     }
     const returned: TranslationResult[] = [];
-    for (const translation of payload.data.translations) {
+    for (const translation of payload.value.translations) {
       const id = byWireId.get(translation.id);
       if (id === undefined) {
         return err('translations-extra');
@@ -172,7 +231,7 @@ function readTranslations(
     if (request.kind !== undefined) {
       return ok({
         translations: returned,
-        ...(payload.data.glossary === undefined ? {} : { glossary: payload.data.glossary }),
+        ...(payload.value.glossary === undefined ? {} : { glossary: payload.value.glossary }),
       });
     }
     const matched = matchTranslations(targets, returned);

@@ -121,7 +121,7 @@ describe('translation plan', () => {
     const input = {
       readingId: READING,
       modelId: 'model',
-      promptVersion: 'translation/4',
+      promptVersion: 'translation/5',
       title: '題',
       premise: '',
       register: 'written',

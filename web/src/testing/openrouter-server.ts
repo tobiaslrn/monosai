@@ -34,10 +34,13 @@ export type ChatContentKind =
   | 'grammar-unavailable'
   | 'grammar-unlocatable-span'
   | 'grammar-unknown-sentence'
+  | 'grammar-duplicate-sentence'
   | 'translations-full'
   | 'translations-partial'
   | 'translations-duplicate-id'
-  | 'translations-extra-id';
+  | 'translations-extra-id'
+  | 'translations-opening'
+  | 'translations-glossary-repair';
 
 export type AudioKind = 'valid' | 'empty' | 'wrong-mime' | 'oversized';
 
@@ -91,6 +94,8 @@ export interface FakeOpenRouterOptions {
   readonly contentType?: string;
   /** Declares a content length far past the client's limit. */
   readonly oversizedJson?: boolean;
+  /** Optional provider usage object, including malformed shapes for resilience tests. */
+  readonly usage?: unknown;
 }
 
 export interface RecordedRequest {
@@ -111,11 +116,11 @@ function usesArrayBounds(responseFormat: unknown): boolean {
   );
 }
 
-/** Builds a story payload with contiguous indexes, which is the valid shape. */
+/** Builds a story payload with one Japanese sentence per array entry. */
 function story(sentences: readonly string[], titleJa = 'ねこの一日'): string {
   return JSON.stringify({
     titleJa,
-    sentences: sentences.map((textJa, index) => ({ index, textJa })),
+    sentences,
   });
 }
 
@@ -136,17 +141,16 @@ function blueprint(total: number): string {
   const segmentCount = Math.ceil(total / 50);
   return JSON.stringify({
     titleJa: 'ねこの長い旅',
-    segments: Array.from({ length: segmentCount }, (_, index) => ({
-      index,
-      sentenceCount: Math.min(50, total - index * 50),
-      beatEn: `Story beat ${String(index + 1)} of ${String(segmentCount)}.`,
-    })),
+    beatsEn: Array.from(
+      { length: segmentCount },
+      (_, index) => `Story beat ${String(index + 1)} of ${String(segmentCount)}.`,
+    ),
   });
 }
 
 function storySegment(count: number): string {
   return JSON.stringify({
-    sentences: numberedSentences(count).map((textJa, index) => ({ index, textJa })),
+    sentences: numberedSentences(count),
     continuitySummaryEn: 'The cat continues its journey in order.',
   });
 }
@@ -207,7 +211,7 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
   'grammar-complete': JSON.stringify({
     findings: [
       {
-        sentenceId: 's0',
+        sentenceId: '0',
         label: 'te-form request',
         explanationEn: 'Uses the て-form to make a polite request.',
         confidence: 'high',
@@ -215,7 +219,7 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
         spanJa: 'ねこが',
       },
       {
-        sentenceId: 's1',
+        sentenceId: '1',
         label: 'causative-passive',
         explanationEn: 'Uses the causative-passive, which is beyond the given guidance.',
         confidence: 'medium',
@@ -229,7 +233,7 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
   'grammar-unlocatable-span': JSON.stringify({
     findings: [
       {
-        sentenceId: 's0',
+        sentenceId: '0',
         label: 'unquotable span',
         explanationEn: 'Quotes text that is not in the sentence, so it cannot be anchored.',
         confidence: 'low',
@@ -241,9 +245,27 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
   'grammar-unknown-sentence': JSON.stringify({
     findings: [
       {
-        sentenceId: 's99',
+        sentenceId: '99',
         label: 'unrequested sentence',
         explanationEn: 'Names a sentence id the caller never asked about.',
+        confidence: 'low',
+        inProfile: true,
+      },
+    ],
+  }),
+  'grammar-duplicate-sentence': JSON.stringify({
+    findings: [
+      {
+        sentenceId: '0',
+        label: 'duplicate finding',
+        explanationEn: 'The first finding.',
+        confidence: 'low',
+        inProfile: true,
+      },
+      {
+        sentenceId: '0',
+        label: 'duplicate finding',
+        explanationEn: 'The second finding.',
         confidence: 'low',
         inProfile: true,
       },
@@ -272,6 +294,16 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
       { id: '1', textEn: 'The cat sleeps.' },
       { id: '7', textEn: 'An id nobody requested.' },
     ],
+  }),
+  'translations-opening': JSON.stringify({
+    translations: [
+      { id: '0', textEn: 'The cat is here.' },
+      { id: '1', textEn: 'The cat sleeps.' },
+    ],
+    glossary: [{ surfaceJa: 'ねこ', renderingEn: 'cat' }],
+  }),
+  'translations-glossary-repair': JSON.stringify({
+    glossary: [{ surfaceJa: 'ねこ', renderingEn: 'cat' }],
   }),
 };
 
@@ -410,6 +442,7 @@ export class FakeOpenRouterServer {
           message: { content: CHAT_CONTENT[kind] },
         },
       ],
+      ...(this.options.usage === undefined ? {} : { usage: this.options.usage }),
     });
 
     const headers: Record<string, string> = {

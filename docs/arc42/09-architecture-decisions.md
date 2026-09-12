@@ -83,6 +83,7 @@ files are already linked from code comments and from other records.
 | [0059](../decisions/0059-preparation-fills-the-reading-in-order.md)           | Preparation fills the reading in order, from one shared pool                    |
 | [0060](../decisions/0060-progressive-translation-freezes-terminology.md)      | Progressive translation freezes a persisted terminology plan                    |
 | [0067](../decisions/0067-recently-learned-is-a-focus-list.md)                 | Recently learned sends the newest words as an ordered focus list                |
+| [0071](../decisions/0071-markdown-input-wire-and-cache-friendly-text-requests.md) | Markdown input wire, compact outputs, and cache-friendly text requests        |
 
 ### The reader
 

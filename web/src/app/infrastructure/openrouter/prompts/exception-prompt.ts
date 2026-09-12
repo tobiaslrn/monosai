@@ -2,8 +2,13 @@ import type { ExceptionReviewRequest } from '../../../domain/ai/text-generation-
 import {
   PROTOCOL_LAYER,
   assemble,
-  jsonConfigBlock,
-  jsonDataBlock,
+  asConfig,
+  asData,
+  markdownDocument,
+  markdownField,
+  markdownHeading,
+  markdownLineList,
+  markdownLineValue,
   type AssembledPrompt,
 } from './prompt-layers';
 
@@ -13,10 +18,10 @@ const TASK_LAYER = [
   'Context: each candidate is a word that appeared in a story generated for this learner and is not in the vocabulary they have reviewed. Approving one means the word stays in the story and the learner meets it as a word they have never studied. Rejecting one means the story is rewritten to avoid it.',
   'Goal: Decide whether each candidate is clearly allowed by the learner exception policy.',
   'Success criteria:',
-  '- Judge every candidate independently and return every candidate id exactly once.',
+  '- Judge every candidate independently and return every candidate ordinal exactly once.',
   '- Consider every supplied occurrence context. Approve only when the policy clearly covers all relevant uses; otherwise reject.',
   '- Do not infer a broader exception than the learner wrote. The policy is the only ground for an approval: how common, easy, or guessable a word is does not matter unless the policy says it does.',
-  'Output semantics: `decisions` contains `{ candidateId, decision, explanationEn }`; `decision` is "approved" or "rejected".',
+  'Output semantics: `decisions` contains `{ candidateId, decision, explanationEn }`; candidateId is the ordinal shown in the candidate heading, and decision is "approved" or "rejected".',
   '`explanationEn` is one plain English sentence that names the part of the policy that applies and says why this word falls under it. An explanation that only restates the verdict is discarded and the word stays unknown.',
 ] as const;
 
@@ -39,21 +44,32 @@ export function buildExceptionPrompt(request: ExceptionReviewRequest): Assembled
   const system = assemble([PROTOCOL_LAYER, TASK_LAYER.join('\n')]);
 
   const user = assemble([
-    jsonConfigBlock('learner exception policy', { text: request.policyText }),
-    jsonDataBlock(
-      'candidates',
-      request.candidates.map((candidate, index) => ({
-        id: exceptionCandidateWireId(index),
-        surface: candidate.surface,
-        ...(candidate.lemma === undefined ? {} : { lemma: candidate.lemma }),
-        ...(candidate.readingHiragana === undefined
-          ? {}
-          : { readingHiragana: candidate.readingHiragana }),
-        ...(candidate.partOfSpeech === undefined ? {} : { partOfSpeech: candidate.partOfSpeech }),
-        contextsJa: candidate.contextsJa,
-      })),
+    asConfig(
+      'learner exception policy',
+      markdownDocument([
+        markdownHeading(1, 'Learner exception policy'),
+        markdownLineValue(request.policyText),
+      ]),
     ),
+    asData('exception candidates', candidatesSection(request)),
   ]);
 
   return { system, user, jsonContract: JSON_CONTRACT };
+}
+
+function candidatesSection(request: ExceptionReviewRequest): string {
+  const candidates = request.candidates.map((candidate, index) =>
+    markdownDocument([
+      markdownHeading(2, `[${exceptionCandidateWireId(index)}] ${candidate.surface}`),
+      ...(candidate.lemma === undefined ? [] : [markdownField('Lemma', candidate.lemma)]),
+      ...(candidate.readingHiragana === undefined
+        ? []
+        : [markdownField('Reading', candidate.readingHiragana)]),
+      ...(candidate.partOfSpeech === undefined
+        ? []
+        : [markdownField('Part of speech', candidate.partOfSpeech)]),
+      markdownLineList('Occurrences', candidate.contextsJa, 3),
+    ]),
+  );
+  return markdownDocument([markdownHeading(1, 'Candidates'), ...candidates]);
 }

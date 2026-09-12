@@ -6,6 +6,7 @@ import type { CredentialRepository } from '../../domain/settings/credential-repo
 import { describeThrown } from '../../domain/shared/errors';
 import { err, ok, type Result } from '../../domain/shared/result';
 import {
+  CHAT_COMPLETIONS_PATH,
   DEFAULT_REQUEST_TIMEOUT_MS,
   isOpenRouterUrl,
   MAX_AUDIO_RESPONSE_BYTES,
@@ -163,6 +164,12 @@ export class OpenRouterClient {
       const error = this.malformed(request.task, `${path === '' ? 'root' : path}:${issue.code}`);
       this.logFailure(request, error);
       return err(error);
+    }
+    if (request.path === CHAT_COMPLETIONS_PATH) {
+      const usage = usageFields(parsed.data);
+      if (Object.keys(usage).length > 0) {
+        this.logger?.info('ai.request.usage', { ...requestFields(request), ...usage });
+      }
     }
     return ok(parsed.data);
   }
@@ -477,4 +484,38 @@ function errorFields(error: AiError): {
       ? {}
       : { correlationId: error.detail.correlationId }),
   };
+}
+
+function usageFields(value: unknown): {
+  readonly promptTokens?: number;
+  readonly completionTokens?: number;
+  readonly totalTokens?: number;
+  readonly cachedTokens?: number;
+  readonly cacheWriteTokens?: number;
+} {
+  if (!isRecord(value) || !isRecord(value['usage'])) {
+    return {};
+  }
+  const usage = value['usage'];
+  const details = isRecord(usage['prompt_tokens_details']) ? usage['prompt_tokens_details'] : {};
+  const promptTokens = nonNegativeInteger(usage['prompt_tokens']);
+  const completionTokens = nonNegativeInteger(usage['completion_tokens']);
+  const totalTokens = nonNegativeInteger(usage['total_tokens']);
+  const cachedTokens = nonNegativeInteger(details['cached_tokens']);
+  const cacheWriteTokens = nonNegativeInteger(details['cache_write_tokens']);
+  return {
+    ...(promptTokens === undefined ? {} : { promptTokens }),
+    ...(completionTokens === undefined ? {} : { completionTokens }),
+    ...(totalTokens === undefined ? {} : { totalTokens }),
+    ...(cachedTokens === undefined ? {} : { cachedTokens }),
+    ...(cacheWriteTokens === undefined ? {} : { cacheWriteTokens }),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function nonNegativeInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : undefined;
 }

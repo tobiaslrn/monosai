@@ -35,7 +35,7 @@ describe('learner exception policy in repair prompts', () => {
       structureIssues: [],
       attempt: 1,
       previouslyAttempted: [],
-      promptVersion: 'repair/5',
+      promptVersion: 'repair/6',
     };
   }
 
@@ -51,7 +51,7 @@ describe('learner exception policy in repair prompts', () => {
 
   it('sends the policy to full and scoped repairs when set', () => {
     for (const user of users({ ...ORIGINAL, exceptionPolicy: POLICY })) {
-      expect(user).toContain(`learner exception policy\n${JSON.stringify({ text: POLICY })}`);
+      expect(user).toContain(`# Learner exception policy\n\n${POLICY}`);
     }
   });
 
@@ -84,8 +84,9 @@ describe('buildRepairPrompt', () => {
 
     const prompt = buildRepairPrompt(request);
 
-    expect(prompt.user).not.toContain('learner style instructions');
-    expect(prompt.user).toContain('"titleJa"');
+    expect(prompt.user).not.toContain(`${CONFIG_OPEN} learner style`);
+    expect(prompt.user).toContain('# Current story');
+    expect(prompt.user).toContain('## Title');
   });
 
   it('includes learner style instructions and a sentence-indexed span when given', () => {
@@ -103,8 +104,9 @@ describe('buildRepairPrompt', () => {
 
     const prompt = buildRepairPrompt(request);
 
-    expect(prompt.user).toContain('learner style instructions');
+    expect(prompt.user).toContain(`${CONFIG_OPEN} learner style`);
     expect(prompt.user).toContain('Keep it playful.');
-    expect(prompt.user).toContain('"sentenceIndex":2');
+    expect(prompt.user).toContain('Sentence 2: 図書館');
+    expect(prompt.user).not.toContain('"sentenceIndex":2');
   });
 });

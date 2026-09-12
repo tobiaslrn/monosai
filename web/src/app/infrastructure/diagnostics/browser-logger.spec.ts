@@ -128,4 +128,33 @@ describe('BrowserLogger', () => {
 
     expect(serializeDiagnostics([entry])).toBe(JSON.stringify(entry));
   });
+
+  it('keeps approved token usage fields and drops unknown fields', () => {
+    const logger = new BrowserLogger({
+      development: true,
+      consoleRef: consoleFake(),
+      build: build(),
+    });
+
+    logger.info('ai.request.usage', {
+      task: 'translation',
+      modelId: 'safe-model',
+      promptTokens: 100,
+      completionTokens: 20,
+      totalTokens: 120,
+      cachedTokens: 80,
+      cacheWriteTokens: 4,
+      prompt: 'not allowed',
+    } as unknown as DiagnosticFields);
+
+    expect(logger.snapshot()[0]?.fields).toEqual({
+      task: 'translation',
+      modelId: 'safe-model',
+      promptTokens: 100,
+      completionTokens: 20,
+      totalTokens: 120,
+      cachedTokens: 80,
+      cacheWriteTokens: 4,
+    });
+  });
 });

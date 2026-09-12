@@ -267,7 +267,9 @@ describe('VocabularyPreparationService', () => {
   });
 
   it('refuses an oversized request before it is paid for', () => {
-    const guarded = service.guardBudget(request(Array.from({ length: 100_000 }, () => '猫')));
+    const guarded = service.guardBudget(
+      request(Array.from({ length: 100_000 }, (_value, index) => `語${String(index)}`)),
+    );
 
     expect(guarded.ok).toBe(false);
     if (guarded.ok) {

@@ -84,7 +84,7 @@ describe('GenerationStore strict pass', () => {
     expect(provenance.requestedSentenceCount).toBe(5);
     expect(provenance.repairAttempts).toBe(0);
     expect(provenance.modelId).toBe('vendor/text-model');
-    expect(provenance.promptVersions).toMatchObject({ story: 'story/5' });
+    expect(provenance.promptVersions).toMatchObject({ story: 'story/6' });
     expect(provenance.grammarProfileSnapshotId.length).toBeGreaterThan(0);
     expect(provenance.suggestedVocabularyItemIds.length).toBeGreaterThan(0);
   });

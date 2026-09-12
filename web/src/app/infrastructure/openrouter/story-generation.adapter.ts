@@ -81,9 +81,15 @@ const PRECEDING_SENTENCES = 6;
  */
 export class OpenRouterStoryGenerator {
   private readonly runner: StructuredTaskRunner;
+  private readonly newSessionId: () => string;
 
-  constructor(client: OpenRouterClient, memo?: StructuredOutputMemo) {
+  constructor(
+    client: OpenRouterClient,
+    memo?: StructuredOutputMemo,
+    sessionIdFactory: () => string = () => crypto.randomUUID(),
+  ) {
     this.runner = new StructuredTaskRunner(client, memo);
+    this.newSessionId = sessionIdFactory;
   }
 
   async generateStory(
@@ -139,6 +145,7 @@ export class OpenRouterStoryGenerator {
     request: StoryRepairRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
+    sessionId?: string,
   ): Promise<Result<StoryCandidate, AiError>> {
     const entries = planScopedRepair(request.candidate, request.unknownSpans);
     if (scopedRepairTargets(entries).length === 0) {
@@ -151,6 +158,7 @@ export class OpenRouterStoryGenerator {
       jsonSchema: storyRepairPatchJsonSchema(scopedRepairTargets(entries).length),
       maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
       read: scopedRepairReader(request.candidate, entries),
+      ...(sessionId === undefined ? {} : { sessionId }),
       ...(signal === undefined ? {} : { signal }),
     });
     return patched;
@@ -160,6 +168,7 @@ export class OpenRouterStoryGenerator {
     request: StoryRepairRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
+    sessionId?: string,
   ): Promise<Result<StoryCandidate, AiError>> {
     return this.runner.run<StoryCandidate>({
       task: 'story-repair',
@@ -168,6 +177,7 @@ export class OpenRouterStoryGenerator {
       jsonSchema: storyCandidateJsonSchema(request.original.requestedSentenceCount),
       maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
       read: storyReader(),
+      ...(sessionId === undefined ? {} : { sessionId }),
       ...(signal === undefined ? {} : { signal }),
     });
   }
@@ -178,6 +188,7 @@ export class OpenRouterStoryGenerator {
     signal?: AbortSignal,
   ): Promise<Result<StoryCandidate, AiError>> {
     const planned = planStorySegments(request.requestedSentenceCount);
+    const sessionId = this.newSessionId();
     const blueprint = await this.runner.run<StoryBlueprint>({
       task: 'story-generation',
       config,
@@ -186,6 +197,7 @@ export class OpenRouterStoryGenerator {
       maxTokens: MAX_BLUEPRINT_TOKENS,
       temperature: STORY_BLUEPRINT_TEMPERATURE,
       read: blueprintReader(planned),
+      sessionId,
       ...(signal === undefined ? {} : { signal }),
     });
     if (!blueprint.ok) {
@@ -209,6 +221,7 @@ export class OpenRouterStoryGenerator {
         jsonSchema: storySegmentJsonSchema(segment.sentenceCount),
         maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
         read: segmentReader(),
+        sessionId,
         ...(signal === undefined ? {} : { signal }),
       });
       if (!generated.ok) {
@@ -239,6 +252,7 @@ export class OpenRouterStoryGenerator {
       .sort((left, right) => left.index - right.index)
       .map((sentence) => sentence.textJa);
     const plans = planStorySegments(ordered.length);
+    const sessionId = this.newSessionId();
     const repairedSentences: StoryCandidate['sentences'][number][] = [];
     let titleJa = request.candidate.titleJa;
     let sourceOffset = 0;
@@ -287,8 +301,8 @@ export class OpenRouterStoryGenerator {
       };
       const repaired =
         segmentRequest.structureIssues.length === 0 && segmentRequest.unknownSpans.length > 0
-          ? await this.repairScoped(segmentRequest, config, signal)
-          : await this.repairBoundedStory(segmentRequest, config, signal);
+          ? await this.repairScoped(segmentRequest, config, signal, sessionId)
+          : await this.repairBoundedStory(segmentRequest, config, signal, sessionId);
       if (!repaired.ok) {
         return repaired;
       }
@@ -333,27 +347,20 @@ function blueprintReader(
     if (!payload.success || payload.data.titleJa.trim() === '') {
       return err('story-blueprint-shape');
     }
-    if (payload.data.segments.length !== planned.length) {
+    if (payload.data.beatsEn.length !== planned.length) {
       return err('story-blueprint-segment-count');
     }
-    for (const [index, expected] of planned.entries()) {
-      const received = payload.data.segments[index];
-      if (
-        received.index !== expected.index ||
-        received.sentenceCount !== expected.sentenceCount ||
-        received.beatEn.trim() === ''
-      ) {
+    for (const beat of payload.data.beatsEn) {
+      if (beat.trim() === '') {
         return err('story-blueprint-plan-mismatch');
       }
     }
-    return ok({
-      titleJa: payload.data.titleJa.trim(),
-      segments: payload.data.segments.map((segment) => ({
-        index: segment.index,
-        sentenceCount: segment.sentenceCount,
-        beatEn: segment.beatEn.trim(),
-      })),
-    });
+    const segments: StoryBlueprint['segments'][number][] = [];
+    for (const [index, beatEn] of payload.data.beatsEn.entries()) {
+      const plan = planned[index];
+      segments.push({ ...plan, beatEn: beatEn.trim() });
+    }
+    return ok({ titleJa: payload.data.titleJa.trim(), segments });
   };
 }
 
@@ -363,9 +370,12 @@ function segmentReader(): (parsed: unknown) => Result<StorySegmentCandidate, str
     if (!payload.success) {
       return err('story-segment-shape');
     }
-    const normalized = normalizeCandidate({
+    const candidate = {
       titleJa: 'segment',
-      sentences: payload.data.sentences,
+      sentences: payload.data.sentences.map((textJa, index) => ({ index, textJa })),
+    };
+    const normalized = normalizeCandidate({
+      ...candidate,
     });
     const issues = checkStoryStructure(normalized);
     if (hasFormatFailure(issues)) {
@@ -391,7 +401,10 @@ function storyReader(): (parsed: unknown) => Result<StoryCandidate, string> {
     if (!payload.success) {
       return err('story-shape');
     }
-    const candidate = normalizeCandidate(payload.data);
+    const candidate = normalizeCandidate({
+      titleJa: payload.data.titleJa,
+      sentences: payload.data.sentences.map((textJa, index) => ({ index, textJa })),
+    });
     const issues = checkStoryStructure(candidate);
     if (hasFormatFailure(issues)) {
       return err(issues[0]?.code ?? 'story-structure');

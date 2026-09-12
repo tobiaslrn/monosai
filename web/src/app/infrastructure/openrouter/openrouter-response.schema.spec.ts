@@ -15,7 +15,7 @@ describe('request-specific provider JSON schemas', () => {
       schema: { properties: { sentences: { minItems: 1, maxItems: 7 } } },
     });
     expect(storyBlueprintJsonSchema(4)).toMatchObject({
-      schema: { properties: { segments: { minItems: 4, maxItems: 4 } } },
+      schema: { properties: { beatsEn: { minItems: 4, maxItems: 4 } } },
     });
     expect(storySegmentJsonSchema(37)).toMatchObject({
       schema: { properties: { sentences: { minItems: 1, maxItems: 37 } } },
