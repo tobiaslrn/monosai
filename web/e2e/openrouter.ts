@@ -443,11 +443,10 @@ function modelPayload(modelId: string): Record<string, unknown> {
       input_modalities: ['text'],
       output_modalities: [tts ? 'audio' : 'text'],
     },
-    // A speech entry declares both optional channels, the shape an
-    // OpenAI-compatible TTS model has, so the lane exercises the declared path
-    // rather than the "nothing to try" one.
+    // A speech entry declares its prompt-instruction channel, so the lane
+    // exercises the prompted-style path rather than the "nothing to try" one.
     supported_parameters: tts
-      ? ['response_format', 'speed', 'instructions']
+      ? ['response_format', 'instructions']
       : ['reasoning', 'structured_outputs'],
     supported_voices: tts ? ['sakura', 'Kore'] : [],
     links: { details: `https://openrouter.ai/${modelId}` },

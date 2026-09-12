@@ -84,6 +84,7 @@ files are already linked from code comments and from other records.
 | [0060](../decisions/0060-progressive-translation-freezes-terminology.md)      | Progressive translation freezes a persisted terminology plan                    |
 | [0067](../decisions/0067-recently-learned-is-a-focus-list.md)                 | Recently learned sends the newest words as an ordered focus list                |
 | [0071](../decisions/0071-markdown-input-wire-and-cache-friendly-text-requests.md) | Markdown input wire, compact outputs, and cache-friendly text requests        |
+| [0073](../decisions/0073-pace-at-playback-style-in-prompt.md)                 | Pace is local playback; named speaking style is prompted                      |
 
 ### The reader
 
@@ -123,6 +124,7 @@ files are already linked from code comments and from other records.
 | [0041](../decisions/0041-playback-ends-with-the-reader.md)               | A reading session ends when the reader is left               |
 | [0045](../decisions/0045-a-reading-is-extended-while-it-is-generated.md) | A continuous reading is extended while it is generated       |
 | [0072](../decisions/0072-older-clips-play-until-regenerated.md)         | Older same-content clips play until regenerated              |
+| [0073](../decisions/0073-pace-at-playback-style-in-prompt.md)            | Pace is applied at playback and runs split by pace kind       |
 
 ### Platform and toolchain
 

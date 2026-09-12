@@ -1106,13 +1106,13 @@ test.describe('audio settings and readiness', () => {
     return page.getByTestId('audio-readiness');
   }
 
-  function ttsSpeed(page: Page): Locator {
-    return page.getByTestId('tts-speed-input');
+  function ttsStyle(page: Page): Locator {
+    return page.getByTestId('tts-style-select');
   }
 
-  async function storedSpeed(page: Page): Promise<unknown> {
+  async function storedStyle(page: Page): Promise<unknown> {
     const record = await readSettingsRecord(page, 'tts');
-    return (record as { value?: Record<string, unknown> } | null)?.value?.['speed'];
+    return (record as { value?: Record<string, unknown> } | null)?.value?.['speechStyle'];
   }
 
   test('keeps the clips a changed voice cannot see, and says where they went', async ({ page }) => {
@@ -1140,8 +1140,8 @@ test.describe('audio settings and readiness', () => {
     await openAudioPlayer(page);
 
     // And so does the player, rather than showing 100% falling to 0% in silence.
-    await expect(audioPlayer(page).getByTestId('player-voice-mismatch')).toContainText(
-      'other audio settings',
+    await expect(audioPlayer(page).getByTestId('player-stale-audio')).toContainText(
+      'older settings',
     );
     expect(await generatedPercent(page)).toBe(0);
     expect(await storedClipCount(page), 'nothing was deleted').toBe(clips);
@@ -1153,7 +1153,7 @@ test.describe('audio settings and readiness', () => {
     await page.goto(reader);
     await openAudioPlayer(page);
 
-    await expect(audioPlayer(page).getByTestId('player-voice-mismatch')).toHaveCount(0);
+    await expect(audioPlayer(page).getByTestId('player-stale-audio')).toHaveCount(0);
     expect(await generatedPercent(page)).toBe(100);
   });
 
@@ -1181,22 +1181,15 @@ test.describe('audio settings and readiness', () => {
     await expect(page.getByTestId('test-tts')).toBeEnabled();
   });
 
-  test('treats a cleared speed as unfinished input rather than half speed', async ({ page }) => {
+  test('persists a selected speaking style and marks the preview stale', async ({ page }) => {
     await stubOpenRouter(page);
     await page.goto('./#/settings');
-    await ttsSpeed(page).fill('1.5');
-    await ttsSpeed(page).blur();
-    await expect.poll(() => storedSpeed(page)).toBe(1.5);
-
-    await ttsSpeed(page).fill('');
-    await ttsSpeed(page).blur();
-
-    await expect(ttsSpeed(page)).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.getByRole('alert')).toContainText('Enter a number from 0.5 to 2.');
-    expect(await storedSpeed(page), 'the minimum is never what clearing a box meant').toBe(1.5);
+    await ttsStyle(page).selectOption('very-clear');
+    await expect.poll(() => storedStyle(page)).toBe('very-clear');
+    await expect(ttsReadiness(page)).toHaveAttribute('data-readiness', 'stale');
 
     await page.reload();
-    await expect(ttsSpeed(page)).toHaveValue('1.5');
-    expect(await storedSpeed(page)).toBe(1.5);
+    await expect(ttsStyle(page)).toHaveValue('very-clear');
+    expect(await storedStyle(page)).toBe('very-clear');
   });
 });

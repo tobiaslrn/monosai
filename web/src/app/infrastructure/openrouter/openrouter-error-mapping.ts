@@ -24,7 +24,6 @@ const CAPABILITY_KEYWORDS: readonly { readonly match: string; readonly capabilit
   { match: 'response_format', capability: 'structured-output' },
   { match: 'json_schema', capability: 'structured-output' },
   { match: 'structured output', capability: 'structured-output' },
-  { match: 'speed', capability: 'speed' },
   { match: 'voice', capability: 'voice' },
   { match: 'response format', capability: 'audio-format' },
   { match: 'audio', capability: 'audio' },

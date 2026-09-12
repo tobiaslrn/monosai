@@ -88,3 +88,56 @@ describe('AppSettingsStore focus size', () => {
     expect(update).not.toHaveBeenCalled();
   });
 });
+
+describe('AppSettingsStore reader preferences', () => {
+  function configure(updateReaderPreferences: ReturnType<typeof vi.fn>): AppSettingsStore {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SETTINGS_REPOSITORY,
+          useValue: {
+            getAppSettings: vi.fn().mockResolvedValue(ok(DEFAULT_APP_SETTINGS)),
+            getReaderPreferences: vi.fn().mockResolvedValue(ok(DEFAULT_READER_PREFERENCES)),
+            updateReaderPreferences,
+          },
+        },
+      ],
+    });
+    return TestBed.inject(AppSettingsStore);
+  }
+
+  it('keeps the latest optimistic value while rapid writes settle in order', async () => {
+    const releases: ((result: ReturnType<typeof ok>) => void)[] = [];
+    const update = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          releases.push(resolve);
+        }),
+    );
+    const store = configure(update);
+    await store.load();
+
+    const first = store.setReaderPreference('playbackRate', 0.9);
+    const second = store.setReaderPreference('playbackRate', 0.8);
+    const third = store.setReaderPreference('playbackRate', 0.7);
+
+    expect(store.readerPreferences().playbackRate).toBe(0.7);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(update).toHaveBeenCalledTimes(1);
+
+    releases[0]?.(ok({ ...DEFAULT_READER_PREFERENCES, playbackRate: 0.9 }));
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(update).toHaveBeenCalledTimes(2);
+    releases[1]?.(ok({ ...DEFAULT_READER_PREFERENCES, playbackRate: 0.8 }));
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(update).toHaveBeenCalledTimes(3);
+    releases[2]?.(ok({ ...DEFAULT_READER_PREFERENCES, playbackRate: 0.7 }));
+
+    await Promise.all([first, second, third]);
+    expect(store.readerPreferences().playbackRate).toBe(0.7);
+    expect(update).toHaveBeenNthCalledWith(1, { playbackRate: 0.9 });
+    expect(update).toHaveBeenNthCalledWith(2, { playbackRate: 0.8 });
+    expect(update).toHaveBeenNthCalledWith(3, { playbackRate: 0.7 });
+  });
+});

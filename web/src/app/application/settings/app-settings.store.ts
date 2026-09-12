@@ -26,6 +26,8 @@ export class AppSettingsStore {
   private readonly appSettings = signal<AppSettings>(DEFAULT_APP_SETTINGS);
   private readonly preferences = signal<ReaderPreferences>(DEFAULT_READER_PREFERENCES);
   private readonly failure = signal<StorageError | null>(null);
+  private readerPreferenceWriteQueue = Promise.resolve();
+  private readerPreferenceWriteVersion = 0;
 
   readonly theme = computed(() => this.appSettings().theme);
   readonly helpIntroSeen = computed(() => this.appSettings().helpIntroSeen);
@@ -133,15 +135,26 @@ export class AppSettingsStore {
     value: ReaderPreferences[K],
   ): Promise<void> {
     const previous = this.preferences();
+    const writeVersion = ++this.readerPreferenceWriteVersion;
     this.preferences.set({ ...previous, [preference]: value });
 
-    const saved = await this.repository.updateReaderPreferences({ [preference]: value });
-    if (saved.ok) {
-      this.preferences.set(saved.value);
-      this.failure.set(null);
-    } else {
-      this.preferences.set(previous);
-      this.failure.set(saved.error);
-    }
+    const write = this.readerPreferenceWriteQueue.then(async () => {
+      const saved = await this.repository.updateReaderPreferences({ [preference]: value });
+      // A newer optimistic value owns the signal. The queue still lets this
+      // write finish before the next one reaches persistence, but its result
+      // must not repaint the UI with an older value.
+      if (writeVersion !== this.readerPreferenceWriteVersion) {
+        return;
+      }
+      if (saved.ok) {
+        this.preferences.set(saved.value);
+        this.failure.set(null);
+      } else {
+        this.preferences.set(previous);
+        this.failure.set(saved.error);
+      }
+    });
+    this.readerPreferenceWriteQueue = write.catch(() => undefined);
+    await write;
   }
 }

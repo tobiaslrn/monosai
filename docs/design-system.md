@@ -146,6 +146,11 @@ nobody had chosen. The connection control is an ordinary outline action, not the
 page's filled primary, because it is pressed once. A card with one self-evident
 choice, such as the theme, carries its card title and no second group title.
 
+The voice card uses a native select labelled **Speaking style** with the three
+stable choices Natural, Clear, and Very clear. It is a model request preference,
+so it sits beside the voice and Preview controls; the learner's local reading
+speed does not belong in this card.
+
 ### Surfaces and groups
 
 A page groups its content with two surfaces and no others. The **card** is the
@@ -473,6 +478,13 @@ stopping, retrying and setting up a voice all live on the player, which is the
 card the learner is looking at while any of them matters. One action belongs to
 one surface, and audio had grown a second set of the same controls on a panel
 that has to be opened to reach them.
+
+The player also carries one compact text control for local reading speed. It
+shows `1×`, `0.9×`, `0.8×`, or `0.7×` and cycles forward on each press. It sits
+beside the mode control, keeps the same touch target and ghost-button treatment,
+and exposes the full accessible name — for example, “Reading speed, 0.8 times”.
+It changes playback immediately and never starts regeneration. Stored clips whose
+pace is already baked remain at `1×`.
 
 ### Reader gestures and details
 

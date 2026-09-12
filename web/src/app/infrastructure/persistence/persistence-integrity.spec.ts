@@ -270,14 +270,12 @@ describe('database schema', () => {
       const row = (await upgraded.settings.get('tts')) as
         { readonly value?: Record<string, unknown> } | undefined;
 
-      // Purely additive: the seeded value is what the code already assumed, and
-      // no stored field is touched. The real value arrives with the re-test
-      // that the bumped TTS_TEST_VERSION already forces.
+      // The later v16 upgrade deliberately removes the old speed capability;
+      // the audio row itself is left untouched for the content-hash fallback.
       expect(row?.value).toMatchObject({
         modelId: 'vendor/voice',
         voiceId: 'sakura',
-        speed: 1.25,
-        speedSupported: true,
+        speechStyle: 'clear',
         speechInstructions: 'unsupported',
         lastTestFingerprint: 'stored-fingerprint',
         lastTestedAt: 1_700_000_000_000,
@@ -288,12 +286,10 @@ describe('database schema', () => {
         expect.objectContaining({
           id: 'voice-1',
           name: 'Voice',
-          speed: 1.25,
-          speedSupported: true,
+          speechStyle: 'clear',
           lastTestFingerprint: 'stored-fingerprint',
         }),
-        // Gemini ignores the parameter, so its seed says so from the start.
-        expect.objectContaining({ id: 'gemini-1', speedSupported: false }),
+        expect.objectContaining({ id: 'gemini-1', speechStyle: 'clear' }),
       ]);
       upgraded.close();
     } finally {

@@ -76,41 +76,49 @@ describe('translationConfigFingerprint', () => {
 
 describe('audioOptionsFingerprint', () => {
   it('is stable for identical options', () => {
-    expect(audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speed: 1 })).toBe(
-      audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speed: 1 }),
+    expect(audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' })).toBe(
+      audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' }),
     );
   });
 
-  it('changes when the speed or the response format changes', () => {
-    const base = audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speed: 1 });
+  it('changes when the style or the response format changes', () => {
+    const base = audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' });
 
-    expect(audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speed: 1.25 })).not.toBe(base);
-    expect(audioOptionsFingerprint(HASHER, { responseFormat: 'opus', speed: 1 })).not.toBe(base);
+    expect(
+      audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'very-clear' }),
+    ).not.toBe(base);
+    expect(
+      audioOptionsFingerprint(HASHER, { responseFormat: 'opus', speechStyle: 'clear' }),
+    ).not.toBe(base);
     expect(
       audioOptionsFingerprint(HASHER, {
         responseFormat: 'mp3',
-        speed: 1,
+        speechStyle: 'clear',
         speechInstructions: 'supported',
       }),
     ).not.toBe(base);
   });
 
   /**
-   * The regression guard for not bumping `SPEECH_INSTRUCTION_VERSION` when the
-   * instruction text was rewritten. No stored clip was ever produced with an
-   * instruction, so the version describes nothing — but it sits unconditionally
-   * in this fingerprint, and a bump would discard every paid clip. If this
-   * golden value ever has to change, every existing clip is being thrown away.
+   * The playback pace is part of the current clip identity, while the
+   * instruction version is conditional on the instruction channel. This value
+   * therefore changes once for the new local-playback contract but remains
+   * stable across future instruction wording changes for uninstructed clips.
    */
-  it('keeps the key of an existing, uninstructed clip bit-identical', () => {
-    expect(audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speed: 1 })).toBe('0c184c8f');
+  it('includes the local playback pace without an instruction version', () => {
+    expect(audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' })).toBe(
+      'cc97ea19',
+    );
   });
 });
 
 describe('audioCacheKey', () => {
-  const OPTIONS = audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speed: 1 });
-  const FASTER = audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speed: 1.5 });
-  const OPUS = audioOptionsFingerprint(HASHER, { responseFormat: 'opus', speed: 1 });
+  const OPTIONS = audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' });
+  const OTHER_STYLE = audioOptionsFingerprint(HASHER, {
+    responseFormat: 'mp3',
+    speechStyle: 'very-clear',
+  });
+  const OPUS = audioOptionsFingerprint(HASHER, { responseFormat: 'opus', speechStyle: 'clear' });
 
   it('is stable for identical inputs', () => {
     expect(audioCacheKey(HASHER, 'content-hash', 'tts-a', 'voice-a', OPTIONS)).toBe(
@@ -118,12 +126,12 @@ describe('audioCacheKey', () => {
     );
   });
 
-  it('changes for the model, the voice, the speed, and the format', () => {
+  it('changes for the model, the voice, the style, and the format', () => {
     const base = audioCacheKey(HASHER, 'content-hash', 'tts-a', 'voice-a', OPTIONS);
 
     expect(audioCacheKey(HASHER, 'content-hash', 'tts-b', 'voice-a', OPTIONS)).not.toBe(base);
     expect(audioCacheKey(HASHER, 'content-hash', 'tts-a', 'voice-b', OPTIONS)).not.toBe(base);
-    expect(audioCacheKey(HASHER, 'content-hash', 'tts-a', 'voice-a', FASTER)).not.toBe(base);
+    expect(audioCacheKey(HASHER, 'content-hash', 'tts-a', 'voice-a', OTHER_STYLE)).not.toBe(base);
     expect(audioCacheKey(HASHER, 'content-hash', 'tts-a', 'voice-a', OPUS)).not.toBe(base);
   });
 
@@ -176,7 +184,7 @@ describe('audioCacheKey', () => {
 });
 
 describe('audioConfigFingerprint', () => {
-  const OPTIONS = audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speed: 1 });
+  const OPTIONS = audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' });
 
   it('does not vary with sentence content', () => {
     // It cannot: there is no parameter for it. A job compares one fingerprint
@@ -196,7 +204,7 @@ describe('audioConfigFingerprint', () => {
         HASHER,
         'tts-a',
         'voice-a',
-        audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speed: 2 }),
+        audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'natural' }),
       ),
     ).not.toBe(base);
   });

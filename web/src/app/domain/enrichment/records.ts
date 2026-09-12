@@ -46,6 +46,8 @@ export interface AudioAsset {
   readonly modelId: string;
   readonly voiceId: string;
   readonly optionsFingerprint: string;
+  /** New clips use local playback pace; absent means pace was baked in. */
+  readonly pace?: 'playback';
   readonly mimeType: AudioMimeType;
   readonly byteLength: number;
   readonly blob: Blob;

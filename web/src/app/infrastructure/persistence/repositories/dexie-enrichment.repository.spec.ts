@@ -74,6 +74,7 @@ describe('DexieEnrichmentRepository', () => {
       modelId: 'vendor/tts-model',
       voiceId: 'voice-a',
       optionsFingerprint: 'tts-fingerprint',
+      pace: 'playback',
       mimeType: 'audio/mpeg',
       byteLength: 4,
       blob: new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'audio/mpeg' }),
@@ -647,6 +648,7 @@ describe('DexieEnrichmentRepository', () => {
       expect(stored.ok && stored.value?.mimeType).toBe('audio/webm');
       expect(stored.ok && stored.value?.byteLength).toBe(2);
       expect(stored.ok && stored.value?.id).toBe(asset.id);
+      expect(stored.ok && stored.value?.pace).toBe('playback');
     });
 
     it('leaves the reading summary alone, because nothing it counts changed', async () => {

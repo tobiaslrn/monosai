@@ -43,7 +43,7 @@ const SPEECH_MODEL: ModelCapabilities = {
   contextLength: null,
   inputModalities: ['text'],
   outputModalities: ['audio'],
-  supportedParameters: ['speed'],
+  supportedParameters: ['instructions'],
   supportedVoices: [FAKE_OPENROUTER.voice, 'kaede'],
   reasoning: null,
 };
@@ -123,11 +123,11 @@ describe('ModelsSectionComponent audio readiness', () => {
     return textOf(element, 'audio-readiness-note');
   }
 
-  /** The speed box, which the panel always renders. */
-  function speedField(element: HTMLElement): HTMLInputElement {
-    const field = element.querySelector<HTMLInputElement>('[data-testid="tts-speed-input"]');
+  /** The speaking-style select, which the panel always renders. */
+  function styleControl(element: HTMLElement): HTMLSelectElement {
+    const field = element.querySelector<HTMLSelectElement>('[data-testid="tts-style-select"]');
     if (field === null) {
-      throw new Error('the audio panel rendered no speed field');
+      throw new Error('the audio panel rendered no speaking-style field');
     }
     return field;
   }
@@ -239,7 +239,7 @@ describe('ModelsSectionComponent audio readiness', () => {
     detect();
 
     expect(readiness(element)).toBe('Ready');
-    expect(note(element)).toBe('');
+    expect(textOf(element, 'audio-pace-note')).toBe('This model cannot take a speaking style');
   });
 
   it('says a preview failed', async () => {
@@ -275,43 +275,22 @@ describe('ModelsSectionComponent audio readiness', () => {
     expect(note(element)).toContain('Existing audio uses different settings');
   });
 
-  it('keeps the saved speed when the field is cleared, and says the value is unusable', async () => {
+  it('commits a speaking style through the native select', async () => {
     await connect();
     const { element, tts, detect } = await render();
-    tts.setDraft({ ...CONFIGURED, speed: 1.5 });
+    tts.setDraft({ ...CONFIGURED, speechStyle: 'clear' });
     await tts.test();
     detect();
-    const speed = speedField(element);
-    expect(speed.value).toBe('1.5');
+    const style = styleControl(element);
+    expect(style.value).toBe('clear');
 
-    speed.value = '';
-    speed.dispatchEvent(new Event('input'));
-    speed.dispatchEvent(new Event('change'));
-    detect();
-
-    expect(settings.tts.speed).toBe(1.5);
-    expect(tts.readiness()).toBe('ready');
-    expect(speed.getAttribute('aria-invalid')).toBe('true');
-    expect(element.querySelector('[role="alert"]')?.textContent).toContain('from 0.5 to 2');
-  });
-
-  it('commits a speed the field accepts', async () => {
-    await connect();
-    const { element, tts, detect } = await render();
-    tts.setDraft(CONFIGURED);
-    await tts.test();
-    detect();
-    const speed = speedField(element);
-
-    speed.value = '1.25';
-    speed.dispatchEvent(new Event('input'));
-    speed.dispatchEvent(new Event('change'));
-    // The commit writes through the store, so the panel catches up a tick later.
+    style.value = 'very-clear';
+    style.dispatchEvent(new Event('change'));
     await Promise.resolve();
     await Promise.resolve();
     detect();
 
-    expect(settings.tts.speed).toBe(1.25);
+    expect(settings.tts.speechStyle).toBe('very-clear');
     expect(readiness(element)).toBe('Settings changed');
   });
   /**
@@ -454,8 +433,8 @@ describe('ModelsSectionComponent audio readiness', () => {
       await settled();
       detect();
 
-      // The catalogue declares speed for this model, so the preview attempts it.
-      expect(attempted?.speed).toBe(true);
+      // The catalogue declares instructions for this model, so the preview attempts them.
+      expect(attempted?.instructions).toBe(true);
       expect(readiness(element)).toBe('Ready');
     });
 

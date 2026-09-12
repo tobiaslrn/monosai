@@ -14,7 +14,7 @@ export const AI_ENDPOINT_VERSION = 'openrouter-v1';
 export const TEXT_MODEL_TEST_VERSION = 2;
 
 /** Bumped when the TTS compatibility test itself changes what it proves. */
-export const TTS_TEST_VERSION = 4;
+export const TTS_TEST_VERSION = 5;
 
 /**
  * How many times the saved key has changed, used in place of the key.
@@ -50,7 +50,7 @@ export function textModelFingerprint(
  * a TTS capability failure cannot imply anything about the text model.
  *
  * It carries only what a learner configures. Measured capabilities such as
- * `speedSupported` and `speechInstructions` are deliberately absent: this
+ * `speechInstructions` are deliberately absent: this
  * fingerprint answers "does the stored test still describe this configuration",
  * and folding a test's own findings into it would make every test invalidate
  * itself the moment it discovered something.
@@ -58,13 +58,13 @@ export function textModelFingerprint(
 export function ttsFingerprint(
   hasher: Hasher,
   keyGeneration: KeyGeneration,
-  config: Pick<TtsConfig, 'modelId' | 'voiceId' | 'speed'>,
+  config: Pick<TtsConfig, 'modelId' | 'voiceId' | 'speechStyle'>,
 ): string {
   return hashCanonical(hasher, 'tts-test', {
     keyGeneration,
     modelId: config.modelId,
     voiceId: config.voiceId,
-    speed: config.speed,
+    speechStyle: config.speechStyle,
     endpointVersion: AI_ENDPOINT_VERSION,
     testVersion: TTS_TEST_VERSION,
   });

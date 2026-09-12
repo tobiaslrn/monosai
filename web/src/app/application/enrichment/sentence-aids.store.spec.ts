@@ -210,7 +210,7 @@ function aidsProviders(
         settings: signal({
           modelId: TTS_MODEL_ID,
           voiceId: VOICE_ID,
-          speed: 1,
+          speechStyle: 'clear',
           lastTestedAt: 1,
           lastTestFingerprint: 'fp',
         }),

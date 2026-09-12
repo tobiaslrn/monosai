@@ -56,8 +56,7 @@ async function configure(): Promise<SynthesisBed> {
   const settings = signal<TtsSettings>({
     modelId: 'vendor/tts',
     voiceId: 'voice-a',
-    speed: 1,
-    speedSupported: true,
+    speechStyle: 'clear',
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
     activePresetId: null,
@@ -171,8 +170,8 @@ describe('AudioSynthesisService', () => {
     expect(await bed.db.audioAssets.count()).toBe(0);
   });
 
-  it('sends the resolved model, voice, speed, and format', async () => {
-    bed.settings.set({ ...bed.settings(), speed: 0.75 });
+  it('sends the resolved model, voice, style, and format', async () => {
+    bed.settings.set({ ...bed.settings(), speechStyle: 'very-clear' });
     const sentence = firstSentence();
 
     await bed.service.run(
@@ -188,9 +187,8 @@ describe('AudioSynthesisService', () => {
         text: sentence.japaneseText,
         modelId: 'vendor/tts',
         voiceId: 'voice-a',
-        speed: 0.75,
+        speechStyle: 'very-clear',
         responseFormat: 'mp3',
-        speedSupported: true,
         speechInstructions: 'unsupported',
       },
     ]);
@@ -316,7 +314,7 @@ describe('AudioConfigurationService', () => {
     await destroyTestDatabase(bed.db);
   });
 
-  it('resolves the saved model, voice, and speed once the test has passed', () => {
+  it('resolves the saved model, voice, and style once the test has passed', () => {
     const config = bed.config.resolve('tts-synthesis');
 
     expect(config.ok).toBe(true);
@@ -325,7 +323,7 @@ describe('AudioConfigurationService', () => {
     }
     expect(config.value.modelId).toBe('vendor/tts');
     expect(config.value.voiceId).toBe('voice-a');
-    expect(config.value.speed).toBe(1);
+    expect(config.value.speechStyle).toBe('clear');
     expect(config.value.configFingerprint).not.toBe(config.value.optionsFingerprint);
   });
 
@@ -368,9 +366,9 @@ describe('AudioConfigurationService', () => {
     expect(!config.ok && config.error.task).toBe('tts-test');
   });
 
-  it('changes the configuration fingerprint when the speed changes', () => {
+  it('changes the configuration fingerprint when the style changes', () => {
     const before = bed.config.resolve('tts-synthesis');
-    bed.settings.set({ ...bed.settings(), speed: 1.5 });
+    bed.settings.set({ ...bed.settings(), speechStyle: 'natural' });
     const after = bed.config.resolve('tts-synthesis');
 
     expect(before.ok && after.ok).toBe(true);

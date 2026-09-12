@@ -67,6 +67,8 @@ export interface AudioTimeline {
 export interface AudioPlayer {
   /** Loads a clip and starts it. Revokes whatever URL was loaded before. */
   play(clip: Blob, options?: PlayOptions): Promise<void>;
+  /** Sets the local playback multiplier for the loaded and future clips. */
+  setRate(rate: number): void;
   /**
    * Builds and plays one native media resource from a run of sentences.
    *
@@ -391,6 +393,11 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
   };
 
   return {
+    setRate(rate: number): void {
+      element.preservesPitch = true;
+      element.playbackRate = rate;
+      element.defaultPlaybackRate = rate;
+    },
     async play(clip: Blob, options?: PlayOptions): Promise<void> {
       operationToken += 1;
       trackDuration = 0;

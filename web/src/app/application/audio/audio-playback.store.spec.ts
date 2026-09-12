@@ -1,11 +1,15 @@
 import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { audioCacheKey, audioOptionsFingerprint } from '../../domain/enrichment/cache-keys';
 import type { AudioAsset } from '../../domain/enrichment/records';
 import type { Reading } from '../../domain/reading/reading';
 import type { ImportedReadingDraft } from '../../domain/reading/reading-repository';
-import type { TtsSettings } from '../../domain/settings/settings';
+import {
+  DEFAULT_READER_PREFERENCES,
+  type ReaderPreferences,
+  type TtsSettings,
+} from '../../domain/settings/settings';
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import { assetId, type SentenceId } from '../../domain/shared/ids';
@@ -16,6 +20,7 @@ import { importedReadingFixture, uuid } from '../../../testing/persistence-fixtu
 import { createTestDatabase, destroyTestDatabase } from '../../../testing/test-database';
 import { ENRICHMENT_REPOSITORY, HASHER, READING_REPOSITORY } from '../shared/repository-tokens';
 import { TtsStore } from '../settings/tts.store';
+import { AppSettingsStore } from '../settings/app-settings.store';
 import {
   AUDIO_PLAYER,
   type AudioPlayer,
@@ -44,6 +49,7 @@ class FakeAudioPlayer implements AudioPlayer {
   readonly startedPaused: boolean[] = [];
   /** Sentence-relative position at which each standalone clip was started. */
   readonly startedAt: number[] = [];
+  readonly rates: number[] = [];
   stops = 0;
   pauses = 0;
   resumes = 0;
@@ -183,6 +189,10 @@ class FakeAudioPlayer implements AudioPlayer {
   private stalled: (() => void) | null = null;
   private resumed: (() => void) | null = null;
 
+  setRate(rate: number): void {
+    this.rates.push(rate);
+  }
+
   onTimeUpdate(handler: () => void): void {
     this.timeUpdate = handler;
   }
@@ -226,6 +236,9 @@ interface PlaybackBed {
   readonly reading: Reading;
   readonly settings: WritableSignal<TtsSettings>;
   readonly readiness: WritableSignal<'ready' | 'not-configured' | 'stale-test'>;
+  readonly readerPreferences: WritableSignal<ReaderPreferences>;
+  readonly setReaderPreference: ReturnType<typeof vi.fn>;
+  readonly positionStates: (MediaPositionState | null)[];
 }
 
 async function configure(): Promise<PlaybackBed> {
@@ -245,14 +258,27 @@ async function configure(): Promise<PlaybackBed> {
   const settings = signal<TtsSettings>({
     modelId: 'vendor/tts',
     voiceId: 'voice-a',
-    speed: 1,
-    speedSupported: true,
+    speechStyle: 'clear',
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
     activePresetId: null,
     presets: [],
   });
   const readiness = signal<'ready' | 'not-configured' | 'stale-test'>('ready');
+  const readerPreferences = signal<ReaderPreferences>(DEFAULT_READER_PREFERENCES);
+  const setReaderPreference = vi.fn(
+    (preference: keyof ReaderPreferences, value: unknown): Promise<void> => {
+      readerPreferences.update((current) => Object.assign({}, current, { [preference]: value }));
+      return Promise.resolve();
+    },
+  );
+  const positionStates: (MediaPositionState | null)[] = [];
+  const mediaSession = {
+    ...NO_MEDIA_SESSION,
+    setPositionState: (state: MediaPositionState | null): void => {
+      positionStates.push(state);
+    },
+  };
   const player = new FakeAudioPlayer();
 
   TestBed.configureTestingModule({
@@ -262,8 +288,12 @@ async function configure(): Promise<PlaybackBed> {
       { provide: ENRICHMENT_REPOSITORY, useValue: enrichment },
       { provide: HASHER, useValue: TEST_HASHER },
       { provide: AUDIO_PLAYER, useValue: player },
-      { provide: MEDIA_SESSION, useValue: NO_MEDIA_SESSION },
+      { provide: MEDIA_SESSION, useValue: mediaSession },
       { provide: TtsStore, useValue: { settings, readiness } },
+      {
+        provide: AppSettingsStore,
+        useValue: { readerPreferences: readerPreferences.asReadonly(), setReaderPreference },
+      },
     ],
   });
 
@@ -282,6 +312,9 @@ async function configure(): Promise<PlaybackBed> {
     reading: loaded.value,
     settings,
     readiness,
+    readerPreferences,
+    setReaderPreference,
+    positionStates,
   };
 }
 
@@ -309,7 +342,10 @@ function keyFor(bed: PlaybackBed, contentHash: string, voiceId = bed.settings().
     contentHash,
     settings.modelId,
     voiceId,
-    audioOptionsFingerprint(TEST_HASHER, { responseFormat: 'mp3', speed: settings.speed }),
+    audioOptionsFingerprint(TEST_HASHER, {
+      responseFormat: 'mp3',
+      speechStyle: settings.speechStyle,
+    }),
   );
 }
 
@@ -329,6 +365,7 @@ async function storeClipsAt(
   bed: PlaybackBed,
   positions: readonly number[],
   mimeType: 'audio/mpeg' | 'audio/wav' = 'audio/mpeg',
+  pace: AudioAsset['pace'] | null = 'playback',
 ): Promise<void> {
   const sentences = orderedSentences(bed.draft);
   const cacheKeys = new Map<SentenceId, string>(
@@ -345,8 +382,9 @@ async function storeClipsAt(
       voiceId: bed.settings().voiceId,
       optionsFingerprint: audioOptionsFingerprint(TEST_HASHER, {
         responseFormat: 'mp3',
-        speed: bed.settings().speed,
+        speechStyle: bed.settings().speechStyle,
       }),
+      ...(pace === null ? {} : { pace }),
       mimeType,
       byteLength: 4,
       blob: new Blob([new Uint8Array([1, 2, 3, index])], { type: mimeType }),
@@ -366,6 +404,54 @@ describe('AudioPlaybackStore', () => {
 
   afterEach(async () => {
     await destroyTestDatabase(bed.db);
+  });
+
+  describe('local playback pace', () => {
+    it('applies and persists the learner rate for playback-paced clips', async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.readerPreferences.set({ ...bed.readerPreferences(), playbackRate: 0.8 });
+      bed.player.sequenceSupported = true;
+
+      await bed.store.play();
+
+      expect(bed.player.rates.at(-1)).toBe(0.8);
+      expect(bed.positionStates.at(-1)?.playbackRate).toBe(0.8);
+
+      bed.store.setPlaybackRate(0.7);
+
+      expect(bed.player.rates.at(-1)).toBe(0.7);
+      expect(bed.setReaderPreference).toHaveBeenCalledWith('playbackRate', 0.7);
+      expect(bed.positionStates.at(-1)?.playbackRate).toBe(0.7);
+    });
+
+    it('plays legacy clips with their baked pace', async () => {
+      await storeClipsAt(bed, [0], 'audio/mpeg', null);
+      await bed.store.prepare(bed.reading);
+
+      await bed.store.playSentence(orderedSentences(bed.draft)[0].id);
+
+      expect(bed.player.rates.at(-1)).toBe(1);
+    });
+
+    it('seals one pace run and continues into the next playable run', async () => {
+      await storeClipsAt(bed, [0], 'audio/mpeg', null);
+      await storeClipsAt(bed, [1, 2]);
+      await bed.store.prepare(bed.reading);
+      bed.readerPreferences.set({ ...bed.readerPreferences(), playbackRate: 0.8 });
+      bed.player.sequenceSupported = true;
+
+      await bed.store.play();
+      await bed.store.prepare(bed.reading);
+      expect(bed.player.closes).toBe(1);
+
+      bed.player.finishClip();
+      await settle();
+
+      expect(bed.player.sequences).toHaveLength(2);
+      expect(bed.player.rates).toEqual([1, 0.8]);
+      expect(bed.store.currentPosition()).toBe(2);
+    });
   });
 
   describe('nothing plays on its own', () => {
@@ -606,8 +692,9 @@ describe('AudioPlaybackStore', () => {
           voiceId: bed.settings().voiceId,
           optionsFingerprint: audioOptionsFingerprint(TEST_HASHER, {
             responseFormat: 'mp3',
-            speed: bed.settings().speed,
+            speechStyle: bed.settings().speechStyle,
           }),
+          pace: 'playback',
           mimeType: 'audio/mpeg',
           byteLength: 4,
           blob: new Blob([new Uint8Array([9, 9, 9, 9])], { type: 'audio/mpeg' }),

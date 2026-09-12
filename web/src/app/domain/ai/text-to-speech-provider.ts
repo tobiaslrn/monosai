@@ -2,7 +2,7 @@ import type { Result } from '../shared/result';
 import type { AiError } from './ai-error';
 import type { AudioMimeType } from '../enrichment/records';
 import type { TtsConfig, TtsTest } from './model-test';
-import type { SpeechContext, SpeechInstructionsSupport } from './speech-instructions';
+import type { SpeechContext, SpeechInstructionsSupport, SpeechStyle } from './speech-instructions';
 
 /** One sentence's synthesis request, exactly as the cache key describes it. */
 export interface TtsRequest extends SpeechContext {
@@ -10,17 +10,9 @@ export interface TtsRequest extends SpeechContext {
   readonly text: string;
   readonly modelId: string;
   readonly voiceId: string;
-  readonly speed: number;
+  readonly speechStyle: SpeechStyle;
   /** The container asked for. MP3 is what the audio cache stores. */
   readonly responseFormat: 'mp3';
-  /**
-   * What the configuration test measured, not what a catalog claims.
-   *
-   * Synthesis reads only stored findings so it stays a single provider call
-   * with no lookup of its own; a model whose declaration was wrong was already
-   * corrected when it was tested.
-   */
-  readonly speedSupported: boolean;
   readonly speechInstructions?: SpeechInstructionsSupport;
 }
 
@@ -28,12 +20,6 @@ export interface TtsRequest extends SpeechContext {
 export interface AudioPayload {
   readonly bytes: ArrayBuffer;
   readonly mimeType: AudioMimeType;
-  /**
-   * False when the provider refused the speed parameter and the clip was
-   * produced without it, so the surface can say so rather than implying the
-   * setting took effect (ADR 0018).
-   */
-  readonly speedApplied: boolean;
   /** The direction was carried, not necessarily obeyed. */
   readonly speechInstructionsApplied?: boolean;
 }

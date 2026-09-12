@@ -10,6 +10,7 @@ import {
 } from '../../application/audio/audio-playback.store';
 import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
 import { aiError } from '../../domain/ai/ai-error';
+import type { PlaybackRate } from '../../domain/settings/settings';
 import { readingId, sentenceId, type SentenceId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
 import { ReadingPlayerComponent } from './reading-player.component';
@@ -38,11 +39,13 @@ class StubPlaybackStore {
   readonly staleAudio = signal(false);
   readonly failureSignal = signal<PlaybackFailure | null>(null);
   readonly modeSignal = signal<PlaybackMode>('continuous');
+  readonly playbackRateSignal = signal<PlaybackRate>(1);
 
   readonly calls: string[] = [];
 
   readonly status = this.statusSignal.asReadonly();
   readonly mode = this.modeSignal.asReadonly();
+  readonly playbackRate = this.playbackRateSignal.asReadonly();
   readonly stepMode = computed(() => this.modeSignal() === 'sentence');
   readonly failure = this.failureSignal.asReadonly();
   readonly sentenceCount = computed(() => this.total());
@@ -80,6 +83,11 @@ class StubPlaybackStore {
   cycleMode(): void {
     this.calls.push('cycleMode');
     this.modeSignal.update((mode) => (mode === 'continuous' ? 'sentence' : 'continuous'));
+  }
+
+  setPlaybackRate(rate: PlaybackRate): void {
+    this.calls.push(`setPlaybackRate:${String(rate)}`);
+    this.playbackRateSignal.set(rate);
   }
 
   isAvailable(id: SentenceId | null): boolean {
@@ -850,6 +858,21 @@ describe('ReadingPlayerComponent', () => {
 
       expect(store.calls).toEqual(['cycleMode', 'cycleMode']);
       expect(control(element, MODE_LABEL)?.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('cycles the local reading speed with an accessible text label', () => {
+      store.total.set(6);
+      store.ready.set(6);
+      const fixture = render();
+      let element = fixture.nativeElement as HTMLElement;
+
+      expect(control(element, 'Reading speed, 1 times')?.textContent.trim()).toBe('1×');
+
+      control(element, 'Reading speed, 1 times')?.click();
+      fixture.detectChanges();
+      element = fixture.nativeElement as HTMLElement;
+      expect(store.calls).toEqual(['setPlaybackRate:0.9']);
+      expect(control(element, 'Reading speed, 0.9 times')?.textContent.trim()).toBe('0.9×');
     });
 
     /**

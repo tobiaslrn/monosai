@@ -65,8 +65,6 @@ export interface FakeOpenRouterOptions {
   readonly truncatesReply?: boolean;
   /** Parameter named by that rejection; null simulates a generic upstream error. */
   readonly jsonSchemaErrorParam?: string | null;
-  /** When false, a request carrying `speed` is refused with a 400. */
-  readonly supportsSpeed?: boolean;
   /** When false, a request carrying speech `instructions` is refused with a 400. */
   readonly supportsInstructions?: boolean;
   readonly content?: ChatContentKind;
@@ -466,9 +464,6 @@ export class FakeOpenRouterServer {
     }
     if (!(this.options.knownVoices ?? [DEFAULT_VOICE]).includes(voice)) {
       return this.providerError(400, 'Unknown voice for this model', {}, 'voice');
-    }
-    if (body['speed'] !== undefined && this.options.supportsSpeed === false) {
-      return this.providerError(400, 'This model does not support speed', {}, 'speed');
     }
     if (body['instructions'] !== undefined && this.options.supportsInstructions === false) {
       return this.providerError(

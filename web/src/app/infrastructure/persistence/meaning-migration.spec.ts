@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
-import { SCHEMA_VERSIONS } from './migrations';
+import { CURRENT_SCHEMA_VERSION, SCHEMA_VERSIONS } from './migrations';
 import { MonosaiDatabase } from './monosai-db';
 
 const V13_STORES = SCHEMA_VERSIONS.find((version) => version.version === 13)!.stores;
@@ -108,7 +108,7 @@ describe('schema v14 meaning fields', () => {
 
       await db.open();
 
-      expect(db.verno).toBe(15);
+      expect(db.verno).toBe(CURRENT_SCHEMA_VERSION);
       expect(await db.table('settings').get('app')).toEqual({
         key: 'app',
         v: 1,

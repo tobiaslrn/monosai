@@ -1,4 +1,5 @@
 import type { SpeechCapabilities } from './speech-capabilities';
+import type { SpeechStyle } from './speech-instructions';
 
 /** The exact text-model configuration a learner supplies. */
 export interface TextModelConfig {
@@ -26,8 +27,7 @@ export interface ModelTest {
 export interface TtsConfig {
   readonly modelId: string;
   readonly voiceId: string;
-  /** Speaking rate multiplier. Providers that ignore it are reported, not hidden. */
-  readonly speed: number;
+  readonly speechStyle: SpeechStyle;
   /**
    * The channels the test should try, declared by the provider catalog.
    *
@@ -41,12 +41,6 @@ export interface TtsConfig {
 export interface TtsTest {
   readonly modelId: string;
   readonly voiceId: string;
-  /**
-   * False when the provider rejected the speed parameter and the clip was
-   * produced without it. The UI must say so rather than implying the setting
-   * took effect.
-   */
-  readonly speedApplied: boolean;
   /** False when a declared instruction channel was rejected and the test fell back safely. */
   readonly speechInstructionsApplied: boolean;
   readonly mimeType: string;

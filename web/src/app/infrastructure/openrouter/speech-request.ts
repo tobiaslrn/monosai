@@ -1,4 +1,8 @@
-import { buildSpeechInstructions, type SpeechContext } from '../../domain/ai/speech-instructions';
+import {
+  buildSpeechInstructions,
+  type SpeechContext,
+  type SpeechStyle,
+} from '../../domain/ai/speech-instructions';
 import { isGeminiTtsModel } from '../../domain/ai/tts-configuration';
 
 /**
@@ -17,8 +21,7 @@ export interface SpeechRequestInput {
   readonly text: string;
   /** The container asked for, when the family lets it be chosen. */
   readonly responseFormat: 'mp3';
-  /** The speed to request, or `undefined` when it is not being asked for. */
-  readonly speed: number | undefined;
+  readonly speechStyle: SpeechStyle;
   /** Delivery direction to carry, or `undefined` when none is being sent. */
   readonly instruction: SpeechContext | undefined;
 }
@@ -32,27 +35,27 @@ export interface SpeechRequestInput {
  * out.
  *
  * Two families, one function: Gemini takes its direction through the prompt and
- * returns raw PCM, everything OpenAI-compatible takes `instructions` and `speed`
- * as top-level fields.
+ * returns raw PCM, while everything OpenAI-compatible takes `instructions` as
+ * a top-level field.
  */
 export function buildSpeechRequestBody(input: SpeechRequestInput): Record<string, unknown> {
   const gemini = isGeminiTtsModel(input.modelId);
   const instructed = input.instruction !== undefined;
-  // Gemini ignores `speed` rather than refusing it, so sending it would record
-  // a capability the learner never got.
-  const speed = gemini ? undefined : input.speed;
+  const instruction =
+    input.instruction === undefined
+      ? undefined
+      : { ...input.instruction, style: input.speechStyle };
 
   return {
     model: input.modelId,
     voice: input.voiceId,
     input:
       gemini && instructed
-        ? `${buildSpeechInstructions(input.instruction, 'prefix')}${GEMINI_TEXT_SEPARATOR}${input.text}`
+        ? `${buildSpeechInstructions(instruction, 'prefix')}${GEMINI_TEXT_SEPARATOR}${input.text}`
         : input.text,
     response_format: gemini ? 'pcm' : input.responseFormat,
-    ...(speed === undefined ? {} : { speed }),
     ...(instructed && !gemini
-      ? { instructions: buildSpeechInstructions(input.instruction, 'field') }
+      ? { instructions: buildSpeechInstructions(instruction, 'field') }
       : {}),
   };
 }

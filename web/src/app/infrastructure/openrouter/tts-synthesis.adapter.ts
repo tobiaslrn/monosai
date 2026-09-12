@@ -36,15 +36,14 @@ export class OpenRouterTtsSynthesizer {
 
   async synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
     const resolved = { ...input, voiceId: resolveTtsVoice(input.modelId, input.voiceId) };
-    let speed = resolved.speedSupported ? resolved.speed : undefined;
     let instructed = resolved.speechInstructions === 'supported';
 
-    // One retry per optional capability. A provider that advertised either
-    // parameter but rejects it degrades to exact-text synthesis, never failure.
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const response = await this.request(resolved, speed, instructed, signal);
+    // A provider that advertised instructions but rejects them degrades to
+    // exact-text synthesis, never failure.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await this.request(resolved, instructed, signal);
       if (response.ok) {
-        return this.verify(response.value, resolved, speed !== undefined, instructed);
+        return this.verify(response.value, resolved, instructed);
       }
       const refused = response.error.detail?.capability;
       if (response.error.code !== 'capability-unsupported') {
@@ -54,10 +53,6 @@ export class OpenRouterTtsSynthesizer {
         instructed = false;
         continue;
       }
-      if (refused === 'speed' && speed !== undefined) {
-        speed = undefined;
-        continue;
-      }
       return err(response.error);
     }
     throw new Error('Unreachable TTS capability fallback state.');
@@ -65,7 +60,6 @@ export class OpenRouterTtsSynthesizer {
 
   private request(
     input: TtsRequest,
-    speed: number | undefined,
     instructed: boolean,
     signal: AbortSignal,
   ): Promise<Result<AudioResponse, AiError>> {
@@ -76,20 +70,17 @@ export class OpenRouterTtsSynthesizer {
       voiceId: input.voiceId,
       timeoutMs: AUDIO_REQUEST_TIMEOUT_MS,
       signal,
-      // The direction always names the requested pace, because for a model with
-      // no numeric `speed` — and for one that refused it — the prompt is the
-      // only channel the setting can reach.
       body: buildSpeechRequestBody({
         modelId: input.modelId,
         voiceId: input.voiceId,
         text: input.text,
         responseFormat: input.responseFormat,
-        speed,
+        speechStyle: input.speechStyle,
         instruction: instructed
           ? {
               ...(input.beforeJa === undefined ? {} : { beforeJa: input.beforeJa }),
               ...(input.afterJa === undefined ? {} : { afterJa: input.afterJa }),
-              speed: input.speed,
+              style: input.speechStyle,
             }
           : undefined,
       }),
@@ -99,7 +90,6 @@ export class OpenRouterTtsSynthesizer {
   private async verify(
     response: AudioResponse,
     input: TtsRequest,
-    speedApplied: boolean,
     /**
      * The direction was carried, not necessarily obeyed: for Gemini it sat in
      * the prompt, elsewhere the field was not refused. Both are statements
@@ -126,7 +116,6 @@ export class OpenRouterTtsSynthesizer {
       ? ok({
           bytes: verified.value.bytes,
           mimeType: verified.value.mimeType,
-          speedApplied,
           speechInstructionsApplied,
         })
       : verified;

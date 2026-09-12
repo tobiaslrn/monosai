@@ -299,7 +299,8 @@ When the current model or voice has no row for a sentence, playback may use the 
 whose `sourceContentHash` matches that sentence ([ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md)).
 The fallback is safe for unchanged text and is marked stale; it never contributes to the current
 settings' coverage or completeness figure. A change from stale to current seals an open resource so
-the next run cannot mix configurations.
+the next run cannot mix configurations. New rows carry `pace: 'playback'`; older rows without that
+marker have baked timing and play at `1×`.
 
 ```mermaid
 sequenceDiagram
@@ -339,6 +340,14 @@ Reaching the frontier is a stall inside the resource, reported as `waiting` and 
 It ends when the next clip is appended. It is the one gap left: a stall long enough for the page to
 be frozen still stops the reading, which is why the shared concurrency bound — and the position
 ordering that fills the front of the reading first — exists.
+
+The playback store reads the saved reader rate and applies it only to playback-paced
+rows, preserving pitch and reporting the actual rate to the media session. It
+seals a continuous resource at a pace boundary and continues with the next
+playable run, so one media element never changes rate partway through a resource.
+The rate button changes this preference immediately; changing it never starts an
+AI request. Speaking style is separate: it is named in the TTS prompt and
+therefore belongs in the audio configuration fingerprint.
 
 ## 6.6 Browse vocabulary
 

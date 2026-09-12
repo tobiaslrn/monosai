@@ -402,11 +402,10 @@ export class StubTtsProvider implements TextToSpeechProvider {
 }
 
 /** A small clip that stands in for a real MP3 in application-layer tests. */
-export function audioPayload(byteLength = 512, speedApplied = true): AudioPayload {
+export function audioPayload(byteLength = 512): AudioPayload {
   return {
     bytes: new ArrayBuffer(byteLength),
     mimeType: 'audio/mpeg',
-    speedApplied,
     speechInstructionsApplied: false,
   };
 }
@@ -482,12 +481,11 @@ export function modelTest(modelId = FAKE_OPENROUTER.textModel): ModelTest {
 }
 
 /** A passing TTS test result, with a clip small enough to keep in memory. */
-export function ttsTest(speedApplied = true, speechInstructionsApplied = false): TtsTest {
+export function ttsTest(speechInstructionsApplied = false): TtsTest {
   const bytes = new ArrayBuffer(1024);
   return {
     modelId: FAKE_OPENROUTER.ttsModel,
     voiceId: FAKE_OPENROUTER.voice,
-    speedApplied,
     speechInstructionsApplied,
     mimeType: 'audio/mpeg',
     byteLength: bytes.byteLength,

@@ -82,7 +82,7 @@ altitude.
 | **language**   | Tokenizer and runtime interfaces, segmentation, dictionary, kana, the structural baseline                                                   | Prepare the tokenizer and the assets, and report readiness                                                                                      | The language worker client and asset loader |
 | **ai**         | Provider interfaces, tasks, prompt versions, configuration fingerprints, story structure                                                    | Run a generation as a job. Test and select models                                                                                               | The AI provider adapters                    |
 | **enrichment** | Translation, grammar, and audio records, translation plans, cache keys, staleness, the job model, the preparation layers a reading declares | Produce and cache aids in resumable whole-reading jobs; translation first freezes locally selected terminology                                  | Persistence, the AI provider                |
-| **audio**      | Reading and writing the containers speech is stored in, and the encoder port that compresses it                                             | Own playback and the platform media session for one reading, including the native resource a continuous reading is played from and grown in, and re-encode clips stored before speech was compressed | The AI provider for synthesis, the speech encoder worker |
+| **audio**      | Reading and writing the containers speech is stored in, the encoder port that compresses it, and the stored clip's pace marker              | Own playback and the platform media session for one reading, including the native resource a continuous reading is played from and grown in, local playback-rate preferences, pace-kind boundaries, and re-encode clips stored before speech was compressed | The AI provider for synthesis, the speech encoder worker |
 | **grammar**    | Difficulty presets, the profile, the profile hash                                                                                           | Hold the selected preset, register, and optional edited guidance                                                                                | Persistence                                 |
 | **settings**   | Settings and credential shapes                                                                                                              | Hold configuration that startup loads before routes render                                                                                      | Persistence                                 |
 | **storage**    | The storage error type, persistence status, maintenance                                                                                     | Report and reclaim space                                                                                                                        | Persistence                                 |
@@ -116,6 +116,13 @@ synthesis adapters, the worker that encodes, and the maintenance pass that re-en
 ([ADR 0070](../decisions/0070-gemini-speech-is-stored-compressed.md)). And `shared` is not a
 catch-all: it holds only the primitives every other area needs, and everything in it is either a type
 or a pure function.
+
+The application audio store resolves current rows first and then safe same-content
+fallback rows, while keeping current-settings coverage separate from playable
+coverage ([ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md)).
+It reads the device-wide reader playback rate from settings, applies it only to
+new rows marked `pace: 'playback'`, and splits a continuous resource when a
+legacy baked-time row begins ([ADR 0073](../decisions/0073-pace-at-playback-style-in-prompt.md)).
 
 ## 5.3 Level 3
 

@@ -150,10 +150,11 @@ an available `google/gemini-*` model ID for text and a model whose ID ends in
 `-tts` for voice, such as `google/gemini-3.1-flash-tts-preview`. Copy the exact
 current IDs from OpenRouter's model page. A specific Gemini voice is optional;
 the dialog offers OpenRouter's advertised voices and defaults to `Kore` when no
-voice is selected. Gemini TTS does not
-apply Monosai's speed setting, so a successful test reports that clips play at
-the model's own pace. Monosai converts Gemini's PCM response to browser-playable
-WAV audio locally before saving it.
+voice is selected. Reading speed is applied locally during playback, with pitch
+preservation, so it is consistent across sentences and does not trigger
+regeneration. The selected speaking style is sent as a prompt instruction when
+the model supports that channel. Monosai converts Gemini's PCM response to
+browser-playable WAV audio locally before saving it.
 
 The **Add model** dialog reads OpenRouter's normalized metadata through its
 official TypeScript SDK. Monosai shows the advertised modalities, context

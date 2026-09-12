@@ -1,6 +1,7 @@
 import type { Hasher } from '../shared/hashing';
 import { hashCanonical } from '../shared/hashing';
 import { SPEECH_INSTRUCTION_VERSION } from '../ai/speech-instructions';
+import type { SpeechStyle } from '../ai/speech-instructions';
 
 /**
  * Cache keys and fingerprints for translation, grammar review, and audio.
@@ -89,22 +90,26 @@ export function grammarConfigFingerprint(
  *
  * Everything a provider is asked for that changes the audio itself, and nothing
  * else. It is hashed separately from the cache key because the stored
- * `AudioAsset` carries it as its own field: two clips that differ only in speed
+ * `AudioAsset` carries it as its own field: two clips that differ in local pace
  * are distinguishable without re-deriving the whole key.
  */
 export function audioOptionsFingerprint(
   hasher: Hasher,
   options: {
     readonly responseFormat: string;
-    readonly speed: number;
+    readonly speechStyle: SpeechStyle;
     readonly speechInstructions?: 'supported' | 'unsupported';
   },
 ): string {
+  const speechInstructions = options.speechInstructions ?? 'unsupported';
   return hashCanonical(hasher, 'tts-options', {
     responseFormat: options.responseFormat,
-    speed: options.speed,
-    speechInstructions: options.speechInstructions ?? 'unsupported',
-    speechInstructionVersion: SPEECH_INSTRUCTION_VERSION,
+    speechStyle: options.speechStyle,
+    pace: 'playback',
+    speechInstructions,
+    ...(speechInstructions === 'supported'
+      ? { speechInstructionVersion: SPEECH_INSTRUCTION_VERSION }
+      : {}),
   });
 }
 

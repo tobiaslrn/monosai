@@ -22,6 +22,13 @@ its effect. It does not repeat the reasoning: that lives in the linked record.
 | **Maintainability** | Layer zones in the linter, `Result` at boundaries, Zod at boundaries, and injection tokens for every port. An adapter can be replaced without touching a screen | [chapter 5](05-building-block-view.md) |
 | **Performance efficiency** | The reader mounts a bounded paragraph window. Import analysis runs in batches with progress. Prompt assets and every route load lazily | [ADR 0011](../decisions/0011-paragraph-window-bounds.md), [chapter 6](06-runtime-view.md) |
 
+Speech follows the same local-first boundary. The provider produces natural-paced
+source audio and a named speaking style; the reader applies its four local
+playback rates, so pace is consistent across sentence requests and never causes
+regeneration. Existing rows remain playable under the content-hash rule described
+in [ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md) and
+[ADR 0073](../decisions/0073-pace-at-playback-style-in-prompt.md).
+
 ## Decomposition at a glance
 
 The system is cut by layer first and by domain area second. A domain area such as `reading` or

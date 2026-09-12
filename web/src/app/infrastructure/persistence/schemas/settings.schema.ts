@@ -7,6 +7,7 @@ import {
   MAX_TEXT_SCALE,
   MIN_STORY_TOKEN_BUDGET,
   MIN_TEXT_SCALE,
+  DEFAULT_PLAYBACK_RATE,
 } from '../../../domain/settings/settings';
 import {
   nonEmptyString,
@@ -32,6 +33,9 @@ export const readerPreferencesSchema = z.object({
   tokenSpacing: z.boolean(),
   warningMarkers: z.boolean(),
   textScale: z.number().min(MIN_TEXT_SCALE).max(MAX_TEXT_SCALE),
+  playbackRate: z
+    .union([z.literal(1), z.literal(0.9), z.literal(0.8), z.literal(0.7)])
+    .default(DEFAULT_PLAYBACK_RATE),
   updatedAt: timestampSchema,
 });
 
@@ -116,8 +120,7 @@ export const ttsSettingsSchema = z.object({
   failedTests: z.array(failedTestSchema).max(20).readonly().default([]),
   modelId: z.string(),
   voiceId: z.string(),
-  speed: z.number().positive().max(4),
-  speedSupported: z.boolean().default(false),
+  speechStyle: z.enum(['natural', 'clear', 'very-clear']).default('clear'),
   speechInstructions: z.enum(['supported', 'unsupported']).default('unsupported'),
   lastTestFingerprint: z.string().nullable(),
   lastTestedAt: timestampSchema.nullable(),
@@ -129,8 +132,7 @@ export const ttsSettingsSchema = z.object({
         name: nonEmptyString,
         modelId: nonEmptyString,
         voiceId: nonEmptyString,
-        speed: z.number().positive().max(4),
-        speedSupported: z.boolean().default(false),
+        speechStyle: z.enum(['natural', 'clear', 'very-clear']).default('clear'),
         speechInstructions: z.enum(['supported', 'unsupported']).default('unsupported'),
         lastTestFingerprint: z.string().nullable().default(null),
         lastTestedAt: timestampSchema.nullable().default(null),

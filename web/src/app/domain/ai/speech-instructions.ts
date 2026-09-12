@@ -1,18 +1,13 @@
 export type SpeechInstructionsSupport = 'supported' | 'unsupported';
+export type SpeechStyle = 'natural' | 'clear' | 'very-clear';
 
 /**
  * Bumped whenever the learner-facing delivery instruction changes.
  *
- * Deliberately not bumped when the instruction text first became reachable:
- * `speech/3` describes no stored clip, because `speechInstructions` defaulted
- * to `'unsupported'` and nothing ever set it, so no request had ever carried an
- * instruction. The constant sits unconditionally in `audioOptionsFingerprint`,
- * where a bump would discard every paid clip without correcting one.
- *
- * That reasoning expires with the first instructed clip. From then on every
- * change to this text must raise the version.
+ * The instruction text is part of the cache identity whenever the model accepts
+ * instructions. Raise this version for every learner-facing wording change.
  */
-export const SPEECH_INSTRUCTION_VERSION = 'speech/3';
+export const SPEECH_INSTRUCTION_VERSION = 'speech/4';
 
 /** Neighbor text is context, not another unbounded prompt input. */
 export const MAX_SPEECH_CONTEXT_CODE_POINTS = 200;
@@ -24,22 +19,12 @@ export const MAX_SPEECH_CONTEXT_CODE_POINTS = 200;
  * only channel Gemini TTS offers: the direction is part of the spoken input, so
  * it is kept short and carries no quoted text that could be read aloud.
  */
-export type SpeechInstructionStyle = 'field' | 'prefix';
+export type SpeechInstructionChannel = 'field' | 'prefix';
 
 export interface SpeechContext {
   readonly beforeJa?: string;
   readonly afterJa?: string;
-  /**
-   * The speed actually being requested, when one is.
-   *
-   * `speed` is a separate API parameter that is dropped for models that do not
-   * support it and after a capability refusal, so an instruction that named
-   * "the requested speed" unconditionally would sometimes refer to nothing.
-   * For a model with no numeric `speed` at all this line is the only way the
-   * pace is communicated, which is why it is stated whenever a speed is asked
-   * for rather than only when the parameter is sent.
-   */
-  readonly speed?: number;
+  readonly style?: SpeechStyle;
 }
 
 /**
@@ -48,19 +33,22 @@ export interface SpeechContext {
  */
 export function buildSpeechInstructions(
   context: SpeechContext = {},
-  style: SpeechInstructionStyle = 'field',
+  channel: SpeechInstructionChannel = 'field',
 ): string {
+  const speechStyle = context.style ?? 'clear';
   const delivery = [
     'Speak only the exact target text in natural standard Japanese.',
     'Pronounce every written word, including narration that describes laughter, crying, sighing, or other actions.',
     'Do not replace any written word or phrase with laughter, crying, a sigh, or any other non-verbal sound effect.',
-    context.speed === undefined
-      ? 'Articulate clearly with distinct word boundaries; do not use unnatural mora-by-mora pronunciation.'
-      : `Articulate clearly with distinct word boundaries at a speed of ${String(context.speed)}× normal; do not use unnatural mora-by-mora pronunciation.`,
-    'Pause briefly at natural phrase boundaries, and keep standard pitch accent and rhythm intact.',
+    'Speak at a natural pace. Never pronounce mora by mora. Never stretch syllables.',
+    speechStyle === 'natural'
+      ? 'Use natural articulation, phrase rhythm, and standard pitch accent.'
+      : speechStyle === 'very-clear'
+        ? 'Use careful articulation, a short even pause between phrases, and a slight gap between words; speak the words themselves naturally with clear pitch accent.'
+        : 'Use careful articulation and brief pauses at phrase boundaries, while keeping standard pitch accent and rhythm intact.',
   ];
 
-  if (style === 'prefix') {
+  if (channel === 'prefix') {
     return [...delivery, 'Never read this direction aloud.'].join('\n');
   }
 

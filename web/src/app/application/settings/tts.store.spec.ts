@@ -23,10 +23,14 @@ import {
 } from '../shared/repository-tokens';
 import { CredentialStore } from './credential.store';
 import { TextModelStore } from './text-model.store';
-import { MAX_TTS_SPEED, TtsStore } from './tts.store';
+import { TtsStore } from './tts.store';
 
 const HASH: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
-const CONFIGURED = { modelId: FAKE_OPENROUTER.ttsModel, voiceId: FAKE_OPENROUTER.voice };
+const CONFIGURED = {
+  modelId: FAKE_OPENROUTER.ttsModel,
+  voiceId: FAKE_OPENROUTER.voice,
+  speechStyle: 'clear' as const,
+};
 
 describe('TtsStore', () => {
   let settings: StubAiSettingsRepository;
@@ -81,7 +85,7 @@ describe('TtsStore', () => {
 
     expect(store.readiness()).toBe('ready');
     expect(store.sample()?.type).toBe('audio/mpeg');
-    expect(store.speedApplied()).toBe(true);
+    expect(store.speechInstructionsApplied()).toBe(false);
   });
 
   it('persists the Gemini default when its optional voice is left blank', async () => {
@@ -103,7 +107,7 @@ describe('TtsStore', () => {
       name: 'Gemini Kore',
       modelId: 'google/gemini-tts',
       voiceId: 'Kore',
-      speed: 1,
+      speechStyle: 'clear',
     });
 
     expect(store.activePresetId()).toBeNull();
@@ -121,7 +125,7 @@ describe('TtsStore', () => {
       name: 'Voice',
       modelId: 'vendor/tts',
       voiceId: 'Kore',
-      speed: 1,
+      speechStyle: 'clear',
     });
 
     await store.removePreset('voice');
@@ -133,7 +137,7 @@ describe('TtsStore', () => {
 
   it('keeps audio compatibility evidence on the tested preset', async () => {
     const store = await ready();
-    await store.registerPreset({ id: 'voice', name: 'Voice', ...CONFIGURED, speed: 1 });
+    await store.registerPreset({ id: 'voice', name: 'Voice', ...CONFIGURED });
 
     await store.testPreset('voice');
 
@@ -141,7 +145,7 @@ describe('TtsStore', () => {
     expect(store.configForPreset('voice')).toMatchObject(CONFIGURED);
   });
 
-  it('reports a speed the provider ignored rather than implying it applied', async () => {
+  it('reports that a provider does not accept prompted style instructions', async () => {
     provider.result = ok(ttsTest(false));
     const store = await ready();
     store.setDraft(CONFIGURED);
@@ -149,11 +153,11 @@ describe('TtsStore', () => {
     await store.test();
 
     expect(store.readiness()).toBe('ready');
-    expect(store.speedApplied()).toBe(false);
+    expect(store.styleControl()).toBe('none');
   });
 
   it('persists both measured capabilities and stays ready under the stored test', async () => {
-    provider.result = ok(ttsTest(false, true));
+    provider.result = ok(ttsTest(true));
     const store = await ready();
     store.setDraft(CONFIGURED);
 
@@ -163,25 +167,23 @@ describe('TtsStore', () => {
     // covers the configuration alone — so recording what the test learned
     // cannot make that same test look stale.
     expect(settings.tts).toMatchObject({
-      speedSupported: false,
       speechInstructions: 'supported',
     });
     expect(store.speechInstructionsApplied()).toBe(true);
-    expect(store.paceSource()).toBe('prompted');
+    expect(store.styleControl()).toBe('prompted');
     expect(store.readiness()).toBe('ready');
   });
 
-  it('names the model as the pace source when the speed parameter was honoured', async () => {
+  it('reports no style channel when the provider did not accept instructions', async () => {
     const store = await ready();
     store.setDraft(CONFIGURED);
 
     await store.test();
 
-    expect(settings.tts).toMatchObject({ speedSupported: true });
-    expect(store.paceSource()).toBe('native');
+    expect(store.styleControl()).toBe('none');
   });
 
-  it('goes stale when the voice or the speed changes', async () => {
+  it('goes stale when the voice or the speaking style changes', async () => {
     const store = await ready();
     store.setDraft(CONFIGURED);
     await store.test();
@@ -194,18 +196,18 @@ describe('TtsStore', () => {
     await store.save();
     expect(store.readiness()).toBe('ready');
 
-    store.setDraft({ speed: 1.5 });
+    store.setDraft({ speechStyle: 'very-clear' });
     await store.save();
     expect(store.readiness()).toBe('stale');
   });
 
-  it('clamps a speed outside what providers accept', async () => {
+  it('persists the selected speaking style', async () => {
     const store = await ready();
 
-    store.setDraft({ ...CONFIGURED, speed: 9 });
+    store.setDraft({ ...CONFIGURED, speechStyle: 'very-clear' });
     await store.save();
 
-    expect(settings.tts.speed).toBe(MAX_TTS_SPEED);
+    expect(settings.tts.speechStyle).toBe('very-clear');
   });
 
   it('records a capability failure without a stored result', async () => {
@@ -300,26 +302,6 @@ describe('TtsStore', () => {
     await store.test();
 
     expect(store.testCancelled()).toBe(false);
-    expect(store.readiness()).toBe('ready');
-  });
-
-  /**
-   * The field is cleared to be retyped, not to ask for half speed. Storing the
-   * minimum there left a learner with permanent half-speed narration, a retired
-   * model test, and every clip made at the old speed out of reach.
-   */
-  it('leaves the saved speed alone when the field holds no number', async () => {
-    const store = await ready();
-    store.setDraft({ ...CONFIGURED, speed: 1.5 });
-    await store.test();
-
-    // What a field with nothing usable in it holds: no number at all.
-    store.setDraft({ speed: Number.NaN });
-    expect(store.hasUnsavedChanges()).toBe(false);
-    await store.save();
-
-    expect(settings.tts.speed).toBe(1.5);
-    // Nothing was written, so the test that vouches for this voice still does.
     expect(store.readiness()).toBe('ready');
   });
 
@@ -493,14 +475,11 @@ describe('TtsStore edge paths', () => {
     expect(store.readiness()).toBe('ready');
   });
 
-  it('falls back to the default speed when a control reports nothing usable', async () => {
+  it('starts with the default speaking style', async () => {
     await TestBed.inject(CredentialStore).load();
     const store = TestBed.inject(TtsStore);
     await store.load();
 
-    store.setDraft({ ...CONFIGURED, speed: Number.NaN });
-    await store.save();
-
-    expect(settings.tts.speed).toBe(1);
+    expect(store.draft().speechStyle).toBe('clear');
   });
 });

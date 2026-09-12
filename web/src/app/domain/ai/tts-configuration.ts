@@ -8,15 +8,6 @@ export function isGeminiTtsModel(modelId: string): boolean {
   return isGeminiModel(modelId) && modelId.trim().toLowerCase().includes('-tts');
 }
 
-/**
- * OpenRouter accepts `speed` for every speech request but documents that
- * providers without that option silently ignore it. Gemini TTS is one of
- * those providers, so omission keeps the recorded capability truthful.
- */
-export function supportsTtsSpeed(modelId: string): boolean {
-  return !isGeminiTtsModel(modelId);
-}
-
 export const GEMINI_DEFAULT_VOICE = 'Kore';
 
 /** Gemini has a stable provider voice default; other providers do not. */

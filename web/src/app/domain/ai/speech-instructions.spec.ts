@@ -9,10 +9,11 @@ describe('speech instructions', () => {
   it('is versioned and asks for exact target-only natural Japanese', () => {
     const instructions = buildSpeechInstructions();
 
-    expect(SPEECH_INSTRUCTION_VERSION).toBe('speech/3');
+    expect(SPEECH_INSTRUCTION_VERSION).toBe('speech/4');
     expect(instructions).toContain('Speak only the exact target text');
     expect(instructions).toContain('natural standard Japanese');
-    expect(instructions).toContain('do not use unnatural mora-by-mora pronunciation');
+    expect(instructions).toContain('Never pronounce mora by mora');
+    expect(instructions).toContain('Never stretch syllables');
     expect(instructions).toContain('Pronounce every written word');
     expect(instructions).toContain('Do not replace any written word or phrase with laughter');
     // No speed was requested, so nothing claims one was.
@@ -22,28 +23,33 @@ describe('speech instructions', () => {
   it('asks for the delivery a beginner can follow', () => {
     const instructions = buildSpeechInstructions();
 
-    expect(instructions).toContain('distinct word boundaries');
-    expect(instructions).toContain('Pause briefly at natural phrase boundaries');
-    expect(instructions).toContain('keep standard pitch accent and rhythm intact');
+    expect(instructions).toContain('careful articulation');
+    expect(instructions).toContain('brief pauses at phrase boundaries');
+    expect(instructions).toContain('while keeping standard pitch accent and rhythm intact');
   });
 
   it('keeps the prefix form compact and free of quotable context', () => {
     const prefix = buildSpeechInstructions(
-      { speed: 0.7, beforeJa: '雨が強くなりました。', afterJa: '次の文。' },
+      { style: 'very-clear', beforeJa: '雨が強くなりました。', afterJa: '次の文。' },
       'prefix',
     );
 
     // The prefix rides inside the spoken input, so every extra line is another
     // chance for the model to read something out.
-    expect(prefix).toContain('at a speed of 0.7× normal');
+    expect(prefix).toContain('a short even pause between phrases');
     expect(prefix).toContain('Never read this direction aloud.');
     expect(prefix).not.toContain('雨');
     expect(prefix).not.toContain('context only');
     expect(prefix.split('\n')).toHaveLength(6);
   });
 
-  it('names the speed only when a speed is actually being requested', () => {
-    expect(buildSpeechInstructions({ speed: 0.8 })).toContain('at a speed of 0.8× normal');
+  it('changes only the style wording when the learner chooses a different style', () => {
+    expect(buildSpeechInstructions({ style: 'natural' })).toContain(
+      'Use natural articulation, phrase rhythm, and standard pitch accent.',
+    );
+    expect(buildSpeechInstructions({ style: 'very-clear' })).toContain(
+      'a slight gap between words',
+    );
   });
 
   it('caps each neighbor by Unicode code point and marks it as context only', () => {

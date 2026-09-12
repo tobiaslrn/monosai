@@ -1,5 +1,9 @@
 import type { Dexie, Transaction } from 'dexie';
-import { supportsTtsSpeed } from '../../domain/ai/tts-configuration';
+import {
+  DEFAULT_PLAYBACK_RATE,
+  DEFAULT_READER_PREFERENCES,
+  snapPlaybackRate,
+} from '../../domain/settings/settings';
 
 interface SchemaVersion {
   readonly version: number;
@@ -348,6 +352,56 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
     version: 15,
     stores: V11_STORES,
   },
+  {
+    // Speech pace is now local playback, and speaking style is a prompt choice.
+    // Existing audio rows deliberately keep their shape: an absent `pace` means
+    // the old pace was already baked into the stored clip.
+    version: 16,
+    stores: V11_STORES,
+    upgrade: async (transaction) => {
+      const settings = transaction.table('settings');
+      const ttsRow = (await settings.get('tts')) as Record<string, unknown> | undefined;
+      const readerRow = (await settings.get('reader-preferences')) as
+        Record<string, unknown> | undefined;
+
+      const oldSpeed =
+        ttsRow === undefined
+          ? DEFAULT_PLAYBACK_RATE
+          : (() => {
+              const value = requireRecord(ttsRow['value'], 'voice model settings');
+              return typeof value['speed'] === 'number' ? value['speed'] : DEFAULT_PLAYBACK_RATE;
+            })();
+      const playbackRate = snapPlaybackRate(oldSpeed);
+
+      if (ttsRow !== undefined) {
+        const value = requireRecord(ttsRow['value'], 'voice model settings');
+        delete value['speed'];
+        delete value['speedSupported'];
+        value['speechStyle'] = 'clear';
+        const presets = Array.isArray(value['presets']) ? value['presets'] : [];
+        value['presets'] = presets.map((entry) => {
+          const preset = requireRecord(entry, 'voice model preset');
+          delete preset['speed'];
+          delete preset['speedSupported'];
+          preset['speechStyle'] = 'clear';
+          return preset;
+        });
+        await settings.put(ttsRow);
+      }
+
+      if (readerRow !== undefined) {
+        const value = requireRecord(readerRow['value'], 'reader preferences');
+        value['playbackRate'] = playbackRate;
+        await settings.put(readerRow);
+      } else if (ttsRow !== undefined) {
+        await settings.put({
+          key: 'reader-preferences',
+          v: 1,
+          value: { ...DEFAULT_READER_PREFERENCES, playbackRate },
+        });
+      }
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].version;
@@ -363,7 +417,13 @@ export function applySchema(db: Dexie): void {
 }
 
 function seededSpeedSupport(modelId: unknown): boolean {
-  return typeof modelId === 'string' && modelId !== '' && supportsTtsSpeed(modelId);
+  return typeof modelId === 'string' && modelId !== '' && legacySupportsTtsSpeed(modelId);
+}
+
+/** Frozen v7 behaviour; never replace this with a current capability rule. */
+function legacySupportsTtsSpeed(modelId: string): boolean {
+  const normalized = modelId.trim().toLowerCase();
+  return !(normalized.startsWith('google/gemini-') && normalized.includes('-tts'));
 }
 
 function requireRecord(value: unknown, label: string): Record<string, unknown> {

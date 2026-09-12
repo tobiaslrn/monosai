@@ -1,7 +1,11 @@
 import { sentencesWithoutStoredAid } from '../../domain/enrichment/preparation';
 import { Injectable, inject } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
-import type { SpeechContext, SpeechInstructionsSupport } from '../../domain/ai/speech-instructions';
+import type {
+  SpeechContext,
+  SpeechInstructionsSupport,
+  SpeechStyle,
+} from '../../domain/ai/speech-instructions';
 import type { AudioAsset, AudioAssetSummary } from '../../domain/enrichment/records';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { assetId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
@@ -14,9 +18,7 @@ import { CLOCK, ENRICHMENT_REPOSITORY, ID_GENERATOR } from '../shared/repository
 export interface AudioSynthesisConfig {
   readonly modelId: string;
   readonly voiceId: string;
-  readonly speed: number;
-  /** Measured by the configuration test, so synthesis needs no catalog. */
-  readonly speedSupported: boolean;
+  readonly speechStyle: SpeechStyle;
   readonly speechInstructions: SpeechInstructionsSupport;
   readonly optionsFingerprint: string;
 }
@@ -86,9 +88,8 @@ export class AudioSynthesisService {
         text: sentence.japaneseText,
         modelId: config.modelId,
         voiceId: config.voiceId,
-        speed: config.speed,
+        speechStyle: config.speechStyle,
         responseFormat: RESPONSE_FORMAT,
-        speedSupported: config.speedSupported,
         speechInstructions: config.speechInstructions,
         ...(context.beforeJa === undefined ? {} : { beforeJa: context.beforeJa }),
         ...(context.afterJa === undefined ? {} : { afterJa: context.afterJa }),
@@ -107,6 +108,7 @@ export class AudioSynthesisService {
       modelId: config.modelId,
       voiceId: config.voiceId,
       optionsFingerprint: config.optionsFingerprint,
+      pace: 'playback',
       mimeType: payload.value.mimeType,
       byteLength: payload.value.bytes.byteLength,
       blob: new Blob([payload.value.bytes], { type: payload.value.mimeType }),

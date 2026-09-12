@@ -1,6 +1,6 @@
 import type { FailedConfigurationTest } from '../ai/failed-configuration-test';
 import type { StructuredOutputMode } from '../ai/model-test';
-import type { SpeechInstructionsSupport } from '../ai/speech-instructions';
+import type { SpeechInstructionsSupport, SpeechStyle } from '../ai/speech-instructions';
 import type { SnapshotId } from '../shared/ids';
 import type { PreparationLayer } from '../enrichment/preparation';
 
@@ -79,6 +79,25 @@ export const MIN_TEXT_SCALE = 0.8;
 export const MAX_TEXT_SCALE = 2.5;
 export const TEXT_SCALE_STEP = 0.05;
 
+/** Playback multipliers applied locally to newly generated speech clips. */
+export const PLAYBACK_RATES = [1, 0.9, 0.8, 0.7] as const;
+export type PlaybackRate = (typeof PLAYBACK_RATES)[number];
+export const DEFAULT_PLAYBACK_RATE: PlaybackRate = 1;
+
+export function isPlaybackRate(value: number): value is PlaybackRate {
+  return (PLAYBACK_RATES as readonly number[]).includes(value);
+}
+
+/** Keeps a migrated or imported rate within the four supported player steps. */
+export function snapPlaybackRate(value: number): PlaybackRate {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_PLAYBACK_RATE;
+  }
+  return PLAYBACK_RATES.reduce((nearest, rate) =>
+    Math.abs(rate - value) < Math.abs(nearest - value) ? rate : nearest,
+  );
+}
+
 /**
  * Global reader aids, applied to every reading on this device.
  *
@@ -93,6 +112,8 @@ export interface ReaderPreferences {
   readonly warningMarkers: boolean;
   /** Multiplier over the base reading font size, within the bounds above. */
   readonly textScale: number;
+  /** Local speech playback multiplier. */
+  readonly playbackRate: PlaybackRate;
   readonly updatedAt: number;
 }
 
@@ -101,6 +122,7 @@ export const DEFAULT_READER_PREFERENCES: ReaderPreferences = {
   tokenSpacing: true,
   warningMarkers: true,
   textScale: 1,
+  playbackRate: DEFAULT_PLAYBACK_RATE,
   updatedAt: 0,
 };
 
@@ -184,14 +206,7 @@ export interface TtsSettings {
   readonly failedTests?: readonly FailedConfigurationTest[];
   readonly modelId: string;
   readonly voiceId: string;
-  readonly speed: number;
-  /**
-   * Whether the configuration test saw the speed parameter honoured.
-   *
-   * Measured, never assumed: with `speechInstructions`, this is the pair the
-   * synthesis path reads to decide which channels the pace may travel through.
-   */
-  readonly speedSupported: boolean;
+  readonly speechStyle: SpeechStyle;
   readonly speechInstructions?: SpeechInstructionsSupport;
   readonly lastTestFingerprint: string | null;
   readonly lastTestedAt: number | null;
@@ -205,8 +220,7 @@ export interface TtsPreset {
   readonly name: string;
   readonly modelId: string;
   readonly voiceId: string;
-  readonly speed: number;
-  readonly speedSupported?: boolean;
+  readonly speechStyle: SpeechStyle;
   readonly speechInstructions?: SpeechInstructionsSupport;
   readonly lastTestFingerprint?: string | null;
   readonly lastTestedAt?: number | null;
@@ -216,8 +230,7 @@ export const DEFAULT_TTS_SETTINGS: TtsSettings = {
   failedTests: [],
   modelId: '',
   voiceId: '',
-  speed: 1,
-  speedSupported: false,
+  speechStyle: 'clear',
   speechInstructions: 'unsupported',
   lastTestFingerprint: null,
   lastTestedAt: null,

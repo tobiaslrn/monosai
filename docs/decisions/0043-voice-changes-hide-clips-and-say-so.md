@@ -11,8 +11,8 @@ configuration-keyed cache and
 ## Context
 
 Every clip is stored under a cache key derived from the sentence and from the
-configuration that produced it — model, voice, and the options fingerprint that
-carries speed. That is what makes the cache honest: a clip made in one voice is
+configuration that produced it — model, voice, speaking style, and the options
+fingerprint that carries the local-pace contract. That is what makes the cache honest: a clip made in one voice is
 never served as if it were another, and two readings sharing a sentence share
 one clip.
 

@@ -1,10 +1,12 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import type { Reading } from '../../domain/reading/reading';
 import type { SentenceRef } from '../../domain/reading/reading-repository';
+import { isPlaybackRate, type PlaybackRate } from '../../domain/settings/settings';
 import type { ReadingId, SentenceId } from '../../domain/shared/ids';
 import { AudioConfigurationService } from '../enrichment/audio-configuration.service';
 import { EnrichmentKeysService } from '../enrichment/enrichment-keys.service';
 import { ENRICHMENT_REPOSITORY, READING_REPOSITORY } from '../shared/repository-tokens';
+import { AppSettingsStore } from '../settings/app-settings.store';
 import { AUDIO_PLAYER, type AudioSequenceClip, type AudioTimeline } from './audio-player';
 import { MEDIA_SESSION } from './media-session';
 
@@ -87,13 +89,18 @@ interface LoadedSequence {
   timeline: AudioTimeline;
   /** Index in `refs` of the sentence the resource starts at. */
   readonly baseIndex: number;
+  /** Whether the resource expects the learner's local rate or baked timing. */
+  readonly pace: ClipPace;
   /** Cache keys appended so far, in reading order from `baseIndex`. */
   readonly keys: string[];
 }
 
+type ClipPace = 'playback' | 'baked';
+
 interface PlayableClip {
   readonly cacheKey: string;
   readonly stale: boolean;
+  readonly pace: ClipPace;
 }
 
 /** What a load is: something the learner pressed, or reading on by itself. */
@@ -145,6 +152,7 @@ export class AudioPlaybackStore {
   private readonly audioConfig = inject(AudioConfigurationService);
   private readonly player = inject(AUDIO_PLAYER);
   private readonly mediaSession = inject(MEDIA_SESSION);
+  private readonly appSettings = inject(AppSettingsStore);
 
   private readonly readingSignal = signal<Reading | null>(null);
   private readonly refsSignal = signal<readonly SentenceRef[]>([]);
@@ -218,6 +226,10 @@ export class AudioPlaybackStore {
   readonly explicitNavigation = this.navigationSignal.asReadonly();
   readonly pendingSentenceId = this.pendingSignal.asReadonly();
   readonly mode = this.modeSignal.asReadonly();
+  readonly playbackRate = computed(() => {
+    const rate = this.appSettings.readerPreferences().playbackRate;
+    return isPlaybackRate(rate) ? rate : 1;
+  });
   /** The one mode with behaviour behind it, named for what it does at a seam. */
   readonly stepMode = computed(() => this.modeSignal() === 'sentence');
   readonly reading = this.readingSignal.asReadonly();
@@ -412,12 +424,20 @@ export class AudioPlaybackStore {
       const current = cacheKey === undefined ? undefined : stored.get(cacheKey);
       if (current !== undefined) {
         currentAvailable.add(ref.id);
-        playable.set(ref.id, { cacheKey: current.cacheKey, stale: false });
+        playable.set(ref.id, {
+          cacheKey: current.cacheKey,
+          stale: false,
+          pace: current.pace === 'playback' ? 'playback' : 'baked',
+        });
         continue;
       }
       const fallback = newestByContentHash.get(ref.contentHash);
       if (fallback !== undefined) {
-        playable.set(ref.id, { cacheKey: fallback.cacheKey, stale: true });
+        playable.set(ref.id, {
+          cacheKey: fallback.cacheKey,
+          stale: true,
+          pace: fallback.pace === 'playback' ? 'playback' : 'baked',
+        });
       }
     }
     this.currentAvailableSignal.set(currentAvailable);
@@ -478,6 +498,16 @@ export class AudioPlaybackStore {
   cycleMode(): void {
     const next = PLAYBACK_MODES.indexOf(this.modeSignal()) + 1;
     this.setMode(PLAYBACK_MODES[next % PLAYBACK_MODES.length]);
+  }
+
+  /** Persists and immediately applies the learner's local speech rate. */
+  setPlaybackRate(rate: PlaybackRate): void {
+    if (!isPlaybackRate(rate)) {
+      return;
+    }
+    void this.appSettings.setReaderPreference('playbackRate', rate);
+    this.player.setRate(this.rateForPace(this.loadedPace()));
+    this.publishMediaPosition();
   }
 
   private setMode(mode: PlaybackMode): void {
@@ -904,9 +934,14 @@ export class AudioPlaybackStore {
       return;
     }
     if (this.sequence !== null) {
-      // A resource only ends once it has been sealed, so its end is the end of
-      // the reading or of everything that was ever going to be made for it.
-      this.finish();
+      // A sealed resource can end at a pace boundary. Continue with the next
+      // playable run rather than making the learner press Play again.
+      const next = this.availableIndexFrom(1);
+      if (next === -1) {
+        this.finish();
+      } else {
+        await this.startAt(refs[next].id);
+      }
       return;
     }
     if (this.single) {
@@ -1048,6 +1083,7 @@ export class AudioPlaybackStore {
 
     const startPaused = this.pauseRequested;
     try {
+      this.player.setRate(this.rateForPace(this.playableSignal().get(sentenceId)?.pace ?? 'baked'));
       const timeline = await this.player.playSequence(clips, {
         startIndex: 0,
         startPaused,
@@ -1064,7 +1100,12 @@ export class AudioPlaybackStore {
         await this.load(sentenceId);
         return;
       }
-      this.sequence = { timeline, baseIndex: startIndex, keys };
+      this.sequence = {
+        timeline,
+        baseIndex: startIndex,
+        pace: this.playableSignal().get(sentenceId)?.pace ?? 'baked',
+        keys,
+      };
     } catch {
       if (token === this.loadToken) {
         // Browsers without MPEG MediaSource retain the established foreground path.
@@ -1095,7 +1136,7 @@ export class AudioPlaybackStore {
     }
     for (let index = startIndex; index < refs.length; index += 1) {
       const clip = playable.get(refs[index].id);
-      if (!available.has(refs[index].id) || clip?.stale !== first.stale) {
+      if (!available.has(refs[index].id) || clip?.pace !== first.pace) {
         break;
       }
       run.push(refs[index]);
@@ -1148,10 +1189,10 @@ export class AudioPlaybackStore {
   private async appendStoredClips(sequence: LoadedSequence): Promise<void> {
     const refs = this.refsSignal();
     const playable = this.playableSignal();
-    // A changed voice re-keys the whole reading. Appending a clip made under
-    // the new configuration to a resource built under the old one would put two
-    // voices in one reading, which ADR 0043 refuses, so it is sealed instead
-    // and what is already in it plays out.
+    // A current cache key can change while a resource is open, for example when
+    // a regenerated clip replaces an older fallback. Appending that clip would
+    // change the resource's source configuration, so it is sealed instead and
+    // what is already in it plays out.
     const rekeyed =
       sequence.baseIndex + sequence.keys.length > refs.length ||
       sequence.keys.some(
@@ -1166,16 +1207,16 @@ export class AudioPlaybackStore {
     const pending: { readonly cacheKey: string }[] = [];
     for (let index = this.appendedLimitIndex() + 1; index < refs.length; index += 1) {
       const clip = playable.get(refs[index].id);
-      if (
-        clip === undefined ||
-        clip.stale !== playable.get(refs[sequence.baseIndex].id)?.stale ||
-        !available.has(refs[index].id)
-      ) {
+      if (clip?.pace !== sequence.pace || !available.has(refs[index].id)) {
         break;
       }
       pending.push({ cacheKey: clip.cacheKey });
     }
     if (pending.length === 0) {
+      const next = playable.get(refs[this.appendedLimitIndex() + 1]?.id);
+      if (next !== undefined && next.pace !== sequence.pace) {
+        this.sealSequence();
+      }
       return;
     }
 
@@ -1215,7 +1256,9 @@ export class AudioPlaybackStore {
       return;
     }
     this.publishMediaPosition();
-    if (this.appendedLimitIndex() === refs.length - 1) {
+    const nextIndex = this.appendedLimitIndex() + 1;
+    const next = playable.get(refs[nextIndex]?.id);
+    if (nextIndex >= refs.length || (next !== undefined && next.pace !== sequence.pace)) {
       this.sealSequence();
     }
   }
@@ -1304,6 +1347,7 @@ export class AudioPlaybackStore {
 
     const startPaused = this.pauseRequested || options?.startPaused === true;
     try {
+      this.player.setRate(this.rateForPace(playable.pace));
       await this.player.play(clip.value.blob, {
         startPaused,
         startSeconds: options?.startSeconds,
@@ -1402,9 +1446,21 @@ export class AudioPlaybackStore {
     }
     this.mediaSession.setPositionState({
       duration: timeline.duration,
-      playbackRate: 1,
+      playbackRate: this.rateForPace(this.sequence?.pace ?? 'baked'),
       position: Math.min(Math.max(this.player.elapsed(), 0), timeline.duration),
     });
+  }
+
+  private loadedPace(): ClipPace {
+    if (this.sequence !== null) {
+      return this.sequence.pace;
+    }
+    const current = this.currentSignal();
+    return current === null ? 'baked' : (this.playableSignal().get(current)?.pace ?? 'baked');
+  }
+
+  private rateForPace(pace: ClipPace): number {
+    return pace === 'playback' ? this.playbackRate() : 1;
   }
 
   /**

@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
-import { SCHEMA_VERSIONS } from './migrations';
+import { CURRENT_SCHEMA_VERSION, SCHEMA_VERSIONS } from './migrations';
 import { MonosaiDatabase } from './monosai-db';
 
 const V14_STORES = SCHEMA_VERSIONS.find((version) => version.version === 14)!.stores;
@@ -45,7 +45,7 @@ describe('schema v15 first-review precision', () => {
 
       await db.open();
 
-      expect(db.verno).toBe(15);
+      expect(db.verno).toBe(CURRENT_SCHEMA_VERSION);
       expect(await db.vocabularyItems.get(item.id)).toEqual(item);
       expect(await db.vocabularySourceCaches.get(cache.sourceId)).toEqual(cache);
     } finally {

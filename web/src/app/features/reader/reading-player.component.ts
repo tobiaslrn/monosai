@@ -13,6 +13,7 @@ import type {
   AudioJobCounts,
   AudioJobProgress,
 } from '../../application/enrichment/audio-job.store';
+import { PLAYBACK_RATES } from '../../domain/settings/settings';
 import type { SentenceId } from '../../domain/shared/ids';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
@@ -101,10 +102,11 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
       <!--
         The one thing the card prints. Clips are keyed by the settings that made
-        them (ADR 0043), so changing a voice hides every clip made with the old
-        one without deleting anything — and a bar that falls from full to empty
-        with no word said reads as audio that has been lost and paid for twice.
-        The prose budget keeps room for exactly this: money and apparent loss.
+        them (ADR 0043), so changing a voice can leave current coverage empty
+        while same-content older clips remain playable (ADR 0072). The notice
+        names that older audio instead of making a full bar fall silent without
+        explanation. The prose budget keeps room for exactly this: money and
+        apparent loss.
       -->
       @if (staleAudio()) {
         <p class="notice" data-testid="player-stale-audio">
@@ -118,7 +120,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       <!--
         Every control on one line above the track, ranged to the leading edge:
         the transport first, where a thumb already is on a docked card, then the
-        mode, then the two contextual slots. An unused slot is held open, and at
+        mode, then the local speed and contextual slots. An unused slot is held open, and at
         the end of the line an empty one is simply where the line stops.
       -->
       <div class="controls">
@@ -223,6 +225,16 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           (click)="cycleMode()"
         >
           <mn-icon name="step" [size]="20" />
+        </button>
+
+        <button
+          type="button"
+          class="mn-button mn-button--ghost slot speed"
+          [attr.aria-label]="playbackSpeedAriaLabel()"
+          [title]="playbackSpeedAriaLabel()"
+          (click)="cyclePlaybackRate()"
+        >
+          {{ playbackSpeedLabel() }}
         </button>
 
         <!--
@@ -536,6 +548,12 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       border-radius: var(--radius-pill);
       background: currentcolor;
       content: '';
+    }
+
+    .speed {
+      min-inline-size: 3.5rem;
+      padding-inline: var(--space-2);
+      font-variant-numeric: tabular-nums;
     }
 
     /* Play is the one control that is pressed repeatedly, so it is the big one. */
@@ -911,6 +929,11 @@ export class ReadingPlayerComponent {
     this.store.isAvailable(this.selectedSentenceId()),
   );
 
+  protected readonly playbackSpeedLabel = computed(() => `${String(this.store.playbackRate())}×`);
+  protected readonly playbackSpeedAriaLabel = computed(
+    () => `Reading speed, ${String(this.store.playbackRate())} times`,
+  );
+
   /**
    * What a run that has stopped has to report.
    *
@@ -1039,6 +1062,13 @@ export class ReadingPlayerComponent {
 
   protected cycleMode(): void {
     this.store.cycleMode();
+  }
+
+  protected cyclePlaybackRate(): void {
+    const current = this.store.playbackRate();
+    const index = PLAYBACK_RATES.indexOf(current);
+    const next = PLAYBACK_RATES[(index + 1) % PLAYBACK_RATES.length];
+    this.store.setPlaybackRate(next);
   }
 
   protected pressAux(aux: AuxAction): void {

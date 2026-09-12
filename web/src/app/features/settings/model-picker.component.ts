@@ -295,7 +295,7 @@ export class ModelPickerComponent {
   readonly disabled = input(false);
   /**
    * Whether these are speech models, so the meta line can name how each one
-   * takes its pace. Marking, never gating: a model with no direction channel is
+   * takes its style. Marking, never gating: a model with no direction channel is
    * still a fine cheap voice, and a catalog entry can change.
    */
   readonly speech = input(false);
@@ -367,9 +367,8 @@ export class ModelPickerComponent {
       return '';
     }
     return {
-      native: 'speed',
-      prompted: 'pronunciation',
-      fixed: 'fixed pace',
-    }[declaredSpeechCapabilities(model.modelId, model.supportedParameters).pace];
+      prompted: 'style',
+      none: 'no style',
+    }[declaredSpeechCapabilities(model.modelId, model.supportedParameters).styleControl];
   }
 }

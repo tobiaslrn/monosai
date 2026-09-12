@@ -9,7 +9,7 @@ import {
 const hasher: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
 
 const TEXT = { modelId: 'vendor/text-model' };
-const TTS = { modelId: 'vendor/tts-model', voiceId: 'sakura', speed: 1 };
+const TTS = { modelId: 'vendor/tts-model', voiceId: 'sakura', speechStyle: 'clear' as const };
 
 describe('textModelFingerprint', () => {
   it('is stable for identical inputs', () => {
@@ -44,12 +44,12 @@ describe('textModelFingerprint', () => {
 });
 
 describe('ttsFingerprint', () => {
-  it('changes when the model, the voice, or the speed changes', () => {
+  it('changes when the model, the voice, or the speaking style changes', () => {
     const base = ttsFingerprint(hasher, 4, TTS);
 
     expect(ttsFingerprint(hasher, 4, { ...TTS, modelId: 'vendor/other' })).not.toBe(base);
     expect(ttsFingerprint(hasher, 4, { ...TTS, voiceId: 'kaede' })).not.toBe(base);
-    expect(ttsFingerprint(hasher, 4, { ...TTS, speed: 1.25 })).not.toBe(base);
+    expect(ttsFingerprint(hasher, 4, { ...TTS, speechStyle: 'very-clear' })).not.toBe(base);
   });
 
   it('changes when the key generation changes', () => {
@@ -59,10 +59,10 @@ describe('ttsFingerprint', () => {
   it('ignores what the test measured, so a finding cannot invalidate its own test', () => {
     const base = ttsFingerprint(hasher, 4, TTS);
 
-    // `speedSupported` and `speechInstructions` are stored beside the
+    // `speechInstructions` is stored beside the
     // configuration, not folded into it: this fingerprint answers whether the
     // stored test still describes the configuration, and nothing else.
-    const measured = { ...TTS, speedSupported: false, speechInstructions: 'supported' };
+    const measured = { ...TTS, speechInstructions: 'supported' };
 
     expect(ttsFingerprint(hasher, 4, measured)).toBe(base);
   });
@@ -72,7 +72,7 @@ describe('text and TTS readiness independence', () => {
   it('leaves the text fingerprint untouched when TTS settings change', () => {
     const text = textModelFingerprint(hasher, 4, TEXT);
 
-    ttsFingerprint(hasher, 4, { ...TTS, voiceId: 'kaede', speed: 2 });
+    ttsFingerprint(hasher, 4, { ...TTS, voiceId: 'kaede', speechStyle: 'natural' });
 
     expect(textModelFingerprint(hasher, 4, TEXT)).toBe(text);
   });
@@ -86,8 +86,8 @@ describe('text and TTS readiness independence', () => {
   });
 
   it('produces different fingerprints for the same values under different domains', () => {
-    expect(ttsFingerprint(hasher, 4, { modelId: 'same', voiceId: '', speed: 1 })).not.toBe(
-      textModelFingerprint(hasher, 4, { modelId: 'same' }),
-    );
+    expect(
+      ttsFingerprint(hasher, 4, { modelId: 'same', voiceId: '', speechStyle: 'clear' }),
+    ).not.toBe(textModelFingerprint(hasher, 4, { modelId: 'same' }));
   });
 });

@@ -1,7 +1,7 @@
 # 0040 — The catalog declares speech capabilities, the probe confirms them
 
 Date: 2026-08-28
-Status: Accepted
+Status: Accepted, partly superseded by [ADR 0073](0073-pace-at-playback-style-in-prompt.md)
 
 Extends [ADR 0018](0018-openrouter-request-boundary.md) in how a speech
 capability is decided. The refusal fallback that ADR established is kept exactly
@@ -41,27 +41,26 @@ test attempts exactly those, and a provider's own refusal — already mapped to 
 `capability` by the error mapping — corrects a wrong declaration at the cost of
 one extra request.
 
-Two overrides live with that function, because both are cases the catalog cannot
-state truthfully. OpenRouter lists `speed` for everything it proxies but
-documents that a provider without the option ignores it, and Gemini is such a
-provider; and Gemini takes its direction through the prompt rather than through a
-parameter, which no `supported_parameters` entry can express.
+One override lives with that function, because the catalog cannot state it
+truthfully: Gemini takes its delivery direction through the prompt rather than
+through a parameter, which no `supported_parameters` entry can express. Numeric
+pace is no longer a speech capability; [ADR 0073](0073-pace-at-playback-style-in-prompt.md)
+moves it to local playback.
 
 An empty parameter list means **unknown**, not **nothing**. The catalog is
 fetched lazily and can be absent when a preview runs, and a missing fetch must
-never be read as a model that can do neither. Both channels are then tried and
-the provider decides. This keeps the catalog an optimisation and stops it
+never be read as a model that can do neither. The instruction channel is then
+tried and the provider decides. This keeps the catalog an optimisation and stops it
 becoming a dependency of the audio path.
 
 ### A test result is measured, stored, and kept out of its own fingerprint
 
 `TtsConfig` carries `attempt: SpeechCapabilities` — what to try. `TtsTest`
-returns `speedApplied` and `speechInstructionsApplied` — what worked. Those two
-findings are stored beside the configuration as `speedSupported` and
-`speechInstructions`, and `ttsFingerprint` carries only what a learner
-configures. The fingerprint answers "does the stored test still describe this
-configuration"; folding the test's own findings into it made every test
-invalidate itself the moment it discovered something.
+returns `speechInstructionsApplied` — what worked. That finding is stored beside
+the configuration as `speechInstructions`, while `ttsFingerprint` carries the
+configured model, voice, and speaking style. The fingerprint answers "does the
+stored test still describe this configuration"; folding the test's own finding
+into it made every test invalidate itself the moment it discovered something.
 
 ### No `unknown` capability state
 
@@ -72,20 +71,20 @@ with this release, every stored test goes stale exactly once, readiness falls to
 "not tested", and `AudioConfigurationService` refuses to synthesise until a
 preview has run. The wrong `'unsupported'` cannot take effect in the meantime.
 
-### The pace comes only from the model
+### Pace is now local; style remains prompted
 
-`speed` where the provider honours it, the delivery direction where it does not.
-No local `playbackRate`, no time-stretching. That is why `PaceControl` has
-exactly three values and why a `fixed` model is marked in the picker rather than
-locked out: `tts-1` handles `speed` perfectly and is cheap, and a catalog entry
-can change.
+This section is superseded by [ADR 0073](0073-pace-at-playback-style-in-prompt.md).
+The capability boundary and refusal fallback remain: a model may accept prompted
+speaking style or may report that it cannot. Numeric speed and `PaceControl` no
+longer exist. New clips are natural-paced source audio marked for local
+playback; legacy clips retain their baked timing.
 
 ### One request builder for both paths
 
 `buildSpeechRequestBody` is the only place a speech body is written. ADR 0018
 requires the test and synthesis to send the same shape — a test that proved a
 body synthesis does not send proves nothing — and two copies were two chances to
-drift. Gemini gets a prefixed direction, `pcm`, and no `speed`; everything
+drift. Gemini gets a prefixed style direction, `pcm`, and no `speed` parameter;
 OpenAI-compatible gets a top-level `instructions` field.
 
 `provider.options.openai.instructions` is deliberately not hardcoded: it is
@@ -93,17 +92,13 @@ unverified, the refusal fallback already covers a provider that rejects the
 top-level field, and if a preview shows one does, `speech-request.ts` is the one
 file that changes.
 
-### The prompt version does not rise this time
+### Prompt changes are versioned for instructed models
 
-`SPEECH_INSTRUCTION_VERSION` stays at `speech/3`, and the instruction text
-changes under it. `speech/3` describes no stored clip, because no request ever
-carried an instruction — and the constant sits unconditionally in
-`audioOptionsFingerprint`, so raising it would discard every clip a learner has
-paid for while correcting nothing. A golden-value test in `cache-keys.spec.ts`
-guards that decision.
-
-**This reasoning expires with the first instructed clip.** From then on, every
-change to the instruction text must raise the version.
+The first instructed style request raised `SPEECH_INSTRUCTION_VERSION` to
+`speech/4`. Its value is part of `audioOptionsFingerprint` only when
+instructions are supported, so an uninstructed model does not lose its cache for
+a prompt change it never receives. Every future learner-facing change to the
+instruction text raises that version.
 
 ## Consequences
 
@@ -119,11 +114,7 @@ changes even though that sentence never reached the model. This over-discriminat
 in the safe direction and is accepted rather than paid for with a second
 instruction-shape concept in the cache key.
 
-`SPEECH_INSTRUCTION_VERSION` remains unconditional in `audioOptionsFingerprint`
-even though it is meaningless for uninstructed configurations. Fixing that today
-costs a full cache rebuild; it is worth doing the next time the prompt version
-rises anyway.
-
-Schema v7 adds `speedSupported` to the voice settings row and to every preset,
-seeded from `supportsTtsSpeed(modelId)`. Purely additive: no row loses a field,
-and the real value arrives with the re-test this release already forces.
+The audio options fingerprint also records the named speaking style and the
+`pace: 'playback'` contract. Schema v7 historically added `speedSupported` to
+the voice settings row and every preset; schema v16 removes those fields,
+creates the reader playback preference, and leaves old audio bytes untouched.

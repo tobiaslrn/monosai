@@ -6,6 +6,9 @@ class FakeAudioElement {
   src = '';
   currentTime = 0;
   duration = 0;
+  preservesPitch = false;
+  playbackRate = 1;
+  defaultPlaybackRate = 1;
   played = 0;
   paused = false;
   loaded = 0;
@@ -167,6 +170,18 @@ function mpeg(name: string): { readonly blob: Blob; readonly mimeType: 'audio/mp
 }
 
 describe('createAudioPlayer', () => {
+  it('sets playback rate and preserves pitch for the loaded resource', () => {
+    const element = new FakeAudioElement();
+    const fake = fakeView(element);
+    const player = createAudioPlayer(fake.view);
+
+    player.setRate(0.8);
+
+    expect(element.preservesPitch).toBe(true);
+    expect(element.playbackRate).toBe(0.8);
+    expect(element.defaultPlaybackRate).toBe(0.8);
+  });
+
   it('starts a standalone clip at the requested sentence-relative position', async () => {
     const element = new FakeAudioElement();
     const fake = fakeView(element);

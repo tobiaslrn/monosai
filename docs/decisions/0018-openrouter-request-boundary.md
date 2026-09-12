@@ -1,7 +1,7 @@
 # 0018 — OpenRouter request boundary and error model
 
 Date: 2026-08-19
-Status: Accepted
+Status: Accepted, speech pace portion superseded by [ADR 0073](0073-pace-at-playback-style-in-prompt.md)
 
 ## Context
 
@@ -63,7 +63,7 @@ compatible with, and those are fixed here.
 ### Speech uses the OpenAI-compatible `/audio/speech` shape
 
 OpenRouter does not document one canonical synthesis endpoint. Monosai posts to
-`{base}/audio/speech` with `model`, `voice`, `input`, `speed`, and
+`{base}/audio/speech` with `model`, `voice`, `input`, and
 `response_format: 'mp3'` — the OpenAI-compatible shape most providers behind
 OpenRouter expose, and the one whose response is a plain audio body rather than
 a base64 payload inside a chat message.
@@ -73,10 +73,12 @@ one adapter, so moving to a different shape is a change in two files. The
 compatibility test exists precisely so an incompatible provider fails at
 configuration time rather than mid-reading.
 
-A provider that rejects the `speed` parameter is retried once without it and the
-result records `speedApplied: false`, which the UI states plainly. The
-alternative — silently dropping the option — would let the screen imply a
-setting that never took effect.
+The request may carry the named speaking-style direction through the instruction
+channel when the model accepts it; a refusal follows the capability fallback in
+[ADR 0040](0040-speech-capabilities-are-declared.md). Numeric pace is not sent
+to the provider. [ADR 0073](0073-pace-at-playback-style-in-prompt.md) applies
+the learner's reading rate locally, so no provider refusal or `speedApplied`
+result exists anymore.
 
 ### Every limit lives in one module
 

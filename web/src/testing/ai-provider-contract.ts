@@ -257,7 +257,7 @@ export function runTtsProviderContract(create: TtsProviderFactory): void {
   const config = {
     modelId: FAKE_OPENROUTER.ttsModel,
     voiceId: FAKE_OPENROUTER.voice,
-    speed: 1,
+    speechStyle: 'clear' as const,
     attempt: declaredSpeechCapabilities(FAKE_OPENROUTER.ttsModel, []),
   };
 

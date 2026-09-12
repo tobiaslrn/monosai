@@ -16,7 +16,7 @@ const RESPONSE_FORMAT = 'mp3';
 export interface ResolvedAudioConfig extends AudioSynthesisConfig {
   /**
    * The per-sentence-independent fingerprint a persisted job is compared
-   * against, so a job whose voice or speed has since changed is closed rather
+   * against, so a job whose voice or speaking style has since changed is closed rather
    * than continued under a number that would mean two configurations at once.
    */
   readonly configFingerprint: string;
@@ -27,7 +27,7 @@ export interface ResolvedAudioConfig extends AudioSynthesisConfig {
  *
  * Both the sentence action and the whole-reading job need the same three
  * answers — is the configuration tested and current, what are the model, voice,
- * and speed, and what do the two fingerprints hash to — and two copies of that
+ * and speaking style, and what do the two fingerprints hash to — and two copies of that
  * would be two chances to disagree about whether a stale test may spend money.
  */
 @Injectable({ providedIn: 'root' })
@@ -65,14 +65,13 @@ export class AudioConfigurationService {
     const selected = preset ?? settings;
     const optionsFingerprint = audioOptionsFingerprint(this.hasher, {
       responseFormat: RESPONSE_FORMAT,
-      speed: selected.speed,
+      speechStyle: selected.speechStyle,
       speechInstructions: selected.speechInstructions ?? 'unsupported',
     });
     return ok({
       modelId: selected.modelId,
       voiceId: selected.voiceId,
-      speed: selected.speed,
-      speedSupported: selected.speedSupported ?? false,
+      speechStyle: selected.speechStyle,
       speechInstructions: selected.speechInstructions ?? 'unsupported',
       optionsFingerprint,
       configFingerprint: audioConfigFingerprint(

@@ -283,7 +283,7 @@ export class SentenceEnrichmentService {
   /**
    * Reads one sentence aloud, because the learner asked for it.
    *
-   * Resolves model, voice, and speed from `TtsStore` rather than
+   * Resolves model, voice, and speaking style from `TtsStore` rather than
    * `TextModelStore`: speech is configured and tested separately, and a working
    * text model says nothing about whether a voice exists.
    */

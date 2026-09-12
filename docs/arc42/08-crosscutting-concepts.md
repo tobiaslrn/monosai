@@ -138,6 +138,12 @@ Schema version 15 adds optional first-review precision to vocabulary items and s
 Existing timestamps remain exact when the marker is absent; Android study-day observations write
 `anki-day`. No index or row rewrite is needed because absence already has the legacy meaning.
 
+Schema version 16 moves speech pace from the provider settings to reader playback
+preferences. The upgrade snaps the old TTS speed to the supported local rates,
+sets every TTS style to `clear`, removes the obsolete speed fields, and leaves
+audio rows untouched: an absent `pace` marker means their timing is already
+baked. The upgrade is transactional and uses the existing recovery path.
+
 Translation plans are validated persisted state with three explicit forms: opening pending,
 glossary repair required, and ready with a frozen glossary. Establishing a ready plan and its
 accepted opening translations is one transaction. Provisional opening rows remain recoverable but
@@ -165,7 +171,7 @@ made. If it does not match, the stored result is not shown as current.
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Translation    | Sentence content hash, ready-plan fingerprint, stable Japanese passage-window fingerprint, model and prompt version. The plan covers title, premise, register, ordered source identity, candidate-selection policy and the canonically ordered frozen glossary |
 | Grammar review | Sentence content hash, grammar profile hash, model, prompt version                                                                                                                                                                                             |
-| Audio clip     | Sentence content hash, model, voice, options fingerprint, and whether speech instructions are supported. No prompt version; older rows may be used only when their content hash matches the current sentence |
+| Audio clip     | Sentence content hash, model, voice, speaking style, options fingerprint, and whether speech instructions are supported. New rows mark `pace: 'playback'`; absent pace is baked. The prompt version is included only for instructed models |
 
 The key functions are pure and live in `domain/enrichment/`; hashing is over a canonical
 serialization, so the same inputs always produce the same key
@@ -175,6 +181,8 @@ Playback keeps current-settings coverage separate from playable coverage. If a c
 missing, the playback store selects the newest same-content row and marks it stale; coverage and
 generation still count only current keys. This lets a reading remain audible after a settings change
 without silently serving speech for edited text ([ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md)).
+The player applies the saved local rate only to rows marked for playback pacing,
+and splits continuous resources when a baked-time row is next ([ADR 0073](../decisions/0073-pace-at-playback-style-in-prompt.md)).
 This is how a repeated request costs nothing, and how a voice change hides clips that no longer match
 instead of playing them ([ADR 0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md)).
 Persisted whole-reading jobs use a configuration-level fingerprint without sentence content. A

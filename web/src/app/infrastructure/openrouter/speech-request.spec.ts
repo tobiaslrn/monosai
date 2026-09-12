@@ -6,6 +6,7 @@ const BASE = {
   voiceId: 'sakura',
   text: SENTENCE,
   responseFormat: 'mp3',
+  speechStyle: 'clear' as const,
 } as const;
 
 describe('buildSpeechRequestBody', () => {
@@ -13,8 +14,8 @@ describe('buildSpeechRequestBody', () => {
     const body = buildSpeechRequestBody({
       ...BASE,
       modelId: 'openai/gpt-4o-mini-tts',
-      speed: 0.7,
-      instruction: { speed: 0.7, beforeJa: '雨が強くなりました。' },
+      speechStyle: 'very-clear',
+      instruction: { beforeJa: '雨が強くなりました。' },
     });
 
     expect(body).toMatchObject({
@@ -22,16 +23,16 @@ describe('buildSpeechRequestBody', () => {
       voice: 'sakura',
       input: SENTENCE,
       response_format: 'mp3',
-      speed: 0.7,
     });
     expect(String(body['instructions'])).toContain('雨が強くなりました。');
+    expect(String(body['instructions'])).toContain('a slight gap between words');
+    expect(body['speed']).toBeUndefined();
   });
 
   it('omits both optional channels when neither is being asked for', () => {
     const body = buildSpeechRequestBody({
       ...BASE,
       modelId: 'openai/gpt-4o-mini-tts',
-      speed: undefined,
       instruction: undefined,
     });
 
@@ -40,21 +41,19 @@ describe('buildSpeechRequestBody', () => {
     expect(body['input']).toBe(SENTENCE);
   });
 
-  it('gives Gemini a prefixed direction, native PCM, and no speed', () => {
+  it('gives Gemini a prefixed style direction, native PCM, and no speed', () => {
     const body = buildSpeechRequestBody({
       ...BASE,
       modelId: 'google/gemini-3.1-flash-tts-preview',
-      // Even a speed asked for here is dropped: Gemini ignores the parameter
-      // rather than refusing it, so sending it would record a phantom setting.
-      speed: 0.7,
-      instruction: { speed: 0.7, beforeJa: '雨が強くなりました。' },
+      speechStyle: 'very-clear',
+      instruction: { beforeJa: '雨が強くなりました。' },
     });
 
     expect(body['response_format']).toBe('pcm');
     expect(body['speed']).toBeUndefined();
     expect(body['instructions']).toBeUndefined();
     const input = String(body['input']);
-    expect(input).toContain('0.7× normal');
+    expect(input).toContain('a short even pause between phrases');
     // The sentence is last, and the compact prefix quotes no neighbour that
     // could be read aloud with it.
     expect(input.endsWith(SENTENCE)).toBe(true);
@@ -65,7 +64,6 @@ describe('buildSpeechRequestBody', () => {
     const body = buildSpeechRequestBody({
       ...BASE,
       modelId: 'google/gemini-3.1-flash-tts-preview',
-      speed: 0.7,
       instruction: undefined,
     });
 

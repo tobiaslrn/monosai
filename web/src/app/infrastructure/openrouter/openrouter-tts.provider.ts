@@ -16,7 +16,7 @@ export type TtsSynthesizerLoader = () => Promise<OpenRouterTtsSynthesizer>;
  * The whole speech port, composed from the adapters that implement it.
  *
  * Mirrors `OpenRouterTextProvider`: the tester's job is to prove one model,
- * voice, and speed work, and the synthesizer's is to read a sentence. Keeping
+ * voice, and speaking style work, and the synthesizer's is to read a sentence. Keeping
  * them in separate files means neither grows the other's job, and this class
  * exists only so the injection token still resolves to one object.
  *

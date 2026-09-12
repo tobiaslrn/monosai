@@ -193,7 +193,7 @@ describe('DexieSettingsRepository', () => {
   });
 
   it('rejects an invalid update before writing it', async () => {
-    const invalid = await repository.updateTtsSettings({ speed: -1 });
+    const invalid = await repository.updateTtsSettings({ speechStyle: 'not-a-style' as never });
 
     expect(invalid.ok).toBe(false);
     expect(await db.settings.get(SETTINGS_KEYS.tts)).toBeUndefined();

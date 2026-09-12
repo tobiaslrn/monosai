@@ -13,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { CredentialStore } from '../../application/settings/credential.store';
+import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { TextModelStore, type TextModelTask } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import { MODEL_CATALOG } from '../../application/shared/ai-tokens';
@@ -20,7 +21,6 @@ import type { ConfigurationReadiness } from '../../domain/ai/configuration-readi
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { ModelPickerComponent } from './model-picker.component';
-import { SpeedFieldComponent } from './speed-field.component';
 import { TokenBudgetFieldComponent } from './token-budget-field.component';
 
 /**
@@ -43,7 +43,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
 @Component({
   selector: 'mn-models-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ModelPickerComponent, SpeedFieldComponent, TokenBudgetFieldComponent],
+  imports: [FormsModule, ModelPickerComponent, TokenBudgetFieldComponent],
   host: {
     '(document:pointerdown)': 'closeConnectionMenuFromOutside($event)',
     '(document:keydown.escape)': 'connectionMenuOpen.set(false)',
@@ -400,20 +400,25 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                   />
                 }
               </div>
-              <div class="option">
-                <span id="mn-speed-label">Speed</span>
-                <mn-speed-field
-                  testId="tts-speed-input"
-                  labelledBy="mn-speed-label"
-                  [value]="tts.settings().speed"
+              <label class="option">
+                <span id="mn-style-label">Speaking style</span>
+                <select
+                  class="mn-control"
+                  data-testid="tts-style-select"
+                  aria-labelledby="mn-style-label"
                   [disabled]="!credential.isConfigured()"
-                  (committed)="setSpeed($event)"
-                />
-              </div>
+                  [ngModel]="tts.draft().speechStyle"
+                  (change)="setSpeechStyle($event)"
+                >
+                  <option value="natural">Natural</option>
+                  <option value="clear">Clear</option>
+                  <option value="very-clear">Very clear</option>
+                </select>
+              </label>
             </div>
 
-            <!-- Speed is only ever produced by the model, so the surface says
-               which channel carried it rather than implying it took effect. -->
+            <!-- Style is only meaningful when the last preview proved that the
+                 model accepts the instruction channel. -->
             @if (paceNote(); as note) {
               <p class="mn-hint" data-testid="audio-pace-note">{{ note }}</p>
             }
@@ -605,6 +610,7 @@ export class ModelsSectionComponent {
   private readonly dialog = inject(Dialog);
   private readonly catalog = inject(MODEL_CATALOG);
   private readonly document = inject(DOCUMENT);
+  private readonly appSettings = inject(AppSettingsStore);
   protected readonly credential = inject(CredentialStore);
   protected readonly text = inject(TextModelStore);
   protected readonly tts = inject(TtsStore);
@@ -650,20 +656,14 @@ export class ModelsSectionComponent {
       this.tts.presets().find((preset) => preset.id === this.tts.settings().activePresetId)?.name ??
       null,
   );
-  /**
-   * Where the saved speed comes from, once a test has measured it.
-   *
-   * Nothing is said before then: an untested configuration has no finding to
-   * report, and a guess here would be exactly the pretence the test exists to
-   * avoid.
-   */
+  /** Whether the selected model accepts the prompted speaking style. */
   protected readonly paceNote = computed(() => {
     if (this.tts.settings().modelId === '' || this.tts.readiness() !== 'ready') {
       return null;
     }
-    return this.tts.paceSource() === 'fixed'
-      ? 'This model cannot change speaking speed.'
-      : 'Speaking speed is produced by the model.';
+    return this.tts.styleControl() === 'none'
+      ? 'This model cannot take a speaking style'
+      : 'Speaking style is included in the speech instructions.';
   });
   /**
    * Where the speech configuration stands, in one value the head can render.
@@ -703,9 +703,9 @@ export class ModelsSectionComponent {
       ({
         testing: 'Playing a test clip from this model.',
         cancelled: 'You stopped the preview, so this configuration is still untested.',
-        ready: 'This model, voice and speed passed their preview.',
+        ready: 'This model, voice and style passed their preview.',
         untested: 'Preview this model before generating audio.',
-        stale: 'The model, voice or speed changed since the last preview.',
+        stale: 'The model, voice or style changed since the last preview.',
         failed: 'The last preview failed.',
         'no-credential': 'Add an OpenRouter key.',
         incomplete: 'Choose a speech model and a voice.',
@@ -769,7 +769,7 @@ export class ModelsSectionComponent {
       const audio = this.sampleAudio()?.nativeElement;
       if (url === null || audio === undefined) return;
       audio.currentTime = 0;
-      void audio.play().catch(() => undefined);
+      this.playSample();
     });
   }
 
@@ -890,18 +890,25 @@ export class ModelsSectionComponent {
     this.tts.setDraft({ voiceId: (event.target as HTMLInputElement).value });
     void this.tts.save();
   }
-  /** Only ever reached with a speed the field has already accepted. */
-  protected setSpeed(speed: number): void {
-    this.tts.setDraft({ speed });
+  protected setSpeechStyle(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    if (value !== 'natural' && value !== 'clear' && value !== 'very-clear') {
+      return;
+    }
+    this.tts.setDraft({ speechStyle: value });
     void this.tts.save();
   }
   protected testAudio(): void {
     void this.tts.test(this.speechParameters());
   }
   protected playSample(): void {
-    void this.sampleAudio()
-      ?.nativeElement.play()
-      .catch(() => undefined);
+    const audio = this.sampleAudio()?.nativeElement;
+    if (audio === undefined) return;
+    const rate = this.appSettings.readerPreferences().playbackRate;
+    audio.preservesPitch = true;
+    audio.playbackRate = rate;
+    audio.defaultPlaybackRate = rate;
+    void audio.play().catch(() => undefined);
   }
   protected reasoningEfforts(model: ModelCapabilities | null): readonly string[] {
     return model?.reasoning?.supportedEfforts ?? ['low', 'medium', 'high'];

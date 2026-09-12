@@ -88,8 +88,7 @@ async function configure(): Promise<AudioJobBed> {
   const settings = signal<TtsSettings>({
     modelId: 'vendor/tts',
     voiceId: 'voice-a',
-    speed: 1,
-    speedSupported: true,
+    speechStyle: 'clear',
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
     activePresetId: null,
@@ -191,15 +190,15 @@ describe('AudioJobStore', () => {
     });
   });
 
-  it('sends the configured model, voice, and speed with every request', async () => {
-    bed.settings.set({ ...bed.settings(), speed: 1.25 });
+  it('sends the configured model, voice, and style with every request', async () => {
+    bed.settings.set({ ...bed.settings(), speechStyle: 'very-clear' });
 
     await bed.store.start(bed.draft.reading.id);
 
     for (const request of bed.provider.synthesized) {
       expect(request.modelId).toBe('vendor/tts');
       expect(request.voiceId).toBe('voice-a');
-      expect(request.speed).toBe(1.25);
+      expect(request.speechStyle).toBe('very-clear');
       expect(request.responseFormat).toBe('mp3');
     }
   });

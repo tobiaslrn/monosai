@@ -26,17 +26,15 @@ export const TTS_TEST_PHRASE = 'これはテストです。';
 const REQUESTED_FORMAT = 'mp3';
 
 /**
- * Verifies one exact TTS model, voice, and speed against the provider.
+ * Verifies one exact TTS model, voice, and speaking style against the provider.
  *
  * Failure here says nothing about the text model: the two configurations are
  * tested, stored, and reported separately, and TTS never blocks reading or
  * generation.
  *
- * The catalog leads and this test confirms: `config.attempt` says which
- * optional channels to try, and a provider refusal corrects a wrong
- * declaration. At most three requests are made — the declared one, and one
- * fewer channel per refusal — so an unsupported option is measured rather than
- * silently pretended.
+ * The catalog leads and this test confirms: `config.attempt` says whether the
+ * instruction channel should be tried, and a provider refusal corrects a wrong
+ * declaration with one retry that removes it.
  *
  * What counts as storable audio lives in `audio-verification.ts`, shared with
  * synthesis, so a passing test can never accept a clip synthesis would refuse.
@@ -65,20 +63,16 @@ export class OpenRouterTtsTester {
       );
     }
 
-    let speed = config.attempt.speed ? config.speed : undefined;
     let instructed = config.attempt.instructions;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
       const response = await this.synthesize(
         modelId,
         voiceId,
-        speed,
-        // The test phrase has no neighbours, so the direction carries only the
-        // pace — the one channel a model without numeric `speed` has.
-        instructed ? { speed: config.speed } : undefined,
+        instructed ? { style: config.speechStyle } : undefined,
         signal,
       );
       if (response.ok) {
-        return this.verify(response.value, modelId, voiceId, speed !== undefined, instructed);
+        return this.verify(response.value, modelId, voiceId, instructed);
       }
       const refused = response.error.detail?.capability;
       if (response.error.code !== 'capability-unsupported') {
@@ -86,10 +80,6 @@ export class OpenRouterTtsTester {
       }
       if (refused === 'instructions' && instructed) {
         instructed = false;
-        continue;
-      }
-      if (refused === 'speed' && speed !== undefined) {
-        speed = undefined;
         continue;
       }
       return err(response.error);
@@ -100,7 +90,6 @@ export class OpenRouterTtsTester {
   private synthesize(
     modelId: string,
     voiceId: string,
-    speed: number | undefined,
     instruction: SpeechContext | undefined,
     signal?: AbortSignal,
   ): Promise<Result<AudioResponse, AiError>> {
@@ -116,7 +105,7 @@ export class OpenRouterTtsTester {
         voiceId,
         text: TTS_TEST_PHRASE,
         responseFormat: REQUESTED_FORMAT,
-        speed,
+        speechStyle: instruction?.style ?? 'clear',
         instruction,
       }),
     });
@@ -126,7 +115,6 @@ export class OpenRouterTtsTester {
     response: AudioResponse,
     modelId: string,
     voiceId: string,
-    speedApplied: boolean,
     /**
      * The honesty boundary: this says the direction was carried and the request
      * came back, not that the model obeyed it. For Gemini it means the prefix
@@ -152,7 +140,6 @@ export class OpenRouterTtsTester {
     return ok({
       modelId,
       voiceId,
-      speedApplied,
       speechInstructionsApplied,
       mimeType: verified.value.declaredMimeType,
       byteLength: verified.value.bytes.byteLength,
