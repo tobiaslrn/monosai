@@ -295,6 +295,12 @@ playback then builds **one native media resource** over the sentences that exist
 so each new clip is appended to the resource the element is already playing rather than replacing its
 source ([ADR 0045](../decisions/0045-a-reading-is-extended-while-it-is-generated.md)).
 
+When the current model or voice has no row for a sentence, playback may use the newest stored row
+whose `sourceContentHash` matches that sentence ([ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md)).
+The fallback is safe for unchanged text and is marked stale; it never contributes to the current
+settings' coverage or completeness figure. A change from stale to current seals an open resource so
+the next run cannot mix configurations.
+
 ```mermaid
 sequenceDiagram
     actor Learner

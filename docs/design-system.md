@@ -780,9 +780,13 @@ of their remit. A toast for an action the user just took reports a result
 somewhere other than where they are looking.
 
 Every state change that is visible has a screen-reader equivalent, whether or
-not it is expressed in words on screen. A player that deliberately prints
-nothing still announces its position, because the reason for the silence is
-visual economy, not secrecy.
+not it is expressed in words on screen. The player normally prints no status
+prose and still announces its position, because the reason for the silence is
+visual economy, not secrecy. Its one bounded exception is older playable audio:
+it prints a single notice that some audio is from older settings, with a Settings
+link only when the configuration is not ready. When it is ready, the existing
+Generate action is the recovery control, so the notice never grows a duplicate
+button.
 
 **A request the browser can decline reports every answer it has.** Granted,
 declined, not available here, and could not be completed are four different

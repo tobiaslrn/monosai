@@ -302,7 +302,7 @@ function orderedSentences(draft: ImportedReadingDraft) {
   );
 }
 
-function keyFor(bed: PlaybackBed, contentHash: string, voiceId = 'voice-a'): string {
+function keyFor(bed: PlaybackBed, contentHash: string, voiceId = bed.settings().voiceId): string {
   const settings = bed.settings();
   return audioCacheKey(
     TEST_HASHER,
@@ -388,32 +388,92 @@ describe('AudioPlaybackStore', () => {
   });
 
   /**
-   * Clips are keyed by the configuration that produced them (ADR 0043), so
-   * changing the voice hides every clip made with the previous one without
-   * deleting a row. Coverage falling from full to empty is then indistinguishable
-   * from deletion unless the store can say that the clips are still there.
+   * Clips are keyed by the configuration that produced them, but playback can
+   * use the newest same-content row while current-settings coverage remains
+   * honest.
    */
   describe('audio saved in other settings', () => {
-    it('reports stored clips the current voice cannot see', async () => {
+    it('plays the newest matching stored clip while coverage stays current-only', async () => {
       await storeClips(bed);
       await bed.store.prepare(bed.reading);
-      expect(bed.store.hasAudioInOtherSettings()).toBe(false);
+      expect(bed.store.hasStaleAudio()).toBe(false);
 
       bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
       await bed.store.prepare(bed.reading);
 
       expect(bed.store.availableCount()).toBe(0);
-      expect(bed.store.hasAudioInOtherSettings()).toBe(true);
+      expect(bed.store.hasStaleAudio()).toBe(true);
+      expect(bed.store.hasPlayableAudio()).toBe(true);
+      await bed.store.play();
+      expect(bed.player.played).toHaveLength(1);
     });
 
-    it('reports them when the configuration is not testable at all', async () => {
+    it('uses the newest summary for a content hash', async () => {
+      await storeClipsAt(bed, [0]);
+      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-c' }));
+      await storeClipsAt(bed, [0]);
+      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
+
+      await bed.store.prepare(bed.reading);
+      await bed.store.playSentence(orderedSentences(bed.draft)[0].id);
+
+      const newest = await bed.enrichment.getAudioByCacheKey(
+        keyFor(bed, orderedSentences(bed.draft)[0].contentHash, 'voice-c'),
+      );
+      expect(newest.ok && newest.value).not.toBeNull();
+      expect(await bed.player.played[0]?.text()).toBe(
+        await (newest.ok ? newest.value?.blob.text() : Promise.resolve('')),
+      );
+    });
+
+    it('does not fall back after a sentence was edited', async () => {
+      const sentence = orderedSentences(bed.draft)[0];
+      await bed.enrichment.storeAudio(
+        {
+          id: assetId(uuid(8900)),
+          sentenceId: sentence.id,
+          readingId: bed.reading.id,
+          sourceContentHash: 'hash-for-old-text',
+          modelId: bed.settings().modelId,
+          voiceId: 'voice-old',
+          optionsFingerprint: 'old-options',
+          mimeType: 'audio/mpeg',
+          byteLength: 4,
+          blob: new Blob(['old'], { type: 'audio/mpeg' }),
+          cacheKey: 'old-edited-cache-key',
+          createdAt: NOW + 100,
+        },
+        new Map(),
+      );
+
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.hasPlayableAudio()).toBe(false);
+      expect(bed.store.isAvailable(sentence.id)).toBe(false);
+    });
+
+    it('reports them when the configuration is not ready, while keeping them playable', async () => {
       await storeClips(bed);
       bed.readiness.set('stale-test');
 
       await bed.store.prepare(bed.reading);
 
       expect(bed.store.availableCount()).toBe(0);
-      expect(bed.store.hasAudioInOtherSettings()).toBe(true);
+      expect(bed.store.hasStaleAudio()).toBe(true);
+      expect(bed.store.hasPlayableAudio()).toBe(true);
+    });
+
+    it('uses a regenerated current clip instead of its fallback', async () => {
+      await storeClipsAt(bed, [0]);
+      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
+      await bed.store.prepare(bed.reading);
+      expect(bed.store.hasStaleAudio()).toBe(true);
+
+      await storeClipsAt(bed, [0]);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.availableCount()).toBe(1);
+      expect(bed.store.hasStaleAudio()).toBe(false);
     });
 
     it('reports nothing for a reading that has no clips anywhere', async () => {
@@ -421,7 +481,7 @@ describe('AudioPlaybackStore', () => {
 
       await bed.store.prepare(bed.reading);
 
-      expect(bed.store.hasAudioInOtherSettings()).toBe(false);
+      expect(bed.store.hasStaleAudio()).toBe(false);
     });
 
     it('forgets them once the clips are actually deleted', async () => {
@@ -431,7 +491,7 @@ describe('AudioPlaybackStore', () => {
 
       bed.store.readingAudioCleared(bed.reading.id);
 
-      expect(bed.store.hasAudioInOtherSettings()).toBe(false);
+      expect(bed.store.hasStaleAudio()).toBe(false);
     });
   });
 
@@ -501,10 +561,7 @@ describe('AudioPlaybackStore', () => {
       await bed.store.prepare(bed.reading);
 
       expect(bed.store.canPlayWholeReading()).toBe(false);
-      expect(bed.store.missingCount()).toBe(SENTENCE_COUNT);
-      // Nothing is playable either: a clip made by a voice that is no longer
-      // configured is not this reading's audio any more.
-      expect(bed.store.hasPlayableAudio()).toBe(false);
+      expect(bed.store.hasStaleAudio()).toBe(true);
     });
 
     it('counts nothing when no tested configuration exists at all', async () => {
@@ -514,7 +571,7 @@ describe('AudioPlaybackStore', () => {
       await bed.store.prepare(bed.reading);
 
       expect(bed.store.canPlayWholeReading()).toBe(false);
-      expect(bed.store.hasPlayableAudio()).toBe(false);
+      expect(bed.store.hasPlayableAudio()).toBe(true);
     });
 
     /**
@@ -1471,15 +1528,23 @@ describe('AudioPlaybackStore', () => {
       expect(bed.store.failure()).toEqual({ kind: 'not-generated', position: 3 });
     });
 
-    /**
-     * A changed voice re-keys the reading (ADR 0043). Appending a clip made
-     * under the new one to a resource built under the old would put two voices
-     * in a single reading, so what is in it plays out and nothing is added.
-     */
-    it('seals rather than appending a clip made by another voice', async () => {
+    it('keeps fallback clips in an existing resource after a voice change', async () => {
       await bed.store.play();
 
       bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.player.closes).toBe(0);
+      expect(bed.player.sequences[0]).toHaveLength(2);
+      expect(bed.player.sequenceOpen()).toBe(true);
+    });
+
+    it('seals when a clip already in the resource is regenerated', async () => {
+      await bed.store.play();
+
+      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
+      await bed.store.prepare(bed.reading);
+      await storeClipsAt(bed, [0]);
       await bed.store.prepare(bed.reading);
 
       expect(bed.player.closes).toBe(1);

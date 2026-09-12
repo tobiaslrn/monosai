@@ -91,6 +91,11 @@ interface LoadedSequence {
   readonly keys: string[];
 }
 
+interface PlayableClip {
+  readonly cacheKey: string;
+  readonly stale: boolean;
+}
+
 /** What a load is: something the learner pressed, or reading on by itself. */
 interface LoadOptions {
   /**
@@ -143,19 +148,16 @@ export class AudioPlaybackStore {
 
   private readonly readingSignal = signal<Reading | null>(null);
   private readonly refsSignal = signal<readonly SentenceRef[]>([]);
+  /** Cache keys for the configuration currently selected in Settings. */
   private readonly cacheKeysSignal = signal<ReadonlyMap<SentenceId, string>>(new Map());
-  /** Sentences with a stored clip under the current key. Metadata only. */
+  /** Sentences with a stored clip under the current key. Coverage only. */
+  private readonly currentAvailableSignal = signal<ReadonlySet<SentenceId>>(new Set());
+  /** One stored clip per sentence that can be played in this session. */
+  private readonly playableSignal = signal<ReadonlyMap<SentenceId, PlayableClip>>(new Map());
+  /** Sentences with any playable stored clip. Metadata only. */
   private readonly availableSignal = signal<ReadonlySet<SentenceId>>(new Set());
-  /**
-   * Whether this reading has stored clips that the current settings cannot see.
-   *
-   * Clips are keyed by the configuration that produced them, so changing the
-   * voice, model or speed hides every clip made under the previous one without
-   * deleting a single row (ADR 0043). Coverage then falls to zero, which reads
-   * as loss unless a surface can say what actually happened — so the same read
-   * that counts what is available also counts what is stored and unreachable.
-   */
-  private readonly otherSettingsSignal = signal(false);
+  /** Number of playable sentences whose clip was made under older settings. */
+  private readonly staleCountSignal = signal(0);
   private readonly statusSignal = signal<PlaybackStatus>('idle');
   private readonly currentSignal = signal<SentenceId | null>(null);
   private readonly failureSignal = signal<PlaybackFailure | null>(null);
@@ -225,7 +227,7 @@ export class AudioPlaybackStore {
   readonly sentenceCount = computed(() => this.refsSignal().length);
 
   readonly missingCount = computed(() => {
-    const available = this.availableSignal();
+    const available = this.currentAvailableSignal();
     return this.refsSignal().filter((ref) => !available.has(ref.id)).length;
   });
 
@@ -249,10 +251,10 @@ export class AudioPlaybackStore {
    * sentence one, so requiring the *first* sentence would leave a learner
    * unable to play audio they have already paid for.
    */
-  readonly hasPlayableAudio = computed(() => this.availableCount() > 0);
+  readonly hasPlayableAudio = computed(() => this.availableSignal().size > 0);
 
-  /** Stored clips exist for this reading, made with audio settings no longer in use. */
-  readonly hasAudioInOtherSettings = this.otherSettingsSignal.asReadonly();
+  /** At least one playable sentence uses a clip made with older settings. */
+  readonly hasStaleAudio = computed(() => this.staleCountSignal() > 0);
 
   /**
    * Whether the reading is complete under the current voice.
@@ -353,11 +355,13 @@ export class AudioPlaybackStore {
     }
     if (!refs.ok) {
       this.failureSignal.set({ kind: 'storage', message: refs.error.message });
-      this.otherSettingsSignal.set(false);
+      this.staleCountSignal.set(0);
       // Availability could not be refreshed, so nothing is claimed to be
       // playable: offering a transport built on a set this call has just failed
       // to read would be offering controls that cannot be honoured.
+      this.currentAvailableSignal.set(new Set());
       this.availableSignal.set(new Set());
+      this.playableSignal.set(new Map());
       return;
     }
     const ordered = [...refs.value].sort(
@@ -366,28 +370,17 @@ export class AudioPlaybackStore {
     this.refsSignal.set(ordered);
 
     const config = this.audioConfig.resolve('tts-synthesis');
-    if (!config.ok) {
-      // No tested voice means no current key, so nothing counts as available
-      // and the gate stays shut — which is exactly what it should report. What
-      // is stored is still read, because a reading whose clips have just become
-      // unreachable is exactly the case that must not look like deletion.
-      this.cacheKeysSignal.set(new Map());
-      this.availableSignal.set(new Set());
-      const orphaned = await this.enrichment.listAudioSummaries(reading.id);
-      if (token !== this.prepareToken) {
-        return;
-      }
-      this.otherSettingsSignal.set(orphaned.ok && orphaned.value.length > 0);
-      return;
-    }
-    const cacheKeys = this.keys.audioKeys(
-      ordered,
-      config.value.modelId,
-      config.value.voiceId,
-      config.value.optionsFingerprint,
-      config.value.speechInstructions,
-    );
+    const cacheKeys = config.ok
+      ? this.keys.audioKeys(
+          ordered,
+          config.value.modelId,
+          config.value.voiceId,
+          config.value.optionsFingerprint,
+          config.value.speechInstructions,
+        )
+      : new Map<SentenceId, string>();
     this.cacheKeysSignal.set(cacheKeys);
+    this.currentAvailableSignal.set(new Set());
 
     const summaries = await this.enrichment.listAudioSummaries(reading.id);
     if (token !== this.prepareToken) {
@@ -396,24 +389,41 @@ export class AudioPlaybackStore {
     if (!summaries.ok) {
       this.failureSignal.set({ kind: 'storage', message: summaries.error.message });
       this.availableSignal.set(new Set());
-      this.otherSettingsSignal.set(false);
+      this.playableSignal.set(new Map());
+      this.staleCountSignal.set(0);
       return;
     }
-    // Matched by key rather than by the row own `sentenceId`: the audio table
+    // Matched by key rather than by the row's own `sentenceId`: the audio table
     // is keyed by `cacheKey`, so two sentences with identical Japanese share one
-    // clip and one row. Comparing per row would leave the second of them
-    // permanently uncovered and the gate permanently shut.
-    const stored = new Set(summaries.value.map((summary) => summary.cacheKey));
-    const current = new Set(cacheKeys.values());
-    this.otherSettingsSignal.set(summaries.value.some((summary) => !current.has(summary.cacheKey)));
-    const available = new Set<SentenceId>();
-    for (const ref of ordered) {
-      const cacheKey = cacheKeys.get(ref.id);
-      if (cacheKey !== undefined && stored.has(cacheKey)) {
-        available.add(ref.id);
+    // clip and one row. Fallbacks are matched by content hash, which is the
+    // safety line that prevents an edited sentence from inheriting old audio.
+    const stored = new Map(summaries.value.map((summary) => [summary.cacheKey, summary]));
+    const newestByContentHash = new Map<string, (typeof summaries.value)[number]>();
+    for (const summary of summaries.value) {
+      const previous = newestByContentHash.get(summary.sourceContentHash);
+      if (previous === undefined || summary.createdAt > previous.createdAt) {
+        newestByContentHash.set(summary.sourceContentHash, summary);
       }
     }
-    this.availableSignal.set(available);
+    const currentAvailable = new Set<SentenceId>();
+    const playable = new Map<SentenceId, PlayableClip>();
+    for (const ref of ordered) {
+      const cacheKey = cacheKeys.get(ref.id);
+      const current = cacheKey === undefined ? undefined : stored.get(cacheKey);
+      if (current !== undefined) {
+        currentAvailable.add(ref.id);
+        playable.set(ref.id, { cacheKey: current.cacheKey, stale: false });
+        continue;
+      }
+      const fallback = newestByContentHash.get(ref.contentHash);
+      if (fallback !== undefined) {
+        playable.set(ref.id, { cacheKey: fallback.cacheKey, stale: true });
+      }
+    }
+    this.currentAvailableSignal.set(currentAvailable);
+    this.playableSignal.set(playable);
+    this.availableSignal.set(new Set(playable.keys()));
+    this.staleCountSignal.set([...playable.values()].filter((clip) => clip.stale).length);
     await this.continueIfPendingArrived();
     await this.extendSequence();
   }
@@ -751,8 +761,11 @@ export class AudioPlaybackStore {
     this.stop();
     this.readingSignal.set(null);
     this.refsSignal.set([]);
+    this.cacheKeysSignal.set(new Map());
+    this.currentAvailableSignal.set(new Set());
+    this.playableSignal.set(new Map());
     this.availableSignal.set(new Set());
-    this.otherSettingsSignal.set(false);
+    this.staleCountSignal.set(0);
   }
 
   /**
@@ -763,8 +776,11 @@ export class AudioPlaybackStore {
    */
   audioCacheCleared(): void {
     this.stop();
+    this.cacheKeysSignal.set(new Map());
+    this.currentAvailableSignal.set(new Set());
+    this.playableSignal.set(new Map());
     this.availableSignal.set(new Set());
-    this.otherSettingsSignal.set(false);
+    this.staleCountSignal.set(0);
     this.failureSignal.set(null);
   }
 
@@ -984,12 +1000,13 @@ export class AudioPlaybackStore {
     const clips: AudioSequenceClip[] = [];
     const keys: string[] = [];
     for (const ref of run) {
-      const cacheKey = this.cacheKeysSignal().get(ref.id);
-      if (cacheKey === undefined) {
+      const playable = this.playableSignal().get(ref.id);
+      if (playable === undefined) {
         this.loading = false;
         await this.load(sentenceId);
         return;
       }
+      const cacheKey = playable.cacheKey;
       let clip = byKey.get(cacheKey);
       if (clip === undefined) {
         const loaded = await this.enrichment.getAudioByCacheKey(cacheKey);
@@ -1070,9 +1087,15 @@ export class AudioPlaybackStore {
   private contiguousRunFrom(startIndex: number): readonly SentenceRef[] {
     const refs = this.refsSignal();
     const available = this.availableSignal();
+    const playable = this.playableSignal();
     const run: SentenceRef[] = [];
+    const first = playable.get(refs[startIndex]?.id);
+    if (first === undefined) {
+      return run;
+    }
     for (let index = startIndex; index < refs.length; index += 1) {
-      if (!available.has(refs[index].id)) {
+      const clip = playable.get(refs[index].id);
+      if (!available.has(refs[index].id) || clip?.stale !== first.stale) {
         break;
       }
       run.push(refs[index]);
@@ -1124,7 +1147,7 @@ export class AudioPlaybackStore {
 
   private async appendStoredClips(sequence: LoadedSequence): Promise<void> {
     const refs = this.refsSignal();
-    const cacheKeys = this.cacheKeysSignal();
+    const playable = this.playableSignal();
     // A changed voice re-keys the whole reading. Appending a clip made under
     // the new configuration to a resource built under the old one would put two
     // voices in one reading, which ADR 0043 refuses, so it is sealed instead
@@ -1132,7 +1155,7 @@ export class AudioPlaybackStore {
     const rekeyed =
       sequence.baseIndex + sequence.keys.length > refs.length ||
       sequence.keys.some(
-        (key, offset) => cacheKeys.get(refs[sequence.baseIndex + offset].id) !== key,
+        (key, offset) => playable.get(refs[sequence.baseIndex + offset].id)?.cacheKey !== key,
       );
     if (rekeyed) {
       this.sealSequence();
@@ -1142,11 +1165,15 @@ export class AudioPlaybackStore {
     const available = this.availableSignal();
     const pending: { readonly cacheKey: string }[] = [];
     for (let index = this.appendedLimitIndex() + 1; index < refs.length; index += 1) {
-      const cacheKey = cacheKeys.get(refs[index].id);
-      if (cacheKey === undefined || !available.has(refs[index].id)) {
+      const clip = playable.get(refs[index].id);
+      if (
+        clip === undefined ||
+        clip.stale !== playable.get(refs[sequence.baseIndex].id)?.stale ||
+        !available.has(refs[index].id)
+      ) {
         break;
       }
-      pending.push({ cacheKey });
+      pending.push({ cacheKey: clip.cacheKey });
     }
     if (pending.length === 0) {
       return;
@@ -1246,11 +1273,12 @@ export class AudioPlaybackStore {
   private async load(sentenceId: SentenceId, options?: LoadOptions): Promise<void> {
     const token = (this.loadToken += 1);
     const position = this.refsSignal().findIndex((ref) => ref.id === sentenceId) + 1;
-    const cacheKey = this.cacheKeysSignal().get(sentenceId);
-    if (cacheKey === undefined) {
+    const playable = this.playableSignal().get(sentenceId);
+    if (playable === undefined) {
       this.stopWithFailure({ kind: 'missing-clip', position });
       return;
     }
+    const cacheKey = playable.cacheKey;
 
     this.sequence = null;
     this.loading = true;

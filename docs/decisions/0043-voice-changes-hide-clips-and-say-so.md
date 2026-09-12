@@ -1,7 +1,7 @@
 # 0043 — Changing the voice hides clips, and both screens say so
 
 Date: 2026-09-01
-Status: Accepted
+Status: Accepted, partly superseded by [ADR 0072](0072-older-clips-play-until-regenerated.md)
 
 Settles what a configuration change does to audio already paid for, left
 implicit by [ADR 0024](0024-audio-cache-and-playback-ownership.md)'s
@@ -47,20 +47,24 @@ Three answers were available.
 ## Decision
 
 **Clips are retained, keyed by the configuration that made them, and never
-invalidated by a settings change.** Changing model, voice or speed changes what
-is *reachable*, never what is stored; setting the previous configuration back
-restores the previous coverage exactly, with no request.
+invalidated by a settings change.** Changing model or voice changes current
+coverage, never what is stored; setting the previous configuration back
+restores the previous coverage exactly, with no request. The player may still
+use the newest stored clip for the same sentence content while the current
+configuration has no row, but that fallback never counts toward current
+coverage.
 
 **Both screens disclose it, at the moment it applies.**
 
 - Settings renders audio readiness beside the Preview, in the place the text
   panel already renders its own: no model, not tested, playing, stopped, ready,
   failed, settings changed. The changed state says in one sentence that audio
-  saved with the previous settings is kept and cannot be played in these ones.
-- The player prints one line — its only printed line — while stored clips exist
-  that the current settings cannot see and nothing else is playable: that the
-  audio was saved in other audio settings, with a link to Settings. The hidden
-  live region carries the longer version, including that it is still stored.
+  saved with the previous settings is kept and needs to be generated again.
+- The player prints one line — its only printed line — when a playable fallback
+  exists: that some audio is from older settings. The hidden live region says
+  that it can still play and that generating again replaces it. A link to
+  Settings appears only when the configuration is not ready; otherwise the
+  existing Generate action is the one recovery control.
 
 **Deletion stays an explicit act.** The only things that remove clips are Delete
 audio for a reading and the storage action that clears the cache. A settings
@@ -75,6 +79,9 @@ be a warning about a loss that does not happen.
   size and offers the deletion.
 - Coverage, the completeness figure, and the Play gate keep meaning "under the
   configuration in force", which is what makes them safe to act on.
+- A fallback is selected only when its `sourceContentHash` matches the current
+  sentence, so editing a sentence cannot make old speech playable for the new
+  text.
 - The player is no longer strictly printless. The exception is bounded to this
   one state, and the design system's prose budget already reserves standing text
   for money and apparent data loss.

@@ -122,6 +122,7 @@ files are already linked from code comments and from other records.
 | [0039](../decisions/0039-continuous-android-audio.md)                    | Continuous Android audio uses one native media resource      |
 | [0041](../decisions/0041-playback-ends-with-the-reader.md)               | A reading session ends when the reader is left               |
 | [0045](../decisions/0045-a-reading-is-extended-while-it-is-generated.md) | A continuous reading is extended while it is generated       |
+| [0072](../decisions/0072-older-clips-play-until-regenerated.md)         | Older same-content clips play until regenerated              |
 
 ### Platform and toolchain
 

@@ -165,11 +165,16 @@ made. If it does not match, the stored result is not shown as current.
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Translation    | Sentence content hash, ready-plan fingerprint, stable Japanese passage-window fingerprint, model and prompt version. The plan covers title, premise, register, ordered source identity, candidate-selection policy and the canonically ordered frozen glossary |
 | Grammar review | Sentence content hash, grammar profile hash, model, prompt version                                                                                                                                                                                             |
-| Audio clip     | Sentence content hash, model, voice, options fingerprint, and whether speech instructions are supported. No prompt version                                                                                                                                     |
+| Audio clip     | Sentence content hash, model, voice, options fingerprint, and whether speech instructions are supported. No prompt version; older rows may be used only when their content hash matches the current sentence |
 
 The key functions are pure and live in `domain/enrichment/`; hashing is over a canonical
 serialization, so the same inputs always produce the same key
 ([ADR 0002](../decisions/0002-hashing-and-canonical-serialization.md)).
+
+Playback keeps current-settings coverage separate from playable coverage. If a current key is
+missing, the playback store selects the newest same-content row and marks it stale; coverage and
+generation still count only current keys. This lets a reading remain audible after a settings change
+without silently serving speech for edited text ([ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md)).
 This is how a repeated request costs nothing, and how a voice change hides clips that no longer match
 instead of playing them ([ADR 0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md)).
 Persisted whole-reading jobs use a configuration-level fingerprint without sentence content. A

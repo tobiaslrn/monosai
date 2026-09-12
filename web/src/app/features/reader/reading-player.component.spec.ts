@@ -34,8 +34,8 @@ class StubPlaybackStore {
   readonly current = signal<SentenceId | null>(null);
   readonly nextIsAvailable = signal(true);
   readonly selectionIsAvailable = signal(true);
-  /** Stored clips this reading has that the current audio settings cannot see. */
-  readonly otherSettings = signal(false);
+  /** Playable clips this reading has that were made with older settings. */
+  readonly staleAudio = signal(false);
   readonly failureSignal = signal<PlaybackFailure | null>(null);
   readonly modeSignal = signal<PlaybackMode>('continuous');
 
@@ -49,7 +49,7 @@ class StubPlaybackStore {
   readonly availableCount = computed(() => this.ready());
   readonly missingCount = computed(() => this.total() - this.ready());
   readonly hasPlayableAudio = computed(() => this.ready() > 0);
-  readonly hasAudioInOtherSettings = this.otherSettings.asReadonly();
+  readonly hasStaleAudio = this.staleAudio.asReadonly();
   readonly canPlayWholeReading = computed(() => this.total() > 0 && this.missingCount() === 0);
   readonly currentPosition = computed(() => this.position());
   readonly pendingPosition = computed(() => this.pending());
@@ -224,18 +224,18 @@ describe('ReadingPlayerComponent', () => {
      * difference between "your audio is in the other voice" and "your audio is
      * gone", and only one of them is true.
      */
-    it('says that the audio it cannot see was made in other settings', () => {
+    it('says that older audio is playable and links to settings when unconfigured', () => {
       store.total.set(5);
-      store.otherSettings.set(true);
+      store.staleAudio.set(true);
       const fixture = render();
       fixture.componentInstance.modelConfigured.set(false);
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
-      const notice = element.querySelector<HTMLElement>('[data-testid="player-voice-mismatch"]');
+      const notice = element.querySelector<HTMLElement>('[data-testid="player-stale-audio"]');
 
-      expect(notice?.textContent).toContain('other audio settings');
+      expect(notice?.textContent).toContain('older settings');
       expect(notice?.querySelector('a')?.getAttribute('href')).toBe('/settings');
-      expect(said(element)).toContain('It is still stored');
+      expect(said(element)).toContain('It can still play');
     });
 
     /** A reading that simply has no clips anywhere has nothing to explain. */
@@ -243,17 +243,19 @@ describe('ReadingPlayerComponent', () => {
       store.total.set(5);
       const element = render().nativeElement as HTMLElement;
 
-      expect(element.querySelector('[data-testid="player-voice-mismatch"]')).toBeNull();
+      expect(element.querySelector('[data-testid="player-stale-audio"]')).toBeNull();
     });
 
-    /** Something playable accounts for itself through the transport and the bar. */
-    it('stops explaining once a clip in the current settings can be played', () => {
+    it('shows the notice alongside playable audio and uses Generate when configured', () => {
       store.total.set(5);
       store.ready.set(2);
-      store.otherSettings.set(true);
-      const element = render().nativeElement as HTMLElement;
+      store.staleAudio.set(true);
+      const fixture = render();
+      const element = fixture.nativeElement as HTMLElement;
 
-      expect(element.querySelector('[data-testid="player-voice-mismatch"]')).toBeNull();
+      expect(element.querySelector('[data-testid="player-stale-audio"]')).not.toBeNull();
+      expect(element.querySelector('[data-testid="player-stale-audio"] a')).toBeNull();
+      expect(control(element, 'Generate audio')).not.toBeNull();
     });
 
     it('renders no action when the reading has no sentences', () => {

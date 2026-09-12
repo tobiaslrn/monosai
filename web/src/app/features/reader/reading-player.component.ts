@@ -106,10 +106,12 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
         with no word said reads as audio that has been lost and paid for twice.
         The prose budget keeps room for exactly this: money and apparent loss.
       -->
-      @if (voiceMismatch()) {
-        <p class="notice" data-testid="player-voice-mismatch">
-          Saved in other audio settings.
-          <a routerLink="/settings">Audio settings</a>
+      @if (staleAudio()) {
+        <p class="notice" data-testid="player-stale-audio">
+          Some audio is from older settings.
+          @if (!modelConfigured()) {
+            <a routerLink="/settings">Audio settings</a>
+          }
         </p>
       }
 
@@ -708,16 +710,8 @@ export class ReadingPlayerComponent {
 
   protected readonly isPlaying = computed(() => this.store.status() === 'playing');
 
-  /**
-   * Clips exist for this reading, and the settings in force cannot play them.
-   *
-   * Reported only while nothing at all is playable, because that is the state
-   * that reads as loss: a partly covered reading already has a transport and a
-   * bar that account for themselves.
-   */
-  protected readonly voiceMismatch = computed(
-    () => this.store.hasAudioInOtherSettings() && !this.store.hasPlayableAudio(),
-  );
+  /** At least one playable sentence uses a clip made with older settings. */
+  protected readonly staleAudio = computed(() => this.store.hasStaleAudio());
 
   /** Whether a run is filling in the rest, which only the track and ring report. */
   protected readonly isGenerating = computed(() => this.rail() === 'running');
@@ -1029,9 +1023,9 @@ export class ReadingPlayerComponent {
     if (jobFailure !== null) {
       parts.push(jobFailure);
     }
-    if (this.voiceMismatch()) {
+    if (this.staleAudio()) {
       parts.push(
-        'This story has saved audio that was made with other audio settings, so none of it can be played as things stand. It is still stored: restore those settings, or generate this story again.',
+        'Some audio is from older settings. It can still play; generating again replaces it.',
       );
     }
     if (this.rail() === 'offer') {
