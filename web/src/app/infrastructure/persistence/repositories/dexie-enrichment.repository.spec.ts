@@ -615,6 +615,81 @@ describe('DexieEnrichmentRepository', () => {
     });
   });
 
+  describe('replacing a clip in place', () => {
+    /** What the maintenance pass hands in for a clip it has just re-encoded. */
+    function replacementFor(asset: AudioAsset, bytes = new Uint8Array([9, 9])) {
+      return {
+        cacheKey: asset.cacheKey,
+        expectedMimeType: asset.mimeType,
+        expectedByteLength: asset.byteLength,
+        bytes: bytes.buffer,
+        mimeType: 'audio/webm' as const,
+      };
+    }
+
+    it('lists every stored cache key without reading a clip', async () => {
+      await repository.storeAudio(audio(0), currentAudioKeys());
+      await repository.storeAudio(audio(1, 'audio-1'), currentAudioKeys());
+
+      const keys = await repository.listAudioCacheKeys();
+
+      expect(keys.ok && [...keys.value].sort()).toStrictEqual(['audio-0', 'audio-1']);
+    });
+
+    it('swaps the bytes and the format, keeping the cache key', async () => {
+      const asset = audio(0);
+      await repository.storeAudio(asset, currentAudioKeys());
+
+      const outcome = await repository.replaceAudioBytes(replacementFor(asset));
+
+      expect(outcome.ok && outcome.value).toBe('replaced');
+      const stored = await repository.getAudioByCacheKey('audio-0');
+      expect(stored.ok && stored.value?.mimeType).toBe('audio/webm');
+      expect(stored.ok && stored.value?.byteLength).toBe(2);
+      expect(stored.ok && stored.value?.id).toBe(asset.id);
+    });
+
+    it('leaves the reading summary alone, because nothing it counts changed', async () => {
+      const asset = audio(0);
+      await repository.storeAudio(asset, currentAudioKeys());
+      const before = (await db.readings.get(draft.reading.id))?.audioSummary;
+
+      await repository.replaceAudioBytes(replacementFor(asset));
+
+      expect((await db.readings.get(draft.reading.id))?.audioSummary).toStrictEqual(before);
+    });
+
+    it('skips a row that has gone, rather than writing one back', async () => {
+      const asset = audio(0);
+
+      const outcome = await repository.replaceAudioBytes(replacementFor(asset));
+
+      expect(outcome.ok && outcome.value).toBe('skipped');
+      expect(await db.audioAssets.count()).toBe(0);
+    });
+
+    it('skips a row that changed underneath, so a newer clip is never overwritten', async () => {
+      const asset = audio(0);
+      await repository.storeAudio(asset, currentAudioKeys());
+      // The same key, regenerated meanwhile: different bytes, different length.
+      await repository.storeAudio(
+        {
+          ...asset,
+          byteLength: 8,
+          blob: new Blob([new Uint8Array(8)], { type: 'audio/mpeg' }),
+        },
+        currentAudioKeys(),
+      );
+
+      const outcome = await repository.replaceAudioBytes(replacementFor(asset));
+
+      expect(outcome.ok && outcome.value).toBe('skipped');
+      const stored = await repository.getAudioByCacheKey('audio-0');
+      expect(stored.ok && stored.value?.byteLength).toBe(8);
+      expect(stored.ok && stored.value?.mimeType).toBe('audio/mpeg');
+    });
+  });
+
   it('deletes a single audio clip without touching translations', async () => {
     const asset = audio(0);
     await repository.storeAudio(asset, currentAudioKeys());

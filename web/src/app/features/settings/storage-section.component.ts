@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
+import { AudioCompressionStore } from '../../application/settings/audio-compression.store';
 import { StorageStore } from '../../application/settings/storage.store';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 
@@ -52,6 +53,16 @@ function formatBytes(bytes: number | null): string {
             <dt>Approximate usage</dt>
             <dd>{{ usageLabel() }}</dd>
           </div>
+          @if (compressionLabel(); as label) {
+            <div>
+              <dt>Saved audio</dt>
+              <!--
+                Live, because this is the one thing on the card that changes
+                without the learner having touched anything.
+              -->
+              <dd aria-live="polite">{{ label }}</dd>
+            </div>
+          }
         </dl>
 
         <div class="mn-actions">
@@ -73,6 +84,9 @@ function formatBytes(bytes: number | null): string {
           >
             Delete saved audio
           </button>
+          @if (compression.running()) {
+            <button type="button" class="mn-button" (click)="stopCompressing()">Stop</button>
+          }
         </div>
         <p aria-live="polite" class="mn-hint">
           @if (storage.audioCleared()) {
@@ -142,6 +156,7 @@ export class StorageSectionComponent {
   private readonly dialog = inject(Dialog);
   private readonly playback = inject(AudioPlaybackStore);
   protected readonly storage = inject(StorageStore);
+  protected readonly compression = inject(AudioCompressionStore);
   protected readonly resetStage = signal<'idle' | 'confirming'>('idle');
   /** Whether the clear that just ran also had to stop something playing. */
   protected readonly stoppedPlayback = signal(false);
@@ -165,6 +180,44 @@ export class StorageSectionComponent {
   });
 
   protected readonly usageLabel = computed(() => formatBytes(this.storage.status().usageBytes));
+
+  /**
+   * What the background compression pass has to say, or `null` when it has
+   * nothing to report.
+   *
+   * A real count rather than a percentage, and the finished sentence names what
+   * was left alone as well as what was compressed: a clip this could not
+   * re-encode is still there and still playable, which is the part worth
+   * stating.
+   */
+  protected readonly compressionLabel = computed(() => {
+    const state = this.compression.state();
+    switch (state.kind) {
+      case 'idle':
+        return null;
+      case 'running':
+        return `Compressing ${String(state.done + 1)} of ${String(state.total)}`;
+      case 'finished': {
+        if (state.compressed === 0 && state.skipped === 0) {
+          return null;
+        }
+        const clips = state.compressed === 1 ? '1 clip' : `${String(state.compressed)} clips`;
+        const freed = `Compressed ${clips} and freed ${formatBytes(state.freedBytes)}.`;
+        if (state.skipped === 0) {
+          return freed;
+        }
+        const left =
+          state.skipped === 1
+            ? '1 clip was left as it was.'
+            : `${String(state.skipped)} clips were left as they were.`;
+        return `${freed} ${left}`;
+      }
+    }
+  });
+
+  protected stopCompressing(): void {
+    this.compression.stop();
+  }
 
   constructor() {
     void this.storage.refresh();

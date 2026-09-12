@@ -120,10 +120,63 @@ describe('OpenRouterTtsSynthesizer', () => {
       return;
     }
     expect(result.value.speedApplied).toBe(false);
-    expect(result.value.mimeType).toBe('audio/wav');
+    expect(result.value.mimeType).toBe('audio/webm');
     expect(harness.server.callCount).toBe(1);
     expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
     expect(harness.server.requests[0]?.body['response_format']).toBe('pcm');
+  });
+
+  it('compresses Gemini speech, so a stored clip is far smaller than the PCM', async () => {
+    const modelId = 'google/gemini-3.1-flash-tts-preview';
+    const harness = run({ knownTtsModels: [modelId] });
+
+    const result = await harness.tts.synthesize(
+      { ...REQUEST, modelId, speedSupported: false },
+      new AbortController().signal,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    // The fake server answers speech requests with a 2048-byte clip.
+    const PCM_BYTES = 2048;
+    expect(result.value.mimeType).toBe('audio/webm');
+    expect(result.value.bytes.byteLength).toBeLessThan(PCM_BYTES);
+  });
+
+  it('stores Gemini speech uncompressed where the browser has no encoder', async () => {
+    const modelId = 'google/gemini-3.1-flash-tts-preview';
+    const harness = run({ knownTtsModels: [modelId], encoder: 'unsupported' });
+
+    const result = await harness.tts.synthesize(
+      { ...REQUEST, modelId, speedSupported: false },
+      new AbortController().signal,
+    );
+
+    // An expensive clip beats no clip: the learner still gets audio.
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.mimeType).toBe('audio/wav');
+  });
+
+  it('refuses a Gemini clip the encoder failed on rather than storing the PCM', async () => {
+    const modelId = 'google/gemini-3.1-flash-tts-preview';
+    const harness = run({ knownTtsModels: [modelId], encoder: 'fails' });
+
+    const result = await harness.tts.synthesize(
+      { ...REQUEST, modelId, speedSupported: false },
+      new AbortController().signal,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe('audio-invalid');
+    expect(result.error.detail?.issueCode).toBe('encode-failed');
   });
 
   it('carries the direction inside the Gemini prompt, ahead of the sentence', async () => {

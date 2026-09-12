@@ -172,11 +172,7 @@ export class DictionaryIndex {
       }
     }
 
-    if (
-      guessesAllowed &&
-      query.readingHiragana !== undefined &&
-      query.readingHiragana.length > 0
-    ) {
+    if (guessesAllowed && query.readingHiragana !== undefined && query.readingHiragana.length > 0) {
       const byReading = this.normalized.get(normalizeLookupKey(query.readingHiragana));
       if (byReading !== undefined) {
         const filtered =
