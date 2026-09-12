@@ -104,8 +104,10 @@ focus.
 The home illustration blends into the canvas through an organic crop; the hero
 is not a card and therefore has no panel boundary or elevation.
 The crop follows the illustration's arch and low foreground, preserving the
-whole reading character and books. Its proportions stay fixed as the column
-changes width. Once the shelf holds a story the hero steps down to a compact
+whole reading character and books. The asset is cropped to the drawing itself,
+so the hero's frame is the picture rather than the empty space around it and
+the distance to the bar above is the page rail and nothing else. Its
+proportions stay fixed as the column changes width. Once the shelf holds a story the hero steps down to a compact
 size, so the stories come up the screen; only its size changes, never its crop.
 The home headline is tightly set beside it, centred on the
 illustration's own axis so the two read as one composition rather than a

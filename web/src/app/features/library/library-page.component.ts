@@ -103,14 +103,14 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
               src="assets/home-reader.png"
               alt=""
               width="1254"
-              height="1254"
+              height="1070"
             />
             <img
               class="hero-art-dark"
               src="assets/home-reader-dark.png"
               alt=""
               width="1254"
-              height="1254"
+              height="1070"
             />
           </div>
         </section>
@@ -203,17 +203,19 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
      * centred in it too, rather than both hanging from the top edge and
      * drifting apart as the sentence grows a line.
      *
-     * The hero pulls in at both edges rather than the page rail closing up:
-     * the picture sits nearer the bar above it than the page's own rhythm
-     * would place it, while the action below keeps the rail's full gap.
+     * The hero hugs the illustration: its heights are the art's width in the
+     * art's own proportion, so the distance to the bar above is the page rail
+     * and nothing else. The art carried a sixth of its height as empty space
+     * above the drawing, which read as spacing no rule could reach; the file
+     * is cropped to the drawing instead.
      */
     .home-hero {
       position: relative;
       isolation: isolate;
       display: flex;
       align-items: center;
-      min-height: 15rem;
-      margin-block: calc(var(--space-1) * -1) calc(var(--space-2) * -1);
+      min-height: 12.8rem;
+      margin-block: var(--space-2) calc(var(--space-2) * -1);
       padding-block: 0 var(--space-2);
     }
 
@@ -226,7 +228,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       width: 55%;
       max-width: 16rem;
       height: auto;
-      aspect-ratio: 1;
+      aspect-ratio: 1254 / 1070;
       overflow: hidden;
       pointer-events: none;
     }
@@ -270,7 +272,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
      * screen. The art keeps its proportions; only its size changes.
      */
     .home-hero.is-compact {
-      min-height: 9rem;
+      min-height: 7.7rem;
     }
 
     .home-hero.is-compact .hero-art {
@@ -303,7 +305,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
     @media (max-width: breakpoints.$wide-max) {
       .home-hero {
-        min-height: 12.5rem;
+        min-height: 10.7rem;
       }
 
       .home-hero mn-library-standing {
