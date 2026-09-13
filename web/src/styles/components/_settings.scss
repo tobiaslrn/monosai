@@ -10,9 +10,19 @@
   display: flex;
   min-width: 0;
   min-height: 2.25rem;
-  gap: var(--space-2);
+  gap: var(--space-3);
   align-items: center;
-  padding-inline: var(--space-1);
+  padding-inline: var(--space-2);
+}
+
+/* A quiet signpost keeps the section rank visually attached to its card. */
+.mn-settings-section__header::before {
+  flex: none;
+  width: 0.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-pill);
+  background: var(--action-primary);
+  content: '';
 }
 
 .mn-settings-section__header h2 {
@@ -141,6 +151,7 @@
   gap: var(--space-2);
   align-items: center;
   padding: var(--space-2) var(--space-4) 0;
+  background: var(--surface-sunken-muted);
 }
 
 .mn-settings-group__header > .mn-group-title {

@@ -145,7 +145,10 @@ centred vertically and never stretched to fill the viewport. A short page leaves
 the space below it empty, which is the honest result of having little to say.
 
 Settings uses the same page frame as every other non-reader screen. Each
-top-level group is one quiet raised card with a compact section heading; actions
+top-level group is one quiet raised card with a compact section heading. The
+heading carries a small action-colour signpost so it reads as the card's label,
+not as unrelated copy floating between surfaces; the signpost is not another
+surface or control. Actions
 use the same pill silhouette as the Library's filters and creation control.
 Complex model fields may use sunken groups inside that card, but may not
 introduce a second competing hierarchy of raised panels. The model fields appear

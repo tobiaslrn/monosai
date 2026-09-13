@@ -97,6 +97,22 @@ html[data-pointer='mouse'] .mn-list-row:hover {
   grid-column: 3;
 }
 
+/* Keep the status and chevron as one measured cluster on narrow screens. */
+.mn-list-row--overview .mn-list-row__trailing {
+  max-width: none;
+}
+
+.mn-list-row--overview .mn-list-row__trailing .mn-status-pill {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mn-list-row--overview .mn-list-row__trailing mn-icon {
+  flex: none;
+}
+
 html[data-pointer='mouse'] .mn-list-row--muted:hover {
   background: var(--surface-sunken-muted);
 }

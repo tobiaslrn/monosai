@@ -553,6 +553,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     .head-status {
       flex: 0 1 auto;
       justify-content: flex-end;
+      flex-wrap: nowrap;
     }
     .branch {
       min-width: 0;
