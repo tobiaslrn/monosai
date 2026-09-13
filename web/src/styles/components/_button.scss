@@ -27,7 +27,12 @@
     transform var(--motion-fast) ease-out;
 }
 
-.mn-button:hover:not(:disabled):not([aria-disabled='true']) {
+/*
+ * Hover belongs to a pointer that can hover. Touch browsers synthesize hover
+ * after a tap and may leave it on the last control touched, so touch input
+ * must not inherit the mouse-only background treatment.
+ */
+html[data-pointer='mouse'] .mn-button:hover:not(:disabled):not([aria-disabled='true']) {
   background: var(--surface-sunken);
 }
 
@@ -41,7 +46,7 @@
   color: var(--text-on-action);
 }
 
-.mn-button--primary:hover:not(:disabled):not([aria-disabled='true']) {
+html[data-pointer='mouse'] .mn-button--primary:hover:not(:disabled):not([aria-disabled='true']) {
   background: var(--action-primary-hover);
 }
 
@@ -51,7 +56,7 @@
   color: var(--action-primary-text);
 }
 
-.mn-button--ghost:hover:not(:disabled):not([aria-disabled='true']) {
+html[data-pointer='mouse'] .mn-button--ghost:hover:not(:disabled):not([aria-disabled='true']) {
   background: var(--action-primary-soft);
 }
 
@@ -60,7 +65,7 @@
   color: var(--status-danger);
 }
 
-.mn-button--danger:hover:not(:disabled):not([aria-disabled='true']) {
+html[data-pointer='mouse'] .mn-button--danger:hover:not(:disabled):not([aria-disabled='true']) {
   background: var(--status-danger-soft);
 }
 
@@ -113,7 +118,7 @@
     transform var(--motion-fast) ease-out;
 }
 
-.mn-icon-button:hover:not(:disabled):not([aria-disabled='true']),
+html[data-pointer='mouse'] .mn-icon-button:hover:not(:disabled):not([aria-disabled='true']),
 .mn-icon-button:active:not(:disabled):not([aria-disabled='true']) {
   background: var(--surface-sunken);
 }

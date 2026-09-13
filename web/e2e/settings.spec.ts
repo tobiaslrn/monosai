@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
+import { tap } from './reading';
 import { expectSettingPersisted, monosaiDatabaseExists } from './storage';
 
 test.describe('settings persistence', () => {
@@ -74,6 +75,29 @@ test.describe('settings persistence', () => {
     await page.getByRole('button', { name: 'Cancel' }).click();
     await expect(page.getByRole('button', { name: 'Delete all Monosai data' })).toBeVisible();
     expect(await monosaiDatabaseExists(page)).toBe(true);
+  });
+
+  test('does not leave a button in its hover state after a touch @mobile @smoke', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'sticky hover is a touch-only interaction');
+
+    await page.goto('./#/settings');
+    const deleteAudio = page.getByRole('button', { name: 'Delete saved audio', exact: true });
+    await expect(deleteAudio).toBeVisible();
+
+    const restingBackground = await deleteAudio.evaluate(
+      (element) => getComputedStyle(element).backgroundColor,
+    );
+    await tap(page, deleteAudio);
+
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await expect
+      .poll(() => deleteAudio.evaluate((element) => getComputedStyle(element).backgroundColor))
+      .toBe(restingBackground);
+
+    await page.getByRole('button', { name: 'Keep it', exact: true }).click();
   });
 
   test('full reset deletes local data and returns to first use @smoke', async ({ page }) => {
