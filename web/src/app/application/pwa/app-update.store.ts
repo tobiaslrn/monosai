@@ -13,6 +13,7 @@ export type AppUpdateRecovery = 'retry' | 'reload';
 export type AppUpdateStatus =
   | { readonly kind: 'unsupported' }
   | { readonly kind: 'idle' }
+  | { readonly kind: 'current' }
   | { readonly kind: 'available' }
   | { readonly kind: 'activating' }
   | { readonly kind: 'failed'; readonly message: string; readonly recovery: AppUpdateRecovery };
@@ -76,6 +77,15 @@ export class AppUpdateStore {
         recovery: 'retry',
       });
       this.statusSignal.set({ kind: 'failed', message: result.error.message, recovery: 'retry' });
+      return;
+    }
+
+    // SwUpdate emits NO_NEW_VERSION_DETECTED asynchronously. Keep a visible
+    // result even when a platform resolves the check without emitting it.
+    // Never overwrite an update that became ready while the check was pending.
+    const status = this.statusSignal();
+    if (status.kind === 'idle' || status.kind === 'current' || status.kind === 'failed') {
+      this.statusSignal.set({ kind: 'current' });
     }
   }
 
@@ -131,6 +141,9 @@ export class AppUpdateStore {
       case 'ready':
         this.logger.info('pwa.update.available');
         this.statusSignal.set({ kind: 'available' });
+        return;
+      case 'current':
+        this.statusSignal.set({ kind: 'current' });
         return;
       case 'installation-failed':
         this.logger.error('pwa.update.failed', {

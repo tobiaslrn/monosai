@@ -110,7 +110,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
         } @else {
           <div class="mn-card level-card">
             <mn-list-row
-              variant="plain"
+              variant="overview"
               [routerLink]="'/reading-level/level'"
               [state]="levelOriginState"
               [testId]="'reading-level-link'"

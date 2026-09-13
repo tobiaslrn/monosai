@@ -51,6 +51,17 @@ describe('ServiceWorkerUpdateAdapter', () => {
     expect(event).toEqual({ kind: 'ready' });
   });
 
+  it('maps NO_NEW_VERSION_DETECTED to a current event', async () => {
+    const sw = fakeSwUpdate(true);
+    const adapter = configure(sw);
+
+    const next = firstValueFrom(adapter.updates());
+    sw.versionUpdates.next({ type: 'NO_NEW_VERSION_DETECTED', version: { hash: 'a' } });
+
+    const event: AppUpdateEvent = await next;
+    expect(event).toEqual({ kind: 'current' });
+  });
+
   it('maps VERSION_INSTALLATION_FAILED to an installation-failed event', async () => {
     const sw = fakeSwUpdate(true);
     const adapter = configure(sw);
@@ -66,7 +77,7 @@ describe('ServiceWorkerUpdateAdapter', () => {
     expect(event).toEqual({ kind: 'installation-failed', reason: 'boom' });
   });
 
-  it('ignores version-detected events the app does not act on', () => {
+  it('ignores version-detected events while retaining meaningful update events', () => {
     const sw = fakeSwUpdate(true);
     const adapter = configure(sw);
     const seen: AppUpdateEvent[] = [];

@@ -30,6 +30,9 @@ export class ServiceWorkerUpdateAdapter implements AppUpdateChecker {
         if (event.type === 'VERSION_READY') {
           return { kind: 'ready' };
         }
+        if (event.type === 'NO_NEW_VERSION_DETECTED') {
+          return { kind: 'current' };
+        }
         if (event.type === 'VERSION_INSTALLATION_FAILED') {
           return { kind: 'installation-failed', reason: event.error };
         }

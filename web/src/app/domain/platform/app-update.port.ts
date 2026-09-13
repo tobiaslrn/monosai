@@ -9,6 +9,11 @@ export interface AppUpdateReady {
   readonly kind: 'ready';
 }
 
+/** The service worker checked the current deployment and found no newer version. */
+export interface AppUpdateCurrent {
+  readonly kind: 'current';
+}
+
 /** A new version was found but failed to install; the current version keeps running. */
 export interface AppUpdateInstallationFailed {
   readonly kind: 'installation-failed';
@@ -27,7 +32,11 @@ export interface AppUpdateUnsupported {
 }
 
 export type AppUpdateEvent =
-  AppUpdateReady | AppUpdateInstallationFailed | AppUpdateUnrecoverable | AppUpdateUnsupported;
+  | AppUpdateReady
+  | AppUpdateCurrent
+  | AppUpdateInstallationFailed
+  | AppUpdateUnrecoverable
+  | AppUpdateUnsupported;
 
 /** Failure returned by `check()`; activation failures are reported as an `AppUpdateEvent`. */
 export interface AppUpdateCheckFailure {

@@ -154,6 +154,8 @@ export class AboutSectionComponent {
         return 'Updates unavailable.';
       case 'idle':
         return '';
+      case 'current':
+        return 'You’re up to date.';
       case 'available':
         return 'Update available.';
       case 'activating':

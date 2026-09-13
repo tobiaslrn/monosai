@@ -30,6 +30,22 @@ class HostComponent {
   readonly longTitle = `A title that wraps ${'語'.repeat(80)}`;
 }
 
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [IconComponent, ListRowComponent],
+  template: `
+    <mn-list-row variant="overview" [routerLink]="'/reading-level/level'">
+      <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
+        <mn-icon name="reading-level" />
+      </span>
+      <span mn-list-row-title>Reading level</span>
+      <span mn-list-row-meta>Single short sentences, one idea each.</span>
+      <span mn-list-row-trailing class="mn-status-pill">Starter forms</span>
+    </mn-list-row>
+  `,
+})
+class OverviewHostComponent {}
+
 describe('ListRowComponent', () => {
   beforeEach(() => {
     TestBed.resetTestingModule();
@@ -68,5 +84,17 @@ describe('ListRowComponent', () => {
 
     expect(title?.textContent).toContain('語'.repeat(80));
     expect(element.querySelector('.mn-list-row__title')).not.toBeNull();
+  });
+
+  it('marks an overview row for a full-width supporting line', () => {
+    const fixture = TestBed.createComponent(OverviewHostComponent);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('.mn-list-row--overview')).not.toBeNull();
+    expect(element.querySelector('.mn-list-row__meta')?.textContent).toContain(
+      'Single short sentences',
+    );
+    expect(element.querySelector('.mn-list-row__trailing')?.textContent).toContain('Starter forms');
   });
 });

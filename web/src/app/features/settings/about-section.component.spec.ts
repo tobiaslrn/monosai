@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppUpdateStore } from '../../application/pwa/app-update.store';
+import { AppUpdateStore, type AppUpdateStatus } from '../../application/pwa/app-update.store';
 import type { Logger } from '../../application/shared/diagnostics';
 import { LOGGER } from '../../application/shared/diagnostics';
 import { DATABASE_SCHEMA_VERSION } from '../../application/shared/repository-tokens';
@@ -42,7 +42,7 @@ function loggerFake(entries = 1): {
 describe('AboutSectionComponent', () => {
   let standalone: ReturnType<typeof signal<boolean>>;
   let canInstall: ReturnType<typeof signal<boolean>>;
-  let updateStatus: ReturnType<typeof signal<{ kind: 'idle' }>>;
+  let updateStatus: ReturnType<typeof signal<AppUpdateStatus>>;
   let install: ReturnType<typeof vi.fn>;
   let check: ReturnType<typeof vi.fn>;
   let fakeLogger: ReturnType<typeof loggerFake>;
@@ -50,7 +50,7 @@ describe('AboutSectionComponent', () => {
   beforeEach(() => {
     standalone = signal(false);
     canInstall = signal(false);
-    updateStatus = signal({ kind: 'idle' as const });
+    updateStatus = signal<AppUpdateStatus>({ kind: 'idle' });
     install = vi.fn(() => Promise.resolve('accepted' as const));
     check = vi.fn(() => Promise.resolve());
     fakeLogger = loggerFake();
@@ -89,6 +89,16 @@ describe('AboutSectionComponent', () => {
     expect(element.textContent).toContain('Not installed');
     expect(element.querySelector('button')?.textContent).toContain('Check for updates');
     expect(element.textContent).not.toContain('Install Monosai');
+  });
+
+  it('shows feedback when the update check finds the current version', () => {
+    const fixture = TestBed.createComponent(AboutSectionComponent);
+    fixture.detectChanges();
+
+    updateStatus.set({ kind: 'current' });
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('You’re up to date.');
   });
 
   it('shows Install only while installation is possible and the app is not standalone', () => {

@@ -64,6 +64,32 @@ describe('AppUpdateStore', () => {
     expect(store().status()).toEqual({ kind: 'idle' });
   });
 
+  it('shows a visible result after a successful check with no update', async () => {
+    const instance = store();
+
+    await instance.check();
+
+    expect(instance.status()).toEqual({ kind: 'current' });
+  });
+
+  it('does not hide an update that becomes ready during a check', async () => {
+    let resolveCheck!: () => void;
+    checker.check = () =>
+      new Promise<Result<void, AppUpdateCheckFailure>>((resolve) => {
+        resolveCheck = () => {
+          resolve(ok(undefined));
+        };
+      });
+    const instance = store();
+    const pending = instance.check();
+    checker.events.next({ kind: 'ready' });
+    resolveCheck();
+
+    await pending;
+
+    expect(instance.status()).toEqual({ kind: 'available' });
+  });
+
   it('reports unsupported when the platform has no service worker', () => {
     const instance = store();
     checker.events.next({ kind: 'unsupported' });
