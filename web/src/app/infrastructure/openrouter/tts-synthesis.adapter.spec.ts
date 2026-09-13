@@ -37,7 +37,7 @@ describe('OpenRouterTtsSynthesizer', () => {
       response_format: 'mp3',
     });
     expect(String(harness.server.requests[0]?.body['instructions'])).toContain(
-      'careful articulation',
+      'pronounce sounds precisely and clearly without over-enunciating',
     );
     expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
   });
@@ -108,7 +108,9 @@ describe('OpenRouterTtsSynthesizer', () => {
     expect(harness.server.callCount).toBe(1);
     expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
     expect(harness.server.requests[0]?.body['response_format']).toBe('pcm');
-    expect(String(harness.server.requests[0]?.body['input'])).toContain('a short even pause');
+    expect(String(harness.server.requests[0]?.body['input'])).toContain(
+      'especially precise sound definition without over-enunciating or separating words',
+    );
     expect(String(harness.server.requests[0]?.body['input']).endsWith(SENTENCE)).toBe(true);
   });
 

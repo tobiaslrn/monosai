@@ -15,7 +15,7 @@ export const SPEECH_PACE_SPEED: Record<SpeechPace, number> = {
  * The instruction text is part of the cache identity whenever the model accepts
  * instructions. Raise this version for every learner-facing wording change.
  */
-export const SPEECH_INSTRUCTION_VERSION = 'speech/5';
+export const SPEECH_INSTRUCTION_VERSION = 'speech/6';
 
 /** Neighbor text is context, not another unbounded prompt input. */
 export const MAX_SPEECH_CONTEXT_CODE_POINTS = 200;
@@ -38,7 +38,8 @@ export interface SpeechContext {
 
 /**
  * Keeps the spoken input exact while giving capable speech models just enough
- * direction to sound like slow, clear Japanese a beginner can follow.
+ * direction to sound like clear Japanese a beginner can follow. Articulation
+ * and speaking rate stay independent: neither control asks for added silence.
  */
 export function buildSpeechInstructions(
   context: SpeechContext = {},
@@ -51,13 +52,10 @@ export function buildSpeechInstructions(
     'Pronounce every written word, including narration that describes laughter, crying, sighing, or other actions.',
     'Do not replace any written word or phrase with laughter, crying, a sigh, or any other non-verbal sound effect.',
     paceDescription(speechPace),
-    'Keep exactly this pace from the first word to the last.',
+    'Keep this speaking rate steady throughout the sentence without lengthening the silences.',
+    articulationDescription(speechStyle),
+    'Use fluent, connected Japanese phrasing. Pause only where punctuation or a natural clause boundary requires it, keep every pause brief, and never insert silence between words or morae.',
     'Never pronounce mora by mora. Never stretch syllables.',
-    speechStyle === 'natural'
-      ? 'Use natural articulation, phrase rhythm, and standard pitch accent.'
-      : speechStyle === 'very-clear'
-        ? 'Use careful articulation, a short even pause between phrases, and a slight gap between words; speak the words themselves naturally with clear pitch accent.'
-        : 'Use careful articulation and brief pauses at phrase boundaries, while keeping standard pitch accent and rhythm intact.',
   ];
 
   if (channel === 'prefix') {
@@ -68,7 +66,7 @@ export function buildSpeechInstructions(
   const after = capCodePoints(context.afterJa);
   return [
     ...delivery,
-    'Use any adjacent sentences only to infer emotion, pauses, pitch, and sentence-final intonation.',
+    'Use any adjacent sentences only to infer emotion, phrasing, pitch, and sentence-final intonation.',
     'Never add, repeat, translate, spell out, or speak the context.',
     ...[
       before === undefined ? null : `Previous sentence (context only): ${JSON.stringify(before)}`,
@@ -80,11 +78,22 @@ export function buildSpeechInstructions(
 function paceDescription(pace: SpeechPace): string {
   switch (pace) {
     case 'natural':
-      return 'Pace: the ordinary speed of a native speaker reading aloud to another adult native speaker.';
+      return 'Pace: use the ordinary speaking rate of a native speaker reading aloud to another adult native speaker.';
     case 'slow':
-      return 'Pace: noticeably slower than everyday conversation, like a teacher reading aloud to an intermediate learner. Words keep their natural internal rhythm; the extra time comes from deliberate phrasing and a short pause at each phrase boundary.';
+      return "Pace: use a moderately slower speaking rate for an intermediate learner, while preserving fluid delivery and each phrase's natural rhythm.";
     case 'very-slow':
-      return 'Pace: clearly slow, like a teacher reading to a beginner who follows along in the text. Each word stays whole and natural; the extra time comes from calm phrasing and a clear pause between phrases.';
+      return "Pace: use a distinctly slower speaking rate for a beginner following the written text, while preserving fluid delivery and each phrase's natural rhythm.";
+  }
+}
+
+function articulationDescription(style: SpeechStyle): string {
+  switch (style) {
+    case 'natural':
+      return 'Articulation: use natural articulation, connected phrasing, and standard pitch accent.';
+    case 'clear':
+      return 'Articulation: pronounce sounds precisely and clearly without over-enunciating; preserve connected phrasing, natural rhythm, and standard pitch accent.';
+    case 'very-clear':
+      return 'Articulation: use especially precise sound definition without over-enunciating or separating words; preserve connected phrasing, natural rhythm, and standard pitch accent.';
   }
 }
 

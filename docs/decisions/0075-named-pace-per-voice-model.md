@@ -27,9 +27,11 @@ every sentence through the channel the model can use:
 
 1. An instruction-capable model receives a prose pace description in its
    instruction field. The description says what the pace means, keeps the same
-   pace from the first word to the last, and retains the rules not to pronounce
-   mora by mora or stretch syllables. Gemini receives the same lines in its
-   prefix, which is not sent as a separate `instructions` field.
+   speaking rate from the first word to the last, and retains the rules not to
+   pronounce mora by mora or stretch syllables. It explicitly preserves fluid,
+   connected Japanese instead of asking the model to create slowness with added
+   silence. Gemini receives the same lines in its prefix, which is not sent as a
+   separate `instructions` field.
 2. A model without an instruction channel receives the corresponding numeric
    top-level `speed`: `1`, `0.9`, or `0.8`. This is best effort. OpenRouter and
    providers may ignore `speed` silently, so Monosai does not claim that this
@@ -49,6 +51,12 @@ catalog declaration or the last test says the selected model accepts
 instructions. A provider refusal for instructions falls back to a request with
 numeric speed when the model is not Gemini; a refusal for speed falls back once
 more to a request without speed. There are at most three attempts.
+
+Speaking style controls articulation only. Clearer styles request more precise
+sound definition without word separation, over-enunciation, or additional
+pauses. Pace controls the model's speaking rate only. Every combination asks for
+brief pauses at punctuation or natural clause boundaries and forbids inserted
+silence between words or morae, so the two controls do not amplify one another.
 
 Schema v17 adds `speechPace: 'natural'` to the TTS settings row and every
 preset, and converts a v16 reader preference of `0.7` to `0.8`. The migration is

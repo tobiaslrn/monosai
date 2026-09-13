@@ -33,7 +33,7 @@ describe('OpenRouterTtsTester', () => {
       response_format: 'mp3',
     });
     expect(String(harness.server.requests[0]?.body['instructions'])).toContain(
-      'a short even pause between phrases',
+      'especially precise sound definition without over-enunciating or separating words',
     );
   });
 
@@ -88,7 +88,9 @@ describe('OpenRouterTtsTester', () => {
     expect(result.value.mimeType).toBe('audio/webm');
     expect(harness.server.callCount).toBe(1);
     expect(harness.server.requests[0]?.body['instructions']).toBeUndefined();
-    expect(String(harness.server.requests[0]?.body['input'])).toContain('a short even pause');
+    expect(String(harness.server.requests[0]?.body['input'])).toContain(
+      'especially precise sound definition',
+    );
     expect(String(harness.server.requests[0]?.body['input']).endsWith(TTS_TEST_PHRASE)).toBe(true);
     expect(result.value.speechInstructionsApplied).toBe(true);
   });

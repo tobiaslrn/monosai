@@ -27,8 +27,11 @@ describe('buildSpeechRequestBody', () => {
       response_format: 'mp3',
     });
     expect(String(body['instructions'])).toContain('雨が強くなりました。');
-    expect(String(body['instructions'])).toContain('a slight gap between words');
-    expect(String(body['instructions'])).toContain('noticeably slower than everyday conversation');
+    expect(String(body['instructions'])).toContain(
+      'especially precise sound definition without over-enunciating or separating words',
+    );
+    expect(String(body['instructions'])).toContain('a moderately slower speaking rate');
+    expect(String(body['instructions'])).toContain('never insert silence between words or morae');
     expect(body['speed']).toBeUndefined();
   });
 
@@ -62,7 +65,8 @@ describe('buildSpeechRequestBody', () => {
     expect(body['speed']).toBeUndefined();
     expect(body['instructions']).toBeUndefined();
     const input = String(body['input']);
-    expect(input).toContain('a short even pause between phrases');
+    expect(input).toContain('especially precise sound definition');
+    expect(input).toContain('never insert silence between words or morae');
     // The sentence is last, and the compact prefix quotes no neighbour that
     // could be read aloud with it.
     expect(input.endsWith(SENTENCE)).toBe(true);
