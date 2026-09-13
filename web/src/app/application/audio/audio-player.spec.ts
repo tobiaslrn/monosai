@@ -125,7 +125,7 @@ class FakeSourceBuffer extends EventTarget {
 
 class FakeMediaSource extends EventTarget {
   static isTypeSupported(type: string): boolean {
-    return type === 'audio/mpeg';
+    return type === 'audio/mpeg' || type === 'audio/webm; codecs="opus"';
   }
 
   readonly sourceBuffer = new FakeSourceBuffer();
@@ -167,6 +167,10 @@ function settle(): Promise<void> {
 
 function mpeg(name: string): { readonly blob: Blob; readonly mimeType: 'audio/mpeg' } {
   return { blob: new Blob([name]), mimeType: 'audio/mpeg' };
+}
+
+function webm(name: string): { readonly blob: Blob; readonly mimeType: 'audio/webm' } {
+  return { blob: new Blob([name]), mimeType: 'audio/webm' };
 }
 
 describe('createAudioPlayer', () => {
@@ -227,6 +231,18 @@ describe('createAudioPlayer', () => {
       { blob: new Blob(['two']), mimeType: 'audio/mpeg' },
       { blob: new Blob(['three']), mimeType: 'audio/mpeg' },
     ]);
+
+    expect(timeline).toEqual({ starts: [0, 1, 2], duration: 3, open: false, floor: 0 });
+    expect(element.played).toBe(1);
+    expect(fake.createObjectURL).toHaveBeenCalledTimes(1);
+  });
+
+  it('appends WebM/Opus sentences as one MediaSource timeline before playing', async () => {
+    const element = new FakeAudioElement();
+    const fake = mpegView(element);
+    const player = createAudioPlayer(fake.view);
+
+    const timeline = await player.playSequence([webm('one'), webm('two'), webm('three')]);
 
     expect(timeline).toEqual({ starts: [0, 1, 2], duration: 3, open: false, floor: 0 });
     expect(element.played).toBe(1);

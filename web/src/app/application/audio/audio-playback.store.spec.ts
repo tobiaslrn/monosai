@@ -366,7 +366,7 @@ function storeClips(bed: PlaybackBed, count = SENTENCE_COUNT): Promise<void> {
 async function storeClipsAt(
   bed: PlaybackBed,
   positions: readonly number[],
-  mimeType: 'audio/mpeg' | 'audio/wav' = 'audio/mpeg',
+  mimeType: 'audio/mpeg' | 'audio/wav' | 'audio/webm' = 'audio/mpeg',
   pace: AudioAsset['pace'] | null = 'playback',
 ): Promise<void> {
   const sentences = orderedSentences(bed.draft);
@@ -1450,6 +1450,35 @@ describe('AudioPlaybackStore', () => {
       await bed.store.previous();
       expect(bed.player.position).toBe(2);
       expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+    });
+
+    it('loads a complete WebM reading as one native sequence', async () => {
+      bed = await configure();
+      await storeClipsAt(bed, [0, 1, 2, 3], 'audio/webm');
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+
+      await bed.store.play();
+
+      expect(bed.player.sequences).toHaveLength(1);
+      expect(bed.player.sequences[0]?.every((clip) => clip.mimeType === 'audio/webm')).toBe(true);
+      expect(bed.player.played).toEqual([]);
+    });
+
+    it('keeps a partly generated WebM reading in one open resource', async () => {
+      bed = await configure();
+      await storeClipsAt(bed, [0, 1], 'audio/webm');
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+
+      await bed.store.play();
+      await storeClipsAt(bed, [2], 'audio/webm');
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.player.sequences[0]?.every((clip) => clip.mimeType === 'audio/webm')).toBe(true);
+      expect(bed.player.appended[0]?.every((clip) => clip.mimeType === 'audio/webm')).toBe(true);
+      expect(bed.player.sequenceOpen()).toBe(true);
+      expect(bed.player.played).toEqual([]);
     });
 
     /**

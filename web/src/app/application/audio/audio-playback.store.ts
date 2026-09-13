@@ -10,6 +10,13 @@ import { AppSettingsStore } from '../settings/app-settings.store';
 import { AUDIO_PLAYER, type AudioSequenceClip, type AudioTimeline } from './audio-player';
 import { MEDIA_SESSION } from './media-session';
 
+/** Audio containers that can be appended to one native continuous resource. */
+type SequenceMimeType = 'audio/mpeg' | 'audio/webm';
+
+function isSequenceMimeType(mimeType: string): mimeType is SequenceMimeType {
+  return mimeType === 'audio/mpeg' || mimeType === 'audio/webm';
+}
+
 /**
  * `waiting` is a started session that has run out of prepared audio.
  *
@@ -1058,7 +1065,7 @@ export class AudioPlaybackStore {
           await this.load(sentenceId);
           return;
         }
-        if (loaded.value.mimeType !== 'audio/mpeg' && loaded.value.mimeType !== 'audio/wav') {
+        if (!isSequenceMimeType(loaded.value.mimeType) && loaded.value.mimeType !== 'audio/wav') {
           this.loading = false;
           await this.load(sentenceId);
           return;
@@ -1071,7 +1078,7 @@ export class AudioPlaybackStore {
     }
 
     const complete = startIndex + run.length === refs.length;
-    const open = !complete && clips.every((clip) => clip.mimeType === 'audio/mpeg');
+    const open = !complete && clips.every((clip) => isSequenceMimeType(clip.mimeType));
     if (!complete && !open) {
       // A WAV resource states its own length and cannot grow, so building one
       // over part of a reading would end the session at the frontier with no
@@ -1229,14 +1236,14 @@ export class AudioPlaybackStore {
         if (this.sequence !== sequence) {
           return;
         }
-        if (!loaded.ok || loaded.value?.mimeType !== 'audio/mpeg') {
+        if (!loaded.ok || loaded.value === null || !isSequenceMimeType(loaded.value.mimeType)) {
           // Nothing that can go into this resource. Sealing keeps what is in it
           // playable and lets the element finish, rather than failing a session
           // over a sentence it has not reached yet.
           this.sealSequence();
           return;
         }
-        clip = { blob: loaded.value.blob, mimeType: 'audio/mpeg' };
+        clip = { blob: loaded.value.blob, mimeType: loaded.value.mimeType };
         byKey.set(item.cacheKey, clip);
       }
       clips.push(clip);

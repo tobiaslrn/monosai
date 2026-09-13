@@ -382,13 +382,13 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
         throw new Error('Audio load was superseded');
       }
       if (sequence.buffer.buffered.length === 0) {
-        throw new Error('MPEG sequence produced no buffered audio');
+        throw new Error('Audio sequence produced no buffered audio');
       }
       sequence.starts.push(start);
       sequence.end = sequence.buffer.buffered.end(sequence.buffer.buffered.length - 1);
     }
     if (!Number.isFinite(sequence.end) || sequence.end <= 0) {
-      throw new Error('MPEG sequence has no duration');
+      throw new Error('Audio sequence has no duration');
     }
   };
 
