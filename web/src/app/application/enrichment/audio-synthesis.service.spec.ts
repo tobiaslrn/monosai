@@ -57,6 +57,7 @@ async function configure(): Promise<SynthesisBed> {
     modelId: 'vendor/tts',
     voiceId: 'voice-a',
     speechStyle: 'clear',
+    speechPace: 'natural',
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
     activePresetId: null,
@@ -188,6 +189,7 @@ describe('AudioSynthesisService', () => {
         modelId: 'vendor/tts',
         voiceId: 'voice-a',
         speechStyle: 'very-clear',
+        speechPace: 'natural',
         responseFormat: 'mp3',
         speechInstructions: 'unsupported',
       },
@@ -324,6 +326,7 @@ describe('AudioConfigurationService', () => {
     expect(config.value.modelId).toBe('vendor/tts');
     expect(config.value.voiceId).toBe('voice-a');
     expect(config.value.speechStyle).toBe('clear');
+    expect(config.value.speechPace).toBe('natural');
     expect(config.value.configFingerprint).not.toBe(config.value.optionsFingerprint);
   });
 
@@ -366,9 +369,9 @@ describe('AudioConfigurationService', () => {
     expect(!config.ok && config.error.task).toBe('tts-test');
   });
 
-  it('changes the configuration fingerprint when the style changes', () => {
+  it('changes the configuration fingerprint when the pace changes', () => {
     const before = bed.config.resolve('tts-synthesis');
-    bed.settings.set({ ...bed.settings(), speechStyle: 'natural' });
+    bed.settings.set({ ...bed.settings(), speechPace: 'very-slow' });
     const after = bed.config.resolve('tts-synthesis');
 
     expect(before.ok && after.ok).toBe(true);

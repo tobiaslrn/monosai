@@ -4,6 +4,7 @@ import type { AiError } from '../../domain/ai/ai-error';
 import type {
   SpeechContext,
   SpeechInstructionsSupport,
+  SpeechPace,
   SpeechStyle,
 } from '../../domain/ai/speech-instructions';
 import type { AudioAsset, AudioAssetSummary } from '../../domain/enrichment/records';
@@ -14,11 +15,12 @@ import type { StorageError } from '../../domain/storage/storage-error';
 import { TEXT_TO_SPEECH_PROVIDER } from '../shared/ai-tokens';
 import { CLOCK, ENRICHMENT_REPOSITORY, ID_GENERATOR } from '../shared/repository-tokens';
 
-/** The configuration one synthesis runs under, captured before the request. */
+/** The model, voice, named pace, and delivery channel one synthesis runs under. */
 export interface AudioSynthesisConfig {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speechStyle: SpeechStyle;
+  readonly speechPace: SpeechPace;
   readonly speechInstructions: SpeechInstructionsSupport;
   readonly optionsFingerprint: string;
 }
@@ -89,6 +91,7 @@ export class AudioSynthesisService {
         modelId: config.modelId,
         voiceId: config.voiceId,
         speechStyle: config.speechStyle,
+        speechPace: config.speechPace,
         responseFormat: RESPONSE_FORMAT,
         speechInstructions: config.speechInstructions,
         ...(context.beforeJa === undefined ? {} : { beforeJa: context.beforeJa }),

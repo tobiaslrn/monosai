@@ -14,7 +14,7 @@ export const AI_ENDPOINT_VERSION = 'openrouter-v1';
 export const TEXT_MODEL_TEST_VERSION = 2;
 
 /** Bumped when the TTS compatibility test itself changes what it proves. */
-export const TTS_TEST_VERSION = 7;
+export const TTS_TEST_VERSION = 6;
 
 /**
  * How many times the saved key has changed, used in place of the key.
@@ -58,13 +58,14 @@ export function textModelFingerprint(
 export function ttsFingerprint(
   hasher: Hasher,
   keyGeneration: KeyGeneration,
-  config: Pick<TtsConfig, 'modelId' | 'voiceId' | 'speechStyle'>,
+  config: Pick<TtsConfig, 'modelId' | 'voiceId' | 'speechStyle' | 'speechPace'>,
 ): string {
   return hashCanonical(hasher, 'tts-test', {
     keyGeneration,
     modelId: config.modelId,
     voiceId: config.voiceId,
     speechStyle: config.speechStyle,
+    speechPace: config.speechPace,
     endpointVersion: AI_ENDPOINT_VERSION,
     testVersion: TTS_TEST_VERSION,
   });

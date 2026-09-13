@@ -259,6 +259,7 @@ async function configure(): Promise<PlaybackBed> {
     modelId: 'vendor/tts',
     voiceId: 'voice-a',
     speechStyle: 'clear',
+    speechPace: 'natural',
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
     activePresetId: null,
@@ -345,6 +346,7 @@ function keyFor(bed: PlaybackBed, contentHash: string, voiceId = bed.settings().
     audioOptionsFingerprint(TEST_HASHER, {
       responseFormat: 'mp3',
       speechStyle: settings.speechStyle,
+      speechPace: settings.speechPace,
     }),
   );
 }
@@ -383,6 +385,7 @@ async function storeClipsAt(
       optionsFingerprint: audioOptionsFingerprint(TEST_HASHER, {
         responseFormat: 'mp3',
         speechStyle: bed.settings().speechStyle,
+        speechPace: bed.settings().speechPace,
       }),
       ...(pace === null ? {} : { pace }),
       mimeType,
@@ -418,11 +421,11 @@ describe('AudioPlaybackStore', () => {
       expect(bed.player.rates.at(-1)).toBe(0.8);
       expect(bed.positionStates.at(-1)?.playbackRate).toBe(0.8);
 
-      bed.store.setPlaybackRate(0.7);
+      bed.store.setPlaybackRate(0.9);
 
-      expect(bed.player.rates.at(-1)).toBe(0.7);
-      expect(bed.setReaderPreference).toHaveBeenCalledWith('playbackRate', 0.7);
-      expect(bed.positionStates.at(-1)?.playbackRate).toBe(0.7);
+      expect(bed.player.rates.at(-1)).toBe(0.9);
+      expect(bed.setReaderPreference).toHaveBeenCalledWith('playbackRate', 0.9);
+      expect(bed.positionStates.at(-1)?.playbackRate).toBe(0.9);
     });
 
     it('plays legacy clips with their baked pace', async () => {
@@ -693,6 +696,7 @@ describe('AudioPlaybackStore', () => {
           optionsFingerprint: audioOptionsFingerprint(TEST_HASHER, {
             responseFormat: 'mp3',
             speechStyle: bed.settings().speechStyle,
+            speechPace: bed.settings().speechPace,
           }),
           pace: 'playback',
           mimeType: 'audio/mpeg',

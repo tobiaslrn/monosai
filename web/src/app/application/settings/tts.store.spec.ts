@@ -30,6 +30,7 @@ const CONFIGURED = {
   modelId: FAKE_OPENROUTER.ttsModel,
   voiceId: FAKE_OPENROUTER.voice,
   speechStyle: 'clear' as const,
+  speechPace: 'natural' as const,
 };
 
 describe('TtsStore', () => {
@@ -108,6 +109,7 @@ describe('TtsStore', () => {
       modelId: 'google/gemini-tts',
       voiceId: 'Kore',
       speechStyle: 'clear',
+      speechPace: 'natural',
     });
 
     expect(store.activePresetId()).toBeNull();
@@ -126,6 +128,7 @@ describe('TtsStore', () => {
       modelId: 'vendor/tts',
       voiceId: 'Kore',
       speechStyle: 'clear',
+      speechPace: 'natural',
     });
 
     await store.removePreset('voice');
@@ -183,6 +186,23 @@ describe('TtsStore', () => {
     expect(store.styleControl()).toBe('none');
   });
 
+  it('uses stored evidence for the tested model and catalog capabilities for a draft model', async () => {
+    const store = await ready();
+    store.setDraft(CONFIGURED);
+    await store.test();
+
+    // A catalog refresh cannot overrule what the current test measured.
+    store.setCatalogParameters(['instructions']);
+    expect(store.acceptsDirection()).toBe(false);
+
+    store.setDraft({ modelId: 'vendor/kokoro', voiceId: 'sakura' });
+    store.setCatalogParameters(['voice']);
+    expect(store.acceptsDirection()).toBe(false);
+
+    store.setCatalogParameters(['instructions']);
+    expect(store.acceptsDirection()).toBe(true);
+  });
+
   it('goes stale when the voice or the speaking style changes', async () => {
     const store = await ready();
     store.setDraft(CONFIGURED);
@@ -208,6 +228,16 @@ describe('TtsStore', () => {
     await store.save();
 
     expect(settings.tts.speechStyle).toBe('very-clear');
+  });
+
+  it('persists the selected speech pace and makes it part of readiness', async () => {
+    const store = await ready();
+
+    store.setDraft({ ...CONFIGURED, speechPace: 'very-slow' });
+    await store.save();
+
+    expect(settings.tts.speechPace).toBe('very-slow');
+    expect(store.readiness()).toBe('untested');
   });
 
   it('records a capability failure without a stored result', async () => {
@@ -481,5 +511,6 @@ describe('TtsStore edge paths', () => {
     await store.load();
 
     expect(store.draft().speechStyle).toBe('clear');
+    expect(store.draft().speechPace).toBe('natural');
   });
 });

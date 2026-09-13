@@ -9,7 +9,12 @@ import {
 const hasher: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
 
 const TEXT = { modelId: 'vendor/text-model' };
-const TTS = { modelId: 'vendor/tts-model', voiceId: 'sakura', speechStyle: 'clear' as const };
+const TTS = {
+  modelId: 'vendor/tts-model',
+  voiceId: 'sakura',
+  speechStyle: 'clear' as const,
+  speechPace: 'natural' as const,
+};
 
 describe('textModelFingerprint', () => {
   it('is stable for identical inputs', () => {
@@ -44,12 +49,13 @@ describe('textModelFingerprint', () => {
 });
 
 describe('ttsFingerprint', () => {
-  it('changes when the model, the voice, or the speaking style changes', () => {
+  it('changes when the model, voice, speaking style, or pace changes', () => {
     const base = ttsFingerprint(hasher, 4, TTS);
 
     expect(ttsFingerprint(hasher, 4, { ...TTS, modelId: 'vendor/other' })).not.toBe(base);
     expect(ttsFingerprint(hasher, 4, { ...TTS, voiceId: 'kaede' })).not.toBe(base);
     expect(ttsFingerprint(hasher, 4, { ...TTS, speechStyle: 'very-clear' })).not.toBe(base);
+    expect(ttsFingerprint(hasher, 4, { ...TTS, speechPace: 'very-slow' })).not.toBe(base);
   });
 
   it('changes when the key generation changes', () => {
@@ -87,7 +93,12 @@ describe('text and TTS readiness independence', () => {
 
   it('produces different fingerprints for the same values under different domains', () => {
     expect(
-      ttsFingerprint(hasher, 4, { modelId: 'same', voiceId: '', speechStyle: 'clear' }),
+      ttsFingerprint(hasher, 4, {
+        modelId: 'same',
+        voiceId: '',
+        speechStyle: 'clear',
+        speechPace: 'natural',
+      }),
     ).not.toBe(textModelFingerprint(hasher, 4, { modelId: 'same' }));
   });
 });

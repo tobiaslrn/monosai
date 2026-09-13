@@ -2,7 +2,12 @@ import type { Result } from '../shared/result';
 import type { AiError } from './ai-error';
 import type { AudioMimeType } from '../enrichment/records';
 import type { TtsConfig, TtsTest } from './model-test';
-import type { SpeechContext, SpeechInstructionsSupport, SpeechStyle } from './speech-instructions';
+import type {
+  SpeechContext,
+  SpeechInstructionsSupport,
+  SpeechPace,
+  SpeechStyle,
+} from './speech-instructions';
 
 /** One sentence's synthesis request, exactly as the cache key describes it. */
 export interface TtsRequest extends SpeechContext {
@@ -11,6 +16,7 @@ export interface TtsRequest extends SpeechContext {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speechStyle: SpeechStyle;
+  readonly speechPace: SpeechPace;
   /** The container asked for. MP3 is what the audio cache stores. */
   readonly responseFormat: 'mp3';
   readonly speechInstructions?: SpeechInstructionsSupport;

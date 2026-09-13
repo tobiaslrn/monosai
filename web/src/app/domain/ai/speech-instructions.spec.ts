@@ -9,15 +9,40 @@ describe('speech instructions', () => {
   it('is versioned and asks for exact target-only natural Japanese', () => {
     const instructions = buildSpeechInstructions();
 
-    expect(SPEECH_INSTRUCTION_VERSION).toBe('speech/4');
+    expect(SPEECH_INSTRUCTION_VERSION).toBe('speech/5');
     expect(instructions).toContain('Speak only the exact target text');
     expect(instructions).toContain('natural standard Japanese');
     expect(instructions).toContain('Never pronounce mora by mora');
     expect(instructions).toContain('Never stretch syllables');
     expect(instructions).toContain('Pronounce every written word');
     expect(instructions).toContain('Do not replace any written word or phrase with laughter');
-    // No speed was requested, so nothing claims one was.
-    expect(instructions).not.toContain('speed');
+    expect(instructions).toContain('Pace: the ordinary speed of a native speaker');
+    expect(instructions).toContain('Keep exactly this pace from the first word to the last.');
+  });
+
+  it.each([
+    [
+      'natural' as const,
+      'Pace: the ordinary speed of a native speaker reading aloud to another adult native speaker.',
+    ],
+    [
+      'slow' as const,
+      'Pace: noticeably slower than everyday conversation, like a teacher reading aloud to an intermediate learner.',
+    ],
+    [
+      'very-slow' as const,
+      'Pace: clearly slow, like a teacher reading to a beginner who follows along in the text.',
+    ],
+  ])('describes the %s pace consistently in field and prefix channels', (pace, description) => {
+    const field = buildSpeechInstructions({ pace });
+    const prefix = buildSpeechInstructions({ pace }, 'prefix');
+
+    expect(field).toContain(description);
+    expect(prefix).toContain(description);
+    expect(field).toContain('Keep exactly this pace from the first word to the last.');
+    expect(prefix).toContain('Keep exactly this pace from the first word to the last.');
+    expect(field).not.toMatch(/\d/u);
+    expect(prefix).not.toMatch(/\d/u);
   });
 
   it('asks for the delivery a beginner can follow', () => {
@@ -40,7 +65,7 @@ describe('speech instructions', () => {
     expect(prefix).toContain('Never read this direction aloud.');
     expect(prefix).not.toContain('雨');
     expect(prefix).not.toContain('context only');
-    expect(prefix.split('\n')).toHaveLength(6);
+    expect(prefix.split('\n')).toHaveLength(8);
   });
 
   it('changes only the style wording when the learner chooses a different style', () => {

@@ -258,6 +258,7 @@ export function runTtsProviderContract(create: TtsProviderFactory): void {
     modelId: FAKE_OPENROUTER.ttsModel,
     voiceId: FAKE_OPENROUTER.voice,
     speechStyle: 'clear' as const,
+    speechPace: 'natural' as const,
     attempt: declaredSpeechCapabilities(FAKE_OPENROUTER.ttsModel, []),
   };
 

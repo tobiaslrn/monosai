@@ -113,9 +113,10 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
         <p>
           Some speech models return unusable audio or ignore speaking-style instructions. Test the
           speech model in <a routerLink="/settings">Settings</a> and listen to the result before
-          preparing a long story. Reading speed is adjusted locally during playback. After changing
-          the voice, style, or model, you may need to regenerate audio in Story options. Previously
-          generated clips may no longer match your settings.
+          preparing a long story. Choose a named pace for the voice model; reading speed is adjusted
+          locally during playback. After changing the voice, pace, style, or model, you may need to
+          regenerate audio in Story options. Previously generated clips may no longer match your
+          settings.
         </p>
       </section>
       <section aria-labelledby="help-tips">

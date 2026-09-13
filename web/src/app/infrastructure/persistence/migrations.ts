@@ -1,9 +1,5 @@
 import type { Dexie, Transaction } from 'dexie';
-import {
-  DEFAULT_PLAYBACK_RATE,
-  DEFAULT_READER_PREFERENCES,
-  snapPlaybackRate,
-} from '../../domain/settings/settings';
+import { DEFAULT_PLAYBACK_RATE, DEFAULT_READER_PREFERENCES } from '../../domain/settings/settings';
 
 interface SchemaVersion {
   readonly version: number;
@@ -371,7 +367,9 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
               const value = requireRecord(ttsRow['value'], 'voice model settings');
               return typeof value['speed'] === 'number' ? value['speed'] : DEFAULT_PLAYBACK_RATE;
             })();
-      const playbackRate = snapPlaybackRate(oldSpeed);
+      // v16 is immutable: it must retain the four-step snapping behavior it
+      // shipped with even though the live player no longer offers 0.7.
+      const playbackRate = snapLegacyPlaybackRate(oldSpeed);
 
       if (ttsRow !== undefined) {
         const value = requireRecord(ttsRow['value'], 'voice model settings');
@@ -402,6 +400,42 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
       }
     },
   },
+  {
+    // Named speech pace is stored beside speaking style. Existing audio rows
+    // need no rewrite: their cache identity is already durable, and the new
+    // pace only applies when audio is generated again.
+    version: 17,
+    stores: V11_STORES,
+    upgrade: async (transaction) => {
+      const settings = transaction.table('settings');
+      const ttsRow = (await settings.get('tts')) as Record<string, unknown> | undefined;
+      if (ttsRow !== undefined) {
+        const value = requireRecord(ttsRow['value'], 'voice model settings');
+        value['speechPace'] = 'natural';
+        const rawPresets = value['presets'];
+        const presets = rawPresets === undefined ? [] : rawPresets;
+        if (!Array.isArray(presets)) {
+          throw new Error('The stored voice model presets are not an array.');
+        }
+        value['presets'] = presets.map((entry) => ({
+          ...requireRecord(entry, 'voice model preset'),
+          speechPace: 'natural',
+        }));
+        await settings.put(ttsRow);
+      }
+
+      const readerRow = (await settings.get('reader-preferences')) as
+        Record<string, unknown> | undefined;
+      if (readerRow === undefined) {
+        return;
+      }
+      const value = requireRecord(readerRow['value'], 'reader preferences');
+      if (value['playbackRate'] === 0.7) {
+        value['playbackRate'] = 0.8;
+      }
+      await settings.put(readerRow);
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].version;
@@ -424,6 +458,17 @@ function seededSpeedSupport(modelId: unknown): boolean {
 function legacySupportsTtsSpeed(modelId: string): boolean {
   const normalized = modelId.trim().toLowerCase();
   return !(normalized.startsWith('google/gemini-') && normalized.includes('-tts'));
+}
+
+/** Frozen v16 snapping, including the 0.7 step that v17 retires. */
+function snapLegacyPlaybackRate(value: number): 1 | 0.9 | 0.8 | 0.7 {
+  const rates = [1, 0.9, 0.8, 0.7] as const;
+  if (!Number.isFinite(value)) {
+    return DEFAULT_PLAYBACK_RATE;
+  }
+  return rates.reduce((nearest, rate) =>
+    Math.abs(rate - value) < Math.abs(nearest - value) ? rate : nearest,
+  );
 }
 
 function requireRecord(value: unknown, label: string): Record<string, unknown> {

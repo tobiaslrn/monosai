@@ -1,6 +1,8 @@
 import {
   buildSpeechInstructions,
+  SPEECH_PACE_SPEED,
   type SpeechContext,
+  type SpeechPace,
   type SpeechStyle,
 } from '../../domain/ai/speech-instructions';
 import { isGeminiTtsModel } from '../../domain/ai/tts-configuration';
@@ -22,8 +24,11 @@ export interface SpeechRequestInput {
   /** The container asked for, when the family lets it be chosen. */
   readonly responseFormat: 'mp3';
   readonly speechStyle: SpeechStyle;
+  readonly speechPace: SpeechPace;
   /** Delivery direction to carry, or `undefined` when none is being sent. */
   readonly instruction: SpeechContext | undefined;
+  /** Allows the adapters to drop a refused numeric speed on the final retry. */
+  readonly speed?: boolean;
 }
 
 /**
@@ -41,10 +46,11 @@ export interface SpeechRequestInput {
 export function buildSpeechRequestBody(input: SpeechRequestInput): Record<string, unknown> {
   const gemini = isGeminiTtsModel(input.modelId);
   const instructed = input.instruction !== undefined;
+  const includeSpeed = input.speed ?? (!gemini && !instructed);
   const instruction =
     input.instruction === undefined
       ? undefined
-      : { ...input.instruction, style: input.speechStyle };
+      : { ...input.instruction, pace: input.speechPace, style: input.speechStyle };
 
   return {
     model: input.modelId,
@@ -56,6 +62,9 @@ export function buildSpeechRequestBody(input: SpeechRequestInput): Record<string
     response_format: gemini ? 'pcm' : input.responseFormat,
     ...(instructed && !gemini
       ? { instructions: buildSpeechInstructions(instruction, 'field') }
+      : {}),
+    ...(!gemini && !instructed && includeSpeed
+      ? { speed: SPEECH_PACE_SPEED[input.speechPace] }
       : {}),
   };
 }

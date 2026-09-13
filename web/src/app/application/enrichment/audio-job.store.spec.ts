@@ -89,6 +89,7 @@ async function configure(): Promise<AudioJobBed> {
     modelId: 'vendor/tts',
     voiceId: 'voice-a',
     speechStyle: 'clear',
+    speechPace: 'natural',
     lastTestFingerprint: 'fingerprint',
     lastTestedAt: NOW,
     activePresetId: null,
@@ -199,6 +200,7 @@ describe('AudioJobStore', () => {
       expect(request.modelId).toBe('vendor/tts');
       expect(request.voiceId).toBe('voice-a');
       expect(request.speechStyle).toBe('very-clear');
+      expect(request.speechPace).toBe('natural');
       expect(request.responseFormat).toBe('mp3');
     }
   });

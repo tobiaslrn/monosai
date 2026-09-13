@@ -27,7 +27,7 @@ export interface ResolvedAudioConfig extends AudioSynthesisConfig {
  *
  * Both the sentence action and the whole-reading job need the same three
  * answers — is the configuration tested and current, what are the model, voice,
- * and speaking style, and what do the two fingerprints hash to — and two copies of that
+ * speaking style, and pace, and what do the two fingerprints hash to — and two copies of that
  * would be two chances to disagree about whether a stale test may spend money.
  */
 @Injectable({ providedIn: 'root' })
@@ -66,12 +66,14 @@ export class AudioConfigurationService {
     const optionsFingerprint = audioOptionsFingerprint(this.hasher, {
       responseFormat: RESPONSE_FORMAT,
       speechStyle: selected.speechStyle,
+      speechPace: selected.speechPace,
       speechInstructions: selected.speechInstructions ?? 'unsupported',
     });
     return ok({
       modelId: selected.modelId,
       voiceId: selected.voiceId,
       speechStyle: selected.speechStyle,
+      speechPace: selected.speechPace,
       speechInstructions: selected.speechInstructions ?? 'unsupported',
       optionsFingerprint,
       configFingerprint: audioConfigFingerprint(

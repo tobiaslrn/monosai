@@ -7,6 +7,7 @@ const BASE = {
   text: SENTENCE,
   responseFormat: 'mp3',
   speechStyle: 'clear' as const,
+  speechPace: 'natural' as const,
 } as const;
 
 describe('buildSpeechRequestBody', () => {
@@ -15,6 +16,7 @@ describe('buildSpeechRequestBody', () => {
       ...BASE,
       modelId: 'openai/gpt-4o-mini-tts',
       speechStyle: 'very-clear',
+      speechPace: 'slow',
       instruction: { beforeJa: '雨が強くなりました。' },
     });
 
@@ -26,17 +28,23 @@ describe('buildSpeechRequestBody', () => {
     });
     expect(String(body['instructions'])).toContain('雨が強くなりました。');
     expect(String(body['instructions'])).toContain('a slight gap between words');
+    expect(String(body['instructions'])).toContain('noticeably slower than everyday conversation');
     expect(body['speed']).toBeUndefined();
   });
 
-  it('omits both optional channels when neither is being asked for', () => {
+  it.each([
+    ['natural' as const, 1],
+    ['slow' as const, 0.9],
+    ['very-slow' as const, 0.8],
+  ])('sends numeric speed %s when no instruction channel is being asked for', (pace, speed) => {
     const body = buildSpeechRequestBody({
       ...BASE,
       modelId: 'openai/gpt-4o-mini-tts',
+      speechPace: pace,
       instruction: undefined,
     });
 
-    expect(body['speed']).toBeUndefined();
+    expect(body['speed']).toBe(speed);
     expect(body['instructions']).toBeUndefined();
     expect(body['input']).toBe(SENTENCE);
   });
@@ -46,6 +54,7 @@ describe('buildSpeechRequestBody', () => {
       ...BASE,
       modelId: 'google/gemini-3.1-flash-tts-preview',
       speechStyle: 'very-clear',
+      speechPace: 'very-slow',
       instruction: { beforeJa: '雨が強くなりました。' },
     });
 

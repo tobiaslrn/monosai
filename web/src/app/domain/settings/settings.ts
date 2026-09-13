@@ -1,6 +1,6 @@
 import type { FailedConfigurationTest } from '../ai/failed-configuration-test';
 import type { StructuredOutputMode } from '../ai/model-test';
-import type { SpeechInstructionsSupport, SpeechStyle } from '../ai/speech-instructions';
+import type { SpeechInstructionsSupport, SpeechPace, SpeechStyle } from '../ai/speech-instructions';
 import type { SnapshotId } from '../shared/ids';
 import type { PreparationLayer } from '../enrichment/preparation';
 
@@ -80,7 +80,7 @@ export const MAX_TEXT_SCALE = 2.5;
 export const TEXT_SCALE_STEP = 0.05;
 
 /** Playback multipliers applied locally to newly generated speech clips. */
-export const PLAYBACK_RATES = [1, 0.9, 0.8, 0.7] as const;
+export const PLAYBACK_RATES = [1, 0.9, 0.8] as const;
 export type PlaybackRate = (typeof PLAYBACK_RATES)[number];
 export const DEFAULT_PLAYBACK_RATE: PlaybackRate = 1;
 
@@ -88,7 +88,7 @@ export function isPlaybackRate(value: number): value is PlaybackRate {
   return (PLAYBACK_RATES as readonly number[]).includes(value);
 }
 
-/** Keeps a migrated or imported rate within the four supported player steps. */
+/** Keeps a migrated or imported rate within the three supported player steps. */
 export function snapPlaybackRate(value: number): PlaybackRate {
   if (!Number.isFinite(value)) {
     return DEFAULT_PLAYBACK_RATE;
@@ -207,6 +207,7 @@ export interface TtsSettings {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speechStyle: SpeechStyle;
+  readonly speechPace: SpeechPace;
   readonly speechInstructions?: SpeechInstructionsSupport;
   readonly lastTestFingerprint: string | null;
   readonly lastTestedAt: number | null;
@@ -221,6 +222,7 @@ export interface TtsPreset {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speechStyle: SpeechStyle;
+  readonly speechPace: SpeechPace;
   readonly speechInstructions?: SpeechInstructionsSupport;
   readonly lastTestFingerprint?: string | null;
   readonly lastTestedAt?: number | null;
@@ -231,6 +233,7 @@ export const DEFAULT_TTS_SETTINGS: TtsSettings = {
   modelId: '',
   voiceId: '',
   speechStyle: 'clear',
+  speechPace: 'natural',
   speechInstructions: 'unsupported',
   lastTestFingerprint: null,
   lastTestedAt: null,

@@ -117,6 +117,7 @@ describe('mapHttpStatus', () => {
 describe('capabilityFrom', () => {
   it('names the refused parameter', () => {
     expect(capabilityFrom(envelope('Unknown voice for this model'))).toBe('voice');
+    expect(capabilityFrom(envelope('This model does not support speed', 'speed'))).toBe('speed');
     expect(capabilityFrom(envelope('json_schema is not supported'))).toBe('structured-output');
   });
 

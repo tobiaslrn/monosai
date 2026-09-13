@@ -1,9 +1,25 @@
 import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
-import { fixedClock } from '../../domain/shared/clock';
-import { DexieSettingsRepository } from './repositories/dexie-settings.repository';
 import { MonosaiDatabase } from './monosai-db';
 import { SCHEMA_VERSIONS } from './migrations';
+
+interface RawSettingRow {
+  readonly value?: Record<string, unknown>;
+}
+
+interface RawAudioAsset {
+  readonly pace?: unknown;
+  readonly bytes: ArrayBuffer;
+}
+
+function applySchemaThrough(db: Dexie, maxVersion: number): void {
+  for (const entry of SCHEMA_VERSIONS.filter(({ version }) => version <= maxVersion)) {
+    const version = db.version(entry.version).stores(entry.stores);
+    if (entry.upgrade !== undefined) {
+      version.upgrade(entry.upgrade);
+    }
+  }
+}
 
 describe('schema v16 speech pace migration', () => {
   it.each([
@@ -76,23 +92,26 @@ describe('schema v16 speech pace migration', () => {
       });
       legacy.close();
 
-      const upgraded = new MonosaiDatabase(name);
+      const upgraded = new Dexie(name);
+      applySchemaThrough(upgraded, 16);
       await upgraded.open();
-      const repository = new DexieSettingsRepository(upgraded, fixedClock(1_700_000_000_000));
-      const preferences = await repository.getReaderPreferences();
-      const tts = await repository.getTtsSettings();
+      const settings = upgraded.table<RawSettingRow, string>('settings');
+      const audioAssets = upgraded.table<RawAudioAsset, string>('audioAssets');
+      const preferences = await settings.get('reader-preferences');
+      const tts = await settings.get('tts');
 
-      expect(preferences.ok && preferences.value.playbackRate).toBe(expectedRate);
-      expect(tts.ok && tts.value.speechStyle).toBe('clear');
-      expect(tts.ok && tts.value.presets[0]?.speechStyle).toBe('clear');
-      const rawTts = await upgraded.settings.get('tts');
+      expect(preferences?.value?.['playbackRate']).toBe(expectedRate);
+      expect(tts?.value?.['speechStyle']).toBe('clear');
+      const presets = tts?.value?.['presets'] as readonly Record<string, unknown>[] | undefined;
+      expect(presets?.[0]?.['speechStyle']).toBe('clear');
+      const rawTts = await settings.get('tts');
       expect(rawTts?.value).not.toHaveProperty('speed');
       expect(rawTts?.value).not.toHaveProperty('speedSupported');
 
       // Migration changes settings only; old audio remains available to the
       // content-hash fallback until a new clip is generated.
-      expect(await upgraded.audioAssets.count()).toBe(1);
-      const audio = await upgraded.audioAssets.get('legacy-audio');
+      expect(await audioAssets.count()).toBe(1);
+      const audio = await audioAssets.get('legacy-audio');
       expect(audio).toBeDefined();
       expect(audio?.pace).toBeUndefined();
       expect(audio?.bytes.byteLength).toBe(8);
@@ -132,8 +151,9 @@ describe('schema v16 speech pace migration', () => {
 
       const upgraded = new MonosaiDatabase(name);
       await upgraded.open();
-      const row = await upgraded.settings.get('reader-preferences');
-      expect(row?.value).toMatchObject({ playbackRate: 0.7, furigana: true, textScale: 1 });
+      const settings = upgraded.table<RawSettingRow, string>('settings');
+      const row = await settings.get('reader-preferences');
+      expect(row?.value).toMatchObject({ playbackRate: 0.8, furigana: true, textScale: 1 });
       upgraded.close();
     } finally {
       legacy.close();

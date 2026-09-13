@@ -1,5 +1,5 @@
 import type { SpeechCapabilities } from './speech-capabilities';
-import type { SpeechStyle } from './speech-instructions';
+import type { SpeechPace, SpeechStyle } from './speech-instructions';
 
 /** The exact text-model configuration a learner supplies. */
 export interface TextModelConfig {
@@ -28,6 +28,7 @@ export interface TtsConfig {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speechStyle: SpeechStyle;
+  readonly speechPace: SpeechPace;
   /**
    * The channels the test should try, declared by the provider catalog.
    *

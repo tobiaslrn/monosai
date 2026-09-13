@@ -1,5 +1,13 @@
 export type SpeechInstructionsSupport = 'supported' | 'unsupported';
 export type SpeechStyle = 'natural' | 'clear' | 'very-clear';
+export type SpeechPace = 'natural' | 'slow' | 'very-slow';
+
+/** Numeric pace values used only when a provider has no instruction channel. */
+export const SPEECH_PACE_SPEED: Record<SpeechPace, number> = {
+  natural: 1,
+  slow: 0.9,
+  'very-slow': 0.8,
+};
 
 /**
  * Bumped whenever the learner-facing delivery instruction changes.
@@ -7,7 +15,7 @@ export type SpeechStyle = 'natural' | 'clear' | 'very-clear';
  * The instruction text is part of the cache identity whenever the model accepts
  * instructions. Raise this version for every learner-facing wording change.
  */
-export const SPEECH_INSTRUCTION_VERSION = 'speech/4';
+export const SPEECH_INSTRUCTION_VERSION = 'speech/5';
 
 /** Neighbor text is context, not another unbounded prompt input. */
 export const MAX_SPEECH_CONTEXT_CODE_POINTS = 200;
@@ -25,6 +33,7 @@ export interface SpeechContext {
   readonly beforeJa?: string;
   readonly afterJa?: string;
   readonly style?: SpeechStyle;
+  readonly pace?: SpeechPace;
 }
 
 /**
@@ -36,11 +45,14 @@ export function buildSpeechInstructions(
   channel: SpeechInstructionChannel = 'field',
 ): string {
   const speechStyle = context.style ?? 'clear';
+  const speechPace = context.pace ?? 'natural';
   const delivery = [
     'Speak only the exact target text in natural standard Japanese.',
     'Pronounce every written word, including narration that describes laughter, crying, sighing, or other actions.',
     'Do not replace any written word or phrase with laughter, crying, a sigh, or any other non-verbal sound effect.',
-    'Speak at a natural pace. Never pronounce mora by mora. Never stretch syllables.',
+    paceDescription(speechPace),
+    'Keep exactly this pace from the first word to the last.',
+    'Never pronounce mora by mora. Never stretch syllables.',
     speechStyle === 'natural'
       ? 'Use natural articulation, phrase rhythm, and standard pitch accent.'
       : speechStyle === 'very-clear'
@@ -63,6 +75,17 @@ export function buildSpeechInstructions(
       after === undefined ? null : `Next sentence (context only): ${JSON.stringify(after)}`,
     ].filter((line): line is string => line !== null),
   ].join('\n');
+}
+
+function paceDescription(pace: SpeechPace): string {
+  switch (pace) {
+    case 'natural':
+      return 'Pace: the ordinary speed of a native speaker reading aloud to another adult native speaker.';
+    case 'slow':
+      return 'Pace: noticeably slower than everyday conversation, like a teacher reading aloud to an intermediate learner. Words keep their natural internal rhythm; the extra time comes from deliberate phrasing and a short pause at each phrase boundary.';
+    case 'very-slow':
+      return 'Pace: clearly slow, like a teacher reading to a beginner who follows along in the text. Each word stays whole and natural; the extra time comes from calm phrasing and a clear pause between phrases.';
+  }
 }
 
 function capCodePoints(value: string | undefined): string | undefined {

@@ -21,6 +21,7 @@ export interface RequestContext {
  */
 const CAPABILITY_KEYWORDS: readonly { readonly match: string; readonly capability: string }[] = [
   { match: 'instructions', capability: 'instructions' },
+  { match: 'speed', capability: 'speed' },
   { match: 'response_format', capability: 'structured-output' },
   { match: 'json_schema', capability: 'structured-output' },
   { match: 'structured output', capability: 'structured-output' },

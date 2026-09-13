@@ -144,6 +144,12 @@ sets every TTS style to `clear`, removes the obsolete speed fields, and leaves
 audio rows untouched: an absent `pace` marker means their timing is already
 baked. The upgrade is transactional and uses the existing recovery path.
 
+Schema version 17 adds the named `speechPace` to the TTS settings and every preset,
+defaulting existing values to `natural`, and changes a migrated reader rate of
+`0.7` to `0.8`. It is transactional, preserves the remaining settings and audio
+rows, and sends malformed records to the same recovery path rather than resetting
+local data.
+
 Translation plans are validated persisted state with three explicit forms: opening pending,
 glossary repair required, and ready with a frozen glossary. Establishing a ready plan and its
 accepted opening translations is one transaction. Provisional opening rows remain recoverable but

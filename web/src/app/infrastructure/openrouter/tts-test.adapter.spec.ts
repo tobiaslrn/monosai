@@ -8,6 +8,7 @@ const CONFIG = {
   modelId: FAKE_OPENROUTER.ttsModel,
   voiceId: FAKE_OPENROUTER.voice,
   speechStyle: 'very-clear' as const,
+  speechPace: 'natural' as const,
   attempt: declaredSpeechCapabilities(FAKE_OPENROUTER.ttsModel, ['instructions']),
 };
 
@@ -45,6 +46,7 @@ describe('OpenRouterTtsTester', () => {
     expect(result.ok && result.value.speechInstructionsApplied).toBe(false);
     expect(harness.server.callCount).toBe(1);
     expect(harness.server.requests[0]?.body['instructions']).toBeUndefined();
+    expect(harness.server.requests[0]?.body['speed']).toBe(1);
   });
 
   it('measures a declared direction channel and reports its rejection', async () => {
@@ -55,6 +57,21 @@ describe('OpenRouterTtsTester', () => {
     expect(result.ok && result.value.speechInstructionsApplied).toBe(false);
     expect(harness.server.callCount).toBe(2);
     expect(harness.server.requests[1]?.body['instructions']).toBeUndefined();
+    expect(harness.server.requests[1]?.body['speed']).toBe(1);
+  });
+
+  it('drops a refused speed after falling back from instructions', async () => {
+    const harness = run({ supportsInstructions: false, supportsSpeed: false });
+    const result = await harness.tts.testConfiguration(CONFIG);
+
+    expect(result.ok).toBe(true);
+    expect(harness.server.callCount).toBe(3);
+    expect(harness.server.requests[0]?.body['instructions']).toBeDefined();
+    expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
+    expect(harness.server.requests[1]?.body['instructions']).toBeUndefined();
+    expect(harness.server.requests[1]?.body['speed']).toBe(1);
+    expect(harness.server.requests[2]?.body['instructions']).toBeUndefined();
+    expect(harness.server.requests[2]?.body['speed']).toBeUndefined();
   });
 
   it('supports Gemini TTS with a prefixed style direction', async () => {

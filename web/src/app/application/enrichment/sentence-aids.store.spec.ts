@@ -211,6 +211,7 @@ function aidsProviders(
           modelId: TTS_MODEL_ID,
           voiceId: VOICE_ID,
           speechStyle: 'clear',
+          speechPace: 'natural',
           lastTestedAt: 1,
           lastTestFingerprint: 'fp',
         }),

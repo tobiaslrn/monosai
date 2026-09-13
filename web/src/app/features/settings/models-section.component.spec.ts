@@ -72,7 +72,7 @@ describe('ModelsSectionComponent audio readiness', () => {
     // one lands. What is under test is what the panel says, not the sound.
     HTMLMediaElement.prototype.play = (): Promise<void> => Promise.resolve();
     settings = new StubAiSettingsRepository();
-    provider = new StubTtsProvider(ok(ttsTest()));
+    provider = new StubTtsProvider(ok(ttsTest(true)));
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -123,11 +123,19 @@ describe('ModelsSectionComponent audio readiness', () => {
     return textOf(element, 'audio-readiness-note');
   }
 
-  /** The speaking-style select, which the panel always renders. */
+  /** The speaking-style select, which only instruction-capable models render. */
   function styleControl(element: HTMLElement): HTMLSelectElement {
     const field = element.querySelector<HTMLSelectElement>('[data-testid="tts-style-select"]');
     if (field === null) {
       throw new Error('the audio panel rendered no speaking-style field');
+    }
+    return field;
+  }
+
+  function paceControl(element: HTMLElement): HTMLSelectElement {
+    const field = element.querySelector<HTMLSelectElement>('[data-testid="tts-pace-select"]');
+    if (field === null) {
+      throw new Error('the audio panel rendered no pace field');
     }
     return field;
   }
@@ -239,7 +247,8 @@ describe('ModelsSectionComponent audio readiness', () => {
     detect();
 
     expect(readiness(element)).toBe('Ready');
-    expect(textOf(element, 'audio-pace-note')).toBe('This model cannot take a speaking style');
+    expect(styleControl(element).value).toBe('clear');
+    expect(paceControl(element).value).toBe('natural');
   });
 
   it('says a preview failed', async () => {
@@ -292,6 +301,51 @@ describe('ModelsSectionComponent audio readiness', () => {
 
     expect(settings.tts.speechStyle).toBe('very-clear');
     expect(readiness(element)).toBe('Settings changed');
+  });
+
+  it('commits a speech pace through the native select', async () => {
+    await connect();
+    const { element, tts, detect } = await render();
+    tts.setDraft(CONFIGURED);
+    await tts.test();
+    detect();
+    const pace = paceControl(element);
+    expect(pace.value).toBe('natural');
+
+    pace.value = 'very-slow';
+    pace.dispatchEvent(new Event('change'));
+    await Promise.resolve();
+    await Promise.resolve();
+    detect();
+
+    expect(settings.tts.speechPace).toBe('very-slow');
+    expect(readiness(element)).toBe('Settings changed');
+  });
+
+  it('hides speaking style for a model whose catalogue has no instruction channel', async () => {
+    TestBed.overrideProvider(MODEL_CATALOG, {
+      useValue: {
+        list: (output: string) =>
+          Promise.resolve(
+            ok(
+              output === 'speech'
+                ? [{ ...SPEECH_MODEL, supportedParameters: ['response_format'] }]
+                : [],
+            ),
+          ),
+      },
+    });
+    await connect();
+    const { element, tts, detect } = await render();
+    tts.setDraft(CONFIGURED);
+    await tts.save();
+    await Promise.resolve();
+    await Promise.resolve();
+    detect();
+
+    expect(element.querySelector('[data-testid="tts-style-select"]')).toBeNull();
+    expect(paceControl(element).value).toBe('natural');
+    expect(element.querySelector('[data-testid="audio-pace-note"]')).toBeNull();
   });
   /**
    * The readiness states above are reached by writing to the store. A learner

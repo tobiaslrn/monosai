@@ -120,9 +120,9 @@ describe('AppSettingsStore reader preferences', () => {
 
     const first = store.setReaderPreference('playbackRate', 0.9);
     const second = store.setReaderPreference('playbackRate', 0.8);
-    const third = store.setReaderPreference('playbackRate', 0.7);
+    const third = store.setReaderPreference('playbackRate', 1);
 
-    expect(store.readerPreferences().playbackRate).toBe(0.7);
+    expect(store.readerPreferences().playbackRate).toBe(1);
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     expect(update).toHaveBeenCalledTimes(1);
 
@@ -132,12 +132,12 @@ describe('AppSettingsStore reader preferences', () => {
     releases[1]?.(ok({ ...DEFAULT_READER_PREFERENCES, playbackRate: 0.8 }));
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     expect(update).toHaveBeenCalledTimes(3);
-    releases[2]?.(ok({ ...DEFAULT_READER_PREFERENCES, playbackRate: 0.7 }));
+    releases[2]?.(ok({ ...DEFAULT_READER_PREFERENCES, playbackRate: 1 }));
 
     await Promise.all([first, second, third]);
-    expect(store.readerPreferences().playbackRate).toBe(0.7);
+    expect(store.readerPreferences().playbackRate).toBe(1);
     expect(update).toHaveBeenNthCalledWith(1, { playbackRate: 0.9 });
     expect(update).toHaveBeenNthCalledWith(2, { playbackRate: 0.8 });
-    expect(update).toHaveBeenNthCalledWith(3, { playbackRate: 0.7 });
+    expect(update).toHaveBeenNthCalledWith(3, { playbackRate: 1 });
   });
 });

@@ -26,7 +26,7 @@ export const TTS_TEST_PHRASE = 'これはテストです。';
 const REQUESTED_FORMAT = 'mp3';
 
 /**
- * Verifies one exact TTS model, voice, and speaking style against the provider.
+ * Verifies one exact TTS model, voice, speaking style, and pace against the provider.
  *
  * Failure here says nothing about the text model: the two configurations are
  * tested, stored, and reported separately, and TTS never blocks reading or
@@ -64,11 +64,14 @@ export class OpenRouterTtsTester {
     }
 
     let instructed = config.attempt.instructions;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    let speed = !isGeminiTtsModel(modelId) && !instructed;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
       const response = await this.synthesize(
         modelId,
         voiceId,
+        config.speechPace,
         instructed ? { style: config.speechStyle } : undefined,
+        speed,
         signal,
       );
       if (response.ok) {
@@ -80,6 +83,11 @@ export class OpenRouterTtsTester {
       }
       if (refused === 'instructions' && instructed) {
         instructed = false;
+        speed = !isGeminiTtsModel(modelId);
+        continue;
+      }
+      if (refused === 'speed' && speed) {
+        speed = false;
         continue;
       }
       return err(response.error);
@@ -90,7 +98,9 @@ export class OpenRouterTtsTester {
   private synthesize(
     modelId: string,
     voiceId: string,
+    speechPace: TtsConfig['speechPace'],
     instruction: SpeechContext | undefined,
+    speed: boolean,
     signal?: AbortSignal,
   ): Promise<Result<AudioResponse, AiError>> {
     return this.client.postAudio({
@@ -106,6 +116,8 @@ export class OpenRouterTtsTester {
         text: TTS_TEST_PHRASE,
         responseFormat: REQUESTED_FORMAT,
         speechStyle: instruction?.style ?? 'clear',
+        speechPace,
+        speed,
         instruction,
       }),
     });

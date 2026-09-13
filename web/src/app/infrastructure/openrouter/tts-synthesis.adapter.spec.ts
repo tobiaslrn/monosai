@@ -10,6 +10,7 @@ const REQUEST = {
   modelId: FAKE_OPENROUTER.ttsModel,
   voiceId: FAKE_OPENROUTER.voice,
   speechStyle: 'clear' as const,
+  speechPace: 'natural' as const,
   responseFormat: 'mp3' as const,
   speechInstructions: 'supported' as const,
 } as const;
@@ -54,7 +55,22 @@ describe('OpenRouterTtsSynthesizer', () => {
     expect(harness.server.requests[0]?.body['instructions']).toBeDefined();
     expect(harness.server.requests[1]?.body['instructions']).toBeUndefined();
     expect(harness.server.requests[1]?.body['input']).toBe(SENTENCE);
+    expect(harness.server.requests[1]?.body['speed']).toBe(1);
     expect(result.value.speechInstructionsApplied).toBe(false);
+  });
+
+  it('drops a refused speed after falling back from instructions', async () => {
+    const harness = run({ supportsInstructions: false, supportsSpeed: false });
+    const result = await harness.tts.synthesize(REQUEST, new AbortController().signal);
+
+    expect(result.ok).toBe(true);
+    expect(harness.server.callCount).toBe(3);
+    expect(harness.server.requests[0]?.body['instructions']).toBeDefined();
+    expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
+    expect(harness.server.requests[1]?.body['instructions']).toBeUndefined();
+    expect(harness.server.requests[1]?.body['speed']).toBe(1);
+    expect(harness.server.requests[2]?.body['instructions']).toBeUndefined();
+    expect(harness.server.requests[2]?.body['speed']).toBeUndefined();
   });
 
   it('sends contextual delivery instructions separately and never speaks the context', async () => {
@@ -174,6 +190,7 @@ describe('OpenRouterTtsSynthesizer', () => {
       modelId: REQUEST.modelId,
       voiceId: REQUEST.voiceId,
       speechStyle: REQUEST.speechStyle,
+      speechPace: REQUEST.speechPace,
       attempt: declaredSpeechCapabilities(REQUEST.modelId, []),
     });
     const synthesized = await run({ audio: 'wrong-mime' }).tts.synthesize(

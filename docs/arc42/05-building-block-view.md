@@ -122,7 +122,10 @@ fallback rows, while keeping current-settings coverage separate from playable
 coverage ([ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md)).
 It reads the device-wide reader playback rate from settings, applies it only to
 new rows marked `pace: 'playback'`, and splits a continuous resource when a
-legacy baked-time row begins ([ADR 0073](../decisions/0073-pace-at-playback-style-in-prompt.md)).
+legacy baked-time row begins. TTS settings carry a named pace; the provider
+adapter describes it for instruction-capable models, sends best-effort `speed`
+otherwise, and never sends `speed` to Gemini ([ADR 0073](../decisions/0073-pace-at-playback-style-in-prompt.md),
+[ADR 0075](../decisions/0075-named-pace-per-voice-model.md)).
 
 ## 5.3 Level 3
 

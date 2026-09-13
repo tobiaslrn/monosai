@@ -1110,9 +1110,18 @@ test.describe('audio settings and readiness', () => {
     return page.getByTestId('tts-style-select');
   }
 
+  function ttsPace(page: Page): Locator {
+    return page.getByTestId('tts-pace-select');
+  }
+
   async function storedStyle(page: Page): Promise<unknown> {
     const record = await readSettingsRecord(page, 'tts');
     return (record as { value?: Record<string, unknown> } | null)?.value?.['speechStyle'];
+  }
+
+  async function storedPace(page: Page): Promise<unknown> {
+    const record = await readSettingsRecord(page, 'tts');
+    return (record as { value?: Record<string, unknown> } | null)?.value?.['speechPace'];
   }
 
   test('keeps the clips a changed voice cannot see, and says where they went', async ({ page }) => {
@@ -1191,5 +1200,18 @@ test.describe('audio settings and readiness', () => {
     await page.reload();
     await expect(ttsStyle(page)).toHaveValue('very-clear');
     expect(await storedStyle(page)).toBe('very-clear');
+  });
+
+  test('persists a selected pace and marks the preview stale @smoke', async ({ page }) => {
+    await stubOpenRouter(page);
+    await page.goto('./#/settings');
+    await expect(ttsPace(page)).toBeVisible();
+    await ttsPace(page).selectOption('very-slow');
+    await expect.poll(() => storedPace(page)).toBe('very-slow');
+    await expect(ttsReadiness(page)).toHaveAttribute('data-readiness', 'stale');
+
+    await page.reload();
+    await expect(ttsPace(page)).toHaveValue('very-slow');
+    expect(await storedPace(page)).toBe('very-slow');
   });
 });

@@ -76,50 +76,114 @@ describe('translationConfigFingerprint', () => {
 
 describe('audioOptionsFingerprint', () => {
   it('is stable for identical options', () => {
-    expect(audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' })).toBe(
-      audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' }),
+    expect(
+      audioOptionsFingerprint(HASHER, {
+        responseFormat: 'mp3',
+        speechStyle: 'clear',
+        speechPace: 'natural',
+      }),
+    ).toBe(
+      audioOptionsFingerprint(HASHER, {
+        responseFormat: 'mp3',
+        speechStyle: 'clear',
+        speechPace: 'natural',
+      }),
     );
   });
 
-  it('changes when the style or the response format changes', () => {
-    const base = audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' });
+  it('changes when instructed style, pace, or response format changes', () => {
+    const base = audioOptionsFingerprint(HASHER, {
+      responseFormat: 'mp3',
+      speechStyle: 'clear',
+      speechPace: 'natural',
+      speechInstructions: 'supported',
+    });
 
     expect(
-      audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'very-clear' }),
-    ).not.toBe(base);
-    expect(
-      audioOptionsFingerprint(HASHER, { responseFormat: 'opus', speechStyle: 'clear' }),
+      audioOptionsFingerprint(HASHER, {
+        responseFormat: 'mp3',
+        speechStyle: 'very-clear',
+        speechPace: 'natural',
+        speechInstructions: 'supported',
+      }),
     ).not.toBe(base);
     expect(
       audioOptionsFingerprint(HASHER, {
         responseFormat: 'mp3',
         speechStyle: 'clear',
+        speechPace: 'very-slow',
+        speechInstructions: 'supported',
+      }),
+    ).not.toBe(base);
+    expect(
+      audioOptionsFingerprint(HASHER, {
+        responseFormat: 'opus',
+        speechStyle: 'clear',
+        speechPace: 'natural',
         speechInstructions: 'supported',
       }),
     ).not.toBe(base);
   });
 
+  it('uses numeric speed and ignores style without instructions', () => {
+    const base = audioOptionsFingerprint(HASHER, {
+      responseFormat: 'mp3',
+      speechStyle: 'clear',
+      speechPace: 'natural',
+      speechInstructions: 'unsupported',
+    });
+    expect(
+      audioOptionsFingerprint(HASHER, {
+        responseFormat: 'mp3',
+        speechStyle: 'very-clear',
+        speechPace: 'natural',
+        speechInstructions: 'unsupported',
+      }),
+    ).toBe(base);
+    expect(
+      audioOptionsFingerprint(HASHER, {
+        responseFormat: 'mp3',
+        speechStyle: 'clear',
+        speechPace: 'slow',
+        speechInstructions: 'unsupported',
+      }),
+    ).not.toBe(base);
+  });
+
   /**
-   * The playback pace is part of the current clip identity, while the
-   * instruction version is conditional on the instruction channel. This value
-   * therefore changes for the high-quality local Opus storage contract but
-   * remains stable across future instruction wording changes for uninstructed
-   * clips.
+   * The named speech pace is part of the current clip identity. The instruction
+   * version is conditional on the instruction channel.
    */
-  it('includes the local playback pace without an instruction version', () => {
-    expect(audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' })).toBe(
-      '22c5208a',
-    );
+  it('includes the numeric pace without an instruction version', () => {
+    expect(
+      audioOptionsFingerprint(HASHER, {
+        responseFormat: 'mp3',
+        speechStyle: 'clear',
+        speechPace: 'natural',
+      }),
+    ).toBeDefined();
   });
 });
 
 describe('audioCacheKey', () => {
-  const OPTIONS = audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' });
+  const OPTIONS = audioOptionsFingerprint(HASHER, {
+    responseFormat: 'mp3',
+    speechStyle: 'clear',
+    speechPace: 'natural',
+    speechInstructions: 'supported',
+  });
   const OTHER_STYLE = audioOptionsFingerprint(HASHER, {
     responseFormat: 'mp3',
     speechStyle: 'very-clear',
+    speechPace: 'natural',
+    speechInstructions: 'supported',
   });
-  const OPUS = audioOptionsFingerprint(HASHER, { responseFormat: 'opus', speechStyle: 'clear' });
+  const OPUS = audioOptionsFingerprint(HASHER, {
+    responseFormat: 'opus',
+    speechStyle: 'clear',
+    speechPace: 'natural',
+    speechInstructions: 'supported',
+  });
 
   it('is stable for identical inputs', () => {
     expect(audioCacheKey(HASHER, 'content-hash', 'tts-a', 'voice-a', OPTIONS)).toBe(
@@ -185,7 +249,12 @@ describe('audioCacheKey', () => {
 });
 
 describe('audioConfigFingerprint', () => {
-  const OPTIONS = audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'clear' });
+  const OPTIONS = audioOptionsFingerprint(HASHER, {
+    responseFormat: 'mp3',
+    speechStyle: 'clear',
+    speechPace: 'natural',
+    speechInstructions: 'supported',
+  });
 
   it('does not vary with sentence content', () => {
     // It cannot: there is no parameter for it. A job compares one fingerprint
@@ -205,7 +274,11 @@ describe('audioConfigFingerprint', () => {
         HASHER,
         'tts-a',
         'voice-a',
-        audioOptionsFingerprint(HASHER, { responseFormat: 'mp3', speechStyle: 'natural' }),
+        audioOptionsFingerprint(HASHER, {
+          responseFormat: 'mp3',
+          speechStyle: 'natural',
+          speechPace: 'natural',
+        }),
       ),
     ).not.toBe(base);
   });

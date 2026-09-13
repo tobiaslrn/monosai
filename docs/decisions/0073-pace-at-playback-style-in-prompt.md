@@ -1,7 +1,7 @@
 # 0073 — Pace at playback, style in the prompt
 
 Date: 2026-09-12
-Status: Accepted
+Status: Accepted, partially superseded by [ADR 0075](0075-named-pace-per-voice-model.md)
 
 Supersedes the pace section of [ADR 0040](0040-speech-capabilities-are-declared.md)
 and complements [ADR 0072](0072-older-clips-play-until-regenerated.md).

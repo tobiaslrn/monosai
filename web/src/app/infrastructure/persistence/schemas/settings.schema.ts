@@ -34,7 +34,7 @@ export const readerPreferencesSchema = z.object({
   warningMarkers: z.boolean(),
   textScale: z.number().min(MIN_TEXT_SCALE).max(MAX_TEXT_SCALE),
   playbackRate: z
-    .union([z.literal(1), z.literal(0.9), z.literal(0.8), z.literal(0.7)])
+    .union([z.literal(1), z.literal(0.9), z.literal(0.8)])
     .default(DEFAULT_PLAYBACK_RATE),
   updatedAt: timestampSchema,
 });
@@ -121,6 +121,7 @@ export const ttsSettingsSchema = z.object({
   modelId: z.string(),
   voiceId: z.string(),
   speechStyle: z.enum(['natural', 'clear', 'very-clear']).default('clear'),
+  speechPace: z.enum(['natural', 'slow', 'very-slow']).default('natural'),
   speechInstructions: z.enum(['supported', 'unsupported']).default('unsupported'),
   lastTestFingerprint: z.string().nullable(),
   lastTestedAt: timestampSchema.nullable(),
@@ -133,6 +134,7 @@ export const ttsSettingsSchema = z.object({
         modelId: nonEmptyString,
         voiceId: nonEmptyString,
         speechStyle: z.enum(['natural', 'clear', 'very-clear']).default('clear'),
+        speechPace: z.enum(['natural', 'slow', 'very-slow']).default('natural'),
         speechInstructions: z.enum(['supported', 'unsupported']).default('unsupported'),
         lastTestFingerprint: z.string().nullable().default(null),
         lastTestedAt: timestampSchema.nullable().default(null),

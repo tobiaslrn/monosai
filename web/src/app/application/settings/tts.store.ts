@@ -13,7 +13,7 @@ import {
   type TtsPreset,
   type TtsSettings,
 } from '../../domain/settings/settings';
-import type { SpeechStyle } from '../../domain/ai/speech-instructions';
+import type { SpeechPace, SpeechStyle } from '../../domain/ai/speech-instructions';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { TEXT_TO_SPEECH_PROVIDER } from '../shared/ai-tokens';
 import { CLOCK, HASHER, SETTINGS_REPOSITORY } from '../shared/repository-tokens';
@@ -25,10 +25,11 @@ export interface TtsDraft {
   readonly modelId: string;
   readonly voiceId: string;
   readonly speechStyle: SpeechStyle;
+  readonly speechPace: SpeechPace;
 }
 
 /**
- * The exact TTS model, voice, and speaking style, with their own test.
+ * The exact TTS model, voice, speaking style, and pace, with their own test.
  *
  * Deliberately a separate store from the text model rather than a mode of one:
  * speech is optional, its failures must never be reported as a text-model
@@ -47,6 +48,7 @@ export class TtsStore {
     modelId: '',
     voiceId: '',
     speechStyle: DEFAULT_TTS_SETTINGS.speechStyle,
+    speechPace: DEFAULT_TTS_SETTINGS.speechPace,
   });
   private readonly actionSignal = signal<TtsAction>('idle');
   private readonly testFailureSignal = signal<AiError | null>(null);
@@ -55,6 +57,7 @@ export class TtsStore {
   private readonly instructionsAppliedSignal = signal<boolean | null>(null);
   private readonly sampleSignal = signal<Blob | null>(null);
   private readonly testCancelledSignal = signal(false);
+  private readonly catalogParametersSignal = signal<readonly string[]>([]);
 
   private controller: AbortController | null = null;
 
@@ -93,6 +96,23 @@ export class TtsStore {
     const settings = this.settingsSignal();
     return settings.speechInstructions === 'supported' ? 'prompted' : 'none';
   });
+  /**
+   * Whether the draft can expose speaking style.
+   *
+   * A current test is stronger evidence than the catalog. While the draft is
+   * being changed, the catalog describes the new model until its own preview
+   * has measured the provider's actual behavior.
+   */
+  readonly acceptsDirection = computed(() => {
+    const draft = this.draftSignal();
+    const settings = this.settingsSignal();
+    const isCurrentTest =
+      draft.modelId.trim() === settings.modelId &&
+      settings.lastTestFingerprint === this.fingerprintFor(settings);
+    return isCurrentTest
+      ? settings.speechInstructions === 'supported'
+      : declaredSpeechCapabilities(draft.modelId, this.catalogParametersSignal()).instructions;
+  });
   readonly presets = computed(() => this.settingsSignal().presets);
   readonly favoriteModelIds = computed(() => this.settingsSignal().favoriteModelIds ?? []);
   readonly activePresetId = computed(() => this.settingsSignal().activePresetId);
@@ -106,7 +126,8 @@ export class TtsStore {
     return (
       draft.modelId.trim() !== settings.modelId ||
       draft.voiceId.trim() !== settings.voiceId ||
-      draft.speechStyle !== settings.speechStyle
+      draft.speechStyle !== settings.speechStyle ||
+      draft.speechPace !== settings.speechPace
     );
   });
 
@@ -132,6 +153,7 @@ export class TtsStore {
       modelId: settings.value.modelId,
       voiceId: settings.value.voiceId,
       speechStyle: settings.value.speechStyle,
+      speechPace: settings.value.speechPace,
     });
     this.storageFailureSignal.set(null);
   }
@@ -140,11 +162,17 @@ export class TtsStore {
     this.draftSignal.update((draft) => ({ ...draft, ...patch }));
   }
 
+  /** Gives the draft's capability projection the current catalog entry. */
+  setCatalogParameters(parameters: readonly string[]): void {
+    this.catalogParametersSignal.set(parameters);
+  }
+
   async registerPreset(preset: TtsPreset): Promise<boolean> {
     const current = this.settingsSignal();
     const registered: TtsPreset = {
       ...preset,
       speechStyle: preset.speechStyle,
+      speechPace: preset.speechPace,
       speechInstructions: preset.speechInstructions ?? 'unsupported',
       lastTestFingerprint: preset.lastTestFingerprint ?? null,
       lastTestedAt: preset.lastTestedAt ?? null,
@@ -159,6 +187,7 @@ export class TtsStore {
             modelId: preset.modelId,
             voiceId: preset.voiceId,
             speechStyle: registered.speechStyle,
+            speechPace: registered.speechPace,
             speechInstructions: registered.speechInstructions ?? 'unsupported',
             lastTestFingerprint: registered.lastTestFingerprint ?? null,
             lastTestedAt: registered.lastTestedAt ?? null,
@@ -174,6 +203,7 @@ export class TtsStore {
       modelId: saved.value.modelId,
       voiceId: saved.value.voiceId,
       speechStyle: saved.value.speechStyle,
+      speechPace: saved.value.speechPace,
     });
     this.testFailureSignal.set(null);
     this.sampleSignal.set(null);
@@ -193,6 +223,7 @@ export class TtsStore {
       modelId: preset.modelId,
       voiceId: preset.voiceId,
       speechStyle: preset.speechStyle,
+      speechPace: preset.speechPace,
       speechInstructions: preset.speechInstructions ?? 'unsupported',
       lastTestFingerprint: preset.lastTestFingerprint ?? null,
       lastTestedAt: preset.lastTestedAt ?? null,
@@ -206,6 +237,7 @@ export class TtsStore {
       modelId: preset.modelId,
       voiceId: preset.voiceId,
       speechStyle: preset.speechStyle,
+      speechPace: preset.speechPace,
     });
     this.testFailureSignal.set(null);
     return true;
@@ -240,6 +272,7 @@ export class TtsStore {
             modelId: '',
             voiceId: '',
             speechStyle: DEFAULT_TTS_SETTINGS.speechStyle,
+            speechPace: DEFAULT_TTS_SETTINGS.speechPace,
             speechInstructions: DEFAULT_TTS_SETTINGS.speechInstructions,
             lastTestFingerprint: null,
             lastTestedAt: null,
@@ -255,6 +288,7 @@ export class TtsStore {
       modelId: saved.value.modelId,
       voiceId: saved.value.voiceId,
       speechStyle: saved.value.speechStyle,
+      speechPace: saved.value.speechPace,
     });
     this.testFailureSignal.set(null);
     this.storageFailureSignal.set(null);
@@ -265,7 +299,7 @@ export class TtsStore {
 
   async updatePreset(
     id: string,
-    patch: Partial<Pick<TtsPreset, 'voiceId' | 'speechStyle'>>,
+    patch: Partial<Pick<TtsPreset, 'voiceId' | 'speechStyle' | 'speechPace'>>,
   ): Promise<boolean> {
     const current = this.settingsSignal();
     const preset = current.presets.find((item) => item.id === id);
@@ -279,6 +313,7 @@ export class TtsStore {
           ? preset.voiceId
           : resolveTtsVoice(preset.modelId, patch.voiceId),
       speechStyle: patch.speechStyle ?? preset.speechStyle,
+      speechPace: patch.speechPace ?? preset.speechPace,
       lastTestFingerprint: null,
       lastTestedAt: null,
     };
@@ -288,6 +323,7 @@ export class TtsStore {
         ? {
             voiceId: updated.voiceId,
             speechStyle: updated.speechStyle,
+            speechPace: updated.speechPace,
             lastTestFingerprint: null,
             lastTestedAt: null,
           }
@@ -302,6 +338,7 @@ export class TtsStore {
       modelId: saved.value.modelId,
       voiceId: saved.value.voiceId,
       speechStyle: saved.value.speechStyle,
+      speechPace: saved.value.speechPace,
     });
     return true;
   }
@@ -323,6 +360,7 @@ export class TtsStore {
       modelId: draft.modelId.trim(),
       voiceId: resolveTtsVoice(draft.modelId, draft.voiceId),
       speechStyle: draft.speechStyle,
+      speechPace: draft.speechPace,
       activePresetId: null,
     };
 
@@ -336,6 +374,7 @@ export class TtsStore {
       modelId: saved.value.modelId,
       voiceId: saved.value.voiceId,
       speechStyle: saved.value.speechStyle,
+      speechPace: saved.value.speechPace,
     });
     this.storageFailureSignal.set(null);
     this.testFailureSignal.set(null);
@@ -389,6 +428,7 @@ export class TtsStore {
         modelId: settings.modelId,
         voiceId: settings.voiceId,
         speechStyle: settings.speechStyle,
+        speechPace: settings.speechPace,
         attempt: declaredSpeechCapabilities(settings.modelId, supportedParameters),
       },
       controller.signal,
@@ -444,6 +484,7 @@ export class TtsStore {
         modelId: preset.modelId,
         voiceId: preset.voiceId,
         speechStyle: preset.speechStyle,
+        speechPace: preset.speechPace,
         attempt: declaredSpeechCapabilities(preset.modelId, supportedParameters),
       },
       controller.signal,
@@ -483,6 +524,7 @@ export class TtsStore {
             modelId: preset.modelId,
             voiceId: preset.voiceId,
             speechStyle: preset.speechStyle,
+            speechPace: preset.speechPace,
             speechInstructions,
             lastTestFingerprint: fingerprint,
             lastTestedAt: testedAt,
@@ -531,12 +573,13 @@ export class TtsStore {
   }
 
   private fingerprintFor(
-    settings: Pick<TtsSettings, 'modelId' | 'voiceId' | 'speechStyle'>,
+    settings: Pick<TtsSettings, 'modelId' | 'voiceId' | 'speechStyle' | 'speechPace'>,
   ): string {
     return ttsFingerprint(this.hasher, this.credential.keyGeneration(), {
       modelId: settings.modelId,
       voiceId: settings.voiceId,
       speechStyle: settings.speechStyle,
+      speechPace: settings.speechPace,
     });
   }
 

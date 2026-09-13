@@ -1,7 +1,7 @@
 import type { Hasher } from '../shared/hashing';
 import { hashCanonical } from '../shared/hashing';
-import { SPEECH_INSTRUCTION_VERSION } from '../ai/speech-instructions';
-import type { SpeechStyle } from '../ai/speech-instructions';
+import { SPEECH_INSTRUCTION_VERSION, SPEECH_PACE_SPEED } from '../ai/speech-instructions';
+import type { SpeechPace, SpeechStyle } from '../ai/speech-instructions';
 
 /** Changes whenever locally stored speech is encoded incompatibly. */
 export const SPEECH_STORAGE_VERSION = 'webm-opus/2';
@@ -101,6 +101,7 @@ export function audioOptionsFingerprint(
   options: {
     readonly responseFormat: string;
     readonly speechStyle: SpeechStyle;
+    readonly speechPace: SpeechPace;
     readonly speechInstructions?: 'supported' | 'unsupported';
   },
 ): string {
@@ -108,12 +109,15 @@ export function audioOptionsFingerprint(
   return hashCanonical(hasher, 'tts-options', {
     responseFormat: options.responseFormat,
     storageVersion: SPEECH_STORAGE_VERSION,
-    speechStyle: options.speechStyle,
     pace: 'playback',
     speechInstructions,
     ...(speechInstructions === 'supported'
-      ? { speechInstructionVersion: SPEECH_INSTRUCTION_VERSION }
-      : {}),
+      ? {
+          speechStyle: options.speechStyle,
+          speechPace: options.speechPace,
+          speechInstructionVersion: SPEECH_INSTRUCTION_VERSION,
+        }
+      : { speed: SPEECH_PACE_SPEED[options.speechPace] }),
   });
 }
 

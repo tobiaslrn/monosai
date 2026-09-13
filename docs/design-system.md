@@ -147,9 +147,11 @@ page's filled primary, because it is pressed once. A card with one self-evident
 choice, such as the theme, carries its card title and no second group title.
 
 The voice card uses a native select labelled **Speaking style** with the three
-stable choices Natural, Clear, and Very clear. It is a model request preference,
-so it sits beside the voice and Preview controls; the learner's local reading
-speed does not belong in this card.
+stable choices Natural, Clear, and Very clear when the selected model accepts
+instructions. It also carries a **Pace** select with Natural, Slow, and Very
+slow for every model: it is a model request preference, so both choices sit
+beside the voice and Preview controls. The player's local reading speed remains
+its own fine-tuning control.
 
 ### Surfaces and groups
 
@@ -480,7 +482,7 @@ one surface, and audio had grown a second set of the same controls on a panel
 that has to be opened to reach them.
 
 The player also carries one compact text control for local reading speed. It
-shows `1×`, `0.9×`, `0.8×`, or `0.7×` and cycles forward on each press. It sits
+shows `1×`, `0.9×`, or `0.8×` and cycles forward on each press. It sits
 beside the mode control, keeps the same touch target and ghost-button treatment,
 and exposes the full accessible name — for example, “Reading speed, 0.8 times”.
 It changes playback immediately and never starts regeneration. Stored clips whose

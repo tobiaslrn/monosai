@@ -37,11 +37,12 @@ export class OpenRouterTtsSynthesizer {
   async synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
     const resolved = { ...input, voiceId: resolveTtsVoice(input.modelId, input.voiceId) };
     let instructed = resolved.speechInstructions === 'supported';
+    let speed = !isGeminiTtsModel(resolved.modelId) && !instructed;
 
-    // A provider that advertised instructions but rejects them degrades to
-    // exact-text synthesis, never failure.
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      const response = await this.request(resolved, instructed, signal);
+    // A provider that advertised instructions or speed but rejects either
+    // channel degrades to the next available request shape, never failure.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const response = await this.request(resolved, instructed, speed, signal);
       if (response.ok) {
         return this.verify(response.value, resolved, instructed);
       }
@@ -51,6 +52,11 @@ export class OpenRouterTtsSynthesizer {
       }
       if (refused === 'instructions' && instructed) {
         instructed = false;
+        speed = !isGeminiTtsModel(resolved.modelId);
+        continue;
+      }
+      if (refused === 'speed' && speed) {
+        speed = false;
         continue;
       }
       return err(response.error);
@@ -61,6 +67,7 @@ export class OpenRouterTtsSynthesizer {
   private request(
     input: TtsRequest,
     instructed: boolean,
+    speed: boolean,
     signal: AbortSignal,
   ): Promise<Result<AudioResponse, AiError>> {
     return this.client.postAudio({
@@ -76,6 +83,8 @@ export class OpenRouterTtsSynthesizer {
         text: input.text,
         responseFormat: input.responseFormat,
         speechStyle: input.speechStyle,
+        speechPace: input.speechPace,
+        speed,
         instruction: instructed
           ? {
               ...(input.beforeJa === undefined ? {} : { beforeJa: input.beforeJa }),

@@ -346,8 +346,11 @@ rows, preserving pitch and reporting the actual rate to the media session. It
 seals a continuous resource at a pace boundary and continues with the next
 playable run, so one media element never changes rate partway through a resource.
 The rate button changes this preference immediately; changing it never starts an
-AI request. Speaking style is separate: it is named in the TTS prompt and
-therefore belongs in the audio configuration fingerprint.
+AI request. The TTS request carries the selected named pace through one of three
+channels: a description in the instruction for capable models, top-level
+best-effort `speed` for other models, or no numeric field for Gemini. Speaking
+style remains a prompted choice when that channel exists, and both named choices
+belong in the audio configuration fingerprint.
 
 ## 6.6 Browse vocabulary
 

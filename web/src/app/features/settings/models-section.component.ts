@@ -400,28 +400,39 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                   />
                 }
               </div>
+              @if (tts.acceptsDirection()) {
+                <label class="option">
+                  <span id="mn-style-label">Speaking style</span>
+                  <select
+                    class="mn-control"
+                    data-testid="tts-style-select"
+                    aria-labelledby="mn-style-label"
+                    [disabled]="!credential.isConfigured()"
+                    [ngModel]="tts.draft().speechStyle"
+                    (change)="setSpeechStyle($event)"
+                  >
+                    <option value="natural">Natural</option>
+                    <option value="clear">Clear</option>
+                    <option value="very-clear">Very clear</option>
+                  </select>
+                </label>
+              }
               <label class="option">
-                <span id="mn-style-label">Speaking style</span>
+                <span id="mn-pace-label">Pace</span>
                 <select
                   class="mn-control"
-                  data-testid="tts-style-select"
-                  aria-labelledby="mn-style-label"
+                  data-testid="tts-pace-select"
+                  aria-labelledby="mn-pace-label"
                   [disabled]="!credential.isConfigured()"
-                  [ngModel]="tts.draft().speechStyle"
-                  (change)="setSpeechStyle($event)"
+                  [ngModel]="tts.draft().speechPace"
+                  (change)="setSpeechPace($event)"
                 >
                   <option value="natural">Natural</option>
-                  <option value="clear">Clear</option>
-                  <option value="very-clear">Very clear</option>
+                  <option value="slow">Slow</option>
+                  <option value="very-slow">Very slow</option>
                 </select>
               </label>
             </div>
-
-            <!-- Style is only meaningful when the last preview proved that the
-                 model accepts the instruction channel. -->
-            @if (paceNote(); as note) {
-              <p class="mn-hint" data-testid="audio-pace-note">{{ note }}</p>
-            }
 
             <!--
             Both sentences are about money and about audio that looks lost, which
@@ -648,23 +659,13 @@ export class ModelsSectionComponent {
       this.text.presets().find((preset) => preset.id === this.text.activePresetId())?.name ?? null,
   );
   protected readonly selectedSpeechModel = computed(
-    () =>
-      this.speechModels().find((model) => model.modelId === this.tts.settings().modelId) ?? null,
+    () => this.speechModels().find((model) => model.modelId === this.tts.draft().modelId) ?? null,
   );
   protected readonly speechModelLabel = computed(
     () =>
       this.tts.presets().find((preset) => preset.id === this.tts.settings().activePresetId)?.name ??
       null,
   );
-  /** Whether the selected model accepts the prompted speaking style. */
-  protected readonly paceNote = computed(() => {
-    if (this.tts.settings().modelId === '' || this.tts.readiness() !== 'ready') {
-      return null;
-    }
-    return this.tts.styleControl() === 'none'
-      ? 'This model cannot take a speaking style'
-      : 'Speaking style is included in the speech instructions.';
-  });
   /**
    * Where the speech configuration stands, in one value the head can render.
    *
@@ -703,9 +704,9 @@ export class ModelsSectionComponent {
       ({
         testing: 'Playing a test clip from this model.',
         cancelled: 'You stopped the preview, so this configuration is still untested.',
-        ready: 'This model, voice and style passed their preview.',
+        ready: 'This model, voice, style and pace passed their preview.',
         untested: 'Preview this model before generating audio.',
-        stale: 'The model, voice or style changed since the last preview.',
+        stale: 'The model, voice, style or pace changed since the last preview.',
         failed: 'The last preview failed.',
         'no-credential': 'Add an OpenRouter key.',
         incomplete: 'Choose a speech model and a voice.',
@@ -744,6 +745,12 @@ export class ModelsSectionComponent {
   );
 
   constructor() {
+    effect(() => {
+      const parameters = this.selectedSpeechModel()?.supportedParameters ?? [];
+      untracked(() => {
+        this.tts.setCatalogParameters(parameters);
+      });
+    });
     // The saved configuration cannot be shown correctly until the catalogue is
     // known: a stored speech model has no listed voices, and a stored text
     // model no reasoning efforts, until its entry is in hand. Waiting for a
@@ -896,6 +903,14 @@ export class ModelsSectionComponent {
       return;
     }
     this.tts.setDraft({ speechStyle: value });
+    void this.tts.save();
+  }
+  protected setSpeechPace(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    if (value !== 'natural' && value !== 'slow' && value !== 'very-slow') {
+      return;
+    }
+    this.tts.setDraft({ speechPace: value });
     void this.tts.save();
   }
   protected testAudio(): void {

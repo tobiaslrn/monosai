@@ -67,6 +67,8 @@ export interface FakeOpenRouterOptions {
   readonly jsonSchemaErrorParam?: string | null;
   /** When false, a request carrying speech `instructions` is refused with a 400. */
   readonly supportsInstructions?: boolean;
+  /** When false, a request carrying speech `speed` is refused with a 400. */
+  readonly supportsSpeed?: boolean;
   readonly content?: ChatContentKind;
   /** Content for every chat request after the first, so recovery can differ. */
   readonly recoveryContent?: ChatContentKind;
@@ -472,6 +474,9 @@ export class FakeOpenRouterServer {
         {},
         'instructions',
       );
+    }
+    if (body['speed'] !== undefined && this.options.supportsSpeed === false) {
+      return this.providerError(400, 'This model does not support speed', {}, 'speed');
     }
 
     switch (this.options.audio ?? 'valid') {
