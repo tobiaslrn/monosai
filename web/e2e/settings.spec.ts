@@ -77,7 +77,7 @@ test.describe('settings persistence', () => {
     expect(await monosaiDatabaseExists(page)).toBe(true);
   });
 
-  test('does not leave a button in its hover state after a touch @mobile @smoke', async ({
+  test('does not leave a button highlighted after a touch @mobile @smoke', async ({
     page,
     isMobile,
   }) => {
@@ -96,6 +96,10 @@ test.describe('settings persistence', () => {
     await expect
       .poll(() => deleteAudio.evaluate((element) => getComputedStyle(element).backgroundColor))
       .toBe(restingBackground);
+    const tapHighlight = await deleteAudio.evaluate((element) =>
+      getComputedStyle(element).getPropertyValue('-webkit-tap-highlight-color'),
+    );
+    expect(tapHighlight).toBe('rgba(0, 0, 0, 0)');
 
     await page.getByRole('button', { name: 'Keep it', exact: true }).click();
   });
