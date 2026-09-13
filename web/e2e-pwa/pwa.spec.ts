@@ -4,6 +4,12 @@ import { expect, test, type Page } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.addLocatorHandler(
+    page.getByRole('alertdialog', { name: 'Monosai is in alpha.' }),
+    async () => {
+      await page.getByRole('button', { name: 'Continue' }).click();
+    },
+  );
+  await page.addLocatorHandler(
     page.getByRole('dialog', { name: 'A little help getting started' }),
     async () => {
       await page.getByRole('button', { name: 'Got it' }).click();
