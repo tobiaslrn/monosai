@@ -13,7 +13,6 @@ import {
   viewChild,
 } from '@angular/core';
 import { CredentialStore } from '../../application/settings/credential.store';
-import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { TextModelStore, type TextModelTask } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import { MODEL_CATALOG } from '../../application/shared/ai-tokens';
@@ -450,10 +449,9 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
               <audio
                 #sampleAudio
                 class="mn-visually-hidden"
-                autoplay
                 preload="auto"
                 [src]="url"
-                (canplay)="playSample()"
+                (canplay)="playRequestedSample()"
               ></audio>
             }
           </section>
@@ -621,7 +619,6 @@ export class ModelsSectionComponent {
   private readonly dialog = inject(Dialog);
   private readonly catalog = inject(MODEL_CATALOG);
   private readonly document = inject(DOCUMENT);
-  private readonly appSettings = inject(AppSettingsStore);
   protected readonly credential = inject(CredentialStore);
   protected readonly text = inject(TextModelStore);
   protected readonly tts = inject(TtsStore);
@@ -646,6 +643,9 @@ export class ModelsSectionComponent {
     { id: 'grammar' as const, label: 'Grammar' },
   ];
   private catalogLoaded = false;
+  /** A sample already present when Settings opens is display-only. */
+  private sampleEffectInitialized = false;
+  private readonly samplePlaybackRequested = signal(false);
   private readonly connectionMenu = viewChild<ElementRef<HTMLElement>>('connectionMenu');
   private readonly connectionButton =
     viewChild.required<ElementRef<HTMLButtonElement>>('connectionButton');
@@ -765,19 +765,22 @@ export class ModelsSectionComponent {
       const sample = this.tts.sample();
       if (sample === null) {
         this.sampleUrl.set(null);
+        this.samplePlaybackRequested.set(false);
+        this.sampleEffectInitialized = true;
         return;
       }
       const url = this.document.defaultView?.URL.createObjectURL(sample) ?? null;
       this.sampleUrl.set(url);
+      this.samplePlaybackRequested.set(this.sampleEffectInitialized);
+      this.sampleEffectInitialized = true;
       if (url !== null) onCleanup(() => this.document.defaultView?.URL.revokeObjectURL(url));
     });
-    effect(() => {
-      const url = this.sampleUrl();
-      const audio = this.sampleAudio()?.nativeElement;
-      if (url === null || audio === undefined) return;
-      audio.currentTime = 0;
-      this.playSample();
-    });
+  }
+
+  protected playRequestedSample(): void {
+    if (!this.samplePlaybackRequested()) return;
+    this.samplePlaybackRequested.set(false);
+    this.playSample();
   }
 
   protected toggleConnectionMenu(): void {
@@ -919,10 +922,9 @@ export class ModelsSectionComponent {
   protected playSample(): void {
     const audio = this.sampleAudio()?.nativeElement;
     if (audio === undefined) return;
-    const rate = this.appSettings.readerPreferences().playbackRate;
     audio.preservesPitch = true;
-    audio.playbackRate = rate;
-    audio.defaultPlaybackRate = rate;
+    audio.playbackRate = 1;
+    audio.defaultPlaybackRate = 1;
     void audio.play().catch(() => undefined);
   }
   protected reasoningEfforts(model: ModelCapabilities | null): readonly string[] {

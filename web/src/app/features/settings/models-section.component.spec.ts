@@ -11,6 +11,7 @@ import {
   ttsTest,
 } from '../../../testing/ai-fakes';
 import { FAKE_OPENROUTER } from '../../../testing/openrouter-server';
+import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { CredentialStore } from '../../application/settings/credential.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
@@ -509,6 +510,45 @@ describe('ModelsSectionComponent audio readiness', () => {
       sample?.dispatchEvent(new Event('canplay'));
 
       expect(played).toBe(1);
+    });
+
+    it('plays the preview at normal speed regardless of the story player speed', async () => {
+      await connect();
+      await TestBed.inject(AppSettingsStore).setReaderPreference('playbackRate', 0.8);
+      const { element, tts, detect } = await render();
+      tts.setDraft(CONFIGURED);
+      await tts.test();
+      detect();
+
+      const sample = element.querySelector<HTMLAudioElement>('audio');
+      expect(sample).not.toBeNull();
+      sample?.dispatchEvent(new Event('canplay'));
+
+      expect(sample?.playbackRate).toBe(1);
+      expect(sample?.defaultPlaybackRate).toBe(1);
+    });
+
+    it('does not autoplay a sample retained when Settings is reopened', async () => {
+      await connect();
+      const first = await render();
+      first.tts.setDraft(CONFIGURED);
+      await first.tts.test();
+      first.detect();
+      first.fixture.destroy();
+
+      let played = 0;
+      HTMLMediaElement.prototype.play = (): Promise<void> => {
+        played += 1;
+        return Promise.resolve();
+      };
+      const reopened = await render();
+      const sample = reopened.element.querySelector('audio');
+      expect(sample).not.toBeNull();
+      expect(sample?.hasAttribute('autoplay')).toBe(false);
+      sample?.dispatchEvent(new Event('canplay'));
+
+      expect(played).toBe(0);
+      reopened.fixture.destroy();
     });
 
     it('does not let a refused sample reject into the console', async () => {

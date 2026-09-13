@@ -38,9 +38,11 @@ import type { CredentialRepository } from '../app/domain/settings/credential-rep
 import type { SettingsRepository } from '../app/domain/settings/settings-repository';
 import {
   DEFAULT_EXCEPTION_POLICY,
+  DEFAULT_READER_PREFERENCES,
   DEFAULT_TEXT_MODEL_SETTINGS,
   DEFAULT_TTS_SETTINGS,
   type ExceptionPolicy,
+  type ReaderPreferences,
   type TextModelSettings,
   type TtsSettings,
 } from '../app/domain/settings/settings';
@@ -413,9 +415,9 @@ export function audioPayload(byteLength = 512): AudioPayload {
 /**
  * The settings rows the AI stores read and write.
  *
- * Only these six methods are stubbed: the app, reader-preference, and
- * language-asset rows belong to other stores, and empty bodies for them would
- * assert nothing.
+ * The AI rows are the primary surface here. Reader preferences are also
+ * available so settings components can verify that their previews do not
+ * inherit the story player's speed.
  */
 export type AiSettingsSubset = Pick<
   SettingsRepository,
@@ -430,6 +432,7 @@ export type AiSettingsSubset = Pick<
 export class StubAiSettingsRepository implements AiSettingsSubset {
   textModel: TextModelSettings = DEFAULT_TEXT_MODEL_SETTINGS;
   tts: TtsSettings = DEFAULT_TTS_SETTINGS;
+  readerPreferences: ReaderPreferences = DEFAULT_READER_PREFERENCES;
   policy: ExceptionPolicy = DEFAULT_EXCEPTION_POLICY;
 
   /** Set to make the next write fail, for revert and failure-copy coverage. */
@@ -460,6 +463,20 @@ export class StubAiSettingsRepository implements AiSettingsSubset {
     }
     this.tts = { ...this.tts, ...patch };
     return Promise.resolve(ok(this.tts));
+  }
+
+  getReaderPreferences(): Promise<Result<ReaderPreferences, StorageError>> {
+    return Promise.resolve(ok(this.readerPreferences));
+  }
+
+  updateReaderPreferences(
+    patch: Partial<ReaderPreferences>,
+  ): Promise<Result<ReaderPreferences, StorageError>> {
+    if (this.failWrites !== null) {
+      return Promise.resolve(err(this.failWrites));
+    }
+    this.readerPreferences = { ...this.readerPreferences, ...patch };
+    return Promise.resolve(ok(this.readerPreferences));
   }
 
   getExceptionPolicy(): Promise<Result<ExceptionPolicy, StorageError>> {
