@@ -197,11 +197,12 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
 
             <div class="mn-settings-row">
               <div class="mn-settings-row__label">
-                <span class="mn-settings-row__title">Reasoning</span>
+                <span class="mn-settings-row__title" id="mn-text-reasoning-label">Reasoning</span>
               </div>
               <div class="mn-settings-row__end">
                 <select
                   class="mn-control"
+                  aria-labelledby="mn-text-reasoning-label"
                   [disabled]="!credential.isConfigured()"
                   [ngModel]="text.settings().reasoningEffort ?? ''"
                   (change)="setStoryReasoning($event)"
@@ -307,11 +308,17 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                       <div class="mn-settings-subrows">
                         <div class="mn-settings-row">
                           <div class="mn-settings-row__label">
-                            <span class="mn-settings-row__title">Reasoning</span>
+                            <span
+                              class="mn-settings-row__title"
+                              [id]="'mn-' + task.id + '-reasoning-label'"
+                            >
+                              Reasoning
+                            </span>
                           </div>
                           <div class="mn-settings-row__end">
                             <select
                               class="mn-control"
+                              [attr.aria-labelledby]="'mn-' + task.id + '-reasoning-label'"
                               [ngModel]="text.routePreset(task.id)?.reasoningEffort ?? ''"
                               (change)="setTaskReasoning(task.id, $event)"
                             >
