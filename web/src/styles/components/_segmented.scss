@@ -61,6 +61,26 @@
   cursor: pointer;
 }
 
+/* A compact joined control for a row with one short, stable choice set. */
+.mn-segmented--joined {
+  display: inline-grid;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0;
+  padding: calc(var(--space-1) / 2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+}
+
+.mn-segmented--joined > label {
+  min-height: calc(var(--touch-target) - var(--space-1));
+  padding-inline: var(--space-3);
+  border: 0;
+}
+
+.mn-segmented--joined > label:has(input:checked) {
+  border: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mn-segmented > label {
     transition: none;

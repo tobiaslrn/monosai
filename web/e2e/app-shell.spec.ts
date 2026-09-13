@@ -89,8 +89,8 @@ test.describe('application shell', () => {
   test('shows build diagnostics without user content', async ({ page }) => {
     await page.goto('./#/settings');
 
-    const diagnostics = page.getByRole('region', { name: 'Troubleshooting' });
-    await diagnostics.getByText('Advanced technical details').click();
+    const diagnostics = page.getByRole('region', { name: 'About' });
+    await diagnostics.getByText('Technical details').click();
     await expect(diagnostics.getByText('App version')).toBeVisible();
     await expect(diagnostics.getByText('Build commit')).toBeVisible();
   });

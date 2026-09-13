@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import type { ThemeSetting } from '../../domain/settings/settings';
+import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
 
 const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -12,50 +13,43 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
 @Component({
   selector: 'mn-appearance-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [SettingsSectionComponent],
   template: `
-    <section class="mn-card" aria-labelledby="mn-appearance-heading">
-      <div class="mn-stack">
-        <h2 id="mn-appearance-heading" class="mn-card-title">Appearance</h2>
-
-        <!-- The only choice in the card: a second visible heading said nothing new. -->
-        <fieldset>
-          <legend class="mn-visually-hidden">Theme</legend>
-          <div class="mn-segmented">
-            @for (option of themeOptions; track option.value) {
-              <label>
-                <input
-                  type="radio"
-                  name="theme"
-                  [value]="option.value"
-                  [checked]="settings.theme() === option.value"
-                  (change)="selectTheme(option.value)"
-                />
-                <span>{{ option.label }}</span>
-              </label>
-            }
+    <mn-settings-section heading="Appearance">
+      <div class="mn-card mn-card--flush mn-settings-card">
+        <div class="mn-settings-row">
+          <div class="mn-settings-row__label">
+            <span class="mn-settings-row__title">Theme</span>
           </div>
-        </fieldset>
+          <fieldset>
+            <legend class="mn-visually-hidden">Theme</legend>
+            <div class="mn-segmented mn-segmented--joined">
+              @for (option of themeOptions; track option.value) {
+                <label>
+                  <input
+                    type="radio"
+                    name="theme"
+                    [value]="option.value"
+                    [checked]="settings.theme() === option.value"
+                    (change)="selectTheme(option.value)"
+                  />
+                  <span>{{ option.label }}</span>
+                </label>
+              }
+            </div>
+          </fieldset>
+        </div>
       </div>
-    </section>
+    </mn-settings-section>
   `,
   styles: `
     fieldset {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
+      display: block;
+      flex: 0 1 auto;
+      min-width: 0;
       margin: 0;
       padding: 0;
       border: 0;
-    }
-
-    legend {
-      margin-bottom: var(--space-2);
-      padding: 0;
-      font-weight: var(--weight-medium);
-    }
-
-    p {
-      margin: 0;
     }
   `,
 })

@@ -14,6 +14,7 @@ import {
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
 import { conventionalLevel } from '../grammar/preset-level';
 import { StructuralBaselineSectionComponent } from '../grammar/structural-baseline-section.component';
 import { AddWordsComponent } from '../vocabulary/add-words.component';
@@ -52,6 +53,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     IconComponent,
     ListRowComponent,
     PageHeaderComponent,
+    SettingsSectionComponent,
     AddWordsComponent,
     PackageImportComponent,
     SourceListComponent,
@@ -75,25 +77,19 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
         {{ announcement() }}
       </p>
 
-      <section id="words" class="group" aria-labelledby="mn-words-heading">
+      <mn-settings-section sectionId="words" heading="Word sources">
+        <mn-add-words mn-settings-section-action />
         <mn-vocabulary-card />
         @if (shortfall(); as note) {
           <p class="note">{{ note }}</p>
         }
 
-        <div class="section-heading">
-          <h2 id="mn-words-heading">Word sources</h2>
-          <mn-add-words />
-        </div>
-
         <mn-source-list />
         <p class="draft-status mn-hint" role="status">This list is not saved yet.</p>
         <mn-package-import />
-      </section>
+      </mn-settings-section>
 
-      <section id="grammar" class="group" aria-labelledby="mn-grammar-heading">
-        <h2 id="mn-grammar-heading">Grammar</h2>
-
+      <mn-settings-section sectionId="grammar" heading="Grammar">
         <!--
           Announced rather than shown as a toast: the change has already been
           saved, so this confirms what happened without asking for an
@@ -162,12 +158,10 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
             Your change could not be saved. Your saved level is unchanged.
           </p>
         }
-      </section>
+      </mn-settings-section>
     </div>
   `,
   styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
     .level-page {
       gap: var(--space-5);
     }
@@ -180,32 +174,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     #words,
     #grammar {
       scroll-margin-top: 8rem;
-    }
-
-    .group {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      min-width: 0;
-    }
-
-    .group h2 {
-      margin: 0;
-      font-size: var(--text-xl);
-      letter-spacing: -0.01em;
-    }
-
-    .section-heading {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      align-items: center;
-      justify-content: space-between;
-      margin-top: var(--space-3);
-    }
-
-    .section-heading mn-add-words {
-      margin-left: auto;
     }
 
     .note {
@@ -230,18 +198,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
 
     #words:has(mn-add-words.is-editor) .draft-status {
       display: block;
-    }
-
-    /*
-     * The heading and its Add source control share a line only while there is
-     * nothing to put below them. An open editor asks for a full row of its own
-     * (flex-basis: 100%), which nowrap silently refused — so opening
-     * Add source → Pasted list drew the editor over the heading.
-     */
-    @media (min-width: breakpoints.$narrow) {
-      .section-heading:not(:has(mn-add-words.is-editor)) {
-        flex-wrap: nowrap;
-      }
     }
 
     .level-card {

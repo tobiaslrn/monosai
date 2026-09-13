@@ -25,6 +25,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
         #trigger
         type="button"
         class="mn-control trigger"
+        [class.trigger--compact]="compact()"
         [class.trigger--unset]="selectedId() === ''"
         aria-haspopup="listbox"
         [attr.aria-expanded]="open()"
@@ -157,9 +158,24 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       text-align: left;
       cursor: pointer;
     }
+    .trigger--compact {
+      width: auto;
+      min-width: 0;
+      min-height: 2.5rem;
+      padding-inline: var(--space-2);
+      border-color: transparent;
+      background: transparent;
+    }
+    .trigger--compact:hover:not(:disabled) {
+      border-color: transparent;
+      background: var(--surface-sunken);
+    }
     .trigger > span:first-child {
       display: grid;
       min-width: 0;
+    }
+    .trigger--compact > span:first-child {
+      text-align: end;
     }
     /* Nothing chosen yet is a prompt, not a value; it should not read as one. */
     .trigger--unset strong {
@@ -175,6 +191,9 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
     }
     .chevron--up {
       transform: rotate(180deg);
+    }
+    .trigger--compact small {
+      display: none;
     }
     small {
       color: var(--text-secondary);
@@ -299,6 +318,7 @@ export class ModelPickerComponent {
    * still a fine cheap voice, and a catalog entry can change.
    */
   readonly speech = input(false);
+  readonly compact = input(false);
   readonly opened = output<void>();
   readonly modelSelected = output<ModelCapabilities>();
   readonly favoriteToggled = output<string>();

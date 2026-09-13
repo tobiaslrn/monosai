@@ -25,13 +25,11 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
   imports: [IconComponent, ListRowComponent],
   template: `
     <mn-list-row
+      variant="settings"
       [routerLink]="'/reading-level'"
       [state]="settingsOriginState"
       [testId]="'settings-reading-level'"
     >
-      <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-        <mn-icon name="vocabulary" [size]="18" />
-      </span>
       <span mn-list-row-title>What you can read</span>
       @if (state(); as line) {
         <span mn-list-row-meta>{{ line }}</span>

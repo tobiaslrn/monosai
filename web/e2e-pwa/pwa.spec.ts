@@ -197,7 +197,7 @@ test.describe('diagnostics', () => {
 
     await page.goto('./#/settings');
 
-    const diagnostics = page.getByRole('region', { name: 'Troubleshooting' });
+    const diagnostics = page.getByRole('region', { name: 'About' });
     await expect(diagnostics.getByRole('button', { name: 'Copy diagnostics' })).toBeVisible();
     await diagnostics.getByRole('button', { name: 'Copy diagnostics' }).click();
     await expect(diagnostics.getByRole('status')).toHaveText(

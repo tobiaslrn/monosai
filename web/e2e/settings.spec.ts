@@ -13,12 +13,12 @@ test.describe('settings persistence', () => {
 
     // The order is what this asserts, not the census: a section added between
     // these is a decision about that section, not a regression in the ordering.
-    const positions = ['Appearance', 'AI & generation', 'Storage', 'App'].map((heading) =>
+    const positions = ['Reading', 'AI', 'Appearance', 'Storage', 'About'].map((heading) =>
       headings.indexOf(heading),
     );
     expect(positions).not.toContain(-1);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
-    expect(headings.at(-1)).toBe('Troubleshooting');
+    expect(headings.at(-1)).toBe('About');
   });
 
   test('remembers the chosen theme across a reload', async ({ page }) => {
@@ -53,9 +53,9 @@ test.describe('settings persistence', () => {
   test('creates the local database and reports its schema version', async ({ page }) => {
     await page.goto('./#/settings');
 
-    const diagnostics = page.getByRole('region', { name: 'Troubleshooting' });
+    const diagnostics = page.getByRole('region', { name: 'About' });
     await expect(diagnostics.getByText('Database schema version')).toBeHidden();
-    await diagnostics.getByText('Advanced technical details').click();
+    await diagnostics.getByText('Technical details').click();
     await expect(diagnostics.getByText('Database schema version')).toBeVisible();
     await expect(diagnostics).toContainText('1');
 

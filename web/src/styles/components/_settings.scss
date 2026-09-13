@@ -1,0 +1,245 @@
+/* Shared section, card-row, and disclosure layout for settings-like pages. */
+.mn-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.mn-settings-section__header {
+  display: flex;
+  min-width: 0;
+  min-height: 2.25rem;
+  gap: var(--space-2);
+  align-items: center;
+  padding-inline: var(--space-1);
+}
+
+.mn-settings-section__header h2 {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+}
+
+.mn-settings-section__action {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-inline-start: auto;
+  align-items: center;
+}
+
+.mn-settings-section__action:empty {
+  display: none;
+}
+
+/* A settings card is a flush card whose children supply the row rhythm. */
+.mn-settings-card {
+  min-width: 0;
+  padding: 0;
+  overflow: clip;
+}
+
+.mn-settings-card--overlay {
+  overflow: visible;
+}
+
+.mn-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  min-height: 3.625rem;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  color: inherit;
+}
+
+.mn-settings-card > * + *,
+.mn-settings-group > .mn-settings-row + .mn-settings-row,
+.mn-settings-subrows > .mn-settings-row + .mn-settings-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mn-settings-row__label {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.mn-settings-row--wrap .mn-settings-row__label {
+  flex-basis: 13rem;
+}
+
+.mn-settings-row__title,
+.mn-settings-row__hint {
+  display: block;
+  margin: 0;
+}
+
+.mn-settings-row__title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: 1.35;
+}
+
+.mn-settings-row__hint {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.mn-settings-row__end {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  gap: var(--space-2);
+  align-items: center;
+  margin-inline-start: auto;
+}
+
+.mn-settings-row__end > .mn-settings-value {
+  min-width: 0;
+}
+
+.mn-settings-value {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  text-align: end;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mn-settings-chevron {
+  flex: none;
+  color: var(--text-secondary);
+  transition: transform var(--motion-fast) ease-out;
+}
+
+.mn-settings-group {
+  min-width: 0;
+}
+
+.mn-settings-group__header {
+  display: flex;
+  min-width: 0;
+  min-height: 2.75rem;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-4) 0;
+}
+
+.mn-settings-group__header > .mn-group-title {
+  flex: 1;
+}
+
+.mn-settings-group > .mn-settings-row {
+  padding-inline: var(--space-4);
+}
+
+.mn-settings-notice {
+  margin: var(--space-3);
+}
+
+.mn-settings-card > .mn-settings-notice,
+.mn-settings-notice + .mn-settings-group {
+  border-top: 0;
+}
+
+.mn-settings-details {
+  min-width: 0;
+}
+
+.mn-settings-details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.mn-settings-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mn-settings-details[open] > summary .mn-settings-chevron {
+  transform: rotate(90deg);
+}
+
+.mn-settings-details__body {
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mn-settings-subrows {
+  padding: 0 var(--space-4) var(--space-2) var(--space-7);
+}
+
+.mn-settings-subrows > .mn-settings-row {
+  padding-inline: 0;
+}
+
+.mn-settings-feedback {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.mn-settings-row :where(select.mn-control, input.mn-control),
+.mn-settings-row mn-token-budget-field {
+  width: 10.625rem;
+  max-width: 100%;
+}
+
+.mn-settings-row .mn-actions {
+  justify-content: flex-end;
+}
+
+/* A row whose whole surface is a destination or a disclosure trigger. */
+.mn-settings-row--interactive {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+html[data-pointer='mouse'] .mn-settings-row--interactive:hover {
+  background: var(--surface-sunken-hover);
+}
+
+.mn-settings-row--interactive:focus-visible {
+  outline-offset: -3px;
+}
+
+@media (max-width: 30rem) {
+  .mn-settings-row {
+    padding-inline: var(--space-3);
+  }
+
+  .mn-settings-row__end {
+    max-width: 100%;
+  }
+
+  .mn-settings-row :where(select.mn-control, input.mn-control),
+  .mn-settings-row mn-token-budget-field {
+    width: 9.375rem;
+  }
+
+  .mn-settings-group__header {
+    padding-inline: var(--space-3);
+  }
+
+  .mn-settings-subrows {
+    padding-inline: var(--space-3) var(--space-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mn-settings-chevron {
+    transition: none;
+  }
+}

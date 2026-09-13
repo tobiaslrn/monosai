@@ -28,6 +28,31 @@ html[data-pointer='mouse'] .mn-list-row:hover {
   background: var(--surface-sunken);
 }
 
+/* A compact destination row used by settings-like summary pages. */
+.mn-list-row--settings {
+  min-height: 3.625rem;
+}
+
+.mn-list-row--settings .mn-list-row__link {
+  min-height: 3.625rem;
+  padding-inline: var(--space-4);
+}
+
+.mn-list-row--settings .mn-list-row__content {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.mn-list-row--settings .mn-list-row__meta {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  max-width: 50%;
+  margin-inline-start: auto;
+  text-align: end;
+  white-space: nowrap;
+}
+
 html[data-pointer='mouse'] .mn-list-row--muted:hover {
   background: var(--surface-sunken-muted);
 }

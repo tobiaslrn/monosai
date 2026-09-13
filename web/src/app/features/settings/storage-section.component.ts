@@ -11,6 +11,8 @@ import { AudioPlaybackStore } from '../../application/audio/audio-playback.store
 import { AudioCompressionStore } from '../../application/settings/audio-compression.store';
 import { StorageStore } from '../../application/settings/storage.store';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
+import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) {
@@ -35,68 +37,70 @@ function formatBytes(bytes: number | null): string {
 @Component({
   selector: 'mn-storage-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [IconComponent, SettingsSectionComponent],
   template: `
-    <section class="mn-card" aria-labelledby="mn-storage-heading">
-      <div class="mn-stack">
-        <h2 id="mn-storage-heading" class="mn-card-title">Storage</h2>
-
-        <dl class="mn-facts">
-          <div>
-            <dt>Browser storage protection</dt>
-            <!--
-              A live region because the answer to the request below appears here
-              and nowhere else; a refusal changed nothing on screen before.
-            -->
-            <dd aria-live="polite">{{ persistenceLabel() }}</dd>
+    <mn-settings-section heading="Storage">
+      <div class="mn-card mn-card--flush mn-settings-card">
+        <div class="mn-settings-row">
+          <div class="mn-settings-row__label">
+            <span class="mn-settings-row__title">Space used</span>
           </div>
-          <div>
-            <dt>Approximate usage</dt>
-            <dd>{{ usageLabel() }}</dd>
+          <div class="mn-settings-row__end">
+            <span class="mn-settings-value">{{ usageLabel() }}</span>
           </div>
-          @if (compressionLabel(); as label) {
-            <div>
-              <dt>Saved audio</dt>
-              <!--
-                Live, because this is the one thing on the card that changes
-                without the learner having touched anything.
-              -->
-              <dd aria-live="polite">{{ label }}</dd>
-            </div>
-          }
-        </dl>
+        </div>
 
-        <div class="mn-actions">
-          @if (storage.status().canRequest) {
+        <div class="mn-settings-row mn-settings-row--wrap">
+          <div class="mn-settings-row__label">
+            <span class="mn-settings-row__title">Keep data</span>
+            <span class="mn-settings-row__hint" aria-live="polite">{{ persistenceLabel() }}</span>
+          </div>
+          <div class="mn-settings-row__end">
+            @if (storage.status().canRequest) {
+              <button
+                type="button"
+                class="mn-button"
+                [disabled]="storage.action() !== 'idle'"
+                (click)="requestPersistence()"
+              >
+                Protect
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="mn-settings-row mn-settings-row--wrap">
+          <div class="mn-settings-row__label">
+            <span class="mn-settings-row__title">Saved audio</span>
+            <span class="mn-settings-row__hint" aria-live="polite">{{ savedAudioLabel() }}</span>
+          </div>
+          <div class="mn-settings-row__end mn-actions">
             <button
               type="button"
-              class="mn-button"
+              class="mn-button mn-button--danger"
+              data-testid="delete-saved-audio"
+              aria-label="Delete saved audio"
               [disabled]="storage.action() !== 'idle'"
-              (click)="requestPersistence()"
+              (click)="clearAudio()"
             >
-              Keep data
+              Delete
             </button>
-          }
-          <button
-            type="button"
-            class="mn-button"
-            [disabled]="storage.action() !== 'idle'"
-            (click)="clearAudio()"
-          >
-            Delete saved audio
-          </button>
-          @if (compression.running()) {
-            <button type="button" class="mn-button" (click)="stopCompressing()">Stop</button>
-          }
+            @if (compression.running()) {
+              <button type="button" class="mn-button" (click)="stopCompressing()">Stop</button>
+            }
+          </div>
         </div>
-        <p aria-live="polite" class="mn-hint">
-          @if (storage.audioCleared()) {
-            Saved audio deleted{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
-          }
-        </p>
 
-        <details class="danger mn-disclosure" data-testid="danger-zone">
-          <summary>Danger zone</summary>
-          <div class="danger-content mn-stack mn-stack--tight">
+        <details class="mn-settings-details danger" data-testid="danger-zone">
+          <summary class="mn-settings-row">
+            <span class="mn-settings-row__label">
+              <span class="mn-settings-row__title">Delete all local data</span>
+            </span>
+            <span class="mn-settings-row__end">
+              <mn-icon class="mn-settings-chevron" name="chevron-right" [size]="18" />
+            </span>
+          </summary>
+          <div class="mn-settings-details__body danger-content mn-stack mn-stack--tight">
             <p class="mn-hint">
               A full reset permanently deletes every reading, snapshot, saved setting, and cached
               aid on this device. It cannot be undone.
@@ -124,30 +128,27 @@ function formatBytes(bytes: number | null): string {
             }
           </div>
         </details>
-
-        @if (storage.failure(); as failure) {
-          <p role="alert" class="mn-notice mn-notice--error">{{ failure.message }}</p>
-        }
       </div>
-    </section>
+
+      @if (storage.audioCleared()) {
+        <p class="mn-settings-feedback" aria-live="polite">
+          Saved audio deleted{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
+        </p>
+      }
+      @if (storage.failure(); as failure) {
+        <p role="alert" class="mn-notice mn-notice--error mn-settings-notice">
+          {{ failure.message }}
+        </p>
+      }
+    </mn-settings-section>
   `,
   styles: `
-    p {
-      margin: 0;
-    }
-
-    .danger {
-      padding-top: var(--space-2);
-      border-top: 1px solid var(--border-subtle);
-    }
-
-    .danger summary {
+    .danger summary .mn-settings-row__title {
       color: var(--status-danger);
     }
 
     .danger-content {
       align-items: flex-start;
-      padding-top: var(--space-2);
     }
   `,
 })
@@ -214,6 +215,12 @@ export class StorageSectionComponent {
       }
     }
   });
+
+  protected readonly savedAudioLabel = computed(
+    () =>
+      this.compressionLabel() ??
+      (this.storage.audioCleared() ? 'No saved audio' : 'Audio clips stored with your stories'),
+  );
 
   protected stopCompressing(): void {
     this.compression.stop();

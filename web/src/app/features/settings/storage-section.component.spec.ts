@@ -112,9 +112,7 @@ describe('StorageSectionComponent', () => {
     const fixture = TestBed.createComponent(StorageSectionComponent);
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
-    [...element.querySelectorAll<HTMLButtonElement>('button')]
-      .find((button) => button.textContent.includes('Delete saved audio'))
-      ?.click();
+    element.querySelector<HTMLButtonElement>('[data-testid="delete-saved-audio"]')?.click();
     await settle(fixture);
     return fixture;
   }
@@ -180,8 +178,9 @@ describe('StorageSectionComponent', () => {
       const fixture = TestBed.createComponent(StorageSectionComponent);
       fixture.detectChanges();
       return (
-        (fixture.nativeElement as HTMLElement).querySelector('dd[aria-live="polite"]')
-          ?.textContent ?? ''
+        (fixture.nativeElement as HTMLElement).querySelector(
+          '.mn-settings-row__hint[aria-live="polite"]',
+        )?.textContent ?? ''
       );
     }
 
@@ -217,7 +216,7 @@ describe('StorageSectionComponent', () => {
       fixture.detectChanges();
 
       const button = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
-        (candidate) => candidate.textContent.includes('Keep data'),
+        (candidate) => candidate.textContent.includes('Protect'),
       );
       expect(button?.disabled).toBe(false);
       button?.click();
@@ -243,7 +242,8 @@ describe('StorageSectionComponent', () => {
       const fixture = TestBed.createComponent(StorageSectionComponent);
       await settle(fixture);
 
-      expect(host(fixture).textContent).not.toContain('Saved audio');
+      expect(host(fixture).textContent).not.toContain('Compressing');
+      expect(host(fixture).textContent).not.toContain('Compressed');
     });
 
     it('names a real count while it runs, and offers a way to stop it', async () => {
