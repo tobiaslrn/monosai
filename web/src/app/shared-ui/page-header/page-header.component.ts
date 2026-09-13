@@ -37,7 +37,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
         <span class="mark-wrap">
           <img class="mark" src="icons/icon-192.png" alt="" width="32" height="32" />
           @if (showAlpha()) {
-            <span class="alpha-marker" aria-label="Alpha version">alpha</span>
+            <span class="alpha-marker" aria-label="Alpha version">α</span>
           }
         </span>
       }
@@ -127,13 +127,13 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
 
     .alpha-marker {
       position: absolute;
-      top: calc(-1 * var(--space-1));
-      right: calc(-1 * var(--space-2));
+      top: calc(-2.5 * var(--space-1));
+      right: calc(-0.5 * var(--space-2));
       padding-inline: 1px;
       border-radius: var(--radius-control);
       background: var(--surface-canvas);
       color: var(--status-danger);
-      font-size: var(--text-xs);
+      font-size: var(--text-sm);
       font-weight: var(--weight-semibold);
       line-height: 1.2;
       white-space: nowrap;

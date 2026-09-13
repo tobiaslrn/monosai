@@ -96,7 +96,7 @@ describe('PageHeaderComponent back control', () => {
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
 
-    expect(element.querySelector('.alpha-marker')?.textContent).toBe('alpha');
+    expect(element.querySelector('.alpha-marker')?.textContent).toBe('α');
     expect(element.querySelector('.alpha-marker')?.getAttribute('aria-label')).toBe(
       'Alpha version',
     );

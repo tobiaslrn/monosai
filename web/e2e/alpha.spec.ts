@@ -19,11 +19,11 @@ test.describe('alpha disclosure', () => {
     await dialog.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
     await expect(page.getByRole('alertdialog')).toHaveCount(0);
-    await expect(page.locator('.alpha-marker')).toHaveText('alpha');
+    await expect(page.locator('.alpha-marker')).toHaveText('α');
 
     await page.reload();
     await expect(page.getByRole('alertdialog')).toHaveCount(0);
-    await expect(page.locator('.alpha-marker')).toHaveText('alpha');
+    await expect(page.locator('.alpha-marker')).toHaveText('α');
   });
 
   test('also appears before a direct reader link on first load @smoke', async ({ page }) => {
