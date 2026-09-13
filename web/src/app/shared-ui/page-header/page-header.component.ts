@@ -35,7 +35,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
         }
       } @else if (home()) {
         <span class="mark-wrap">
-          <img class="mark" src="icons/icon-192.png" alt="" width="32" height="32" />
+          <img class="mark" src="icons/icon-192.png" alt="" width="32" height="30" />
           @if (showAlpha()) {
             <span class="alpha-marker" aria-label="Alpha version">α</span>
           }
@@ -116,7 +116,11 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
 
     .mark {
       flex: none;
+      inline-size: var(--space-6);
+      block-size: calc(var(--space-6) - calc(0.5 * var(--space-1)));
       border-radius: var(--radius-token);
+      object-fit: cover;
+      object-position: center top;
     }
 
     .mark-wrap {
@@ -133,7 +137,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
       border-radius: var(--radius-control);
       background: var(--surface-canvas);
       color: var(--status-danger);
-      font-size: var(--text-sm);
+      font-size: var(--text-md);
       font-weight: var(--weight-semibold);
       line-height: 1.2;
       white-space: nowrap;
