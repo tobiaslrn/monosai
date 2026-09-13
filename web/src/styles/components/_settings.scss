@@ -9,24 +9,15 @@
 .mn-settings-section__header {
   display: flex;
   min-width: 0;
-  min-height: 2.25rem;
-  gap: var(--space-3);
+  min-height: 1.75rem;
+  gap: var(--space-2);
   align-items: center;
-  padding-inline: var(--space-2);
-}
-
-.mn-settings-section__header::before {
-  flex: none;
-  width: 0.25rem;
-  height: 1.25rem;
-  border-radius: var(--radius-pill);
-  background: var(--action-primary);
-  content: '';
+  padding-inline: var(--space-1);
 }
 
 .mn-settings-section__header h2 {
   margin: 0;
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
   line-height: 1.25;
 }
@@ -45,6 +36,7 @@
 
 /* A settings card is a flush card whose children supply the row rhythm. */
 .mn-settings-card {
+  container-type: inline-size;
   min-width: 0;
   padding: 0;
   overflow: clip;
@@ -88,6 +80,11 @@
 /* When a wrapping row drops its action block, it starts under the copy. */
 .mn-settings-row--wrap .mn-settings-row__end {
   margin-inline-start: 0;
+}
+
+.mn-settings-row--action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .mn-settings-row__title,
@@ -139,8 +136,11 @@
   transition: transform var(--motion-fast) ease-out;
 }
 
-.mn-settings-group {
-  min-width: 0;
+.mn-settings-card > .mn-settings-group {
+  margin: var(--space-3);
+  padding: 0;
+  overflow: clip;
+  border-top: 0;
 }
 
 .mn-settings-group__header {
@@ -149,12 +149,15 @@
   min-height: 2.75rem;
   gap: var(--space-2);
   align-items: center;
-  padding: var(--space-2) var(--space-4) 0;
-  background: var(--surface-sunken-muted);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
 }
 
 .mn-settings-group__header > .mn-group-title {
   flex: 1;
+  color: var(--text-primary);
+  font-size: var(--text-md);
 }
 
 .mn-settings-group > .mn-settings-row {
@@ -207,6 +210,12 @@
   font-size: var(--text-sm);
 }
 
+.mn-settings-row--action > .mn-settings-feedback {
+  grid-column: 1 / -1;
+  padding: 0;
+  text-align: end;
+}
+
 .mn-settings-row :where(select.mn-control, input.mn-control),
 .mn-settings-row mn-token-budget-field {
   width: 10.625rem;
@@ -255,6 +264,20 @@ html[data-pointer='mouse'] .mn-settings-row--interactive:hover {
 
   .mn-settings-subrows {
     padding-inline: var(--space-3) var(--space-3);
+  }
+}
+
+@container (max-width: 17rem) {
+  .mn-settings-row--action {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mn-settings-row--action .mn-settings-row__end {
+    justify-self: start;
+  }
+
+  .mn-settings-row--action > .mn-settings-feedback {
+    text-align: start;
   }
 }
 

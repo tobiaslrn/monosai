@@ -133,6 +133,13 @@ describe('AboutSectionComponent', () => {
     expect(fakeLogger.info).toHaveBeenCalledWith('diagnostics.copy.succeeded', { count: 1 });
   });
 
+  it('offers one diagnostics action', () => {
+    const element = render();
+
+    expect(element.querySelector('button[aria-label="Copy diagnostics"]')).not.toBeNull();
+    expect(element.querySelector('button[aria-label="Clear diagnostics"]')).toBeNull();
+  });
+
   it('reports clipboard failures without exposing a raw error', async () => {
     const writeText = vi.fn(() => Promise.reject(new Error('clipboard secret')));
     const documentRef = TestBed.inject(DOCUMENT);
@@ -154,12 +161,5 @@ describe('AboutSectionComponent', () => {
     );
     expect(fakeLogger.warn).toHaveBeenCalledWith('diagnostics.copy.failed');
     expect(fakeLogger.warn).not.toHaveBeenCalledWith('diagnostics.copy.failed', expect.anything());
-  });
-
-  it('clears the buffer without persisting a log table', () => {
-    const element = render();
-    element.querySelector<HTMLButtonElement>('button[aria-label="Clear diagnostics"]')?.click();
-
-    expect(fakeLogger.clear).toHaveBeenCalledOnce();
   });
 });

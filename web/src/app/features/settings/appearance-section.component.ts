@@ -17,7 +17,7 @@ const THEME_OPTIONS: readonly { value: ThemeSetting; label: string }[] = [
   template: `
     <mn-settings-section heading="Appearance">
       <div class="mn-card mn-card--flush mn-settings-card">
-        <div class="mn-settings-row">
+        <div class="mn-settings-row mn-settings-row--action">
           <div class="mn-settings-row__label">
             <span class="mn-settings-row__title">Theme</span>
           </div>

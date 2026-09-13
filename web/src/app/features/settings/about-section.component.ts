@@ -23,7 +23,7 @@ import { SettingsSectionComponent } from '../../shared-ui/settings-section/setti
     <mn-settings-section heading="About">
       <div class="mn-card mn-card--flush mn-settings-card">
         @let update = updates.status();
-        <div class="mn-settings-row mn-settings-row--wrap">
+        <div class="mn-settings-row mn-settings-row--action">
           <div class="mn-settings-row__label">
             <span class="mn-settings-row__title">Version</span>
             <span class="mn-settings-row__hint">
@@ -46,13 +46,12 @@ import { SettingsSectionComponent } from '../../shared-ui/settings-section/setti
               Check for updates
             </button>
           </div>
+          @if (updateStatusLabel(update); as statusLabel) {
+            <span class="mn-settings-feedback" aria-live="polite">{{ statusLabel }}</span>
+          }
         </div>
 
-        @if (updateStatusLabel(update); as statusLabel) {
-          <p class="mn-settings-feedback" aria-live="polite">{{ statusLabel }}</p>
-        }
-
-        <div class="mn-settings-row mn-settings-row--wrap">
+        <div class="mn-settings-row mn-settings-row--action">
           <div class="mn-settings-row__label">
             <span class="mn-settings-row__title">Diagnostics</span>
             <span class="mn-settings-row__hint">
@@ -69,24 +68,15 @@ import { SettingsSectionComponent } from '../../shared-ui/settings-section/setti
               <mn-icon name="copy" [size]="17" />
               Copy
             </button>
-            <button
-              type="button"
-              class="mn-button mn-button--ghost"
-              aria-label="Clear diagnostics"
-              (click)="clearDiagnostics()"
-            >
-              Clear
-            </button>
           </div>
+          @if (copyStatus() === 'copied') {
+            <span class="mn-settings-feedback" role="status">Diagnostics copied.</span>
+          } @else if (copyStatus() === 'failed') {
+            <span class="mn-settings-feedback" role="status">
+              Diagnostics could not be copied on this browser.
+            </span>
+          }
         </div>
-
-        @if (copyStatus() === 'copied') {
-          <p class="mn-settings-feedback" role="status">Diagnostics copied.</p>
-        } @else if (copyStatus() === 'failed') {
-          <p class="mn-settings-feedback" role="status">
-            Diagnostics could not be copied on this browser.
-          </p>
-        }
 
         <details class="mn-settings-details">
           <summary class="mn-settings-row">
@@ -182,10 +172,5 @@ export class AboutSectionComponent {
       this.logger.warn('diagnostics.copy.failed');
       this.copyStatus.set('failed');
     }
-  }
-
-  protected clearDiagnostics(): void {
-    this.logger.clear();
-    this.copyStatus.set('idle');
   }
 }
