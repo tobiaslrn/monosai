@@ -31,12 +31,13 @@
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   transition:
     background-color var(--motion-fast) ease-out,
     border-color var(--motion-fast) ease-out;
 }
 
-.mn-segmented > label:hover {
+html[data-pointer='mouse'] .mn-segmented > label:hover {
   background: var(--surface-sunken);
 }
 
