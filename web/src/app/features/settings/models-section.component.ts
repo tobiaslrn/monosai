@@ -143,7 +143,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       -->
         @if (credential.isConfigured()) {
           <section
-            class="node mn-inset mn-settings-group"
+            class="node mn-inset mn-settings-group mn-settings-group--overlay"
             aria-labelledby="mn-text-model-label"
             data-capability="text"
             [attr.data-readiness]="text.readiness()"
@@ -352,7 +352,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
           </section>
 
           <section
-            class="node mn-inset mn-settings-group"
+            class="node mn-inset mn-settings-group mn-settings-group--overlay"
             aria-labelledby="mn-audio-model-label"
             data-capability="audio"
             [attr.data-readiness]="tts.readiness()"

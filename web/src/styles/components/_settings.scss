@@ -143,6 +143,16 @@
   border-top: 0;
 }
 
+/* Keep an open picker above the settings groups that follow it. */
+.mn-settings-card > .mn-settings-group--overlay {
+  position: relative;
+  overflow: visible;
+}
+
+.mn-settings-card > .mn-settings-group--overlay:focus-within {
+  z-index: 1;
+}
+
 .mn-settings-group__header {
   display: flex;
   min-width: 0;
