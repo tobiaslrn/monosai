@@ -15,7 +15,6 @@
   padding-inline: var(--space-2);
 }
 
-/* A quiet signpost keeps the section rank visually attached to its card. */
 .mn-settings-section__header::before {
   flex: none;
   width: 0.25rem;
