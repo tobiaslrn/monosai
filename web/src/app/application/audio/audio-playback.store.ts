@@ -17,6 +17,21 @@ function isSequenceMimeType(mimeType: string): mimeType is SequenceMimeType {
   return mimeType === 'audio/mpeg' || mimeType === 'audio/webm';
 }
 
+function sameCacheKeys(
+  left: ReadonlyMap<SentenceId, string>,
+  right: ReadonlyMap<SentenceId, string>,
+): boolean {
+  if (left.size !== right.size) {
+    return false;
+  }
+  for (const [sentenceId, cacheKey] of left) {
+    if (right.get(sentenceId) !== cacheKey) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * `waiting` is a started session that has run out of prepared audio.
  *
@@ -398,8 +413,12 @@ export class AudioPlaybackStore {
           config.value.speechInstructions,
         )
       : new Map<SentenceId, string>();
+    const configurationChanged =
+      previous?.id !== reading.id || !sameCacheKeys(this.cacheKeysSignal(), cacheKeys);
     this.cacheKeysSignal.set(cacheKeys);
-    this.currentAvailableSignal.set(new Set());
+    if (configurationChanged) {
+      this.currentAvailableSignal.set(new Set());
+    }
 
     const summaries = await this.enrichment.listAudioSummaries(reading.id);
     if (token !== this.prepareToken) {
@@ -407,6 +426,7 @@ export class AudioPlaybackStore {
     }
     if (!summaries.ok) {
       this.failureSignal.set({ kind: 'storage', message: summaries.error.message });
+      this.currentAvailableSignal.set(new Set());
       this.availableSignal.set(new Set());
       this.playableSignal.set(new Map());
       this.staleCountSignal.set(0);

@@ -624,6 +624,36 @@ describe('AudioPlaybackStore', () => {
       expect(bed.store.hasPlayableAudio()).toBe(true);
     });
 
+    it('keeps current coverage while a same-configuration refresh is pending', async () => {
+      await storeClips(bed, 2);
+      await bed.store.prepare(bed.reading);
+
+      let releaseSummaries!: () => void;
+      const summariesGate = new Promise<void>((resolve) => {
+        releaseSummaries = resolve;
+      });
+      let summariesRequested!: () => void;
+      const summariesStarted = new Promise<void>((resolve) => {
+        summariesRequested = resolve;
+      });
+      const originalListAudioSummaries = bed.enrichment.listAudioSummaries.bind(bed.enrichment);
+      const listAudioSummaries = vi.spyOn(bed.enrichment, 'listAudioSummaries');
+      listAudioSummaries.mockImplementation(async (readingId) => {
+        summariesRequested();
+        await summariesGate;
+        return originalListAudioSummaries(readingId);
+      });
+
+      const refresh = bed.store.prepare(bed.reading);
+      await summariesStarted;
+
+      expect(bed.store.availableCount()).toBe(2);
+
+      releaseSummaries();
+      await refresh;
+      expect(bed.store.availableCount()).toBe(2);
+    });
+
     it('opens the completeness figure once the last clip exists', async () => {
       await storeClips(bed, SENTENCE_COUNT - 1);
       await bed.store.prepare(bed.reading);

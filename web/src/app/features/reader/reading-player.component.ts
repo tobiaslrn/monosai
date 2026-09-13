@@ -391,25 +391,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     }
 
     /*
-     * The only thing that says a run is still going, together with the ring on
-     * the button that stops it: visible when looked at, invisible when read past.
-     */
-    .track.is-generating .fill.generated {
-      animation: generating 1.8s ease-in-out infinite;
-    }
-
-    @keyframes generating {
-      0%,
-      100% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: 0.4;
-      }
-    }
-
-    /*
      * A native range, so dragging, tapping and the arrow keys are the browser's
      * job rather than ours. It is transparent: the fills underneath are the
      * track, and only the thumb is painted.
@@ -663,10 +644,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       .scrub::-webkit-slider-thumb,
       .scrub::-moz-range-thumb {
         transition: none;
-      }
-
-      .track.is-generating .fill.generated {
-        animation: none;
       }
     }
   `,
