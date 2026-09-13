@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink, type NavigationExtras, type UrlTree } from '@angular/router';
 
-export type ListRowVariant = 'card' | 'flush' | 'muted' | 'overview' | 'plain' | 'settings';
+export type ListRowVariant = 'card' | 'flush' | 'muted' | 'overview' | 'plain';
 
 let nextListRowId = 0;
 
@@ -24,7 +24,6 @@ let nextListRowId = 0;
       [class.mn-list-row--muted]="variant() === 'muted'"
       [class.mn-list-row--overview]="variant() === 'overview'"
       [class.mn-list-row--plain]="variant() === 'plain'"
-      [class.mn-list-row--settings]="variant() === 'settings'"
       [class.mn-list-row--muted-leading]="mutedLeading()"
     >
       <a
