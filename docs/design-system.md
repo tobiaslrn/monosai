@@ -101,6 +101,14 @@ icon-only on both mobile and desktop, with accessible names and tooltips. They
 are bare shared icon controls with unchanged touch targets and visible keyboard
 focus.
 
+The Library mark may carry a small, non-interactive `alpha` label at its upper
+right while the application is in alpha. It is text, not colour alone, and it
+does not add another bar or action. On the first completed navigation of a new
+local installation, the application may show one blocking release-stage
+disclosure using the app-level CDK dialog pattern. The learner acknowledges it
+with one explicit Continue action; direct links are included so the status is
+not hidden by the route used to open the application.
+
 The home illustration blends into the canvas through an organic crop; the hero
 is not a card and therefore has no panel boundary or elevation.
 The crop follows the illustration's arch and low foreground, preserving the
@@ -734,6 +742,9 @@ Four exceptions:
   it would do for them before it offers a way in. This is the one surface
   written in the first person: that a person made this is allowed to show here
   and nowhere else. It ends, like any empty state, the moment there is content.
+- **Release-stage disclosure.** A new alpha installation may require one short
+  acknowledgment before use. This is a product disclosure rather than Help;
+  it is persisted locally and is not shown again after acknowledgment.
 - **Failures explain.** A failure states what happened, what is unaffected, and
   what to do next, however quiet the surrounding screen is.
 

@@ -9,6 +9,9 @@
   </p>
 </div>
 
+> [!WARNING]
+> Monosai is currently in alpha. Expect bugs, missing features, and changes while it is being built.
+
 ## Why this exists
 
 Monosai is for the very beginning of learning Japanese, when you barely know

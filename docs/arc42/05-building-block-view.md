@@ -184,15 +184,19 @@ kept clear of the docked player.
 
 ### Whitebox: non-reader shell and Help
 
-`core/layout/` owns the shell, its banners, and the first-use offer; it draws no
-bar. The shell only renders after successful startup and waits for a completed
-non-reader route before offering Help. Each page owns its single top bar,
+`core/layout/` owns the shell, its banners, the first-use offer, and the
+release-stage disclosure; it draws no bar. The shell only renders after
+successful startup and waits for a completed route before offering the alpha
+disclosure, while Help still waits for a completed non-reader route. Each page owns its single top bar,
 `mn-page-header` from `shared-ui/`; the Library projects the utility navigation
 into its own. Reader routes show neither banners nor the introduction and keep
-the reader's own bar. `features/help/` is a lazy static prose screen.
+the reader's own bar. `features/help/` is a lazy static prose screen. The
+Library opts its shared page header into the small alpha marker over the home
+icon.
 Dismissal goes through `AppSettingsStore` and the settings repository; schema v9
-adds `helpIntroSeen` transactionally, defaulting to false. Write failures expose
-retry in the shell. See [ADR 0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)
+adds `helpIntroSeen` transactionally, defaulting to false, and schema v18 adds
+the alpha acknowledgment in the same way. Write failures expose retry in the
+dialog or shell. See [ADR 0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)
 [ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md), and
 [ADR 0069](../decisions/0069-one-top-bar-per-screen.md).
 

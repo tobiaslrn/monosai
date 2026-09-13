@@ -436,6 +436,25 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
       await settings.put(readerRow);
     },
   },
+  {
+    // Existing installations have not acknowledged the alpha disclosure.
+    // Settings are keyed records, but the new flag is written transactionally
+    // so the persisted shape remains explicit and recoverable.
+    version: 18,
+    stores: V11_STORES,
+    upgrade: async (transaction) => {
+      const settings = transaction.table('settings');
+      const row = (await settings.get('app')) as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        return;
+      }
+      const value = requireRecord(row['value'], 'app settings');
+      if (typeof value['alphaNoticeSeen'] !== 'boolean') {
+        value['alphaNoticeSeen'] = false;
+        await settings.put(row);
+      }
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].version;

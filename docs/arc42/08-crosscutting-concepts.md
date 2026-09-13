@@ -150,6 +150,11 @@ defaulting existing values to `natural`, and changes a migrated reader rate of
 rows, and sends malformed records to the same recovery path rather than resetting
 local data.
 
+Schema version 18 adds the local alpha-disclosure acknowledgment to app settings,
+defaulting existing installations to unacknowledged. The write is transactional;
+a failed migration keeps the original database available through the existing
+recovery path.
+
 Translation plans are validated persisted state with three explicit forms: opening pending,
 glossary repair required, and ready with a frozen glossary. Establishing a ready plan and its
 accepted opening translations is one transaction. Provisional opening rows remain recoverable but
@@ -307,12 +312,15 @@ same alert panel, the same explanation shape, and the application's ordinary pri
 and secondary buttons — so a dead link never looks like a different product.
 
 Application chrome follows the same rule. The shell drops its banners and
-first-use offer only for the reader itself, which is decided by classifying the
+first-use Help offer only for the reader itself, which is decided by classifying the
 URL's id rather than by matching the `/reader/` prefix: a segment that is not an
 id never reaches the reader, and that screen previously lost every way out of the
 application to the prefix match. Every other page wears the shared page frame and
 one top bar, its page header
 ([ADR 0069](../decisions/0069-one-top-bar-per-screen.md)).
+The one-time alpha disclosure is the explicit release-stage exception: it is
+shown after any completed initial route, including a reader deep link, and does
+not alter the reader's chrome.
 
 The reader's own not-found state keeps the reader's bar rather than a page header: it
 is reached only after a reading has begun loading, and swapping the chrome in when a

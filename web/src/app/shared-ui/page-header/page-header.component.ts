@@ -34,7 +34,12 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
           </a>
         }
       } @else if (home()) {
-        <img class="mark" src="icons/icon-192.png" alt="" width="32" height="32" />
+        <span class="mark-wrap">
+          <img class="mark" src="icons/icon-192.png" alt="" width="32" height="32" />
+          @if (showAlpha()) {
+            <span class="alpha-marker" aria-label="Alpha version">alpha</span>
+          }
+        </span>
       }
       <div class="titles">
         @if (home()) {
@@ -111,8 +116,27 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
 
     .mark {
       flex: none;
-      margin-inline-end: var(--space-1);
       border-radius: var(--radius-token);
+    }
+
+    .mark-wrap {
+      position: relative;
+      flex: none;
+      margin-inline-end: var(--space-1);
+    }
+
+    .alpha-marker {
+      position: absolute;
+      top: calc(-1 * var(--space-1));
+      right: calc(-1 * var(--space-2));
+      padding-inline: 1px;
+      border-radius: var(--radius-control);
+      background: var(--surface-canvas);
+      color: var(--status-danger);
+      font-size: var(--text-xs);
+      font-weight: var(--weight-semibold);
+      line-height: 1.2;
+      white-space: nowrap;
     }
 
     .titles {
@@ -156,6 +180,8 @@ export class PageHeaderComponent {
   readonly backLabel = input('Back');
   /** The home page leads with the Monosai mark where others lead with Back. */
   readonly home = input(false);
+  /** Shows the current release stage over the home mark when requested. */
+  readonly showAlpha = input(false);
   /** One quiet line under the title: what the page holds, or how much of it. */
   readonly subtitle = input<string | null>(null);
   protected readonly usesHistoryBack = computed(() => {

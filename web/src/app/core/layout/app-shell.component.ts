@@ -9,13 +9,15 @@ import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AppUpdateBannerComponent } from './app-update-banner.component';
 import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.component';
 import { HelpIntroService } from './help-intro.service';
+import { AlphaNoticeService } from './alpha-notice.service';
 
 /**
  * The application frame.
  *
  * The shell draws no bar of its own: every page's top bar is its
  * `mn-page-header`, and the reader keeps its own. Banners and the first-use
- * guide belong to non-reader surfaces only.
+ * Help guide belong to non-reader surfaces; the alpha disclosure is a startup
+ * release notice and may cover any route once.
  */
 @Component({
   selector: 'mn-app-shell',
@@ -95,6 +97,7 @@ import { HelpIntroService } from './help-intro.service';
 })
 export class AppShellComponent {
   protected readonly intro = inject(HelpIntroService);
+  private readonly alpha = inject(AlphaNoticeService);
   private readonly router = inject(Router);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
   // Injected here, not just by the banner, so the update store's subscriptions
@@ -104,8 +107,9 @@ export class AppShellComponent {
 
   /**
    * ADR 0025 removed application chrome from the reading surface deliberately;
-   * the update banner follows the same rule and stays reachable from Settings
-   * instead while a reading is open.
+   * the update banner and Help offer follow the same rule and stay reachable
+   * from non-reader surfaces while a reading is open. The alpha disclosure is
+   * the explicit startup exception and is handled by its own service.
    */
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -143,8 +147,11 @@ export class AppShellComponent {
 
   constructor() {
     effect(() => {
-      if (!this.isReaderRoute() && this.url().completed) {
-        this.intro.offer();
+      if (this.url().completed) {
+        void this.alpha.offer();
+        if (!this.isReaderRoute()) {
+          this.intro.offer();
+        }
       }
     });
   }

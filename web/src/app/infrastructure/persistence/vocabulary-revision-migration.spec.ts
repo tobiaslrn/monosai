@@ -89,7 +89,7 @@ describe('schema v13 vocabulary revisions', () => {
       },
       async (db) => {
         const settings = await db.settings.get('app');
-        expect(settings?.value).toEqual(LEGACY_SETTINGS.value);
+        expect(settings?.value).toEqual({ ...LEGACY_SETTINGS.value, alphaNoticeSeen: false });
       },
     );
   });

@@ -112,7 +112,7 @@ describe('schema v14 meaning fields', () => {
       expect(await db.table('settings').get('app')).toEqual({
         key: 'app',
         v: 1,
-        value: { activeSnapshotId: SNAPSHOT_ID },
+        value: { activeSnapshotId: SNAPSHOT_ID, alphaNoticeSeen: false },
       });
       expect(await db.vocabularySnapshots.get(SNAPSHOT_ID)).toEqual(SNAPSHOT);
       expect(await db.vocabularyItems.get(ITEM_ID)).toEqual(ITEM);

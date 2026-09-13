@@ -9,6 +9,10 @@ test.describe('first-use Help', () => {
     page,
   }) => {
     await page.goto('./#/library');
+    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha.' });
+    await expect(alpha).toBeVisible();
+    await alpha.getByRole('button', { name: 'Continue' }).click();
+    await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(
       page.getByRole('button', { name: 'Create a new story', exact: true }),
@@ -31,6 +35,10 @@ test.describe('first-use Help', () => {
     page,
   }) => {
     await page.goto('./#/reader/2f8d3f4e-1b6a-4f7c-9c2e-0d5a6b7c8d9e');
+    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha.' });
+    await expect(alpha).toBeVisible();
+    await alpha.getByRole('button', { name: 'Continue' }).click();
+    await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('mn-page-header')).toHaveCount(0);
 
@@ -45,6 +53,10 @@ test.describe('first-use Help', () => {
 
   test('opens the full guide and persists the choice @smoke', async ({ page }) => {
     await page.goto('./#/settings');
+    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha.' });
+    await expect(alpha).toBeVisible();
+    await alpha.getByRole('button', { name: 'Continue' }).click();
+    await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
     await page.getByRole('button', { name: 'Read the guide' }).click();
     await expect(page).toHaveURL(/#\/help$/);
     await expect(page.getByRole('heading', { name: 'Help', level: 1 })).toBeVisible();
@@ -55,6 +67,10 @@ test.describe('first-use Help', () => {
 test.describe('Help and utility bar', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('./#/help');
+    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha.' });
+    await expect(alpha).toBeVisible();
+    await alpha.getByRole('button', { name: 'Continue' }).click();
+    await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
     const dialog = page.getByRole('complementary', { name: 'A little help getting started' });
     await expect(dialog).toBeVisible();
     await dialog.getByRole('button', { name: 'Got it' }).click();

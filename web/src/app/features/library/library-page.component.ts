@@ -73,7 +73,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   ],
   template: `
     <div class="mn-page library-page">
-      <mn-page-header heading="Library" [home]="true">
+      <mn-page-header heading="Library" [home]="true" [showAlpha]="true">
         <nav class="utilities" aria-label="Utilities">
           <a class="mn-icon-button" routerLink="/help" aria-label="Help" title="Help">
             <mn-icon name="help" />

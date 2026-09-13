@@ -18,6 +18,13 @@ import { expectSettingPersisted } from './storage';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('./#/library');
+  await page
+    .getByRole('alertdialog', { name: 'Monosai is in alpha.' })
+    .getByRole('button', {
+      name: 'Continue',
+    })
+    .click();
+  await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
   await page.getByRole('button', { name: 'Got it' }).click();
   await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
 });

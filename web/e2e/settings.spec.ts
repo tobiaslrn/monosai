@@ -85,6 +85,10 @@ test.describe('settings persistence', () => {
     await page.getByRole('button', { name: 'Delete all Monosai data' }).click();
     await page.getByRole('button', { name: 'Yes, delete everything' }).click();
 
+    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha.' });
+    await expect(alpha).toBeVisible();
+    await alpha.getByRole('button', { name: 'Continue' }).click();
+    await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
     const intro = page.getByRole('complementary', { name: 'A little help getting started' });
     await expect(intro).toBeVisible();
     await intro.getByRole('button', { name: 'Got it' }).click();

@@ -31,9 +31,21 @@ export class AppSettingsStore {
 
   readonly theme = computed(() => this.appSettings().theme);
   readonly helpIntroSeen = computed(() => this.appSettings().helpIntroSeen);
+  readonly alphaNoticeSeen = computed(() => this.appSettings().alphaNoticeSeen);
 
   async markHelpIntroSeen(): Promise<boolean> {
     const saved = await this.repository.updateAppSettings({ helpIntroSeen: true });
+    if (!saved.ok) {
+      this.failure.set(saved.error);
+      return false;
+    }
+    this.appSettings.set(saved.value);
+    this.failure.set(null);
+    return true;
+  }
+
+  async markAlphaNoticeSeen(): Promise<boolean> {
+    const saved = await this.repository.updateAppSettings({ alphaNoticeSeen: true });
     if (!saved.ok) {
       this.failure.set(saved.error);
       return false;

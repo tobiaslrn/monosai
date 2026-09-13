@@ -31,6 +31,7 @@ describe('DexieSettingsRepository', () => {
 
     expect(app.ok && app.value.theme).toBe('system');
     expect(app.ok && app.value.helpIntroSeen).toBe(false);
+    expect(app.ok && app.value.alphaNoticeSeen).toBe(false);
     expect(app.ok && app.value.activeSnapshotId).toBeNull();
     expect(app.ok && app.value.ankiConnectPort).toBe(8_765);
     expect(app.ok && app.value.ankiWordPriorityMode).toBe('uniform');

@@ -39,8 +39,9 @@ describe('schema v9 Help introduction', () => {
           expect(upgraded.verno).toBe(CURRENT_SCHEMA_VERSION);
           const row = await upgraded.settings.get('app');
           if (kind === 'present') {
-            expect(row?.value).toEqual({ ...value, helpIntroSeen: false });
+            expect(row?.value).toEqual({ ...value, helpIntroSeen: false, alphaNoticeSeen: false });
             expect(appSettingsSchema.parse(row?.value).helpIntroSeen).toBe(false);
+            expect(appSettingsSchema.parse(row?.value).alphaNoticeSeen).toBe(false);
           } else {
             expect(row).toBeUndefined();
           }

@@ -26,6 +26,13 @@ class HostComponent {}
 })
 class TrailingHostComponent {}
 
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [PageHeaderComponent],
+  template: `<mn-page-header heading="Library" [home]="true" [showAlpha]="true" />`,
+})
+class AlphaHostComponent {}
+
 describe('PageHeaderComponent back control', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
@@ -82,5 +89,16 @@ describe('PageHeaderComponent back control', () => {
     const element = fixture.nativeElement as HTMLElement;
 
     expect(element.querySelector('.trailing [data-testid="trailing"]')?.textContent).toBe('Action');
+  });
+
+  it('shows the alpha marker over the home icon when requested', () => {
+    const fixture = TestBed.createComponent(AlphaHostComponent);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('.alpha-marker')?.textContent).toBe('alpha');
+    expect(element.querySelector('.alpha-marker')?.getAttribute('aria-label')).toBe(
+      'Alpha version',
+    );
   });
 });

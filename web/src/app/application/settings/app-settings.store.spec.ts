@@ -36,6 +36,32 @@ describe('AppSettingsStore Help preference', () => {
   });
 });
 
+describe('AppSettingsStore alpha preference', () => {
+  it('loads the persisted flag and only changes it after a successful save', async () => {
+    const saved = { ...DEFAULT_APP_SETTINGS, alphaNoticeSeen: true };
+    const repository = {
+      getAppSettings: vi.fn().mockResolvedValue(ok(DEFAULT_APP_SETTINGS)),
+      getReaderPreferences: vi.fn().mockResolvedValue(ok(DEFAULT_READER_PREFERENCES)),
+      updateAppSettings: vi
+        .fn()
+        .mockResolvedValueOnce(err(storageError('unavailable', 'Unavailable')))
+        .mockResolvedValue(ok(saved)),
+    };
+    TestBed.configureTestingModule({
+      providers: [{ provide: SETTINGS_REPOSITORY, useValue: repository }],
+    });
+    const store = TestBed.inject(AppSettingsStore);
+    await store.load();
+
+    expect(store.alphaNoticeSeen()).toBe(false);
+    expect(await store.markAlphaNoticeSeen()).toBe(false);
+    expect(store.alphaNoticeSeen()).toBe(false);
+    expect(await store.markAlphaNoticeSeen()).toBe(true);
+    expect(store.alphaNoticeSeen()).toBe(true);
+    expect(repository.updateAppSettings).toHaveBeenLastCalledWith({ alphaNoticeSeen: true });
+  });
+});
+
 describe('AppSettingsStore focus size', () => {
   function configure(updateAppSettings: ReturnType<typeof vi.fn>): AppSettingsStore {
     TestBed.resetTestingModule();
