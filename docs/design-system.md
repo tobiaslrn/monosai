@@ -441,8 +441,7 @@ because it must stay open while a file chooser is up. It follows the same
 placement — hanging from its control on a wide screen, docked to the bottom
 edge over a dimmed page on a phone — and the same dismissal: Escape, Cancel,
 and a press outside all close it, and Escape and Cancel return focus to Add
-source. On a small screen its grab handle is a real button: dragging it down
-dismisses the sheet, while pressing it closes it without a drag.
+source.
 
 ### Saved-story controls
 
@@ -459,9 +458,7 @@ maintenance share Story options rather than separate header buttons. The
 reader's panel is anchored on desktop and docked as a bottom sheet on small
 screens; it stays within the viewport, scrolls when necessary, and restores
 focus when dismissed. It follows the app-level overlay pattern above while
-retaining its reader anchor. Its mobile grab handle uses the same shared
-dismissal: a downward drag closes the sheet, and a plain press on the handle
-does the same for keyboard and touch users.
+retaining its reader anchor.
 Reading appearance uses compact switch rows, and story content is one quiet
 grouped list with pill actions. Deleting the story itself is not here: it is on
 the library card, which is the one place it lives.

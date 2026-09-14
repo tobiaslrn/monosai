@@ -16,13 +16,14 @@ import { ReaderAidsComponent } from './reader-aids.component';
 import type { ReaderContentState } from './reader-content-state';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import { ViewportService } from '../../core/platform/viewport.service';
-import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.component';
+
+const SHEET_DISMISS_DISTANCE_PX = 80;
 
 /** One reader options surface: appearance, saved content, and maintenance. */
 @Component({
   selector: 'mn-reader-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [A11yModule, RouterLink, IconComponent, ReaderAidsComponent, SheetPopoverComponent],
+  imports: [A11yModule, RouterLink, IconComponent, ReaderAidsComponent],
   host: { '(document:keydown.escape)': 'onEscape($event)' },
   template: `
     <button
@@ -38,19 +39,33 @@ import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.com
     >
       <mn-icon name="overflow" />
     </button>
-    <mn-sheet-popover
+    <section
       #panel
       id="mn-reader-menu-panel"
       popover
       class="panel"
       role="dialog"
       aria-label="Story options"
-      anchorName="--mn-options-anchor"
-      closeLabel="Close story options"
       [cdkTrapFocus]="menuOpen()"
+      [style.transform]="dragTransform()"
+      [class.is-dragging]="dragOffset() > 0"
       (toggle)="onToggle()"
-      (closed)="onSheetClosed()"
     >
+      @if (isMobile()) {
+        <button
+          #handle
+          type="button"
+          class="handle"
+          aria-label="Close story options"
+          (pointerdown)="onDragStart($event)"
+          (pointermove)="onDragMove($event)"
+          (pointerup)="onDragEnd()"
+          (pointercancel)="onDragEnd()"
+          (click)="onHandleClick()"
+        >
+          <span class="grip" aria-hidden="true"></span>
+        </button>
+      }
       <header>
         <h2>Story options</h2>
         @if (!isMobile()) {
@@ -142,7 +157,7 @@ import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.com
           <p class="menu-notice mn-notice mn-notice--error" role="alert">{{ error() }}</p>
         }
       </section>
-    </mn-sheet-popover>
+    </section>
   `,
   styleUrl: './reader-menu.component.scss',
 })
@@ -158,11 +173,20 @@ export class ReaderMenuComponent {
   readonly deleteAudioRequested = output<void>();
   readonly clearAidRequested = output<'english' | 'grammar'>();
   private readonly anchor = viewChild.required<ElementRef<HTMLButtonElement>>('anchor');
-  private readonly panel = viewChild.required(SheetPopoverComponent);
+  private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
   private readonly closeButton = viewChild<ElementRef<HTMLButtonElement>>('closeButton');
+  private readonly handle = viewChild<ElementRef<HTMLButtonElement>>('handle');
   private readonly viewport = inject(ViewportService);
   protected readonly isMobile = this.viewport.isMobile;
   protected readonly menuOpen = signal(false);
+  private readonly dragOffsetSignal = signal(0);
+  protected readonly dragOffset = this.dragOffsetSignal.asReadonly();
+  protected readonly dragTransform = computed(() => {
+    const offset = this.dragOffsetSignal();
+    return offset === 0 ? null : `translateY(${String(offset)}px)`;
+  });
+  private dragStartY: number | null = null;
+  private dragged = false;
 
   /**
    * The setup step two or more rows are waiting on, when they all wait on the
@@ -180,22 +204,18 @@ export class ReaderMenuComponent {
   });
 
   open(): void {
-    this.panel().show();
+    this.panel().nativeElement.showPopover();
   }
   close(): void {
-    this.panel().hide();
+    this.panel().nativeElement.hidePopover();
     this.anchor().nativeElement.focus();
   }
   protected onToggle(): void {
-    const open = this.panel().isOpen();
+    const open = this.panel().nativeElement.matches(':popover-open');
     this.menuOpen.set(open);
     if (open) {
       this.opened.emit();
-      if (this.isMobile()) {
-        this.panel().focusHandle();
-      } else {
-        this.closeButton()?.nativeElement.focus();
-      }
+      (this.isMobile() ? this.handle() : this.closeButton())?.nativeElement.focus();
     }
   }
   protected onEscape(event: Event): void {
@@ -230,7 +250,30 @@ export class ReaderMenuComponent {
     this.close();
     this.clearAidRequested.emit(layer);
   }
-  protected onSheetClosed(): void {
+  protected onDragStart(event: PointerEvent): void {
+    this.dragStartY = event.clientY;
+    (event.currentTarget as Element).setPointerCapture(event.pointerId);
+  }
+
+  protected onDragMove(event: PointerEvent): void {
+    if (this.dragStartY === null) return;
+    const offset = Math.max(0, event.clientY - this.dragStartY);
+    if (offset > 0) this.dragged = true;
+    this.dragOffsetSignal.set(offset);
+  }
+
+  protected onDragEnd(): void {
+    const dismissed = this.dragOffsetSignal() >= SHEET_DISMISS_DISTANCE_PX;
+    this.dragStartY = null;
+    this.dragOffsetSignal.set(0);
+    if (dismissed) this.close();
+  }
+
+  protected onHandleClick(): void {
+    if (this.dragged) {
+      this.dragged = false;
+      return;
+    }
     this.close();
   }
 }
