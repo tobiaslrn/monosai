@@ -50,7 +50,7 @@ function formatBytes(bytes: number | null): string {
           </div>
         </div>
 
-        <div class="mn-settings-row mn-settings-row--wrap">
+        <div class="mn-settings-row">
           <div class="mn-settings-row__label">
             <span class="mn-settings-row__title">Keep data</span>
             <span class="mn-settings-row__hint" aria-live="polite">{{ persistenceLabel() }}</span>
@@ -69,7 +69,7 @@ function formatBytes(bytes: number | null): string {
           </div>
         </div>
 
-        <div class="mn-settings-row mn-settings-row--wrap">
+        <div class="mn-settings-row">
           <div class="mn-settings-row__label">
             <span class="mn-settings-row__title">Saved audio</span>
             <span class="mn-settings-row__hint" aria-live="polite">{{ savedAudioLabel() }}</span>

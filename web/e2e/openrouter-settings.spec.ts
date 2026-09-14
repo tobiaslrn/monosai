@@ -180,12 +180,34 @@ test.describe('the model tree', () => {
     await expectReadiness(textModelReadiness(page), 'ready');
   });
 
-  test('is accessible without horizontal overflow @mobile', async ({ page }) => {
+  test('keeps enlarged settings rows aligned without horizontal overflow @mobile @smoke', async ({
+    page,
+  }) => {
     await stubOpenRouter(page);
     await page.goto('./#/settings');
     await saveApiKey(page);
     await addTextModel(page, MODEL);
     await openTaskModels(page);
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '20px';
+    });
+
+    const reasoningLabel = page.getByText('Reasoning', { exact: true }).first();
+    const reasoningControl = page.getByRole('combobox', { name: 'Reasoning' }).first();
+    const translation = taskReadiness(page, 'translation');
+    const translationLabel = translation.getByText('Translation', { exact: true });
+    const translationControl = translation.getByRole('button', { name: 'Same as text' });
+    for (const [label, control] of [
+      [reasoningLabel, reasoningControl],
+      [translationLabel, translationControl],
+    ] as const) {
+      const labelBox = await label.boundingBox();
+      const controlBox = await control.boundingBox();
+      expect(labelBox).not.toBeNull();
+      expect(controlBox).not.toBeNull();
+      expect(labelBox!.y).toBeLessThan(controlBox!.y + controlBox!.height);
+      expect(controlBox!.y).toBeLessThan(labelBox!.y + labelBox!.height);
+    }
 
     await expectNoSeriousAccessibilityViolations(page);
     const size = await page.evaluate(() => ({

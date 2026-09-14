@@ -147,8 +147,12 @@ the space below it empty, which is the honest result of having little to say.
 Settings uses the same page frame as every other non-reader screen. Each
 top-level group is one quiet raised card with a compact section heading. The
 heading sits close to its card and relies on type, weight, and spacing for rank;
-it carries no decorative rail or marker. Actions
-use the same pill silhouette as the Library's filters and creation control.
+it carries no decorative rail or marker. A settings row keeps its label in one
+explicit left column and its value or action against the right edge; it does not
+let individual children wrap themselves into staggered rows. Only when the row's
+own container cannot support both columns does the complete trailing block move
+below the label. Actions use the same pill silhouette as the Library's filters
+and creation control.
 Complex model fields may use sunken groups inside that card, but may not
 introduce a second competing hierarchy of raised panels. The model fields appear
 once OpenRouter is connected: drawn disabled before that, they read as values
@@ -182,8 +186,8 @@ sentence case, small, semibold, secondary — or no title at all when its conten
 are self-evident.
 
 A read-only list of **facts** puts each label on the left and its value on the
-right, on one line at every width; a row wraps only when its value is too long to
-fit, and the value keeps to the right edge.
+right, on one line at every width. Diagnostic versions are separate label/value
+pairs rather than a compressed prose line, so they remain easy to scan.
 
 ### Shared primitives
 

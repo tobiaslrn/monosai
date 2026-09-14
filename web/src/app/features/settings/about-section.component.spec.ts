@@ -99,6 +99,11 @@ describe('AboutSectionComponent', () => {
     fixture.detectChanges();
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('You’re up to date.');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '.mn-settings-row__label .mn-settings-row__result',
+      )?.textContent,
+    ).toContain('You’re up to date.');
   });
 
   it('shows Install only while installation is possible and the app is not standalone', () => {
@@ -130,6 +135,11 @@ describe('AboutSectionComponent', () => {
 
     expect(writeText).toHaveBeenCalledOnce();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Diagnostics copied.');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '.mn-settings-row__label .mn-settings-row__result',
+      )?.textContent,
+    ).toContain('Diagnostics copied.');
     expect(fakeLogger.info).toHaveBeenCalledWith('diagnostics.copy.succeeded', { count: 1 });
   });
 

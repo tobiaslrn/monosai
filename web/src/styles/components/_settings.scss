@@ -47,8 +47,8 @@
 }
 
 .mn-settings-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(min-content, 1fr) auto;
   min-width: 0;
   min-height: 3.625rem;
   gap: var(--space-2) var(--space-3);
@@ -64,27 +64,7 @@
 }
 
 .mn-settings-row__label {
-  /*
-   * Short setting names and their fixed-width controls fit on one line on a
-   * phone. The label may still grow, and long explanatory rows opt into the
-   * wider wrapping basis below.
-   */
-  flex: 1 1 7rem;
   min-width: 0;
-}
-
-.mn-settings-row--wrap .mn-settings-row__label {
-  flex-basis: 13rem;
-}
-
-/* When a wrapping row drops its action block, it starts under the copy. */
-.mn-settings-row--wrap .mn-settings-row__end {
-  margin-inline-start: 0;
-}
-
-.mn-settings-row--action {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .mn-settings-row__title,
@@ -106,14 +86,21 @@
   line-height: 1.4;
 }
 
+.mn-settings-row__result {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
 .mn-settings-row__end {
   display: flex;
-  flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
   gap: var(--space-2);
   align-items: center;
-  margin-inline-start: auto;
+  justify-self: end;
 }
 
 .mn-settings-row__end > .mn-settings-value {
@@ -220,16 +207,15 @@
   font-size: var(--text-sm);
 }
 
-.mn-settings-row--action > .mn-settings-feedback {
-  grid-column: 1 / -1;
-  padding: 0;
-  text-align: end;
+.mn-settings-row :where(select.mn-control, input.mn-control),
+.mn-settings-row mn-token-budget-field,
+.mn-settings-row mn-model-picker {
+  width: min(10.625rem, 50cqi);
+  max-width: 100%;
 }
 
-.mn-settings-row :where(select.mn-control, input.mn-control),
-.mn-settings-row mn-token-budget-field {
-  width: 10.625rem;
-  max-width: 100%;
+.mn-settings-row__end > mn-model-picker {
+  flex: 1 1 auto;
 }
 
 .mn-settings-row .mn-actions {
@@ -264,8 +250,9 @@ html[data-pointer='mouse'] .mn-settings-row--interactive:hover {
   }
 
   .mn-settings-row :where(select.mn-control, input.mn-control),
-  .mn-settings-row mn-token-budget-field {
-    width: 9.375rem;
+  .mn-settings-row mn-token-budget-field,
+  .mn-settings-row mn-model-picker {
+    width: min(9.375rem, 50cqi);
   }
 
   .mn-settings-group__header {
@@ -277,17 +264,17 @@ html[data-pointer='mouse'] .mn-settings-row--interactive:hover {
   }
 }
 
-@container (max-width: 17rem) {
-  .mn-settings-row--action {
+@container (max-width: 14rem) {
+  .mn-settings-row {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .mn-settings-row--action .mn-settings-row__end {
+  .mn-settings-row__end {
     justify-self: start;
   }
 
-  .mn-settings-row--action > .mn-settings-feedback {
-    text-align: start;
+  .mn-settings-row .mn-actions {
+    justify-content: flex-start;
   }
 }
 

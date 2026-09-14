@@ -147,8 +147,13 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
   `,
   imports: [NgTemplateOutlet],
   styles: `
+    :host {
+      display: block;
+      min-width: 0;
+    }
     .picker {
       position: relative;
+      min-width: 0;
     }
     .trigger {
       display: flex;
@@ -159,7 +164,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       cursor: pointer;
     }
     .trigger--compact {
-      width: auto;
+      width: 100%;
       min-width: 0;
       min-height: 2.5rem;
       padding-inline: var(--space-2);
@@ -175,7 +180,14 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       min-width: 0;
     }
     .trigger--compact > span:first-child {
+      overflow: hidden;
       text-align: end;
+    }
+    .trigger--compact strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     /* Nothing chosen yet is a prompt, not a value; it should not read as one. */
     .trigger--unset strong {

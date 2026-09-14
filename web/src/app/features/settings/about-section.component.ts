@@ -23,12 +23,15 @@ import { SettingsSectionComponent } from '../../shared-ui/settings-section/setti
     <mn-settings-section heading="About">
       <div class="mn-card mn-card--flush mn-settings-card">
         @let update = updates.status();
-        <div class="mn-settings-row mn-settings-row--action">
+        <div class="mn-settings-row">
           <div class="mn-settings-row__label">
             <span class="mn-settings-row__title">Version</span>
             <span class="mn-settings-row__hint">
               {{ build.appVersion }} · {{ install.isStandalone() ? 'Installed' : 'Not installed' }}
             </span>
+            @if (updateStatusLabel(update); as statusLabel) {
+              <span class="mn-settings-row__result" aria-live="polite">{{ statusLabel }}</span>
+            }
           </div>
           <div class="mn-settings-row__end mn-actions">
             @if (!install.isStandalone() && install.canInstall()) {
@@ -46,17 +49,21 @@ import { SettingsSectionComponent } from '../../shared-ui/settings-section/setti
               Check for updates
             </button>
           </div>
-          @if (updateStatusLabel(update); as statusLabel) {
-            <span class="mn-settings-feedback" aria-live="polite">{{ statusLabel }}</span>
-          }
         </div>
 
-        <div class="mn-settings-row mn-settings-row--action">
+        <div class="mn-settings-row">
           <div class="mn-settings-row__label">
             <span class="mn-settings-row__title">Diagnostics</span>
             <span class="mn-settings-row__hint">
               Stays in this tab. Never includes your key or text.
             </span>
+            @if (copyStatus() === 'copied') {
+              <span class="mn-settings-row__result" role="status">Diagnostics copied.</span>
+            } @else if (copyStatus() === 'failed') {
+              <span class="mn-settings-row__result" role="status">
+                Diagnostics could not be copied on this browser.
+              </span>
+            }
           </div>
           <div class="mn-settings-row__end mn-actions">
             <button
@@ -69,13 +76,6 @@ import { SettingsSectionComponent } from '../../shared-ui/settings-section/setti
               Copy
             </button>
           </div>
-          @if (copyStatus() === 'copied') {
-            <span class="mn-settings-feedback" role="status">Diagnostics copied.</span>
-          } @else if (copyStatus() === 'failed') {
-            <span class="mn-settings-feedback" role="status">
-              Diagnostics could not be copied on this browser.
-            </span>
-          }
         </div>
 
         <details class="mn-settings-details">
@@ -96,7 +96,7 @@ import { SettingsSectionComponent } from '../../shared-ui/settings-section/setti
               </div>
               <div>
                 <dt>Build commit</dt>
-                <dd>{{ build.buildCommit }}</dd>
+                <dd>{{ buildSummary() }}</dd>
               </div>
               <div>
                 <dt>Database schema version</dt>
@@ -107,8 +107,16 @@ import { SettingsSectionComponent } from '../../shared-ui/settings-section/setti
                 <dd>{{ endpointVersion }}</dd>
               </div>
               <div>
-                <dt>Prompt versions</dt>
-                <dd>{{ promptVersions }}</dd>
+                <dt>Text model test</dt>
+                <dd>{{ textModelTestVersion }}</dd>
+              </div>
+              <div>
+                <dt>Voice model test</dt>
+                <dd>{{ ttsTestVersion }}</dd>
+              </div>
+              <div>
+                <dt>Exception review</dt>
+                <dd>{{ exceptionPromptVersion }}</dd>
               </div>
             </dl>
           </div>
@@ -127,8 +135,9 @@ export class AboutSectionComponent {
   protected readonly buildSummary = computed(() => this.build.buildCommit.slice(0, 7));
   protected readonly schemaVersion = inject(DATABASE_SCHEMA_VERSION);
   protected readonly endpointVersion = AI_ENDPOINT_VERSION;
-  /** Versions of the internal prompt assets, so a report can name what ran. */
-  protected readonly promptVersions = `text-test ${String(TEXT_MODEL_TEST_VERSION)} · tts-test ${String(TTS_TEST_VERSION)} · exception ${String(EXCEPTION_PROMPT_VERSION)}`;
+  protected readonly textModelTestVersion = TEXT_MODEL_TEST_VERSION;
+  protected readonly ttsTestVersion = TTS_TEST_VERSION;
+  protected readonly exceptionPromptVersion = EXCEPTION_PROMPT_VERSION;
 
   protected async installApp(): Promise<void> {
     await this.install.install();
