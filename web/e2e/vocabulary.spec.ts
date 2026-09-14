@@ -141,6 +141,30 @@ test.describe('vocabulary', () => {
     await expect(toggle).toBeFocused();
   });
 
+  test('dismisses the Add words sheet when its handle is dragged down @smoke @mobile', async ({
+    page,
+  }) => {
+    await openVocabulary(page);
+    const toggle = page.getByTestId('add-words');
+    const sheet = page.getByRole('dialog', { name: 'Add words' });
+
+    await openAddWords(page);
+    const handle = sheet.getByRole('button', { name: 'Close' });
+    await expect(handle).toBeVisible();
+    const box = await handle.boundingBox();
+    if (box === null) throw new Error('The Add words handle has no box.');
+
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y + 120, { steps: 5 });
+    await page.mouse.up();
+
+    await expect(sheet).toBeHidden();
+    await expect(toggle).toBeFocused();
+  });
+
   test('previews Anki before combining it with pasted sources @smoke @mobile', async ({ page }) => {
     test.setTimeout(120_000);
     await stubAnkiConnect(page, ankiAnswers(['ねこ', '食べる']));

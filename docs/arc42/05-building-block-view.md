@@ -61,6 +61,12 @@ the providers, and owns the shell and the router, so it must be allowed to see e
 | **`shared-ui/`**       | Presentation components used by more than one screen. Holds no use case                                  | Component selectors                                                           |
 | **`web/src/workers/`** | Work that must not block the main thread                                                                 | A versioned message protocol, validated on both sides                         |
 
+The shared presentation layer owns the common native-popover sheet surface:
+anchored placement on wide screens, bottom-sheet placement on narrow screens,
+its modal backdrop where needed, and the handle gesture that dismisses a sheet
+with a downward drag. Features provide only the content and the lifecycle
+actions that closing it triggers.
+
 ## 5.2 Level 2: how each layer is divided
 
 The vocabulary application layer owns an unsaved Anki connection draft and the
