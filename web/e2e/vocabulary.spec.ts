@@ -143,7 +143,9 @@ test.describe('vocabulary', () => {
 
   test('dismisses the Add words sheet when its handle is dragged down @smoke @mobile', async ({
     page,
+    isMobile,
   }) => {
+    test.skip(!isMobile, 'the drag handle only exists on the docked mobile sheet');
     await openVocabulary(page);
     const toggle = page.getByTestId('add-words');
     const sheet = page.getByRole('dialog', { name: 'Add words' });
