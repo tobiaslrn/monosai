@@ -5,6 +5,8 @@ export interface ModelCapabilities {
   readonly modelId: string;
   readonly name: string;
   readonly contextLength: number | null;
+  /** Maximum completion tokens reported by the selected provider, if known. */
+  readonly maxCompletionTokens: number | null;
   readonly inputModalities: readonly string[];
   readonly outputModalities: readonly string[];
   readonly supportedParameters: readonly string[];

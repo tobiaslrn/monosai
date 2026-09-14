@@ -8,6 +8,7 @@ function model(modelId: string, name: string): ModelCapabilities {
     modelId,
     name,
     contextLength: 32_768,
+    maxCompletionTokens: null,
     inputModalities: ['text'],
     outputModalities: ['text'],
     supportedParameters: [],

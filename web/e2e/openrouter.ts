@@ -452,7 +452,10 @@ function modelPayload(modelId: string): Record<string, unknown> {
     links: { details: `https://openrouter.ai/${modelId}` },
     per_request_limits: null,
     pricing: { prompt: '0', completion: '0' },
-    top_provider: { is_moderated: false },
+    top_provider: {
+      is_moderated: false,
+      ...(tts ? {} : { max_completion_tokens: 65_536 }),
+    },
   };
 }
 

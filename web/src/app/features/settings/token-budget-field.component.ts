@@ -31,7 +31,7 @@ let nextId = 0;
       inputmode="numeric"
       [id]="id"
       [min]="min"
-      [max]="max"
+      [max]="maxValue()"
       step="1"
       [disabled]="disabled()"
       [attr.data-testid]="testId()"
@@ -44,7 +44,7 @@ let nextId = 0;
     />
     @if (invalid()) {
       <p [id]="errorId" class="mn-field-error" role="alert">
-        Use a whole number between {{ min }} and {{ max }}.
+        Use a whole number between {{ min }} and {{ maxValue() }}.
       </p>
     }
   `,
@@ -58,6 +58,8 @@ let nextId = 0;
 })
 export class TokenBudgetFieldComponent {
   readonly value = input.required<number>();
+  /** Model-reported maximum, or the manual safety ceiling when unknown. */
+  readonly maxValue = input(MAX_STORY_TOKEN_BUDGET);
   readonly disabled = input(false);
   /** Id of the visible label this field sits beside. */
   readonly labelledBy = input.required<string>();
@@ -65,12 +67,13 @@ export class TokenBudgetFieldComponent {
   readonly committed = output<number>();
 
   protected readonly min = MIN_STORY_TOKEN_BUDGET;
-  protected readonly max = MAX_STORY_TOKEN_BUDGET;
   protected readonly id = `mn-token-budget-${String(nextId++)}`;
   protected readonly errorId = `${this.id}-error`;
 
   protected readonly draft = linkedSignal(() => String(this.value()));
-  protected readonly invalid = computed(() => !isValidStoryTokenBudget(Number(this.draft())));
+  protected readonly invalid = computed(
+    () => !isValidStoryTokenBudget(Number(this.draft()), this.maxValue()),
+  );
 
   protected onInput(event: Event): void {
     this.draft.set((event.target as HTMLInputElement).value);
@@ -78,7 +81,7 @@ export class TokenBudgetFieldComponent {
 
   protected commit(): void {
     const parsed = Number(this.draft());
-    if (isValidStoryTokenBudget(parsed) && parsed !== this.value()) {
+    if (isValidStoryTokenBudget(parsed, this.maxValue()) && parsed !== this.value()) {
       this.committed.emit(parsed);
     }
   }

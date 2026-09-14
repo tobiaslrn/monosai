@@ -143,12 +143,22 @@ export function clampTextScale(scale: number): number {
  * stores its own on the settings row, and each routed model may override it.
  */
 export const MIN_STORY_TOKEN_BUDGET = 4_096;
-export const MAX_STORY_TOKEN_BUDGET = 32_768;
+/**
+ * Safety ceiling used when the model catalogue does not report an output cap.
+ * A model-specific `max_completion_tokens` takes precedence in Settings.
+ */
+export const MAX_STORY_TOKEN_BUDGET = 1_048_576;
 export const DEFAULT_STORY_TOKEN_BUDGET = 16_384;
 
-export function isValidStoryTokenBudget(value: number): boolean {
+export function isValidStoryTokenBudget(
+  value: number,
+  maximum: number = MAX_STORY_TOKEN_BUDGET,
+): boolean {
   return (
-    Number.isInteger(value) && value >= MIN_STORY_TOKEN_BUDGET && value <= MAX_STORY_TOKEN_BUDGET
+    Number.isInteger(value) &&
+    maximum >= MIN_STORY_TOKEN_BUDGET &&
+    value >= MIN_STORY_TOKEN_BUDGET &&
+    value <= maximum
   );
 }
 

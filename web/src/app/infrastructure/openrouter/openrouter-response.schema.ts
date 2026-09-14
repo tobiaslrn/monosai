@@ -28,6 +28,11 @@ export const modelCatalogResponseSchema = z.object({
       id: z.string().min(1),
       name: z.string().min(1),
       context_length: z.number().int().nonnegative().nullable(),
+      top_provider: z
+        .object({
+          max_completion_tokens: z.number().int().nonnegative().nullable().optional(),
+        })
+        .optional(),
       architecture: z.object({
         input_modalities: z.array(z.string()),
         output_modalities: z.array(z.string()),

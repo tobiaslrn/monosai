@@ -18,6 +18,7 @@ import { TtsStore } from '../../application/settings/tts.store';
 import { MODEL_CATALOG } from '../../application/shared/ai-tokens';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
+import { MAX_STORY_TOKEN_BUDGET } from '../../domain/settings/settings';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
@@ -224,6 +225,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                   testId="story-token-budget-input"
                   labelledBy="mn-text-limit-label"
                   [value]="text.settings().storyTokenBudget"
+                  [maxValue]="storyTokenBudgetMax()"
                   [disabled]="!credential.isConfigured()"
                   (committed)="saveStoryBudget($event)"
                 />
@@ -339,6 +341,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                             <mn-token-budget-field
                               [labelledBy]="'mn-' + task.id + '-limit'"
                               [value]="text.routeTokenBudget(task.id)"
+                              [maxValue]="tokenBudgetMax(routeModel(task.id))"
                               (committed)="setTaskBudget(task.id, $event)"
                             />
                           </div>
@@ -616,6 +619,9 @@ export class ModelsSectionComponent {
 
   protected readonly selectedStoryModel = computed(() =>
     this.modelById(this.text.settings().modelId),
+  );
+  protected readonly storyTokenBudgetMax = computed(() =>
+    this.tokenBudgetMax(this.selectedStoryModel()),
   );
   protected readonly storyModelLabel = computed(
     () =>
@@ -897,6 +903,13 @@ export class ModelsSectionComponent {
   }
   protected reasoningEfforts(model: ModelCapabilities | null): readonly string[] {
     return model?.reasoning?.supportedEfforts ?? ['low', 'medium', 'high'];
+  }
+  /** Uses the provider-reported limit when available, otherwise stays manual. */
+  protected tokenBudgetMax(model: ModelCapabilities | null): number {
+    const reported = model?.maxCompletionTokens;
+    return reported !== null && reported !== undefined && reported > 0
+      ? Math.min(reported, MAX_STORY_TOKEN_BUDGET)
+      : MAX_STORY_TOKEN_BUDGET;
   }
   protected titleCase(value: string): string {
     return value.charAt(0).toLocaleUpperCase() + value.slice(1);

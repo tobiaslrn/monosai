@@ -16,6 +16,7 @@ function capabilitiesOf(model: CatalogModel): ModelCapabilities {
     modelId: model.id,
     name: model.name,
     contextLength: model.context_length,
+    maxCompletionTokens: model.top_provider?.max_completion_tokens ?? null,
     inputModalities: model.architecture.input_modalities,
     outputModalities: model.architecture.output_modalities,
     supportedParameters: model.supported_parameters,

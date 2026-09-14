@@ -182,7 +182,7 @@ made. If it does not match, the stored result is not shown as current.
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Translation    | Sentence content hash, ready-plan fingerprint, stable Japanese passage-window fingerprint, model and prompt version. The plan covers title, premise, register, ordered source identity, candidate-selection policy and the canonically ordered frozen glossary |
 | Grammar review | Sentence content hash, grammar profile hash, model, prompt version                                                                                                                                                                                             |
-| Audio clip     | Sentence content hash, model, voice, speaking style, options fingerprint, and whether speech instructions are supported. New rows mark `pace: 'playback'`; absent pace is baked. The prompt version is included only for instructed models |
+| Audio clip     | Sentence content hash, model, voice, speaking style, options fingerprint, and whether speech instructions are supported. New rows mark `pace: 'playback'`; absent pace is baked. The prompt version is included only for instructed models                     |
 
 The key functions are pure and live in `domain/enrichment/`; hashing is over a canonical
 serialization, so the same inputs always produce the same key
@@ -212,6 +212,11 @@ OpenRouter client accepts optional usage metadata and logs only prompt, completi
 and cache-write token counts alongside task and model, never prompt or response content. See
 [ADR 0071](../decisions/0071-markdown-input-wire-and-cache-friendly-text-requests.md).
 
+The model catalogue also carries the selected top provider's reported completion maximum. Settings
+uses it to bound story and routed-task budget fields; when it is absent, the field falls back to a
+broad manual safety ceiling. The stored default remains smaller, so a wider available maximum does
+not change request cost by itself ([ADR 0076](../decisions/0076-model-reported-story-output-budgets.md)).
+
 The preparation lane writes each accepted grammar record before advancing its
 job row. Story options therefore reports the real queue/request/save outcome:
 completed analyses survive a provider failure, cancellation, reload, or a
@@ -236,7 +241,7 @@ learner activates the new version from a banner. See
 | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | The API key is never displayed, logged, exported, or put in an error report | One client is the only reader of the credential                                                                                                                                                                                                                                                        |
 | Requests go only to the expected host                                       | The client checks the host before every request                                                                                                                                                                                                                                                        |
-| Stored speech cannot cost what it arrives as                                | A model answering with raw PCM has its clip compressed to Opus in a worker before anything stores it, and clips written before that are re-encoded in place by a background pass (see [ADR 0070](../decisions/0070-gemini-speech-is-stored-compressed.md))                                                 |
+| Stored speech cannot cost what it arrives as                                | A model answering with raw PCM has its clip compressed to Opus in a worker before anything stores it, and clips written before that are re-encoded in place by a background pass (see [ADR 0070](../decisions/0070-gemini-speech-is-stored-compressed.md))                                             |
 | Responses cannot exhaust memory                                             | Declared size caps on JSON and audio responses, and resource limits in the package worker                                                                                                                                                                                                              |
 | Anki access cannot write                                                    | An action allowlist with no write action on it                                                                                                                                                                                                                                                         |
 | Anki field markup is never trusted as HTML                                  | Visible text is extracted behind a port, so the one place that parses untrusted markup stays replaceable and out of the domain                                                                                                                                                                         |

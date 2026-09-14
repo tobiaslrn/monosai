@@ -390,8 +390,11 @@ export class ModelPickerComponent {
     const context = model.contextLength
       ? `${Math.round(model.contextLength / 1_000)}k context`
       : '';
+    const output = model.maxCompletionTokens
+      ? `${Math.round(model.maxCompletionTokens / 1_000)}k output`
+      : '';
     const reasoning = model.reasoning ? 'reasoning' : '';
-    return [context, reasoning, this.pace(model)].filter(Boolean).join(' · ');
+    return [context, output, reasoning, this.pace(model)].filter(Boolean).join(' · ');
   }
 
   private pace(model: ModelCapabilities): string {

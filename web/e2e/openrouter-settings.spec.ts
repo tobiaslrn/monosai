@@ -137,7 +137,7 @@ test.describe('the model tree', () => {
       'aria-invalid',
       'true',
     );
-    await expect(page.getByRole('alert')).toContainText('between 4096 and 32768');
+    await expect(page.getByRole('alert')).toContainText('between 4096 and 65536');
     expect(
       textModelSettings(await readSettingsRecord(page, 'text-model'))['storyTokenBudget'],
     ).toBe(16_384);

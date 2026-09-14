@@ -67,25 +67,26 @@ files are already linked from code comments and from other records.
 
 ### AI providers and generation
 
-| ADR                                                                           | Decision                                                                        |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| [0018](../decisions/0018-openrouter-request-boundary.md)                      | OpenRouter request boundary and error model                                     |
-| [0019](../decisions/0019-generated-story-structure.md)                        | Generated story structure and where prompts live                                |
-| [0020](../decisions/0020-persisted-structured-output-mode.md)                 | Persisting the tested structured-output mode                                    |
-| [0021](../decisions/0021-enrichment-provider-port.md)                         | One batched translate, and separating producing records from storing them       |
-| [0030](../decisions/0030-unified-model-selection.md)                          | Unified model selection and scoped overrides                                    |
-| [0033](../decisions/0033-unresolved-unknown-words-are-marked-not-rejected.md) | A word repair could not replace is marked, not a reason to throw the story away |
-| [0040](../decisions/0040-speech-capabilities-are-declared.md)                 | The catalog declares speech capabilities, the probe confirms them               |
-| [0044](../decisions/0044-backgrounded-story-generation.md)                    | A story is written by a job, not by a screen                                    |
-| [0046](../decisions/0046-length-is-a-guideline.md)                            | Story length is a guideline, not a contract                                     |
-| [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md)        | Grammar preparation uses bounded batches and resumable recovery                 |
-| [0054](../decisions/0054-parallel-text-preparation.md)                        | Text preparation uses sparse adaptive batches and bounded waves                 |
-| [0059](../decisions/0059-preparation-fills-the-reading-in-order.md)           | Preparation fills the reading in order, from one shared pool                    |
-| [0060](../decisions/0060-progressive-translation-freezes-terminology.md)      | Progressive translation freezes a persisted terminology plan                    |
-| [0067](../decisions/0067-recently-learned-is-a-focus-list.md)                 | Recently learned sends the newest words as an ordered focus list                |
-| [0071](../decisions/0071-markdown-input-wire-and-cache-friendly-text-requests.md) | Markdown input wire, compact outputs, and cache-friendly text requests        |
-| [0073](../decisions/0073-pace-at-playback-style-in-prompt.md)                 | Pace is local playback; named speaking style is prompted                      |
-| [0075](../decisions/0075-named-pace-per-voice-model.md)                       | Named speech pace uses the model's instruction or speed channel               |
+| ADR                                                                               | Decision                                                                        |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [0018](../decisions/0018-openrouter-request-boundary.md)                          | OpenRouter request boundary and error model                                     |
+| [0019](../decisions/0019-generated-story-structure.md)                            | Generated story structure and where prompts live                                |
+| [0020](../decisions/0020-persisted-structured-output-mode.md)                     | Persisting the tested structured-output mode                                    |
+| [0021](../decisions/0021-enrichment-provider-port.md)                             | One batched translate, and separating producing records from storing them       |
+| [0030](../decisions/0030-unified-model-selection.md)                              | Unified model selection and scoped overrides                                    |
+| [0033](../decisions/0033-unresolved-unknown-words-are-marked-not-rejected.md)     | A word repair could not replace is marked, not a reason to throw the story away |
+| [0040](../decisions/0040-speech-capabilities-are-declared.md)                     | The catalog declares speech capabilities, the probe confirms them               |
+| [0044](../decisions/0044-backgrounded-story-generation.md)                        | A story is written by a job, not by a screen                                    |
+| [0046](../decisions/0046-length-is-a-guideline.md)                                | Story length is a guideline, not a contract                                     |
+| [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md)            | Grammar preparation uses bounded batches and resumable recovery                 |
+| [0054](../decisions/0054-parallel-text-preparation.md)                            | Text preparation uses sparse adaptive batches and bounded waves                 |
+| [0059](../decisions/0059-preparation-fills-the-reading-in-order.md)               | Preparation fills the reading in order, from one shared pool                    |
+| [0060](../decisions/0060-progressive-translation-freezes-terminology.md)          | Progressive translation freezes a persisted terminology plan                    |
+| [0067](../decisions/0067-recently-learned-is-a-focus-list.md)                     | Recently learned sends the newest words as an ordered focus list                |
+| [0071](../decisions/0071-markdown-input-wire-and-cache-friendly-text-requests.md) | Markdown input wire, compact outputs, and cache-friendly text requests          |
+| [0073](../decisions/0073-pace-at-playback-style-in-prompt.md)                     | Pace is local playback; named speaking style is prompted                        |
+| [0075](../decisions/0075-named-pace-per-voice-model.md)                           | Named speech pace uses the model's instruction or speed channel                 |
+| [0076](../decisions/0076-model-reported-story-output-budgets.md)                  | Story budgets follow model-reported completion limits when available            |
 
 ### The reader
 
@@ -124,8 +125,8 @@ files are already linked from code comments and from other records.
 | [0039](../decisions/0039-continuous-android-audio.md)                    | Continuous Android audio uses one native media resource      |
 | [0041](../decisions/0041-playback-ends-with-the-reader.md)               | A reading session ends when the reader is left               |
 | [0045](../decisions/0045-a-reading-is-extended-while-it-is-generated.md) | A continuous reading is extended while it is generated       |
-| [0072](../decisions/0072-older-clips-play-until-regenerated.md)         | Older same-content clips play until regenerated              |
-| [0073](../decisions/0073-pace-at-playback-style-in-prompt.md)            | Pace is applied at playback and runs split by pace kind       |
+| [0072](../decisions/0072-older-clips-play-until-regenerated.md)          | Older same-content clips play until regenerated              |
+| [0073](../decisions/0073-pace-at-playback-style-in-prompt.md)            | Pace is applied at playback and runs split by pace kind      |
 
 ### Platform and toolchain
 

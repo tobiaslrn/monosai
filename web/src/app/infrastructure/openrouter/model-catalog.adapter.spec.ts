@@ -9,6 +9,9 @@ const MODEL = {
   id: 'google/gemini-test',
   name: 'Gemini Test',
   context_length: 32_768,
+  top_provider: {
+    max_completion_tokens: 65_536,
+  },
   architecture: {
     input_modalities: ['text'],
     output_modalities: ['text'],
@@ -54,6 +57,7 @@ describe('OpenRouterModelCatalog', () => {
       modelId: MODEL.id,
       name: MODEL.name,
       contextLength: MODEL.context_length,
+      maxCompletionTokens: MODEL.top_provider.max_completion_tokens,
       inputModalities: ['text'],
       outputModalities: ['text'],
       supportedParameters: ['reasoning', 'structured_outputs'],
@@ -76,6 +80,16 @@ describe('OpenRouterModelCatalog', () => {
 
     expect(client.request?.path).toBe('/models?output_modalities=speech&limit=1000');
     expect(client.request?.task).toBe('model-discovery');
+  });
+
+  it('leaves the completion maximum unknown when the provider omits it', async () => {
+    const { top_provider: _topProvider, ...withoutMaximum } = MODEL;
+    const client = new FakeOpenRouterClient(ok({ data: [withoutMaximum] }));
+    const catalog = new OpenRouterModelCatalog(client);
+
+    const result = await catalog.list('text');
+
+    expect(result.ok && result.value[0]?.maxCompletionTokens).toBeNull();
   });
 
   it('forwards cancellation to the shared client', async () => {

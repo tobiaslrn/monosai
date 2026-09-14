@@ -42,6 +42,7 @@ const SPEECH_MODEL: ModelCapabilities = {
   modelId: FAKE_OPENROUTER.ttsModel,
   name: 'Fake speech',
   contextLength: null,
+  maxCompletionTokens: null,
   inputModalities: ['text'],
   outputModalities: ['audio'],
   supportedParameters: ['instructions'],
@@ -195,6 +196,50 @@ describe('ModelsSectionComponent audio readiness', () => {
     );
     expect(selects).toHaveLength(2);
     expect(selects.map((select) => select.value)).toEqual(['medium', 'medium']);
+  });
+
+  it('uses the selected model maximum for the story token field', async () => {
+    TestBed.overrideProvider(MODEL_CATALOG, {
+      useValue: {
+        list: (output: string) =>
+          Promise.resolve(
+            ok(
+              output === 'text'
+                ? [
+                    {
+                      ...SPEECH_MODEL,
+                      modelId: 'test/text',
+                      name: 'Text',
+                      outputModalities: ['text'],
+                      maxCompletionTokens: 65_536,
+                    },
+                  ]
+                : [],
+            ),
+          ),
+      },
+    });
+    settings.textModel = { ...settings.textModel, modelId: 'test/text' };
+    await connect();
+    const { element, fixture } = await render();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const budget = element.querySelector<HTMLInputElement>(
+      '[data-testid="story-token-budget-input"]',
+    );
+    expect(budget?.max).toBe('65536');
+
+    budget!.value = '65537';
+    budget!.dispatchEvent(new Event('input'));
+    budget!.dispatchEvent(new Event('change'));
+    expect(settings.textModel.storyTokenBudget).toBe(16_384);
+
+    budget!.value = '65536';
+    budget!.dispatchEvent(new Event('input'));
+    budget!.dispatchEvent(new Event('change'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(settings.textModel.storyTokenBudget).toBe(65_536);
   });
 
   it('says a chosen model has not been tested, and why the preview is a press', async () => {
