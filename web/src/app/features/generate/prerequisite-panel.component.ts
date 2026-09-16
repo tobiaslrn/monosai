@@ -8,16 +8,14 @@ import type {
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
 /**
- * What is still missing before a story can be generated.
+ * What is still stopping a learner who is otherwise ready to write.
  *
- * Only unmet checks are listed, one line each, and the panel disappears once
- * there are none: a row of green ticks confirming a setup the learner completed
- * weeks ago is not information. Every line links straight to the screen that
- * fixes it, and the draft survives the trip because it lives in a root-provided
- * store.
- *
- * The grammar preset carries no check, because a preset is always set. Only its
- * advisory warning appears here, and the Generate button ignores it.
+ * This rides above a working form, so only unmet checks are listed and the
+ * panel disappears once there are none: a row of green ticks confirming a setup
+ * the learner completed weeks ago is not information. Setup itself is never one
+ * of these lines — it takes the whole screen until it is done; see
+ * `mn-setup-path`. What is left is being offline, and the advisory warning that
+ * a reading level may want more words than the list has.
  */
 @Component({
   selector: 'mn-prerequisite-panel',

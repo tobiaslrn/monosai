@@ -94,16 +94,23 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
             @if (failure(); as copy) {
               <div class="sheet-pad" role="alert" data-testid="anki-connect-failed">
                 <p class="headline">{{ copy.headline }}</p>
+                <!--
+                  Each sentence is one unbroken run. Wrapping the link in a
+                  block put a newline on either side of it, and Angular
+                  collapses that to a space: "see the source .".
+                -->
                 @for (paragraph of copy.paragraphs; track $index) {
-                  <p class="mn-hint">
-                    {{ paragraph.before }}
-                    @if (paragraph.link; as link) {
-                      <a [href]="link.href" target="_blank" rel="noopener noreferrer">{{
+                  @if (paragraph.link; as link) {
+                    <p class="mn-hint">
+                      {{ paragraph.before
+                      }}<a [href]="link.href" target="_blank" rel="noopener noreferrer">{{
                         link.text
-                      }}</a>
-                    }
-                    {{ paragraph.after }}
-                  </p>
+                      }}</a
+                      >{{ paragraph.after }}
+                    </p>
+                  } @else {
+                    <p class="mn-hint">{{ paragraph.before }}{{ paragraph.after }}</p>
+                  }
                 }
                 <details class="mn-disclosure advanced-details">
                   <summary><span class="summary-label">Advanced details</span></summary>

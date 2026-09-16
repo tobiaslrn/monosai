@@ -30,7 +30,7 @@ test.describe('application shell', () => {
 
     const standing = page.getByTestId('library-standing');
     await expect(standing).toContainText('No words yet.');
-    await expect(standing).toContainText('Connect Anki to write stories');
+    await expect(standing).toContainText('from Anki, an Anki package, or a pasted list');
 
     await standing.click();
 

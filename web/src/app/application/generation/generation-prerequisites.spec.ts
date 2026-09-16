@@ -82,11 +82,37 @@ describe('prerequisiteChecks', () => {
     );
   });
 
-  it('lists exactly the two external setup checks', () => {
+  /**
+   * Setup order, not importance order: the words everything is pitched at, the
+   * level it is written in, then the model that writes it.
+   */
+  it('lists the setup in the order a learner does it', () => {
     expect(prerequisiteChecks(input()).map((check) => check.id)).toEqual([
-      'text-model',
       'vocabulary',
+      'reading-level',
+      'text-model',
     ]);
+    expect(prerequisiteChecks(input({ online: false })).map((check) => check.id)[0]).toBe(
+      'network',
+    );
+  });
+
+  /**
+   * A preset is always set, so this row is the one a first-time learner can see
+   * is already done. It never blocks generation.
+   */
+  it('reports the reading level as settled, naming the preset', () => {
+    const level = checkFor('reading-level', {
+      preset: preset('mn-preset-starter', 'Starter forms'),
+    });
+
+    expect(level).toMatchObject({
+      satisfied: true,
+      detail: 'Set to Starter forms.',
+      route: '/grammar',
+    });
+    expect(checkFor('reading-level').satisfied).toBe(true);
+    expect(checkFor('reading-level').route).toBe('');
   });
 
   it('passes everything when the configuration is complete', () => {

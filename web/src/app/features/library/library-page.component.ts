@@ -30,6 +30,8 @@ import {
   GenerationJobsStore,
   type GenerationJob,
 } from '../../application/generation/generation-jobs.store';
+import { HelpIntroBannerComponent } from '../../core/layout/help-intro-banner.component';
+import { HomeArtComponent } from './home-art.component';
 import { NewReadingMenuComponent } from './new-reading-menu.component';
 import { GenerationJobCardComponent } from './generation-job-card.component';
 import { groupLibraryReadings } from './library-date-groups';
@@ -65,6 +67,8 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     IconComponent,
     PageHeaderComponent,
     ReaderPopoverComponent,
+    HelpIntroBannerComponent,
+    HomeArtComponent,
     NewReadingMenuComponent,
     GenerationJobCardComponent,
     LibraryStandingComponent,
@@ -84,35 +88,26 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         </nav>
       </mn-page-header>
 
+      <mn-help-intro-banner />
+
       @if (store.status() === 'failed') {
         <section class="mn-card" role="alert">
           <h2>Your library could not be loaded</h2>
           <p class="mn-hint">{{ store.lastError()?.message }}</p>
           <button type="button" class="mn-button" (click)="reload()">Try again</button>
         </section>
+      } @else if (isFirstRun()) {
+        <!--
+          Nothing saved: the welcome is the whole screen. Its two cards are the
+          way in, so the shelf's action is not offered here — the most
+          prominent control on the page cannot produce a story on a first run,
+          and the standing line has no count to state.
+        -->
+        <mn-library-welcome />
       } @else {
-        <section
-          class="home-hero"
-          aria-labelledby="mn-page-title"
-          [class.is-compact]="!isFirstRun()"
-        >
+        <section class="home-hero" aria-labelledby="mn-page-title">
           <mn-library-standing />
-          <div class="hero-art" aria-hidden="true">
-            <img
-              class="hero-art-light"
-              src="assets/home-reader.png"
-              alt=""
-              width="1254"
-              height="1070"
-            />
-            <img
-              class="hero-art-dark"
-              src="assets/home-reader-dark.png"
-              alt=""
-              width="1254"
-              height="1070"
-            />
-          </div>
+          <mn-home-art class="hero-art" />
         </section>
 
         <div class="shelf-head">
@@ -162,9 +157,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           </section>
         }
 
-        @if (isFirstRun()) {
-          <mn-library-welcome />
-        } @else if (store.isEmpty() && generationJobs().length === 0) {
+        @if (store.isEmpty() && generationJobs().length === 0) {
           <p class="mn-hint">No {{ store.filter() }} stories yet.</p>
         } @else {
           <mn-library-virtual-list
@@ -203,79 +196,32 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
      * centred in it too, rather than both hanging from the top edge and
      * drifting apart as the sentence grows a line.
      *
-     * The hero hugs the illustration: its heights are the art's width in the
+     * The hero hugs the illustration: its height is the art's width in the
      * art's own proportion, so the distance to the bar above is the page rail
      * and nothing else. The art carried a sixth of its height as empty space
      * above the drawing, which read as spacing no rule could reach; the file
      * is cropped to the drawing instead.
+     *
+     * The two share a row rather than one being laid over the other. Overlaid,
+     * their widths summed to more than the rail, and on a phone the lamp and
+     * the leaves sat on top of the sentence.
      */
     .home-hero {
-      position: relative;
-      isolation: isolate;
       display: flex;
+      gap: var(--space-4);
       align-items: center;
-      min-height: 12.8rem;
+      min-height: 7.7rem;
       margin-block: var(--space-1) calc(var(--space-2) * -1);
       padding-block: 0 var(--space-2);
     }
 
-    .hero-art {
-      position: absolute;
-      z-index: -1;
-      inset-block: 0;
-      inset-inline-end: 0;
-      margin-block: auto;
-      width: 55%;
-      max-width: 16rem;
-      height: auto;
-      aspect-ratio: 1254 / 1070;
-      overflow: hidden;
-      pointer-events: none;
-    }
-
-    .hero-art img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
-    .hero-art-dark {
-      display: none;
-    }
-
-    :host-context(html[data-theme='dark']) .hero-art-light {
-      display: none;
-    }
-
-    :host-context(html[data-theme='dark']) .hero-art-dark {
-      display: block;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :host-context(html:not([data-theme='light'])) .hero-art-light {
-        display: none;
-      }
-
-      :host-context(html:not([data-theme='light'])) .hero-art-dark {
-        display: block;
-      }
-    }
-
     .home-hero mn-library-standing {
-      width: 57%;
+      flex: 1 1 auto;
     }
 
-    /*
-     * Once there is a shelf, the hero steps back so the stories come up the
-     * screen. The art keeps its proportions; only its size changes.
-     */
-    .home-hero.is-compact {
-      min-height: 7.7rem;
-    }
-
-    .home-hero.is-compact .hero-art {
+    .hero-art {
+      flex: none;
+      width: 28%;
       max-width: 9rem;
     }
 
@@ -304,14 +250,6 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     }
 
     @media (max-width: breakpoints.$wide-max) {
-      .home-hero {
-        min-height: 10.7rem;
-      }
-
-      .home-hero mn-library-standing {
-        width: 59%;
-      }
-
       .filters {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -350,7 +288,9 @@ export class LibraryPageComponent {
    * Nothing saved and nothing being written: the screen a stranger lands on.
    *
    * `hasNoReadings` is false until the shelf has actually been read, so the
-   * welcome cannot flash before the library answers.
+   * welcome cannot flash before the library answers. It stands in for the
+   * whole body of the page, the standing line and the New story action
+   * included: see the welcome component for why.
    */
   protected readonly isFirstRun = computed(
     () => this.store.hasNoReadings() && this.generationJobs().length === 0,

@@ -138,7 +138,10 @@ describe('LibraryStandingComponent', () => {
 
     state.set({ kind: 'known', availability: 'none', snapshot: null });
     const fixture = render();
-    expect(lines(fixture).detail).toContain('Connect Anki to write stories');
+    // Every source, not just the one that needs a desktop Anki running.
+    expect(lines(fixture).detail).toBe(
+      'Add your words \u2014 from Anki, an Anki package, or a pasted list.',
+    );
   });
 
   /** A read that failed is not "you have no words". */

@@ -194,16 +194,26 @@ kept clear of the docked player.
 `core/layout/` owns the shell, its banners, the first-use offer, and the
 release-stage disclosure; it draws no bar. The shell only renders after
 successful startup and waits for a completed route before offering the alpha
-disclosure, while Help still waits for a completed non-reader route. Each page owns its single top bar,
+disclosure. Each page owns its single top bar,
 `mn-page-header` from `shared-ui/`; the Library projects the utility navigation
 into its own. Reader routes show neither banners nor the introduction and keep
-the reader's own bar. `features/help/` is a lazy static prose screen. The
+the reader's own bar. `features/help/` is a lazy static prose screen whose first
+block is a three-step first five minutes, with its reference sections folded. The
 Library opts its shared page header into the small alpha marker over the home
 icon.
+
+`mn-help-intro-banner` is the exception to "the shell owns the offer": it is
+rendered by the Library inside that page's column, under its bar, and makes the
+offer by being constructed, so nothing spends the one offer on a screen that
+cannot show it. `HelpIntroService` is therefore root-provided rather than
+shell-provided
+([ADR 0077](../decisions/0077-the-first-run-screen-and-the-cost-boundary.md)).
+
 Dismissal goes through `AppSettingsStore` and the settings repository; schema v9
 adds `helpIntroSeen` transactionally, defaulting to false, and schema v18 adds
 the alpha acknowledgment in the same way. Write failures expose retry in the
-dialog or shell. See [ADR 0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)
+dialog or beside the offer. See
+[ADR 0051](../decisions/0051-non-reader-utilities-and-first-use-help.md),
 [ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md), and
 [ADR 0069](../decisions/0069-one-top-bar-per-screen.md).
 

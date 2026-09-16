@@ -5,6 +5,7 @@ import {
   STORY_WITH_UNKNOWN,
   STRICT_STORY,
   openGenerate,
+  openSetupPath,
   prepareGeneration,
 } from './generation';
 import { stubOpenRouter } from './openrouter';
@@ -21,43 +22,63 @@ const PREMISE = 'A cat plays in the garden and meets a friend.';
  */
 const SETUP_TIMEOUT = 180_000;
 
-test.describe('generate prerequisites', () => {
-  test('names each missing prerequisite and links to the screen that fixes it @mobile @smoke', async ({
+test.describe('setting up AI stories', () => {
+  /**
+   * Before setup is finished the screen is the path, not the form. The form
+   * used to be drawn, filled in, and only then found dead.
+   */
+  test('sequences the whole setup and never draws a form nobody can submit @mobile @smoke', async ({
     page,
   }) => {
     await stubOpenRouter(page);
-    await openGenerate(page);
+    await openSetupPath(page);
 
-    // Only what is missing is listed, one line each.
-    await expect(page.locator('[data-check]')).toHaveCount(2);
+    await expect(page.locator('mn-story-form')).toHaveCount(0);
+    await expect(page.getByTestId('generate')).toHaveCount(0);
+
+    // Every row, in the order the work is done, with the one already settled
+    // shown as settled.
+    await expect(page.locator('[data-check]')).toHaveCount(3);
+    await expect(page.locator('[data-check="vocabulary"] strong')).toHaveText('Your words:');
     await expect(page.locator('[data-check="vocabulary"]')).toContainText('Add a word list');
-    await expect(page.getByTestId('generate')).toBeDisabled();
+    await expect(page.locator('[data-check="reading-level"]')).toContainText('Done.');
+    await expect(page.locator('[data-check="text-model"] strong')).toHaveText('AI model:');
 
     // Voice is optional, so it never appears here at all.
     await expect(page.getByText(/Voice \(optional\)/)).toHaveCount(0);
-    // What a generation sends is said once, above the button that sends it.
-    await expect(page.getByTestId('form-sources')).toHaveCount(1);
 
     await expectNoSeriousAccessibilityViolations(page);
   });
 
-  test('keeps the draft while the learner goes to fix a prerequisite', async ({ page }) => {
+  test('leads each unfinished row to the screen that settles it', async ({ page }) => {
+    await stubOpenRouter(page);
+    await openSetupPath(page);
+
+    await page.locator('[data-check="text-model"]').getByRole('link').click();
+    await expect(page).toHaveURL(/#\/settings/);
+    await page.getByRole('button', { name: 'Back to story' }).click();
+    await expect(page.getByRole('heading', { name: 'Set up AI stories', level: 1 })).toBeVisible();
+
+    await page.locator('[data-check="vocabulary"]').getByRole('link').click();
+    await expect(page).toHaveURL(/#\/reading-level\?from=generate(?:#words)?$/);
+    await page.getByRole('button', { name: 'Back to story' }).click();
+    await expect(page.getByRole('heading', { name: 'Set up AI stories', level: 1 })).toBeVisible();
+  });
+});
+
+test.describe('the story form', () => {
+  test.use({ storageState: GENERATION_READY_STATE });
+
+  test('keeps the draft while the learner leaves the form and comes back', async ({ page }) => {
     await stubOpenRouter(page);
     await openGenerate(page);
 
     await page.getByTestId('premise').fill(PREMISE);
     await page.getByTestId('story-length').fill('2');
 
-    await page.locator('[data-check="text-model"]').getByRole('link').click();
-    await expect(page).toHaveURL(/#\/settings/);
-    await page.getByRole('button', { name: 'Back to story' }).click();
-
-    await expect(page.getByTestId('premise')).toHaveValue(PREMISE);
-    await expect(page.getByTestId('story-length')).toHaveValue('2');
-
-    await page.locator('[data-check="vocabulary"]').getByRole('link').click();
-    await expect(page).toHaveURL(/#\/reading-level\?from=generate(?:#words)?$/);
-    await page.getByRole('button', { name: 'Back to story' }).click();
+    await page.getByRole('link', { name: 'Back to library' }).click();
+    await expect(page).toHaveURL(/#\/library$/);
+    await openGenerate(page);
 
     await expect(page.getByTestId('premise')).toHaveValue(PREMISE);
     await expect(page.getByTestId('story-length')).toHaveValue('2');

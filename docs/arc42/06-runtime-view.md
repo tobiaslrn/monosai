@@ -80,6 +80,14 @@ governs exactly one run, while several run side by side
 ([ADR 0044](../decisions/0044-backgrounded-story-generation.md)). The learner can start a story and
 go and read something else; the library lists each unsaved run as a muted row naming its stage.
 
+Before any of that, the screen is a setup path rather than a form. While the word
+list or the text model is not ready, `/generate` renders every prerequisite as a
+row with its live state — the always-satisfied reading level among them — each
+leading to the screen that settles it, and the story form is not drawn at all
+([ADR 0077](../decisions/0077-the-first-run-screen-and-the-cost-boundary.md)).
+Being offline is not part of that: it is reported above a form the learner can
+still write in, because the draft outlives the disconnection.
+
 Every input is captured before the first request, so changing a setting during a run cannot change
 what the running story is judged against. This includes vocabulary strictness: relaxed spends no
 content repair, standard spends at most one, and strict spends at most two.

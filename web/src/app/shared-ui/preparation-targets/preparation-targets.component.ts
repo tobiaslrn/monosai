@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { IconComponent } from '../icon/icon.component';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 
@@ -27,12 +28,23 @@ export function audioPreparationUnavailableReason(
   }
 }
 
+/**
+ * The aids a story is asked to carry.
+ *
+ * Every switch here is a request to an AI provider, so the group carries the
+ * mark for spending an OpenRouter key once on its legend rather than three
+ * times down its rows. See the design system for where that mark may appear.
+ */
 @Component({
   selector: 'mn-preparation-targets',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [IconComponent],
   template: `
     <fieldset [disabled]="disabled()">
-      <legend>{{ legend() }}</legend>
+      <legend>
+        <mn-icon name="generate" [size]="15" aria-hidden="true" />
+        <span>{{ legend() }}</span>
+      </legend>
       @for (layer of layers; track layer) {
         <label [class.is-disabled]="layer === 'audio' && audioReadiness() !== 'ready'">
           <span>{{ labels[layer] }}</span>
@@ -67,12 +79,19 @@ export function audioPreparationUnavailableReason(
     }
 
     legend {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
       margin-bottom: var(--space-2);
       /* The user-agent inline padding would indent the group from its siblings. */
       padding: 0;
       color: var(--text-primary);
       font-size: var(--text-sm);
       font-weight: var(--weight-semibold);
+    }
+
+    legend mn-icon {
+      color: var(--accent-secondary);
     }
 
     label {

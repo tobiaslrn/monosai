@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
+import { declaresStructuredOutput, suggestedTextModels } from '../../domain/ai/suggested-models';
 
 @Component({
   selector: 'mn-model-picker',
@@ -69,8 +70,26 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
             />
           </label>
 
+          <!--
+            A first model choice with nothing to go on is where setup fails
+            most often, so the few that have answered Monosai's structured
+            output test lead the list. Starting points, not a whitelist:
+            everything else stays one search away below.
+          -->
+          @if (suggestions().length > 0) {
+            <div class="group suggested" aria-label="Suggested models">
+              <p class="mn-group-title">Suggested</p>
+              @for (model of suggestions(); track model.modelId) {
+                <ng-container
+                  [ngTemplateOutlet]="modelRow"
+                  [ngTemplateOutletContext]="{ $implicit: model }"
+                />
+              }
+            </div>
+          }
+
           @if (favorites().length > 0) {
-            <div class="favorites" aria-label="Favourite models">
+            <div class="group favorites" aria-label="Favourite models">
               <p class="mn-group-title">Favourites</p>
               @for (model of favorites(); track model.modelId) {
                 <ng-container
@@ -239,20 +258,33 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       border-bottom: 1px solid var(--border-subtle);
       background: var(--surface-panel);
     }
-    .favorites {
+    .group {
       flex: none;
       max-height: 11rem;
       overflow: auto;
       border-bottom: 1px solid var(--border-subtle);
-      background: var(--action-primary-soft);
     }
-    .favorites p {
+    .group p {
       position: sticky;
       z-index: 1;
       top: 0;
       margin: 0;
       padding: var(--space-2) var(--space-3) var(--space-1);
+    }
+    .favorites,
+    .favorites p {
       background: var(--action-primary-soft);
+    }
+    .suggested,
+    .suggested p {
+      background: var(--accent-secondary-soft);
+    }
+    /*
+     * Both groups at once would leave the catalogue a sliver, and the
+     * catalogue is what the search box searches. They share the space instead.
+     */
+    .panel:has(.suggested):has(.favorites) .group {
+      max-height: 7.5rem;
     }
     .results {
       min-height: 3rem;
@@ -319,6 +351,12 @@ export class ModelPickerComponent {
   readonly fallbackLabel = input<string | null>(null);
   readonly models = input<readonly ModelCapabilities[]>([]);
   readonly favoriteIds = input<readonly string[]>([]);
+  /**
+   * The curated starting points, in the order they should be offered. Empty for
+   * a picker that has none — the speech catalogue is not covered by the text
+   * models' structured-output test.
+   */
+  readonly suggestedIds = input<readonly string[]>([]);
   readonly selectedId = input('');
   readonly selectedLabel = input<string | null>(null);
   readonly loading = input(false);
@@ -351,12 +389,26 @@ export class ModelPickerComponent {
       `${model.name} ${model.modelId}`.toLocaleLowerCase().includes(query),
     );
   });
+  /**
+   * A learner's own favourites outrank the suggestions: once they have chosen,
+   * the shipped starting points are not news, and the same row appearing in two
+   * groups reads as two models.
+   */
   protected readonly favorites = computed(() =>
     this.matches().filter((model) => this.favoriteIds().includes(model.modelId)),
   );
-  protected readonly others = computed(() =>
-    this.matches().filter((model) => !this.favoriteIds().includes(model.modelId)),
+  protected readonly suggestions = computed(() =>
+    suggestedTextModels(this.matches(), this.suggestedIds()).filter(
+      (model) => !this.favoriteIds().includes(model.modelId),
+    ),
   );
+  protected readonly others = computed(() => {
+    const grouped = new Set([
+      ...this.favorites().map((model) => model.modelId),
+      ...this.suggestions().map((model) => model.modelId),
+    ]);
+    return this.matches().filter((model) => !grouped.has(model.modelId));
+  });
 
   protected toggle(): void {
     this.open.update((open) => !open);
@@ -394,7 +446,10 @@ export class ModelPickerComponent {
       ? `${Math.round(model.maxCompletionTokens / 1_000)}k output`
       : '';
     const reasoning = model.reasoning ? 'reasoning' : '';
-    return [context, output, reasoning, this.pace(model)].filter(Boolean).join(' · ');
+    // Stated only where it is advertised. Its absence is not proof that a model
+    // fails the test, and the meta line does not get to imply that it is.
+    const structured = !this.speech() && declaresStructuredOutput(model) ? 'structured output' : '';
+    return [context, output, reasoning, structured, this.pace(model)].filter(Boolean).join(' · ');
   }
 
   private pace(model: ModelCapabilities): string {

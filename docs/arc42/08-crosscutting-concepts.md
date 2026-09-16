@@ -316,8 +316,8 @@ that ended with the tab that owned it. All three render `mn-not-found-panel` —
 same alert panel, the same explanation shape, and the application's ordinary primary
 and secondary buttons — so a dead link never looks like a different product.
 
-Application chrome follows the same rule. The shell drops its banners and
-first-use Help offer only for the reader itself, which is decided by classifying the
+Application chrome follows the same rule. The shell drops its banners only for
+the reader itself, which is decided by classifying the
 URL's id rather than by matching the `/reader/` prefix: a segment that is not an
 id never reaches the reader, and that screen previously lost every way out of the
 application to the prefix match. Every other page wears the shared page frame and
@@ -326,6 +326,26 @@ one top bar, its page header
 The one-time alpha disclosure is the explicit release-stage exception: it is
 shown after any completed initial route, including a reader deep link, and does
 not alter the reader's chrome.
+
+The first-use Help offer is not shell chrome at all. It is a row of the Library's
+own page column, beneath that page's top bar, and it makes its one offer by
+being rendered
+([ADR 0077](../decisions/0077-the-first-run-screen-and-the-cost-boundary.md)).
+A deep link to any other route therefore defers the offer until the Library is
+reached, rather than pushing that route's bar off the viewport edge to make room
+for it. `HelpIntroService` is root-provided, so leaving the Library and coming
+back does not offer it a second time within one run.
+
+### One mark for what spends a key
+
+Monosai is two halves — one local and free, one billed to the learner's own
+OpenRouter account — and which half a control belongs to is carried by the
+`generate` sparkle rather than by prose beside it. It appears on a control, or
+once on a group whose every member qualifies, that spends credit, and it appears
+nowhere else; the design system holds the closed list. It is always
+`aria-hidden` and never the only thing that names a control, and the same
+boundary is stated as a list in Help, in the README, and in the setup guide, so
+the mark reminds rather than encodes.
 
 The reader's own not-found state keeps the reader's bar rather than a page header: it
 is reached only after a reading has begun loading, and swapping the chrome in when a

@@ -102,6 +102,7 @@ files are already linked from code comments and from other records.
 | [0049](../decisions/0049-one-page-for-what-you-can-read.md)                 | Vocabulary and Grammar are one page: what you can read                            |
 | [0050](../decisions/0050-the-library-wears-the-navigation.md)               | The Library standing line is the way to the learner's level                       |
 | [0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)        | Non-reader utilities and first-use Help; amends 0050 and 0025                     |
+| [0077](../decisions/0077-the-first-run-screen-and-the-cost-boundary.md)     | The first-run screen, the Help offer's home, and one mark for cost; amends 0051 and 0050 |
 | [0053](../decisions/0053-reader-touch-details-and-measured-sheets.md)       | Native touch selection, sentence double taps, and measured detail sheets          |
 | [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)           | One Anki entry chosen by platform, and a page per source                          |
 | [0061](../decisions/0061-anki-word-selection-signal-ladder.md)              | Anki word selection weights a ladder of scheduling evidence                       |

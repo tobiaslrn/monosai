@@ -99,13 +99,20 @@ import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.com
                       }
                     }
                     @case ('prepare') {
+                      <!--
+                        Preparing a layer is a request to the provider. The mark
+                        says so before the button is pressed; stopping one and
+                        opening Settings do not carry it, because neither
+                        spends anything.
+                      -->
                       <button
                         type="button"
                         class="mn-button"
                         [disabled]="row.disabled || pending() === row.layer"
                         (click)="prepare.emit(row.layer)"
                       >
-                        {{ pending() === row.layer ? 'Working…' : row.label }}
+                        <mn-icon name="generate" [size]="16" />
+                        <span>{{ pending() === row.layer ? 'Working…' : row.label }}</span>
                       </button>
                     }
                     @case ('cancel') {

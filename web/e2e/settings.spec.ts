@@ -117,12 +117,15 @@ test.describe('settings persistence', () => {
     await expect(alpha).toBeVisible();
     await alpha.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
-    const intro = page.getByRole('complementary', { name: 'A little help getting started' });
-    await expect(intro).toBeVisible();
-    await intro.getByRole('button', { name: 'Got it' }).click();
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
     await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.*/);
     await expect(page.getByRole('radio', { name: 'System' })).toBeChecked();
+
+    // A reset restores the first-use offer, and the Library is where it is made.
+    await page.goto('./#/library');
+    await expect(
+      page.getByRole('complementary', { name: 'A little help getting started' }),
+    ).toBeVisible();
   });
 
   test('never exposes a saved credential in the DOM', async ({ page }) => {
