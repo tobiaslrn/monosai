@@ -34,7 +34,7 @@ interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPo
     '[class.is-sheet]': 'isMobile()',
     '[class.is-dragging]': 'dragOffset() > 0',
     '[style.transform]': 'dragTransform()',
-    '[style.position-anchor]': 'anchorName()',
+    '[style.position-anchor]': 'isMobile() ? null : anchorName()',
     '[attr.data-modal]': "modal() ? '' : null",
   },
   template: `
@@ -83,6 +83,10 @@ interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPo
     }
 
     :host(.is-sheet) {
+      /* A docked sheet spans the viewport, so it drops the anchor's
+         position-area box. Keeping it would inset the sheet to the
+         trigger's edge and leave a bare strip down the side. */
+      position-area: none;
       inset: auto 0 0;
       width: 100%;
       max-width: none;

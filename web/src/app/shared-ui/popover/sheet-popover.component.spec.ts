@@ -100,4 +100,16 @@ describe('SheetPopoverComponent', () => {
 
     expect(sheet.querySelector('.handle')).toBeNull();
   });
+
+  it('anchors to its trigger on desktop but not once docked as a sheet', () => {
+    media.setWidth(1440);
+    expect(render().sheet.style.getPropertyValue('position-anchor')).toBe('--test-anchor');
+
+    TestBed.resetTestingModule();
+    media.setWidth(412);
+
+    // A docked sheet spans the viewport, so keeping the anchor would inset it to
+    // the trigger's edge and leave a bare strip down the side.
+    expect(render().sheet.style.getPropertyValue('position-anchor')).toBe('');
+  });
 });
