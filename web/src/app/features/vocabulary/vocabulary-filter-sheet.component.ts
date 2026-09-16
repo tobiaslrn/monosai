@@ -28,7 +28,7 @@ export interface VocabularyFilterSheetData {
   readonly sources: readonly CapturedSourceObservation[];
 }
 
-/** CDK dialog content used as a bottom sheet on narrow screens. */
+/** CDK dialog content used as a bottom sheet below the desktop breakpoint. */
 @Component({
   selector: 'mn-vocabulary-filter-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,7 +40,7 @@ export interface VocabularyFilterSheetData {
       [class.is-dragging]="dragOffset() > 0"
       [style.transform]="dragTransform()"
     >
-      @if (isNarrow()) {
+      @if (isMobile()) {
         <mn-sheet-handle #handle label="Close filters" (dismissed)="dismiss()" />
       }
       <h2 id="vocabulary-filter-heading">Filters</h2>
@@ -183,7 +183,7 @@ export interface VocabularyFilterSheetData {
       }
     }
 
-    @media (max-width: 31.999em) {
+    @media (max-width: 59.999em) {
       .sheet {
         width: 100%;
         max-height: 90vh;
@@ -204,7 +204,7 @@ export class VocabularyFilterSheetComponent {
   private readonly handle = viewChild<SheetHandleComponent>('handle');
   protected readonly draft = signal<BrowseQuery>(this.data.query);
 
-  protected readonly isNarrow = this.viewport.isNarrow;
+  protected readonly isMobile = this.viewport.isMobile;
   protected readonly dragOffset = computed(() => this.handle()?.offset() ?? 0);
   protected readonly dragTransform = computed(() => {
     const offset = this.dragOffset();
