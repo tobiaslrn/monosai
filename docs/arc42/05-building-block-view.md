@@ -63,9 +63,10 @@ the providers, and owns the shell and the router, so it must be allowed to see e
 
 The shared presentation layer owns the common native-popover sheet surface:
 anchored placement on wide screens, bottom-sheet placement on narrow screens,
-its modal backdrop where needed, and the handle gesture that dismisses a sheet
-with a downward drag. Features provide only the content and the lifecycle
-actions that closing it triggers.
+and its modal backdrop where needed. The handle gesture that dismisses a sheet
+with a downward drag is a component of its own, so a sheet built on a CDK
+dialog shares the one implementation rather than growing a second. Features
+provide only the content and the lifecycle actions that closing it triggers.
 
 ## 5.2 Level 2: how each layer is divided
 

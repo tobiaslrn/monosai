@@ -436,6 +436,12 @@ need an anchor in the page underneath it. The backdrop and focus treatment are
 shared, while the content decides whether its safe dismissal is Cancel, Close,
 or a committed primary action.
 
+Every docked sheet carries the same grab handle, whatever surface it is built
+on, because the handle is the sheet's only way out. Dragging it down dismisses
+the sheet and a plain press does the same; either discards whatever the sheet
+was drafting, exactly as dismissing it from outside would. A sheet that commits
+its draft does so through its own primary action, never through the handle.
+
 Add words is the one sheet opened from a native popover rather than a dialog,
 because it must stay open while a file chooser is up. It follows the same
 placement — hanging from its control on a wide screen, docked to the bottom

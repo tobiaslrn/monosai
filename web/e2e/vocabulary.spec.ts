@@ -141,6 +141,37 @@ test.describe('vocabulary', () => {
     await expect(toggle).toBeFocused();
   });
 
+  test('dismisses the Filters sheet when its handle is dragged down @smoke @mobile', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'the drag handle only exists on the docked mobile sheet');
+    await openVocabulary(page);
+    await addTextList(page, 'My textbook', '飲む');
+    await expect(page.getByTestId('words-standing')).toHaveText('1 word', { timeout: 60_000 });
+    await page.getByTestId('browse-vocabulary').click();
+
+    await page.getByTestId('vocabulary-filters').click();
+    const filters = page.getByRole('dialog', { name: 'Filters' });
+    await expect(filters).toBeVisible();
+
+    // A dragged-away sheet discards its draft, so the list keeps every word.
+    await filters.getByLabel('First studied').selectOption('last-7-days');
+    const handle = filters.getByRole('button', { name: 'Close filters' });
+    const box = await handle.boundingBox();
+    if (box === null) throw new Error('The Filters handle has no box.');
+
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y + 120, { steps: 5 });
+    await page.mouse.up();
+
+    await expect(filters).toBeHidden();
+    await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(1);
+  });
+
   test('dismisses the Add words sheet when its handle is dragged down @smoke @mobile', async ({
     page,
     isMobile,

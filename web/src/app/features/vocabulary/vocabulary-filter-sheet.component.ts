@@ -1,7 +1,16 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { FormsModule } from '@angular/forms';
 import { CLOCK } from '../../application/shared/repository-tokens';
+import { ViewportService } from '../../core/platform/viewport.service';
+import { SheetHandleComponent } from '../../shared-ui/sheet/sheet-handle.component';
 import {
   applyBrowseQuery,
   DEFAULT_BROWSE_QUERY,
@@ -23,9 +32,17 @@ export interface VocabularyFilterSheetData {
 @Component({
   selector: 'mn-vocabulary-filter-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule],
+  imports: [FormsModule, SheetHandleComponent],
   template: `
-    <section class="sheet" aria-labelledby="vocabulary-filter-heading">
+    <section
+      class="sheet"
+      aria-labelledby="vocabulary-filter-heading"
+      [class.is-dragging]="dragOffset() > 0"
+      [style.transform]="dragTransform()"
+    >
+      @if (isNarrow()) {
+        <mn-sheet-handle #handle label="Close filters" (dismissed)="dismiss()" />
+      }
       <h2 id="vocabulary-filter-heading">Filters</h2>
 
       <label class="mn-field">
@@ -122,6 +139,7 @@ export interface VocabularyFilterSheetData {
       border-radius: var(--radius-card);
       background: var(--surface-panel);
       box-shadow: var(--shadow-overlay);
+      transition: transform var(--motion-medium) cubic-bezier(0.2, 0, 0, 1);
     }
 
     h2,
@@ -151,10 +169,26 @@ export interface VocabularyFilterSheetData {
       margin-block-start: var(--space-2);
     }
 
+    .sheet.is-dragging {
+      transition: none;
+    }
+
+    mn-sheet-handle {
+      --mn-sheet-handle-bleed: var(--space-5);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sheet {
+        transition: none;
+      }
+    }
+
     @media (max-width: 31.999em) {
       .sheet {
         width: 100%;
         max-height: 90vh;
+        /* The grab handle sits flush against the docked edge. */
+        padding-block-start: 0;
         border-inline: 0;
         border-block-end: 0;
         border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
@@ -166,7 +200,16 @@ export class VocabularyFilterSheetComponent {
   protected readonly data = inject<VocabularyFilterSheetData>(DIALOG_DATA);
   private readonly dialogRef = inject<DialogRef<BrowseQuery | undefined>>(DialogRef);
   private readonly clock = inject(CLOCK);
+  private readonly viewport = inject(ViewportService);
+  private readonly handle = viewChild<SheetHandleComponent>('handle');
   protected readonly draft = signal<BrowseQuery>(this.data.query);
+
+  protected readonly isNarrow = this.viewport.isNarrow;
+  protected readonly dragOffset = computed(() => this.handle()?.offset() ?? 0);
+  protected readonly dragTransform = computed(() => {
+    const offset = this.dragOffset();
+    return offset === 0 ? null : `translateY(${String(offset)}px)`;
+  });
 
   protected readonly matchCount = () =>
     applyBrowseQuery(this.data.entries, this.draft(), this.clock.now()).length;
@@ -197,6 +240,11 @@ export class VocabularyFilterSheetComponent {
 
   protected show(): void {
     this.dialogRef.close(this.draft());
+  }
+
+  /** Dragging the sheet away discards the draft, as dismissing it does. */
+  protected dismiss(): void {
+    this.dialogRef.close(undefined);
   }
 
   protected reset(): void {
