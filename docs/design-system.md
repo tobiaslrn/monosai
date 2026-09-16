@@ -574,7 +574,12 @@ that cap and the remaining space above that boundary with the standard top gap.
 The player and the sheet account for the safe-area inset once. Opening or
 closing the player, resizing it, and changing the viewport remeasure that
 boundary. A sentence card keeps its grab handle and its action tray visible
-while the translation, warnings, and grammar scroll between them.
+while the translation, warnings, and grammar scroll between them. Both are
+full-bleed and opaque to the card's own edge, so nothing scrolls visibly past
+them: a card whose content ends in a sticky footer gives that footer the card's
+bottom padding, exactly as a docked sheet gives its grab handle the top one. A
+sticky row stops at the content edge, and padding left on the card behind it is
+a strip the content shows through.
 
 An open sheet never covers the line it explains: the reading scrolls just far
 enough to clear the pressed line, reserving temporary room when the press was at

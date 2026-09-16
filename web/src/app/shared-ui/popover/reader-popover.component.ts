@@ -93,7 +93,7 @@ const DISMISS_DISTANCE_PX = 80;
       box-sizing: border-box;
       width: min(23rem, calc(100vw - 2 * var(--space-4)));
       max-height: min(28rem, calc(100dvh - 6rem));
-      padding: var(--space-4);
+      padding: var(--space-4) var(--space-4) var(--mn-popover-pad-bottom);
       overflow-y: auto;
       overscroll-behavior: contain;
       border: 1px solid var(--border-subtle);
@@ -102,6 +102,10 @@ const DISMISS_DISTANCE_PX = 80;
       box-shadow: var(--shadow-overlay);
       /* The first row leaves room for the shared close control in its corner. */
       --mn-popover-close-inset: calc(var(--touch-target) + var(--space-3));
+      /*
+       * Published rather than only applied, for the card's own sticky footer.
+       */
+      --mn-popover-pad-bottom: var(--space-4);
       transition: opacity var(--motion-fast) ease-out;
 
       @starting-style {
@@ -135,7 +139,7 @@ const DISMISS_DISTANCE_PX = 80;
        * bottom position, while this card leaves the standard gap above that
        * boundary. Both resolve to zero whenever nothing else is docked.
        */
-      padding: 0 var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
+      padding: 0 var(--space-4) var(--mn-popover-pad-bottom);
       overflow: hidden auto;
       border-inline: 0;
       border-block-end: 0;
@@ -173,6 +177,20 @@ const DISMISS_DISTANCE_PX = 80;
 
     :host(.is-sheet) .popover {
       --mn-popover-close-inset: 0px;
+      --mn-popover-pad-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    }
+
+    /*
+     * Content that ends in a sticky footer takes the card's bottom padding onto
+     * that footer, marked mn-popover-foot and padded with the value above. A
+     * sticky box stops at the content edge, so padding left on the card would
+     * be a strip below the footer that the rest of the content scrolls visibly
+     * through — the same reason a docked sheet hands its top padding to the
+     * grab handle.
+     */
+    .popover:has(.mn-popover-foot),
+    :host(.is-sheet) .popover:has(.mn-popover-foot) {
+      padding-bottom: 0;
     }
 
     /*
