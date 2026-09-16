@@ -17,6 +17,7 @@ import { isValidAnkiConnectPort } from '../../domain/settings/settings';
 import { HOST_PLATFORM } from '../../domain/platform/host-platform';
 import { technicalCode } from '../../domain/shared/errors';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.component';
 import { TextListSourceComponent } from './text-list-source.component';
 import { ANKI_LINKS } from './anki-links';
 import { connectFailureCopy } from './anki-error-copy';
@@ -44,7 +45,12 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
     '(document:keydown.escape)': 'closeMenuOnEscape($event)',
   },
   providers: [AnkiConnectionStore],
-  imports: [IconComponent, TextListSourceComponent, AnkiMappingDraftComponent],
+  imports: [
+    IconComponent,
+    SheetPopoverComponent,
+    TextListSourceComponent,
+    AnkiMappingDraftComponent,
+  ],
   template: `
     <div class="add-words">
       @if (mode() !== 'text') {
@@ -61,16 +67,18 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
           <mn-icon name="add" [size]="18" /> Add source
         </button>
 
-        <div
+        <mn-sheet-popover
           #menu
-          id="mn-add-words-menu"
           class="menu"
+          id="mn-add-words-menu"
           popover
           role="dialog"
           aria-label="Add words"
+          anchorName="--mn-add-words-anchor"
+          [modal]="true"
           (toggle)="onMenuToggle($event)"
+          (closed)="dismiss()"
         >
-          <span class="grip" aria-hidden="true"></span>
           @if (mode() === 'anki') {
             <div class="sheet-head">
               <button
@@ -218,7 +226,7 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
             </p>
             <button type="button" class="mn-button" (click)="dismiss()">Cancel</button>
           }
-        </div>
+        </mn-sheet-popover>
         <input
           #packageInput
           class="file-input"
@@ -241,8 +249,6 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
     <mn-anki-mapping-draft />
   `,
   styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
     :host {
       position: relative;
       display: block;
@@ -273,65 +279,6 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
 
     .editor-head h3 {
       margin: 0;
-    }
-
-    .menu {
-      position: absolute;
-      position-anchor: --mn-add-words-anchor;
-      position-area: bottom span-left;
-      z-index: 10;
-      inset: auto;
-      display: grid;
-      gap: var(--space-3);
-      width: min(24rem, calc(100vw - var(--space-4)));
-      margin: var(--space-1) 0 0;
-      padding: var(--space-4);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sheet);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
-    }
-
-    .menu:not(:popover-open) {
-      display: none;
-    }
-
-    .grip {
-      display: none;
-    }
-
-    /*
-     * On a phone the sheet docks to the bottom edge of the viewport, which is
-     * a placement rule and therefore the one honest use of a breakpoint here.
-     */
-    @media (max-width: breakpoints.$narrow-max) {
-      .menu {
-        position: fixed;
-        position-area: none;
-        inset: auto 0 0;
-        width: 100%;
-        max-height: 88dvh;
-        margin: 0;
-        overflow-y: auto;
-        padding: var(--space-3) var(--space-4)
-          calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
-        border-width: 1px 0 0;
-        border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-      }
-
-      .menu::backdrop {
-        background: var(--backdrop-scrim);
-      }
-
-      .grip {
-        display: block;
-        justify-self: center;
-        width: 2.5rem;
-        height: 0.3rem;
-        border-radius: var(--radius-pill);
-        background: var(--border-strong);
-        opacity: 0.6;
-      }
     }
 
     .sheet-intro {
@@ -527,7 +474,7 @@ export class AddWordsComponent {
     this.platform === 'android' ? 'Asking the bridge…' : 'Asking Anki…',
   );
 
-  private readonly menu = viewChild<ElementRef<HTMLElement>>('menu');
+  private readonly menu = viewChild<SheetPopoverComponent>('menu');
   private readonly toggleButton = viewChild<ElementRef<HTMLButtonElement>>('toggle');
 
   protected close(): void {
@@ -556,8 +503,7 @@ export class AddWordsComponent {
   }
 
   protected closeMenuOnEscape(event: Event): void {
-    const menu = this.menu()?.nativeElement;
-    if (menu?.matches(':popover-open') !== true) {
+    if (this.menu()?.isOpen() !== true) {
       return;
     }
     event.preventDefault();
@@ -565,7 +511,7 @@ export class AddWordsComponent {
   }
 
   protected onDocumentPointerDown(event: PointerEvent): void {
-    const menu = this.menu()?.nativeElement;
+    const menu = this.menu()?.element();
     const toggle = this.toggleButton()?.nativeElement;
     if (menu === undefined || toggle === undefined) {
       return;
@@ -629,12 +575,6 @@ export class AddWordsComponent {
   }
 
   private hideMenu(): void {
-    const menu = this.menu()?.nativeElement;
-    if (menu === undefined) {
-      return;
-    }
-    if (typeof menu.hidePopover === 'function' && menu.matches(':popover-open')) {
-      menu.hidePopover();
-    }
+    this.menu()?.hide();
   }
 }
