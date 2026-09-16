@@ -20,98 +20,124 @@ import { AnkiConnectionStore } from '../../application/vocabulary/anki-connectio
             expression field.
           </p>
         }
-        <label class="mn-field"
-          ><span>Deck</span>
-          <select
-            [ngModel]="store.selection().deckName"
-            (ngModelChange)="store.change({ deckName: $event })"
-            [disabled]="store.refresh.isBusy() && !store.preview()"
-          >
-            <option value="">Choose a deck</option>
-            @for (deck of store.refresh.catalog()?.decks; track deck.name) {
-              <option [value]="deck.name">{{ deck.name }}</option>
-            }
-          </select>
-        </label>
-        <label class="mn-field"
-          ><span>Note type</span>
-          <select
-            [ngModel]="store.selection().noteTypeName"
-            (ngModelChange)="store.change({ noteTypeName: $event, expressionFieldName: '' })"
-            [disabled]="store.refresh.isBusy() && !store.preview()"
-          >
-            <option value="">Choose a note type</option>
-            @for (type of store.refresh.catalog()?.noteTypes; track type.name) {
-              <option [value]="type.name">{{ type.name }}</option>
-            }
-          </select>
-        </label>
-        <label class="mn-field"
-          ><span>Expression field</span>
-          <select
-            [ngModel]="store.selection().expressionFieldName"
-            (ngModelChange)="store.change({ expressionFieldName: $event })"
-            [disabled]="store.refresh.isBusy() && !store.preview()"
-          >
-            <option value="">Choose the Japanese field</option>
-            @for (field of fields(); track field) {
-              <option [value]="field">{{ field }}</option>
-            }
-          </select>
-        </label>
-        <label class="mn-field"
-          ><span>Meaning field</span>
-          <select
-            aria-label="Meaning field"
-            [ngModel]="store.selection().meaningFieldName ?? ''"
-            (ngModelChange)="store.change({ meaningFieldName: $event || undefined })"
-            [disabled]="store.refresh.isBusy() && !store.preview()"
-          >
-            <option value="">Not mapped</option>
-            @for (field of fields(); track field) {
-              <option [value]="field">{{ field }}</option>
-            }
-          </select>
-        </label>
+        <div class="fields">
+          <label class="mn-field"
+            ><span>Deck</span>
+            <select
+              [ngModel]="store.selection().deckName"
+              (ngModelChange)="store.change({ deckName: $event })"
+              [disabled]="store.refresh.isBusy() && !store.preview()"
+            >
+              <option value="">Choose a deck</option>
+              @for (deck of store.refresh.catalog()?.decks; track deck.name) {
+                <option [value]="deck.name">{{ deck.name }}</option>
+              }
+            </select>
+          </label>
+          <label class="mn-field"
+            ><span>Note type</span>
+            <select
+              [ngModel]="store.selection().noteTypeName"
+              (ngModelChange)="store.change({ noteTypeName: $event, expressionFieldName: '' })"
+              [disabled]="store.refresh.isBusy() && !store.preview()"
+            >
+              <option value="">Choose a note type</option>
+              @for (type of store.refresh.catalog()?.noteTypes; track type.name) {
+                <option [value]="type.name">{{ type.name }}</option>
+              }
+            </select>
+          </label>
+          <label class="mn-field"
+            ><span>Expression field</span>
+            <select
+              [ngModel]="store.selection().expressionFieldName"
+              (ngModelChange)="store.change({ expressionFieldName: $event })"
+              [disabled]="store.refresh.isBusy() && !store.preview()"
+            >
+              <option value="">Choose the Japanese field</option>
+              @for (field of fields(); track field) {
+                <option [value]="field">{{ field }}</option>
+              }
+            </select>
+          </label>
+          <label class="mn-field"
+            ><span>Meaning field</span>
+            <select
+              aria-label="Meaning field"
+              [ngModel]="store.selection().meaningFieldName ?? ''"
+              (ngModelChange)="store.change({ meaningFieldName: $event || undefined })"
+              [disabled]="store.refresh.isBusy() && !store.preview()"
+            >
+              <option value="">Not mapped</option>
+              @for (field of fields(); track field) {
+                <option [value]="field">{{ field }}</option>
+              }
+            </select>
+          </label>
+        </div>
         @if (store.preview()) {
           @for (warning of store.preview()?.stats?.sourceWarnings; track $index) {
             <p class="mn-hint" role="status">{{ warning }}</p>
           }
           <p lang="ja">{{ store.sampleWords().join(' · ') || 'No reviewed words found.' }}</p>
           <p class="mn-hint">Your vocabulary stays unchanged until you confirm.</p>
-          <button type="button" class="mn-button mn-button--primary" (click)="store.confirm()">
-            Confirm vocabulary
-          </button>
-        } @else {
+        }
+        <div class="mn-actions">
+          @if (store.preview()) {
+            <button type="button" class="mn-button mn-button--primary" (click)="store.confirm()">
+              Confirm vocabulary
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="mn-button mn-button--primary"
+              [disabled]="!store.valid() || store.refresh.isBusy()"
+              (click)="store.prepare()"
+            >
+              {{ store.refresh.isBusy() ? 'Reading vocabulary…' : 'Preview vocabulary' }}
+            </button>
+          }
           <button
             type="button"
-            class="mn-button mn-button--primary"
-            [disabled]="!store.valid() || store.refresh.isBusy()"
-            (click)="store.prepare()"
+            class="mn-button"
+            [disabled]="store.refresh.state().kind === 'committing'"
+            (click)="store.cancel()"
           >
-            {{ store.refresh.isBusy() ? 'Reading vocabulary…' : 'Preview vocabulary' }}
+            Cancel
           </button>
-        }
-        <button
-          type="button"
-          class="mn-button"
-          [disabled]="store.refresh.state().kind === 'committing'"
-          (click)="store.cancel()"
-        >
-          Cancel
-        </button>
+        </div>
       </section>
     }
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     :host {
       display: block;
       width: 100%;
     }
+
     section {
       display: grid;
       gap: var(--space-2);
     }
+
+    /*
+     * The same shape the package import uses for the same four questions: one
+     * column on a phone, and side by side once the card is wide enough that a
+     * stack of full-width selects would be a column of bars.
+     */
+    .fields {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    @media (min-width: breakpoints.$narrow) {
+      .fields {
+        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+      }
+    }
+
     h3,
     p {
       margin: 0;

@@ -144,6 +144,14 @@ Pages are **top-aligned and grow downward**, like a document. Content is never
 centred vertically and never stretched to fill the viewport. A short page leaves
 the space below it empty, which is the honest result of having little to say.
 
+A section heading may carry one action opposite it, and that action opens work
+rather than holding it. What the learner is drafting — a pasted word list, an
+Anki mapping waiting to be confirmed — is a card at the head of the section it
+will change, on the section's full width, above the facts it has not changed
+yet. An editor rendered in the action slot instead gets the width a button asks
+for and grows the heading row around itself, which centres the heading beside a
+column of squeezed fields.
+
 Settings uses the same page frame as every other non-reader screen. Each
 top-level group is one quiet raised card with a compact section heading. The
 heading sits close to its card and relies on type, weight, and spacing for rank;

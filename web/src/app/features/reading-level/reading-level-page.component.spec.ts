@@ -162,6 +162,32 @@ describe('ReadingLevelPageComponent', () => {
     }
   });
 
+  /**
+   * Both drafts once rendered inside the section's action slot, where a form
+   * got the width a button asks for and grew the heading row around itself.
+   */
+  it('drafts a source in the section rather than beside its heading', async () => {
+    const { element, fixture } = await render();
+    const action = element.querySelector('.mn-settings-section__action');
+    if (action === null) throw new Error('the section has no action slot');
+
+    element.querySelector<HTMLButtonElement>('[data-testid="add-words"]')?.click();
+    await settle(fixture);
+    element.querySelector<HTMLButtonElement>('[data-testid="add-text-source"]')?.click();
+    await settle(fixture);
+
+    const editor = element.querySelector('[data-testid="text-source-editor"]');
+    expect(editor).not.toBeNull();
+    expect(action.contains(editor)).toBe(false);
+
+    element.querySelector<HTMLButtonElement>('[data-testid="choose-anki"]')?.click();
+    await vi.waitFor(async () => {
+      await settle(fixture);
+      expect(element.querySelector('mn-anki-mapping-draft section')).not.toBeNull();
+    });
+    expect(action.contains(element.querySelector('mn-anki-mapping-draft'))).toBe(false);
+  });
+
   it('counts the words in the learner-facing noun once a source has been read', async () => {
     const { element, fixture } = await render();
 
