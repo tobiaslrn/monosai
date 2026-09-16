@@ -54,17 +54,22 @@ There are two ways to add your vocabulary:
 
 The [setup guide](docs/setup.md) explains both options step by step.
 
-## Optional AI features
+## What is free, and what needs your key
 
-The reader, dictionary and Anki features do not need AI.
+Monosai has two halves, and it is worth knowing which is which before you
+start. The left column works the moment you open the page, with no account and
+no connection once the app has loaded. The right column sends a request to
+OpenRouter and is billed to your account.
 
-AI can:
+| Local and free | Needs your OpenRouter key |
+| --- | --- |
+| The reader, hiragana readings, and word spacing | Writing a story with AI |
+| Dictionary lookup and word forms | Translation into English |
+| Anki import, word lists, and your reading level | Grammar notes |
+| Saved stories, and reading them offline | Text-to-speech audio |
 
-- translate individual sentences;
-- review and explain grammar;
-- create text-to-speech audio and play it in the built-in audio player;
-- write short Japanese stories based on your reviewed Anki vocabulary and the
-  grammar level you choose, starting from about 50 known expressions.
+In the application, everything in the right column is marked with a sparkle.
+Nothing without that mark ever sends a request.
 
 Monosai is strictly **bring your own key**. For now, OpenRouter is the only
 supported AI service. Add your own OpenRouter API key and model choices in
@@ -72,7 +77,7 @@ supported AI service. Add your own OpenRouter API key and model choices in
 provide a shared key or include AI credits.
 
 Your API key is saved only in this browser on this device. AI features need an
-internet connection.
+internet connection. Stories are written from at least 50 reviewed expressions.
 
 ## Install Monosai
 

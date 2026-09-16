@@ -18,6 +18,7 @@ import { TtsStore } from '../../application/settings/tts.store';
 import { MODEL_CATALOG } from '../../application/shared/ai-tokens';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
+import { SUGGESTED_TEXT_MODEL_IDS } from '../../domain/ai/suggested-models';
 import { MAX_STORY_TOKEN_BUDGET } from '../../domain/settings/settings';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
@@ -57,7 +58,8 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     '(document:keydown.escape)': 'connectionMenuOpen.set(false)',
   },
   template: `
-    <mn-settings-section heading="AI">
+    <!-- Everything under this heading spends the learner's OpenRouter credit. -->
+    <mn-settings-section heading="AI" icon="generate">
       <div class="mn-card mn-card--flush mn-settings-card mn-settings-card--overlay">
         <div class="connection">
           <button
@@ -184,6 +186,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                   label="text models"
                   [models]="textModels()"
                   [favoriteIds]="text.favoriteModelIds()"
+                  [suggestedIds]="suggestedTextModelIds"
                   [selectedId]="text.settings().modelId"
                   [selectedLabel]="storyModelLabel()"
                   [loading]="catalogLoading()"
@@ -588,6 +591,8 @@ export class ModelsSectionComponent {
   protected readonly credential = inject(CredentialStore);
   protected readonly text = inject(TextModelStore);
   protected readonly tts = inject(TtsStore);
+  /** Only text: no speech model has been through the structured-output test. */
+  protected readonly suggestedTextModelIds = SUGGESTED_TEXT_MODEL_IDS;
   protected readonly keyDraft = signal('');
   protected readonly connectionLabel = computed(() => {
     if (!this.credential.isConfigured()) return 'Not connected';

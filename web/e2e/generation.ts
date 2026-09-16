@@ -217,3 +217,12 @@ export async function openGenerate(page: Page): Promise<void> {
   await page.goto('./#/generate');
   await expect(page.getByRole('heading', { name: 'Write with AI', level: 1 })).toBeVisible();
 }
+
+/**
+ * The same address before setup is finished, where the screen is the checklist
+ * rather than the form.
+ */
+export async function openSetupPath(page: Page): Promise<void> {
+  await page.goto('./#/generate');
+  await expect(page.getByRole('heading', { name: 'Set up AI stories', level: 1 })).toBeVisible();
+}

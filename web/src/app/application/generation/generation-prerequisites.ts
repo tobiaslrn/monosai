@@ -7,13 +7,20 @@ import {
 import type { GrammarPreset, GrammarPresetId } from '../../domain/grammar/presets';
 
 /**
- * The two external setup checks the Generate screen shows, each independently actionable.
+ * The setup a story is written from, in the order a learner does it.
  *
- * The grammar preset is deliberately not among them: a preset is always set, so
- * it can never block generation. It is reported separately as a read-only line
- * that may carry a warning.
+ * Words first, because everything else is pitched at them; then the level the
+ * stories are written in; then the model that writes them, which is the only
+ * one that costs money. `network` is not setup at all — it is a transient
+ * blocker, and it leads the list only while it applies.
+ *
+ * The reading level is here although it can never block generation: a preset is
+ * always set, so its row is always satisfied. It earns its place by being the
+ * one row a first-time learner can see is already done, and by being the only
+ * way to find the setting from here. Its advisory warning is reported
+ * separately and the Generate button still ignores it.
  */
-export type PrerequisiteId = 'text-model' | 'vocabulary' | 'network';
+export type PrerequisiteId = 'vocabulary' | 'reading-level' | 'text-model' | 'network';
 
 export interface PrerequisiteCheck {
   readonly id: PrerequisiteId;
@@ -33,6 +40,8 @@ export interface PrerequisiteInput {
   readonly textModelReadiness: ConfigurationReadiness;
   readonly structuredOutput: StructuredOutputMode | null;
   readonly snapshot: VocabularySnapshot | null;
+  /** Null only while the language bundle that names the preset is still loading. */
+  readonly preset?: GrammarPreset | null;
 }
 
 function textModelDetail(input: PrerequisiteInput): string {
@@ -79,6 +88,7 @@ export function isTextModelReady(input: PrerequisiteInput): boolean {
 }
 
 export function prerequisiteChecks(input: PrerequisiteInput): readonly PrerequisiteCheck[] {
+  const preset = input.preset ?? null;
   return [
     ...(input.online === false
       ? [
@@ -93,21 +103,30 @@ export function prerequisiteChecks(input: PrerequisiteInput): readonly Prerequis
         ]
       : []),
     {
-      id: 'text-model',
-      label: 'Text AI',
-      satisfied: isTextModelReady(input),
-      detail: textModelDetail(input),
-      route: '/settings',
-      actionLabel: 'Open Settings',
-    },
-    {
       id: 'vocabulary',
-      label: 'Word list',
+      label: 'Your words',
       satisfied:
         input.snapshot !== null && input.snapshot.uniqueEntryCount >= GENERATION_SNAPSHOT_MINIMUM,
       detail: vocabularyDetail(input.snapshot, input.hasSources ?? false),
       route: '/reading-level',
-      actionLabel: 'Open word sources',
+      actionLabel: 'Add a word source',
+    },
+    {
+      // Always satisfied: a preset is always set. See `PrerequisiteId`.
+      id: 'reading-level',
+      label: 'Reading level',
+      satisfied: true,
+      detail: preset === null ? 'Reading your level…' : `Set to ${preset.nameEn}.`,
+      route: preset === null ? '' : '/grammar',
+      actionLabel: 'Change level',
+    },
+    {
+      id: 'text-model',
+      label: 'AI model',
+      satisfied: isTextModelReady(input),
+      detail: textModelDetail(input),
+      route: '/settings',
+      actionLabel: 'Open Settings',
     },
   ];
 }

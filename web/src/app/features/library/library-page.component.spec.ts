@@ -8,6 +8,7 @@ import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
+import { HelpIntroService } from '../../core/layout/help-intro.service';
 import { LibraryStore } from '../../application/reading/library.store';
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import {
@@ -141,6 +142,18 @@ describe('LibraryPageComponent', () => {
           useValue: { selectedPreset: signal(null), load: () => Promise.resolve() },
         },
         { provide: LanguageStore, useValue: { status: signal('ready' as const) } },
+        // The guide offer has its own spec. Here it only has to exist without
+        // reaching app settings, and without spending its one offer.
+        {
+          provide: HelpIntroService,
+          useValue: {
+            visible: signal(false),
+            saveFailed: signal(false),
+            offer: vi.fn(),
+            finish: vi.fn(),
+            retrySave: vi.fn(),
+          },
+        },
       ],
     });
   });
@@ -202,40 +215,50 @@ describe('LibraryPageComponent', () => {
   /**
    * The first-run screen has to explain what Monosai is: it is what a stranger
    * lands on at the public address, and nothing else on it says so.
+   *
+   * Two doors, each stating what it costs. Adding words is not one of them: it
+   * is a step behind writing with AI, and offering it at the top level made a
+   * third entry point out of a prerequisite.
    */
-  it('explains what Monosai is when nothing is saved yet, Anki first', async () => {
+  it('explains what Monosai is when nothing is saved yet, and prices both doors', async () => {
     const fixture = await render();
 
     expect(element(fixture).querySelector('mn-library-welcome h2')?.textContent).toContain(
       'Japanese you can actually read',
     );
-    expect(element(fixture).textContent).toContain('an Anki package, or a pasted list');
     expect(element(fixture).textContent).toContain('Everything stays on this device.');
     expect(
-      [...element(fixture).querySelectorAll<HTMLAnchorElement>('.choice')].map((link) =>
-        link.getAttribute('href'),
-      ),
-    ).toEqual(['/reading-level#words', '/add']);
+      [...element(fixture).querySelectorAll<HTMLAnchorElement>('.choice')].map((link) => ({
+        href: link.getAttribute('href'),
+        title: link.querySelector('strong')?.textContent,
+        cost: link.querySelector('small')?.textContent,
+      })),
+    ).toEqual([
+      { href: '/add', title: 'Paste Japanese text', cost: 'Works now. No account.' },
+      { href: '/generate', title: 'Write with AI', cost: 'Needs an OpenRouter key.' },
+    ]);
     expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(0);
   });
 
   /**
-   * Nothing about a shelf until there is one. The standing line describes words
-   * the learner does not have yet, and there is no shelf to add to.
+   * The welcome owns the first screen whole. The standing line has no count to
+   * state, and the shelf's action is the one control on the page that cannot
+   * produce anything on a first run.
    */
-  it('keeps the story action and vocabulary setup door above the empty shelf', async () => {
+  it('gives the first screen one focal point', async () => {
     const fixture = await render();
 
-    expect(newReadingButton(fixture)).not.toBeNull();
     expect(element(fixture).querySelector('mn-library-welcome')).not.toBeNull();
-    expect(element(fixture).querySelector('mn-library-standing')).not.toBeNull();
+    expect(newReadingButton(fixture)).toBeNull();
+    expect(element(fixture).querySelector('mn-library-standing')).toBeNull();
   });
 
   it('provides day and night artwork for the theme-specific hero', async () => {
+    repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
     expect(
-      [...element(fixture).querySelectorAll<HTMLImageElement>('.hero-art img')].map((image) =>
+      [...element(fixture).querySelectorAll<HTMLImageElement>('mn-home-art img')].map((image) =>
         image.getAttribute('src'),
       ),
     ).toEqual(['assets/home-reader.png', 'assets/home-reader-dark.png']);
@@ -250,7 +273,10 @@ describe('LibraryPageComponent', () => {
 
     const menu = document.querySelector('mn-new-reading-menu');
     const links = [...(menu?.querySelectorAll('a') ?? [])];
-    expect(links.map((link) => link.textContent.trim())).toEqual(['Paste text', 'Write with AI']);
+    expect(links.map((link) => link.textContent.trim())).toEqual([
+      'Paste Japanese text',
+      'Write with AI',
+    ]);
     expect(links.map((link) => link.getAttribute('href'))).toEqual(['/add', '/generate']);
   });
 

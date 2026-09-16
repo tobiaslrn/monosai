@@ -8,44 +8,27 @@ import { classifyReadingLink } from '../../domain/reading/reading-link';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AppUpdateBannerComponent } from './app-update-banner.component';
 import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.component';
-import { HelpIntroService } from './help-intro.service';
 import { AlphaNoticeService } from './alpha-notice.service';
 
 /**
  * The application frame.
  *
  * The shell draws no bar of its own: every page's top bar is its
- * `mn-page-header`, and the reader keeps its own. Banners and the first-use
- * Help guide belong to non-reader surfaces; the alpha disclosure is a startup
- * release notice and may cover any route once.
+ * `mn-page-header`, and the reader keeps its own. Banners belong to non-reader
+ * surfaces; the alpha disclosure is a startup release notice and may cover any
+ * route once. The first-use Help offer is the Library's, not the shell's — see
+ * ADR 0077.
  */
 @Component({
   selector: 'mn-app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, AppUpdateBannerComponent, VocabularySyncBannerComponent],
-  providers: [HelpIntroService],
   template: `
     <a class="mn-skip-link" href="#mn-main">Skip to main content</a>
 
     @if (!isReaderRoute()) {
       <mn-app-update-banner />
       <mn-vocabulary-sync-banner />
-      @if (intro.visible()) {
-        <aside class="intro-error intro-offer" aria-label="A little help getting started">
-          <button type="button" class="mn-button" (click)="intro.finish('dismiss')">Got it</button>
-          <button type="button" class="mn-button" (click)="intro.finish('guide')">
-            Read the guide
-          </button>
-        </aside>
-      }
-      @if (intro.saveFailed()) {
-        <div class="intro-error" role="alert">
-          <div class="mn-notice mn-notice--error">
-            <p>Could not save your Help preference.</p>
-            <button type="button" class="mn-button" (click)="intro.retrySave()">Try again</button>
-          </div>
-        </div>
-      }
     }
 
     <main id="mn-main" class="main" tabindex="-1">
@@ -72,22 +55,6 @@ import { AlphaNoticeService } from './alpha-notice.service';
       outline: none;
     }
 
-    .intro-error {
-      max-width: var(--page-measure);
-      margin: var(--space-4) auto;
-      padding-inline: var(--space-4);
-    }
-    .intro-offer {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--space-2);
-    }
-    .intro-offer p {
-      margin: 0;
-      flex: 1 1 15rem;
-    }
-
     @media (min-width: breakpoints.$wide) {
       .main {
         padding: 0 var(--space-6) var(--space-6);
@@ -96,7 +63,6 @@ import { AlphaNoticeService } from './alpha-notice.service';
   `,
 })
 export class AppShellComponent {
-  protected readonly intro = inject(HelpIntroService);
   private readonly alpha = inject(AlphaNoticeService);
   private readonly router = inject(Router);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
@@ -107,9 +73,9 @@ export class AppShellComponent {
 
   /**
    * ADR 0025 removed application chrome from the reading surface deliberately;
-   * the update banner and Help offer follow the same rule and stay reachable
-   * from non-reader surfaces while a reading is open. The alpha disclosure is
-   * the explicit startup exception and is handled by its own service.
+   * the update banner follows the same rule and stays reachable from non-reader
+   * surfaces while a reading is open. The alpha disclosure is the explicit
+   * startup exception and is handled by its own service.
    */
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -122,7 +88,7 @@ export class AppShellComponent {
       }),
       filter((event) => event instanceof NavigationEnd),
       // Keep the completed navigation as an event, even when its URL matches
-      // Router.url. The first NavigationEnd must wake the intro effect.
+      // Router.url. The first NavigationEnd must wake the alpha effect.
       map((event) => ({ url: event.urlAfterRedirects, completed: true })),
     ),
     { initialValue: { url: this.router.url, completed: this.router.navigated } },
@@ -149,9 +115,6 @@ export class AppShellComponent {
     effect(() => {
       if (this.url().completed) {
         void this.alpha.offer();
-        if (!this.isReaderRoute()) {
-          this.intro.offer();
-        }
       }
     });
   }

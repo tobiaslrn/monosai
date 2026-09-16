@@ -26,6 +26,9 @@ describe('GeneratePageComponent', () => {
     jobs = new FakeGenerationJobsStore();
     online.set(true);
     configureGenerationTestBed({
+      // Setup complete: the form only exists once it is, and these tests are
+      // about the form. The setup path has its own test below.
+      uniqueEntryCount: 200,
       extraProviders: [
         // Every route the screen navigates to resolves to nothing in
         // particular: what is under test is which address it goes to.
@@ -79,6 +82,7 @@ describe('GeneratePageComponent', () => {
     const page = await render();
 
     expect(page.querySelector('mn-story-form')).not.toBeNull();
+    expect(page.querySelector('mn-setup-path')).toBeNull();
     expect(page.querySelector('[data-testid="generation-screen"]')).toBeNull();
     expect(page.querySelector('[data-testid="missing-job"]')).toBeNull();
   });
@@ -94,6 +98,95 @@ describe('GeneratePageComponent', () => {
     expect(page.querySelector('[data-check="network"] strong')?.textContent).toContain(
       'Connection',
     );
+  });
+
+  /**
+   * A form nobody can submit is not a form. Before this, a learner with no
+   * words and no key was given an editable story form with two warnings above
+   * it, and found out it was dead only after filling it in.
+   */
+  it('stands the setup path in for the form until setup is done', async () => {
+    TestBed.resetTestingModule();
+    configureGenerationTestBed({
+      uniqueEntryCount: 0,
+      extraProviders: [
+        provideRouter([{ path: '**', children: [] }]),
+        { provide: GenerationJobsStore, useValue: jobs },
+        { provide: NETWORK_STATUS, useValue: { isOnline: online } },
+        {
+          provide: SourceMappingStore,
+          useValue: { sources: signal([]), load: () => Promise.resolve() },
+        },
+        { provide: TtsStore, useValue: { readiness: signal('ready' as const) } },
+        {
+          provide: TextModelStore,
+          useValue: {
+            readiness: signal('no-credential' as const),
+            testFailure: signal(null),
+            structuredOutput: signal(null),
+            activePresetId: signal<string | null>(null),
+          },
+        },
+      ],
+    });
+    const page = await render();
+
+    expect(page.querySelector('mn-story-form')).toBeNull();
+    expect(page.querySelector('h1')?.textContent).toContain('Set up AI stories');
+    const steps = [...page.querySelectorAll('mn-setup-path .step')].map((step) => ({
+      check: step.getAttribute('data-check'),
+      done: step.classList.contains('is-done'),
+    }));
+    // Every row, in the order the work is done, and the one already settled
+    // shown as settled: that is what makes it a path and not a complaint.
+    expect(steps).toEqual([
+      { check: 'vocabulary', done: false },
+      { check: 'reading-level', done: true },
+      { check: 'text-model', done: false },
+    ]);
+    expect(page.querySelector('[data-check="text-model"]')?.textContent).toContain(
+      'Add an OpenRouter key.',
+    );
+  });
+
+  /**
+   * A learner who cannot reach the network cannot save a key or test a model
+   * either, so the path says so rather than leaving them pressing a button
+   * that will not work.
+   */
+  it('names the connection on the setup path while it is down', async () => {
+    TestBed.resetTestingModule();
+    online.set(false);
+    configureGenerationTestBed({
+      uniqueEntryCount: 0,
+      extraProviders: [
+        provideRouter([{ path: '**', children: [] }]),
+        { provide: GenerationJobsStore, useValue: jobs },
+        { provide: NETWORK_STATUS, useValue: { isOnline: online } },
+        {
+          provide: SourceMappingStore,
+          useValue: { sources: signal([]), load: () => Promise.resolve() },
+        },
+        { provide: TtsStore, useValue: { readiness: signal('ready' as const) } },
+        {
+          provide: TextModelStore,
+          useValue: {
+            readiness: signal('no-credential' as const),
+            testFailure: signal(null),
+            structuredOutput: signal(null),
+            activePresetId: signal<string | null>(null),
+          },
+        },
+      ],
+    });
+    const page = await render();
+
+    expect(
+      [...page.querySelectorAll('mn-setup-path .step')].map((step) =>
+        step.getAttribute('data-check'),
+      ),
+    ).toEqual(['network', 'vocabulary', 'reading-level', 'text-model']);
+    expect(page.querySelector('[data-check="network"]')?.textContent).toContain('You are offline');
   });
 
   it('shows the progress of the addressed run and says it can be left', async () => {

@@ -1,9 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { describe, expect, it, vi } from 'vitest';
 import { AppShellComponent } from './app-shell.component';
-import { HelpIntroService } from './help-intro.service';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AlphaNoticeService } from './alpha-notice.service';
 
@@ -12,7 +11,6 @@ class Page {}
 
 describe('AppShellComponent', () => {
   async function render(url = '/settings') {
-    const intro = { offer: vi.fn(), saveFailed: signal(false), retrySave: vi.fn() };
     const alpha = { offer: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
@@ -22,12 +20,7 @@ describe('AppShellComponent', () => {
       ],
     });
     TestBed.overrideComponent(AppShellComponent, {
-      set: {
-        providers: [
-          { provide: HelpIntroService, useValue: intro },
-          { provide: AlphaNoticeService, useValue: alpha },
-        ],
-      },
+      set: { providers: [{ provide: AlphaNoticeService, useValue: alpha }] },
     });
     TestBed.overrideTemplate(
       AppShellComponent,
@@ -40,28 +33,25 @@ describe('AppShellComponent', () => {
     const fixture = TestBed.createComponent(AppShellComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    return { fixture, intro, alpha, router, element: fixture.nativeElement as HTMLElement };
+    return { fixture, alpha, router, element: fixture.nativeElement as HTMLElement };
   }
 
-  it('renders the skip link and a focusable main landmark, and offers the guide', async () => {
-    const { element, intro, alpha } = await render();
+  it('renders the skip link and a focusable main landmark, and offers the alpha notice', async () => {
+    const { element, alpha } = await render();
     expect(element.querySelector('.mn-skip-link')?.getAttribute('href')).toBe('#mn-main');
     expect(element.querySelector('main')?.getAttribute('tabindex')).toBe('-1');
-    expect(intro.offer).toHaveBeenCalled();
     expect(alpha.offer).toHaveBeenCalled();
   });
 
-  it('defers the intro and drops non-reader chrome on a reader deep link', async () => {
-    const { fixture, element, intro, alpha, router } = await render(
+  it('drops non-reader chrome on a reader deep link and restores it on leaving', async () => {
+    const { fixture, element, alpha, router } = await render(
       '/reader/2f8d3f4e-1b6a-4f7c-9c2e-0d5a6b7c8d9e',
     );
     expect(element.querySelector('.chrome')).toBeNull();
-    expect(intro.offer).not.toHaveBeenCalled();
     expect(alpha.offer).toHaveBeenCalled();
     await router.navigateByUrl('/help');
     fixture.detectChanges();
     expect(element.querySelector('.chrome')).not.toBeNull();
-    expect(intro.offer).toHaveBeenCalledOnce();
   });
 
   /**
@@ -70,10 +60,9 @@ describe('AppShellComponent', () => {
    * application to a prefix match on the URL.
    */
   it('keeps non-reader chrome on a reader link that names no reading', async () => {
-    const { element, intro, alpha } = await render('/reader/example');
+    const { element, alpha } = await render('/reader/example');
 
     expect(element.querySelector('.chrome')).not.toBeNull();
-    expect(intro.offer).toHaveBeenCalled();
     expect(alpha.offer).toHaveBeenCalled();
   });
 });

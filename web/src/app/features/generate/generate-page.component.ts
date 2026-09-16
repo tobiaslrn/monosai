@@ -38,6 +38,7 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
 import { NotFoundPanelComponent } from '../../shared-ui/not-found/not-found-panel.component';
 import { GenerationWaitComponent } from './generation-wait.component';
 import { PrerequisitePanelComponent } from './prerequisite-panel.component';
+import { SetupPathComponent } from './setup-path.component';
 import { StoryFormComponent } from './story-form.component';
 import { ExceptionPolicyFieldComponent } from './exception-policy-field.component';
 
@@ -58,7 +59,13 @@ function formatList(items: readonly string[]): string {
 }
 
 /**
- * The Generate screen: the form, and the progress of one running job.
+ * The Generate screen: the setup path, the form, and one run's progress.
+ *
+ * Setup comes first and stands in for the form until it is done, so the form is
+ * a screen a learner only reaches when they can write on it. Once setup is
+ * complete it never appears again; what is left is the compact panel for the
+ * two things that can still stop a ready learner — being offline, and a
+ * reading level their word list may be too small for.
  *
  * Runs live in the root `GenerationJobsStore`, not here, so leaving the screen
  * leaves the story being written. Which run this screen is showing comes from
@@ -76,6 +83,7 @@ function formatList(items: readonly string[]): string {
     GenerationWaitComponent,
     PageHeaderComponent,
     PrerequisitePanelComponent,
+    SetupPathComponent,
     StoryFormComponent,
     ExceptionPolicyFieldComponent,
     NotFoundPanelComponent,
@@ -87,12 +95,6 @@ function formatList(items: readonly string[]): string {
       <p class="mn-visually-hidden" role="status" aria-live="polite" data-testid="generate-status">
         {{ announcement() }}
       </p>
-
-      <!--
-        Only while something is actually missing. A panel confirming a setup the
-        learner finished long ago is a permanent header on a screen they came to
-        write on.
-      -->
 
       @if (missingJob()) {
         <!--
@@ -170,6 +172,13 @@ function formatList(items: readonly string[]): string {
             <a class="mn-button" routerLink="/library">Back to library</a>
           </div>
         </section>
+      } @else if (needsSetup()) {
+        <!--
+          The form is the reward for finishing setup, not the place it is
+          explained. Offline is not setup, so it never hides the form: the
+          learner can still write, and the draft waits for the connection.
+        -->
+        <mn-setup-path [checks]="checks()" [preset]="presetLine()" />
       } @else if (state().kind !== 'failed') {
         <!-- Plain: the form is the page, so a border around it encloses nothing. -->
         <section aria-labelledby="mn-generate-form-heading">
@@ -326,7 +335,7 @@ export class GeneratePageComponent {
     }
     switch (this.state().kind) {
       case 'idle':
-        return 'Write with AI';
+        return this.needsSetup() ? 'Set up AI stories' : 'Write with AI';
       case 'saved':
         return 'Your story is ready';
       case 'cancelled':
@@ -347,8 +356,26 @@ export class GeneratePageComponent {
       textModelReadiness: this.textModel.readiness(),
       structuredOutput: this.textModel.structuredOutput(),
       snapshot: this.snapshots.active(),
+      preset: this.grammar.selectedPreset(),
     });
   });
+
+  /**
+   * Setup is the part of the list a learner can finish once. Being offline is
+   * not part of it: it clears itself, and hiding the form behind it would lose
+   * the one screen where a draft can be written while the connection is away.
+   *
+   * It is only what decides *which* screen to show. The path itself is given
+   * every check, offline included: a learner who cannot reach the network
+   * cannot save a key or test a model either, and a setup screen that does not
+   * say so leaves them pressing a button that will not work.
+   */
+  private readonly setupChecks = computed(() =>
+    this.checks().filter((check) => check.id !== 'network'),
+  );
+  protected readonly needsSetup = computed(
+    () => this.state().kind === 'idle' && !allPrerequisitesMet(this.setupChecks()),
+  );
 
   protected readonly presetLine = computed(() =>
     grammarPresetLine(this.grammar.selectedPreset(), this.snapshots.active()),
@@ -371,8 +398,10 @@ export class GeneratePageComponent {
   );
 
   /**
-   * Whether anything is worth saying before the form. The advisory preset
-   * warning counts: it is the one line here that costs money to ignore.
+   * Whether anything is worth saying above a form the learner can already use.
+   * Setup is not among them — it has taken the screen by the time this is asked.
+   * The advisory preset warning counts: it is the one line here that costs
+   * money to ignore.
    */
   protected readonly hasBlockers = computed(
     () => !allPrerequisitesMet(this.checks()) || this.presetLine().warning !== null,

@@ -145,11 +145,14 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       page.getByRole('heading', { name: /Japanese you can actually read/, level: 2 }),
     ).toBeVisible();
     await expect(page.getByText('Everything stays on this device.')).toBeVisible();
-    await expect(page.getByRole('link', { name: /Add a word list/ })).toBeVisible();
+    // Two doors, each stating its cost. Adding words is a step behind the
+    // second one, not a third entry point competing with them.
+    await expect(page.getByRole('link', { name: /Add a word list/ })).toHaveCount(0);
     await expect(page.getByRole('link', { name: /Paste Japanese text/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Write with AI/ })).toBeVisible();
   });
 
-  test('New story offers both ways in, and Paste text reaches the reader', async ({ page }) => {
+  test('New story offers both ways in, and pasting reaches the reader', async ({ page }) => {
     // New story appears once the shelf has something on it; a first visit
     // offers its two starting paths as cards instead. A different text, because
     // re-importing the same one is not a second reading.
@@ -158,10 +161,10 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
     await page.getByRole('button', { name: 'Create a new story' }).click();
     const chooser = page.getByRole('dialog', { name: 'New story' });
-    await expect(chooser.getByRole('link', { name: 'Paste text' })).toBeVisible();
+    await expect(chooser.getByRole('link', { name: 'Paste Japanese text' })).toBeVisible();
     await expect(chooser.getByRole('link', { name: 'Write with AI' })).toBeVisible();
 
-    await chooser.getByRole('link', { name: 'Paste text' }).click();
+    await chooser.getByRole('link', { name: 'Paste Japanese text' }).click();
     await expect(page).toHaveURL(/#\/add/);
 
     await pasteAndContinue(page, SAMPLE_TEXT);

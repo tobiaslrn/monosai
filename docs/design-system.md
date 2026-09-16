@@ -337,6 +337,34 @@ it can be pressed has failed the repetition test and should carry a label.
 One concept gets one icon, and one icon means one concept across the whole
 application.
 
+### The mark for spending a key
+
+Monosai has two halves: one that works on this device for nothing, and one that
+sends a request to OpenRouter and is billed to the learner's own account. The
+difference decides what a stranger does next and it was stated only in
+sentences, in three places nobody reads at the moment of choosing.
+
+The `generate` sparkle is that difference, said as a mark. It appears on, and
+only on, a control or group that spends OpenRouter credit:
+
+- **Write with AI**, wherever it is offered.
+- The reader's Prepare actions for translation, grammar notes, and audio.
+- The **Prepare after generation** group, marked once on its legend because
+  every switch in it spends credit.
+- The **AI** heading in Settings.
+
+The rule has one shape and one exemption. A group may carry the mark once in
+place of marking each of its members, and only when **every** member spends
+credit. Nothing else may wear it: not a screen that merely mentions AI, not a
+row that opens Settings, not Stop or Cancel, and not an error about a request
+that already failed. A mark that appears where nothing is spent costs the mark
+its meaning everywhere else, which is the whole of its value.
+
+It is decoration in the accessibility tree — always `aria-hidden`, never the
+only thing that names a control. The guide states the same boundary as a list,
+so the mark is a reminder of something the learner has read rather than a symbol
+they must decode.
+
 ### Appearance
 
 Icon buttons are **bare at rest**: no border, no filled background, only the
@@ -738,10 +766,18 @@ Four exceptions:
 - **Help is a prose surface.** Its job is explanation: static, local English
   guidance uses one readable column, section headings, short paragraphs, and
   links close to the actions they explain. It needs no cards around each topic.
-  A quiet, non-modal first-use banner offers Help on a non-reader
-  surface without moving focus or covering the app. Dismissal records the preference for this local installation;
-  the guide remains among the Library's utilities. Reader deep links are never
-  interrupted.
+  A quiet, non-modal first-use banner offers Help **once, on the Library**,
+  inside the page column beneath that page's own top bar: above the bar it
+  pushed every screen off the viewport edge and reappeared on every non-reader
+  route until it was dismissed. It says what it is offering — two buttons and no
+  sentence is not a compact banner, it is a question about nothing. It moves no
+  focus and covers nothing. Dismissal records the preference for this local
+  installation; the guide remains among the Library's utilities. Reader deep
+  links are never interrupted.
+
+  Help itself opens with the three steps of a first five minutes and folds the
+  rest. It is a good reference and a poor first thing to read, and it is what
+  that banner offers ten seconds after arrival.
 
 - **Empty states teach.** An empty surface has nothing but words to work with,
   so any empty list explains what belongs there and how to fill it. The
@@ -751,6 +787,16 @@ Four exceptions:
   it would do for them before it offers a way in. This is the one surface
   written in the first person: that a person made this is allowed to show here
   and nowhere else. It ends, like any empty state, the moment there is content.
+
+  A first run owns its screen whole, and the relaxed budget is the only thing
+  about it that is relaxed. It has **one** headline: a standing line that states
+  a count has no count to state yet, and two display headlines competing on one
+  screen leave the eye no entry point. It offers **two** doors at most, each
+  naming in a few words what it costs — the half that works immediately and the
+  half that needs an account and a key are indistinguishable otherwise. A
+  prerequisite is not a door and does not get one. And a screen's primary
+  action is withheld while it cannot succeed: the most prominent control on a
+  first run must not be one that leads to a dead end.
 - **Release-stage disclosure.** A new alpha installation may require one short
   acknowledgment before use. This is a product disclosure rather than Help;
   it is persisted locally and is not shown again after acknowledgment.

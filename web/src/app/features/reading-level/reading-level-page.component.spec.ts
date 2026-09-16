@@ -292,6 +292,12 @@ describe('ReadingLevelPageComponent', () => {
     expect(alert?.textContent).toContain('Anki is not answering');
     expect(alert?.querySelector('details')?.open).toBe(false);
     expect(alert?.textContent).toContain('AnkiConnect add-on');
+    // One unbroken run. The link used to sit on its own line, and Angular
+    // collapsed the newlines around it into spaces, so the punctuation after
+    // the link arrived detached from it.
+    expect(alert?.querySelector('p.mn-hint')?.textContent).toContain(
+      'it needs the AnkiConnect add-on \u2014 install it, then restart Anki.',
+    );
     expect(alert?.textContent).toContain('anki/not-running');
     expect(alert?.querySelector('a[href*="troubleshooting"]')).not.toBeNull();
   });

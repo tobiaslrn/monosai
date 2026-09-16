@@ -1,53 +1,66 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
-import { formatCount } from '../../domain/shared/locale';
-import { GENERATION_SNAPSHOT_MINIMUM } from '../../domain/vocabulary/snapshot';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { HomeArtComponent } from './home-art.component';
 
 /**
  * The Library before there is anything on it.
  *
  * This is the screen a stranger lands on at the public address, so it has to
- * say what Monosai is rather than only offering two buttons. An empty surface
- * has nothing but words to work with, which is the one place the prose budget
- * stretches — and the one surface where the fact that a person made this is
- * allowed to show.
+ * say what Monosai is rather than only offering two buttons. It owns the
+ * headline here: the standing line above it states a count, and an empty
+ * collection has no count to state, so two display headlines were competing
+ * for the same screen with nothing to choose between them.
  *
- * Word sources come first, with Anki the first suggested source. The shelf's
- * New story action stays above this empty body, so setup never hides writing.
+ * Two doors, not three. Each names what it costs in four words, because the
+ * half of Monosai that works immediately and the half that needs an account,
+ * a key and money were indistinguishable at the one moment the difference
+ * decides what a stranger does next. Adding words is not a door — it is a step
+ * behind the second one, and it belongs in that setup path rather than
+ * competing with it here.
  *
  * It ends the moment the library has a reading in it.
  */
 @Component({
   selector: 'mn-library-welcome',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink, IconComponent, HomeArtComponent],
   template: `
     <section class="welcome" aria-labelledby="mn-welcome-heading">
-      <h2 id="mn-welcome-heading">Monosai writes Japanese you can actually read.</h2>
-
-      <p class="lede">
-        Monosai builds readable stories from at least {{ minimumWords }} words from Anki, an Anki
-        package, or a pasted list. Paste Japanese text to add readings, spacing, and a dictionary.
-      </p>
-
-      <p class="local">Everything stays on this device.</p>
+      <div class="intro">
+        <div class="words">
+          <h2 id="mn-welcome-heading">Monosai writes Japanese you can actually read.</h2>
+          <p class="lede">
+            Stories built from the words you already know, and a reader for any Japanese you paste.
+          </p>
+        </div>
+        <mn-home-art class="art" />
+      </div>
 
       <div class="choices">
-        <a class="choice" routerLink="/reading-level" fragment="words" [state]="libraryOriginState">
-          <mn-icon name="vocabulary" [size]="20" />
-          <span>
-            <strong>Add a word list</strong>
-          </span>
-        </a>
         <a class="choice" routerLink="/add" [state]="libraryOriginState">
-          <mn-icon name="add" [size]="20" />
+          <mn-icon name="file" [size]="20" />
           <span>
             <strong>Paste Japanese text</strong>
+            <small>Works now. No account.</small>
+          </span>
+        </a>
+        <!--
+          The sparkle is the one mark that means "this spends your OpenRouter
+          credit". See the design system: it appears on every such control and
+          on nothing else.
+        -->
+        <a class="choice choice--ai" routerLink="/generate" [state]="libraryOriginState">
+          <mn-icon name="generate" [size]="20" />
+          <span>
+            <strong>Write with AI</strong>
+            <small>Needs an OpenRouter key.</small>
           </span>
         </a>
       </div>
+
+      <p class="local">Everything stays on this device.</p>
     </section>
   `,
   styles: `
@@ -58,6 +71,31 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       flex-direction: column;
       gap: var(--space-4);
       max-width: 42rem;
+    }
+
+    /*
+     * The words and the drawing share a row and neither is laid over the
+     * other. The illustration used to be positioned across the whole hero, and
+     * on a phone the lamp and the leaves sat on top of the sentence.
+     */
+    .intro {
+      display: flex;
+      gap: var(--space-4);
+      align-items: center;
+    }
+
+    .words {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      gap: var(--space-3);
+      min-width: 0;
+    }
+
+    .art {
+      flex: none;
+      width: 32%;
+      max-width: 11rem;
     }
 
     h2 {
@@ -77,14 +115,13 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     }
 
     .local {
-      color: var(--text-primary);
+      font-size: var(--text-sm);
     }
 
     .choices {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--space-3);
-      margin-top: var(--space-2);
     }
 
     .choice {
@@ -110,6 +147,10 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       color: var(--action-primary);
     }
 
+    .choice--ai mn-icon {
+      color: var(--accent-secondary);
+    }
+
     .choice span {
       display: flex;
       flex-direction: column;
@@ -128,8 +169,14 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     }
 
     @media (max-width: breakpoints.$narrow-max) {
-      h2 {
-        font-size: var(--text-2xl);
+      /*
+       * A phone gives the sentence the width instead of the picture: at this
+       * size the drawing shrinks to something unreadable long before the
+       * headline stops needing the room.
+       */
+      .art {
+        width: 30%;
+        max-width: 7rem;
       }
 
       .choices {
@@ -140,6 +187,4 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 })
 export class LibraryWelcomeComponent {
   protected readonly libraryOriginState = navigationOriginState('/library');
-  /** The generation floor, said once here and defined once in the domain. */
-  protected readonly minimumWords = formatCount(GENERATION_SNAPSHOT_MINIMUM);
 }

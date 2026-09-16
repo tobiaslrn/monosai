@@ -231,7 +231,10 @@ export class LibraryStandingComponent {
       case 'known': {
         const snapshot = state.snapshot;
         if (snapshot === null) {
-          return 'Connect Anki to write stories from your own words.';
+          // Every source, not the one that needs a desktop Anki running and an
+          // add-on installed. Naming only that one told a learner without Anki
+          // that Monosai was not for them.
+          return 'Add your words — from Anki, an Anki package, or a pasted list.';
         }
         if (snapshot.uniqueEntryCount === 0) {
           return 'A source is connected but has no words in it yet.';

@@ -16,10 +16,18 @@
 }
 
 .mn-settings-section__header h2 {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
   margin: 0;
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
   line-height: 1.25;
+}
+
+/* A heading's leading mark is decoration; it never carries the section's name. */
+.mn-settings-section__header h2 > mn-icon {
+  color: var(--accent-secondary);
 }
 
 .mn-settings-section__action {

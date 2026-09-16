@@ -6,6 +6,10 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 /**
  * The two ways a reading gets into the library.
  *
+ * Named here exactly as they are named on the welcome, on the screen each one
+ * opens, and in the guide. Four names for two things was what made a learner
+ * ask whether Paste text and Paste Japanese text were the same thing.
+ *
  * Generating is a branch of adding rather than a destination of its own: it
  * produces the same thing by a different route, and giving it equal billing in
  * a navigation bar was what made Monosai look like an AI tool with a reader
@@ -19,7 +23,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     <div class="choices">
       <a routerLink="/add" [state]="libraryOriginState" (click)="chosen.emit()">
         <mn-icon name="add" [size]="20" />
-        <span>Paste text</span>
+        <span>Paste Japanese text</span>
       </a>
       <a routerLink="/generate" [state]="libraryOriginState" (click)="chosen.emit()">
         <mn-icon name="generate" [size]="20" />
