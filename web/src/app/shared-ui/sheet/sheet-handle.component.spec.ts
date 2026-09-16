@@ -33,8 +33,15 @@ describe('SheetHandleComponent', () => {
     return element!;
   }
 
-  function pointer(target: HTMLElement, type: string, clientY: number): void {
-    target.dispatchEvent(new PointerEvent(type, { bubbles: true, clientY, pointerId: 1 }));
+  /**
+   * A synthetic gesture carries its own timing, because the release speed is
+   * what tells a flick from a finger coming to rest and a dispatched event
+   * would otherwise report a whole drag as having taken no time at all.
+   */
+  function pointer(target: HTMLElement, type: string, clientY: number, time = 0): void {
+    const event = new PointerEvent(type, { bubbles: true, clientY, pointerId: 1 });
+    Object.defineProperty(event, 'timeStamp', { value: time });
+    target.dispatchEvent(event);
   }
 
   it('names the action for assistive technology', () => {
@@ -57,19 +64,37 @@ describe('SheetHandleComponent', () => {
   });
 
   it('springs back after a short drag without dismissing', () => {
-    pointer(button(), 'pointerdown', 100);
-    pointer(button(), 'pointermove', 140);
-    pointer(button(), 'pointerup', 140);
+    pointer(button(), 'pointerdown', 100, 0);
+    pointer(button(), 'pointermove', 140, 300);
+    pointer(button(), 'pointerup', 140, 320);
     button().click();
 
     expect(fixture.componentInstance.closed).toBe(0);
     expect(fixture.componentInstance.handle().offset()).toBe(0);
   });
 
+  it('dismisses a short flick, which is how a phone puts a sheet away', () => {
+    pointer(button(), 'pointerdown', 100, 0);
+    pointer(button(), 'pointermove', 140, 40);
+    pointer(button(), 'pointerup', 140, 45);
+    button().click();
+
+    expect(fixture.componentInstance.closed).toBe(1);
+  });
+
+  it('keeps the sheet when the finger flicked but then came to rest', () => {
+    pointer(button(), 'pointerdown', 100, 0);
+    pointer(button(), 'pointermove', 140, 40);
+    pointer(button(), 'pointerup', 140, 400);
+    button().click();
+
+    expect(fixture.componentInstance.closed).toBe(0);
+  });
+
   it('emits one dismissal after a drag reaches the threshold', () => {
-    pointer(button(), 'pointerdown', 100);
-    pointer(button(), 'pointermove', 181);
-    pointer(button(), 'pointerup', 181);
+    pointer(button(), 'pointerdown', 100, 0);
+    pointer(button(), 'pointermove', 181, 600);
+    pointer(button(), 'pointerup', 181, 620);
     button().click();
 
     expect(fixture.componentInstance.closed).toBe(1);

@@ -442,6 +442,13 @@ the sheet and a plain press does the same; either discards whatever the sheet
 was drafting, exactly as dismissing it from outside would. A sheet that commits
 its draft does so through its own primary action, never through the handle.
 
+The gesture is read the way a phone reads it. The sheet follows the finger
+exactly while it is held. Letting go answers with the same two outcomes a
+native sheet gives: a drag that went far enough, or a downward flick of any
+length, sends the sheet away, and anything less settles it back against its
+edge. Speed counts because a short flick is how a sheet is usually put away,
+and a sheet that waits to be dragged the full distance feels deaf to it.
+
 Add words is the one sheet opened from a native popover rather than a dialog,
 because it must stay open while a file chooser is up. It follows the same
 placement — hanging from its control on a wide screen, docked to the bottom
@@ -690,6 +697,13 @@ Motion is functional first: it shows where something came from, that something
 is still working, or that a value changed. A sheet rises from the edge it
 docks to. A generation fill breathes while requests are open. A control settles
 into its new state rather than cutting to it.
+
+A sheet leaves by the edge it arrived from, and a dismissal continues the
+gesture that asked for it: the slide starts wherever the finger let go rather
+than from the docked position, and the scrim of a modal sheet fades with it.
+Arrival decelerates into place and departure accelerates away, which is what
+makes the same distance read as settling one way and leaving the other. A
+surface that is cut away between frames reads as a fault, not as an answer.
 
 Beyond that, **a little character is allowed, and only on apparatus**: a spring
 on the play control, a settle on a popover arriving. The budget for it is small

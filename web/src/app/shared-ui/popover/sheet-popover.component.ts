@@ -82,10 +82,55 @@ interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPo
       overflow-y: auto;
       border-width: 1px 0 0;
       border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+      /*
+       * Closed, the sheet sits below the edge it docks to: it rises from there
+       * when it opens and goes back down the same way, so a dismissal carries
+       * on from wherever the finger let go instead of cutting the sheet out
+       * from under it. The discrete properties keep it painted and in the top
+       * layer until that slide has finished.
+       */
+      transform: translateY(100%);
+      transition:
+        transform var(--motion-medium) cubic-bezier(0.3, 0, 0.8, 0.15),
+        display var(--motion-medium) allow-discrete,
+        overlay var(--motion-medium) allow-discrete;
+    }
+
+    /* On its way out it is no longer a surface: a tap lands on the page behind it. */
+    :host(.is-sheet:not(:popover-open)) {
+      pointer-events: none;
+    }
+
+    /* Arriving decelerates and leaving accelerates, as a native sheet does. */
+    :host(.is-sheet:popover-open) {
+      transform: translateY(0);
+      transition-timing-function: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+      @starting-style {
+        transform: translateY(100%);
+      }
     }
 
     :host([data-modal])::backdrop {
-      background: var(--backdrop-scrim);
+      background-color: var(--backdrop-scrim);
+    }
+
+    /* The scrim fades with the sheet rather than cutting out from behind it. */
+    :host(.is-sheet[data-modal])::backdrop {
+      transition:
+        background-color var(--motion-medium) linear,
+        display var(--motion-medium) allow-discrete,
+        overlay var(--motion-medium) allow-discrete;
+    }
+
+    :host(.is-sheet[data-modal]:not(:popover-open))::backdrop {
+      background-color: transparent;
+    }
+
+    :host(.is-sheet[data-modal]:popover-open)::backdrop {
+      @starting-style {
+        background-color: transparent;
+      }
     }
 
     :host(.is-dragging) {
@@ -97,7 +142,9 @@ interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPo
     }
 
     @media (prefers-reduced-motion: reduce) {
-      :host {
+      :host,
+      :host(.is-sheet),
+      :host(.is-sheet[data-modal])::backdrop {
         transition: none;
       }
     }
@@ -138,10 +185,27 @@ export class SheetPopoverComponent {
   }
 
   hide(): void {
+    this.settleDrag();
     (this.host.nativeElement as NativePopoverElement).hidePopover?.();
   }
 
   focusHandle(): void {
     this.handle()?.focus();
+  }
+
+  /**
+   * Ends a drag on the host itself, ahead of the change detection that will do
+   * the same.
+   *
+   * A sheet is usually closed from the gesture that dismissed it, and the
+   * browser recalculates style before Angular writes the released state back.
+   * It would see a sheet still pinned to the finger and transition-free, and so
+   * cut it away instead of sending it down. Writing the settled state here is
+   * what the next change detection writes anyway, so the two agree.
+   */
+  private settleDrag(): void {
+    const host = this.host.nativeElement;
+    host.classList.remove('is-dragging');
+    host.style.removeProperty('transform');
   }
 }

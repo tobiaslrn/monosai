@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
+import { expectSheetAtRest } from './sheets';
 import { expectSettingPersisted } from './storage';
 import {
   countOwnedRows,
@@ -256,6 +257,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     const panel = page.getByRole('dialog', { name: 'Story options', exact: true });
     const handle = panel.locator('.handle');
     await expect(handle).toBeVisible();
+    await expectSheetAtRest(panel);
 
     const anchorBefore = await toggle.boundingBox();
     const handleBox = await handle.boundingBox();
@@ -266,15 +268,62 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     const y = (handleBox?.y ?? 0) + (handleBox?.height ?? 0) / 2;
     await page.mouse.move(x, y);
     await page.mouse.down();
-    await page.mouse.move(x, y + 40);
+    // Slowly, and at rest before letting go: a flick of the same length is a
+    // dismissal, and this journey is about the sheet following the finger.
+    for (let step = 1; step <= 4; step += 1) {
+      await page.mouse.move(x, y + step * 10);
+      await page.waitForTimeout(60);
+    }
 
     await expect(panel).toHaveCSS('transform', /matrix\(1, 0, 0, 1, 0, 40\)/);
     await expect
       .poll(() => toggle.boundingBox())
       .toEqual(expect.objectContaining({ x: anchorBefore?.x, y: anchorBefore?.y }));
 
+    await page.waitForTimeout(200);
     await page.mouse.up();
     await expect(panel).toBeVisible();
+  });
+
+  /**
+   * A dismissal continues the gesture that asked for it. The sheet used to be
+   * cut away between frames the moment the drag passed the threshold, which
+   * reads as a fault rather than as an answer.
+   */
+  test('sends the mobile story-options sheet down the edge it docks to @mobile @smoke', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'only a docked sheet has an edge to leave by');
+    await importReading(page, SAMPLE_TEXT, 'Mobile sheet dismissal');
+    // The slide takes its length from the motion token, so a long one makes the
+    // frames it passes through observable rather than a race with 200ms.
+    await page.addStyleTag({ content: ':root { --motion-medium: 1500ms; }' });
+
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
+    // Once dismissed the panel is no longer a dialog, so it is held by element.
+    const panel = page.locator('#mn-reader-menu-panel');
+    await expect(panel).toBeVisible();
+    await expectSheetAtRest(panel);
+    const dockedTop = (await panel.boundingBox())?.y ?? 0;
+
+    const handle = panel.locator('.handle');
+    const handleBox = await handle.boundingBox();
+    const x = (handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2;
+    const y = (handleBox?.y ?? 0) + (handleBox?.height ?? 0) / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    for (let step = 1; step <= 4; step += 1) {
+      await page.mouse.move(x, y + step * 30);
+      await page.waitForTimeout(40);
+    }
+    await page.mouse.up();
+
+    // Still on screen, below where it was docked, and on its way further down.
+    expect(await panel.isVisible()).toBe(true);
+    const leavingTop = (await panel.boundingBox())?.y ?? 0;
+    expect(leavingTop).toBeGreaterThan(dockedTop);
+    await expect(panel).toBeHidden();
   });
 
   test('reading text carries Japanese language metadata and whole-token ruby', async ({ page }) => {

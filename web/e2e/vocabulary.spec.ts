@@ -10,6 +10,7 @@ import {
   stubAnkiConnect,
 } from './anki';
 import { importReading } from './reading';
+import { expectSheetAtRest } from './sheets';
 
 const CONTRACT_PACKAGE = 'contract-schema18-zstd.apkg';
 
@@ -184,6 +185,7 @@ test.describe('vocabulary', () => {
     await openAddWords(page);
     const handle = sheet.getByRole('button', { name: 'Close' });
     await expect(handle).toBeVisible();
+    await expectSheetAtRest(sheet);
     const box = await handle.boundingBox();
     if (box === null) throw new Error('The Add words handle has no box.');
 

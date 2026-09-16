@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import { countOwnedRows, importReading, openSentence, SAMPLE_TEXT } from './reading';
 import { stubOpenRouter, type ProviderCalls } from './openrouter';
+import { expectSheetAtRest } from './sheets';
 import { TEXT_MODEL_READY_STATE } from './state';
 
 /** Enough sentences for a whole-reading job to need more than one batch. */
@@ -112,6 +113,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await page.reload();
     await trigger.click();
     await expect(panel.locator('[data-layer="grammar"] [role="status"]')).toHaveText(analyzed);
+    await expectSheetAtRest(panel);
     const bounds = await panel.boundingBox();
     expect(bounds).not.toBeNull();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
@@ -140,6 +142,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     await expect(english).not.toHaveText('Queued', { timeout: 10_000 });
     await expect(grammar).not.toHaveText('Queued', { timeout: 10_000 });
 
+    await expectSheetAtRest(panel);
     const bounds = await panel.boundingBox();
     expect(bounds).not.toBeNull();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
