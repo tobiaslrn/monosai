@@ -599,6 +599,44 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(token).toBeFocused();
   });
 
+  /**
+   * The tray is the card's foot, so it reaches the card's own edge. It used to
+   * stop at the content edge and leave the card's bottom padding uncovered,
+   * which the rest of the sentence's notes then scrolled visibly through.
+   */
+  test('the sentence tray covers the foot of a scrolling card @mobile @smoke', async ({ page }) => {
+    // One sentence, long enough that the card it opens in has to scroll.
+    const text = `${'どこで生れたかとんと見当がつかぬが'.repeat(6)}名前はまだ無い。`;
+    await page.goto('./#/add');
+    await pasteAndContinue(page, text);
+    await saveAndOpenReader(page);
+    await openSentence(page);
+
+    const card = page.locator('.mn-popover-pane .popover');
+    const foot = await card.evaluate((element) => {
+      element.scrollTop = 40;
+      const tray = element.querySelector('.tray');
+      if (tray === null) throw new Error('the sentence card has no action tray');
+      return {
+        scrolled: element.scrollTop,
+        overflows: element.scrollHeight > element.clientHeight,
+        // The card's inner edge: past its top border, then its scrollport.
+        inner: element.getBoundingClientRect().top + element.clientTop + element.clientHeight,
+        tray: tray.getBoundingClientRect().bottom,
+      };
+    });
+
+    expect(foot.overflows, 'the card has to scroll for the tray to stick').toBe(true);
+    expect(foot.scrolled).toBeGreaterThan(0);
+    // Sub-pixel rather than exact: the device pixel ratio rounds the card's
+    // own box. A tray that stopped at the content edge would be a whole
+    // padding step short of the card's foot.
+    expect(
+      Math.abs(foot.inner - foot.tray),
+      'the tray reaches the card foot, leaving no strip to scroll through',
+    ).toBeLessThan(1);
+  });
+
   test('a pointer-opened sentence returns focus to the sentence on Escape', async ({ page }) => {
     await page.goto('./#/add');
     await pasteAndContinue(page, SAMPLE_TEXT);

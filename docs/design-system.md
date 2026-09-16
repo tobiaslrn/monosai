@@ -144,6 +144,14 @@ Pages are **top-aligned and grow downward**, like a document. Content is never
 centred vertically and never stretched to fill the viewport. A short page leaves
 the space below it empty, which is the honest result of having little to say.
 
+A section heading may carry one action opposite it, and that action opens work
+rather than holding it. What the learner is drafting — a pasted word list, an
+Anki mapping waiting to be confirmed — is a card at the head of the section it
+will change, on the section's full width, above the facts it has not changed
+yet. An editor rendered in the action slot instead gets the width a button asks
+for and grows the heading row around itself, which centres the heading beside a
+column of squeezed fields.
+
 Settings uses the same page frame as every other non-reader screen. Each
 top-level group is one quiet raised card with a compact section heading. The
 heading sits close to its card and relies on type, weight, and spacing for rank;
@@ -573,7 +581,12 @@ that cap and the remaining space above that boundary with the standard top gap.
 The player and the sheet account for the safe-area inset once. Opening or
 closing the player, resizing it, and changing the viewport remeasure that
 boundary. A sentence card keeps its grab handle and its action tray visible
-while the translation, warnings, and grammar scroll between them.
+while the translation, warnings, and grammar scroll between them. Both are
+full-bleed and opaque to the card's own edge, so nothing scrolls visibly past
+them: a card whose content ends in a sticky footer gives that footer the card's
+bottom padding, exactly as a docked sheet gives its grab handle the top one. A
+sticky row stops at the content edge, and padding left on the card behind it is
+a strip the content shows through.
 
 An open sheet never covers the line it explains: the reading scrolls just far
 enough to clear the pressed line, reserving temporary room when the press was at

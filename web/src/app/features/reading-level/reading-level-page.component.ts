@@ -1,8 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
+import { AnkiConnectionStore } from '../../application/vocabulary/anki-connection.store';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
@@ -18,8 +27,10 @@ import { SettingsSectionComponent } from '../../shared-ui/settings-section/setti
 import { conventionalLevel } from '../grammar/preset-level';
 import { StructuralBaselineSectionComponent } from '../grammar/structural-baseline-section.component';
 import { AddWordsComponent } from '../vocabulary/add-words.component';
+import { AnkiMappingDraftComponent } from '../vocabulary/anki-mapping-draft.component';
 import { PackageImportComponent } from '../vocabulary/package-import.component';
 import { SourceListComponent } from '../vocabulary/source-list.component';
+import { TextListSourceComponent } from '../vocabulary/text-list-source.component';
 import { VocabularyCardComponent } from '../vocabulary/vocabulary-card.component';
 import { generationShortfallLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
@@ -47,16 +58,20 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
   selector: 'mn-reading-level-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Provided here rather than at the root, so leaving the page discards any
-  // refresh in flight and releases the provider it was reading from.
-  providers: [VocabularyRefreshStore, PackageImportStore],
+  // refresh in flight, and the uncommitted Anki draft with it, and releases the
+  // provider it was reading from. The draft is a card in this section rather
+  // than a part of the control that started it, so the page owns it.
+  providers: [VocabularyRefreshStore, PackageImportStore, AnkiConnectionStore],
   imports: [
     IconComponent,
     ListRowComponent,
     PageHeaderComponent,
     SettingsSectionComponent,
     AddWordsComponent,
+    AnkiMappingDraftComponent,
     PackageImportComponent,
     SourceListComponent,
+    TextListSourceComponent,
     VocabularyCardComponent,
     StructuralBaselineSectionComponent,
   ],
@@ -78,14 +93,27 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
       </p>
 
       <mn-settings-section sectionId="words" heading="Word sources">
-        <mn-add-words mn-settings-section-action />
+        <mn-add-words mn-settings-section-action (textListChosen)="textDraft.set(true)" />
+        <!--
+          Whatever is being drafted stands at the head of the section, full
+          width, above the vocabulary it has not changed yet. Both drafts used
+          to render inside the section's action slot beside the heading, which
+          squeezed a form into the space a button asks for and pushed the rest
+          of the page down the screen.
+        -->
+        @if (textDraft()) {
+          <section class="draft" aria-labelledby="mn-text-draft-heading">
+            <h3 id="mn-text-draft-heading">Your own list</h3>
+            <mn-text-list-source (saved)="closeTextDraft()" (cancelled)="closeTextDraft()" />
+          </section>
+        }
+        <mn-anki-mapping-draft />
         <mn-vocabulary-card />
         @if (shortfall(); as note) {
           <p class="note">{{ note }}</p>
         }
 
         <mn-source-list />
-        <p class="draft-status mn-hint" role="status">This list is not saved yet.</p>
         <mn-package-import />
       </mn-settings-section>
 
@@ -182,22 +210,13 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
       font-size: var(--text-sm);
     }
 
-    .sources-note {
-      margin-top: calc(var(--space-1) * -1);
+    .draft {
+      display: grid;
+      gap: var(--space-2);
     }
 
-    .draft-status {
-      display: none;
+    .draft h3 {
       margin: 0;
-    }
-
-    #words:has(mn-add-words.is-editor) mn-source-list,
-    #words:has(mn-add-words.is-editor) .sources-note {
-      display: none;
-    }
-
-    #words:has(mn-add-words.is-editor) .draft-status {
-      display: block;
     }
 
     .level-card {
@@ -370,6 +389,9 @@ export class ReadingLevelPageComponent {
 
   protected readonly state = this.refresh.state;
 
+  /** Whether the section is drafting a pasted list. Nothing is saved until Add source. */
+  protected readonly textDraft = signal(false);
+
   /**
    * One live region for what the page's work is doing. An import in progress
    * owns it, because it is the thing the learner just started; otherwise the
@@ -471,6 +493,10 @@ export class ReadingLevelPageComponent {
         this.revealFragment(fragment);
       });
     });
+  }
+
+  protected closeTextDraft(): void {
+    this.textDraft.set(false);
   }
 
   protected retryLanguage(): void {

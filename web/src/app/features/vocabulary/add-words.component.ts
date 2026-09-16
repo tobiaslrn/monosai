@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   inject,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
@@ -12,18 +13,16 @@ import { ANKI_PROVIDER_FACTORY } from '../../application/shared/anki-tokens';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { AnkiConnectionStore } from '../../application/vocabulary/anki-connection.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
-import { AnkiMappingDraftComponent } from './anki-mapping-draft.component';
 import { isValidAnkiConnectPort } from '../../domain/settings/settings';
 import { HOST_PLATFORM } from '../../domain/platform/host-platform';
 import { technicalCode } from '../../domain/shared/errors';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.component';
-import { TextListSourceComponent } from './text-list-source.component';
 import { ANKI_LINKS } from './anki-links';
 import { connectFailureCopy } from './anki-error-copy';
 
 /** What the sheet is showing. Anki has no panel of its own: pressing it just tries. */
-type AddMode = 'closed' | 'choices' | 'anki' | 'text';
+type AddMode = 'closed' | 'choices' | 'anki';
 
 /**
  * The one way words get in.
@@ -40,223 +39,203 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
   selector: 'mn-add-words',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '[class.is-editor]': "mode() === 'text' || connection.selecting() || connection.sampling()",
     '(document:pointerdown)': 'onDocumentPointerDown($event)',
     '(document:keydown.escape)': 'closeMenuOnEscape($event)',
   },
-  providers: [AnkiConnectionStore],
-  imports: [
-    IconComponent,
-    SheetPopoverComponent,
-    TextListSourceComponent,
-    AnkiMappingDraftComponent,
-  ],
+  imports: [IconComponent, SheetPopoverComponent],
   template: `
     <div class="add-words">
-      @if (mode() !== 'text') {
-        <button
-          #toggle
-          type="button"
-          class="mn-button mn-button--ghost"
-          aria-haspopup="dialog"
-          aria-controls="mn-add-words-menu"
-          [attr.aria-expanded]="mode() === 'choices' || mode() === 'anki'"
-          popovertarget="mn-add-words-menu"
-          data-testid="add-words"
-        >
-          <mn-icon name="add" [size]="18" /> Add source
-        </button>
+      <button
+        #toggle
+        type="button"
+        class="mn-button mn-button--ghost"
+        aria-haspopup="dialog"
+        aria-controls="mn-add-words-menu"
+        [attr.aria-expanded]="mode() === 'choices' || mode() === 'anki'"
+        popovertarget="mn-add-words-menu"
+        data-testid="add-words"
+      >
+        <mn-icon name="add" [size]="18" /> Add source
+      </button>
 
-        <mn-sheet-popover
-          #menu
-          class="menu"
-          id="mn-add-words-menu"
-          popover
-          role="dialog"
-          aria-label="Add words"
-          anchorName="--mn-add-words-anchor"
-          [modal]="true"
-          (toggle)="onMenuToggle($event)"
-          (closed)="dismiss()"
-        >
-          @if (mode() === 'anki') {
-            <div class="sheet-head">
-              <button
-                type="button"
-                class="mn-icon-button"
-                aria-label="Back to the list of sources"
-                (click)="mode.set('choices')"
-              >
-                <mn-icon name="back" />
-              </button>
-              <h3>Anki</h3>
-            </div>
-            @if (failure(); as copy) {
-              <div class="sheet-pad" role="alert" data-testid="anki-connect-failed">
-                <p class="headline">{{ copy.headline }}</p>
-                @for (paragraph of copy.paragraphs; track $index) {
-                  <p class="mn-hint">
-                    {{ paragraph.before }}
-                    @if (paragraph.link; as link) {
-                      <a [href]="link.href" target="_blank" rel="noopener noreferrer">{{
-                        link.text
-                      }}</a>
-                    }
-                    {{ paragraph.after }}
-                  </p>
-                }
-                <details class="mn-disclosure advanced-details">
-                  <summary><span class="summary-label">Advanced details</span></summary>
-                  @if (copy.offersPort) {
-                    <label class="mn-field port">
-                      <span>Port</span>
-                      <input
-                        type="number"
-                        inputmode="numeric"
-                        min="1"
-                        max="65535"
-                        step="1"
-                        required
-                        [value]="portDraft()"
-                        [attr.aria-invalid]="portValid() ? null : 'true'"
-                        (input)="setPortDraft($event)"
-                        data-testid="anki-connect-port"
-                      />
-                    </label>
+      <mn-sheet-popover
+        #menu
+        class="menu"
+        id="mn-add-words-menu"
+        popover
+        role="dialog"
+        aria-label="Add words"
+        anchorName="--mn-add-words-anchor"
+        [modal]="true"
+        (toggle)="onMenuToggle($event)"
+        (closed)="dismiss()"
+      >
+        @if (mode() === 'anki') {
+          <div class="sheet-head">
+            <button
+              type="button"
+              class="mn-icon-button"
+              aria-label="Back to the list of sources"
+              (click)="mode.set('choices')"
+            >
+              <mn-icon name="back" />
+            </button>
+            <h3>Anki</h3>
+          </div>
+          @if (failure(); as copy) {
+            <div class="sheet-pad" role="alert" data-testid="anki-connect-failed">
+              <p class="headline">{{ copy.headline }}</p>
+              @for (paragraph of copy.paragraphs; track $index) {
+                <p class="mn-hint">
+                  {{ paragraph.before }}
+                  @if (paragraph.link; as link) {
+                    <a [href]="link.href" target="_blank" rel="noopener noreferrer">{{
+                      link.text
+                    }}</a>
                   }
-                  <p class="code-line">
-                    {{ failureCode() }} ·
-                    <a [href]="links.troubleshooting" target="_blank" rel="noopener noreferrer"
-                      >troubleshooting</a
-                    >
-                  </p>
-                </details>
-              </div>
-              <div class="sheet-foot">
-                <button
-                  type="button"
-                  class="mn-button mn-button--primary"
-                  [disabled]="refresh.isBusy() || !portValid()"
-                  (click)="connectAnki()"
-                  data-testid="anki-retry"
-                >
-                  Try again
-                </button>
-              </div>
-            } @else {
-              <div class="sheet-pad">
-                <p role="status">{{ connectingLabel() }}</p>
-              </div>
-            }
-          } @else {
-            <div class="sheet-intro">
-              <h3 class="sheet-title">Add words</h3>
-            </div>
-            <div class="choices">
-              @if (platform === 'ios') {
-                <button type="button" class="choice" disabled data-testid="choose-anki">
-                  <span class="mn-icon-badge" aria-hidden="true">
-                    <mn-icon name="anki-source" [size]="18" />
-                  </span>
-                  <span class="choice-main">
-                    <strong>Connect to Anki</strong>
-                    <span class="choice-hint"
-                      >iOS cannot be read directly — export a file instead</span
-                    >
-                  </span>
-                </button>
-                <p class="mn-hint aside">
-                  <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
-                    >How to export from Anki</a
+                  {{ paragraph.after }}
+                </p>
+              }
+              <details class="mn-disclosure advanced-details">
+                <summary><span class="summary-label">Advanced details</span></summary>
+                @if (copy.offersPort) {
+                  <label class="mn-field port">
+                    <span>Port</span>
+                    <input
+                      type="number"
+                      inputmode="numeric"
+                      min="1"
+                      max="65535"
+                      step="1"
+                      required
+                      [value]="portDraft()"
+                      [attr.aria-invalid]="portValid() ? null : 'true'"
+                      (input)="setPortDraft($event)"
+                      data-testid="anki-connect-port"
+                    />
+                  </label>
+                }
+                <p class="code-line">
+                  {{ failureCode() }} ·
+                  <a [href]="links.troubleshooting" target="_blank" rel="noopener noreferrer"
+                    >troubleshooting</a
                   >
                 </p>
-              } @else {
-                <button
-                  type="button"
-                  class="choice"
-                  [disabled]="refresh.isBusy()"
-                  (click)="chooseAnki()"
-                  data-testid="choose-anki"
-                >
-                  <span class="mn-icon-badge" aria-hidden="true">
-                    <mn-icon name="anki-source" [size]="18" />
-                  </span>
-                  <span class="choice-main">
-                    <strong>Connect to Anki</strong>
-                    <span class="choice-hint">{{ ankiSubtitle }}</span>
-                  </span>
-                  <mn-icon class="chevron" name="chevron-right" />
-                </button>
-              }
+              </details>
+            </div>
+            <div class="sheet-foot">
               <button
                 type="button"
-                class="choice"
-                [disabled]="refresh.isBusy() || packageBusy()"
-                (click)="packageInput.click()"
-                data-testid="choose-package"
+                class="mn-button mn-button--primary"
+                [disabled]="refresh.isBusy() || !portValid()"
+                (click)="connectAnki()"
+                data-testid="anki-retry"
               >
-                <span class="mn-icon-badge" aria-hidden="true">
-                  <mn-icon name="file" [size]="18" />
-                </span>
-                <span class="choice-main">
-                  <strong>Import from Anki</strong>
-                  <span class="choice-hint">{{ fileSubtitle }}</span>
-                </span>
-                <mn-icon class="chevron" name="chevron-right" />
-              </button>
-              <button
-                type="button"
-                class="choice"
-                (click)="chooseTextList()"
-                data-testid="add-text-source"
-              >
-                <span class="mn-icon-badge" aria-hidden="true">
-                  <mn-icon name="word-list" [size]="18" />
-                </span>
-                <span class="choice-main">
-                  <strong>Add a word list</strong>
-                  <span class="choice-hint">One word per line</span>
-                </span>
-                <mn-icon class="chevron" name="chevron-right" />
+                Try again
               </button>
             </div>
-            <p class="sheet-note">
-              <mn-icon name="info" [size]="18" />
-              <span>Your sources stay separate. Duplicate words are counted once.</span>
-            </p>
-            <button type="button" class="mn-button" (click)="dismiss()">Cancel</button>
+          } @else {
+            <div class="sheet-pad">
+              <p role="status">{{ connectingLabel() }}</p>
+            </div>
           }
-        </mn-sheet-popover>
-        <input
-          #packageInput
-          class="file-input"
-          type="file"
-          aria-label="Choose Anki package"
-          aria-hidden="true"
-          tabindex="-1"
-          accept=".apkg,.colpkg"
-          [disabled]="refresh.isBusy() || packageBusy()"
-          (change)="choosePackage($event)"
-          data-testid="package-input"
-        />
-      } @else {
-        <div class="editor-head">
-          <h3>Your own list</h3>
-        </div>
-        <mn-text-list-source (saved)="close()" (cancelled)="mode.set('choices')" />
-      }
+        } @else {
+          <div class="sheet-intro">
+            <h3 class="sheet-title">Add words</h3>
+          </div>
+          <div class="choices">
+            @if (platform === 'ios') {
+              <button type="button" class="choice" disabled data-testid="choose-anki">
+                <span class="mn-icon-badge" aria-hidden="true">
+                  <mn-icon name="anki-source" [size]="18" />
+                </span>
+                <span class="choice-main">
+                  <strong>Connect to Anki</strong>
+                  <span class="choice-hint"
+                    >iOS cannot be read directly — export a file instead</span
+                  >
+                </span>
+              </button>
+              <p class="mn-hint aside">
+                <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
+                  >How to export from Anki</a
+                >
+              </p>
+            } @else {
+              <button
+                type="button"
+                class="choice"
+                [disabled]="refresh.isBusy()"
+                (click)="chooseAnki()"
+                data-testid="choose-anki"
+              >
+                <span class="mn-icon-badge" aria-hidden="true">
+                  <mn-icon name="anki-source" [size]="18" />
+                </span>
+                <span class="choice-main">
+                  <strong>Connect to Anki</strong>
+                  <span class="choice-hint">{{ ankiSubtitle }}</span>
+                </span>
+                <mn-icon class="chevron" name="chevron-right" />
+              </button>
+            }
+            <button
+              type="button"
+              class="choice"
+              [disabled]="refresh.isBusy() || packageBusy()"
+              (click)="packageInput.click()"
+              data-testid="choose-package"
+            >
+              <span class="mn-icon-badge" aria-hidden="true">
+                <mn-icon name="file" [size]="18" />
+              </span>
+              <span class="choice-main">
+                <strong>Import from Anki</strong>
+                <span class="choice-hint">{{ fileSubtitle }}</span>
+              </span>
+              <mn-icon class="chevron" name="chevron-right" />
+            </button>
+            <button
+              type="button"
+              class="choice"
+              (click)="chooseTextList()"
+              data-testid="add-text-source"
+            >
+              <span class="mn-icon-badge" aria-hidden="true">
+                <mn-icon name="word-list" [size]="18" />
+              </span>
+              <span class="choice-main">
+                <strong>Add a word list</strong>
+                <span class="choice-hint">One word per line</span>
+              </span>
+              <mn-icon class="chevron" name="chevron-right" />
+            </button>
+          </div>
+          <p class="sheet-note">
+            <mn-icon name="info" [size]="18" />
+            <span>Your sources stay separate. Duplicate words are counted once.</span>
+          </p>
+          <button type="button" class="mn-button" (click)="dismiss()">Cancel</button>
+        }
+      </mn-sheet-popover>
+      <input
+        #packageInput
+        class="file-input"
+        type="file"
+        aria-label="Choose Anki package"
+        aria-hidden="true"
+        tabindex="-1"
+        accept=".apkg,.colpkg"
+        [disabled]="refresh.isBusy() || packageBusy()"
+        (change)="choosePackage($event)"
+        data-testid="package-input"
+      />
     </div>
-    <mn-anki-mapping-draft />
   `,
   styles: `
     :host {
       position: relative;
       display: block;
-    }
-
-    :host.is-editor {
-      flex-basis: 100%;
-      width: 100%;
     }
 
     .add-words {
@@ -267,18 +246,6 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
 
     .add-words > .mn-button {
       anchor-name: --mn-add-words-anchor;
-    }
-
-    .editor-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-2);
-      width: 100%;
-    }
-
-    .editor-head h3 {
-      margin: 0;
     }
 
     .sheet-intro {
@@ -424,15 +391,11 @@ type AddMode = 'closed' | 'choices' | 'anki' | 'text';
       opacity: 0;
       pointer-events: none;
     }
-
-    mn-text-list-source {
-      width: 100%;
-    }
   `,
 })
 export class AddWordsComponent {
   protected readonly refresh = inject(VocabularyRefreshStore);
-  protected readonly connection = inject(AnkiConnectionStore);
+  private readonly connection = inject(AnkiConnectionStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly createConnection = inject(ANKI_PROVIDER_FACTORY);
   private readonly packageImport = inject(PackageImportStore);
@@ -474,6 +437,15 @@ export class AddWordsComponent {
     this.platform === 'android' ? 'Asking the bridge…' : 'Asking Anki…',
   );
 
+  /**
+   * Asked for by the learner, answered by the page.
+   *
+   * A pasted list is drafted in the section itself rather than in this control:
+   * an editor rendered here would be a section action, and grew the heading row
+   * around it instead of standing on the page as the card it is.
+   */
+  readonly textListChosen = output<void>();
+
   private readonly menu = viewChild<SheetPopoverComponent>('menu');
   private readonly toggleButton = viewChild<ElementRef<HTMLButtonElement>>('toggle');
 
@@ -488,9 +460,6 @@ export class AddWordsComponent {
   }
 
   protected onMenuToggle(event: Event): void {
-    if (this.mode() === 'text') {
-      return;
-    }
     const open = (event.currentTarget as HTMLElement).matches(':popover-open');
     // Re-opening always starts at the three rows: a failure the learner walked
     // away from is not the thing they came back for.
@@ -499,7 +468,8 @@ export class AddWordsComponent {
 
   protected chooseTextList(): void {
     this.hideMenu();
-    this.mode.set('text');
+    this.close();
+    this.textListChosen.emit();
   }
 
   protected closeMenuOnEscape(event: Event): void {
