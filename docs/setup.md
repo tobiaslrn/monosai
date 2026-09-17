@@ -1,9 +1,16 @@
 # Setup
 
-A user-facing guide to installing Monosai, connecting Anki, configuring
-OpenRouter, and understanding what works offline. For error codes and their
-recovery, see [troubleshooting.md](troubleshooting.md). For which combinations
-have actually been observed rather than assumed, see
+Reference detail on installing Monosai, connecting Anki, configuring OpenRouter,
+and what works offline.
+
+The guide a learner should read is
+[inside the application](https://tobiaslrn.github.io/monosai/#/help): it is
+task-ordered, it works offline, and it is where the advice on choosing models
+and voices is kept current. This page is the longer reference behind it, for the
+mechanics that do not belong on a screen.
+
+For error codes and their recovery, see [troubleshooting.md](troubleshooting.md).
+For which combinations have actually been observed rather than assumed, see
 [risks and technical debt](arc42/11-risks-and-technical-debt.md).
 
 ## Installing Monosai
@@ -128,50 +135,58 @@ workflow above.
 
 ## OpenRouter (optional)
 
-Story generation, translation, grammar review, and text-to-speech are
-optional and never gate reading, importing, or vocabulary. They use your own
+Story generation, translation, grammar review, and text-to-speech are optional
+and never gate reading, importing, or vocabulary. They use your own
 [OpenRouter](https://openrouter.ai/) account and API key, billed to you
 directly; Monosai never sees or stores your key anywhere but this browser's
 local storage on this device.
 
 1. Create an OpenRouter account and an API key.
-2. In Settings → **AI text features**, paste the key and save it. It is never
-   shown again after saving.
-3. Choose **Add model**, paste the exact model ID from OpenRouter's models page
-   (case-sensitive, `vendor/model-name`), and select **Discover**. Choose any
-   advertised reasoning setting, then save the registered preset.
-4. Select the preset in Settings and run **Test configuration**. The test spends
-   a small number of tokens and writes nothing to your library.
-5. Voice, under **Voice (optional)**, uses the same **Add model** dialog. Voices
-   and other supported choices are dropdowns when OpenRouter advertises them.
+2. In Settings → **AI**, open the **OpenRouter key** row, paste the key, and
+   press **Connect**. It is never shown again after saving, and the rest of the
+   section stays hidden until a key exists, because controls that need one read
+   as values nobody chose.
+3. Under **Text**, open the model picker, search OpenRouter's catalogue by model
+   or provider, and choose one. Models you return to can be kept as favourites.
+   **Reasoning** and **Token limit** sit below it, and **Translation and
+   grammar** can override the model for those two tasks alone.
+4. Press **Test now**. The test spends a small number of tokens proving the model
+   answers in Monosai's structured shape, and writes nothing to your library.
+   Changing the model or its settings can require another test.
+5. **Voice** works the same way, with **Preview** in place of the text test: it
+   plays one test sentence, and audio can only be generated once it has passed.
+   Where OpenRouter advertises a model's voices, Monosai offers them as a
+   dropdown rather than a free-text ID.
 
-Gemini models work through the same OpenRouter configuration. For example, use
-an available `google/gemini-*` model ID for text and a model whose ID ends in
-`-tts` for voice, such as `google/gemini-3.1-flash-tts-preview`. Copy the exact
-current IDs from OpenRouter's model page. A specific Gemini voice is optional;
-the dialog offers OpenRouter's advertised voices and defaults to `Kore` when no
-voice is selected. Choose a named pace — Natural, Slow, or Very slow — for the
-voice model. Instruction-capable models receive that pace as a description;
-other models receive a best-effort numeric `speed`, while Gemini receives no
-numeric speed. The selected speaking style is available when the model supports
-instructions. Reading speed is then fine-tuned locally during playback, with
-pitch preservation, so it is consistent across sentences and does not trigger
-regeneration. Monosai converts Gemini's PCM response to
-browser-playable WAV audio locally before saving it.
+Which model to choose, what a weak one gets wrong, and what each costs per story
+belong to the application's own guide:
+[choosing a text model](https://tobiaslrn.github.io/monosai/#/help/text-models)
+and [voice and audio](https://tobiaslrn.github.io/monosai/#/help/voice). Naming
+models here as well would give the repository a second copy to keep current, and
+it would be the copy nobody reads.
 
-The **Add model** dialog reads OpenRouter's normalized metadata through its
-official TypeScript SDK. Monosai shows the advertised modalities, context
-length, parameters, reasoning efforts, and voice IDs, and turns supported
-choices into preset fields. Discovery is advisory;
-**Test configuration** or **Test voice** still proves that the exact model works
-with the saved key and Monosai's request contract.
+The picker reads OpenRouter's normalized metadata through its official
+TypeScript SDK: advertised modalities, context length, parameters, reasoning
+efforts, and voice IDs, turned into the fields a model offers. That discovery is
+advisory. The test is what proves the exact model works with the saved key and
+Monosai's request contract.
 
-Registered presets can be switched from the Settings dropdown or removed with
-the adjacent **Remove** action. Removing a preset never removes readings,
-generated aids, or saved audio; a replacement preset must be tested before use.
+A few mechanics are invisible until they matter:
 
-A failed test never affects reading, importing, or anything already saved —
-see [troubleshooting.md](troubleshooting.md) for what each `ai/*` code means.
+- Choose a named pace — Natural, Slow, or Very slow — for the voice model.
+  Instruction-capable models receive that pace as a description; other models
+  receive a best-effort numeric `speed`, while Gemini receives no numeric speed.
+  The selected speaking style is sent only where the model supports instructions.
+- Reading speed is then fine-tuned locally during playback, with pitch
+  preservation, so it is consistent across sentences and does not trigger
+  regeneration.
+- Gemini answers with raw PCM. Monosai converts it to browser-playable WAV audio
+  locally before saving it.
+- Removing a model never removes readings, generated aids, or saved audio. A
+  replacement must be tested before use.
+
+A failed test never affects reading, importing, or anything already saved — see
+[troubleshooting.md](troubleshooting.md) for what each `ai/*` code means.
 
 ## What works offline, and what does not
 

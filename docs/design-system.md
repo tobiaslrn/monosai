@@ -630,8 +630,11 @@ as squiggles as well as colours; status is named as well as tinted.
 ### Type
 
 UI text uses a local system sans-serif stack. Japanese uses a system Japanese
-gothic stack. No font is downloaded, ever — a reading application that cannot
-render Japanese until a network request completes is not local-first.
+gothic stack. An identifier the learner has to copy character for character — a
+model ID, an error code, a config key — uses a local system monospace stack, so
+that case and punctuation stay legible. No font is downloaded, ever — a reading
+application that cannot render Japanese until a network request completes is not
+local-first.
 
 The one display face is the wordmark: _monosai_ in Pacifico,
 ものさい in Zen Maru Gothic Black. It ships as outlined SVG paths, not as a
@@ -776,13 +779,22 @@ describes what a section obviously contains, is removed rather than reworded.
 
 Four exceptions:
 
-- **Help is a prose surface.** Its job is explanation: static, local English
-  guidance uses one readable column, section headings, short paragraphs, and
-  links close to the actions they explain. It needs no cards around each topic.
+- **Help is a prose surface, and it is a guide rather than a page.** Its job is
+  explanation: static, local English guidance in one readable column, with
+  section headings, short paragraphs, and links close to the actions they
+  explain. `/help` carries what the application is for, what it is not for, and a
+  shelf of topics; each topic is its own route below it, wearing the shared page
+  frame with Back to Help and ending in its neighbours. The measure and the prose
+  elements live in `.mn-prose`, so a topic page writes words and nothing else.
+  Two options being compared are a card each, never a table: the figures are few,
+  the prose beside them is long, and a table of that shape either scrolls
+  sideways on a phone or breaks a model ID down to one character a line. A guide
+  row is the one shelf row whose secondary line may wrap past one line, because
+  it says what a topic answers rather than what a thing contains.
   A quiet, non-modal first-use banner offers Help on a non-reader
   surface without moving focus or covering the app. Dismissal records the preference for this local installation;
   the guide remains among the Library's utilities. Reader deep links are never
-  interrupted.
+  interrupted. See [ADR 0079](decisions/0079-help-is-a-hub-of-topics.md).
 
 - **Empty states teach.** An empty surface has nothing but words to work with,
   so any empty list explains what belongs there and how to fill it. The

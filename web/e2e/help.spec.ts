@@ -79,11 +79,14 @@ test.describe('Help and utility bar', () => {
   });
 
   test('links to each flow and names every icon-only destination @smoke', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Start here' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'What Monosai is for' })).toBeVisible();
     const github = page.getByRole('link', { name: 'GitHub (opens in a new tab)' });
     await expect(github).toHaveAttribute('href', 'https://github.com/tobiaslrn/monosai');
     await expect(github).toHaveAttribute('target', '_blank');
     await expect(github).toHaveAttribute('title', 'GitHub (opens in a new tab)');
+    await page.getByTestId('help-topic').first().click();
+    await expect(page).toHaveURL(/#\/help\/first-steps$/);
+    await expect(page.getByRole('heading', { name: 'First steps', level: 1 })).toBeVisible();
     await page.getByRole('link', { name: 'Add text' }).click();
     await expect(page).toHaveURL(/#\/add$/);
 
@@ -97,6 +100,25 @@ test.describe('Help and utility bar', () => {
       'title',
       'Help',
     );
+  });
+
+  test('reads the guide from one topic to the next and back to the hub @smoke @mobile', async ({
+    page,
+  }) => {
+    await page.getByRole('link', { name: 'Choosing a text model' }).click();
+    await expect(page).toHaveURL(/#\/help\/text-models$/);
+    // The advice that decides what a learner spends, named exactly enough to copy.
+    await expect(page.getByText('google/gemini-3.8-flash')).toBeVisible();
+    await expect(page.getByText('z-ai/glm-5.3-flash')).toBeVisible();
+
+    await page.getByRole('link', { name: 'Next Voice and audio' }).click();
+    await expect(page).toHaveURL(/#\/help\/voice$/);
+    await expect(page.getByRole('heading', { name: 'Voice and audio', level: 1 })).toBeVisible();
+    await expect(page.getByText('hexgrad/kokoro-82m')).toBeVisible();
+
+    await page.getByRole('link', { name: 'All help topics' }).click();
+    await expect(page).toHaveURL(/#\/help$/);
+    await expect(page.getByTestId('help-topic')).toHaveCount(7);
   });
 
   test('supports keyboard focus, accessibility, reload, and a 320px viewport @mobile @smoke', async ({

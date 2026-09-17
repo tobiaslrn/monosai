@@ -18,8 +18,9 @@ rather than against a collection's schema.
 - Open your collection in AnkiDroid, then use **Grant AnkiDroid access** and
   **Start bridge**. The permission says read/write because AnkiDroid has no
   read-only grant; the bridge's port and router expose only queries.
-- In Monosai: **Add source → AnkiDroid bridge → Connect to AnkiDroid**, review
-  the mapping and words, then confirm.
+- In Monosai: **What you can read → Add words → Anki**. On Android that one entry
+  reaches the bridge, with no row to pick and no port to set. Review the mapping
+  and words, then confirm.
 
 Packages remain the recommended simple path and the only supported Anki path
 on iOS. Live Android setup means two native installs, the PWA and a grant.

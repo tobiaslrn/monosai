@@ -28,6 +28,63 @@ export const APP_ROUTES: Routes = [
     loadComponent: () =>
       import('../../features/help/help-page.component').then((m) => m.HelpPageComponent),
   },
+  // One route per topic, named by the same slug the hub shelf links to. A topic
+  // is a page rather than a heading so the guide can answer a question in full
+  // without burying the next one below three screens of scrolling.
+  {
+    path: 'help/first-steps',
+    title: 'First steps · Monosai',
+    loadComponent: () =>
+      import('../../features/help/topics/first-steps-page.component').then(
+        (m) => m.FirstStepsPageComponent,
+      ),
+  },
+  {
+    path: 'help/your-words',
+    title: 'Your words · Monosai',
+    loadComponent: () =>
+      import('../../features/help/topics/your-words-page.component').then(
+        (m) => m.YourWordsPageComponent,
+      ),
+  },
+  {
+    path: 'help/reading',
+    title: 'Reading a story · Monosai',
+    loadComponent: () =>
+      import('../../features/help/topics/reading-page.component').then(
+        (m) => m.ReadingPageComponent,
+      ),
+  },
+  {
+    path: 'help/text-models',
+    title: 'Choosing a text model · Monosai',
+    loadComponent: () =>
+      import('../../features/help/topics/text-models-page.component').then(
+        (m) => m.TextModelsPageComponent,
+      ),
+  },
+  {
+    path: 'help/voice',
+    title: 'Voice and audio · Monosai',
+    loadComponent: () =>
+      import('../../features/help/topics/voice-page.component').then((m) => m.VoicePageComponent),
+  },
+  {
+    path: 'help/install',
+    title: 'Installing and offline · Monosai',
+    loadComponent: () =>
+      import('../../features/help/topics/install-page.component').then(
+        (m) => m.InstallPageComponent,
+      ),
+  },
+  {
+    path: 'help/questions',
+    title: 'Common questions · Monosai',
+    loadComponent: () =>
+      import('../../features/help/topics/questions-page.component').then(
+        (m) => m.QuestionsPageComponent,
+      ),
+  },
   {
     path: 'library',
     title: 'Library · Monosai',
