@@ -9,7 +9,7 @@ import org.junit.Test
 
 class ServerTest {
     @Test fun preflightHasCorsAndPrivateNetworkHeadersWithoutABody() = testApplication {
-        application { bridgeRoutes(Router(FixtureReads())) { DEFAULT_ORIGINS } }
+        application { bridgeRoutes(Router(FixtureReads(), FIXTURE_IDENTITY)) { DEFAULT_ORIGINS } }
         val response = client.options("/") {
             header(HttpHeaders.Origin, "https://tobiaslrn.github.io")
             header("Access-Control-Request-Private-Network", "true")
@@ -21,7 +21,7 @@ class ServerTest {
     }
     @Test fun refusedOriginsNeverDispatchButExposeOnlyTheDenial() = testApplication {
         val reads = FixtureReads()
-        application { bridgeRoutes(Router(reads)) { DEFAULT_ORIGINS } }
+        application { bridgeRoutes(Router(reads, FIXTURE_IDENTITY)) { DEFAULT_ORIGINS } }
         for (origin in listOf("https://evil.example", "null", "https://tobiaslrn.github.io.evil.example")) {
             val response = client.post("/") { header(HttpHeaders.Origin, origin); setBody("""{"action":"deckNames","version":6}""") }
             assertEquals(envelope(error = "origin-not-allowed"), response.bodyAsText())
@@ -30,7 +30,7 @@ class ServerTest {
     }
     @Test fun textPlainJsonAndSettingsChangesWork() = testApplication {
         var origins = DEFAULT_ORIGINS
-        application { bridgeRoutes(Router(FixtureReads())) { origins } }
+        application { bridgeRoutes(Router(FixtureReads(), FIXTURE_IDENTITY)) { origins } }
         suspend fun read() = client.post("/") {
             header(HttpHeaders.Origin, "http://localhost:4200")
             setBody("""{"action":"version","version":6}""")
