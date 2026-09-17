@@ -51,9 +51,13 @@ the launcher and themed bitmaps from the same mascot the PWA icons use, and its 
 is documented there.
 
 Its screen is the design system applied natively: the canvas, one bar, cards, the pill
-control silhouette, the three text ranks, and the palette, transcribed into Android
-resources under the same token names. Framework widgets keep their platform semantics;
-only their appearance is Monosai's.
+control silhouette and the palette, transcribed into Android resources under the same
+token names. Every line is a label with its current value or its one control on the
+right, so the screen states what it is doing instead of describing it, and the two
+paragraphs worth keeping sit behind the advanced fold. The AnkiDroid grant is asked for
+on launch rather than parked behind a button, because the app can do nothing without it;
+a control to ask again appears only once Android has refused. Framework widgets keep
+their platform semantics; only their appearance is Monosai's.
 
 ## Consequences
 

@@ -8,7 +8,6 @@
     <dimen name="space_2">8dp</dimen>
     <dimen name="space_3">12dp</dimen>
     <dimen name="space_4">16dp</dimen>
-    <dimen name="space_5">24dp</dimen>
     <dimen name="space_6">32dp</dimen>
 
     <dimen name="radius_control">12dp</dimen>

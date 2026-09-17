@@ -1,59 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Every word the screen says. Prose is a cost paid by every future reader of the
-  screen, so it is spent only where the learner's collection, a permission, or a
-  download is at stake. `app_name` is generated into values/brand.xml.
+  Every word the screen says, and there are deliberately few. A label and its
+  current value answer most of it; prose appears only where a permission, a
+  download or the learner's own collection is at stake, and the two paragraphs
+  that survive sit behind the advanced fold. `app_name` is generated into
+  values/brand.xml.
 -->
 <resources>
-    <string name="bridge_tagline">Live vocabulary from AnkiDroid, read on this device and nowhere else.</string>
-
     <string name="state_stopped">Stopped</string>
     <string name="state_starting">Starting…</string>
     <string name="state_running">Running</string>
     <string name="state_port_unavailable">Port in use</string>
-    <string name="state_running_detail">Monosai can read your collection while this stays running.</string>
-    <string name="state_stopped_detail">Start the bridge, then add the AnkiDroid bridge as a source in Monosai.</string>
-    <string name="state_starting_detail">Opening the local listener.</string>
-    <string name="state_port_unavailable_detail">Another app already holds port %1$d. Stop it and start the bridge again.</string>
-    <string name="state_battery_note">No polling, no wake lock, no scheduled work. Android can still stop the bridge; open this screen to start it again.</string>
+    <string name="state_port_unavailable_detail">Another app holds port %1$d.</string>
 
-    <string name="action_start">Start bridge</string>
-    <string name="action_stop">Stop bridge</string>
+    <string name="action_start">Start</string>
+    <string name="action_stop">Stop</string>
     <string name="action_restart_on_boot">Restart after reboot</string>
     <string name="action_open_monosai">Open Monosai</string>
 
     <string name="anki_title">AnkiDroid</string>
-    <string name="anki_action_grant">Grant access</string>
-    <string name="anki_granted">Access granted. The bridge only ever reads.</string>
-    <string name="anki_absent">AnkiDroid was not found. Install version 2.24 or newer.</string>
-    <string name="anki_permission">Grant access so the bridge can read your vocabulary.</string>
-    <string name="anki_evidence">Update AnkiDroid to 2.24 or newer, or import a package instead.</string>
-    <string name="anki_query">Open your collection in AnkiDroid, then try again.</string>
-    <string name="anki_needs_install">Install AnkiDroid 2.24 or newer and open your collection first.</string>
+    <string name="anki_action_allow">Allow</string>
+    <string name="anki_granted">Granted</string>
+    <string name="anki_absent">Not installed</string>
+    <string name="anki_permission">Denied</string>
+    <string name="anki_evidence">Needs 2.24+</string>
+    <string name="anki_query">No collection</string>
     <string name="anki_permission_note">Android offers no read-only grant, so it asks for read and write. The bridge exposes no way to write.</string>
 
     <string name="updates_title">Updates</string>
-    <string name="updates_checking">Checking for a new version…</string>
-    <string name="updates_current">Up to date.</string>
-    <string name="updates_available">%1$s is available.</string>
+    <string name="updates_checking">Checking…</string>
+    <string name="updates_current">Up to date</string>
+    <string name="updates_available">%1$s</string>
     <string name="updates_downloading">Downloading…</string>
-    <string name="updates_verified">Download verified. Confirm the update in Android.</string>
-    <string name="updates_unreachable">Could not check for updates. The installed bridge still works.</string>
-    <string name="updates_failed">The update could not be downloaded or verified. Nothing was changed.</string>
-    <string name="updates_needs_permission">Allow installs from this app in Android, then tap Install update again.</string>
-    <string name="updates_action_check">Check for updates</string>
-    <string name="updates_action_download">Download update</string>
-    <string name="updates_action_install">Install update</string>
+    <string name="updates_verified">Confirm in Android</string>
+    <string name="updates_unreachable">Offline</string>
+    <string name="updates_failed">Download failed</string>
+    <string name="updates_needs_permission">Allow installs, then Install</string>
+    <string name="updates_action_check">Check</string>
+    <string name="updates_action_download">Download</string>
+    <string name="updates_action_install">Install</string>
 
     <string name="advanced_title">Advanced</string>
     <string name="advanced_show">Show advanced settings</string>
     <string name="advanced_hide">Hide advanced settings</string>
-    <string name="fact_address">Address</string>
     <string name="fact_version">Version</string>
-    <string name="origins_label">Allowed origins, one address per line</string>
-    <string name="origins_action_save">Save origins</string>
-    <string name="origins_saved">Allowed origins saved.</string>
+    <string name="origins_label">Allowed origins, one per line</string>
+    <string name="origins_action_save">Save</string>
+    <string name="origins_saved">Saved</string>
     <string name="origins_invalid">Use complete http or https origins with no path, such as https://tobiaslrn.github.io</string>
+    <string name="battery_note">No polling, no wake lock, no scheduled work. Android can still stop the bridge; open this screen to start it again.</string>
 
     <string name="notification_channel">Bridge</string>
     <string name="notification_text">Available for local vocabulary reads</string>

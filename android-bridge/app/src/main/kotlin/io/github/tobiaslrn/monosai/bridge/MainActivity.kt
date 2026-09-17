@@ -2,9 +2,11 @@ package io.github.tobiaslrn.monosai.bridge
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -23,10 +25,10 @@ import io.github.tobiaslrn.monosai.bridge.updates.UpdatePanel
 import kotlinx.coroutines.*
 
 /**
- * One screen: what the listener is doing, whether AnkiDroid can be read, and
- * the two rarely-touched settings behind a fold. The views are native so that
- * Android's text scaling, keyboard focus and touch semantics stay whatever the
- * device says they are.
+ * One screen of labelled rows: what the listener is doing, whether AnkiDroid can
+ * be read, and the settings that are set once, behind a fold. The views are
+ * native so that Android's text scaling, keyboard focus and touch semantics stay
+ * whatever the device says they are.
  */
 class MainActivity : Activity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -34,15 +36,20 @@ class MainActivity : Activity() {
     private lateinit var stateChip: TextView
     private lateinit var stateDetail: TextView
     private lateinit var toggle: Button
-    private lateinit var accessDetail: TextView
-    private lateinit var grant: Button
-    private lateinit var permissionNote: TextView
+    private lateinit var accessValue: TextView
+    private lateinit var allow: Button
     private lateinit var origins: EditText
     private lateinit var originsStatus: TextView
     private lateinit var advancedContent: LinearLayout
+
     private var observer: Job? = null
 
+    /** The collection cannot be read without the grant, so it is asked for once a launch. */
+    private var asked = false
+
     private val address get() = "127.0.0.1:${BridgeService.PORT}"
+    private val granted
+        get() = checkSelfPermission(ANKI_PERMISSION) == PackageManager.PERMISSION_GRANTED
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_MonosaiBridge)
@@ -53,9 +60,8 @@ class MainActivity : Activity() {
         stateChip = requireViewById(R.id.stateChip)
         stateDetail = requireViewById(R.id.stateDetail)
         toggle = requireViewById(R.id.toggle)
-        accessDetail = requireViewById(R.id.accessDetail)
-        grant = requireViewById(R.id.grant)
-        permissionNote = requireViewById(R.id.permissionNote)
+        accessValue = requireViewById(R.id.accessValue)
+        allow = requireViewById(R.id.allow)
         origins = requireViewById(R.id.origins)
         originsStatus = requireViewById(R.id.originsStatus)
         advancedContent = requireViewById(R.id.advancedContent)
@@ -64,20 +70,23 @@ class MainActivity : Activity() {
         fadeBarRuleOnScroll()
 
         toggle.setOnClickListener {
-            if (BridgeService.state.value == BridgeState.STOPPED ||
-                BridgeService.state.value == BridgeState.PORT_UNAVAILABLE
-            ) {
-                startForegroundService(Intent(this, BridgeService::class.java))
-            } else {
+            val state = BridgeService.state.value
+            if (state == BridgeState.RUNNING || state == BridgeState.STARTING) {
                 settings.enabled = false
                 stopService(Intent(this, BridgeService::class.java))
+            } else {
+                startForegroundService(Intent(this, BridgeService::class.java))
             }
         }
-        grant.setOnClickListener {
-            if (packageManager.resolveContentProvider(ANKI_AUTHORITY, 0) == null) {
-                accessDetail.setText(R.string.anki_needs_install)
-            } else {
+        // Only reachable once Android has refused the grant, so it either asks
+        // again or hands the learner the one screen that can still say yes.
+        allow.setOnClickListener {
+            if (shouldShowRequestPermissionRationale(ANKI_PERMISSION)) {
                 requestPermissions(arrayOf(ANKI_PERMISSION), ANKI_REQUEST)
+            } else {
+                startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
+                )
             }
         }
         requireViewById<Switch>(R.id.bootSwitch).apply {
@@ -88,7 +97,6 @@ class MainActivity : Activity() {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(MONOSAI_URL)))
         }
 
-        requireViewById<TextView>(R.id.factAddress).text = address
         requireViewById<TextView>(R.id.factVersion).text = BuildConfig.VERSION_NAME
         requireViewById<TextView>(R.id.advancedValue).text = address
         setUpAdvanced()
@@ -140,7 +148,7 @@ class MainActivity : Activity() {
         requireViewById<Button>(R.id.saveOrigins).setOnClickListener {
             val values = origins.text.lines().map(String::trim).filter(String::isNotEmpty).toSet()
             if (values.isEmpty() || !values.all(::validOrigin)) {
-                originsStatus.visibility = View.GONE
+                originsStatus.visibility = View.INVISIBLE
                 origins.error = getString(R.string.origins_invalid)
             } else {
                 settings.saveOrigins(values)
@@ -155,6 +163,13 @@ class MainActivity : Activity() {
         observer = scope.launch { BridgeService.state.collect(::render) }
         if (settings.enabled && BridgeService.state.value == BridgeState.STOPPED) {
             startForegroundService(Intent(this, BridgeService::class.java))
+        }
+        // Without the grant there is nothing this app can do, so it is asked for
+        // rather than parked behind a button. Android answers a standing refusal
+        // immediately and without a dialog, so this never becomes nagging.
+        if (!asked && !granted && packageManager.resolveContentProvider(ANKI_AUTHORITY, 0) != null) {
+            asked = true
+            requestPermissions(arrayOf(ANKI_PERMISSION), ANKI_REQUEST)
         }
         refreshAccess()
     }
@@ -184,20 +199,17 @@ class MainActivity : Activity() {
         stateChip.setText(label)
         stateChip.backgroundTintList = ColorStateList.valueOf(getColor(tint))
         stateChip.setTextColor(getColor(ink))
-        stateDetail.text = when (state) {
-            BridgeState.STOPPED -> getString(R.string.state_stopped_detail)
-            BridgeState.STARTING -> getString(R.string.state_starting_detail)
-            BridgeState.RUNNING -> getString(R.string.state_running_detail)
-            BridgeState.PORT_UNAVAILABLE -> getString(R.string.state_port_unavailable_detail, BridgeService.PORT)
+        if (state == BridgeState.PORT_UNAVAILABLE) {
+            stateDetail.text = getString(R.string.state_port_unavailable_detail, BridgeService.PORT)
+            stateDetail.visibility = View.VISIBLE
+        } else {
+            stateDetail.visibility = View.GONE
         }
         val listening = state == BridgeState.RUNNING || state == BridgeState.STARTING
         toggle.setText(if (listening) R.string.action_stop else R.string.action_start)
     }
 
-    /**
-     * A granted collection needs no grant control, so the button and the note
-     * explaining Android's combined permission go away once it is granted.
-     */
+    /** The row states the access; the control appears only where one can still help. */
     private fun refreshAccess() {
         scope.launch {
             val failure = withContext(Dispatchers.IO) {
@@ -208,7 +220,7 @@ class MainActivity : Activity() {
                     error.failure
                 }
             }
-            accessDetail.setText(
+            accessValue.setText(
                 when (failure) {
                     null -> R.string.anki_granted
                     ReadFailure.ABSENT -> R.string.anki_absent
@@ -217,9 +229,8 @@ class MainActivity : Activity() {
                     ReadFailure.QUERY -> R.string.anki_query
                 },
             )
-            val needsGrant = failure == ReadFailure.PERMISSION || failure == ReadFailure.ABSENT
-            grant.visibility = if (needsGrant) View.VISIBLE else View.GONE
-            permissionNote.visibility = if (needsGrant) View.VISIBLE else View.GONE
+            accessValue.setTextColor(getColor(if (failure == null) R.color.text_secondary else R.color.status_warning))
+            allow.visibility = if (failure == ReadFailure.PERMISSION) View.VISIBLE else View.GONE
         }
     }
 
