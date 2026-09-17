@@ -53,7 +53,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
   {
     slug: 'voice',
     title: 'Voice and audio',
-    summary: 'Two kinds of speech model, and what each costs.',
+    summary: 'Which speech model to use, what it costs, and what it misreads.',
     icon: 'audio',
   },
   {

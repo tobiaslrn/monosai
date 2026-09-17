@@ -11,72 +11,76 @@ import { HelpArticleComponent } from '../help-article.component';
   template: `
     <mn-help-article slug="first-steps">
       <p class="mn-prose__lead">
-        Four steps from an empty library to a story written out of your own vocabulary. If all you
-        want is a dictionary for text you already have, the first section is the whole of it.
+        Four steps from an empty library to a story written out of your own vocabulary.
       </p>
 
       <section aria-labelledby="first-steps-need">
-        <h2 id="first-steps-need">What you need</h2>
+        <h2 id="first-steps-need">Before you start</h2>
         <p>
-          To read Japanese you already have, you need nothing at all. Paste it into
-          <a routerLink="/add">Add text</a> and Monosai gives you readings above the kanji, spacing
-          between words, and word lookup. No account, no key, no setup.
+          To read Japanese text you already have, you need nothing. Paste it into
+          <a routerLink="/add">Add text</a> and you get readings, spacing, and word lookup. No
+          account, no key, no setup. Skip the rest of this page.
         </p>
-        <p>
-          To have Monosai write stories for you, you need two more things: a record of the words you
-          have studied, usually an Anki collection, and an
-          <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer"
-            >OpenRouter account</a
-          >
-          with a few dollars of credit on it. Monosai has no AI of its own and no shared key. You
-          pay the provider directly for what you use, and how much depends on the model: a fraction
-          of a cent on a cheap one, a few cents on a better one.
-        </p>
+        <p>To have Monosai write stories, you need two more things:</p>
+        <ul>
+          <li>A record of the words you have studied, usually an Anki collection.</li>
+          <li>
+            An
+            <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer"
+              >OpenRouter account</a
+            >
+            with a few dollars of credit. Monosai has no AI of its own and no shared key, so you pay
+            the provider directly for what you use.
+          </li>
+        </ul>
       </section>
 
       <section aria-labelledby="first-steps-words">
-        <h2 id="first-steps-words">1. Tell Monosai which words you know</h2>
+        <h2 id="first-steps-words">1. Add your words</h2>
         <p>
           Open <a routerLink="/reading-level" fragment="words">What you can read</a> and add a word
-          source. If you study with Anki, point Monosai at your collection and it takes the words on
-          cards you have actually reviewed. If you do not use Anki, paste a list of words instead.
+          source. Point Monosai at your Anki collection and it takes the words on cards you have
+          reviewed. Without Anki, paste a list instead.
         </p>
         <p>
-          Monosai only ever reads from Anki. It does not change a card, a tag, or your review
-          history. <a routerLink="/help/your-words">Your words</a> explains each way of connecting,
-          including the Android bridge.
+          <a routerLink="/help/your-words">Your words</a> explains each way of connecting, including
+          the Android bridge.
         </p>
       </section>
 
       <section aria-labelledby="first-steps-level">
         <h2 id="first-steps-level">2. Set your grammar level</h2>
         <p>
-          Knowing your words is not enough on its own, because a sentence also has grammar in it.
-          The same page has a <a routerLink="/reading-level" fragment="grammar">Reading level</a>
-          row that opens the ladder. Tap through the levels, read the example each one shows, and
-          pick the highest whose example you can follow without effort. Nothing changes until you
-          press Save level.
+          A sentence has grammar in it as well as words. On the same page, the
+          <a routerLink="/reading-level" fragment="grammar">Reading level</a> row opens the ladder.
+          Tap through the levels, read the example each one shows, and pick the highest you can
+          follow without effort. Nothing changes until you press Save level.
         </p>
         <p>
-          The basic patterns that hold a Japanese sentence together stay available at every level.
-          The level guides how hard the grammar gets, it does not forbid the building blocks.
+          Basic sentence patterns stay available at every level; the level only decides how hard the
+          grammar gets.
         </p>
       </section>
 
       <section aria-labelledby="first-steps-model">
-        <h2 id="first-steps-model">3. Connect OpenRouter and choose a model</h2>
+        <h2 id="first-steps-model">3. Connect OpenRouter and pick a model</h2>
+        <ol>
+          <li>
+            In <a routerLink="/settings">Settings</a>, under AI, open the OpenRouter key row, paste
+            your key, and press Connect. The key stays in this browser and is never shown again.
+          </li>
+          <li>
+            The rest of the section appears once a key exists. Open the model picker under Text and
+            search OpenRouter's catalogue.
+          </li>
+          <li>
+            Choosing a model tests it immediately. The test spends a few tokens proving the model
+            can answer in the shape Monosai needs, and saves nothing to your library.
+          </li>
+        </ol>
         <p>
-          In <a routerLink="/settings">Settings</a>, under AI, open the OpenRouter key row, paste
-          your key and press Connect. The key is kept in this browser on this device and is never
-          shown again.
-        </p>
-        <p>
-          The rest of the section appears once a key exists. Open the model picker under Text and
-          search OpenRouter's catalogue. Choosing a model tests it straight away: the test spends a
-          few tokens proving the model can answer in the exact shape Monosai needs, and it saves
-          nothing to your library. If you have no idea which model to pick,
-          <a routerLink="/help/text-models">Choosing a text model</a> names the ones that work well
-          today and explains what goes wrong with the rest.
+          Model choice decides quality and cost.
+          <a routerLink="/help/text-models">Choosing a text model</a> names what works today.
         </p>
       </section>
 
@@ -84,26 +88,25 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="first-steps-story">4. Generate a story</h2>
         <p>
           Open <a routerLink="/generate">Generate</a>, write a premise in a sentence or two, and
-          start it. A premise like "two friends miss the last train home" gives a model something to
-          work with. Leaving it empty is allowed, and the model picks a topic itself.
+          start it. Something like "two friends miss the last train home" gives the model enough to
+          work with. You can leave it empty and let the model pick a topic.
         </p>
         <p>
-          Stories are written from {{ minimumWords }} words upwards. With a small vocabulary expect
-          short, plain stories, because there is little else the model can do. The more reviewed
-          words Monosai has, the more room it has to write something worth reading.
+          Stories need {{ minimumWords }} words. With a small vocabulary, expect short and plain
+          ones, because there is little else the model can do with them.
         </p>
         <p>
-          Translation, grammar notes, and audio are optional extras you can ask for while generating
-          or add later from Story options in the reader. They cost extra requests, so leave them off
-          until you want them.
+          Translation, grammar notes, and audio are optional. Ask for them while generating, or add
+          them later from Story options in the reader. Each one is an extra request, so leave them
+          off until you want them.
         </p>
       </section>
 
       <section aria-labelledby="first-steps-next">
         <h2 id="first-steps-next">Then what</h2>
         <p>
-          Read the story. Tap a word you are unsure of. Come back and generate another one when you
-          have reviewed more cards, and refresh your words so Monosai sees them.
+          Read the story and tap any word you are unsure of. When you have reviewed more cards,
+          refresh your words and generate another one.
         </p>
         <p>
           Check your OpenRouter balance for the first few days, until you know what your own

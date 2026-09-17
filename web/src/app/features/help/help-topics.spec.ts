@@ -87,9 +87,16 @@ describe('help topic content', () => {
     expect(text).toContain('Well under a cent');
   });
 
+  it('warns that a dictionary-driven speech model fixes a kanji to one reading', () => {
+    const text = render(VoicePageComponent).textContent.replace(/\s+/g, ' ');
+    expect(text).toContain('When a word is read wrong');
+    expect(text).toContain('私');
+    expect(text).toContain('わたくし');
+  });
+
   it('explains why live Anki access on Android needs a second application', () => {
     const text = render(YourWordsPageComponent).textContent.replace(/\s+/g, ' ');
-    expect(text).toContain('Why it has to be a second app');
+    expect(text).toContain("cannot read another app's data");
     expect(text).toContain('Play Protect');
     expect(text).toContain('read and write access');
     expect(text).toContain('webCorsOriginList');
@@ -106,5 +113,14 @@ describe('help topic content', () => {
     const text = render(InstallPageComponent).textContent.replace(/\s+/g, ' ');
     expect(text).toContain('no account and no server');
     expect(text).toContain('collects no analytics');
+  });
+
+  /* Local-only storage with no export is exactly the loss the voice rules ask us to name. */
+  it('warns that clearing the browser removes stories for good', () => {
+    const element = render(InstallPageComponent);
+    const warning = [...element.querySelectorAll('.mn-notice--warning')]
+      .map((notice) => notice.textContent.replace(/\s+/g, ' '))
+      .join(' ');
+    expect(warning).toContain('no backup and no export');
   });
 });

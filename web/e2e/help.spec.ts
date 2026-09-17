@@ -79,7 +79,7 @@ test.describe('Help and utility bar', () => {
   });
 
   test('links to each flow and names every icon-only destination @smoke', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'What Monosai is for' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'What Monosai does' })).toBeVisible();
     const github = page.getByRole('link', { name: 'GitHub (opens in a new tab)' });
     await expect(github).toHaveAttribute('href', 'https://github.com/tobiaslrn/monosai');
     await expect(github).toHaveAttribute('target', '_blank');

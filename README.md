@@ -5,178 +5,110 @@
   <p>
     <a href="https://tobiaslrn.github.io/monosai/"><b>Open Monosai</b></a> ·
     <a href="https://tobiaslrn.github.io/monosai/#/help">Guide</a> ·
-    <a href="docs/setup.md">Setup</a> ·
-    <a href="docs/troubleshooting.md">Error codes</a> ·
-    <a href="docs/arc42/README.md">Architecture</a>
+    <a href="https://github.com/tobiaslrn/monosai/releases?q=bridge-v">Android bridge APK</a> ·
+    <a href="https://github.com/tobiaslrn/monosai/issues">Issues</a>
   </p>
 </div>
 
 > [!WARNING]
 > Monosai is in alpha. Expect bugs, missing features, and changes while it is being built.
 
-## The problem it solves
+Monosai is a reading app for beginners in Japanese. You paste your own text, or
+generate a story that stays inside the vocabulary you have already studied, and
+either way you land in the same reader: word spacing, furigana, dictionary
+lookup, and a mark on every word you have probably not met. Translation, grammar
+notes, and speech are optional extras that cost money. Vocabulary comes from the
+cards you have reviewed in Anki, or from a list you paste.
 
-Beginners are told to read, and then discover there is nothing to read. Native
-material has ten unknown words in the first paragraph, so you look one up every
-few seconds, and by the end of the page you have practised using a dictionary
-rather than reading Japanese.
+It is a local-first Angular PWA with no backend. Stories, vocabulary, settings,
+and audio live in IndexedDB on the device. The reader, the dictionary, and Anki
+package parsing all run in the browser; only generation and the optional aids
+touch the network, through the user's own OpenRouter key.
 
-Monosai writes short stories that stay inside the vocabulary you have already
-studied. It takes the words from cards you have actually reviewed in Anki, and
-from about 50 words upwards it can write something you can read straight
-through. Any word it could not avoid is marked, so you always know where you
-stand.
+This README is for people working on the code. To use the app, start with the
+[in-app guide](https://tobiaslrn.github.io/monosai/#/help).
 
-That is the point of the whole application: **reading practice with no lookups**,
-at the level you are actually at.
+## How it works
 
-## What it is not for
+- **The reader** is the centre. Import needs no key, no account, and no network:
+  tokenisation, readings, and dictionary lookup run on the device in workers,
+  over a Lindera WASM build and a bundled language dataset.
+- **Vocabulary** comes from AnkiConnect on desktop, the Android bridge on a
+  phone, an `.apkg`/`.colpkg` export, or a pasted list. Anki access is read-only,
+  enforced by a typed action allowlist: sending anything outside it is a compile
+  error, not something review has to catch.
+- **Generation** calls OpenRouter from the browser with the user's own key, so
+  there is no server and no shared key. Monosai checks the result against the
+  vocabulary snapshot, spends a repair budget on words outside it, and marks what
+  it could not fix.
+- **Enrichment and audio** (translation, grammar notes, speech) are separate
+  optional passes over a saved story, cached locally once fetched.
+- **Persistence** is Dexie over IndexedDB. Committed schema versions are
+  immutable; changes ship as a new version with a transactional upgrade.
+- **The bridge** is a separate Android app with its own release cycle. It and the
+  web app negotiate a single contract integer in `protocol/contract.txt` instead
+  of pinning versions to each other.
 
-Monosai is for the first few months, and it is built to be outgrown. Stories
-written by a model are scaffolding. Nobody actually wants to read generated
-fiction, and this project is not trying to produce good literature. It exists so
-you can practise reading sentences instead of decoding them.
+## Stack
 
-Once you can get through a page of real Japanese with a dictionary and some
-patience, move on to material written by people. Getting you to that point
-sooner is the only goal here.
+Angular 22, TypeScript 6, Dexie 4 over IndexedDB, Zod 4 for runtime validation,
+sql.js and `lindera-wasm-web-ipadic` in workers, `@openrouter/sdk`. Vitest for
+unit tests, Playwright for E2E. The bridge is Kotlin and Gradle.
 
-Also out of scope: scheduling reviews, editing your cards, other languages,
-other flashcard applications, and anything that would make Monosai a place you
-are supposed to stay.
+## Repository layout
 
-## What you can do
-
-The main path:
-
-- Connect Anki, or import an export, or paste a list, to tell Monosai which
-  words you know.
-- Pick a grammar level, write a premise, and generate a story inside those words.
-- Read it with hiragana above the kanji, spacing between words, and a dictionary
-  one tap away.
-- Have any sentence translated or explained, on request.
-- Generate audio and listen while you read.
-
-The reader also works on its own, without any AI:
-
-- Paste Japanese from anywhere and read it with the same readings, spacing, and
-  markers for words you probably do not know yet.
-- Look words up locally, offline, at no cost.
-
-This half is genuinely useful, but it is the smaller half. Plenty of tools add
-furigana to a text. Far fewer give you a text you can already read.
-
-## What you need
-
-| For | You need |
+| Path | Contents |
 | --- | --- |
-| Reading text you paste | A browser. Nothing else |
-| Knowing which words you know | Anki, or a list you paste yourself |
-| Generating stories, translation, grammar notes, audio | An [OpenRouter](https://openrouter.ai/) account and API key |
+| [`web/`](web/) | The Angular application, its tests, its E2E suites, and its build scripts |
+| [`android-bridge/`](android-bridge/README.md) | The AnkiDroid companion app |
+| [`protocol/`](protocol/) | The bridge contract both sides read |
+| [`scripts/`](scripts/) | Bridge release, decision-index, and licence tooling |
+| [`docs/`](docs/) | Architecture, decisions, design system, setup, error codes |
+| [`.github/`](.github/workflows/) | CI and the bridge release workflow |
 
-Monosai has no AI of its own and no shared key. You pay OpenRouter directly for
-what you use, and your key stays in your browser on your device. What a story
-costs depends entirely on the model: a fraction of a cent on the cheaper of the
-two recommended below, a few cents on the better one.
+## Development
 
-## Getting started
+Node is pinned in [`.nvmrc`](.nvmrc). Dependencies live in `web/`.
 
-1. Open [Monosai](https://tobiaslrn.github.io/monosai/).
-2. Add a word source under **What you can read**, and choose a grammar level.
-3. Paste an OpenRouter key in **Settings**, choose a text model, and test it.
-4. Generate a story.
+```bash
+npm ci --prefix web
+npm start                    # dev server on http://localhost:4200
+```
 
-The [in-app guide](https://tobiaslrn.github.io/monosai/#/help) walks through
-each step and is the place where the detailed advice lives. It works offline and
-needs no key to read.
+| Command | What it does |
+| --- | --- |
+| `npm test` | Vitest suite. One file: `npm test -- --include src/app/…/x.spec.ts` |
+| `npm run e2e` | Desktop and Android smoke lane |
+| `npm run e2e:full` | Full browser regression |
+| `npm run e2e:pwa` | Production build with the service worker live |
+| `npm run lint` | ESLint, including the layer-import rules |
+| `npm run stylelint` | Component style rules, a separate CI gate from `lint` |
+| `npm run typecheck` | App and E2E type checks |
+| `npm run format` | Prettier over the repo (`format:check` to verify only) |
+| `npm run build:pages` | The Pages build everything downstream consumes |
+| `npm run verify` | Static analysis, coverage, build, and the bridge gate |
 
-## Your vocabulary comes from Anki
+`npm run verify` covers CI's non-browser gates. It does not run `e2e` or
+`e2e:pwa`, which also block merging, and it includes `bridge:verify`, which needs
+the Android SDK and Java 21. Without those, run the web gates individually.
 
-Anki knows which cards you have actually reviewed, which is the only honest
-record of what you know. Monosai reads that and nothing else. It never writes to
-your collection: the code that talks to Anki has no write operation in it.
+CI runs static analysis, unit tests with coverage, one application build, three
+sharded browser jobs, the PWA suite, and the bridge gate. Pull requests run the
+`@smoke` lane; pushes to `main` run the full browser regression. Everything after
+`build` consumes that one artifact, so the deployed bytes are the tested bytes.
 
-There are three ways to connect a collection, plus a pasted list if you do not
-use Anki at all:
+## Contributing
 
-- **Anki on a computer**, through the AnkiConnect add-on. One config line is
-  needed so AnkiConnect answers the page. See
-  [the setup guide](docs/setup.md#desktop-anki-ankiconnect).
-- **AnkiDroid on Android**, through the [Monosai Bridge](android-bridge/README.md),
-  a small companion app you install from the
-  [releases page](https://github.com/tobiaslrn/monosai/releases?q=bridge-v). A
-  browser cannot read another app's data, so live access on a phone needs a
-  native app in between. Being installed outside the Play Store, it may draw a
-  Play Protect warning and an install permission prompt, and AnkiDroid's own
-  permission is worded as read and write because it has no read-only option.
-  The bridge only reads.
-- **An export file** (`.apkg` or `.colpkg`), read entirely on your device. The
-  simplest option, and the only one on an iPhone, where no app can read
-  AnkiMobile's collection.
-
-Without Anki, paste a list of words you know instead. Other flashcard
-applications are not supported and are not planned.
-
-## Choosing models
-
-Model choice decides both quality and cost, and the useful range is narrower
-than it looks. Very small models invent words that do not exist, get particles
-and conjugation wrong, and ignore your vocabulary list. Flagship models write
-excellent Japanese and are a waste of money for deliberately simple text, where
-a single story can cost tens of cents. Mid-size models sit in between and are
-what you want.
-
-As of September 2026 that means `z-ai/glm-5.3-flash` as the everyday choice and
-`google/gemini-3.8-flash` when one story's quality matters more than the month's
-bill. For speech the choice is between an instruction-following model like
-`google/gemini-3.1-flash-tts-preview`, which reads with real intonation, and a
-small dedicated one like `hexgrad/kokoro-82m`, which is plainer and far cheaper.
-
-Prices, what each costs per story, reasoning effort, and how to watch what you
-spend are in the app, where they are kept current and dated:
-[choosing a text model](https://tobiaslrn.github.io/monosai/#/help/text-models)
-and [voice and audio](https://tobiaslrn.github.io/monosai/#/help/voice). Every
-model also responds to the same prompt differently, so try a few with the same
-premise.
-
-OpenRouter is the only supported service. One key reaching every model is what
-makes comparing and switching practical. Local models and other endpoints are
-not supported today.
-
-## Install it, or just use the tab
-
-Monosai is a Progressive Web App. There is no store listing and no download:
-open it in Chrome and use the install entry in the address bar, the browser
-menu, or **Settings → About**. Installed, it gets its own window and icon, and
-on Android it behaves like a normal app and can receive an Anki export from
-AnkiDroid's share sheet.
-
-Everything works in an ordinary tab as well. Installing changes how it feels,
-not what it does.
-
-Open Monosai online once and after that your library, the dictionary, and
-importing new text work offline. Anything that leaves the device needs a
-connection. The
-[install guide](https://tobiaslrn.github.io/monosai/#/help/install) lists both
-sides exactly.
-
-## Your data
-
-Everything stays on your device: stories, words, settings, and audio, in this
-browser, with no account and no server to sync with. Monosai collects no
-analytics.
-
-What leaves your device is only what a request needs. Your API key goes to
-OpenRouter and nowhere else, and never appears in a log or a diagnostic export.
+[AGENTS.md](AGENTS.md) is the working agreement: architecture rules, testing
+expectations, commit format, and how to verify a change. Read it before opening a
+pull request. Commits follow Conventional Commits with a required scope.
 
 ## Documentation
 
-- [In-app guide](https://tobiaslrn.github.io/monosai/#/help) for using Monosai.
-- [docs/](docs/) for everything else: the
-  [setup reference](docs/setup.md), the [error codes](docs/troubleshooting.md),
-  the [architecture](docs/arc42/README.md), the [decisions](docs/decisions/),
-  and the [design system](docs/design-system.md).
-- [AGENTS.md](AGENTS.md) for contributing conventions.
+[docs/README.md](docs/README.md) indexes everything, split by audience. The ones
+worth knowing by name: [architecture](docs/arc42/README.md) for the system as it
+is, [decisions](docs/decisions/) for why, and the
+[design system](docs/design-system.md) for anything visual.
 
 ## License
 

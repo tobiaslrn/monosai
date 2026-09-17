@@ -22,15 +22,15 @@ describe('HelpPageComponent', () => {
   it('leads with what Monosai is for and where it stops being the answer', () => {
     const element = render();
     expect([...element.querySelectorAll('h2')].map((heading) => heading.textContent)).toEqual([
-      'What Monosai is for',
-      'And what it is not for',
+      'What Monosai does',
+      'What it is not',
       'Topics',
       'When something fails',
     ]);
     const text = element.textContent.replace(/\s+/g, ' ');
     expect(text).toContain('words you have already');
     expect(text).toContain('meant to be outgrown');
-    expect(text).toContain('material written by people');
+    expect(text).toContain('read things people wrote');
   });
 
   it('offers every topic as a row that leads to its page', () => {

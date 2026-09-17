@@ -29,38 +29,31 @@ import { HELP_TOPICS } from './help-topics';
       </mn-page-header>
 
       <div class="mn-prose">
+        <p class="mn-prose__lead">
+          Monosai writes short Japanese stories out of the words you have already studied, so you
+          can read a paragraph instead of looking one up every few seconds.
+        </p>
+
         <section aria-labelledby="help-what">
-          <h2 id="help-what">What Monosai is for</h2>
+          <h2 id="help-what">What Monosai does</h2>
           <p>
-            Reading Japanese as a beginner usually means stopping every few words to look one up.
-            Monosai removes the stopping: it writes short stories out of the words you have already
-            studied, so you can read a whole paragraph and understand it.
+            Tell it which words you know, most easily by pointing it at the cards you have reviewed
+            in Anki. From {{ minimumWords }} words upwards it writes stories that stay inside them,
+            and underlines anything it could not avoid.
           </p>
           <p>
-            Tell Monosai which words you know, most easily by pointing it at the cards you have
-            reviewed in Anki. From {{ minimumWords }} words upwards it can write a story that stays
-            inside them, and it marks anything it could not avoid. What you get is reading practice
-            at the level you are actually at, not a page with ten new words in the first paragraph.
-          </p>
-          <p>
-            You can also paste Japanese you found elsewhere and read it here with readings above the
-            kanji, spacing between words, and a dictionary a tap away. That works without an AI key
-            and without an account, but it is the smaller half of Monosai.
+            It also reads Japanese you bring yourself. Paste text from anywhere and Monosai adds
+            readings above the kanji, spacing between words, and a dictionary a tap away. That side
+            needs no account and no AI key.
           </p>
         </section>
 
         <section aria-labelledby="help-scope">
-          <h2 id="help-scope">And what it is not for</h2>
+          <h2 id="help-scope">What it is not</h2>
           <p>
-            Monosai is for the first few months of reading, and it is meant to be outgrown. Stories
-            written by a model are scaffolding: they exist so you can practise reading sentences
-            instead of decoding them. Nobody really wants to read generated fiction, and Monosai is
-            not trying to produce good literature.
-          </p>
-          <p>
-            Once you can get through a page of real Japanese with a dictionary and some patience,
-            the scaffolding has done its job. Move on to material written by people. That is the
-            point of the exercise.
+            Monosai is for the first few months, and it is meant to be outgrown. Once you can get
+            through a page of real Japanese with a dictionary and some patience, read things people
+            wrote.
           </p>
         </section>
 
@@ -85,14 +78,13 @@ import { HELP_TOPICS } from './help-topics';
         <section aria-labelledby="help-more">
           <h2 id="help-more">When something fails</h2>
           <p>
-            Failure screens in Monosai show a short code such as
-            <code>ai/credit-exhausted</code>. <a routerLink="/help/questions">Common questions</a>
-            covers the ones you are most likely to meet, links the full list of codes, and says how
-            to report anything this guide does not answer.
+            Failure screens show a short code, such as <code>ai/credit-exhausted</code>.
+            <a routerLink="/help/questions" fragment="q-failed">Common questions</a> covers the ones
+            you are most likely to meet and links the full list.
           </p>
           <p>
-            Monosai is in alpha and built by one person in the open. Bugs and rough edges are
-            expected, and reports are welcome.
+            Monosai is in alpha and built by one person in the open, so bugs are expected. Reports
+            are welcome.
           </p>
         </section>
       </div>

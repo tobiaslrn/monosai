@@ -18,23 +18,11 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="q-cost">
         <h2 id="q-cost">Does Monosai cost anything?</h2>
         <p>
-          Monosai itself is free, and reading, importing text, the dictionary, and your word lists
-          cost nothing and need no key. Generating stories, translations, grammar notes, and audio
-          go through your own OpenRouter account, which you pay directly. What a story costs is
-          decided entirely by the model you choose: a fraction of a cent on the cheaper
-          recommendation, a few cents on the better one. See
-          <a routerLink="/help/text-models">Choosing a text model</a>.
-        </p>
-      </section>
-
-      <section aria-labelledby="q-watch">
-        <h2 id="q-watch">How do I know what I am spending?</h2>
-        <p>
-          OpenRouter's dashboard shows your remaining credit, and its activity page lists every
-          request with what it cost. Look at it after your first few stories, once, and you will
-          know what your own settings are worth.
-          <a routerLink="/help/text-models">Choosing a text model</a> goes into what drives the
-          number.
+          Monosai is free. Reading, importing text, the dictionary, and your word lists need no key
+          and cost nothing. Generating stories, translations, grammar notes, and audio go through
+          your own OpenRouter account, which you pay directly, and the model you pick decides the
+          bill. <a routerLink="/help/text-models">Choosing a text model</a> has the figures and
+          explains how to watch what you spend.
         </p>
       </section>
 
@@ -51,8 +39,7 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="q-private">Is my data private?</h2>
         <p>
           Your stories, words, and settings never leave this device, and Monosai collects no
-          analytics. What goes to OpenRouter is what a request needs: your premise, the words you
-          know, and the sentence being translated or spoken. Your key goes there and nowhere else.
+          analytics. Requests to OpenRouter carry only what they need.
           <a routerLink="/help/install">Installing and offline</a> has the detail.
         </p>
       </section>
@@ -60,53 +47,79 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="q-anki">
         <h2 id="q-anki">Do I have to use Anki?</h2>
         <p>
-          No, but it is the easiest path. Anki knows which cards you have actually reviewed, which
-          is what Monosai wants. Without it, paste a list of the words you know. Other flashcard
-          applications are not supported and are not planned.
-        </p>
-      </section>
-
-      <section aria-labelledby="q-provider">
-        <h2 id="q-provider">Can I use a local model, or a key from another provider?</h2>
-        <p>
-          Not today. OpenRouter is the only supported service, because one key reaching every model
-          is what makes trying models and switching between them practical. Local models may come
-          later and are not being worked on.
+          No, but it is the easiest path, because Anki knows which cards you have reviewed. Without
+          it, paste a list of the words you know. See
+          <a routerLink="/help/your-words">Your words</a>.
         </p>
       </section>
 
       <section aria-labelledby="q-safe">
         <h2 id="q-safe">Can Monosai damage my Anki collection?</h2>
         <p>
-          No. It reads and never writes, and the code that talks to Anki has no write operation in
-          it at all. Your cards, tags, decks, and review history are untouched.
+          No. It reads and never writes. Your cards, tags, decks, and review history are untouched.
+        </p>
+      </section>
+
+      <section aria-labelledby="q-provider">
+        <h2 id="q-provider">Can I use a local model, or another provider's key?</h2>
+        <p>
+          Not today. OpenRouter is the only supported service.
+          <a routerLink="/help/text-models">Choosing a text model</a> explains why. Local models are
+          not being worked on, though they may come later.
+        </p>
+      </section>
+
+      <section aria-labelledby="q-local-tts">
+        <h2 id="q-local-tts">Why is speech not generated on my device?</h2>
+        <p>
+          A small speech model could run in the browser for nothing, and it was considered and
+          dropped. The cheap hosted model already costs well under a cent per story, and shipping a
+          model into the app to save that is a lot of complexity for a saving nobody would notice.
+        </p>
+        <p>See <a routerLink="/help/voice">Voice and audio</a>.</p>
+      </section>
+
+      <section aria-labelledby="q-reading">
+        <h2 id="q-reading">Why does the audio say a word oddly?</h2>
+        <p>
+          Cheap speech models look each word up in a fixed dictionary instead of reading the
+          sentence, so some kanji come out with the wrong reading every time. Tap the word in the
+          reader for the right one. <a routerLink="/help/voice">Voice and audio</a> has the detail.
         </p>
       </section>
 
       <section aria-labelledby="q-unknown">
-        <h2 id="q-unknown">Why does a generated story contain words I do not know?</h2>
+        <h2 id="q-unknown">Why does a story contain words I do not know?</h2>
         <p>
           Sometimes the model cannot say what it set out to say inside your vocabulary. Monosai
-          tries to repair those places, and where it cannot, it keeps the story and underlines the
-          word instead of pretending the story is clean. A handful of marked words is normal, and a
-          page full of them usually means the model is too small or your word list is too short.
+          tries to repair those places, and where it cannot it keeps the story and underlines the
+          word instead of hiding it. A handful of marked words is normal; a page full of them
+          usually means the model is too small or your word list is too short.
         </p>
-        <p>
-          Two controls on the Generate screen change this. Vocabulary strictness decides how hard
-          Monosai tries: Relaxed keeps the first draft, Standard tries once to replace unfamiliar
-          words, Strict tries twice. Vocabulary exceptions lets you name words the story may use
-          anyway, which is what names are for.
-        </p>
+        <p>Two controls on the Generate screen change this:</p>
+        <ul>
+          <li>
+            <strong>Vocabulary strictness</strong> decides how hard Monosai tries. Relaxed keeps the
+            first draft, Standard tries once to replace unfamiliar words, Strict tries twice.
+          </li>
+          <li>
+            <strong>Vocabulary exceptions</strong> lets you name words the story may use anyway,
+            which is what names are for.
+          </li>
+        </ul>
       </section>
 
       <section aria-labelledby="q-short">
         <h2 id="q-short">Why is my story so short and plain?</h2>
         <p>
           Usually because there is not much to build with. Below a few hundred known words there are
-          few verbs to move a plot along, and a model has no choice but to repeat itself. Review
-          more, refresh your words, and ask for a concrete premise with something happening in it.
-          Length is a slider on the Generate screen, and it is a guideline rather than a promise:
-          very short stories tend to be the rough ones, and very long ones drift outside your
+          too few verbs to move a plot along, and the model has no choice but to repeat itself.
+          Review more, refresh your words, and ask for a concrete premise with something happening
+          in it.
+        </p>
+        <p>
+          Length is a slider on the Generate screen, and it is a guideline rather than a promise.
+          Very short stories tend to be the rough ones, and very long ones drift outside your
           vocabulary and grammar settings.
         </p>
       </section>
@@ -114,8 +127,8 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="q-minimum">
         <h2 id="q-minimum">How many words do I need?</h2>
         <p>
-          Generation needs {{ minimumWords }}. It becomes genuinely enjoyable somewhere in the
-          hundreds. Reading text you paste yourself needs no words at all.
+          Generation needs {{ minimumWords }}. It becomes enjoyable somewhere in the hundreds.
+          Reading text you paste yourself needs no words at all.
         </p>
       </section>
 
@@ -137,16 +150,16 @@ import { HelpArticleComponent } from '../help-article.component';
       </section>
 
       <section aria-labelledby="q-failed">
-        <h2 id="q-failed">Something failed and showed a code</h2>
-        <p>The code names the cause. A few of them come up often enough to learn:</p>
+        <h2 id="q-failed">What does an error code mean?</h2>
+        <p>The code names the cause. A few come up often enough to learn:</p>
         <ul>
           <li>
-            <code>ai/credit-exhausted</code>: the OpenRouter account has run out of credit. Top it
-            up. Saving the key again will not help, which is why this is its own code.
+            <code>ai/credit-exhausted</code>: the OpenRouter account is out of credit. Top it up.
+            Saving the key again will not help, which is why this is its own code.
           </li>
           <li>
-            <code>ai/authentication</code>: the key itself was rejected. Check it at openrouter.ai
-            and save it again.
+            <code>ai/authentication</code>: the key was rejected. Check it at openrouter.ai and save
+            it again.
           </li>
           <li>
             <code>ai/rate-limited</code>: too many requests in a short time, which the cheaper
@@ -154,14 +167,12 @@ import { HelpArticleComponent } from '../help-article.component';
           </li>
           <li>
             <code>ai/malformed-response</code> or <code>ai/capability-unsupported</code>: the model
-            cannot answer in the structure Monosai needs. Try again once, then choose another model.
+            cannot answer in the structure Monosai needs. Try once more, then choose another model.
           </li>
-          <li>
-            <code>anki/not-running</code>: Anki is not open on this computer. Open it and try again.
-          </li>
+          <li><code>anki/not-running</code>: Anki is not open on this computer. Open it.</li>
           <li>
             <code>anki/origin-not-allowed</code>: AnkiConnect has not been told to answer this page.
-            <a routerLink="/help/your-words">Your words</a> has the config line to add.
+            <a routerLink="/help/your-words">Your words</a> has the config line.
           </li>
           <li><code>ai/offline</code>: no connection. Reading and your library still work.</li>
           <li>
@@ -196,18 +207,17 @@ import { HelpArticleComponent } from '../help-article.component';
             target="_blank"
             rel="noopener noreferrer"
             >GitHub</a
-          >. Settings has a Copy diagnostics button under About whose output is worth attaching: it
-          records what failed and when, and contains no key, no prompt, and none of your text.
+          >. Attach the output of Copy diagnostics, under About in Settings: it records what failed
+          and when, and contains no key, no prompt, and none of your text.
         </p>
       </section>
 
       <section aria-labelledby="q-outgrow">
         <h2 id="q-outgrow">When should I stop using Monosai?</h2>
         <p>
-          When you can read something written for people. Generated stories are practice material
-          for the stage where real Japanese is still solid wall, and they are not an end in
-          themselves. Graded readers, then manga, then whatever you actually wanted to read: that is
-          the direction, and Monosai is meant to get you to the first step faster.
+          When you can read something written for people. Graded readers, then manga, then whatever
+          you wanted to read in the first place. Generated stories are practice material for the
+          stage where real Japanese is still a solid wall.
         </p>
       </section>
     </mn-help-article>
