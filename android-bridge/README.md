@@ -1,4 +1,4 @@
-# Monosai Anki bridge
+# Monosai Bridge
 
 Optional live vocabulary access from the Monosai PWA to AnkiDroid. This is a small
 native listener, not a WebView or a second web build. All first-party code is ISC
@@ -13,7 +13,8 @@ rather than against a collection's schema.
 
 - Android 16+ (API 36), AnkiDroid 2.24+, and Chrome with the Monosai PWA.
 - Install AnkiDroid and a signed bridge APK from a `bridge-v*`
-  [release](https://github.com/tobiaslrn/monosai/releases?q=bridge-v).
+  [release](https://github.com/tobiaslrn/monosai/releases?q=bridge-v). Every published
+  version is there; no build artifact has to be dug out of a CI run.
 - Open your collection in AnkiDroid, then use **Grant AnkiDroid access** and
   **Start bridge**. The permission says read/write because AnkiDroid has no
   read-only grant; the bridge's port and router expose only queries.
@@ -68,17 +69,33 @@ licences are followed when an artifact inherits them. No signing secrets enter P
 
 ## Signed releases and updates
 
-Configure repository secrets `BRIDGE_KEYSTORE_BASE64`, `BRIDGE_STORE_PASSWORD`,
-`BRIDGE_KEY_ALIAS`, and `BRIDGE_KEY_PASSWORD`, and keep the signing key backed up.
-Push an explicit `bridge-vMAJOR.MINOR.PATCH` tag when ready to publish. The release
-workflow verifies before accessing the keystore, signs the APK, deletes temporary
-key material, and uploads `monosai-anki-bridge.apk` to that tag's release.
-No tag or release is created by ordinary development or the main CI workflow.
-
+`version.txt` holds one bounded `MAJOR.MINOR.PATCH` and is the source of truth. Gradle
+reads it, so a debug APK on a bench reports the same version a published one would.
 Version codes are `major * 1,000,000 + minor * 1,000 + patch`: major 0–2099,
-minor/patch 0–999, excluding 0.0.0. Use increasing versions. Local signed builds
-take the four signing environment variables (keystore is a path named
-`BRIDGE_KEYSTORE`) plus `BRIDGE_VERSION_CODE` and `BRIDGE_VERSION_NAME`.
+minor/patch 0–999, excluding 0.0.0. Use increasing versions.
+
+Publishing is a version bump, not a tag push. `bridge-release.yml` runs on every push to
+`main`: if the committed version has no release, it verifies, signs, creates
+`bridge-v<version>` from that commit and uploads `monosai-bridge.apk`. If the release
+exists but the APK's own sources have changed since its tag, the run fails and names the
+files — a Releases page that quietly serves an older bridge than `main` is the failure
+the lane exists to prevent. Bundled licence notices are excluded from that comparison,
+because they follow the PWA's dependencies rather than the bridge's behaviour.
+
+Configure repository secrets `BRIDGE_KEYSTORE_BASE64`, `BRIDGE_STORE_PASSWORD`,
+`BRIDGE_KEY_ALIAS`, and `BRIDGE_KEY_PASSWORD`, and keep the signing key backed up. Until
+they exist, a run that would publish warns and publishes nothing rather than failing the
+branch; add the secrets and re-run the workflow. Create the key once with, for example:
+
+```sh
+keytool -genkeypair -v -keystore bridge-release.jks -alias monosai-bridge \
+  -keyalg RSA -keysize 4096 -validity 10000
+base64 -w0 bridge-release.jks   # the value for BRIDGE_KEYSTORE_BASE64
+```
+
+Losing that key means no installed bridge can ever be updated again, because Android
+refuses an update signed by another key. Local signed builds take the four signing
+environment variables, with the keystore as a path named `BRIDGE_KEYSTORE`.
 
 The Activity checks GitHub releases once on launch and offers an explicit
 download. HTTPS host, size, package, version and signer are validated before
@@ -90,7 +107,9 @@ existing service-worker update lifecycle.
 ## Physical-device release checks
 
 Automated fixture, cursor-mapping and HTTP tests cannot establish browser/OS
-transport compatibility or energy consumption. Before publishing the first APK:
+transport compatibility or energy consumption. These checks gate the version bump in
+`version.txt`, since that bump is what publishes. Before raising it to the first
+released version:
 
 - Connect from the deployed PWA to AnkiDroid 2.24+, inspect real decks and note
   types, build a snapshot and compare reviewed (`reps > 0`) results with a desktop
@@ -121,3 +140,17 @@ transport compatibility or energy consumption. Before publishing the first APK:
 
 These physical checks are release criteria; a debug build passing on a workstation
 does not mean they have been performed.
+
+## Brand resources
+
+`scripts/bridge/icons.mjs` owns every brand resource under `app/src/main/res`: the
+launcher and themed bitmaps, the notification mark, the app name and the icon colour.
+The bridge wears the Monosai mascot with a paper badge carrying a suspension-bridge
+mark, so a launcher never offers two identical Monosai icons. Run `npm run bridge:icons`
+from the repository root after changing the mascot or the composition, and commit what it
+writes; `npm run bridge:verify` and CI check the committed resources against
+`scripts/bridge/icons.lock.json` without opening a browser.
+
+The screen is `docs/design-system.md` applied natively. `res/values/colors.xml`,
+`dimens.xml` and `styles.xml` transcribe the PWA's tokens under the same role names, with
+`values-night/` carrying the dark palette; a change to a token belongs in both places.

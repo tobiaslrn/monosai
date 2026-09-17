@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The one raised surface: a quiet edge, the card radius, one inner padding. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/surface_panel" />
+    <stroke android:width="@dimen/hairline" android:color="@color/border_subtle" />
+    <corners android:radius="@dimen/radius_card" />
+</shape>

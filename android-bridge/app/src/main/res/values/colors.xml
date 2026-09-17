@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The roles this screen uses from Monosai's light palette, transcribed from
+  web/src/styles/_tokens.scss.
+  The bridge is a native app and cannot read the PWA's custom properties, so these
+  are the same roles under the same names; docs/design-system.md governs both.
+  values-night/colors.xml carries the dark half.
+-->
+<resources>
+    <color name="surface_canvas">#F8F6F1</color>
+    <color name="surface_panel">#FFFDF9</color>
+    <color name="surface_raised">#FFFFFF</color>
+    <color name="surface_sunken">#EFECE5</color>
+
+    <color name="text_primary">#252824</color>
+    <color name="text_secondary">#5A6058</color>
+    <color name="text_on_action">#FFFFFF</color>
+
+    <color name="border_subtle">#DFE4DC</color>
+    <color name="border_strong">#778570</color>
+
+    <color name="action_primary">#347E55</color>
+    <color name="action_primary_soft">#E4EDE6</color>
+    <color name="action_primary_text">#2B6947</color>
+
+    <color name="status_success">#3F6A4E</color>
+    <color name="status_success_soft">#E3EFE6</color>
+    <color name="status_warning">#7D5A1C</color>
+    <color name="status_warning_soft">#F6ECD8</color>
+
+    <color name="shadow_raised">#14252824</color>
+</resources>

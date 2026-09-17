@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Three text ranks and one control silhouette, matching docs/design-system.md.
+  Rank is carried by size and weight within one scale; there is no second system
+  and no all-caps micro-label. Every size is sp, so the device's font-size
+  setting moves the whole screen.
+-->
+<resources>
+    <style name="Text">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:lineSpacingMultiplier">1.4</item>
+    </style>
+
+    <!-- The screen's one title. -->
+    <style name="Text.PageTitle">
+        <item name="android:textSize">24sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:lineSpacingMultiplier">1.2</item>
+    </style>
+
+    <!-- A card's title: the section rank. -->
+    <style name="Text.CardTitle">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:lineSpacingMultiplier">1.25</item>
+    </style>
+
+    <!-- A group inside a card, one step below a section. -->
+    <style name="Text.GroupTitle">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Text.Secondary">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="Text.Status">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:paddingStart">@dimen/space_3</item>
+        <item name="android:paddingEnd">@dimen/space_3</item>
+        <item name="android:paddingTop">@dimen/space_2</item>
+        <item name="android:paddingBottom">@dimen/space_2</item>
+    </style>
+
+    <!--
+      One pill silhouette, one touch-target height, one text size and weight for
+      every text button; only fill and border say which kind it is.
+    -->
+    <style name="Button">
+        <item name="android:minHeight">@dimen/touch_target</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:paddingStart">@dimen/space_5</item>
+        <item name="android:paddingEnd">@dimen/space_5</item>
+        <item name="android:paddingTop">@dimen/space_2</item>
+        <item name="android:paddingBottom">@dimen/space_2</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:background">@drawable/button_secondary</item>
+        <item name="android:textColor">@color/button_secondary_text</item>
+    </style>
+
+    <style name="Button.Primary">
+        <item name="android:background">@drawable/button_primary</item>
+        <item name="android:textColor">@color/button_primary_text</item>
+    </style>
+
+    <style name="Button.Ghost">
+        <item name="android:background">@drawable/button_ghost</item>
+        <item name="android:textColor">@color/button_ghost_text</item>
+        <item name="android:paddingStart">@dimen/space_3</item>
+        <item name="android:paddingEnd">@dimen/space_3</item>
+    </style>
+
+    <style name="Field">
+        <item name="android:background">@drawable/field_background</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColorHint">@color/text_secondary</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:minHeight">@dimen/touch_target</item>
+        <item name="android:gravity">top|start</item>
+        <item name="android:textCursorDrawable">@null</item>
+    </style>
+
+    <style name="Switch">
+        <item name="android:minHeight">@dimen/touch_target</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <!-- The thumb stays the raised surface in both states, or a selected
+             switch would be one flat action-coloured lozenge. -->
+        <item name="android:thumbTint">@color/surface_raised</item>
+        <item name="android:trackTint">@color/switch_track</item>
+        <item name="android:paddingTop">@dimen/space_2</item>
+        <item name="android:paddingBottom">@dimen/space_2</item>
+    </style>
+
+    <!-- One card: the page's only raised surface, with one inner padding. -->
+    <style name="Card">
+        <item name="android:background">@drawable/surface_card</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:padding">@dimen/space_5</item>
+        <item name="android:elevation">1dp</item>
+        <item name="android:outlineAmbientShadowColor">@color/shadow_raised</item>
+        <item name="android:outlineSpotShadowColor">@color/shadow_raised</item>
+    </style>
+</resources>

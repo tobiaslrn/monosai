@@ -48,7 +48,7 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
     heading: 'The bridge needs access to AnkiDroid',
     whatFailed: 'AnkiDroid has not granted the bridge access to your collection.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Open the Monosai Anki bridge and grant AnkiDroid access, then connect again.',
+    primaryAction: 'Open Monosai Bridge and grant AnkiDroid access, then connect again.',
     escape: USE_PACKAGE,
   },
   'not-running': {
@@ -86,7 +86,7 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
       'AnkiConnect answers on this device but does not accept requests from the address this page is served from.',
     whatDidNot: NOTHING_SAVED,
     primaryAction:
-      "Add this page's address to the allowed origins in AnkiConnect or the Monosai Anki bridge, then connect again.",
+      "Add this page's address to the allowed origins in AnkiConnect or Monosai Bridge, then connect again.",
     escape: USE_PACKAGE,
   },
   timeout: {

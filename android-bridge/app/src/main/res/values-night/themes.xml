@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  One theme. The night variant in values-night/themes.xml swaps the platform
-  parent and the status-bar contrast; every colour the screen uses comes from
-  values/colors.xml, which has its own night variant, so nothing selects a
-  palette in code.
--->
+<!-- The night half of the theme; see values/themes.xml. -->
 <resources>
-    <style name="Theme.MonosaiBridge" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="Theme.MonosaiBridge" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/surface_canvas</item>
         <item name="android:colorAccent">@color/action_primary</item>
         <item name="android:colorControlActivated">@color/action_primary</item>
@@ -14,15 +9,10 @@
         <item name="android:textColorSecondary">@color/text_secondary</item>
         <item name="android:textColorHint">@color/text_secondary</item>
         <item name="android:textColorLink">@color/action_primary_text</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
         <item name="android:windowSplashScreenBackground">@color/bridge_background</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/bridge_foreground</item>
-        <!--
-          The icon is composed for a launcher mask, so the splash gets the same
-          circular window. Matching the splash background keeps the circle itself
-          invisible and shows exactly what the launcher shows.
-        -->
         <item name="android:windowSplashScreenIconBackgroundColor">@color/bridge_background</item>
     </style>
 </resources>

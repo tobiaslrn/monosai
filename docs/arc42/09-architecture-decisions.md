@@ -59,6 +59,7 @@ files are already linked from code comments and from other records.
 | [0036](../decisions/0036-android-package-share-target.md)             | Android package sharing uses a service-worker inbox                |
 | [0055](../decisions/0055-anki-mapping-is-suggested-then-confirmed.md) | An Anki mapping is suggested from Japanese samples, then confirmed |
 | [0056](../decisions/0056-first-party-ankidroid-bridge.md)             | First-party read-only AnkiDroid bridge and shared wire contract    |
+| [0077](../decisions/0077-the-bridge-publishes-itself.md)               | The bridge publishes itself from a committed version               |
 | [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)     | One Anki entry chosen by platform, and a page per source           |
 | [0061](../decisions/0061-anki-word-selection-signal-ladder.md)        | Anki word selection weights a ladder of scheduling evidence        |
 | [0065](../decisions/0065-ankidroid-first-review-study-day.md)         | AnkiDroid first review uses the supported search language          |

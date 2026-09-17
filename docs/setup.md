@@ -76,7 +76,7 @@ because it is only ever wrong when a connection has already failed.
 Packages are the recommended simple setup on Android and the only Anki path
 on iOS. For optional live access, use Android 16+ and AnkiDroid 2.24+:
 
-1. Install AnkiDroid and the signed Monosai Anki bridge APK from a `bridge-v*`
+1. Install AnkiDroid and the signed Monosai Bridge APK from a `bridge-v*`
    [GitHub release](https://github.com/tobiaslrn/monosai/releases?q=bridge-v).
 2. Open AnkiDroid with your collection. In the bridge, choose **Grant AnkiDroid
    access**, then **Start bridge**. AnkiDroid calls this database read/write

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The dark half of the palette; see values/colors.xml. -->
+<resources>
+    <color name="surface_canvas">#1B1D1A</color>
+    <color name="surface_panel">#232622</color>
+    <color name="surface_raised">#2B2F2A</color>
+    <color name="surface_sunken">#161815</color>
+
+    <color name="text_primary">#ECEAE4</color>
+    <color name="text_secondary">#ADB3A9</color>
+    <color name="text_on_action">#12150F</color>
+
+    <color name="border_subtle">#3A3F38</color>
+    <color name="border_strong">#737C6F</color>
+
+    <color name="action_primary">#9DBFA8</color>
+    <color name="action_primary_soft">#2C3730</color>
+    <color name="action_primary_text">#9DBFA8</color>
+
+    <color name="status_success">#93C3A3</color>
+    <color name="status_success_soft">#26332A</color>
+    <color name="status_warning">#DCB779</color>
+    <color name="status_warning_soft">#37301F</color>
+
+    <color name="shadow_raised">#66000000</color>
+</resources>

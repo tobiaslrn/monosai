@@ -18,6 +18,14 @@ This document describes what any screen may do. What a particular screen does is
 described by the screen's own code, and the structure it sits in is described by
 [the architecture documentation](arc42/README.md).
 
+It governs Monosai's native Android bridge as well as the PWA. The bridge cannot
+read the PWA's custom properties, so `android-bridge/app/src/main/res/values/`
+transcribes the same roles under the same names, with `values-night/` carrying the
+dark palette. That transcription is a copy and drifts like any copy: a token
+changed here is changed in both places, in the same commit. What the bridge does
+not copy is behaviour — its controls are framework widgets, so Android's text
+scaling, focus and touch semantics stay whatever the device says they are.
+
 ## 1. Principles
 
 1. **The text is the application.** Japanese is the only content Monosai has.

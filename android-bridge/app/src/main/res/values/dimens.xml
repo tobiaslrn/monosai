@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Spacing, radii and the touch-target floor from web/src/styles/_tokens.scss.
+  Spacing is dp because Android scales fonts, not layout; text sizes are sp
+  wherever they appear, so the OS font-size setting still moves everything.
+-->
+<resources>
+    <dimen name="space_2">8dp</dimen>
+    <dimen name="space_3">12dp</dimen>
+    <dimen name="space_4">16dp</dimen>
+    <dimen name="space_5">24dp</dimen>
+    <dimen name="space_6">32dp</dimen>
+
+    <dimen name="radius_control">12dp</dimen>
+    <dimen name="radius_card">16dp</dimen>
+    <dimen name="radius_pill">999dp</dimen>
+
+    <dimen name="hairline">1dp</dimen>
+    <dimen name="border_control">1dp</dimen>
+
+    <!-- A physical minimum that text scaling may grow but nothing may shrink. -->
+    <dimen name="touch_target">48dp</dimen>
+    <dimen name="mark_size">40dp</dimen>
+    <!--
+      The page's side rail. A wide screen gives the column more margin rather
+      than more columns, so the gutter grows instead of the measure.
+    -->
+    <dimen name="page_gutter">16dp</dimen>
+</resources>

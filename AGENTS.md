@@ -120,7 +120,9 @@ exactly CI's blocking gates; when you add a gate to one, add it to the other.
   with an independent lifecycle. Its `bridge` gate uses Java 21 for Gradle tests,
   debug assembly, Android lint and the resolved runtime licence check. Local
   `npm run bridge:verify` runs those checks; `npm run verify` includes it.
-  Signing secrets are used only by the separate `bridge-v*` release workflow.
+  Signing secrets are used only by the separate release workflow, which publishes
+  the signed APK whenever `android-bridge/version.txt` names a version that has no
+  GitHub release yet.
 - `static`, `unit`, and `build` start together. Add `needs` only for a real
   artifact dependency, never for ordering alone.
 - The browser lane is sharded three ways; `e2e-report` merges the shard blob

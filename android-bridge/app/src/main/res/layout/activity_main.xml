@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One bar, then one centred column of cards on the canvas. The bar is the first
+  thing on the screen and does not scroll away; its lower hairline fades in once
+  content has begun to pass beneath it.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface_canvas"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_canvas"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/page_gutter"
+        android:paddingTop="@dimen/space_3"
+        android:paddingEnd="@dimen/page_gutter"
+        android:paddingBottom="@dimen/space_3">
+
+        <ImageView
+            android:layout_width="@dimen/mark_size"
+            android:layout_height="@dimen/mark_size"
+            android:background="@drawable/mark_badge"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:padding="@dimen/space_2"
+            android:src="@drawable/bridge_status"
+            android:tint="@color/action_primary_text" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_3"
+            android:layout_weight="1"
+            android:accessibilityHeading="true"
+            android:text="@string/app_name"
+            style="@style/Text.PageTitle" />
+    </LinearLayout>
+
+    <View
+        android:id="@+id/barRule"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/hairline"
+        android:alpha="0"
+        android:background="@color/border_subtle" />
+
+    <ScrollView
+        android:id="@+id/scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:scrollbarStyle="outsideOverlay">
+
+        <LinearLayout
+            android:id="@+id/column"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/page_gutter"
+            android:paddingTop="@dimen/space_2"
+            android:paddingEnd="@dimen/page_gutter"
+            android:paddingBottom="@dimen/space_6">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_4"
+                android:text="@string/bridge_tagline"
+                style="@style/Text.Secondary" />
+
+            <!-- The listener. Its state is shown, not narrated. -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/Card">
+
+                <TextView
+                    android:id="@+id/stateChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:accessibilityLiveRegion="polite"
+                    android:background="@drawable/status_pill"
+                    android:backgroundTint="@color/surface_sunken"
+                    android:text="@string/state_stopped"
+                    android:textColor="@color/text_secondary"
+                    style="@style/Text.Status" />
+
+                <TextView
+                    android:id="@+id/stateDetail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_3"
+                    android:text="@string/state_stopped_detail"
+                    style="@style/Text.Secondary" />
+
+                <Button
+                    android:id="@+id/toggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_4"
+                    android:text="@string/action_start"
+                    style="@style/Button.Primary" />
+
+                <Switch
+                    android:id="@+id/bootSwitch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_3"
+                    android:text="@string/action_restart_on_boot"
+                    style="@style/Switch" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_2"
+                    android:text="@string/state_battery_note"
+                    style="@style/Text.Secondary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
+                style="@style/Card">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
+                    android:text="@string/anki_title"
+                    style="@style/Text.CardTitle" />
+
+                <TextView
+                    android:id="@+id/accessDetail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_2"
+                    android:accessibilityLiveRegion="polite"
+                    android:text="@string/anki_permission"
+                    style="@style/Text.Secondary" />
+
+                <Button
+                    android:id="@+id/grant"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_4"
+                    android:text="@string/anki_action_grant"
+                    style="@style/Button" />
+
+                <TextView
+                    android:id="@+id/permissionNote"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_3"
+                    android:text="@string/anki_permission_note"
+                    style="@style/Text.Secondary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
+                style="@style/Card">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
+                    android:text="@string/updates_title"
+                    style="@style/Text.CardTitle" />
+
+                <TextView
+                    android:id="@+id/updateStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_2"
+                    android:accessibilityLiveRegion="polite"
+                    android:text="@string/updates_checking"
+                    style="@style/Text.Secondary" />
+
+                <Button
+                    android:id="@+id/updateAction"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_4"
+                    android:text="@string/updates_action_check"
+                    style="@style/Button" />
+            </LinearLayout>
+
+            <!--
+              Detail that is set once and rarely revisited. The closed summary
+              states the address, so the fold never hides its own answer.
+            -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
+                style="@style/Card">
+
+                <LinearLayout
+                    android:id="@+id/advancedSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/row_disclosure"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/touch_target"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/advanced_title"
+                        style="@style/Text.GroupTitle" />
+
+                    <TextView
+                        android:id="@+id/advancedValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/space_3"
+                        style="@style/Text.Secondary" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/advancedContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:background="@drawable/surface_inset"
+                        android:orientation="vertical"
+                        android:padding="@dimen/space_3">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/fact_address"
+                                style="@style/Text.Secondary" />
+
+                            <TextView
+                                android:id="@+id/factAddress"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="@dimen/space_3"
+                                style="@style/Text.Secondary" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_2"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/fact_version"
+                                style="@style/Text.Secondary" />
+
+                            <TextView
+                                android:id="@+id/factVersion"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="@dimen/space_3"
+                                style="@style/Text.Secondary" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/originsLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
+                        android:labelFor="@+id/origins"
+                        android:text="@string/origins_label"
+                        style="@style/Text.Secondary" />
+
+                    <EditText
+                        android:id="@+id/origins"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_2"
+                        android:importantForAutofill="no"
+                        android:inputType="textMultiLine|textUri"
+                        style="@style/Field" />
+
+                    <Button
+                        android:id="@+id/saveOrigins"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_3"
+                        android:text="@string/origins_action_save"
+                        style="@style/Button" />
+
+                    <TextView
+                        android:id="@+id/originsStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_2"
+                        android:accessibilityLiveRegion="polite"
+                        android:text="@string/origins_saved"
+                        android:textColor="@color/status_success"
+                        android:visibility="gone"
+                        style="@style/Text.Secondary" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/openMonosai"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="start"
+                android:layout_marginTop="@dimen/space_4"
+                android:text="@string/action_open_monosai"
+                style="@style/Button.Ghost" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

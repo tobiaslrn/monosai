@@ -43,7 +43,7 @@ flowchart TB
 | **Cache Storage** | Shell, icons, language assets, share inbox | Makes the offline start possible, and is where a shared package waits |
 | **GitHub Pages** | The built artifact | Static hosting, no server logic, served under an application base path |
 | **Anki on the same device** | None. External | The vocabulary source. Reached over loopback HTTP, never over the internet |
-| **Monosai Anki bridge** | `android-bridge/app/` | Idle foreground listener, query-only ContentProvider access, optional boot restart. No polling or wake locks; no notification permission request |
+| **Monosai Bridge** | `android-bridge/app/` | Idle foreground listener, query-only ContentProvider access, optional boot restart. No polling or wake locks; no notification permission request |
 | **The AI service** | None. External | Text and speech, paid by the learner |
 
 Quality properties of this topology: the browser holds every piece of learner data, so there is
@@ -98,8 +98,13 @@ joining the gate, which is why there is exactly one required status check.
 The independent `bridge` job uses Java 21 and the Gradle wrapper for JVM tests,
 debug APK assembly and a verified runtime licence report; it joins `gate` without
 depending on the web build. The one-build rule above concerns the Pages artifact.
-`bridge-release.yml` runs on `bridge-v*` tags, tests and checks licences before
-decoding signing secrets, then signs a release APK for GitHub Releases. PR jobs
-have no signing secrets. Version codes use the bounded semantic-tag calculation
-shared with the in-app update comparison; the system installer requires consent.
+`bridge-release.yml` runs on every push to `main`. `android-bridge/version.txt` is
+the bridge's version: when it names a version with no release, the workflow tests
+and checks licences before decoding signing secrets, then signs a release APK,
+creates `bridge-v<version>` from that commit and publishes it to GitHub Releases;
+when the release exists but the APK's sources have changed since its tag, it fails
+and names them. With no signing key configured it warns and publishes nothing
+rather than failing the branch. PR jobs have no signing secrets. Version codes use
+the bounded calculation Gradle and the in-app update comparison share; the system
+installer requires consent ([ADR 0077](../decisions/0077-the-bridge-publishes-itself.md)).
 The PWA still deploys one verified artifact with no native/web version binding.

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- More margin, never more columns; see values/dimens.xml. -->
+<resources>
+    <dimen name="page_gutter">72dp</dimen>
+</resources>
