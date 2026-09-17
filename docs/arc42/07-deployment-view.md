@@ -107,4 +107,9 @@ and names them. With no signing key configured it warns and publishes nothing
 rather than failing the branch. PR jobs have no signing secrets. Version codes use
 the bounded calculation Gradle and the in-app update comparison share; the system
 installer requires consent ([ADR 0077](../decisions/0077-the-bridge-publishes-itself.md)).
-The PWA still deploys one verified artifact with no native/web version binding.
+`protocol/` is inside that source comparison, and a contract that rises only inside
+a patch release fails the lane, because a patch is a promise that the wire did not
+move. The PWA still deploys one verified artifact with no native/web version
+binding: the two sides negotiate one contract number and degrade around it rather
+than shipping together
+([ADR 0078](../decisions/0078-the-bridge-announces-a-contract.md)).

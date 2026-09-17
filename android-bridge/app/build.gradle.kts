@@ -24,6 +24,23 @@ val bridgeVersion: BridgeVersion by lazy {
     BridgeVersion(code, "$major.$minor.$patch")
 }
 
+/**
+ * The loopback contract version in `../protocol/contract.txt`, which the web app
+ * negotiates against. It is deliberately not the release version: it moves only
+ * when the contract gains something a caller cannot discover by probing, so a
+ * release that only fixes behaviour leaves it alone.
+ */
+val bridgeContract: Int by lazy {
+    val file = rootProject.file("../protocol/contract.txt")
+    val text = file.readText()
+    check(Regex("^[^\\n]+\\n$").matches(text)) { "${file.name} must hold one contract version and a newline" }
+    val digits = text.dropLast(1)
+    check(Regex("^[1-9]\\d*$").matches(digits)) { "${file.name} must hold a single integer" }
+    val contract = digits.toInt()
+    check(contract <= 1_000) { "Contract version out of range" }
+    contract
+}
+
 android {
     namespace = "io.github.tobiaslrn.monosai.bridge"
     compileSdk = 36
@@ -36,6 +53,7 @@ android {
         // reports the same version the published APK will.
         versionCode = bridgeVersion.code
         versionName = bridgeVersion.name
+        buildConfigField("int", "CONTRACT_VERSION", "$bridgeContract")
     }
     buildFeatures { buildConfig = true }
     signingConfigs {

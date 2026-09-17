@@ -158,6 +158,13 @@ desktop adapter recovers it to the whole percent through `prop:d` searches over
 the same action ([ADR 0066](../decisions/0066-desktop-fsrs-difficulty-by-search.md)).
 The update boundary makes bounded HTTPS requests to GitHub only on app launch or
 explicit download and verifies the APK signer before system installation.
+The router also answers with the build's own identity — its release name and the
+loopback contract version both sides declare in `protocol/` — so the web adapter
+can tell an outdated bridge from a broken one. It is passed in rather than read
+from the build, which keeps the golden fixtures stable across a release. An
+endpoint that claims no contract is left to the capability probe, because a
+third-party AnkiConnect-compatible listener has none to claim
+([ADR 0078](../decisions/0078-the-bridge-announces-a-contract.md)).
 `protocol/fixtures/` is consumed by both JVM and web tests. See
 [ADR 0056](../decisions/0056-first-party-ankidroid-bridge.md).
 

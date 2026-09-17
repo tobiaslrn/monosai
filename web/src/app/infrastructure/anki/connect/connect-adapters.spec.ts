@@ -8,6 +8,10 @@ import {
   type FakeServerOptions,
 } from '../../../../testing/anki-connect-server';
 import { collectExtraction, mappingFor } from '../../../../testing/anki-provider-contract';
+import {
+  KNOWN_BRIDGE_CONTRACT,
+  MINIMUM_BRIDGE_CONTRACT,
+} from '../../../domain/anki/bridge-contract';
 import { difficultyPercent } from '../../../domain/anki/scheduling-signals';
 import { AndroidConnectAdapter } from './android-connect.adapter';
 import { AnkiConnectClient, DESKTOP_ENDPOINTS } from './connect-client';
@@ -258,6 +262,39 @@ describe('AndroidConnectAdapter', () => {
     if (!probed.ok) return;
     expect(probed.value.canFilterReviewed).toBe(true);
     expect(probed.value.canReadNoteFields).toBe(true);
+    expect(probed.value.limitations).toEqual([]);
+  });
+
+  it('records the bridge that answered', async () => {
+    const { client } = serverAnd();
+    const probed = await new AndroidConnectAdapter(client).probe();
+
+    expect(probed.ok).toBe(true);
+    if (!probed.ok) return;
+    expect(probed.value.bridge?.contract).toBe(KNOWN_BRIDGE_CONTRACT);
+  });
+
+  it('refuses a bridge below the contract floor and names the build in the cause', async () => {
+    const { client } = serverAnd({
+      monosaiBridge: { version: '0.0.1', contract: MINIMUM_BRIDGE_CONTRACT - 1 },
+    });
+    const probed = await new AndroidConnectAdapter(client).probe();
+
+    expect(probed.ok).toBe(false);
+    if (probed.ok) return;
+    expect(probed.error.code).toBe('bridge-too-old');
+    expect(probed.error.cause).toContain('0.0.1');
+  });
+
+  it('reads a bridge that announces no contract, as any other compatible endpoint', async () => {
+    // A third-party AnkiConnect-compatible bridge on this port is judged by what
+    // it can answer, never refused for declining to claim a Monosai contract.
+    const { client } = serverAnd({ monosaiBridge: null });
+    const probed = await new AndroidConnectAdapter(client).probe();
+
+    expect(probed.ok).toBe(true);
+    if (!probed.ok) return;
+    expect(probed.value.bridge).toBeUndefined();
     expect(probed.value.limitations).toEqual([]);
   });
 

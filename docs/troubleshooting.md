@@ -55,6 +55,7 @@ that code and the copied diagnostics when reporting the issue.
 | --- | --- | --- |
 | `anki/not-running` | Monosai could not reach AnkiConnect on this computer. | Open Anki, then test the connection again. |
 | `anki/bridge-not-running` | Monosai could not reach an AnkiConnect-compatible bridge on this Android device. | Start the bridge outside Monosai, then test again. |
+| `anki/bridge-too-old` | Monosai Bridge answered, but it announces an older loopback contract than this version of Monosai reads a collection from. | Update Monosai Bridge from the repository's Releases page, then test again. |
 | `anki/addon-missing-or-unreachable` | Anki answered, but the AnkiConnect add-on did not. | Check that AnkiConnect (code `2055492159`) is installed and enabled. |
 | `anki/permission-denied` | AnkiConnect did not grant Monosai permission. | Allow Monosai in AnkiConnect's settings, then test again. |
 | `anki/origin-not-allowed` | AnkiConnect is reachable but its `webCorsOriginList` does not include this page's exact origin. This is the one setup.md's Anki section exists to prevent. | Add this page's origin to `webCorsOriginList` in AnkiConnect's config, restart Anki, and test again. |

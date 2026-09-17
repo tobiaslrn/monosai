@@ -12,6 +12,7 @@ import type { DomainErrorBase } from '../shared/errors';
 export type AnkiErrorCode =
   | 'not-running'
   | 'bridge-not-running'
+  | 'bridge-too-old'
   | 'ankidroid-not-installed'
   | 'ankidroid-permission-denied'
   | 'addon-missing-or-unreachable'
@@ -42,6 +43,7 @@ export type AnkiErrorCode =
 export const ALL_ANKI_ERROR_CODES: readonly AnkiErrorCode[] = [
   'not-running',
   'bridge-not-running',
+  'bridge-too-old',
   'ankidroid-not-installed',
   'ankidroid-permission-denied',
   'addon-missing-or-unreachable',
@@ -100,6 +102,7 @@ const SUGGESTS_PACKAGE_FALLBACK: readonly AnkiErrorCode[] = [
   'ankidroid-permission-denied',
   'not-running',
   'bridge-not-running',
+  'bridge-too-old',
   'addon-missing-or-unreachable',
   'permission-denied',
   'origin-not-allowed',

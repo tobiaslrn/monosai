@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.IBinder
 import io.github.tobiaslrn.monosai.bridge.anki.ContentProviderReads
 import io.github.tobiaslrn.monosai.bridge.http.BRIDGE_PORT
+import io.github.tobiaslrn.monosai.bridge.http.BridgeIdentity
 import io.github.tobiaslrn.monosai.bridge.http.Router
 import io.github.tobiaslrn.monosai.bridge.http.Server
 import kotlinx.coroutines.*
@@ -43,7 +44,8 @@ class BridgeService : Service() {
         if (!starting) {
             starting = true
             mutableState.value = BridgeState.STARTING
-            val listener = Server(Router(ContentProviderReads(this)), settings::origins)
+            val identity = BridgeIdentity(BuildConfig.VERSION_NAME, BuildConfig.CONTRACT_VERSION)
+            val listener = Server(Router(ContentProviderReads(this), identity), settings::origins)
             server = listener
             scope.launch {
                 try {

@@ -26,7 +26,7 @@ const USE_PACKAGE = 'Export a package from Anki and import it here instead.';
 const TRY_AGAIN = 'Try again.';
 
 /**
- * English for all twenty-one Anki failures.
+ * English for all twenty-two Anki failures.
  *
  * The specification requires the UI to preserve every distinction the error
  * model makes, so this is exhaustive by type: adding a variant to
@@ -64,6 +64,14 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
     whatFailed: 'Monosai could not reach an AnkiConnect-compatible bridge on this device.',
     whatDidNot: NOTHING_SAVED,
     primaryAction: 'Start the bridge outside Monosai, then test the connection again.',
+    escape: USE_PACKAGE,
+  },
+  'bridge-too-old': {
+    heading: 'This bridge is too old',
+    whatFailed:
+      'Monosai Bridge answered, but it is older than this version of Monosai can read a collection from.',
+    whatDidNot: NOTHING_SAVED,
+    primaryAction: 'Update Monosai Bridge on this device, then connect again.',
     escape: USE_PACKAGE,
   },
   'addon-missing-or-unreachable': {
@@ -277,6 +285,20 @@ export function connectFailureCopy(
         {
           before: 'Open the Monosai bridge and press Start. Do not have it? ',
           link: { href: ANKI_LINKS.bridgeReleases, text: 'Download the app' },
+          after: '.',
+        },
+        BRIDGE_IS_READ_ONLY,
+      ],
+      offersPort: false,
+    };
+  }
+  if (platform === 'android' && error.code === 'bridge-too-old') {
+    return {
+      headline: 'Your bridge is older than this app.',
+      paragraphs: [
+        {
+          before: 'Update Monosai Bridge, then try again. ',
+          link: { href: ANKI_LINKS.bridgeReleases, text: 'Get the latest version' },
           after: '.',
         },
         BRIDGE_IS_READ_ONLY,

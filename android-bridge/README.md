@@ -77,10 +77,46 @@ minor/patch 0–999, excluding 0.0.0. Use increasing versions.
 Publishing is a version bump, not a tag push. `bridge-release.yml` runs on every push to
 `main`: if the committed version has no release, it verifies, signs, creates
 `bridge-v<version>` from that commit and uploads `monosai-bridge.apk`. If the release
-exists but the APK's own sources have changed since its tag, the run fails and names the
-files — a Releases page that quietly serves an older bridge than `main` is the failure
-the lane exists to prevent. Bundled licence notices are excluded from that comparison,
-because they follow the PWA's dependencies rather than the bridge's behaviour.
+exists but the APK's own sources or `protocol/` have changed since its tag, the run fails
+and names the files — a Releases page that quietly serves an older bridge than `main` is
+the failure the lane exists to prevent. Bundled licence notices are excluded from that
+comparison, because they follow the PWA's dependencies rather than the bridge's behaviour.
+
+### Which number to raise
+
+`protocol/contract.txt` is the loopback contract version, and it is the only number the web
+app compares against. It is deliberately not the release version: comparing that would give
+the web app opinions about release numbering, and a fix release would read as a change in
+what the bridge can do.
+
+Raise the contract by one when a caller could not have discovered the change by trying it:
+
+- a new action;
+- a result field the web app will *require*;
+- a change to a limit the web app relies on (500 IDs, 8,192 characters, 64 KiB);
+- a change in what an error code means.
+
+Do not raise it for a new *optional* key. The web app reads each one where it exists and
+does without it where it does not, which is how the scheduling columns already work, and
+`AndroidConnectAdapter.probe()` establishes the rest against real rows. Keeping the contract
+slow-moving is the point.
+
+Then raise `version.txt`:
+
+| Bump  | When                                                                    |
+| ----- | ----------------------------------------------------------------------- |
+| PATCH | A fix that never reaches the wire — a crash, a wrong name, this screen.  |
+| MINOR | A contract bump, any additive wire change, or a new capability.          |
+| MAJOR | A breaking wire change. It strands everyone who does not update.         |
+
+A contract bump needs at least a minor bump, because a patch release is a promise that the
+wire did not move; the release lane checks this against the last published release and
+fails otherwise. A major bump is for correctness or security, never for convenience, and
+has to raise `MINIMUM_BRIDGE_CONTRACT` in the web app in the same commit.
+
+The bridge never breaks an older web app within a major version: add actions, add optional
+keys, relax limits — never remove an action, change what a key means, or narrow a limit.
+That rule is what lets a newer bridge answering an older web app pass without a word.
 
 Configure repository secrets `BRIDGE_KEYSTORE_BASE64`, `BRIDGE_STORE_PASSWORD`,
 `BRIDGE_KEY_ALIAS`, and `BRIDGE_KEY_PASSWORD`, and keep the signing key backed up. Until

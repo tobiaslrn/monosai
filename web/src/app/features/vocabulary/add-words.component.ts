@@ -115,6 +115,9 @@ type AddMode = 'closed' | 'choices' | 'anki';
                     />
                   </label>
                 }
+                @if (failureDetail(); as detail) {
+                  <p class="code-line detail">{{ detail }}</p>
+                }
                 <p class="code-line">
                   {{ failureCode() }} ·
                   <a [href]="links.troubleshooting" target="_blank" rel="noopener noreferrer"
@@ -298,6 +301,10 @@ type AddMode = 'closed' | 'choices' | 'anki';
       border-top: 1px solid var(--border-subtle);
     }
 
+    .detail {
+      overflow-wrap: anywhere;
+    }
+
     .aside {
       margin: 0;
       padding: 0 var(--space-2);
@@ -431,6 +438,18 @@ export class AddWordsComponent {
   protected readonly failureCode = computed(() => {
     const state = this.refresh.state();
     return state.kind === 'failed' ? technicalCode(state.error) : '';
+  });
+
+  /**
+   * The failure's own cause, which the code alone does not carry.
+   *
+   * Which origin was refused, which action was missing, which bridge build
+   * answered: the kind of detail that decides a bug report and is noise on the
+   * surface, so it sits under the same disclosure as the code.
+   */
+  protected readonly failureDetail = computed(() => {
+    const state = this.refresh.state();
+    return state.kind === 'failed' ? (state.error.cause ?? '') : '';
   });
 
   protected readonly connectingLabel = computed(() =>

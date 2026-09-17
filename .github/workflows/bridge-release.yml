@@ -58,10 +58,31 @@ jobs:
             echo "::notice::$BRIDGE_TAG has no release yet; building one."
           fi
 
+      # A contract that only a patch release carries never reaches anyone: a patch
+      # says the wire did not change. Compared against the last published bridge,
+      # because that is the build people actually have installed.
+      - name: Fail if a new contract ships in a patch release
+        if: steps.decide.outputs.needed == 'true'
+        run: |
+          set -euo pipefail
+          previous=$(git tag --list 'bridge-v*' --sort=-v:refname | head -n 1)
+          if [ -z "$previous" ]; then
+            echo "::notice::No bridge has been published yet; there is no contract to compare against."
+            exit 0
+          fi
+          contract=0
+          if git cat-file -e "$previous:protocol/contract.txt" 2>/dev/null; then
+            contract=$(git show "$previous:protocol/contract.txt" | tr -d '\n')
+          fi
+          node scripts/bridge/release-version.mjs --guard \
+            "$(git show "$previous:android-bridge/version.txt" | tr -d '\n')" "$contract"
+
       # A published version whose APK sources have moved is the failure this
       # whole workflow exists to prevent: the release people download would no
-      # longer be the bridge in `main`. The bundled licence notices are left out
-      # because they follow the PWA's dependencies, not the bridge's behaviour.
+      # longer be the bridge in `main`. `protocol/` is in the comparison because a
+      # contract the published APK does not speak is the same failure wearing a
+      # different name. The bundled licence notices are left out because they
+      # follow the PWA's dependencies, not the bridge's behaviour.
       - name: Fail if the APK changed without a version bump
         if: steps.decide.outputs.needed == 'false'
         run: |
@@ -69,7 +90,8 @@ jobs:
           changed=$(git diff --name-only "$BRIDGE_TAG" HEAD -- \
             android-bridge/app/src/main android-bridge/app/build.gradle.kts \
             android-bridge/build.gradle.kts android-bridge/settings.gradle.kts \
-            android-bridge/gradle android-bridge/gradle.properties)
+            android-bridge/gradle android-bridge/gradle.properties \
+            protocol)
           if [ -n "$changed" ]; then
             echo "::error::The bridge APK changed since $BRIDGE_TAG was published. Raise android-bridge/version.txt so the new build reaches Releases."
             printf '%s\n' "$changed"
