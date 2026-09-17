@@ -9,8 +9,8 @@ import { HelpArticleComponent } from '../help-article.component';
   template: `
     <mn-help-article slug="voice">
       <p class="mn-prose__lead">
-        Following the text while a story is read aloud is good practice, and audio is the one
-        optional feature where two reasonable choices differ in price by a factor of twenty.
+        Audio is the one optional feature where the two sensible choices are nowhere near each other
+        in price, so it is worth knowing what you are picking between.
       </p>
 
       <section aria-labelledby="voice-kinds">
@@ -23,8 +23,8 @@ import { HelpArticleComponent } from '../help-article.component';
         <p>
           These are large language models that happen to output audio. They read a sentence in
           context, so they put the stress in the right place, pause where a comma asks them to, and
-          match the tone to what is happening. You can also describe how it should be read, and they
-          follow the description. On Japanese the result is close to a native speaker reading aloud.
+          match the tone to what is happening. They also act on the speaking style you choose in
+          Settings. On Japanese the result is close to a native speaker reading aloud.
         </p>
         <h3>Models that only speak</h3>
         <p>
@@ -51,8 +51,8 @@ import { HelpArticleComponent } from '../help-article.component';
               </div>
             </dl>
             <p>
-              The best listening there is here. Pauses, intonation, and a speaking style it actually
-              follows. Expensive enough that a daily habit is noticeable.
+              Pauses, intonation, and a speaking style it acts on. Expensive enough that a daily
+              habit shows up on your statement.
             </p>
           </div>
           <div class="mn-card">
@@ -86,9 +86,9 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="voice-settings">Voice, pace, and style</h2>
         <p>
           Voice settings live under AI in <a routerLink="/settings">Settings</a>. Where OpenRouter
-          advertises a model's voices, Monosai offers them as a list rather than asking you to type
-          an ID. Pace is a named choice, Natural, Slow, or Very slow, and a speaking style is
-          available for models that understand instructions.
+          advertises a model's voices, Monosai offers them as a list instead of asking you to type
+          an ID. Pace is a named choice, Natural, Slow, or Very slow. Speaking style is a choice of
+          Natural, Clear, or Very clear, and it is sent only to models that act on instructions.
         </p>
         <p>
           Press Preview and listen before preparing audio for a long story. Preview plays one test
@@ -98,9 +98,12 @@ import { HelpArticleComponent } from '../help-article.component';
         </p>
         <p>
           Reading speed during playback is adjusted on your device, with the pitch preserved, so
-          slowing a story down costs nothing and needs no new request. Changing the model, the
-          voice, or the style is different: clips already generated no longer match, and the reader
-          says so and offers to regenerate them.
+          slowing a story down costs nothing and needs no new request.
+        </p>
+        <p>
+          Changing the model, the voice, or the style does not silence what you have already paid
+          for. Those clips keep playing and the player prints one line, "Some audio is from older
+          settings", until you regenerate the story's audio from Story options.
         </p>
       </section>
 

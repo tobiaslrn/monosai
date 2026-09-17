@@ -116,7 +116,7 @@ test.describe('Help and utility bar', () => {
     await expect(page.getByRole('heading', { name: 'Voice and audio', level: 1 })).toBeVisible();
     await expect(page.getByText('hexgrad/kokoro-82m')).toBeVisible();
 
-    await page.getByRole('link', { name: 'All help topics' }).click();
+    await page.getByRole('link', { name: 'All topics' }).click();
     await expect(page).toHaveURL(/#\/help$/);
     await expect(page.getByTestId('help-topic')).toHaveCount(7);
   });

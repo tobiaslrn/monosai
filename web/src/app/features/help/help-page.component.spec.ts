@@ -18,7 +18,7 @@ describe('HelpPageComponent', () => {
     expect([...element.querySelectorAll('h2')].map((heading) => heading.textContent)).toEqual([
       'What Monosai is for',
       'And what it is not for',
-      'Guides',
+      'Topics',
       'When something fails',
     ]);
     const text = element.textContent.replace(/\s+/g, ' ');

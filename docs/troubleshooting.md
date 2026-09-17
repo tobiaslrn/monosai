@@ -38,7 +38,8 @@ that code and the copied diagnostics when reporting the issue.
 | `ai/offline` | This device has no connection. | Reconnect and try again. Reading, importing, and vocabulary work without it. |
 | `ai/timeout` | OpenRouter did not answer before the request was given up on. | Try again; a slower model sometimes needs a second attempt. |
 | `ai/cancelled` | The request was stopped before it finished, usually by leaving the screen or pressing Cancel. | Run it again when ready. |
-| `ai/authentication` | The saved API key was rejected, or the OpenRouter account has no remaining credit. | Check the key at openrouter.ai, then save it again in Settings. |
+| `ai/authentication` | The saved API key was rejected by OpenRouter. | Check the key at openrouter.ai, then save it again in Settings. |
+| `ai/credit-exhausted` | The key works, but the account behind it has no credit left. Kept separate from `ai/authentication` because saving the key again cannot fix an empty balance. | Add credit at openrouter.ai, then try again. |
 | `ai/model-not-found` | OpenRouter has no model with that exact ID. | Copy the exact ID from OpenRouter's models page; IDs are case-sensitive and look like `vendor/model-name`. |
 | `ai/capability-unsupported` | The model refused part of what Monosai's request requires (usually structured output). | Choose a different model or voice. Working in ordinary chat is not sufficient — Monosai needs exact structured replies. |
 | `ai/rate-limited` | Too many requests reached OpenRouter in a short time. | Wait, then try again. |
@@ -83,13 +84,13 @@ worker that runs on top of it needs to be retried.
 
 | Code | Cause | Recovery |
 | --- | --- | --- |
-| `language/assets-unavailable` | The language bundle could not be downloaded (offline, or a server problem). | Check your connection and retry from Settings → Language assets. |
+| `language/assets-unavailable` | The language bundle could not be downloaded (offline, or a server problem). | Check your connection, then retry the import or reading that needed it. |
 | `language/asset-manifest-invalid` | The bundle's manifest could not be parsed. | Retry the download; if it repeats, the deployed bundle itself needs re-publishing. |
-| `language/asset-integrity-mismatch` | A downloaded file's digest does not match the manifest — a corrupted or tampered download, never a code bug in the app. | Retry from Settings → Language assets; a fresh download replaces the bad bytes. |
+| `language/asset-integrity-mismatch` | A downloaded file's digest does not match the manifest — a corrupted or tampered download, never a code bug in the app. | Retry; a fresh download replaces the bad bytes. |
 | `language/asset-schema-invalid` | A downloaded file parsed, but its structure does not match what the app expects. | Retry the download; if it repeats, the deployed bundle needs re-publishing. |
 | `language/tokenizer-initialization-failed` | The WebAssembly tokenizer failed to start. | Reload the page. If it repeats on this device, the browser may lack a required capability. |
-| `language/dictionary-initialization-failed` | The dictionary index failed to build from its downloaded data. | Retry the download from Settings → Language assets. |
-| `language/not-initialized` | A feature asked for analysis before the language runtime finished starting. | Wait for Settings → Language assets to report Ready, then retry. |
+| `language/dictionary-initialization-failed` | The dictionary index failed to build from its downloaded data. | Reload the page so the download and the index are built again. |
+| `language/not-initialized` | A feature asked for analysis before the language runtime finished starting. | Wait a moment and retry. |
 | `language/protocol-version-mismatch` | The worker and the page disagree on their message protocol version — a stale cached worker after an update. | Reload the page fully (not just navigate); the update banner's controlled reload also fixes this. |
 | `language/worker-unavailable` | The background worker that runs analysis could not be started. | Reload the page. |
 | `language/worker-terminated` | The worker stopped unexpectedly mid-task. | Reload the page and retry. |
@@ -114,16 +115,25 @@ worker that runs on top of it needs to be retried.
 | `storage/conflict` | A concurrent write from another tab conflicted with this one. | Retry. Avoid running the same import or generation in two tabs at once. |
 | `storage/unknown` | A storage operation failed for an unclassified reason. | Retry; if it repeats, check Settings → Storage for durability and usage. |
 
+## `unexpected/unexpected`
+
+A failure that none of the domains above classified. It carries a message and,
+where one exists, a cause. It is always worth reporting with the copied
+diagnostics: an unclassified failure is a gap in the error model rather than a
+condition with a known recovery.
+
 ## Other platform conditions
 
 These are not `domain/code` pairs shown on an error screen, but conditions
 worth naming here because they are easy to misdiagnose as one of the above.
 
-- **The install button stays disabled in Settings.** Chrome only fires
-  `beforeinstallprompt` once a page meets its installability criteria
-  (manifest, service worker, HTTPS) and has not already been installed or
-  dismissed too many times recently. Check DevTools → Application → Manifest
-  for a specific reason, or that the app is not already installed.
+- **There is no install button in Settings.** **Install Monosai** is rendered
+  under **About** only while the app is not already installed *and* Chrome has
+  offered the prompt. Chrome fires `beforeinstallprompt` once a page meets its
+  installability criteria (manifest, service worker, HTTPS) and has not already
+  been installed or dismissed too many times recently. Check DevTools →
+  Application → Manifest for a specific reason, or whether the app is already
+  installed.
 - **Monosai is missing from AnkiDroid's share sheet.** File sharing is supported
   only by the installed Android Chrome PWA. Open Monosai online, allow Chrome to
   finish updating it, then reinstall the PWA if the manifest registration is
@@ -139,4 +149,4 @@ worth naming here because they are easy to misdiagnose as one of the above.
 - **The update banner never appears despite a newer deployed version.**
   Updates are checked on a bounded interval, not instantly; switching back to
   the tab (`visibilitychange`) also triggers a check. Use **Check for
-  updates** in Settings → App to force one.
+  updates** in Settings → About to force one.

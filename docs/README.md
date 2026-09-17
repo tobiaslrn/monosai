@@ -12,7 +12,7 @@ What is in this directory is everything that does not belong on a screen.
 | Page | What it covers |
 | --- | --- |
 | [Setup](setup.md) | Installing, AnkiConnect, the Android bridge, package files, OpenRouter, and offline behaviour, in reference detail |
-| [Troubleshooting](troubleshooting.md) | Every error code Monosai can show, with its cause and its fix |
+| [Troubleshooting](troubleshooting.md) | The error codes Monosai shows, with the cause and the fix for each |
 | [Android bridge](../android-bridge/README.md) | What the companion app is, how to install it, and how it is built |
 
 ## For anyone changing the code

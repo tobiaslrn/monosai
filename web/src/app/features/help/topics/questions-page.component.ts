@@ -20,9 +20,40 @@ import { HelpArticleComponent } from '../help-article.component';
         <p>
           Monosai itself is free, and reading, importing text, the dictionary, and your word lists
           cost nothing and need no key. Generating stories, translations, grammar notes, and audio
-          go through your own OpenRouter account, which you pay directly. On a sensible model a
-          story is a fraction of a cent; see
+          go through your own OpenRouter account, which you pay directly. What a story costs is
+          decided entirely by the model you choose: a fraction of a cent on the cheaper
+          recommendation, a few cents on the better one. See
           <a routerLink="/help/text-models">Choosing a text model</a>.
+        </p>
+      </section>
+
+      <section aria-labelledby="q-watch">
+        <h2 id="q-watch">How do I know what I am spending?</h2>
+        <p>
+          OpenRouter's dashboard shows your remaining credit, and its activity page lists every
+          request with what it cost. Look at it after your first few stories, once, and you will
+          know what your own settings are worth.
+          <a routerLink="/help/text-models">Choosing a text model</a> goes into what drives the
+          number.
+        </p>
+      </section>
+
+      <section aria-labelledby="q-wait">
+        <h2 id="q-wait">Do I have to wait while a story is written?</h2>
+        <p>
+          No. Generation keeps running when you leave the screen, and the library shows the story
+          being written. Most models take under a minute; a model with reasoning turned up can take
+          several.
+        </p>
+      </section>
+
+      <section aria-labelledby="q-private">
+        <h2 id="q-private">Is my data private?</h2>
+        <p>
+          Your stories, words, and settings never leave this device, and Monosai collects no
+          analytics. What goes to OpenRouter is what a request needs: your premise, the words you
+          know, and the sentence being translated or spoken. Your key goes there and nowhere else.
+          <a routerLink="/help/install">Installing and offline</a> has the detail.
         </p>
       </section>
 
@@ -57,8 +88,14 @@ import { HelpArticleComponent } from '../help-article.component';
         <p>
           Sometimes the model cannot say what it set out to say inside your vocabulary. Monosai
           tries to repair those places, and where it cannot, it keeps the story and underlines the
-          word rather than pretending the story is clean. A handful of marked words is normal, and a
+          word instead of pretending the story is clean. A handful of marked words is normal, and a
           page full of them usually means the model is too small or your word list is too short.
+        </p>
+        <p>
+          Two controls on the Generate screen change this. Vocabulary strictness decides how hard
+          Monosai tries: Relaxed keeps the first draft, Standard tries once to replace unfamiliar
+          words, Strict tries twice. Vocabulary exceptions lets you name words the story may use
+          anyway, which is what names are for.
         </p>
       </section>
 
@@ -68,8 +105,9 @@ import { HelpArticleComponent } from '../help-article.component';
           Usually because there is not much to build with. Below a few hundred known words there are
           few verbs to move a plot along, and a model has no choice but to repeat itself. Review
           more, refresh your words, and ask for a concrete premise with something happening in it.
-          Length is a guideline rather than a promise, and very short stories tend to be the rough
-          ones.
+          Length is a slider on the Generate screen, and it is a guideline rather than a promise:
+          very short stories tend to be the rough ones, and very long ones drift outside your
+          vocabulary and grammar settings.
         </p>
       </section>
 
@@ -103,26 +141,39 @@ import { HelpArticleComponent } from '../help-article.component';
         <p>The code names the cause. A few of them come up often enough to learn:</p>
         <ul>
           <li>
-            <code>ai/authentication</code>: the key was rejected, or the account is out of credit.
-            Check both at openrouter.ai and save the key again.
+            <code>ai/credit-exhausted</code>: the OpenRouter account has run out of credit. Top it
+            up. Saving the key again will not help, which is why this is its own code.
           </li>
           <li>
-            <code>ai/model-not-found</code>: the model ID is not exactly right. IDs are
-            case-sensitive and look like <code>vendor/model-name</code>.
+            <code>ai/authentication</code>: the key itself was rejected. Check it at openrouter.ai
+            and save it again.
+          </li>
+          <li>
+            <code>ai/rate-limited</code>: too many requests in a short time, which the cheaper
+            models hit sooner. Wait and try again.
           </li>
           <li>
             <code>ai/malformed-response</code> or <code>ai/capability-unsupported</code>: the model
             cannot answer in the structure Monosai needs. Try again once, then choose another model.
           </li>
           <li>
+            <code>anki/not-running</code>: Anki is not open on this computer. Open it and try again.
+          </li>
+          <li>
             <code>anki/origin-not-allowed</code>: AnkiConnect has not been told to answer this page.
             <a routerLink="/help/your-words">Your words</a> has the config line to add.
           </li>
           <li><code>ai/offline</code>: no connection. Reading and your library still work.</li>
+          <li>
+            <code>language/assets-unavailable</code>: the Japanese data could not be downloaded, so
+            analysis cannot run. Check your connection and retry.
+          </li>
         </ul>
         <p>
-          Nothing saved is lost when one of these appears. A failed request writes nothing, so your
-          library, your words, and your settings are exactly as they were.
+          Nothing you already have is lost when one of these appears. A model test and a failed
+          generation write nothing at all. Translation, notes, and audio fill a story in order, so a
+          failure part way through leaves the sentences it finished and you can ask for the rest
+          again.
         </p>
         <p>
           The

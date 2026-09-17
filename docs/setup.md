@@ -24,8 +24,9 @@ an AnkiConnect endpoint you point at).
    family).
 2. Chrome shows an install affordance once the page qualifies — an icon in the
    address bar, or `⋮ → Install Monosai…`. If neither appears, open Settings
-   in the app and use **Install Monosai** under the **App** section; it uses
-   the same browser prompt.
+   in the app and use **Install Monosai** under the **About** section; it uses
+   the same browser prompt. That button is rendered only while the app is not
+   installed and Chrome is offering the prompt.
 3. Installed, Monosai launches in its own window at the same `/monosai/`
    address, with the Monosai mascot icon and no browser chrome.
 
@@ -150,9 +151,12 @@ local storage on this device.
    or provider, and choose one. Models you return to can be kept as favourites.
    **Reasoning** and **Token limit** sit below it, and **Translation and
    grammar** can override the model for those two tasks alone.
-4. Press **Test now**. The test spends a small number of tokens proving the model
-   answers in Monosai's structured shape, and writes nothing to your library.
-   Changing the model or its settings can require another test.
+4. Choosing a model runs the test by itself: it spends a small number of tokens
+   proving the model answers in Monosai's structured shape, and writes nothing
+   to your library. Changing the reasoning setting makes a new test necessary
+   and starts one the same way. The button beside the group appears only when a
+   test is outstanding, reading **Test now**, **Test again**, or
+   **Failed — retry**.
 5. **Voice** works the same way, with **Preview** in place of the text test: it
    plays one test sentence, and audio can only be generated once it has passed.
    Where OpenRouter advertises a model's voices, Monosai offers them as a

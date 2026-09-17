@@ -56,7 +56,7 @@ describe('help topics', () => {
 
     it('offers the way on to the adjacent topics', () => {
       const element = render(component);
-      const onward = element.querySelector('nav[aria-label="More help"]');
+      const onward = element.querySelector('nav[aria-label="More topics"]');
       const links = [...(onward?.querySelectorAll('a') ?? [])].map((link) =>
         link.getAttribute('href'),
       );
@@ -93,6 +93,13 @@ describe('help topic content', () => {
     expect(text).toContain('Play Protect');
     expect(text).toContain('read and write access');
     expect(text).toContain('webCorsOriginList');
+  });
+
+  it('keeps an empty balance apart from a rejected key, which no re-save can fix', () => {
+    const text = render(QuestionsPageComponent).textContent.replace(/\s+/g, ' ');
+    expect(text).toContain('ai/credit-exhausted');
+    expect(text).toContain('Saving the key again will not help');
+    expect(text).toContain('ai/authentication');
   });
 
   it('says where the data is and what leaves the device', () => {

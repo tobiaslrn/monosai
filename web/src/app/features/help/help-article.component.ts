@@ -22,7 +22,7 @@ import { adjacentHelpTopics, HELP_TOPICS } from './help-topics';
       <div class="mn-prose">
         <ng-content />
       </div>
-      <nav class="onward" aria-label="More help">
+      <nav class="onward" aria-label="More topics">
         @if (adjacent().previous; as previous) {
           <a class="step" [routerLink]="['/help', previous.slug]" rel="prev">
             <mn-icon name="back" [size]="18" />
@@ -43,7 +43,7 @@ import { adjacentHelpTopics, HELP_TOPICS } from './help-topics';
         }
       </nav>
       <p class="hub">
-        <a routerLink="/help">All help topics</a>
+        <a routerLink="/help">All topics</a>
       </p>
     </div>
   `,

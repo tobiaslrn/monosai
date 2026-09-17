@@ -9,8 +9,8 @@ import { HelpArticleComponent } from '../help-article.component';
   template: `
     <mn-help-article slug="your-words">
       <p class="mn-prose__lead">
-        Everything Monosai does well depends on knowing which words you have already learned. This
-        page covers the four ways to tell it, and what each one costs you in setup.
+        Monosai needs to know which words you have already learned. There are four ways to tell it,
+        and they differ mostly in how much setup they cost you.
       </p>
 
       <section aria-labelledby="words-why">
@@ -56,8 +56,8 @@ import { HelpArticleComponent } from '../help-article.component';
           On Android, AnkiDroid can hand its collection to other applications on the phone, but not
           to a web page. Monosai Bridge closes that gap: a small companion app that reads the
           collection through AnkiDroid's public interface and answers Monosai on this device only.
-          If you study on your phone and want live access rather than exporting a file every week,
-          it is worth the ten minutes.
+          It costs you two native installs, the Monosai app, and a permission grant. In return your
+          words stay current without exporting a file every week.
         </p>
         <h3>Why it has to be a second app</h3>
         <p>
@@ -99,10 +99,10 @@ import { HelpArticleComponent } from '../help-article.component';
           exposes reads and nothing else.
         </p>
         <p>
-          It needs Android 16 or newer and AnkiDroid 2.24 or newer, because older versions cannot
-          supply the review data Monosai needs to tell studied cards from untouched ones. Android's
-          battery policies and Force stop can stop the bridge; open it and press Start if Monosai
-          stops finding it.
+          The bridge is built for Android 16 and newer. It needs AnkiDroid 2.24 or newer as well,
+          because 2.23 and older cannot supply the review data that tells studied cards from
+          untouched ones. Android's battery policies and Force stop can stop the bridge; open it and
+          press Start if Monosai stops finding it.
         </p>
       </section>
 
@@ -132,8 +132,9 @@ import { HelpArticleComponent } from '../help-article.component';
           package on whichever device you study on and open it in Monosai.
         </p>
         <p>
-          Monosai itself is built and tested for Chrome on a computer and on Android. It may well
-          work in Safari, but nothing here has been checked there.
+          Monosai itself is built and tested for Chrome on Windows and on Android. It may work in
+          Safari, but nothing here has been checked there. See
+          <a routerLink="/help/install">Installing and offline</a>.
         </p>
       </section>
 

@@ -75,8 +75,9 @@ furigana to a text. Far fewer give you a text you can already read.
 | Generating stories, translation, grammar notes, audio | An [OpenRouter](https://openrouter.ai/) account and API key |
 
 Monosai has no AI of its own and no shared key. You pay OpenRouter directly for
-what you use, and your key stays in your browser on your device. On a sensible
-model a generated story costs a fraction of a cent.
+what you use, and your key stays in your browser on your device. What a story
+costs depends entirely on the model: a fraction of a cent on the cheaper of the
+two recommended below, a few cents on the better one.
 
 ## Getting started
 
@@ -95,7 +96,8 @@ Anki knows which cards you have actually reviewed, which is the only honest
 record of what you know. Monosai reads that and nothing else. It never writes to
 your collection: the code that talks to Anki has no write operation in it.
 
-There are three ways in:
+There are three ways to connect a collection, plus a pasted list if you do not
+use Anki at all:
 
 - **Anki on a computer**, through the AnkiConnect add-on. One config line is
   needed so AnkiConnect answers the page. See
@@ -112,31 +114,30 @@ There are three ways in:
   simplest option, and the only one on an iPhone, where no app can read
   AnkiMobile's collection.
 
+Without Anki, paste a list of words you know instead. Other flashcard
+applications are not supported and are not planned.
+
 ## Choosing models
 
 Model choice decides both quality and cost, and the useful range is narrower
 than it looks. Very small models invent words that do not exist, get particles
 and conjugation wrong, and ignore your vocabulary list. Flagship models write
 excellent Japanese and are a waste of money for deliberately simple text, where
-a single story can cost tens of cents. Mid-size models are the sweet spot.
+a single story can cost tens of cents. Mid-size models sit in between and are
+what you want.
 
-As of September 2026, the two worth starting from:
+As of September 2026 that means `z-ai/glm-5.3-flash` as the everyday choice and
+`google/gemini-3.8-flash` when one story's quality matters more than the month's
+bill. For speech the choice is between an instruction-following model like
+`google/gemini-3.1-flash-tts-preview`, which reads with real intonation, and a
+small dedicated one like `hexgrad/kokoro-82m`, which is plainer and far cheaper.
 
-- `google/gemini-3.8-flash` for the best stories, at a few cents each.
-- `z-ai/glm-5.3-flash` for roughly a tenth of that price and quality that holds
-  up well in daily use.
-
-For speech there are two different approaches: an instruction-following model
-such as `google/gemini-3.1-flash-tts-preview`, which reads with real intonation
-and takes a style description but costs around 20 cents for a 50-sentence story,
-or a small dedicated model such as `hexgrad/kokoro-82m`, which is plainer and
-costs well under a cent.
-
-Every model responds to the same prompt differently, so it is worth trying a few
-with the same premise. The
-[model guide](https://tobiaslrn.github.io/monosai/#/help/text-models) and the
-[voice guide](https://tobiaslrn.github.io/monosai/#/help/voice) in the app go
-into this properly, including reasoning effort and how to watch what you spend.
+Prices, what each costs per story, reasoning effort, and how to watch what you
+spend are in the app, where they are kept current and dated:
+[choosing a text model](https://tobiaslrn.github.io/monosai/#/help/text-models)
+and [voice and audio](https://tobiaslrn.github.io/monosai/#/help/voice). Every
+model also responds to the same prompt differently, so try a few with the same
+premise.
 
 OpenRouter is the only supported service. One key reaching every model is what
 makes comparing and switching practical. Local models and other endpoints are
@@ -154,9 +155,10 @@ Everything works in an ordinary tab as well. Installing changes how it feels,
 not what it does.
 
 Open Monosai online once and after that your library, the dictionary, and
-importing new text work offline. Anything that leaves the device, meaning
-generation, new translations, new audio, and refreshing from a running Anki,
-needs a connection.
+importing new text work offline. Anything that leaves the device needs a
+connection. The
+[install guide](https://tobiaslrn.github.io/monosai/#/help/install) lists both
+sides exactly.
 
 ## Your data
 
@@ -164,8 +166,7 @@ Everything stays on your device: stories, words, settings, and audio, in this
 browser, with no account and no server to sync with. Monosai collects no
 analytics.
 
-What leaves your device is only what a request needs: your premise, the words
-you know, and the sentence being translated or spoken. Your API key goes to
+What leaves your device is only what a request needs. Your API key goes to
 OpenRouter and nowhere else, and never appears in a log or a diagnostic export.
 
 ## Documentation

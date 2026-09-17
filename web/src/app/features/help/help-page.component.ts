@@ -65,7 +65,7 @@ import { HELP_TOPICS } from './help-topics';
         </section>
 
         <section aria-labelledby="help-topics">
-          <h2 id="help-topics">Guides</h2>
+          <h2 id="help-topics">Topics</h2>
           <ul class="mn-list-group">
             @for (topic of topics; track topic.slug) {
               <li>
@@ -86,9 +86,9 @@ import { HELP_TOPICS } from './help-topics';
           <h2 id="help-more">When something fails</h2>
           <p>
             Failure screens in Monosai show a short code such as
-            <code>ai/model-not-found</code>. <a routerLink="/help/questions">Common questions</a>
-            covers the ones you are most likely to meet, and the repository has the full list along
-            with a way to report anything this guide does not answer.
+            <code>ai/credit-exhausted</code>. <a routerLink="/help/questions">Common questions</a>
+            covers the ones you are most likely to meet, links the full list of codes, and says how
+            to report anything this guide does not answer.
           </p>
           <p>
             Monosai is in alpha and built by one person in the open. Bugs and rough edges are

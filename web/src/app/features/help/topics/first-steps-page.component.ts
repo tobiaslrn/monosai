@@ -11,8 +11,8 @@ import { HelpArticleComponent } from '../help-article.component';
   template: `
     <mn-help-article slug="first-steps">
       <p class="mn-prose__lead">
-        Four steps from an empty library to a story written out of your own vocabulary. Nothing here
-        takes long, and you can stop after step one if all you want is a dictionary.
+        Four steps from an empty library to a story written out of your own vocabulary. If all you
+        want is a dictionary for text you already have, the first section is the whole of it.
       </p>
 
       <section aria-labelledby="first-steps-need">
@@ -29,8 +29,8 @@ import { HelpArticleComponent } from '../help-article.component';
             >OpenRouter account</a
           >
           with a few dollars of credit on it. Monosai has no AI of its own and no shared key. You
-          pay the provider directly for what you use, and a story costs a fraction of a cent on a
-          sensible model.
+          pay the provider directly for what you use, and how much depends on the model: a fraction
+          of a cent on a cheap one, a few cents on a better one.
         </p>
       </section>
 
@@ -51,10 +51,11 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="first-steps-level">
         <h2 id="first-steps-level">2. Set your grammar level</h2>
         <p>
-          Knowing your words is not enough on its own, because a sentence also has grammar in it. On
-          the same page, choose a
-          <a routerLink="/reading-level" fragment="grammar">grammar level</a> and read the example
-          under each one. Pick the highest level whose example you can follow without effort.
+          Knowing your words is not enough on its own, because a sentence also has grammar in it.
+          The same page has a <a routerLink="/reading-level" fragment="grammar">Reading level</a>
+          row that opens the ladder. Tap through the levels, read the example each one shows, and
+          pick the highest whose example you can follow without effort. Nothing changes until you
+          press Save level.
         </p>
         <p>
           The basic patterns that hold a Japanese sentence together stay available at every level.
@@ -65,13 +66,15 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="first-steps-model">
         <h2 id="first-steps-model">3. Connect OpenRouter and choose a model</h2>
         <p>
-          In <a routerLink="/settings">Settings</a>, under AI, paste your OpenRouter key and save
-          it. The key is kept in this browser on this device and is never shown again after saving.
+          In <a routerLink="/settings">Settings</a>, under AI, open the OpenRouter key row, paste
+          your key and press Connect. The key is kept in this browser on this device and is never
+          shown again.
         </p>
         <p>
-          Then choose a text model and press Test now. The test spends a few tokens proving that the
-          model can answer in the exact shape Monosai needs, and it saves nothing to your library.
-          If you have no idea which model to pick,
+          The rest of the section appears once a key exists. Open the model picker under Text and
+          search OpenRouter's catalogue. Choosing a model tests it straight away: the test spends a
+          few tokens proving the model can answer in the exact shape Monosai needs, and it saves
+          nothing to your library. If you have no idea which model to pick,
           <a routerLink="/help/text-models">Choosing a text model</a> names the ones that work well
           today and explains what goes wrong with the rest.
         </p>
@@ -103,8 +106,8 @@ import { HelpArticleComponent } from '../help-article.component';
           have reviewed more cards, and refresh your words so Monosai sees them.
         </p>
         <p>
-          Keep an eye on your OpenRouter balance for the first few days until you know what your own
-          settings cost. After that it stops being interesting.
+          Check your OpenRouter balance for the first few days, until you know what your own
+          settings cost per story.
         </p>
       </section>
     </mn-help-article>

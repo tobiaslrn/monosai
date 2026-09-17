@@ -18,9 +18,10 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="models-how">What the model is asked to do</h2>
         <p>
           When you generate a story, Monosai sends the model your premise, your grammar level, and
-          the words you know, and asks for the story back in a fixed structure rather than as
-          ordinary chat. Monosai then checks the result against your vocabulary itself, tries to
-          repair what falls outside it, and marks anything it could not fix instead of hiding it.
+          the words you know, and asks for the story back in a fixed structure, not as ordinary
+          chat. Monosai then checks the result against your vocabulary itself, spends a repair
+          budget on the words that fall outside it, and marks anything it could not fix instead of
+          hiding it.
         </p>
         <p>
           So the model has two jobs, not one: write correct, simple Japanese, and stay inside a list
@@ -57,10 +58,10 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="models-large">
         <h2 id="models-large">Where the largest models are wasted</h2>
         <p>
-          The flagship models write excellent Japanese, and they are the wrong tool here. Your word
-          list goes into every request, so input is never small, and the strongest models can turn a
-          single story into tens of cents. At one story a day that is a subscription you did not
-          mean to take out.
+          The flagship models write excellent Japanese, and they are the wrong tool here. Your whole
+          word list goes into every story request, so input is never small, and the strongest models
+          can turn a single story into tens of cents. At one story a day that is a subscription you
+          did not mean to take out.
         </p>
         <p>
           They are also slower. Writing a few hundred words of deliberately simple Japanese is not a
@@ -86,8 +87,9 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="models-pick">
         <h2 id="models-pick">What to use today</h2>
         <p>
-          These two are the ones worth starting from. Copy the ID exactly, including the vendor
-          prefix and the case, then press Test now in <a routerLink="/settings">Settings</a>.
+          Start from one of these two. In <a routerLink="/settings">Settings</a>, open the model
+          picker under Text and search for the name. Choosing a model runs the test by itself, so
+          there is nothing else to press.
         </p>
         <div class="mn-prose__options">
           <div class="mn-card">
@@ -104,9 +106,8 @@ import { HelpArticleComponent } from '../help-article.component';
               </div>
             </dl>
             <p>
-              The best stories of anything tried here: natural Japanese, reliable at staying inside
-              a word list, and quick. Worth it if you read one story at a time and want the best
-              one.
+              The best Japanese of anything tried here, and reliable at staying inside a word list.
+              Pick it when the quality of one story matters more than what a month of them costs.
             </p>
           </div>
           <div class="mn-card">
@@ -124,14 +125,14 @@ import { HelpArticleComponent } from '../help-article.component';
             </dl>
             <p>
               Roughly a tenth of the price and close enough in quality to be the everyday choice.
-              This is what Monosai's author reads with.
+              Start here unless you have a reason not to.
             </p>
           </div>
         </div>
         <p>
           Avoid the very small open models, anything under a few billion parameters, and models sold
-          on speed alone. They are the ones that invent vocabulary. Also skip the flagship reasoning
-          models unless you have a reason: they do this job no better and cost twenty times as much.
+          on speed alone. They are the ones that invent vocabulary. Skip the flagship reasoning
+          models too: they do this job no better and cost many times as much.
         </p>
         <p class="mn-prose__checked">Prices and names checked on Sep 17, 2026.</p>
       </section>
@@ -145,9 +146,8 @@ import { HelpArticleComponent } from '../help-article.component';
           in a benchmark.
         </p>
         <p>
-          It is worth generating the same premise on two or three models when you start, and then
-          staying with whichever you enjoy reading. You can keep several as favourites in Settings
-          and switch between them.
+          Generate the same premise on two or three models when you start, then stay with whichever
+          you enjoy reading. You can keep several as favourites in Settings and switch between them.
         </p>
       </section>
 
@@ -155,9 +155,9 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="models-cost">Watching what it costs</h2>
         <p>
           OpenRouter bills your account for every request, including tests and retries. Its
-          dashboard shows your remaining credit and an activity page listing each request with what
-          it cost, which is the honest way to find out what your settings are worth. Look at it
-          after your first few stories.
+          dashboard shows your remaining credit, and its activity page lists each request with what
+          it cost. That is the only way to find out what your own settings cost per story. Look at
+          it after your first few.
         </p>
         <p>
           Buying credit in small amounts is a reasonable safety net. Monosai sends nothing that you

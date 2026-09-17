@@ -42,13 +42,14 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="reading-markers">
         <h2 id="reading-markers">The underlines</h2>
         <p>
-          An underline marks a word that is not in your lists, or grammar above the level you chose.
-          It tells you where to expect trouble before you hit it.
+          An underline marks a word that is not in your lists. It tells you where to expect trouble
+          before you hit it. Grammar above your level is underlined too, but only on a story whose
+          grammar notes have been prepared, because that is where the finding comes from.
         </p>
         <p>
-          Treat them as a hint rather than a verdict. A word can be marked because your Anki
-          collection spells it differently, and an unmarked sentence can still be wrong. You can
-          hide the markers in Story options.
+          Treat them as a hint, not a verdict. A word can be marked because your Anki collection
+          spells it differently, and an unmarked sentence can still be wrong. You can hide the
+          markers in Story options.
         </p>
       </section>
 
@@ -74,9 +75,9 @@ import { HelpArticleComponent } from '../help-article.component';
           reader.
         </p>
         <p>
-          Speed is adjusted during playback without changing the pitch and without generating
-          anything again, so slowing a story down is free.
-          <a routerLink="/help/voice">Voice and audio</a> covers which speech model to use.
+          Slowing a story down is free and instant, because speed is adjusted during playback.
+          <a routerLink="/help/voice">Voice and audio</a> covers which speech model to use and what
+          it costs.
         </p>
       </section>
 
@@ -89,7 +90,7 @@ import { HelpArticleComponent } from '../help-article.component';
         </p>
         <p>
           If a sentence seems wrong, it may well be. Check it, and treat the reading aids as a
-          second opinion rather than an authority.
+          second opinion.
         </p>
       </section>
     </mn-help-article>

@@ -17,8 +17,8 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="install-choice">In a tab, or installed</h2>
         <p>
           Everything works in an ordinary browser tab, so you can try Monosai without installing
-          anything. Installing changes how it feels rather than what it does: its own window, its
-          own icon, no address bar, and no chance of closing it while tidying up tabs.
+          anything. Installing changes how it feels, not what it does: its own window, its own icon,
+          no address bar, and no chance of closing it while tidying up tabs.
         </p>
         <p>
           On Android the difference is worth having. Installed, Monosai behaves like a normal app on
@@ -31,13 +31,15 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="install-how">Installing</h2>
         <p>
           In Chrome, an install icon appears in the address bar once the page qualifies, and the
-          browser menu has the same entry. <a routerLink="/settings">Settings</a> shows an Install
-          Monosai button under About, which opens the same prompt. Accept it and Monosai opens in
-          its own window from then on.
+          browser menu has the same entry. An Install Monosai button also appears under About in
+          <a routerLink="/settings">Settings</a>, opening the same prompt. That button is there only
+          while Chrome is offering to install: it is hidden once Monosai is installed, and hidden
+          again if Chrome has decided not to offer the prompt on this visit.
         </p>
         <p>
-          Monosai is built and tested for Chrome on a computer and on Android 12 or newer. Other
-          browsers are untested rather than blocked.
+          Monosai is built and tested for Chrome on Windows and on Android 12 or newer. Other
+          browsers are untested, not blocked. Safari on an iPhone may work; nothing here has been
+          checked there.
         </p>
       </section>
 
@@ -57,7 +59,7 @@ import { HelpArticleComponent } from '../help-article.component';
         <p>
           What needs a connection is anything that leaves the device: generating a story, a new
           translation, new grammar notes, new audio, and refreshing your words from a running Anki.
-          Monosai says so rather than failing quietly.
+          Monosai says so instead of failing quietly.
         </p>
       </section>
 
@@ -97,8 +99,8 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="install-updates">Updates</h2>
         <p>
           Monosai updates itself. When a new version has downloaded, a banner offers to reload into
-          it, and it waits rather than interrupting an import or a running generation. Settings can
-          also check on demand.
+          it, and the offer waits while an unsaved import or a running generation would be
+          interrupted. Settings can also check on demand.
         </p>
       </section>
     </mn-help-article>
