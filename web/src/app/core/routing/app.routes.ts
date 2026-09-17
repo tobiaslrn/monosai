@@ -1,6 +1,7 @@
-import { inject } from '@angular/core';
+import { inject, type Type } from '@angular/core';
 import { Router } from '@angular/router';
-import type { RedirectFunction, Routes } from '@angular/router';
+import type { Route, RedirectFunction, Routes } from '@angular/router';
+import { HELP_TOPICS, type HelpTopicSlug } from '../../features/help/help-topics';
 import { unsavedImportGuard } from '../../features/add-text/unsaved-import.guard';
 import { firstUseRedirect } from './first-use.resolver';
 import { wellFormedGenerationJobLink } from './generation-job-link.guard';
@@ -21,6 +22,49 @@ function readingLevelSection(fragment: 'words' | 'grammar'): RedirectFunction {
     });
 }
 
+/**
+ * The page behind each topic of the guide.
+ *
+ * Keyed by the slug union rather than by string, so a topic without a page and
+ * a page without a topic are both compile errors. Each entry stays a dynamic
+ * import, so a topic is still a chunk of its own that the hub does not load.
+ */
+const HELP_TOPIC_PAGES: Record<HelpTopicSlug, () => Promise<Type<unknown>>> = {
+  'first-steps': () =>
+    import('../../features/help/topics/first-steps-page.component').then(
+      (m) => m.FirstStepsPageComponent,
+    ),
+  'your-words': () =>
+    import('../../features/help/topics/your-words-page.component').then(
+      (m) => m.YourWordsPageComponent,
+    ),
+  reading: () =>
+    import('../../features/help/topics/reading-page.component').then((m) => m.ReadingPageComponent),
+  'text-models': () =>
+    import('../../features/help/topics/text-models-page.component').then(
+      (m) => m.TextModelsPageComponent,
+    ),
+  voice: () =>
+    import('../../features/help/topics/voice-page.component').then((m) => m.VoicePageComponent),
+  install: () =>
+    import('../../features/help/topics/install-page.component').then((m) => m.InstallPageComponent),
+  questions: () =>
+    import('../../features/help/topics/questions-page.component').then(
+      (m) => m.QuestionsPageComponent,
+    ),
+};
+
+/**
+ * One route per topic, derived from the list the hub shelf reads. A topic is a
+ * page rather than a heading so the guide can answer a question in full without
+ * burying the next one below three screens of scrolling.
+ */
+const HELP_TOPIC_ROUTES: readonly Route[] = HELP_TOPICS.map((topic) => ({
+  path: `help/${topic.slug}`,
+  title: `${topic.title} · Monosai`,
+  loadComponent: HELP_TOPIC_PAGES[topic.slug],
+}));
+
 export const APP_ROUTES: Routes = [
   {
     path: 'help',
@@ -28,63 +72,7 @@ export const APP_ROUTES: Routes = [
     loadComponent: () =>
       import('../../features/help/help-page.component').then((m) => m.HelpPageComponent),
   },
-  // One route per topic, named by the same slug the hub shelf links to. A topic
-  // is a page rather than a heading so the guide can answer a question in full
-  // without burying the next one below three screens of scrolling.
-  {
-    path: 'help/first-steps',
-    title: 'First steps · Monosai',
-    loadComponent: () =>
-      import('../../features/help/topics/first-steps-page.component').then(
-        (m) => m.FirstStepsPageComponent,
-      ),
-  },
-  {
-    path: 'help/your-words',
-    title: 'Your words · Monosai',
-    loadComponent: () =>
-      import('../../features/help/topics/your-words-page.component').then(
-        (m) => m.YourWordsPageComponent,
-      ),
-  },
-  {
-    path: 'help/reading',
-    title: 'Reading a story · Monosai',
-    loadComponent: () =>
-      import('../../features/help/topics/reading-page.component').then(
-        (m) => m.ReadingPageComponent,
-      ),
-  },
-  {
-    path: 'help/text-models',
-    title: 'Choosing a text model · Monosai',
-    loadComponent: () =>
-      import('../../features/help/topics/text-models-page.component').then(
-        (m) => m.TextModelsPageComponent,
-      ),
-  },
-  {
-    path: 'help/voice',
-    title: 'Voice and audio · Monosai',
-    loadComponent: () =>
-      import('../../features/help/topics/voice-page.component').then((m) => m.VoicePageComponent),
-  },
-  {
-    path: 'help/install',
-    title: 'Installing and offline · Monosai',
-    loadComponent: () =>
-      import('../../features/help/topics/install-page.component').then(
-        (m) => m.InstallPageComponent,
-      ),
-  },
-  {
-    path: 'help/questions',
-    title: 'Common questions · Monosai',
-    loadComponent: () =>
-      import('../../features/help/topics/questions-page.component').then(
-        (m) => m.QuestionsPageComponent,
-      ),
-  },
+  ...HELP_TOPIC_ROUTES,
   {
     path: 'library',
     title: 'Library · Monosai',

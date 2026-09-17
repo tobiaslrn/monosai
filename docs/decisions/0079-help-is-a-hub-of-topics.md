@@ -36,9 +36,15 @@ Each topic is its own route under `/help/`, is lazily loaded, and is prose. Ever
 topic page uses the shared page frame with Back to Help, and ends with links to
 the adjacent topics so the guide can be read straight through. One declaration in
 `features/help/help-topics.ts` gives every topic its path, title, summary, and
-icon; the hub shelf and the footer of every topic page read it, and a unit test
-holds the route table to the same list, so a topic cannot exist in one place and
-be missing from another.
+icon. The hub shelf and the footer of every topic page read it, and the route
+table derives its help routes from it, keyed by the slug union: a topic with no
+page, or a page with no topic, is a compile error rather than a row that leads
+nowhere.
+
+The check is the compiler rather than a test on purpose. A spec that imported the
+route table to assert the same thing would pull the whole routed application into
+its module graph, and with it into the coverage report, where every lazy screen no
+test touches counts against the thresholds.
 
 The topics are the questions in the order a first-time learner asks them: first
 steps, the words Monosai reads from, reading a story, choosing a text model,

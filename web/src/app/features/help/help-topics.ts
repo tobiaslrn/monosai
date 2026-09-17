@@ -1,6 +1,16 @@
 import type { IconName } from '../../shared-ui/icon/icon-set';
 
 /**
+ * The topics the guide answers, in the order a first-time learner asks them.
+ *
+ * The union is the source: the route table maps it to one lazy page each, so a
+ * topic added here without a page, or a page without a topic, is a type error
+ * rather than a row that leads nowhere.
+ */
+export type HelpTopicSlug =
+  'first-steps' | 'your-words' | 'reading' | 'text-models' | 'voice' | 'install' | 'questions';
+
+/**
  * One topic in the guide.
  *
  * The hub shelf, the route table, and the footer of every topic page read this
@@ -9,7 +19,7 @@ import type { IconName } from '../../shared-ui/icon/icon-set';
  */
 export interface HelpTopic {
   /** The path segment under `/help`, and the topic's identity. */
-  readonly slug: string;
+  readonly slug: HelpTopicSlug;
   readonly title: string;
   readonly summary: string;
   readonly icon: IconName;
