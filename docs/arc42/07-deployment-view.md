@@ -103,9 +103,10 @@ the bridge's version: when it names a version with no release, the workflow test
 and checks licences before decoding signing secrets, then signs a release APK,
 creates `bridge-v<version>` from that commit and publishes it to GitHub Releases;
 when the release exists but the APK's sources have changed since its tag, it fails
-and names them. With no signing key configured it warns and publishes nothing
-rather than failing the branch. PR jobs have no signing secrets. Version codes use
-the bounded calculation Gradle and the in-app update comparison share; the system
+and names them. Verification does not wait on the signing key: with none configured
+the lane still tests the bridge it would have published, then warns and publishes
+nothing rather than failing the branch. PR jobs have no signing secrets. Version
+codes use the bounded calculation Gradle and the in-app update comparison share; the system
 installer requires consent ([ADR 0077](../decisions/0077-the-bridge-publishes-itself.md)).
 `protocol/` is inside that source comparison, and a contract that rises only inside
 a patch release fails the lane, because a patch is a promise that the wire did not

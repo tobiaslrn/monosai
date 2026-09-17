@@ -99,6 +99,20 @@ jobs:
           fi
           echo "The published $BRIDGE_TAG still matches this commit."
 
+      # Whether a signing key happens to be configured says nothing about the
+      # bridge, so the verification is not behind that gate: a lane that can only
+      # ever report success until a secret is set is a lane nobody can read. It
+      # runs whenever this commit is one the workflow would publish.
+      - name: Verify before touching the signing key
+        if: steps.decide.outputs.needed == 'true'
+        run: |
+          node scripts/bridge/icons.mjs --check
+          cd android-bridge
+          ./gradlew :app:testDebugUnitTest :app:lintDebug :app:runtimeLicenses
+      - name: Check the resolved APK dependency graph and licences
+        if: steps.decide.outputs.needed == 'true'
+        run: node scripts/licenses/check-licenses.mjs --check --gradle-report android-bridge/app/build/reports/runtime-dependencies.json
+
       - name: Check that signing material is configured
         id: signing
         if: steps.decide.outputs.needed == 'true'
@@ -109,18 +123,8 @@ jobs:
             echo 'ready=true' >> "$GITHUB_OUTPUT"
           else
             echo 'ready=false' >> "$GITHUB_OUTPUT"
-            echo "::warning::$BRIDGE_TAG is ready to publish, but no signing key is configured. Set the BRIDGE_KEYSTORE_BASE64, BRIDGE_STORE_PASSWORD, BRIDGE_KEY_ALIAS and BRIDGE_KEY_PASSWORD repository secrets, then re-run this workflow. An unsigned release is never published, and a missing key never fails the branch."
+            echo "::warning::$BRIDGE_TAG is verified and ready to publish, but no signing key is configured. Set the BRIDGE_KEYSTORE_BASE64, BRIDGE_STORE_PASSWORD, BRIDGE_KEY_ALIAS and BRIDGE_KEY_PASSWORD repository secrets, then re-run this workflow. An unsigned release is never published, and a missing key never fails the branch."
           fi
-
-      - name: Verify before touching the signing key
-        if: steps.signing.outputs.ready == 'true'
-        run: |
-          node scripts/bridge/icons.mjs --check
-          cd android-bridge
-          ./gradlew :app:testDebugUnitTest :app:lintDebug :app:runtimeLicenses
-      - name: Check the resolved APK dependency graph and licences
-        if: steps.signing.outputs.ready == 'true'
-        run: node scripts/licenses/check-licenses.mjs --check --gradle-report android-bridge/app/build/reports/runtime-dependencies.json
 
       - name: Sign the release APK
         if: steps.signing.outputs.ready == 'true'
