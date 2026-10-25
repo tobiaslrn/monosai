@@ -37,14 +37,19 @@
     border-color var(--motion-fast) ease-out;
 }
 
-html[data-pointer='mouse'] .mn-segmented > label:hover {
+/* States follow in source order at one specificity: rest, hover, chosen, chosen and hovered. */
+:where(html[data-pointer='mouse']) .mn-segmented > label:where(:hover) {
   background: var(--surface-sunken);
 }
 
-.mn-segmented > label:has(input:checked) {
+.mn-segmented > label:where(:has(input:checked)) {
   border-color: var(--action-primary);
   background: var(--action-primary-soft);
   color: var(--action-primary-text);
+}
+
+:where(html[data-pointer='mouse']) .mn-segmented > label:where(:has(input:checked):hover) {
+  background: var(--action-primary-soft-hover);
 }
 
 .mn-segmented > label:has(input:focus-visible) {

@@ -213,8 +213,8 @@ primitive or add state-specific placement, but they do not redefine its
 silhouette, palette, type, or interaction treatment. The source of each role is
 kept beside the tokens in `web/src/styles/components/`:
 
-| Role       | Use                                                                                                                          | Source                                                              |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Role       | Use                                                                                                                          | Source                                                                 |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | Button     | Reversible, primary, quiet, danger, and icon-only actions                                                                    | [`_button.scss`](../../web/src/styles/components/_button.scss)         |
 | Card       | One raised surface; `mn-inset` is its borderless sunken group                                                                | [`_card.scss`](../../web/src/styles/components/_card.scss)             |
 | Notice     | A soft, named status or warning beside the thing it describes                                                                | [`_notice.scss`](../../web/src/styles/components/_notice.scss)         |
@@ -374,10 +374,35 @@ A choice of one out of a few — the theme — is a **segmented** control: nativ
 radios drawn at the button's height, size, and weight, the chosen one wearing the
 same selection tint as a pressed toggle rather than the filled primary.
 
+The filled primary icon control is `.mn-icon-button--primary`: a large circle in
+the action colour, as the play control of the transport. It has its own hover and
+press (it shrinks slightly and keeps its fill; it never turns grey) and is drawn
+disabled like any other button. `--icon-button-primary-size` sets its diameter
+(4rem by default); a labelled one that says a word widens through layout rules
+alone. A feature never recolours a shared control.
+
 Disabled controls are drawn with the sunken surface, secondary text, and a
 distinct boundary. Opacity alone is not a disabled state: disabled must be
 recognisable in both themes and must not resemble either an active secondary
-outline or a selected control.
+outline or a selected control. A chosen toggle that is disabled keeps its
+selection tint behind the dashed boundary, so a choice that cannot be changed
+still reads as chosen.
+
+#### State order
+
+Every shared control draws its states in one fixed order: **rest, variant,
+hover, active, pressed, pressed and hover, disabled, pressed and disabled**
+([ADR 0082](../decisions/0082-interaction-states-have-equal-specificity-and-a-fixed-order.md)).
+A later state wins over an earlier one, so a pressed chip under the mouse shows
+a deeper selection tint rather than the grey hover surface, and a variant's
+hover beats the base hover. The order is decided by source, not by weight:
+every qualifier of a state rule — the mouse guard, `:hover`, `:active`,
+`[aria-pressed]`, and the enabled test — sits inside `:where()`, so each rule
+weighs only the control's own class. A rule that resets a resting background
+(a grouped row's transparent surface) belongs with the resting rules, before
+hover. `aria-pressed` is the only state a toggle has; a feature does not mirror
+it in a class or paint it a second time. A busy control, when one exists, takes
+its place after pressed and hover, before disabled.
 
 A bare icon button still meets the 3:1 non-text contrast requirement, because
 the glyph itself is the visual indicator; a boundary is not required to satisfy

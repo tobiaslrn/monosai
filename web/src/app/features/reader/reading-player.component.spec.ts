@@ -218,7 +218,7 @@ describe('ReadingPlayerComponent', () => {
       const link = element.querySelector<HTMLAnchorElement>('a[aria-label="Set up audio model"]');
 
       expect(link?.getAttribute('href')).toBe('/settings');
-      expect(link?.className).toContain('primary');
+      expect(link?.classList.contains('mn-icon-button--primary')).toBe(true);
       expect(link?.textContent).toContain('Set up audio');
       expect(control(element, 'Generate audio')).toBeNull();
       expect(control(element, 'Play')).toBeNull();
@@ -851,7 +851,6 @@ describe('ReadingPlayerComponent', () => {
 
       expect(store.calls).toEqual(['cycleMode']);
       expect(control(element, MODE_LABEL)?.getAttribute('aria-pressed')).toBe('true');
-      expect(control(element, MODE_LABEL)?.classList.contains('on')).toBe(true);
 
       control(element, MODE_LABEL)?.click();
       fixture.detectChanges();

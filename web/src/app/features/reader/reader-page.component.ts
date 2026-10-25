@@ -169,6 +169,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                 class="mn-icon-button audio-button"
                 [class.is-busy]="audio.running()"
                 [class.is-playing]="audio.playback.isActive()"
+                [class.mn-icon-button--primary]="audio.playback.isActive()"
                 [attr.aria-expanded]="audio.playerOpen()"
                 aria-controls="reading-audio-player"
                 [attr.aria-label]="audio.buttonLabel()"
@@ -511,15 +512,20 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       font-size: var(--text-sm);
     }
 
-    .audio-button.is-playing {
-      border-color: transparent;
-      background: var(--action-primary);
-      color: var(--text-on-action);
+    /*
+     * Playing is the shared primary fill, drawn at the bar's own touch target
+     * rather than the player's large circle.
+     */
+    .audio-button {
+      --icon-button-primary-size: var(--touch-target);
     }
 
     /* A job is running behind a closed player; the button is the only sign of it. */
-    .audio-button.is-busy {
+    .audio-button.is-busy:not(.is-playing) {
       color: var(--action-primary);
+    }
+
+    .audio-button.is-busy {
       animation: audio-pulse 1.6s ease-in-out infinite;
     }
 

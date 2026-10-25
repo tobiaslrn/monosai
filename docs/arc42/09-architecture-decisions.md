@@ -59,8 +59,8 @@ files are already linked from code comments and from other records.
 | [0036](../decisions/0036-android-package-share-target.md)             | Android package sharing uses a service-worker inbox                |
 | [0055](../decisions/0055-anki-mapping-is-suggested-then-confirmed.md) | An Anki mapping is suggested from Japanese samples, then confirmed |
 | [0056](../decisions/0056-first-party-ankidroid-bridge.md)             | First-party read-only AnkiDroid bridge and shared wire contract    |
-| [0077](../decisions/0077-the-bridge-publishes-itself.md)               | The bridge publishes itself from a committed version               |
-| [0078](../decisions/0078-the-bridge-announces-a-contract.md)           | The bridge announces a contract the web app negotiates against     |
+| [0077](../decisions/0077-the-bridge-publishes-itself.md)              | The bridge publishes itself from a committed version               |
+| [0078](../decisions/0078-the-bridge-announces-a-contract.md)          | The bridge announces a contract the web app negotiates against     |
 | [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)     | One Anki entry chosen by platform, and a page per source           |
 | [0061](../decisions/0061-anki-word-selection-signal-ladder.md)        | Anki word selection weights a ladder of scheduling evidence        |
 | [0065](../decisions/0065-ankidroid-first-review-study-day.md)         | AnkiDroid first review uses the supported search language          |
@@ -90,7 +90,7 @@ files are already linked from code comments and from other records.
 | [0075](../decisions/0075-named-pace-per-voice-model.md)                           | Named speech pace uses the model's instruction or speed channel                 |
 | [0076](../decisions/0076-model-reported-story-output-budgets.md)                  | Story budgets follow model-reported completion limits when available            |
 | [0080](../decisions/0080-the-plot-is-chosen-before-the-story.md)                  | The learner steers, code rolls, one request drafts three plots, one is picked   |
-| [0081](../decisions/0081-fewer-distinct-story-axes.md)                            | Six distinct story axes, one question each; ending folds into mood               |
+| [0081](../decisions/0081-fewer-distinct-story-axes.md)                            | Six distinct story axes, one question each; ending folds into mood              |
 
 ### The reader
 
@@ -135,10 +135,11 @@ files are already linked from code comments and from other records.
 
 ### Platform and toolchain
 
-| ADR                                                              | Decision                                                                   |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| [0001](../decisions/0001-angular-21-toolchain.md)                | Angular toolchain and unit-test environment                                |
-| [0003](../decisions/0003-architectural-boundary-enforcement.md)  | Architectural boundary enforcement                                         |
-| [0013](../decisions/0013-cdk-overlay-stylesheet-requirement.md)  | The CDK overlay and accessibility stylesheets are a hard build requirement |
-| [0027](../decisions/0027-pwa-caching-and-update-activation.md)   | PWA caching boundaries and update activation                               |
-| [0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md) | Changing the voice hides clips, and both screens say so                    |
+| ADR                                                                                      | Decision                                                                   |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [0001](../decisions/0001-angular-21-toolchain.md)                                        | Angular toolchain and unit-test environment                                |
+| [0003](../decisions/0003-architectural-boundary-enforcement.md)                          | Architectural boundary enforcement                                         |
+| [0013](../decisions/0013-cdk-overlay-stylesheet-requirement.md)                          | The CDK overlay and accessibility stylesheets are a hard build requirement |
+| [0027](../decisions/0027-pwa-caching-and-update-activation.md)                           | PWA caching boundaries and update activation                               |
+| [0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md)                         | Changing the voice hides clips, and both screens say so                    |
+| [0082](../decisions/0082-interaction-states-have-equal-specificity-and-a-fixed-order.md) | Interaction states have equal specificity and a fixed order                |

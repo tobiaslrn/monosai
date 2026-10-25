@@ -261,6 +261,12 @@ audit extracts Angular inline style blocks and applies the same token and primit
 to them. A change that departs from the design system changes that document first, in the same
 commit.
 
+Interaction states follow one fixed order — rest, variant, hover, active, pressed, pressed and
+hover, disabled, pressed and disabled — decided by source order. Every state qualifier, including the mouse-only hover
+guard, is written inside `:where()` so a state rule weighs only its own class
+([ADR 0082](../decisions/0082-interaction-states-have-equal-specificity-and-a-fixed-order.md)). A
+component styles placement and never recolours a shared control's states.
+
 Two rules from it reach into the code directly: colour is never the only carrier of meaning, and
 dates and numbers format in one fixed locale, which
 `domain/shared/` declares.

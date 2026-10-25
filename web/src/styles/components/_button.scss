@@ -30,26 +30,27 @@
 }
 
 /*
+ * Interaction states, in the one order every button primitive follows. They are
+ * ordered by source, not by specificity (ADR 0082): every qualifier below is
+ * wrapped in :where(), so each rule weighs exactly its own class and the later
+ * rule wins. Do not add a qualifier outside :where(); it would outrank the
+ * states that come after it.
+ *
+ *   rest -> variants -> hover -> active -> pressed -> pressed + hover
+ *        -> [busy] -> disabled -> pressed + disabled
+ *
+ * A variant's rest rule precedes hover so hover can recolour it; a variant's
+ * hover rule follows the base hover so it beats it. Busy has no rule yet; it
+ * belongs between pressed + hover and disabled.
+ *
  * Hover belongs to a pointer that can hover. Touch browsers synthesize hover
  * after a tap and may leave it on the last control touched, so touch input
  * must not inherit the mouse-only background treatment.
  */
-html[data-pointer='mouse'] .mn-button:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--surface-sunken);
-}
-
-.mn-button:active:not(:disabled):not([aria-disabled='true']) {
-  transform: translateY(1px);
-}
-
 .mn-button--primary {
   border-color: transparent;
   background: var(--action-primary);
   color: var(--text-on-action);
-}
-
-html[data-pointer='mouse'] .mn-button--primary:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--action-primary-hover);
 }
 
 .mn-button--ghost {
@@ -58,24 +59,44 @@ html[data-pointer='mouse'] .mn-button--primary:hover:not(:disabled):not([aria-di
   color: var(--action-primary-text);
 }
 
-html[data-pointer='mouse'] .mn-button--ghost:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--action-primary-soft);
-}
-
 .mn-button--danger {
   border-color: var(--status-danger);
   color: var(--status-danger);
 }
 
-html[data-pointer='mouse'] .mn-button--danger:hover:not(:disabled):not([aria-disabled='true']) {
+:where(html[data-pointer='mouse']) .mn-button:where(:hover:not(:disabled, [aria-disabled='true'])) {
+  background: var(--surface-sunken);
+}
+
+:where(html[data-pointer='mouse'])
+  .mn-button--primary:where(:hover:not(:disabled, [aria-disabled='true'])) {
+  background: var(--action-primary-hover);
+}
+
+:where(html[data-pointer='mouse'])
+  .mn-button--ghost:where(:hover:not(:disabled, [aria-disabled='true'])) {
+  background: var(--action-primary-soft);
+}
+
+:where(html[data-pointer='mouse'])
+  .mn-button--danger:where(:hover:not(:disabled, [aria-disabled='true'])) {
   background: var(--status-danger-soft);
 }
 
+.mn-button:where(:active:not(:disabled, [aria-disabled='true'])) {
+  transform: translateY(1px);
+}
+
 /* A pressed toggle is selected, not primary: it gets a soft, readable tint. */
-.mn-button[aria-pressed='true']:not(:disabled):not([aria-disabled='true']) {
+.mn-button:where([aria-pressed='true']:not(:disabled, [aria-disabled='true'])) {
   border-color: var(--action-primary);
   background: var(--action-primary-soft);
   color: var(--action-primary-text);
+}
+
+:where(html[data-pointer='mouse'])
+  .mn-button:where([aria-pressed='true']:hover:not(:disabled, [aria-disabled='true'])) {
+  background: var(--action-primary-soft-hover);
 }
 
 /*
@@ -86,8 +107,7 @@ html[data-pointer='mouse'] .mn-button--danger:hover:not(:disabled):not([aria-dis
  * Both themes use the sunken surface, secondary text, and a dashed boundary so
  * disabled is distinct from an active outline and from a selected control.
  */
-.mn-button:disabled,
-.mn-button[aria-disabled='true'] {
+.mn-button:where(:disabled, [aria-disabled='true']) {
   border-color: var(--border-subtle);
   border-style: dashed;
   background: var(--surface-sunken);
@@ -96,9 +116,18 @@ html[data-pointer='mouse'] .mn-button--danger:hover:not(:disabled):not([aria-dis
 }
 
 /*
+ * A chosen chip stays readable when it cannot be changed: the selection tint
+ * and its text colour remain behind the dashed disabled boundary.
+ */
+.mn-button:where([aria-pressed='true']:is(:disabled, [aria-disabled='true'])) {
+  background: var(--action-primary-soft);
+  color: var(--action-primary-text);
+}
+
+/*
  * Icon-only controls are quiet until touched. The transparent border is not
  * needed: the glyph itself is the control, and the shared focus ring remains
- * visible for keyboard users.
+ * visible for keyboard users. States follow the same order as the button.
  */
 .mn-icon-button {
   display: inline-flex;
@@ -121,18 +150,48 @@ html[data-pointer='mouse'] .mn-button--danger:hover:not(:disabled):not([aria-dis
     transform var(--motion-fast) ease-out;
 }
 
-html[data-pointer='mouse'] .mn-icon-button:hover:not(:disabled):not([aria-disabled='true']),
-.mn-icon-button:active:not(:disabled):not([aria-disabled='true']) {
+/*
+ * The one filled control of a surface, such as the play control in the
+ * transport: a large circle. `--icon-button-primary-size` sets the diameter;
+ * a labelled one (an icon beside a word) widens through its own layout rules.
+ */
+.mn-icon-button--primary {
+  width: var(--icon-button-primary-size, 4rem);
+  height: var(--icon-button-primary-size, 4rem);
+  border-radius: var(--radius-pill);
+  background: var(--action-primary);
+  color: var(--text-on-action);
+}
+
+:where(html[data-pointer='mouse'])
+  .mn-icon-button:where(:hover:not(:disabled, [aria-disabled='true'])) {
   background: var(--surface-sunken);
 }
 
-.mn-icon-button:active:not(:disabled):not([aria-disabled='true']) {
+:where(html[data-pointer='mouse'])
+  .mn-icon-button--primary:where(:hover:not(:disabled, [aria-disabled='true'])) {
+  background: var(--action-primary-hover);
+}
+
+.mn-icon-button:where(:active:not(:disabled, [aria-disabled='true'])) {
+  background: var(--surface-sunken);
   transform: translateY(1px);
 }
 
-.mn-icon-button[aria-pressed='true']:not(:disabled):not([aria-disabled='true']) {
+/* A press keeps the fill; it only shrinks, so the control never turns grey. */
+.mn-icon-button--primary:where(:active:not(:disabled, [aria-disabled='true'])) {
+  background: var(--action-primary-hover);
+  transform: scale(0.96);
+}
+
+.mn-icon-button:where([aria-pressed='true']:not(:disabled, [aria-disabled='true'])) {
   background: var(--action-primary-soft);
   color: var(--action-primary-text);
+}
+
+:where(html[data-pointer='mouse'])
+  .mn-icon-button:where([aria-pressed='true']:hover:not(:disabled, [aria-disabled='true'])) {
+  background: var(--action-primary-soft-hover);
 }
 
 .mn-icon-button:focus-visible {
@@ -140,8 +199,18 @@ html[data-pointer='mouse'] .mn-icon-button:hover:not(:disabled):not([aria-disabl
   outline-offset: 2px;
 }
 
-.mn-icon-button:disabled,
-.mn-icon-button[aria-disabled='true'] {
+.mn-icon-button:where(:disabled, [aria-disabled='true']) {
   color: var(--text-secondary);
   cursor: not-allowed;
+}
+
+/* Disabled primary uses the button's disabled treatment, not a dimmed fill. */
+.mn-icon-button--primary:where(:disabled, [aria-disabled='true']) {
+  border: 1px dashed var(--border-subtle);
+  background: var(--surface-sunken);
+}
+
+.mn-icon-button:where([aria-pressed='true']:is(:disabled, [aria-disabled='true'])) {
+  background: var(--action-primary-soft);
+  color: var(--action-primary-text);
 }

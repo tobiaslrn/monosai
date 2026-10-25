@@ -9,15 +9,6 @@
   transition: background-color var(--motion-fast) ease-out;
 }
 
-/*
- * Hover is a mouse state. A phone synthesizes hover after a tap and leaves it
- * stuck on the row that was opened, so it keys off the pointer the learner is
- * actually using rather than the media query.
- */
-html[data-pointer='mouse'] .mn-list-row:hover {
-  background: var(--surface-sunken);
-}
-
 .mn-list-row--flush,
 .mn-list-row--plain {
   border-color: transparent;
@@ -26,6 +17,29 @@ html[data-pointer='mouse'] .mn-list-row:hover {
 
 .mn-list-row--muted {
   background: var(--surface-sunken);
+}
+
+/*
+ * A grouped row is drawn by the group's card, so it rests transparent. This
+ * sits with the resting backgrounds, before hover, and adds no specificity, so
+ * hover never depends on the reset staying lighter than the guard.
+ */
+:where(.mn-list-group) .mn-list-row:where(:not(.mn-list-row--muted)) {
+  background: transparent;
+}
+
+/*
+ * Interaction states follow the resting backgrounds, in source order, at one
+ * specificity (ADR 0082). Hover is a mouse state. A phone synthesizes hover
+ * after a tap and leaves it stuck on the row that was opened, so it keys off
+ * the pointer the learner is actually using rather than the media query.
+ */
+:where(html[data-pointer='mouse']) .mn-list-row:where(:hover) {
+  background: var(--surface-sunken);
+}
+
+:where(html[data-pointer='mouse']) .mn-list-row--muted:where(:hover) {
+  background: var(--surface-sunken-muted);
 }
 
 /*
@@ -77,10 +91,6 @@ html[data-pointer='mouse'] .mn-list-row:hover {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-html[data-pointer='mouse'] .mn-list-row--muted:hover {
-  background: var(--surface-sunken-muted);
 }
 
 .mn-list-row__link {
@@ -216,10 +226,6 @@ html[data-pointer='mouse'] .mn-list-row--muted:hover {
 .mn-list-group .mn-list-row {
   border-color: transparent;
   border-radius: 0;
-}
-
-.mn-list-group .mn-list-row:not(.mn-list-row--muted) {
-  background: transparent;
 }
 
 /* The group clips its corners, so a focused row draws its ring inside itself. */

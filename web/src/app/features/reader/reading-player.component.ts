@@ -153,7 +153,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
               the setup itself, in the place and the shape Play would have had.
             -->
             <a
-              class="mn-icon-button primary primary--wide"
+              class="mn-icon-button mn-icon-button--primary primary--wide"
               routerLink="/settings"
               aria-label="Set up audio model"
               title="Set up audio model"
@@ -165,7 +165,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           @case ('generate') {
             <button
               type="button"
-              class="mn-icon-button primary"
+              class="mn-icon-button mn-icon-button--primary"
               aria-label="Generate audio"
               title="Generate audio"
               (click)="generate.emit()"
@@ -176,7 +176,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           @case ('pause') {
             <button
               type="button"
-              class="mn-icon-button primary"
+              class="mn-icon-button mn-icon-button--primary"
               aria-label="Pause"
               title="Pause"
               (click)="store.pause()"
@@ -187,7 +187,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           @default {
             <button
               type="button"
-              class="mn-icon-button primary"
+              class="mn-icon-button mn-icon-button--primary"
               [attr.aria-label]="playLabel()"
               [title]="playLabel()"
               [disabled]="!canPressPlay()"
@@ -218,7 +218,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
         <button
           type="button"
           class="mn-icon-button slot mode"
-          [class.on]="store.stepMode()"
           [attr.aria-pressed]="store.stepMode()"
           title="One sentence at a time"
           aria-label="One sentence at a time"
@@ -494,7 +493,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       block-size: var(--touch-target);
     }
 
-    button.slot:not(:disabled),
+    button.slot:where(:not(:disabled, [aria-pressed='true'])),
     a.slot {
       color: var(--action-primary);
     }
@@ -516,12 +515,11 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       margin-inline: 0;
     }
 
-    /* The pressed state of the mode, since one glyph on its own cannot say it. */
-    .mode.on {
-      color: var(--action-primary);
-    }
-
-    .mode.on::after {
+    /*
+     * The pressed state of the mode, since one glyph on its own cannot say it.
+     * The shared pressed tint is the state; the dot only says it a second way.
+     */
+    .mode[aria-pressed='true']::after {
       position: absolute;
       inset-block-end: 6px;
       inline-size: 4px;
@@ -535,33 +533,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       min-inline-size: 3.5rem;
       padding-inline: var(--space-2);
       font-variant-numeric: tabular-nums;
-    }
-
-    /* Play is the one control that is pressed repeatedly, so it is the big one. */
-    .primary {
-      inline-size: 4rem;
-      block-size: 4rem;
-      border-radius: var(--radius-pill);
-      background: var(--action-primary);
-      color: var(--text-on-action);
-      transition:
-        background-color var(--motion-fast) ease-out,
-        transform var(--motion-fast) ease-out;
-    }
-
-    .primary:hover:not(:disabled) {
-      background: var(--action-primary-hover);
-    }
-
-    .primary:active:not(:disabled) {
-      transform: scale(0.96);
-    }
-
-    .primary:disabled {
-      border: 1px dashed var(--border-subtle);
-      background: var(--surface-sunken);
-      color: var(--text-secondary);
-      cursor: not-allowed;
     }
 
     /*
@@ -638,7 +609,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
     @media (prefers-reduced-motion: reduce) {
       .fill,
-      .primary,
       .slot,
       .ring-fill,
       .scrub::-webkit-slider-thumb,

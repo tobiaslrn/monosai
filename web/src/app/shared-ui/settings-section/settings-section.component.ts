@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 let nextSettingsSectionId = 0;
 
@@ -12,10 +12,6 @@ let nextSettingsSectionId = 0;
 @Component({
   selector: 'mn-settings-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  encapsulation: ViewEncapsulation.None,
-  styles: `
-    @use '../../../styles/components/settings';
-  `,
   template: `
     <section
       class="mn-settings-section group"

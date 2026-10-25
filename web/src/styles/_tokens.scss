@@ -155,6 +155,12 @@
     var(--action-primary-soft) 45%,
     var(--surface-raised)
   );
+  /* A selected control under the pointer: the selection tint, one step deeper. */
+  --action-primary-soft-hover: color-mix(
+    in srgb,
+    var(--action-primary) 12%,
+    var(--action-primary-soft)
+  );
   --surface-reader-progress: color-mix(in srgb, var(--border-strong) 50%, var(--surface-sunken));
   --surface-canvas-fade: linear-gradient(to top, var(--surface-canvas) 72%, transparent);
   --shadow-focus: 0 0 0 1px var(--action-primary);
