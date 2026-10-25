@@ -37,11 +37,18 @@
  * states that come after it.
  *
  *   rest -> variants -> hover -> active -> pressed -> pressed + hover
- *        -> [busy] -> disabled -> pressed + disabled
+ *        -> busy -> disabled -> pressed + disabled
  *
  * A variant's rest rule precedes hover so hover can recolour it; a variant's
- * hover rule follows the base hover so it beats it. Busy has no rule yet; it
- * belongs between pressed + hover and disabled.
+ * hover rule follows the base hover so it beats it.
+ *
+ * Busy is `aria-busy='true'`: the control started work and is holding it. It
+ * keeps its variant's fill and colour, because busy is not unavailable; what it
+ * gives up is feedback to a press, so the hover, active, and pressed + hover
+ * rules carry `[aria-busy='true']` in their enabled test and a busy control
+ * does not respond to the pointer. Busy never sets `aria-disabled`, which
+ * would draw the disabled boundary. A control that is busy and also disabled is
+ * disabled: that rule comes later in the order and wins.
  *
  * Hover belongs to a pointer that can hover. Touch browsers synthesize hover
  * after a tap and may leave it on the last control touched, so touch input
@@ -64,26 +71,27 @@
   color: var(--status-danger);
 }
 
-:where(html[data-pointer='mouse']) .mn-button:where(:hover:not(:disabled, [aria-disabled='true'])) {
+:where(html[data-pointer='mouse'])
+  .mn-button:where(:hover:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   background: var(--surface-sunken);
 }
 
 :where(html[data-pointer='mouse'])
-  .mn-button--primary:where(:hover:not(:disabled, [aria-disabled='true'])) {
+  .mn-button--primary:where(:hover:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   background: var(--action-primary-hover);
 }
 
 :where(html[data-pointer='mouse'])
-  .mn-button--ghost:where(:hover:not(:disabled, [aria-disabled='true'])) {
+  .mn-button--ghost:where(:hover:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   background: var(--action-primary-soft);
 }
 
 :where(html[data-pointer='mouse'])
-  .mn-button--danger:where(:hover:not(:disabled, [aria-disabled='true'])) {
+  .mn-button--danger:where(:hover:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   background: var(--status-danger-soft);
 }
 
-.mn-button:where(:active:not(:disabled, [aria-disabled='true'])) {
+.mn-button:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   transform: translateY(1px);
 }
 
@@ -95,8 +103,32 @@
 }
 
 :where(html[data-pointer='mouse'])
-  .mn-button:where([aria-pressed='true']:hover:not(:disabled, [aria-disabled='true'])) {
+  .mn-button:where(
+    [aria-pressed='true']:hover:not(:disabled, [aria-disabled='true'], [aria-busy='true'])
+  ) {
   background: var(--action-primary-soft-hover);
+}
+
+/*
+ * A busy control stays where it is and keeps its fill. It breathes, the way a
+ * generation fill does, and its cursor says the work is in progress. The
+ * component ignores a press while it is busy; the control is never removed or
+ * swapped for another, so focus and position survive the work.
+ */
+.mn-button:where([aria-busy='true']) {
+  animation: mn-busy-breathe 1.6s ease-in-out infinite;
+  cursor: progress;
+}
+
+/*
+ * The trough is shallow on purpose: at 0.85 the light theme's filled primary
+ * still holds 3.7:1 for its glyph on the fill and for the fill on the panel,
+ * where 0.7 fell under the 3:1 non-text floor.
+ */
+@keyframes mn-busy-breathe {
+  50% {
+    opacity: 0.85;
+  }
 }
 
 /*
@@ -113,6 +145,7 @@
   background: var(--surface-sunken);
   color: var(--text-secondary);
   cursor: not-allowed;
+  animation: none;
 }
 
 /*
@@ -164,22 +197,24 @@
 }
 
 :where(html[data-pointer='mouse'])
-  .mn-icon-button:where(:hover:not(:disabled, [aria-disabled='true'])) {
+  .mn-icon-button:where(:hover:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   background: var(--surface-sunken);
 }
 
 :where(html[data-pointer='mouse'])
-  .mn-icon-button--primary:where(:hover:not(:disabled, [aria-disabled='true'])) {
+  .mn-icon-button--primary:where(
+    :hover:not(:disabled, [aria-disabled='true'], [aria-busy='true'])
+  ) {
   background: var(--action-primary-hover);
 }
 
-.mn-icon-button:where(:active:not(:disabled, [aria-disabled='true'])) {
+.mn-icon-button:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   background: var(--surface-sunken);
   transform: translateY(1px);
 }
 
 /* A press keeps the fill; it only shrinks, so the control never turns grey. */
-.mn-icon-button--primary:where(:active:not(:disabled, [aria-disabled='true'])) {
+.mn-icon-button--primary:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   background: var(--action-primary-hover);
   transform: scale(0.96);
 }
@@ -190,7 +225,9 @@
 }
 
 :where(html[data-pointer='mouse'])
-  .mn-icon-button:where([aria-pressed='true']:hover:not(:disabled, [aria-disabled='true'])) {
+  .mn-icon-button:where(
+    [aria-pressed='true']:hover:not(:disabled, [aria-disabled='true'], [aria-busy='true'])
+  ) {
   background: var(--action-primary-soft-hover);
 }
 
@@ -199,9 +236,23 @@
   outline-offset: 2px;
 }
 
+/* Busy, as for the button: it keeps its fill and says the work is going on. */
+.mn-icon-button:where([aria-busy='true']) {
+  animation: mn-busy-breathe 1.6s ease-in-out infinite;
+  cursor: progress;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mn-button:where([aria-busy='true']),
+  .mn-icon-button:where([aria-busy='true']) {
+    animation: none;
+  }
+}
+
 .mn-icon-button:where(:disabled, [aria-disabled='true']) {
   color: var(--text-secondary);
   cursor: not-allowed;
+  animation: none;
 }
 
 /* Disabled primary uses the button's disabled treatment, not a dimmed fill. */

@@ -58,6 +58,21 @@ export type AudioJobProgress =
 const IDLE: AudioJobProgress = { kind: 'idle' };
 
 /**
+ * Whether a run is in progress as the learner sees it: preparing, running, or
+ * parked between batches.
+ *
+ * A paused run stopped to let another lane through and picks up on its own, so
+ * to anyone watching it the work is still going — a Stop that is offered
+ * stays offered, and a Generate that was refused stays refused. This is
+ * deliberately not "a worker is busy this instant", which is what the store's
+ * own scheduling asks (`isRunning`): a paused run has no worker and must be
+ * allowed to resume.
+ */
+export function isAudioRunInProgress(progress: AudioJobProgress): boolean {
+  return progress.kind === 'preparing' || progress.kind === 'running' || progress.kind === 'paused';
+}
+
+/**
  * One queue-level retry when a request returned bytes that did not validate as
  * audio. Transient transport failures already spend their complete retry budget
  * inside the provider; retrying those again here would multiply that limit.
@@ -169,11 +184,19 @@ export class AudioJobStore {
   private readonly fruitlessRuns = new Map<ReadingId, FruitlessRuns>();
   private controller: AbortController | null = null;
   private yieldRequested = false;
+  /** The row write that ends a parked run the learner stopped, until it settles. */
+  private parkedClose: Promise<void> | null = null;
   /** The full prepare/process lifetime, so destructive maintenance can join it. */
   private activeRun: Promise<void> | null = null;
 
   readonly progress = this.progressSignal.asReadonly();
 
+  /**
+   * Whether a worker is busy this instant. Scheduling asks this — yielding only
+   * means something to a run that has workers, and resuming must be allowed
+   * while a run is parked — so a paused run is not running here. What a learner
+   * sees as "still going" is `isAudioRunInProgress`.
+   */
   readonly isRunning = computed(() => {
     const kind = this.progressSignal().kind;
     return kind === 'preparing' || kind === 'running';
@@ -187,9 +210,13 @@ export class AudioJobStore {
     return progress.kind !== 'idle' && progress.readingId === readingId ? progress : IDLE;
   }
 
+  /**
+   * Whether this reading has a run in progress, parked or not. Asked for the
+   * learner's sake — the delete confirmation names it, and dismissing a report
+   * must not hide a run that will resume — so a paused run counts.
+   */
   isRunningFor(readingId: ReadingId): boolean {
-    const kind = this.progressFor(readingId).kind;
-    return kind === 'preparing' || kind === 'running';
+    return isAudioRunInProgress(this.progressFor(readingId));
   }
 
   /**
@@ -225,6 +252,9 @@ export class AudioJobStore {
    * action twice continues one job rather than racing two.
    */
   async start(readingId: ReadingId): Promise<void> {
+    if (this.parkedClose !== null) {
+      await this.parkedClose;
+    }
     const activeRun = this.activeRun;
     if (activeRun !== null) {
       await activeRun;
@@ -275,6 +305,9 @@ export class AudioJobStore {
     if (this.isRunning()) {
       return;
     }
+    if (this.parkedClose !== null) {
+      await this.parkedClose;
+    }
     const existing = await this.jobs.findActive(readingId, 'prepare-audio');
     if (!existing.ok) {
       this.failStorage(readingId, existing.error, emptyCounts(), true);
@@ -312,11 +345,38 @@ export class AudioJobStore {
     }
     this.controller?.abort();
     this.controller = null;
+    // A stop outranks a yield that was asked for before it: the workers still in
+    // flight come back to a run that is stopped, not one to park.
+    this.yieldRequested = false;
     const progress = this.progressSignal();
     if (progress.kind === 'preparing') {
       this.progressSignal.set({ kind: 'cancelled', readingId, counts: emptyCounts() });
     } else if (progress.kind === 'running') {
       this.progressSignal.set({ kind: 'cancelled', readingId, counts: progress.counts });
+    } else if (progress.kind === 'paused') {
+      // A parked run has no worker to abort, but its Stop is offered like any
+      // other, so it has to end the run: close the row so nothing resumes it.
+      // The write is kept so start, resume, and cancelAndWait wait for it.
+      this.progressSignal.set({ kind: 'cancelled', readingId, counts: progress.counts });
+      const close = this.closeParkedJob(readingId, progress.counts).finally(() => {
+        if (this.parkedClose === close) {
+          this.parkedClose = null;
+        }
+      });
+      this.parkedClose = close;
+    }
+  }
+
+  /** Closes a parked run's row; a row that cannot be closed is reported, not dropped. */
+  private async closeParkedJob(readingId: ReadingId, counts: AudioJobCounts): Promise<void> {
+    const active = await this.jobs.findActive(readingId, 'prepare-audio');
+    const closed = !active.ok
+      ? active
+      : active.value === null
+        ? active
+        : await this.jobs.setState(active.value.id, 'cancelled');
+    if (!closed.ok) {
+      this.failStorage(readingId, closed.error, counts, true);
     }
   }
 
@@ -324,6 +384,9 @@ export class AudioJobStore {
   async cancelAndWait(readingId: ReadingId): Promise<void> {
     this.cancel(readingId);
     await this.activeRun;
+    if (this.parkedClose !== null) {
+      await this.parkedClose;
+    }
   }
 
   /** Finalizes a reading's run before its persisted rows are removed. */
@@ -673,12 +736,14 @@ export class AudioJobStore {
       await this.stopAtFailure(job, failure.sentenceId, failure.error, counts, added);
       return;
     }
-    if (this.yieldRequested) {
-      await this.markPaused(job, counts, added);
-      return;
-    }
+    // A stop is checked before a yield: a learner who pressed Stop while the run
+    // was being asked to park ended it, and parking would write it back.
     if (isAborted(signal)) {
       await this.markCancelled(job, counts, added);
+      return;
+    }
+    if (this.yieldRequested) {
+      await this.markPaused(job, counts, added);
       return;
     }
 
@@ -739,6 +804,11 @@ export class AudioJobStore {
   private async markPaused(job: AssetJob, counts: AudioJobCounts, added: number): Promise<void> {
     this.yieldRequested = false;
     this.controller = null;
+    if (this.progressSignal().kind === 'cancelled') {
+      // Stopped while the batch was settling: the stop stands, and the row is
+      // closed by markCancelled's own path rather than parked here.
+      return;
+    }
     if (added > 0) {
       this.fruitlessRuns.delete(job.readingId);
     }

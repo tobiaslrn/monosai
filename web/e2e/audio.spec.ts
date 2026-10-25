@@ -533,6 +533,33 @@ test.describe('scenario 13 — audio preparation and playback', () => {
   });
 
   /**
+   * Pressing Generate used to turn the filled button into a disabled Play until
+   * the first clip landed, destroying the focus on it. It is one button, busy.
+   */
+  test('keeps the pressed button, focused and busy, until the first clip lands', async ({
+    page,
+  }) => {
+    await prepareReading(page, LONG_TEXT, { audioDelayMs: 3_000 });
+    await openAudioPlayer(page);
+    const primary = audioPlayer(page).locator('button.mn-icon-button--primary');
+    const generate = audioPlayer(page).getByRole('button', { name: 'Generate audio' });
+
+    await generate.focus();
+    await generate.press('Enter');
+
+    const busy = audioPlayer(page).getByRole('button', { name: 'Generating audio', exact: true });
+    await expect(busy).toHaveAttribute('aria-busy', 'true');
+    await expect(busy).toBeEnabled();
+    await expect(busy).toBeFocused();
+    await expect(primary).toHaveCount(1);
+    await expect(playerStatus(page)).toContainText('Generating audio');
+
+    await expectAudioPlayable(page);
+    await expect(audioPlayer(page).getByRole('button', { name: 'Play' })).toBeFocused();
+    await expect(primary).not.toHaveAttribute('aria-busy', 'true');
+  });
+
+  /**
    * The reading a learner starts before its audio is finished is the one most
    * likely to be listened to with the phone in a pocket, and it used to stop at
    * whatever had been made when the screen went dark: the session stayed on the

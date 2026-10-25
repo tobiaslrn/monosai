@@ -229,13 +229,140 @@ describe('SentencePopoverComponent', () => {
     ).toBe(true);
   });
 
-  it('reports a run in flight without offering a second one', () => {
-    const rendered = host(
-      render(aidsWith({ translationAction: { state: 'running', error: null } })),
+  /** The tray's buttons, in order, as the learner would count them. */
+  function trayLabels(rendered: HTMLElement): string[] {
+    return [...rendered.querySelectorAll('.tray button')].map((button) =>
+      button.textContent.trim(),
     );
+  }
 
-    expect(rendered.textContent).toContain('Translating…');
-    expect(translateButton(rendered)).toBeUndefined();
+  function trayButton(rendered: HTMLElement, label: string): HTMLButtonElement | undefined {
+    return [...rendered.querySelectorAll<HTMLButtonElement>('.tray button')].find(
+      (button) => button.textContent.trim() === label,
+    );
+  }
+
+  /**
+   * A running action used to leave the tray, so the two columns reflowed under
+   * the thumb that had just pressed it and the focus went with the button.
+   */
+  describe('an action that is running', () => {
+    it('keeps its button in the tray, busy, and offers no second run', () => {
+      const fixture = render();
+      const rendered = host(fixture);
+      const before = trayLabels(rendered);
+      const button = trayButton(rendered, 'Translate');
+      button?.focus();
+      expect(before).toEqual(['Copy', 'Translate', 'Grammar', 'Audio']);
+
+      fixture.componentInstance.aids.set(
+        aidsWith({ translationAction: { state: 'running', error: null } }),
+      );
+      fixture.detectChanges();
+
+      expect(trayLabels(rendered)).toEqual(['Copy', 'Translating…', 'Grammar', 'Audio']);
+      const busy = trayButton(rendered, 'Translating…');
+      expect(busy).toBe(button);
+      expect(busy?.getAttribute('aria-busy')).toBe('true');
+      expect(busy?.disabled).toBe(false);
+      expect(busy?.hasAttribute('aria-disabled')).toBe(false);
+      busy?.click();
+      expect(fixture.componentInstance.requests).toBe(0);
+    });
+
+    it('keeps the grammar button in place, busy and inert', () => {
+      const fixture = render();
+      const rendered = host(fixture);
+
+      fixture.componentInstance.aids.set(
+        aidsWith({ grammarAction: { state: 'running', error: null } }),
+      );
+      fixture.detectChanges();
+
+      expect(trayLabels(rendered)).toEqual(['Copy', 'Translate', 'Analyzing…', 'Audio']);
+      const busy = trayButton(rendered, 'Analyzing…');
+      expect(busy?.getAttribute('aria-busy')).toBe('true');
+      busy?.click();
+      expect(fixture.componentInstance.analyses).toBe(0);
+    });
+
+    it('keeps focus on the audio button from busy through to done', () => {
+      const fixture = render();
+      const rendered = host(fixture);
+      document.body.appendChild(rendered);
+      try {
+        const button = trayButton(rendered, 'Audio');
+        button?.focus();
+        expect(document.activeElement).toBe(button);
+
+        fixture.componentInstance.aids.set(
+          aidsWith({ audioAction: { state: 'running', error: null } }),
+        );
+        fixture.detectChanges();
+        expect(trayButton(rendered, 'Generating…')).toBe(button);
+        expect(document.activeElement).toBe(button);
+
+        fixture.componentInstance.aids.set(aidsWith({ audio: clip() }));
+        fixture.detectChanges();
+        // The offer is the same element, now Play, and the focus never left it.
+        expect(trayButton(rendered, 'Play')).toBe(button);
+        expect(button?.hasAttribute('aria-busy')).toBe(false);
+        expect(document.activeElement).toBe(button);
+      } finally {
+        rendered.remove();
+      }
+    });
+
+    it('announces only the latest event, not a copy again with every later change', async () => {
+      const documentRef = TestBed.inject(DOCUMENT);
+      Object.defineProperty(documentRef.defaultView?.navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: vi.fn(() => Promise.resolve()) },
+      });
+      const fixture = render();
+      const rendered = host(fixture);
+
+      trayButton(rendered, 'Copy')?.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(rendered.querySelector('[role="status"]')?.textContent).toBe('Sentence copied.');
+
+      fixture.componentInstance.aids.set(
+        aidsWith({ translationAction: { state: 'running', error: null } }),
+      );
+      fixture.detectChanges();
+
+      expect(rendered.querySelector('[role="status"]')?.textContent).toBe('Translating…');
+      fixture.componentInstance.aids.set(aidsWith({ translation: translation('The cat slept.') }));
+      fixture.detectChanges();
+      expect(rendered.querySelector('[role="status"]')?.textContent).toBe('');
+    });
+
+    it('is not busy once it is done, and is not marked at rest', () => {
+      const rendered = host(render());
+
+      expect(rendered.querySelectorAll('[aria-busy]')).toHaveLength(0);
+    });
+
+    it('says what is running through a live region, since the hint line is gone', () => {
+      const fixture = render();
+      const rendered = host(fixture);
+      const status = rendered.querySelector('[role="status"]');
+      expect(status?.textContent.trim()).toBe('');
+
+      fixture.componentInstance.aids.set(
+        aidsWith({
+          translationAction: { state: 'running', error: null },
+          audioAction: { state: 'running', error: null },
+        }),
+      );
+      fixture.detectChanges();
+
+      expect(rendered.querySelector('[role="status"]')).toBe(status);
+      expect(status?.textContent).toBe('Translating… Generating…');
+      expect(status?.classList.contains('mn-visually-hidden')).toBe(true);
+      expect(rendered.querySelector('.mn-hint')).toBeNull();
+    });
   });
 
   it('turns a failure into a retry, worded by Monosai rather than the provider', () => {
@@ -509,16 +636,26 @@ describe('SentencePopoverComponent', () => {
       expect(fixture.componentInstance.syntheses).toBe(0);
     });
 
-    it('reports that a clip is being produced, offering neither action', () => {
-      const rendered = host(render(aidsWith({ audioAction: { state: 'running', error: null } })));
+    it('keeps the audio button where it was while a clip is produced, busy and inert', () => {
+      const fixture = render();
+      const rendered = host(fixture);
+      const button = trayButton(rendered, 'Audio');
+      button?.focus();
 
-      const labels = [...rendered.querySelectorAll('.tray button')].map((button) =>
-        button.textContent.trim(),
+      fixture.componentInstance.aids.set(
+        aidsWith({ audioAction: { state: 'running', error: null } }),
       );
+      fixture.detectChanges();
 
-      expect(rendered.textContent).toContain('Generating…');
-      expect(labels).not.toContain('Audio');
-      expect(labels).not.toContain('Play');
+      const busy = trayButton(rendered, 'Generating…');
+      expect(busy).toBe(button);
+      expect(trayLabels(rendered)).toEqual(['Copy', 'Translate', 'Grammar', 'Generating…']);
+      expect(busy?.getAttribute('aria-busy')).toBe('true');
+      expect(busy?.classList.contains('mn-button--primary')).toBe(false);
+      busy?.click();
+
+      expect(fixture.componentInstance.syntheses).toBe(0);
+      expect(fixture.componentInstance.plays).toBe(0);
     });
 
     it('offers a retry, and says what went wrong, after a failure', () => {

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   AudioPlaybackStore,
   type PlaybackFailure,
@@ -295,7 +295,6 @@ describe('ReadingPlayerComponent', () => {
       // audio, measured over the reading rather than over the job, so a retry
       // covering two missing sentences never renders as half of the reading.
       expect(element.querySelector('.fill.generated')?.getAttribute('style')).toContain('23%');
-      expect(element.querySelector('.track')?.classList.contains('is-generating')).toBe(true);
       expect(control(element, 'Stop generating audio')).not.toBeNull();
       expect(control(element, 'Generate audio')).toBeNull();
     });
@@ -328,26 +327,183 @@ describe('ReadingPlayerComponent', () => {
       expect(element.querySelector('.fill.generated')?.getAttribute('style')).toContain('31%');
     });
 
-    /** The bar is what says a run is still going, so it has to stop saying it. */
-    it('marks the track while a run is in flight, and only then', () => {
+    /**
+     * A run can park itself between batches to let another lane through, and
+     * picks up on its own. To the learner it is still going, so Stop does not
+     * flip back to Generate for the gap.
+     */
+    it('keeps Stop, and no Generate, while a run is parked between batches', () => {
       store.total.set(13);
       store.ready.set(4);
       const fixture = render();
-      fixture.componentInstance.progress.set(running(4));
+      fixture.componentInstance.progress.set({
+        kind: 'paused',
+        readingId: READING,
+        counts: { total: 13, requested: 13, completed: 4, failed: 0 },
+      });
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
-      expect(element.querySelector('.track')?.classList.contains('is-generating')).toBe(true);
+      expect(control(element, 'Stop generating audio')).not.toBeNull();
+      expect(control(element, 'Generate audio')).toBeNull();
+      expect(said(element)).toContain('Waiting to continue, 31% of the reading ready.');
+      expect(said(element)).not.toContain('Generating audio');
 
-      store.ready.set(13);
+      control(element, 'Stop generating audio')?.click();
+
+      expect(fixture.componentInstance.emitted).toEqual(['cancel']);
+    });
+  });
+
+  describe('the primary control is one button', () => {
+    function preparing(): AudioJobProgress {
+      return { kind: 'preparing', readingId: READING };
+    }
+
+    function attached(): ReturnType<typeof render> {
+      const fixture = render();
+      document.body.appendChild(fixture.nativeElement as HTMLElement);
+      return fixture;
+    }
+
+    function primary(fixture: ReturnType<typeof render>): HTMLButtonElement {
+      return (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+        'button.mn-icon-button--primary',
+      )!;
+    }
+
+    afterEach(() => {
+      document.body.replaceChildren();
+    });
+
+    /**
+     * Pressing Generate used to turn the filled button into a disabled Play
+     * until the first clip landed: the control the learner had just pressed
+     * vanished into a dashed circle, and the focus on it was destroyed.
+     */
+    it('stays the same, focused, busy button when generation starts with no clip yet', () => {
+      store.total.set(13);
+      const fixture = attached();
+      const button = primary(fixture);
+      button.focus();
+      button.click();
+      expect(fixture.componentInstance.emitted).toEqual(['generate']);
+
+      fixture.componentInstance.progress.set(preparing());
+      fixture.detectChanges();
+
+      expect(primary(fixture)).toBe(button);
+      expect(document.activeElement).toBe(button);
+      expect(button.getAttribute('aria-busy')).toBe('true');
+      expect(button.getAttribute('aria-label')).toBe('Generating audio');
+      expect(button.disabled).toBe(false);
+      expect(button.hasAttribute('aria-disabled')).toBe(false);
+      expect(button.classList.contains('mn-icon-button--primary')).toBe(true);
+      // A busy control ignores presses rather than starting the work twice.
+      button.click();
+      expect(fixture.componentInstance.emitted).toEqual(['generate']);
+      expect(store.calls).toEqual([]);
+    });
+
+    it('announces that generation started, for a screen reader that cannot see it', () => {
+      store.total.set(13);
+      const fixture = attached();
+      fixture.componentInstance.progress.set(preparing());
+      fixture.detectChanges();
+
+      expect(said(fixture.nativeElement as HTMLElement)).toContain('Generating audio, 0%');
+    });
+
+    it('is the same button when the first clip lands, now Play and no longer busy', () => {
+      store.total.set(13);
+      const fixture = attached();
+      const button = primary(fixture);
+      fixture.componentInstance.progress.set(preparing());
+      fixture.detectChanges();
+      button.focus();
+
+      store.ready.set(1);
       fixture.componentInstance.progress.set({
-        kind: 'complete',
+        kind: 'running',
         readingId: READING,
-        counts: { total: 13, requested: 13, completed: 13, failed: 0 },
+        counts: { total: 13, requested: 13, completed: 1, failed: 0 },
       });
       fixture.detectChanges();
 
-      expect(element.querySelector('.track')?.classList.contains('is-generating')).toBe(false);
+      expect(primary(fixture)).toBe(button);
+      expect(document.activeElement).toBe(button);
+      expect(button.getAttribute('aria-label')).toBe('Play');
+      expect(button.hasAttribute('aria-busy')).toBe(false);
+      expect(button.disabled).toBe(false);
+    });
+
+    it('keeps a parked run with no clip yet busy, not generate and not disabled', () => {
+      store.total.set(13);
+      const fixture = attached();
+      const button = primary(fixture);
+      fixture.componentInstance.progress.set({
+        kind: 'paused',
+        readingId: READING,
+        counts: { total: 13, requested: 13, completed: 0, failed: 0 },
+      });
+      fixture.detectChanges();
+
+      expect(primary(fixture)).toBe(button);
+      expect(button.getAttribute('aria-busy')).toBe('true');
+      expect(button.getAttribute('aria-label')).toBe('Waiting to continue');
+      expect(button.disabled).toBe(false);
+    });
+
+    it('keeps its focus from Play to Pause and back', () => {
+      store.total.set(6);
+      store.ready.set(6);
+      const fixture = attached();
+      const button = primary(fixture);
+      button.focus();
+      button.click();
+      expect(store.calls).toEqual(['play']);
+
+      store.statusSignal.set('playing');
+      fixture.detectChanges();
+
+      expect(primary(fixture)).toBe(button);
+      expect(document.activeElement).toBe(button);
+      expect(button.getAttribute('aria-label')).toBe('Pause');
+      button.click();
+      expect(store.calls).toEqual(['play', 'pause']);
+
+      store.statusSignal.set('paused');
+      fixture.detectChanges();
+
+      expect(primary(fixture)).toBe(button);
+      expect(document.activeElement).toBe(button);
+      expect(button.getAttribute('aria-label')).toBe('Resume');
+    });
+
+    it('is busy while a clip loads, and while waiting on a clip that is being made', () => {
+      store.total.set(6);
+      store.ready.set(3);
+      store.statusSignal.set('loading');
+      const fixture = attached();
+      const button = primary(fixture);
+
+      expect(button.getAttribute('aria-busy')).toBe('true');
+      expect(button.disabled).toBe(false);
+
+      store.pending.set(4);
+      store.statusSignal.set('waiting');
+      fixture.componentInstance.progress.set({
+        kind: 'running',
+        readingId: READING,
+        counts: { total: 6, requested: 3, completed: 0, failed: 0 },
+      });
+      fixture.detectChanges();
+
+      expect(primary(fixture)).toBe(button);
+      expect(button.getAttribute('aria-busy')).toBe('true');
+      expect(button.disabled).toBe(false);
+      button.click();
+      expect(store.calls).toEqual([]);
     });
   });
 

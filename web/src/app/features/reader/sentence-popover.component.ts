@@ -6,6 +6,7 @@ import {
   computed,
   inject,
   input,
+  linkedSignal,
   output,
   signal,
 } from '@angular/core';
@@ -14,6 +15,16 @@ import type { SentenceAids } from '../../application/enrichment/sentence-aids.st
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { enrichmentCanRetry } from './enrichment-failure-copy';
 import { AidFailureComponent } from './aid-failure.component';
+
+/**
+ * One of the tray's AI actions at this moment: what its button says, and
+ * whether it is working. A running action stays in the tray as a busy button
+ * rather than leaving it.
+ */
+interface AidOffer {
+  readonly label: string;
+  readonly busy: boolean;
+}
 
 /** One word in this sentence that the learner's vocabulary does not cover. */
 export interface UnknownWord {
@@ -53,8 +64,6 @@ export interface UnknownWord {
       <p class="source" lang="ja">{{ sentenceText() }}</p>
       @if (aids().translation; as translation) {
         <p class="translation" lang="en">{{ translation.textEn }}</p>
-      } @else if (isRunning()) {
-        <p class="mn-hint" role="status">Translating…</p>
       }
 
       <mn-aid-failure
@@ -91,17 +100,11 @@ export interface UnknownWord {
         </section>
       }
 
-      @if (grammarRunning()) {
-        <p class="mn-hint" role="status">Analyzing…</p>
-      }
       <mn-aid-failure
         [failure]="aids().grammarAction.error"
         [setupMessage]="grammarSetupNeeded() ? 'No grammar model is configured.' : null"
       />
 
-      @if (audioRunning()) {
-        <p class="mn-hint" role="status">Generating…</p>
-      }
       <mn-aid-failure
         [failure]="aids().audioAction.error"
         [setupMessage]="audioSetupNeeded() ? 'No voice is configured.' : null"
@@ -138,17 +141,32 @@ export interface UnknownWord {
           <span>{{ copyStatus() === 'copied' ? 'Copied' : 'Copy' }}</span>
         </button>
 
+        <!--
+          An action that is running stays where it is, saying so, rather than
+          leaving the tray: a button that disappears mid-press reflows the two
+          columns under the thumb that pressed it, and takes the focus with it.
+        -->
         @if (translateOffer(); as offer) {
-          <button type="button" class="mn-button" (click)="translate.emit()">
+          <button
+            type="button"
+            class="mn-button"
+            [attr.aria-busy]="offer.busy ? 'true' : null"
+            (click)="requestTranslation(offer)"
+          >
             <mn-icon name="translate" [size]="18" />
-            <span>{{ offer }}</span>
+            <span>{{ offer.label }}</span>
           </button>
         }
 
         @if (grammarOffer(); as offer) {
-          <button type="button" class="mn-button" (click)="analyzeGrammar.emit()">
+          <button
+            type="button"
+            class="mn-button"
+            [attr.aria-busy]="offer.busy ? 'true' : null"
+            (click)="requestGrammar(offer)"
+          >
             <mn-icon name="grammar" [size]="18" />
-            <span>{{ offer }}</span>
+            <span>{{ offer.label }}</span>
           </button>
         }
 
@@ -156,18 +174,23 @@ export interface UnknownWord {
           <button
             type="button"
             class="mn-button"
-            [class.mn-button--primary]="offer === 'Play'"
-            (click)="audioAction()"
+            [class.mn-button--primary]="offer.play"
+            [attr.aria-busy]="offer.busy ? 'true' : null"
+            (click)="audioAction(offer)"
           >
-            <mn-icon [name]="offer === 'Play' ? 'play' : 'audio'" [size]="18" />
-            <span>{{ offer }}</span>
+            <mn-icon [name]="offer.play ? 'play' : 'audio'" [size]="18" />
+            <span>{{ offer.label }}</span>
           </button>
         }
       </div>
 
-      @if (copyStatus() === 'copied') {
-        <p class="mn-visually-hidden" role="status" aria-live="polite">Sentence copied.</p>
-      }
+      <!--
+        The one live region: that a sentence was copied, and what is running.
+        A busy button's label changes in place, which a screen reader does not
+        report for a control that is not focused, and the hint lines this
+        replaces were the only thing that did.
+      -->
+      <p class="mn-visually-hidden" role="status">{{ announcement() }}</p>
     </div>
   `,
   styles: `
@@ -405,60 +428,93 @@ export class SentencePopoverComponent {
     });
   }
 
-  protected readonly isRunning = computed(() => this.aids().translationAction.state === 'running');
-
   /** Null once a translation is stored: the English above it is the answer. */
-  protected readonly translateOffer = computed(() => {
+  protected readonly translateOffer = computed<AidOffer | null>(() => {
     const aids = this.aids();
-    if (aids.translation !== null || aids.translationAction.state === 'running') {
+    if (aids.translation !== null) {
       return null;
     }
+    if (aids.translationAction.state === 'running') {
+      return { label: 'Translating…', busy: true };
+    }
     if (!enrichmentCanRetry(aids.translationAction.error)) return null;
-    return aids.translationAction.state === 'failed' ? 'Translate again' : 'Translate';
+    return {
+      label: aids.translationAction.state === 'failed' ? 'Translate again' : 'Translate',
+      busy: false,
+    };
   });
 
   protected readonly concerns = computed(
     () => this.aids().grammar?.findings.filter((finding) => !finding.inProfile) ?? [],
   );
 
-  protected readonly grammarRunning = computed(() => this.aids().grammarAction.state === 'running');
-
   /** The wording of the offer, or null when an analysis would say nothing new. */
-  protected readonly grammarOffer = computed(() => {
+  protected readonly grammarOffer = computed<AidOffer | null>(() => {
     const aids = this.aids();
     if (!this.canAnalyze()) {
       return null;
     }
     if (aids.grammarAction.state === 'running') {
-      return null;
+      return { label: 'Analyzing…', busy: true };
     }
     if (!enrichmentCanRetry(aids.grammarAction.error)) return null;
     if (aids.grammarAction.state === 'failed') {
-      return 'Grammar again';
+      return { label: 'Grammar again', busy: false };
     }
     if (aids.grammar === null) {
-      return 'Grammar';
+      return { label: 'Grammar', busy: false };
     }
-    return aids.grammarStale ? 'Grammar again' : null;
+    return aids.grammarStale ? { label: 'Grammar again', busy: false } : null;
   });
-
-  protected readonly audioRunning = computed(() => this.aids().audioAction.state === 'running');
 
   /**
    * One button for both halves of audio: producing a clip and playing it are
    * never the same press, so the label says which one this is.
    */
-  protected readonly audioOffer = computed(() => {
+  protected readonly audioOffer = computed<(AidOffer & { readonly play: boolean }) | null>(() => {
     const aids = this.aids();
     if (aids.audioAction.state === 'running') {
-      return null;
+      return { label: 'Generating…', busy: true, play: false };
     }
     if (aids.audio !== null) {
-      return 'Play';
+      return { label: 'Play', busy: false, play: true };
     }
     if (!enrichmentCanRetry(aids.audioAction.error)) return null;
-    return aids.audioAction.state === 'failed' ? 'Audio again' : 'Audio';
+    return {
+      label: aids.audioAction.state === 'failed' ? 'Audio again' : 'Audio',
+      busy: false,
+      play: false,
+    };
   });
+
+  /** Each running action, in the words its button shows. */
+  private readonly runningAnnouncement = computed(() => {
+    const aids = this.aids();
+    return [
+      aids.translationAction.state === 'running' ? 'Translating…' : '',
+      aids.grammarAction.state === 'running' ? 'Analyzing…' : '',
+      aids.audioAction.state === 'running' ? 'Generating…' : '',
+    ]
+      .filter((part) => part !== '')
+      .join(' ');
+  });
+
+  /**
+   * Whether the copy is still the latest thing to announce. It resets when
+   * the set of running actions changes, so the live region reports the newest
+   * event rather than re-reading "Sentence copied." with every later change.
+   */
+  private readonly copyAnnounced = linkedSignal({
+    source: this.runningAnnouncement,
+    computation: () => false,
+  });
+
+  /** What the live region says: the latest event, a copy or the running actions. */
+  protected readonly announcement = computed(() =>
+    this.copyAnnounced() && this.copyStatus() === 'copied'
+      ? 'Sentence copied.'
+      : this.runningAnnouncement(),
+  );
 
   protected readonly translationSetupNeeded = computed(() => {
     const failure = this.aids().translationAction.error;
@@ -487,7 +543,22 @@ export class SentencePopoverComponent {
     );
   });
 
-  protected audioAction(): void {
+  protected requestTranslation(offer: AidOffer): void {
+    if (!offer.busy) {
+      this.translate.emit();
+    }
+  }
+
+  protected requestGrammar(offer: AidOffer): void {
+    if (!offer.busy) {
+      this.analyzeGrammar.emit();
+    }
+  }
+
+  protected audioAction(offer: AidOffer): void {
+    if (offer.busy) {
+      return;
+    }
     if (this.aids().audio === null) {
       this.generateAudio.emit();
       return;
@@ -504,6 +575,7 @@ export class SentencePopoverComponent {
     try {
       await clipboard.writeText(this.sentenceText());
       this.copyStatus.set('copied');
+      this.copyAnnounced.set(true);
     } catch {
       this.copyStatus.set('failed');
     }

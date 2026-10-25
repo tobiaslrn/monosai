@@ -9,9 +9,10 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
-import type {
-  AudioJobCounts,
-  AudioJobProgress,
+import {
+  isAudioRunInProgress,
+  type AudioJobCounts,
+  type AudioJobProgress,
 } from '../../application/enrichment/audio-job.store';
 import { PLAYBACK_RATES } from '../../domain/settings/settings';
 import type { SentenceId } from '../../domain/shared/ids';
@@ -37,6 +38,25 @@ export interface AuxAction {
   /** The long version, for a pointer that rests on it. */
   readonly title: string;
   readonly tone: 'accent' | 'danger' | 'secondary';
+}
+
+/**
+ * The big button in the middle, as data.
+ *
+ * One `<button>` is bound to this, so the element — and the focus on it —
+ * survives every change between its meanings. `generating` is a run in
+ * progress with nothing to play yet: the filled button stays exactly where it
+ * was and is `aria-busy`, rather than turning into a dead Play.
+ */
+export interface CentreControl {
+  readonly kind: 'generate' | 'generating' | 'play' | 'pause';
+  readonly icon: IconName;
+  /** The accessible name, and the tooltip. */
+  readonly label: string;
+  /** Unavailable: there is nothing to start, and no work that will provide it. */
+  readonly disabled: boolean;
+  /** Working: the control is holding a wait and ignores presses until it ends. */
+  readonly busy: boolean;
 }
 
 /** Geometry of the ring drawn around the aux button while a run is going. */
@@ -145,57 +165,39 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           no audio at all has nothing to play, so the button that would be a
           dead Play is the one that makes the audio instead.
         -->
-        @switch (centreAction()) {
-          @case ('setup') {
-            <!--
-              A reading whose audio needs a model has no Play to press, and a
-              dead Play beside a gear says none of that. The primary control is
-              the setup itself, in the place and the shape Play would have had.
-            -->
-            <a
-              class="mn-icon-button mn-icon-button--primary primary--wide"
-              routerLink="/settings"
-              aria-label="Set up audio model"
-              title="Set up audio model"
-            >
-              <mn-icon name="settings" [size]="20" />
-              <span>Set up audio</span>
-            </a>
-          }
-          @case ('generate') {
-            <button
-              type="button"
-              class="mn-icon-button mn-icon-button--primary"
-              aria-label="Generate audio"
-              title="Generate audio"
-              (click)="generate.emit()"
-            >
-              <mn-icon name="generate" [size]="24" />
-            </button>
-          }
-          @case ('pause') {
-            <button
-              type="button"
-              class="mn-icon-button mn-icon-button--primary"
-              aria-label="Pause"
-              title="Pause"
-              (click)="store.pause()"
-            >
-              <mn-icon name="pause" [size]="24" />
-            </button>
-          }
-          @default {
-            <button
-              type="button"
-              class="mn-icon-button mn-icon-button--primary"
-              [attr.aria-label]="playLabel()"
-              [title]="playLabel()"
-              [disabled]="!canPressPlay()"
-              (click)="play()"
-            >
-              <mn-icon name="play" [size]="24" />
-            </button>
-          }
+        @if (setupNeeded()) {
+          <!--
+            A reading whose audio needs a model has no Play to press, and a
+            dead Play beside a gear says none of that. The primary control is
+            the setup itself, in the place and the shape Play would have had.
+            A link cannot be the button below, so this is the one swap.
+          -->
+          <a
+            class="mn-icon-button mn-icon-button--primary primary--wide"
+            routerLink="/settings"
+            aria-label="Set up audio model"
+            title="Set up audio model"
+          >
+            <mn-icon name="settings" [size]="20" />
+            <span>Set up audio</span>
+          </a>
+        } @else {
+          <!--
+            One button for generate, generating, play and pause, never one
+            element swapped for another: the focus a press left on it, and the
+            filled circle itself, survive the work the press started.
+          -->
+          <button
+            type="button"
+            class="mn-icon-button mn-icon-button--primary"
+            [attr.aria-label]="centre().label"
+            [title]="centre().label"
+            [disabled]="centre().disabled"
+            [attr.aria-busy]="centre().busy ? 'true' : null"
+            (click)="pressCentre()"
+          >
+            <mn-icon [name]="centre().icon" [size]="24" />
+          </button>
         }
 
         <button
@@ -294,7 +296,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
         reached, with a range on top of it so the reading can be aimed at rather
         than stepped through.
       -->
-      <div class="track" [class.is-generating]="isGenerating()">
+      <div class="track">
         <span class="track-paint" aria-hidden="true">
           <span class="rail"></span>
           <span class="fill generated" [style.inline-size.%]="generatedPercent()"></span>
@@ -648,7 +650,7 @@ export class ReadingPlayerComponent {
     if (progress.kind === 'deleted') {
       return 'none';
     }
-    if (progress.kind === 'preparing' || progress.kind === 'running') {
+    if (isAudioRunInProgress(progress)) {
       return 'running';
     }
     if (this.store.canPlayWholeReading()) {
@@ -665,13 +667,35 @@ export class ReadingPlayerComponent {
     return 'offer';
   });
 
+  /** The run is parked between batches and will pick up on its own. */
+  private readonly isParked = computed(() => this.progress().kind === 'paused');
+
   protected readonly isPlaying = computed(() => this.store.status() === 'playing');
 
   /** At least one playable sentence uses a clip made with older settings. */
   protected readonly staleAudio = computed(() => this.store.hasStaleAudio());
 
-  /** Whether a run is filling in the rest, which only the track and ring report. */
+  /**
+   * Whether a run is filling in the rest, which only the track and ring report.
+   * A run parked between batches counts: it picks up on its own, so the learner
+   * is still waiting on it and Stop stays where it was.
+   */
   protected readonly isGenerating = computed(() => this.rail() === 'running');
+
+  /**
+   * Whether the primary control is the setup link rather than a button.
+   *
+   * Nothing can be generated and nothing can be played without a tested model,
+   * so the press that is worth making is the one that gets one. Playing wins:
+   * a sound already going is never replaced by a link.
+   */
+  protected readonly setupNeeded = computed(
+    () =>
+      !this.isPlaying() &&
+      this.store.sentenceCount() > 0 &&
+      !this.modelConfigured() &&
+      !this.store.hasPlayableAudio(),
+  );
 
   /**
    * What the big button in the middle is.
@@ -679,29 +703,46 @@ export class ReadingPlayerComponent {
    * A reading with nothing to play has no use for a Play button, and the thing
    * a learner opening that player wants is the audio itself — so the primary
    * control is the one that makes it, in the same place and the same shape.
+   * Once it has been pressed the control is still that button, busy, until the
+   * first clip lands and it becomes Play.
    */
-  protected readonly centreAction = computed<'setup' | 'generate' | 'play' | 'pause'>(() => {
+  protected readonly centre = computed<CentreControl>(() => {
     if (this.isPlaying()) {
-      return 'pause';
+      return { kind: 'pause', icon: 'pause', label: 'Pause', disabled: false, busy: false };
     }
-    // Nothing can be generated and nothing can be played without a tested
-    // model, so the press that is worth making is the one that gets one.
-    if (
-      this.store.sentenceCount() > 0 &&
-      !this.modelConfigured() &&
-      !this.store.hasPlayableAudio()
-    ) {
-      return 'setup';
+    if (!this.store.hasPlayableAudio()) {
+      if (this.isGenerating()) {
+        return {
+          kind: 'generating',
+          icon: 'generate',
+          // A parked run is waiting for its turn, in the words the reader's
+          // story options already use for it.
+          label: this.isParked() ? 'Waiting to continue' : 'Generating audio',
+          disabled: false,
+          busy: true,
+        };
+      }
+      if (this.store.sentenceCount() > 0 && this.modelConfigured()) {
+        return {
+          kind: 'generate',
+          icon: 'generate',
+          label: 'Generate audio',
+          disabled: false,
+          busy: false,
+        };
+      }
     }
-    if (
-      this.store.sentenceCount() > 0 &&
-      !this.store.hasPlayableAudio() &&
-      !this.isGenerating() &&
-      this.modelConfigured()
-    ) {
-      return 'generate';
-    }
-    return 'play';
+    // A session that has started and is waiting on a clip is working, not
+    // unavailable, while something is still making that clip.
+    const status = this.store.status();
+    const busy = status === 'loading' || (status === 'waiting' && this.isGenerating());
+    return {
+      kind: 'play',
+      icon: 'play',
+      label: this.playLabel(),
+      disabled: !busy && !this.canPressPlay(),
+      busy,
+    };
   });
 
   /**
@@ -994,7 +1035,8 @@ export class ReadingPlayerComponent {
       parts.push(`${this.offerLabel()} — audio can be generated.`);
     }
     if (this.isGenerating()) {
-      parts.push(`Generating audio, ${String(this.generatedPercent())}% of the reading ready.`);
+      const state = this.isParked() ? 'Waiting to continue' : 'Generating audio';
+      parts.push(`${state}, ${String(this.generatedPercent())}% of the reading ready.`);
     }
     return parts.join(' ');
   });
@@ -1008,6 +1050,27 @@ export class ReadingPlayerComponent {
     const index = PLAYBACK_RATES.indexOf(current);
     const next = PLAYBACK_RATES[(index + 1) % PLAYBACK_RATES.length];
     this.store.setPlaybackRate(next);
+  }
+
+  protected pressCentre(): void {
+    const centre = this.centre();
+    if (centre.busy) {
+      // Working: the press is ignored rather than the control being disabled.
+      return;
+    }
+    switch (centre.kind) {
+      case 'generate':
+        this.generate.emit();
+        return;
+      case 'pause':
+        this.store.pause();
+        return;
+      case 'play':
+        this.play();
+        return;
+      case 'generating':
+        return;
+    }
   }
 
   protected pressAux(aux: AuxAction): void {

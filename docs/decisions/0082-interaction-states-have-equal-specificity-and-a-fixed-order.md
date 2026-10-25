@@ -49,6 +49,43 @@ makes the following state harder to add.
 A busy control is the next state of this order. Its rule belongs after pressed and hover
 and before disabled.
 
+### Busy controls stay in place
+
+A control that started work is **busy**, not disabled, and it stays where it is. The
+player's Play control showed why. Pressing Generate turned the filled button into a Play
+that was disabled until the first clip landed, which drew as a dashed sunken circle, so
+the one control the learner had just pressed vanished and the focus on it was destroyed.
+The sentence popover removed a running action from a two-column tray, which reflowed the
+other buttons under the thumb that pressed it, and said "Generating…" on a line elsewhere.
+The same fault was in both: working was drawn by swapping or removing the control, or by
+calling it disabled.
+
+- Busy is `aria-busy='true'` and nothing else. A component does not mirror it in a class,
+  and it never sets `aria-disabled` or `disabled`, which draw the disabled boundary.
+- Busy keeps the variant's fill and colour, because a control that is working is not
+  unavailable. It breathes with the shared `mn-busy-breathe` (still under
+  `prefers-reduced-motion`) and shows the `progress` cursor.
+- Busy gives up feedback to the pointer, not its look: the hover, active, and pressed and
+  hover rules carry `[aria-busy='true']` in their enabled test, so no rule has to restate a
+  variant's colours. Pressed keeps its tint. A control that is busy and also disabled is
+  disabled, since that rule comes later in the order.
+- The component ignores a press while it is busy. A busy control is never removed from its
+  row, swapped for another element, or replaced by a hint line. One element is bound to the
+  changing state, so the focus survives it: the player's centre button is one `<button>`
+  bound to a view-model for generate, generating, play, and pause. The setup link is the
+  one exception, because a link cannot be a button.
+- The label says what the control is doing now, and the surface keeps a hidden
+  `role="status"` line so a screen reader hears that the work started, since a label
+  changed in place is not announced for a control that is not focused.
+- A run that parks itself between batches (`paused`) is still in progress for the learner,
+  so the Stop control, the Generate refusal, and the header pulse hold across it.
+  `isAudioRunInProgress` names that meaning. The job store's own scheduling keeps asking
+  whether a worker is busy this instant, which a parked run is not and must be allowed to
+  resume. The translation and grammar stores count a parked run the same way for their
+  deletion warning and their dismiss guard. Stopping a parked audio run ends it for good:
+  the stop closes the job row through a write that start, resume, and `cancelAndWait` wait
+  for, and a stop outranks a yield that was asked for before it.
+
 ## Consequences
 
 - A new state is a rule added at its place in the order, with no weight to calculate. The

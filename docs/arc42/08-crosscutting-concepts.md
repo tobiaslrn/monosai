@@ -262,10 +262,13 @@ to them. A change that departs from the design system changes that document firs
 commit.
 
 Interaction states follow one fixed order — rest, variant, hover, active, pressed, pressed and
-hover, disabled, pressed and disabled — decided by source order. In the shared controls every state qualifier, including the mouse-only
+hover, busy, disabled, pressed and disabled — decided by source order. In the shared controls every state qualifier, including the mouse-only
 hover guard, is written inside `:where()` so a state rule weighs only its own class
 ([ADR 0082](../decisions/0082-interaction-states-have-equal-specificity-and-a-fixed-order.md)). A
-component styles placement and never recolours a shared control's states. The static style audit
+component styles placement and never recolours a shared control's states. Busy is
+`aria-busy='true'`: the control keeps its fill, stays in its place, and is never removed or swapped
+while it works, so focus survives the work. The audio player's job-in-progress check
+(`isAudioRunInProgress`) counts a parked `paused` run as still going. The static style audit
 also rejects any `:hover` selector, in a component or in `web/src/styles/`, that does not name the
 `data-pointer='mouse'` guard, so hover stays a mouse-only state.
 

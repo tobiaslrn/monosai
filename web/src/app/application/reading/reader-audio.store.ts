@@ -3,7 +3,7 @@ import type { Reading } from '../../domain/reading/reading';
 import type { ReadingId, SentenceId } from '../../domain/shared/ids';
 import { AudioPlaybackStore } from '../audio/audio-playback.store';
 import { AudioConfigurationService } from '../enrichment/audio-configuration.service';
-import { AudioJobStore } from '../enrichment/audio-job.store';
+import { AudioJobStore, isAudioRunInProgress } from '../enrichment/audio-job.store';
 import { ReadingAudioMaintenanceStore } from '../enrichment/reading-audio-maintenance.store';
 import { TtsStore } from '../settings/tts.store';
 import { ReaderStore } from './reader.store';
@@ -59,10 +59,8 @@ export class ReaderAudioStore {
     return id === null ? this.job.idleProgress : this.job.progressFor(id);
   });
 
-  readonly running = computed(() => {
-    const kind = this.progress().kind;
-    return kind === 'preparing' || kind === 'running';
-  });
+  /** A run is in progress for the learner, including one parked between batches. */
+  readonly running = computed(() => isAudioRunInProgress(this.progress()));
 
   /**
    * Whether generation would be refused for want of a configuration.

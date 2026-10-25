@@ -377,7 +377,8 @@ same selection tint as a pressed toggle rather than the filled primary.
 The filled primary icon control is `.mn-icon-button--primary`: a large circle in
 the action colour, as the play control of the transport. It has its own hover and
 press (it shrinks slightly and keeps its fill; it never turns grey) and is drawn
-disabled like any other button. `--icon-button-primary-size` sets its diameter
+disabled like any other button. While the work it started is going on it is
+**busy**, not disabled, and stays the filled circle (see below). `--icon-button-primary-size` sets its diameter
 (4rem by default); a labelled one that says a word widens through layout rules
 alone. A feature never recolours a shared control.
 
@@ -388,11 +389,28 @@ outline or a selected control. A chosen toggle that is disabled keeps its
 selection tint behind the dashed boundary, so a choice that cannot be changed
 still reads as chosen.
 
+A control that started work is **busy** while the work runs, which is not
+unavailable. Busy is `aria-busy='true'` and nothing else: no class, and never
+`aria-disabled`, which would draw the disabled boundary. A busy control keeps
+its variant's fill and text colour, so a filled primary stays the filled
+primary, and breathes gently (still, under `prefers-reduced-motion`) with a
+`progress` cursor. It does not answer the pointer — no hover change, no press —
+and the component ignores a press until the work ends. It stays **where it is**:
+a control that is working is never removed from its row, swapped for another
+element, or replaced by a hint line, because that reflows what is under the
+learner's thumb and destroys the focus the press left on it. One element is
+bound to the changing state, and its label says what it is doing now
+(`Generating audio`, `Translating…`). Because a label that changes in place is
+not announced for a control that is not focused, the surface keeps a hidden
+`role="status"` line that says what started. Disabled stays for what cannot be
+done and has nothing working to make it possible; a control that is both is
+disabled.
+
 #### State order
 
 Every shared control draws its states in one fixed order: **rest, variant,
-hover, active, pressed, pressed and hover, disabled, pressed and disabled**
-([ADR 0082](../decisions/0082-interaction-states-have-equal-specificity-and-a-fixed-order.md)).
+hover, active, pressed, pressed and hover, busy, disabled, pressed and
+disabled** ([ADR 0082](../decisions/0082-interaction-states-have-equal-specificity-and-a-fixed-order.md)).
 A later state wins over an earlier one, so a pressed chip under the mouse shows
 a deeper selection tint rather than the grey hover surface, and a variant's
 hover beats the base hover. The order is decided by source, not by weight:
@@ -401,8 +419,10 @@ every qualifier of a state rule — the mouse guard, `:hover`, `:active`,
 weighs only the control's own class. A rule that resets a resting background
 (a grouped row's transparent surface) belongs with the resting rules, before
 hover. `aria-pressed` is the only state a toggle has; a feature does not mirror
-it in a class or paint it a second time. A busy control, when one exists, takes
-its place after pressed and hover, before disabled.
+it in a class or paint it a second time. Busy takes its place after pressed and
+hover, before disabled; the hover, active, and pressed-and-hover rules exclude
+`[aria-busy='true']` in their enabled test, so a busy control gives no pointer
+feedback while it keeps its fill.
 
 Hover is a mouse state everywhere, not only in the shared controls: a phone
 reports hover after a tap and never takes it back, so every `:hover` in the
@@ -982,7 +1002,8 @@ request stays enabled to match.
 Work that resolves quickly is shown **on the control that started it**: the
 control holds the waiting state, and nothing else on the page moves. Nothing
 appears or disappears while waiting, so a surface is laid out identically before,
-during, and after.
+during, and after. The control holds it as **busy** (`aria-busy`, above): the same
+element, in the same place, with the same fill.
 
 Work that takes longer than a few seconds **names its current stage**, in the
 learner's terms rather than the pipeline's. A stage name is what is happening

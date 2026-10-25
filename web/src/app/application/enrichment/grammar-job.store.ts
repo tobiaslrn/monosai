@@ -130,9 +130,10 @@ export class GrammarJobStore {
     return progress.kind !== 'idle' && progress.readingId === readingId ? progress : IDLE;
   }
 
+  /** A run parked between batches is still in progress for the learner, as for audio. */
   isRunningFor(readingId: ReadingId): boolean {
     const kind = this.progressFor(readingId).kind;
-    return kind === 'preparing' || kind === 'running';
+    return kind === 'preparing' || kind === 'running' || kind === 'paused';
   }
 
   /**

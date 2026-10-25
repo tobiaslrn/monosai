@@ -139,8 +139,9 @@ export class TranslationJobStore {
     return progress.kind !== 'idle' && progress.readingId === readingId ? progress : IDLE;
   }
 
+  /** A run parked between batches is still in progress for the learner, as for audio. */
   isRunningFor(readingId: ReadingId): boolean {
-    return ['preparing', 'running'].includes(this.progressFor(readingId).kind);
+    return ['preparing', 'running', 'paused'].includes(this.progressFor(readingId).kind);
   }
 
   async enqueue(

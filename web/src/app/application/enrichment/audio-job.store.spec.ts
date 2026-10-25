@@ -1,12 +1,14 @@
 import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
 import type { ImportedReadingDraft } from '../../domain/reading/reading-repository';
 import type { TtsSettings } from '../../domain/settings/settings';
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
+import { readingId } from '../../domain/shared/ids';
 import { err, ok } from '../../domain/shared/result';
+import { storageError } from '../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../../infrastructure/persistence/monosai-db';
 import { DexieEnrichmentRepository } from '../../infrastructure/persistence/repositories/dexie-enrichment.repository';
 import { DexieJobRepository } from '../../infrastructure/persistence/repositories/dexie-job.repository';
@@ -28,6 +30,8 @@ import {
   AUDIO_FRUITLESS_RUN_LIMIT,
   AUDIO_SENTENCE_RETRY_LIMIT,
   AudioJobStore,
+  isAudioRunInProgress,
+  type AudioJobProgress,
 } from './audio-job.store';
 import { PREPARATION_CONCURRENCY } from './preparation-pacer';
 
@@ -559,6 +563,113 @@ describe('AudioJobStore', () => {
     expect(rows[0].completedSentenceIds).toHaveLength(stored);
   });
 
+  /**
+   * A learner who presses Stop while the run is being asked to park ended it:
+   * the batch settling afterwards must not write it back as paused, which left
+   * the player showing a run nobody could resume.
+   */
+  it('stays stopped when Stop is pressed while a yield is waiting on the batch', async () => {
+    const long = await (async () => {
+      const draft = longReading();
+      await bed.readings.saveImportedReading(draft);
+      return draft;
+    })();
+    let calls = 0;
+    bed.provider.synthesizeWith = async () => {
+      calls += 1;
+      if (calls === 1) {
+        bed.store.yieldAfterBatch();
+        bed.store.cancel(long.reading.id);
+      }
+      await hold();
+      return ok(audioPayload());
+    };
+
+    await bed.store.start(long.reading.id);
+
+    expect(bed.store.progress().kind).toBe('cancelled');
+    const rows = await bed.db.assetJobs.toArray();
+    expect(rows.map((row) => row.state)).toEqual(['cancelled']);
+  });
+
+  describe('a run parked between batches', () => {
+    async function park(): Promise<ImportedReadingDraft> {
+      const long = longReading();
+      await bed.readings.saveImportedReading(long);
+      bed.provider.synthesizeWith = async () => {
+        bed.store.yieldAfterBatch();
+        await hold();
+        return ok(audioPayload());
+      };
+      await bed.store.start(long.reading.id);
+      return long;
+    }
+
+    it('is still in progress for the learner, though no worker is busy', async () => {
+      const long = await park();
+
+      expect(bed.store.progress().kind).toBe('paused');
+      expect(bed.store.isRunningFor(long.reading.id)).toBe(true);
+      expect(bed.store.isRunning()).toBe(false);
+    });
+
+    it('is not put away by a dismiss, because it will resume', async () => {
+      const long = await park();
+
+      bed.store.acknowledge(long.reading.id);
+
+      expect(bed.store.progress().kind).toBe('paused');
+    });
+
+    it('is not continued by a resume that follows its stop straight away', async () => {
+      const long = await park();
+      const asked = bed.provider.synthesized.length;
+
+      bed.store.cancel(long.reading.id);
+      await bed.store.resume(long.reading.id);
+
+      expect(bed.store.progress().kind).not.toBe('complete');
+      expect(bed.provider.synthesized).toHaveLength(asked);
+      const rows = await bed.db.assetJobs.toArray();
+      expect(rows.map((row) => row.state)).toEqual(['cancelled']);
+    });
+
+    it('is joined by cancelAndWait, so the row is closed when it returns', async () => {
+      const long = await park();
+
+      await bed.store.cancelAndWait(long.reading.id);
+
+      const rows = await bed.db.assetJobs.toArray();
+      expect(rows.map((row) => row.state)).toEqual(['cancelled']);
+    });
+
+    it('reports a row that could not be closed instead of dropping the error', async () => {
+      const long = await park();
+      const jobs = TestBed.inject(JOB_REPOSITORY);
+      vi.spyOn(jobs, 'setState').mockResolvedValueOnce(
+        err(storageError('unavailable', 'The database was unavailable.')),
+      );
+
+      await bed.store.cancelAndWait(long.reading.id);
+
+      const progress = bed.store.progress();
+      expect(progress.kind).toBe('failed');
+      expect(progress.kind === 'failed' && progress.error.source).toBe('storage');
+    });
+
+    it('ends when the learner stops it, and its row is not left to resume', async () => {
+      const long = await park();
+
+      bed.store.cancel(long.reading.id);
+
+      expect(bed.store.progress().kind).toBe('cancelled');
+      await vi.waitFor(async () => {
+        const rows = await bed.db.assetJobs.toArray();
+        expect(rows.map((row) => row.state)).toEqual(['cancelled']);
+      });
+    });
+  });
+
   it('waits for cancelled in-flight workers before destructive maintenance continues', async () => {
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
@@ -831,5 +942,36 @@ describe('AudioJobStore', () => {
     await bed.store.start(bed.draft.reading.id);
 
     expect(bed.provider.synthesized).toHaveLength(SENTENCE_COUNT);
+  });
+});
+
+describe('isAudioRunInProgress', () => {
+  const id = readingId('reading');
+  const counts = { total: 4, requested: 4, completed: 1, failed: 0 };
+  const cases: readonly (readonly [AudioJobProgress, boolean])[] = [
+    [{ kind: 'idle' }, false],
+    [{ kind: 'preparing', readingId: id }, true],
+    [{ kind: 'running', readingId: id, counts }, true],
+    [{ kind: 'paused', readingId: id, counts }, true],
+    [{ kind: 'complete', readingId: id, counts }, false],
+    [{ kind: 'cancelled', readingId: id, counts }, false],
+    [{ kind: 'deleted', readingId: id }, false],
+    [
+      {
+        kind: 'failed',
+        readingId: id,
+        counts,
+        error: {
+          source: 'provider',
+          error: aiError('rate-limited', 'tts-synthesis', 'Too many requests.'),
+        },
+        canRetry: true,
+      },
+      false,
+    ],
+  ];
+
+  it.each(cases)('reads %j as in progress: %s', (progress, expected) => {
+    expect(isAudioRunInProgress(progress)).toBe(expected);
   });
 });
