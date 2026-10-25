@@ -132,7 +132,7 @@ export interface UnknownWord {
         </section>
       }
 
-      <div class="tray mn-actions mn-actions--fill">
+      <div class="tray mn-popover-foot mn-actions mn-actions--fill">
         <button type="button" class="mn-button" (click)="copySentence()">
           <mn-icon [name]="copyStatus() === 'copied' ? 'check' : 'copy'" [size]="18" />
           <span>{{ copyStatus() === 'copied' ? 'Copied' : 'Copy' }}</span>
@@ -249,8 +249,12 @@ export interface UnknownWord {
        * grab handle and this tray. Full-bleed and opaque for the same reason
        * the handle is: content passing underneath must not show at the edges.
        *
-       * A zero bottom offset parks it at the scrollport bottom until the card's
-       * own content ends, where it settles into its natural place.
+       * A zero bottom offset parks it at the card's content edge until the
+       * card's own content ends, where it settles into its natural place. It
+       * is the card's foot, so it carries the card's bottom padding rather
+       * than sitting above it: a stuck tray then reaches the card's inner edge
+       * instead of leaving a strip below itself for the content to scroll
+       * visibly through.
        */
       position: sticky;
       bottom: 0;
@@ -262,7 +266,7 @@ export interface UnknownWord {
       align-self: stretch;
       width: calc(100% + 2 * var(--space-4));
       margin-inline: calc(-1 * var(--space-4));
-      padding: var(--space-3) var(--space-4) 0;
+      padding: var(--space-3) var(--space-4) var(--mn-popover-pad-bottom, 0px);
       border-top: 1px solid var(--border-subtle);
       background: var(--surface-panel);
     }

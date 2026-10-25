@@ -25,6 +25,20 @@ internal class FixtureReads : AnkiReads {
     }
 }
 
+/**
+ * The identity the golden fixtures were recorded with.
+ *
+ * The version is deliberately not a real release: the fixtures are the shared
+ * wire record, and pinning a release number in them would rewrite every golden
+ * file on a patch bump that changed nothing on the wire. The contract is read
+ * from the file both sides build against, so bumping it turns the byte
+ * comparison red until the fixture records the new wire.
+ */
+internal val FIXTURE_IDENTITY = BridgeIdentity(
+    "0.0.0-fixture",
+    RouterTest::class.java.classLoader!!.getResource("contract.txt")!!.readText().trim().toInt(),
+)
+
 class RouterTest {
     @Test fun everyFixtureIsByteIdentical() {
         val directory = File(javaClass.classLoader!!.getResource("fixtures")!!.toURI())
@@ -33,7 +47,7 @@ class RouterTest {
         val refused = 2
         assertEquals(AllowedReads.entries.size + refused, directory.listFiles()!!.size)
         for (fixture in directory.listFiles()!!) {
-            val actual = Router(FixtureReads()).route(File(fixture, "request.json").readText())
+            val actual = Router(FixtureReads(), FIXTURE_IDENTITY).route(File(fixture, "request.json").readText())
             assertArrayEquals(fixture.name, File(fixture, "response.json").readBytes(), actual.toByteArray())
         }
     }
@@ -41,7 +55,7 @@ class RouterTest {
         val reads = object : AnkiReads by FixtureReads() {
             override fun cardsInfo(ids: List<Long>) = listOf(card)
         }
-        return Router(reads).route("""{"action":"cardsInfo","version":6,"params":{"cards":[1]}}""")
+        return Router(reads, FIXTURE_IDENTITY).route("""{"action":"cardsInfo","version":6,"params":{"cards":[1]}}""")
     }
 
     @Test fun everySchedulingSignalReachesTheWireUnderItsOwnName() {
@@ -64,11 +78,11 @@ class RouterTest {
 
     @Test fun unknownWritesNeverReachTheProvider() {
         val reads = FixtureReads()
-        assertEquals("unsupported action: addNote", Json.parseToJsonElement(Router(reads).route("""{"action":"addNote","version":6}""")).jsonObject["error"]!!.jsonPrimitive.content)
+        assertEquals("unsupported action: addNote", Json.parseToJsonElement(Router(reads, FIXTURE_IDENTITY).route("""{"action":"addNote","version":6}""")).jsonObject["error"]!!.jsonPrimitive.content)
         assertEquals(0, reads.reads)
     }
     @Test fun invalidBodiesAndIdsAreRejected() {
-        val router = Router(FixtureReads())
+        val router = Router(FixtureReads(), FIXTURE_IDENTITY)
         for (body in listOf("no", "[]", "{}", """{"action":"cardsInfo","version":5}""",
             """{"action":"cardsInfo","version":6,"params":{"cards":["1"]}}""",
             """{"action":"cardsInfo","version":6,"params":{"cards":[9007199254740992]}}""")) {
@@ -78,7 +92,7 @@ class RouterTest {
     @Test fun accessFailuresKeepTheirTypedCodeAndNeverReturnAStackTrace() {
         for (failure in ReadFailure.entries) {
             val reads = FixtureReads().apply { this.failure = failure }
-            assertEquals(envelope(error = failure.code), Router(reads).route("""{"action":"requestPermission","version":6}"""))
+            assertEquals(envelope(error = failure.code), Router(reads, FIXTURE_IDENTITY).route("""{"action":"requestPermission","version":6}"""))
         }
     }
 }

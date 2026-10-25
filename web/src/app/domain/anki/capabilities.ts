@@ -1,3 +1,5 @@
+import type { BridgeIdentity } from './bridge-contract';
+
 /**
  * A limitation the provider discovered about itself.
  *
@@ -17,6 +19,13 @@ export interface CapabilityLimitation {
  */
 export interface AnkiCapabilities {
   readonly apiVersion: string;
+  /**
+   * What the first-party Android bridge said it is, when one answered.
+   *
+   * Absent for the desktop add-on and for any other AnkiConnect-compatible
+   * endpoint, neither of which has a Monosai contract to report.
+   */
+  readonly bridge?: BridgeIdentity;
   readonly canDiscoverDecks: boolean;
   readonly canDiscoverNoteTypes: boolean;
   readonly canDiscoverFields: boolean;

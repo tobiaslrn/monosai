@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sunken at rest, the action colour when the outcome is on. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:color="@color/action_primary" />
+    <item android:color="@color/border_strong" />
+</selector>

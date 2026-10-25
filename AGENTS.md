@@ -120,7 +120,14 @@ exactly CI's blocking gates; when you add a gate to one, add it to the other.
   with an independent lifecycle. Its `bridge` gate uses Java 21 for Gradle tests,
   debug assembly, Android lint and the resolved runtime licence check. Local
   `npm run bridge:verify` runs those checks; `npm run verify` includes it.
-  Signing secrets are used only by the separate `bridge-v*` release workflow.
+  Signing secrets are used only by the separate release workflow, which publishes
+  the signed APK whenever `android-bridge/version.txt` names a version that has no
+  GitHub release yet.
+- The bridge and the web app are never version-bound. They negotiate one integer,
+  `protocol/contract.txt`, which the web app mirrors as `KNOWN_BRIDGE_CONTRACT`.
+  Raise it only for a change the web app could not discover by probing, raise
+  `version.txt` by at least a minor in the same commit, and keep every wire change
+  additive within a major. `android-bridge/README.md` holds the full rule.
 - `static`, `unit`, and `build` start together. Add `needs` only for a real
   artifact dependency, never for ordering alone.
 - The browser lane is sharded three ways; `e2e-report` merges the shard blob

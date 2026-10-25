@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A non-pressable compact state. One silhouette, tinted per state, because
+  swapping a background resource is what resets a view's padding; a tint does not.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FFFFFFFF" />
+    <corners android:radius="@dimen/radius_pill" />
+</shape>

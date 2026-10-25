@@ -59,6 +59,8 @@ files are already linked from code comments and from other records.
 | [0036](../decisions/0036-android-package-share-target.md)             | Android package sharing uses a service-worker inbox                |
 | [0055](../decisions/0055-anki-mapping-is-suggested-then-confirmed.md) | An Anki mapping is suggested from Japanese samples, then confirmed |
 | [0056](../decisions/0056-first-party-ankidroid-bridge.md)             | First-party read-only AnkiDroid bridge and shared wire contract    |
+| [0077](../decisions/0077-the-bridge-publishes-itself.md)               | The bridge publishes itself from a committed version               |
+| [0078](../decisions/0078-the-bridge-announces-a-contract.md)           | The bridge announces a contract the web app negotiates against     |
 | [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)     | One Anki entry chosen by platform, and a page per source           |
 | [0061](../decisions/0061-anki-word-selection-signal-ladder.md)        | Anki word selection weights a ladder of scheduling evidence        |
 | [0065](../decisions/0065-ankidroid-first-review-study-day.md)         | AnkiDroid first review uses the supported search language          |
@@ -110,6 +112,7 @@ files are already linked from code comments and from other records.
 | [0068](../decisions/0068-one-non-reader-frame-and-page-header.md)           | All non-reader pages share one utility bar, frame, and page header                |
 | [0069](../decisions/0069-one-top-bar-per-screen.md)                         | Every screen has one sticky top bar; utilities live on the Library                |
 | [0070](../decisions/0070-gemini-speech-is-stored-compressed.md)             | Speech that arrives as raw PCM is stored compressed, and old clips are re-encoded |
+| [0079](../decisions/0079-help-is-a-hub-of-topics.md)                        | Help is a hub of topic pages, and the guidance lives in the application           |
 
 ### Audio
 

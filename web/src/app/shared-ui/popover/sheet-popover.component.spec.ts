@@ -48,8 +48,11 @@ describe('SheetPopoverComponent', () => {
     return result;
   }
 
-  function pointer(target: HTMLElement, type: string, clientY: number): void {
-    target.dispatchEvent(new PointerEvent(type, { bubbles: true, clientY, pointerId: 1 }));
+  /** Dispatched events report no elapsed time, which a release reads as a flick. */
+  function pointer(target: HTMLElement, type: string, clientY: number, time = 0): void {
+    const event = new PointerEvent(type, { bubbles: true, clientY, pointerId: 1 });
+    Object.defineProperty(event, 'timeStamp', { value: time });
+    target.dispatchEvent(event);
   }
 
   it('renders a real accessible handle on a mobile viewport', () => {
@@ -66,11 +69,11 @@ describe('SheetPopoverComponent', () => {
     });
     const button = handle(sheet);
 
-    pointer(button, 'pointerdown', 100);
-    pointer(button, 'pointermove', 140);
+    pointer(button, 'pointerdown', 100, 0);
+    pointer(button, 'pointermove', 140, 300);
     fixture.detectChanges();
     expect(sheet.style.transform).toContain('40px');
-    pointer(button, 'pointerup', 140);
+    pointer(button, 'pointerup', 140, 320);
     fixture.detectChanges();
     button.click();
 
@@ -86,9 +89,9 @@ describe('SheetPopoverComponent', () => {
     });
     const button = handle(sheet);
 
-    pointer(button, 'pointerdown', 100);
-    pointer(button, 'pointermove', 181);
-    pointer(button, 'pointerup', 181);
+    pointer(button, 'pointerdown', 100, 0);
+    pointer(button, 'pointermove', 181, 600);
+    pointer(button, 'pointerup', 181, 620);
     button.click();
 
     expect(closed).toBe(1);
@@ -99,5 +102,17 @@ describe('SheetPopoverComponent', () => {
     const { sheet } = render();
 
     expect(sheet.querySelector('.handle')).toBeNull();
+  });
+
+  it('anchors to its trigger on desktop but not once docked as a sheet', () => {
+    media.setWidth(1440);
+    expect(render().sheet.style.getPropertyValue('position-anchor')).toBe('--test-anchor');
+
+    TestBed.resetTestingModule();
+    media.setWidth(412);
+
+    // A docked sheet spans the viewport, so keeping the anchor would inset it to
+    // the trigger's edge and leave a bare strip down the side.
+    expect(render().sheet.style.getPropertyValue('position-anchor')).toBe('');
   });
 });

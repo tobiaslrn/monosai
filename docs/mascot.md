@@ -55,6 +55,16 @@ part of the silhouette that survives, which is why it is fixed, centred, and
 green. It is also the character's name showing. Nothing covers it, crops it, or
 replaces it.
 
+There is one exception, and it exists because two apps have to be told apart.
+An application icon that would otherwise be identical to another Monosai icon
+may carry one badge at its upper right, and that badge may overlap one leaf.
+Monosai Bridge is the case this exists for: it and the installed PWA sit side by
+side in the same launcher, and a learner has to know which one is the bridge
+before opening either. The badge is a single circular mark separated from Sai by
+a gap, it never reaches the centre of the sprout, and it is the only thing
+allowed to sit on top of Sai anywhere. It is not a prop, not a state, and never
+appears in an illustration.
+
 ### Forbidden
 
 - Fingers, thumbs, feet, ears, a nose, a neck, a tail, hair.

@@ -63,9 +63,13 @@ the providers, and owns the shell and the router, so it must be allowed to see e
 
 The shared presentation layer owns the common native-popover sheet surface:
 anchored placement on wide screens, bottom-sheet placement on narrow screens,
-its modal backdrop where needed, and the handle gesture that dismisses a sheet
-with a downward drag. Features provide only the content and the lifecycle
-actions that closing it triggers.
+and its modal backdrop where needed. It also owns the sheet's arrival and
+departure: the surface rises from and returns to its docked edge in CSS, which
+keeps the closing slide a property of the surface rather than of the feature
+that closed it. The handle gesture that dismisses a sheet with a downward drag
+or a flick is a component of its own, so a sheet built on a CDK dialog shares
+the one implementation rather than growing a second. Features provide only the
+content and the lifecycle actions that closing it triggers.
 
 ## 5.2 Level 2: how each layer is divided
 
@@ -154,6 +158,13 @@ desktop adapter recovers it to the whole percent through `prop:d` searches over
 the same action ([ADR 0066](../decisions/0066-desktop-fsrs-difficulty-by-search.md)).
 The update boundary makes bounded HTTPS requests to GitHub only on app launch or
 explicit download and verifies the APK signer before system installation.
+The router also answers with the build's own identity — its release name and the
+loopback contract version both sides declare in `protocol/` — so the web adapter
+can tell an outdated bridge from a broken one. It is passed in rather than read
+from the build, which keeps the golden fixtures stable across a release. An
+endpoint that claims no contract is left to the capability probe, because a
+third-party AnkiConnect-compatible listener has none to claim
+([ADR 0078](../decisions/0078-the-bridge-announces-a-contract.md)).
 `protocol/fixtures/` is consumed by both JVM and web tests. See
 [ADR 0056](../decisions/0056-first-party-ankidroid-bridge.md).
 
@@ -196,15 +207,18 @@ successful startup and waits for a completed route before offering the alpha
 disclosure, while Help still waits for a completed non-reader route. Each page owns its single top bar,
 `mn-page-header` from `shared-ui/`; the Library projects the utility navigation
 into its own. Reader routes show neither banners nor the introduction and keep
-the reader's own bar. `features/help/` is a lazy static prose screen. The
-Library opts its shared page header into the small alpha marker over the home
-icon.
+the reader's own bar. `features/help/` is a lazy static guide: a hub at `/help`
+and one lazily loaded page per topic below it, all declared once in
+`help-topics.ts` and framed by `help-article.component.ts`. Nothing in it reaches
+a provider. The Library opts its shared page header into the small alpha marker
+over the home icon.
 Dismissal goes through `AppSettingsStore` and the settings repository; schema v9
 adds `helpIntroSeen` transactionally, defaulting to false, and schema v18 adds
 the alpha acknowledgment in the same way. Write failures expose retry in the
-dialog or shell. See [ADR 0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)
-[ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md), and
-[ADR 0069](../decisions/0069-one-top-bar-per-screen.md).
+dialog or shell. See [ADR 0051](../decisions/0051-non-reader-utilities-and-first-use-help.md),
+[ADR 0068](../decisions/0068-one-non-reader-frame-and-page-header.md),
+[ADR 0069](../decisions/0069-one-top-bar-per-screen.md), and
+[ADR 0079](../decisions/0079-help-is-a-hub-of-topics.md).
 
 Two seams deserve a closer look, because a mistake in either crosses a boundary the rest of the
 system relies on.

@@ -4,6 +4,11 @@ import type {
   AnkiVocabularyProvider,
 } from '../../../domain/anki/anki-provider';
 import type { AnkiCapabilities, CapabilityLimitation } from '../../../domain/anki/capabilities';
+import {
+  compareBridgeContract,
+  MINIMUM_BRIDGE_CONTRACT,
+  outdatedBridgeMessage,
+} from '../../../domain/anki/bridge-contract';
 import type { AnkiCatalog } from '../../../domain/anki/catalog';
 import { canRefresh } from '../../../domain/anki/capabilities';
 import { err, ok, type Result } from '../../../domain/shared/result';
@@ -63,6 +68,23 @@ export class AndroidConnectAdapter implements AnkiVocabularyProvider {
     const note = (code: string, message: string): void => {
       limitations.push({ code, message });
     };
+
+    // Only an endpoint that claims to be the first-party bridge is held to a
+    // contract. Any other AnkiConnect-compatible bridge on this port says
+    // nothing here and is judged by what it can actually answer, below.
+    const compatibility = compareBridgeContract(permission.value.monosaiBridge);
+    if (compatibility.kind === 'too-old') {
+      return err(
+        ankiError(
+          'bridge-too-old',
+          'This Monosai Bridge is too old for this version of Monosai.',
+          `Monosai Bridge ${compatibility.identity.version} speaks contract ${String(compatibility.identity.contract)}; this build needs ${String(MINIMUM_BRIDGE_CONTRACT)}`,
+        ),
+      );
+    }
+    if (compatibility.kind === 'behind') {
+      note('bridge-outdated', outdatedBridgeMessage(compatibility.identity));
+    }
 
     const decks = await this.client.deckNames(signal);
     if (!decks.ok && decks.error.code === 'cancelled') {
@@ -127,6 +149,9 @@ export class AndroidConnectAdapter implements AnkiVocabularyProvider {
 
     const capabilities: AnkiCapabilities = {
       apiVersion: String(version.value),
+      ...(permission.value.monosaiBridge === undefined
+        ? {}
+        : { bridge: permission.value.monosaiBridge }),
       canDiscoverDecks: decks.ok,
       canDiscoverNoteTypes: models.ok,
       canDiscoverFields,

@@ -56,7 +56,7 @@ Each partner reaches the code through exactly one adapter, and every adapter liv
 | The AI service, speech | HTTPS `POST`, audio response, size capped | `infrastructure/openrouter/` |
 | The AI service, model catalog | HTTPS `GET`, model list with declared capabilities | `infrastructure/openrouter/` |
 | Anki Desktop | HTTP `POST` to AnkiConnect on `127.0.0.1`, actions restricted by an allowlist | `infrastructure/anki/connect/` |
-| AnkiDroid | ContentProvider reads through the shipped bridge, exposed as AnkiConnect on loopback | `android-bridge/app/`, `web/src/app/infrastructure/anki/connect/` |
+| AnkiDroid | ContentProvider reads through the shipped bridge, exposed as AnkiConnect on loopback and versioned by the contract in `protocol/` | `android-bridge/app/`, `web/src/app/infrastructure/anki/connect/` |
 | Anki package file | A file the learner chooses, read as ZIP plus SQLite in a worker | `infrastructure/anki/package/` |
 | Android share sheet | A browser form `POST` caught by the service worker and left in a Cache Storage inbox | `infrastructure/pwa/` |
 | Application data | IndexedDB through Dexie | `infrastructure/persistence/` |

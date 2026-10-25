@@ -392,16 +392,25 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // The clips already produced are kept: they cost money and are exactly as
     // playable individually as they were. Nothing still waiting for a turn was
     // ever scheduled.
-    expect(synthesisCount(calls) - afterSetup, 'the queue was abandoned, not drained').toBe(
-      CONCURRENCY,
-    );
-    // Fewer than the pool held, not an exact number: the abort races the siblings
+    //
+    // Bounded rather than pinned to the pool size, for the same reason the clip
+    // count below is: the abort races the requests already in flight. One of
+    // them can answer, and be replaced from the queue, in the window before it
+    // lands, so the pool holding ten at once does not mean exactly ten were
+    // ever sent. That ceiling is what `PREPARATION_CONCURRENCY` promises and
+    // what the store's own test pins. What this test is for is the floor and
+    // the far side: the pool was filled, and the reading's remaining sentences
+    // were abandoned rather than worked through.
+    const firstPass = synthesisCount(calls) - afterSetup;
+    expect(firstPass, 'the pool was filled before the refusal').toBeGreaterThanOrEqual(CONCURRENCY);
+    expect(firstPass, 'the queue was abandoned, not drained').toBeLessThan(LONG_SENTENCE_COUNT);
+    // Fewer than were asked for, not an exact number: the abort races the siblings
     // that had already been sent, so a request that had not answered yet is
     // cancelled rather than paid for. Which of them wins is the provider's
     // timing, and pinning it would be pinning the race.
     const kept = await storedClipCount(page);
     expect(kept, 'the clips that arrived were kept').toBeGreaterThan(0);
-    expect(kept, 'the refused sentence produced nothing').toBeLessThan(CONCURRENCY);
+    expect(kept, 'the refused sentence produced nothing').toBeLessThan(firstPass);
 
     // A transport is offered at all, which is the whole difference from the
     // complete-set gate this replaced: a failed run used to leave the player
@@ -417,7 +426,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expectAudioComplete(page, LONG_SENTENCE_COUNT);
 
     expect(
-      synthesisCount(calls) - afterSetup - CONCURRENCY,
+      synthesisCount(calls) - afterSetup - firstPass,
       'only the clips that were still missing were asked for again',
     ).toBe(LONG_SENTENCE_COUNT - kept);
     expect(await storedClipCount(page)).toBe(LONG_SENTENCE_COUNT);

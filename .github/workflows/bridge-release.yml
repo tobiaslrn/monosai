@@ -1,23 +1,35 @@
 name: Release Android bridge
 
+# The bridge publishes itself. `android-bridge/version.txt` is the source of
+# truth: every push to `main` asks whether that version already has a release,
+# publishes it if it does not, and fails loudly if the APK's own sources moved
+# on without the version moving with them. Nobody has to push a tag, and a user
+# never has to dig a build artifact out of a CI run to install the bridge.
 on:
   push:
-    tags: ['bridge-v*']
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# A second push must wait rather than race the first one's tag.
 concurrency:
-  group: bridge-release-${{ github.ref }}
+  group: bridge-release
   cancel-in-progress: false
 
 jobs:
   release:
+    name: Publish the signed APK
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Tags and history: the drift check below compares this commit with
+          # the tag of the release that is already published.
+          fetch-depth: 0
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -26,16 +38,96 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - name: Validate and derive release version
+
+      - name: Read and validate the committed version
         run: |
           node --test scripts/bridge/release-version.test.mjs
-          node scripts/bridge/icons.mjs --check
           node scripts/bridge/release-version.mjs
-      - name: Verify before accessing signing material
-        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:runtimeLicenses
-        working-directory: android-bridge
-      - run: node scripts/licenses/check-licenses.mjs --check --gradle-report android-bridge/app/build/reports/runtime-dependencies.json
-      - name: Sign release APK
+
+      - name: Decide whether this version still needs a release
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$BRIDGE_TAG" >/dev/null 2>&1; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$BRIDGE_TAG is already published."
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$BRIDGE_TAG has no release yet; building one."
+          fi
+
+      # A contract that only a patch release carries never reaches anyone: a patch
+      # says the wire did not change. Compared against the last published bridge,
+      # because that is the build people actually have installed.
+      - name: Fail if a new contract ships in a patch release
+        if: steps.decide.outputs.needed == 'true'
+        run: |
+          set -euo pipefail
+          previous=$(git tag --list 'bridge-v*' --sort=-v:refname | head -n 1)
+          if [ -z "$previous" ]; then
+            echo "::notice::No bridge has been published yet; there is no contract to compare against."
+            exit 0
+          fi
+          contract=0
+          if git cat-file -e "$previous:protocol/contract.txt" 2>/dev/null; then
+            contract=$(git show "$previous:protocol/contract.txt" | tr -d '\n')
+          fi
+          node scripts/bridge/release-version.mjs --guard \
+            "$(git show "$previous:android-bridge/version.txt" | tr -d '\n')" "$contract"
+
+      # A published version whose APK sources have moved is the failure this
+      # whole workflow exists to prevent: the release people download would no
+      # longer be the bridge in `main`. `protocol/` is in the comparison because a
+      # contract the published APK does not speak is the same failure wearing a
+      # different name. The bundled licence notices are left out because they
+      # follow the PWA's dependencies, not the bridge's behaviour.
+      - name: Fail if the APK changed without a version bump
+        if: steps.decide.outputs.needed == 'false'
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only "$BRIDGE_TAG" HEAD -- \
+            android-bridge/app/src/main android-bridge/app/build.gradle.kts \
+            android-bridge/build.gradle.kts android-bridge/settings.gradle.kts \
+            android-bridge/gradle android-bridge/gradle.properties \
+            protocol)
+          if [ -n "$changed" ]; then
+            echo "::error::The bridge APK changed since $BRIDGE_TAG was published. Raise android-bridge/version.txt so the new build reaches Releases."
+            printf '%s\n' "$changed"
+            exit 1
+          fi
+          echo "The published $BRIDGE_TAG still matches this commit."
+
+      # Whether a signing key happens to be configured says nothing about the
+      # bridge, so the verification is not behind that gate: a lane that can only
+      # ever report success until a secret is set is a lane nobody can read. It
+      # runs whenever this commit is one the workflow would publish.
+      - name: Verify before touching the signing key
+        if: steps.decide.outputs.needed == 'true'
+        run: |
+          node scripts/bridge/icons.mjs --check
+          cd android-bridge
+          ./gradlew :app:testDebugUnitTest :app:lintDebug :app:runtimeLicenses
+      - name: Check the resolved APK dependency graph and licences
+        if: steps.decide.outputs.needed == 'true'
+        run: node scripts/licenses/check-licenses.mjs --check --gradle-report android-bridge/app/build/reports/runtime-dependencies.json
+
+      - name: Check that signing material is configured
+        id: signing
+        if: steps.decide.outputs.needed == 'true'
+        env:
+          KEYSTORE: ${{ secrets.BRIDGE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "${KEYSTORE:-}" ]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo "::warning::$BRIDGE_TAG is verified and ready to publish, but no signing key is configured. Set the BRIDGE_KEYSTORE_BASE64, BRIDGE_STORE_PASSWORD, BRIDGE_KEY_ALIAS and BRIDGE_KEY_PASSWORD repository secrets, then re-run this workflow. An unsigned release is never published, and a missing key never fails the branch."
+          fi
+
+      - name: Sign the release APK
+        if: steps.signing.outputs.ready == 'true'
         working-directory: android-bridge
         env:
           BRIDGE_KEYSTORE_BASE64: ${{ secrets.BRIDGE_KEYSTORE_BASE64 }}
@@ -48,12 +140,16 @@ jobs:
           trap 'rm -f "$BRIDGE_KEYSTORE"' EXIT
           printf '%s' "$BRIDGE_KEYSTORE_BASE64" | base64 --decode > "$BRIDGE_KEYSTORE"
           ./gradlew :app:assembleRelease --no-daemon
-          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/monosai-anki-bridge.apk"
-      - name: Publish signed APK
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/monosai-bridge.apk"
+
+      # The tag is created here, from this commit, rather than pushed by hand.
+      - name: Publish the release
+        if: steps.signing.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$RELEASE_TAG" "$RUNNER_TEMP/monosai-anki-bridge.apk" \
-            --verify-tag --title "Monosai Anki bridge $BRIDGE_VERSION_NAME" \
-            --notes-file android-bridge/release-notes.md --latest=false
+          set -euo pipefail
+          gh release create "$BRIDGE_TAG" "$RUNNER_TEMP/monosai-bridge.apk" \
+            --target "$GITHUB_SHA" --title "Monosai Bridge $BRIDGE_VERSION_NAME" \
+            --notes-file android-bridge/release-notes.md --latest
+          echo "::notice::Published $BRIDGE_TAG."

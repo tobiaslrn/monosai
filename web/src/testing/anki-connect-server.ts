@@ -23,6 +23,14 @@ export interface FakeServerOptions {
   readonly permission?: 'granted' | 'denied';
   readonly requireApiKey?: boolean;
   readonly version?: number;
+  /**
+   * What this endpoint claims to be.
+   *
+   * `null` models an AnkiConnect-compatible endpoint that is not the
+   * first-party bridge and therefore announces no Monosai contract; the fixture
+   * identity is used when nothing is given.
+   */
+  readonly monosaiBridge?: { readonly version: string; readonly contract: number } | null;
   /** Throws like a browser reporting a refused, blocked, or rejected request. */
   readonly transportFailure?: boolean;
   readonly delayMs?: number;
@@ -189,13 +197,20 @@ export class FakeAnkiConnectServer {
     switch (action) {
       case 'version':
         return this.options.version ?? versionSchema.parse(protocolResult('version'));
-      case 'requestPermission':
+      case 'requestPermission': {
+        const fixture = permissionSchema.parse(protocolResult('requestPermission'));
+        const bridge =
+          this.options.monosaiBridge === undefined
+            ? fixture.monosaiBridge
+            : this.options.monosaiBridge;
         return {
-          ...permissionSchema.parse(protocolResult('requestPermission')),
+          ...fixture,
           permission: this.options.permission ?? 'granted',
           requireApiKey: this.options.requireApiKey ?? false,
           version: this.options.version ?? 6,
+          ...(bridge === null ? { monosaiBridge: undefined } : { monosaiBridge: bridge }),
         };
+      }
       case 'deckNames':
         return [...this.collection.deckNames];
       case 'modelNames':

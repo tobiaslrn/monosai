@@ -16,6 +16,22 @@ export const permissionSchema = z.object({
   permission: z.enum(['granted', 'denied']),
   requireApiKey: z.boolean().optional(),
   version: z.number().int().optional(),
+  /**
+   * The first-party bridge's own identity, which AnkiConnect and any other
+   * compatible endpoint leave out.
+   *
+   * It rides on `requestPermission` because the probe already asks for that
+   * before anything else, so a build the learner may need to update is named
+   * without a second round trip or a tenth allowed action. The bounds are here
+   * because this is a local endpoint Monosai does not control: an endpoint that
+   * answers with a megabyte of version string is not one to hand onward.
+   */
+  monosaiBridge: z
+    .object({
+      version: z.string().min(1).max(32),
+      contract: z.number().int().nonnegative().max(1_000),
+    })
+    .optional(),
 });
 
 export const nameListSchema = z.array(z.string());

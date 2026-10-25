@@ -26,7 +26,7 @@ const USE_PACKAGE = 'Export a package from Anki and import it here instead.';
 const TRY_AGAIN = 'Try again.';
 
 /**
- * English for all twenty-one Anki failures.
+ * English for all twenty-two Anki failures.
  *
  * The specification requires the UI to preserve every distinction the error
  * model makes, so this is exhaustive by type: adding a variant to
@@ -48,7 +48,7 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
     heading: 'The bridge needs access to AnkiDroid',
     whatFailed: 'AnkiDroid has not granted the bridge access to your collection.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Open the Monosai Anki bridge and grant AnkiDroid access, then connect again.',
+    primaryAction: 'Open Monosai Bridge and grant AnkiDroid access, then connect again.',
     escape: USE_PACKAGE,
   },
   'not-running': {
@@ -64,6 +64,14 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
     whatFailed: 'Monosai could not reach an AnkiConnect-compatible bridge on this device.',
     whatDidNot: NOTHING_SAVED,
     primaryAction: 'Start the bridge outside Monosai, then test the connection again.',
+    escape: USE_PACKAGE,
+  },
+  'bridge-too-old': {
+    heading: 'This bridge is too old',
+    whatFailed:
+      'Monosai Bridge answered, but it is older than this version of Monosai can read a collection from.',
+    whatDidNot: NOTHING_SAVED,
+    primaryAction: 'Update Monosai Bridge on this device, then connect again.',
     escape: USE_PACKAGE,
   },
   'addon-missing-or-unreachable': {
@@ -86,7 +94,7 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
       'AnkiConnect answers on this device but does not accept requests from the address this page is served from.',
     whatDidNot: NOTHING_SAVED,
     primaryAction:
-      "Add this page's address to the allowed origins in AnkiConnect or the Monosai Anki bridge, then connect again.",
+      "Add this page's address to the allowed origins in AnkiConnect or Monosai Bridge, then connect again.",
     escape: USE_PACKAGE,
   },
   timeout: {
@@ -277,6 +285,20 @@ export function connectFailureCopy(
         {
           before: 'Open the Monosai bridge and press Start. Do not have it? ',
           link: { href: ANKI_LINKS.bridgeReleases, text: 'Download the app' },
+          after: '.',
+        },
+        BRIDGE_IS_READ_ONLY,
+      ],
+      offersPort: false,
+    };
+  }
+  if (platform === 'android' && error.code === 'bridge-too-old') {
+    return {
+      headline: 'Your bridge is older than this app.',
+      paragraphs: [
+        {
+          before: 'Update Monosai Bridge, then try again. ',
+          link: { href: ANKI_LINKS.bridgeReleases, text: 'Get the latest version' },
           after: '.',
         },
         BRIDGE_IS_READ_ONLY,

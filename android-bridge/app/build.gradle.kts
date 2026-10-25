@@ -3,6 +3,44 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
+data class BridgeVersion(val code: Int, val name: String)
+
+/**
+ * The bounded MAJOR.MINOR.PATCH in `../version.txt`, mapped to the version code
+ * exactly as `scripts/bridge/release-version.mjs` maps it: major x 1,000,000 +
+ * minor x 1,000 + patch, so ordering never overlaps across component boundaries.
+ * `scripts/bridge/release-version.test.mjs` owns the boundary cases.
+ */
+val bridgeVersion: BridgeVersion by lazy {
+    val file = rootProject.file("version.txt")
+    val text = file.readText()
+    check(Regex("^[^\\n]+\\n$").matches(text)) { "${file.name} must hold one version and a newline" }
+    val match = Regex("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$").matchEntire(text.dropLast(1))
+    checkNotNull(match) { "${file.name} must hold MAJOR.MINOR.PATCH" }
+    val (major, minor, patch) = match.destructured.toList().map(String::toInt)
+    check(major <= 2099 && minor <= 999 && patch <= 999) { "Version component exceeds its range" }
+    val code = major * 1_000_000 + minor * 1_000 + patch
+    check(code >= 1) { "Invalid version code" }
+    BridgeVersion(code, "$major.$minor.$patch")
+}
+
+/**
+ * The loopback contract version in `../protocol/contract.txt`, which the web app
+ * negotiates against. It is deliberately not the release version: it moves only
+ * when the contract gains something a caller cannot discover by probing, so a
+ * release that only fixes behaviour leaves it alone.
+ */
+val bridgeContract: Int by lazy {
+    val file = rootProject.file("../protocol/contract.txt")
+    val text = file.readText()
+    check(Regex("^[^\\n]+\\n$").matches(text)) { "${file.name} must hold one contract version and a newline" }
+    val digits = text.dropLast(1)
+    check(Regex("^[1-9]\\d*$").matches(digits)) { "${file.name} must hold a single integer" }
+    val contract = digits.toInt()
+    check(contract <= 1_000) { "Contract version out of range" }
+    contract
+}
+
 android {
     namespace = "io.github.tobiaslrn.monosai.bridge"
     compileSdk = 36
@@ -10,8 +48,12 @@ android {
         applicationId = "io.github.tobiaslrn.monosai.bridge"
         minSdk = 36
         targetSdk = 36
-        versionCode = providers.environmentVariable("BRIDGE_VERSION_CODE").orElse("1").get().toInt()
-        versionName = providers.environmentVariable("BRIDGE_VERSION_NAME").orElse("0.1.0-dev").get()
+        // `version.txt` is the source of truth; the release lane derives its tag
+        // from it rather than the other way round, so a debug build on a bench
+        // reports the same version the published APK will.
+        versionCode = bridgeVersion.code
+        versionName = bridgeVersion.name
+        buildConfigField("int", "CONTRACT_VERSION", "$bridgeContract")
     }
     buildFeatures { buildConfig = true }
     signingConfigs {

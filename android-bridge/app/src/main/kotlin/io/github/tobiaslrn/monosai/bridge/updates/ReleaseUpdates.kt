@@ -68,7 +68,7 @@ class ReleaseUpdates(private val context: Context) {
     }
 }
 
-internal fun assetUrl(tag: String) = "https://github.com/tobiaslrn/monosai/releases/download/$tag/monosai-anki-bridge.apk"
+internal fun assetUrl(tag: String) = "https://github.com/tobiaslrn/monosai/releases/download/$tag/monosai-bridge.apk"
 internal fun parseReleases(body: String): List<BridgeRelease> = Json.parseToJsonElement(body).jsonArray.mapNotNull { element ->
     val release = element.jsonObject
     if (release["draft"]?.jsonPrimitive?.booleanOrNull != false || release["prerelease"]?.jsonPrimitive?.booleanOrNull != false) return@mapNotNull null

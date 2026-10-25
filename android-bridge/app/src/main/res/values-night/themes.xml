@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The night half of the theme; see values/themes.xml. -->
+<resources>
+    <style name="Theme.MonosaiBridge" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/surface_canvas</item>
+        <item name="android:colorAccent">@color/action_primary</item>
+        <item name="android:colorControlActivated">@color/action_primary</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorHint">@color/text_secondary</item>
+        <item name="android:textColorLink">@color/action_primary_text</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowSplashScreenBackground">@color/bridge_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/bridge_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/bridge_background</item>
+    </style>
+</resources>

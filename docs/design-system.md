@@ -18,6 +18,14 @@ This document describes what any screen may do. What a particular screen does is
 described by the screen's own code, and the structure it sits in is described by
 [the architecture documentation](arc42/README.md).
 
+It governs Monosai's native Android bridge as well as the PWA. The bridge cannot
+read the PWA's custom properties, so `android-bridge/app/src/main/res/values/`
+transcribes the same roles under the same names, with `values-night/` carrying the
+dark palette. That transcription is a copy and drifts like any copy: a token
+changed here is changed in both places, in the same commit. What the bridge does
+not copy is behaviour — its controls are framework widgets, so Android's text
+scaling, focus and touch semantics stay whatever the device says they are.
+
 ## 1. Principles
 
 1. **The text is the application.** Japanese is the only content Monosai has.
@@ -143,6 +151,14 @@ nearly the same words makes both harder to see.
 Pages are **top-aligned and grow downward**, like a document. Content is never
 centred vertically and never stretched to fill the viewport. A short page leaves
 the space below it empty, which is the honest result of having little to say.
+
+A section heading may carry one action opposite it, and that action opens work
+rather than holding it. What the learner is drafting — a pasted word list, an
+Anki mapping waiting to be confirmed — is a card at the head of the section it
+will change, on the section's full width, above the facts it has not changed
+yet. An editor rendered in the action slot instead gets the width a button asks
+for and grows the heading row around itself, which centres the heading beside a
+column of squeezed fields.
 
 Settings uses the same page frame as every other non-reader screen. Each
 top-level group is one quiet raised card with a compact section heading. The
@@ -436,6 +452,19 @@ need an anchor in the page underneath it. The backdrop and focus treatment are
 shared, while the content decides whether its safe dismissal is Cancel, Close,
 or a committed primary action.
 
+Every docked sheet carries the same grab handle, whatever surface it is built
+on, because the handle is the sheet's only way out. Dragging it down dismisses
+the sheet and a plain press does the same; either discards whatever the sheet
+was drafting, exactly as dismissing it from outside would. A sheet that commits
+its draft does so through its own primary action, never through the handle.
+
+The gesture is read the way a phone reads it. The sheet follows the finger
+exactly while it is held. Letting go answers with the same two outcomes a
+native sheet gives: a drag that went far enough, or a downward flick of any
+length, sends the sheet away, and anything less settles it back against its
+edge. Speed counts because a short flick is how a sheet is usually put away,
+and a sheet that waits to be dragged the full distance feels deaf to it.
+
 Add words is the one sheet opened from a native popover rather than a dialog,
 because it must stay open while a file chooser is up. It follows the same
 placement — hanging from its control on a wide screen, docked to the bottom
@@ -560,7 +589,12 @@ that cap and the remaining space above that boundary with the standard top gap.
 The player and the sheet account for the safe-area inset once. Opening or
 closing the player, resizing it, and changing the viewport remeasure that
 boundary. A sentence card keeps its grab handle and its action tray visible
-while the translation, warnings, and grammar scroll between them.
+while the translation, warnings, and grammar scroll between them. Both are
+full-bleed and opaque to the card's own edge, so nothing scrolls visibly past
+them: a card whose content ends in a sticky footer gives that footer the card's
+bottom padding, exactly as a docked sheet gives its grab handle the top one. A
+sticky row stops at the content edge, and padding left on the card behind it is
+a strip the content shows through.
 
 An open sheet never covers the line it explains: the reading scrolls just far
 enough to clear the pressed line, reserving temporary room when the press was at
@@ -596,8 +630,11 @@ as squiggles as well as colours; status is named as well as tinted.
 ### Type
 
 UI text uses a local system sans-serif stack. Japanese uses a system Japanese
-gothic stack. No font is downloaded, ever — a reading application that cannot
-render Japanese until a network request completes is not local-first.
+gothic stack. An identifier the learner has to copy character for character — a
+model ID, an error code, a config key — uses a local system monospace stack, so
+that case and punctuation stay legible. No font is downloaded, ever — a reading
+application that cannot render Japanese until a network request completes is not
+local-first.
 
 The one display face is the wordmark: _monosai_ in Pacifico,
 ものさい in Zen Maru Gothic Black. It ships as outlined SVG paths, not as a
@@ -685,6 +722,13 @@ is still working, or that a value changed. A sheet rises from the edge it
 docks to. A generation fill breathes while requests are open. A control settles
 into its new state rather than cutting to it.
 
+A sheet leaves by the edge it arrived from, and a dismissal continues the
+gesture that asked for it: the slide starts wherever the finger let go rather
+than from the docked position, and the scrim of a modal sheet fades with it.
+Arrival decelerates into place and departure accelerates away, which is what
+makes the same distance read as settling one way and leaving the other. A
+surface that is cut away between frames reads as a fault, not as an answer.
+
 Beyond that, **a little character is allowed, and only on apparatus**: a spring
 on the play control, a settle on a popover arriving. The budget for it is small
 and it is spent on things the learner acts on or waits for.
@@ -735,13 +779,22 @@ describes what a section obviously contains, is removed rather than reworded.
 
 Four exceptions:
 
-- **Help is a prose surface.** Its job is explanation: static, local English
-  guidance uses one readable column, section headings, short paragraphs, and
-  links close to the actions they explain. It needs no cards around each topic.
+- **Help is a prose surface, and it is a guide rather than a page.** Its job is
+  explanation: static, local English guidance in one readable column, with
+  section headings, short paragraphs, and links close to the actions they
+  explain. `/help` carries what the application is for, what it is not for, and a
+  shelf of topics; each topic is its own route below it, wearing the shared page
+  frame with Back to Help and ending in its neighbours. The measure and the prose
+  elements live in `.mn-prose`, so a topic page writes words and nothing else.
+  Two options being compared are a card each, never a table: the figures are few,
+  the prose beside them is long, and a table of that shape either scrolls
+  sideways on a phone or breaks a model ID down to one character a line. A guide
+  row is the one shelf row whose secondary line may wrap past one line, because
+  it says what a topic answers rather than what a thing contains.
   A quiet, non-modal first-use banner offers Help on a non-reader
   surface without moving focus or covering the app. Dismissal records the preference for this local installation;
   the guide remains among the Library's utilities. Reader deep links are never
-  interrupted.
+  interrupted. See [ADR 0079](decisions/0079-help-is-a-hub-of-topics.md).
 
 - **Empty states teach.** An empty surface has nothing but words to work with,
   so any empty list explains what belongs there and how to fill it. The

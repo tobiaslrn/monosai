@@ -10,7 +10,6 @@ import {
   ICON_SOURCE_PATH,
   ICON_TARGETS,
   ICONS_OUTPUT_DIR,
-  MASKABLE_LIFT,
   MASKABLE_SCALE,
 } from './lib/layout.mjs';
 
@@ -34,35 +33,21 @@ function createIco(png, size) {
 
 /**
  * Runs in the page: paints the background, then the mascot at `scale` of the
- * canvas, centred and raised `lift` above the bottom edge. The mascot's bottom
- * row is stretched down to the edge so its body still leaves the canvas.
+ * canvas, centred horizontally and flush with the bottom edge. Every pixel the
+ * mascot contributes is one it was authored with; nothing is extended or
+ * stretched to reach an edge.
  */
-async function drawIcon(canvas, { sourceUrl, background, scale, lift }) {
+async function drawIcon(canvas, { sourceUrl, background, scale }) {
   const image = new Image();
   image.src = sourceUrl;
   await image.decode();
   const size = canvas.width;
   const width = size * scale;
-  const x = (size - width) / 2;
-  const y = size - width - size * lift;
-  const bottom = y + width;
   const context = canvas.getContext('2d');
   context.imageSmoothingQuality = 'high';
   context.fillStyle = background;
   context.fillRect(0, 0, size, size);
-  const { naturalWidth, naturalHeight } = image;
-  context.drawImage(
-    image,
-    0,
-    naturalHeight - 1,
-    naturalWidth,
-    1,
-    x,
-    bottom - 1,
-    width,
-    size - bottom + 1,
-  );
-  context.drawImage(image, x, y, width, width);
+  context.drawImage(image, (size - width) / 2, size - width, width, width);
 }
 
 /**
@@ -77,7 +62,10 @@ async function main() {
   const sourceUrl = `data:image/png;base64,${sourcePng.toString('base64')}`;
   await mkdir(ICONS_OUTPUT_DIR, { recursive: true });
 
-  const browser = await chromium.launch();
+  // Unset everywhere but a sandbox whose Chromium is not the pinned build;
+  // see web/playwright.chromium.ts for why that override exists at all.
+  const executablePath = process.env['MONOSAI_CHROMIUM_EXECUTABLE'];
+  const browser = await chromium.launch(executablePath ? { executablePath } : {});
   try {
     const page = await browser.newPage();
     for (const target of ICON_TARGETS) {
@@ -91,7 +79,6 @@ async function main() {
         sourceUrl,
         background: ICON_BACKGROUND,
         scale: maskable ? MASKABLE_SCALE : 1,
-        lift: maskable ? MASKABLE_LIFT : 0,
       });
       const buffer = await page.screenshot({
         clip: { x: 0, y: 0, width: target.size, height: target.size },
