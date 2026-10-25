@@ -48,7 +48,10 @@ test touches counts against the thresholds.
 
 The topics are the questions in the order a first-time learner asks them: first
 steps, the words Monosai reads from, reading a story, choosing a text model,
-voice and audio, installing and offline, then common questions.
+voice and audio, installing and offline, common questions, then error codes. The
+error codes topic holds what used to be a troubleshooting page in the repository:
+a learner who sees a code on a failure screen looks for it in the application, and
+the page works offline like the rest of the guide.
 
 **The application is where the guidance lives.** Model names, what a weak model
 gets wrong, and what a story costs are on the model and voice pages, with the date

@@ -21,6 +21,9 @@ export const ANKI_LINKS = {
   bridgeSource: 'https://github.com/tobiaslrn/monosai/tree/main/android-bridge',
   /** iOS has no other route, and package failures already ask for a re-export. */
   ankiExporting: 'https://docs.ankiweb.net/exporting.html',
-  /** The doc is keyed by the `anki/*` codes the failure panels print. */
-  troubleshooting: 'https://github.com/tobiaslrn/monosai/blob/main/docs/troubleshooting.md',
+  /**
+   * The guide's error-code topic, keyed by the `anki/*` codes the failure panels
+   * print. A hash route relative to the page, so it opens in the same deployment.
+   */
+  troubleshooting: './#/help/error-codes',
 } as const;

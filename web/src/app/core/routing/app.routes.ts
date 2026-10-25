@@ -52,6 +52,10 @@ const HELP_TOPIC_PAGES: Record<HelpTopicSlug, () => Promise<Type<unknown>>> = {
     import('../../features/help/topics/questions-page.component').then(
       (m) => m.QuestionsPageComponent,
     ),
+  'error-codes': () =>
+    import('../../features/help/topics/error-codes-page.component').then(
+      (m) => m.ErrorCodesPageComponent,
+    ),
 };
 
 /**

@@ -186,14 +186,8 @@ import { HelpArticleComponent } from '../help-article.component';
           again.
         </p>
         <p>
-          The
-          <a
-            href="https://github.com/tobiaslrn/monosai/blob/main/docs/troubleshooting.md"
-            target="_blank"
-            rel="noopener noreferrer"
-            >full list of codes</a
-          >
-          is in the repository, with the cause and the fix for each one.
+          <a routerLink="/help/error-codes">Error codes</a> lists every code, with the cause and the
+          fix for each one.
         </p>
       </section>
 

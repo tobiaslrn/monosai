@@ -37,7 +37,7 @@ Android, and the bridge source beside the read-only claim. The port moved out of
 Settings and into that panel, behind "Different port" — it is only ever touched
 when a connection fails, and that is where the learner is standing when it does.
 Every failure prints its `anki/*` code beside a link to
-[troubleshooting](../troubleshooting.md), which is already keyed by those codes.
+the guide's error codes topic, which is keyed by those codes.
 One warning line replaces the three stale-source surfaces; a source that is
 merely out of date still counts, from its last read, and the line says so.
 

@@ -121,7 +121,7 @@ test.describe('Help and utility bar', () => {
 
     await page.getByRole('link', { name: 'All topics' }).click();
     await expect(page).toHaveURL(/#\/help$/);
-    await expect(page.getByTestId('help-topic')).toHaveCount(7);
+    await expect(page.getByTestId('help-topic')).toHaveCount(8);
   });
 
   test('supports keyboard focus, accessibility, reload, and a 320px viewport @mobile @smoke', async ({

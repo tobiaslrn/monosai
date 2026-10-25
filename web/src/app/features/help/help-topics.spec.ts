@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 import { adjacentHelpTopics, HELP_TOPICS } from './help-topics';
+import { ErrorCodesPageComponent } from './topics/error-codes-page.component';
 import { FirstStepsPageComponent } from './topics/first-steps-page.component';
 import { InstallPageComponent } from './topics/install-page.component';
 import { QuestionsPageComponent } from './topics/questions-page.component';
@@ -20,6 +21,7 @@ const TOPIC_PAGES: readonly (readonly [string, Type<unknown>])[] = [
   ['voice', VoicePageComponent],
   ['install', InstallPageComponent],
   ['questions', QuestionsPageComponent],
+  ['error-codes', ErrorCodesPageComponent],
 ];
 
 function render(component: Type<unknown>): HTMLElement {
@@ -37,7 +39,7 @@ describe('help topics', () => {
   it('names the neighbours of a topic, and the ends of the guide', () => {
     expect(adjacentHelpTopics('first-steps').previous).toBeNull();
     expect(adjacentHelpTopics('first-steps').next?.slug).toBe('your-words');
-    expect(adjacentHelpTopics('questions').next).toBeNull();
+    expect(adjacentHelpTopics('error-codes').next).toBeNull();
     expect(adjacentHelpTopics('nothing-like-this')).toEqual({ previous: null, next: null });
   });
 
@@ -107,6 +109,14 @@ describe('help topic content', () => {
     expect(text).toContain('ai/credit-exhausted');
     expect(text).toContain('Saving the key again will not help');
     expect(text).toContain('ai/authentication');
+  });
+
+  it('lists codes from every group on the error codes page', () => {
+    const text = render(ErrorCodesPageComponent).textContent.replace(/\s+/g, ' ');
+    expect(text).toContain('ai/credit-exhausted');
+    expect(text).toContain('anki/origin-not-allowed');
+    expect(text).toContain('language/assets-unavailable');
+    expect(text).toContain('storage/quota');
   });
 
   it('says where the data is and what leaves the device', () => {

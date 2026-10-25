@@ -8,7 +8,14 @@ import type { IconName } from '../../shared-ui/icon/icon-set';
  * rather than a row that leads nowhere.
  */
 export type HelpTopicSlug =
-  'first-steps' | 'your-words' | 'reading' | 'text-models' | 'voice' | 'install' | 'questions';
+  | 'first-steps'
+  | 'your-words'
+  | 'reading'
+  | 'text-models'
+  | 'voice'
+  | 'install'
+  | 'questions'
+  | 'error-codes';
 
 /**
  * One topic in the guide.
@@ -67,6 +74,12 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     title: 'Common questions',
     summary: 'Cost, privacy, limits, and when something fails.',
     icon: 'info',
+  },
+  {
+    slug: 'error-codes',
+    title: 'Error codes',
+    summary: 'What a code on a failure screen means, and what to do about it.',
+    icon: 'warning',
   },
 ] as const;
 
