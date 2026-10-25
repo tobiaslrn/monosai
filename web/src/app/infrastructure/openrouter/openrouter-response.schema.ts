@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import { MAX_STORY_SEGMENT_SENTENCES, MAX_STORY_SENTENCES } from '../../domain/ai/story-request';
 
 /**

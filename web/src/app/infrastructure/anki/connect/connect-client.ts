@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import type * as z from 'zod';
 import type { Logger } from '../../../application/shared/diagnostics';
 import { ankiError, type AnkiError, type AnkiErrorCode } from '../../../domain/anki/anki-error';
 import { err, ok, type Result } from '../../../domain/shared/result';

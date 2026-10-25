@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import {
   DEFAULT_ANKI_CONNECT_PORT,
   DEFAULT_RECENT_FOCUS_SIZE,

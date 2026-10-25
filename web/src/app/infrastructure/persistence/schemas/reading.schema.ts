@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import {
   INFLECTION_FORM_LABELS,
   PART_OF_SPEECH_LABELS,

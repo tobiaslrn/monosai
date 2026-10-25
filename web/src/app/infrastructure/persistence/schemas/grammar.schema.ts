@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import {
   GRAMMAR_PRESET_IDS_EASIEST_FIRST,
   MAXIMUM_GUIDANCE_LENGTH,

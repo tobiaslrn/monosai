@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import type * as z from 'zod';
 import type { Logger } from '../../application/shared/diagnostics';
 import { aiError, isAutomaticallyRetryable, type AiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';

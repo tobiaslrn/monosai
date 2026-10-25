@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 /**
  * AnkiConnect always answers with this envelope, including for failures: the

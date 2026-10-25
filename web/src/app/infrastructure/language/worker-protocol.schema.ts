@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import { snapshotId, vocabularyItemId } from '../../domain/shared/ids';
 import { INFLECTION_FORM_LABELS, type InflectionForm } from '../../domain/reading/token';
 import {

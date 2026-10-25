@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { z } from 'zod';
+import * as z from 'zod';
 import { connectEnvelopeSchema } from '../app/infrastructure/anki/connect/connect-response.schema';
 
 const directory = resolve(process.cwd(), '../protocol/fixtures');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { z } from 'zod';
+import type * as z from 'zod';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { OpenRouterRequestContext } from './openrouter-client';
