@@ -21,6 +21,8 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 import { MAX_STORY_TOKEN_BUDGET } from '../../domain/settings/settings';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { PopupDirective, PopupTriggerDirective } from '../../shared-ui/popup/popup.directive';
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
 import { ModelPickerComponent } from './model-picker.component';
 import { TokenBudgetFieldComponent } from './token-budget-field.component';
@@ -49,25 +51,22 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     FormsModule,
     IconComponent,
     ModelPickerComponent,
+    PopupDirective,
+    PopupTriggerDirective,
+    SettingsRowComponent,
     SettingsSectionComponent,
     TokenBudgetFieldComponent,
   ],
-  host: {
-    '(document:pointerdown)': 'closeConnectionMenuFromOutside($event)',
-    '(document:keydown.escape)': 'connectionMenuOpen.set(false)',
-  },
   template: `
     <mn-settings-section heading="AI">
-      <div class="mn-card mn-card--flush mn-settings-card mn-settings-card--overlay">
+      <div class="mn-card mn-card--flush mn-settings-card">
         <div class="connection">
           <button
-            #connectionButton
             type="button"
             class="mn-settings-row mn-settings-row--interactive"
             data-testid="connect-openrouter"
-            [attr.aria-expanded]="connectionMenuOpen()"
             aria-haspopup="dialog"
-            (click)="toggleConnectionMenu()"
+            [mnPopupTrigger]="connection"
           >
             <span class="mn-settings-row__label">
               <span class="mn-settings-row__title">OpenRouter key</span>
@@ -82,13 +81,14 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
               <mn-icon class="mn-settings-chevron" name="chevron-right" [size]="18" />
             </span>
           </button>
-          @if (connectionMenuOpen()) {
-            <div
-              #connectionMenu
-              class="connection-menu"
-              role="dialog"
-              aria-label="OpenRouter connection"
-            >
+          <div
+            mnPopup
+            #connection="mnPopup"
+            class="mn-popup--start connection-menu"
+            role="dialog"
+            aria-label="OpenRouter connection"
+          >
+            @if (connection.isOpen()) {
               <!--
                 What OpenRouter is and where a key comes from, on the one screen
                 a first-run blocker sends people to. Money and an external
@@ -134,8 +134,8 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                   </button>
                 }
               </div>
-            </div>
-          }
+            }
+          </div>
         </div>
 
         <!--
@@ -144,7 +144,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       -->
         @if (credential.isConfigured()) {
           <section
-            class="node mn-inset mn-settings-group mn-settings-group--overlay"
+            class="node mn-inset mn-settings-group"
             aria-labelledby="mn-text-model-label"
             data-capability="text"
             [attr.data-readiness]="text.readiness()"
@@ -173,64 +173,49 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
               </div>
             </div>
 
-            <div class="mn-settings-row">
-              <div class="mn-settings-row__label">
-                <span class="mn-settings-row__title">Model</span>
-              </div>
-              <div class="mn-settings-row__end">
-                <mn-model-picker
-                  [compact]="true"
-                  data-testid="text-model-picker"
-                  label="text models"
-                  [models]="textModels()"
-                  [favoriteIds]="text.favoriteModelIds()"
-                  [selectedId]="text.settings().modelId"
-                  [selectedLabel]="storyModelLabel()"
-                  [loading]="catalogLoading()"
-                  [failure]="catalogFailure()"
-                  [disabled]="!credential.isConfigured()"
-                  (opened)="loadCatalog()"
-                  (modelSelected)="selectStoryModel($event)"
-                  (favoriteToggled)="text.toggleFavorite($event)"
-                />
-              </div>
-            </div>
+            <mn-settings-row label="Model">
+              <mn-model-picker
+                [compact]="true"
+                data-testid="text-model-picker"
+                label="text models"
+                [models]="textModels()"
+                [favoriteIds]="text.favoriteModelIds()"
+                [selectedId]="text.settings().modelId"
+                [selectedLabel]="storyModelLabel()"
+                [loading]="catalogLoading()"
+                [failure]="catalogFailure()"
+                [disabled]="!credential.isConfigured()"
+                (opened)="loadCatalog()"
+                (modelSelected)="selectStoryModel($event)"
+                (favoriteToggled)="text.toggleFavorite($event)"
+              />
+            </mn-settings-row>
 
-            <div class="mn-settings-row">
-              <div class="mn-settings-row__label">
-                <span class="mn-settings-row__title" id="mn-text-reasoning-label">Reasoning</span>
-              </div>
-              <div class="mn-settings-row__end">
-                <select
-                  class="mn-control"
-                  aria-labelledby="mn-text-reasoning-label"
-                  [disabled]="!credential.isConfigured()"
-                  [ngModel]="text.settings().reasoningEffort ?? ''"
-                  (change)="setStoryReasoning($event)"
-                >
-                  <option value="">Automatic</option>
-                  @for (effort of reasoningEfforts(selectedStoryModel()); track effort) {
-                    <option [value]="effort">{{ titleCase(effort) }}</option>
-                  }
-                </select>
-              </div>
-            </div>
+            <mn-settings-row label="Reasoning" labelId="mn-text-reasoning-label">
+              <select
+                class="mn-control"
+                aria-labelledby="mn-text-reasoning-label"
+                [disabled]="!credential.isConfigured()"
+                [ngModel]="text.settings().reasoningEffort ?? ''"
+                (change)="setStoryReasoning($event)"
+              >
+                <option value="">Automatic</option>
+                @for (effort of reasoningEfforts(selectedStoryModel()); track effort) {
+                  <option [value]="effort">{{ titleCase(effort) }}</option>
+                }
+              </select>
+            </mn-settings-row>
 
-            <div class="mn-settings-row">
-              <div class="mn-settings-row__label">
-                <span class="mn-settings-row__title" id="mn-text-limit-label">Token limit</span>
-              </div>
-              <div class="mn-settings-row__end">
-                <mn-token-budget-field
-                  testId="story-token-budget-input"
-                  labelledBy="mn-text-limit-label"
-                  [value]="text.settings().storyTokenBudget"
-                  [maxValue]="storyTokenBudgetMax()"
-                  [disabled]="!credential.isConfigured()"
-                  (committed)="saveStoryBudget($event)"
-                />
-              </div>
-            </div>
+            <mn-settings-row label="Token limit" labelId="mn-text-limit-label">
+              <mn-token-budget-field
+                testId="story-token-budget-input"
+                labelledBy="mn-text-limit-label"
+                [value]="text.settings().storyTokenBudget"
+                [maxValue]="storyTokenBudgetMax()"
+                [disabled]="!credential.isConfigured()"
+                (committed)="saveStoryBudget($event)"
+              />
+            </mn-settings-row>
 
             <details
               class="mn-settings-details branches"
@@ -258,94 +243,73 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                         : text.routeReadiness(task.id)
                     "
                   >
-                    <div class="mn-settings-row">
-                      <div class="mn-settings-row__label">
-                        <span class="mn-settings-row__title" [id]="'mn-' + task.id + '-label'">
-                          {{ task.label }}
-                        </span>
-                      </div>
-                      <div class="mn-settings-row__end">
-                        @if (
-                          text.routePreset(task.id) !== null &&
-                          retestable(text.routeReadiness(task.id))
-                        ) {
-                          <button
-                            type="button"
-                            class="mn-button mn-button--ghost"
-                            data-testid="test-text-model"
-                            [disabled]="text.action() !== 'idle'"
-                            (click)="text.testTask(task.id)"
-                          >
-                            {{
-                              statusLabel(text.routeReadiness(task.id), text.action() === 'testing')
-                            }}
-                          </button>
-                        } @else if (
-                          text.routePreset(task.id) !== null &&
-                          text.routeReadiness(task.id) === 'ready'
-                        ) {
-                          <span class="mn-status-pill mn-status-pill--success">Ready</span>
-                        }
-                        <mn-model-picker
-                          [compact]="true"
-                          [attr.data-testid]="task.id + '-model-picker'"
-                          [label]="task.label + ' models'"
-                          fallbackLabel="Same as text"
-                          [models]="textModels()"
-                          [favoriteIds]="text.favoriteModelIds()"
-                          [selectedId]="routeModelId(task.id)"
-                          [selectedLabel]="text.routePreset(task.id)?.name ?? null"
-                          [loading]="catalogLoading()"
-                          [failure]="catalogFailure()"
-                          [disabled]="!credential.isConfigured()"
-                          (opened)="loadCatalog()"
-                          (fallbackSelected)="clearTaskModel(task.id)"
-                          (modelSelected)="selectTaskModel(task.id, $event)"
-                          (favoriteToggled)="text.toggleFavorite($event)"
-                        />
-                      </div>
-                    </div>
+                    <mn-settings-row [label]="task.label" [labelId]="'mn-' + task.id + '-label'">
+                      @if (
+                        text.routePreset(task.id) !== null &&
+                        retestable(text.routeReadiness(task.id))
+                      ) {
+                        <button
+                          type="button"
+                          class="mn-button mn-button--ghost"
+                          data-testid="test-text-model"
+                          [disabled]="text.action() !== 'idle'"
+                          (click)="text.testTask(task.id)"
+                        >
+                          {{
+                            statusLabel(text.routeReadiness(task.id), text.action() === 'testing')
+                          }}
+                        </button>
+                      } @else if (
+                        text.routePreset(task.id) !== null &&
+                        text.routeReadiness(task.id) === 'ready'
+                      ) {
+                        <span class="mn-status-pill mn-status-pill--success">Ready</span>
+                      }
+                      <mn-model-picker
+                        [compact]="true"
+                        [attr.data-testid]="task.id + '-model-picker'"
+                        [label]="task.label + ' models'"
+                        fallbackLabel="Same as text"
+                        [models]="textModels()"
+                        [favoriteIds]="text.favoriteModelIds()"
+                        [selectedId]="routeModelId(task.id)"
+                        [selectedLabel]="text.routePreset(task.id)?.name ?? null"
+                        [loading]="catalogLoading()"
+                        [failure]="catalogFailure()"
+                        [disabled]="!credential.isConfigured()"
+                        (opened)="loadCatalog()"
+                        (fallbackSelected)="clearTaskModel(task.id)"
+                        (modelSelected)="selectTaskModel(task.id, $event)"
+                        (favoriteToggled)="text.toggleFavorite($event)"
+                      />
+                    </mn-settings-row>
 
                     @if (text.routePreset(task.id) !== null) {
                       <div class="mn-settings-subrows">
-                        <div class="mn-settings-row">
-                          <div class="mn-settings-row__label">
-                            <span
-                              class="mn-settings-row__title"
-                              [id]="'mn-' + task.id + '-reasoning-label'"
-                            >
-                              Reasoning
-                            </span>
-                          </div>
-                          <div class="mn-settings-row__end">
-                            <select
-                              class="mn-control"
-                              [attr.aria-labelledby]="'mn-' + task.id + '-reasoning-label'"
-                              [ngModel]="text.routePreset(task.id)?.reasoningEffort ?? ''"
-                              (change)="setTaskReasoning(task.id, $event)"
-                            >
-                              <option value="">Automatic</option>
-                              @for (effort of reasoningEfforts(routeModel(task.id)); track effort) {
-                                <option [value]="effort">{{ titleCase(effort) }}</option>
-                              }
-                            </select>
-                          </div>
-                        </div>
-                        <div class="mn-settings-row">
-                          <div class="mn-settings-row__label">
-                            <span class="mn-settings-row__title" [id]="'mn-' + task.id + '-limit'">
-                              Token limit
-                            </span>
-                          </div>
-                          <div class="mn-settings-row__end">
-                            <mn-token-budget-field
-                              [labelledBy]="'mn-' + task.id + '-limit'"
-                              [value]="text.routeTokenBudget(task.id)"
-                              [maxValue]="tokenBudgetMax(routeModel(task.id))"
-                              (committed)="setTaskBudget(task.id, $event)"
-                            />
-                          </div>
-                        </div>
+                        <mn-settings-row
+                          label="Reasoning"
+                          [labelId]="'mn-' + task.id + '-reasoning-label'"
+                        >
+                          <select
+                            class="mn-control"
+                            [attr.aria-labelledby]="'mn-' + task.id + '-reasoning-label'"
+                            [ngModel]="text.routePreset(task.id)?.reasoningEffort ?? ''"
+                            (change)="setTaskReasoning(task.id, $event)"
+                          >
+                            <option value="">Automatic</option>
+                            @for (effort of reasoningEfforts(routeModel(task.id)); track effort) {
+                              <option [value]="effort">{{ titleCase(effort) }}</option>
+                            }
+                          </select>
+                        </mn-settings-row>
+                        <mn-settings-row label="Token limit" [labelId]="'mn-' + task.id + '-limit'">
+                          <mn-token-budget-field
+                            [labelledBy]="'mn-' + task.id + '-limit'"
+                            [value]="text.routeTokenBudget(task.id)"
+                            [maxValue]="tokenBudgetMax(routeModel(task.id))"
+                            (committed)="setTaskBudget(task.id, $event)"
+                          />
+                        </mn-settings-row>
                       </div>
                     }
                   </div>
@@ -355,7 +319,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
           </section>
 
           <section
-            class="node mn-inset mn-settings-group mn-settings-group--overlay"
+            class="node mn-inset mn-settings-group"
             aria-labelledby="mn-audio-model-label"
             data-capability="audio"
             [attr.data-readiness]="tts.readiness()"
@@ -394,104 +358,84 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
               </div>
             </div>
 
-            <div class="mn-settings-row">
-              <div class="mn-settings-row__label">
-                <span class="mn-settings-row__title">Model</span>
-              </div>
-              <div class="mn-settings-row__end">
-                <mn-model-picker
-                  [compact]="true"
-                  data-testid="audio-model-picker"
-                  label="speech models"
-                  [speech]="true"
-                  [models]="speechModels()"
-                  [favoriteIds]="tts.favoriteModelIds()"
-                  [selectedId]="tts.settings().modelId"
-                  [selectedLabel]="speechModelLabel()"
-                  [loading]="catalogLoading()"
-                  [failure]="catalogFailure()"
-                  [disabled]="!credential.isConfigured()"
-                  (opened)="loadCatalog()"
-                  (modelSelected)="selectSpeechModel($event)"
-                  (favoriteToggled)="tts.toggleFavorite($event)"
-                />
-              </div>
-            </div>
+            <mn-settings-row label="Model">
+              <mn-model-picker
+                [compact]="true"
+                data-testid="audio-model-picker"
+                label="speech models"
+                [speech]="true"
+                [models]="speechModels()"
+                [favoriteIds]="tts.favoriteModelIds()"
+                [selectedId]="tts.settings().modelId"
+                [selectedLabel]="speechModelLabel()"
+                [loading]="catalogLoading()"
+                [failure]="catalogFailure()"
+                [disabled]="!credential.isConfigured()"
+                (opened)="loadCatalog()"
+                (modelSelected)="selectSpeechModel($event)"
+                (favoriteToggled)="tts.toggleFavorite($event)"
+              />
+            </mn-settings-row>
 
-            <div class="mn-settings-row">
-              <div class="mn-settings-row__label">
-                <span class="mn-settings-row__title" id="mn-voice-label">Voice ID</span>
-              </div>
-              <div class="mn-settings-row__end">
-                @if (selectedSpeechModel()?.supportedVoices?.length) {
-                  <select
-                    class="mn-control"
-                    aria-label="Voice"
-                    aria-labelledby="mn-voice-label"
-                    [disabled]="!credential.isConfigured()"
-                    [ngModel]="tts.draft().voiceId"
-                    (change)="setVoice($event)"
-                  >
-                    @for (voice of selectedSpeechModel()?.supportedVoices ?? []; track voice) {
-                      <option [value]="voice">{{ voice }}</option>
-                    }
-                  </select>
-                } @else {
-                  <input
-                    class="mn-control"
-                    type="text"
-                    aria-label="Voice"
-                    aria-labelledby="mn-voice-label"
-                    placeholder="Default"
-                    [disabled]="!credential.isConfigured()"
-                    [value]="tts.draft().voiceId"
-                    (change)="setVoice($event)"
-                  />
-                }
-              </div>
-            </div>
-
-            @if (tts.acceptsDirection()) {
-              <div class="mn-settings-row">
-                <div class="mn-settings-row__label">
-                  <span class="mn-settings-row__title" id="mn-style-label">Speaking style</span>
-                </div>
-                <div class="mn-settings-row__end">
-                  <select
-                    class="mn-control"
-                    data-testid="tts-style-select"
-                    aria-labelledby="mn-style-label"
-                    [disabled]="!credential.isConfigured()"
-                    [ngModel]="tts.draft().speechStyle"
-                    (change)="setSpeechStyle($event)"
-                  >
-                    <option value="natural">Natural</option>
-                    <option value="clear">Clear</option>
-                    <option value="very-clear">Very clear</option>
-                  </select>
-                </div>
-              </div>
-            }
-
-            <div class="mn-settings-row">
-              <div class="mn-settings-row__label">
-                <span class="mn-settings-row__title" id="mn-pace-label">Pace</span>
-              </div>
-              <div class="mn-settings-row__end">
+            <mn-settings-row label="Voice ID" labelId="mn-voice-label">
+              @if (selectedSpeechModel()?.supportedVoices?.length) {
                 <select
                   class="mn-control"
-                  data-testid="tts-pace-select"
-                  aria-labelledby="mn-pace-label"
+                  aria-label="Voice"
+                  aria-labelledby="mn-voice-label"
                   [disabled]="!credential.isConfigured()"
-                  [ngModel]="tts.draft().speechPace"
-                  (change)="setSpeechPace($event)"
+                  [ngModel]="tts.draft().voiceId"
+                  (change)="setVoice($event)"
+                >
+                  @for (voice of selectedSpeechModel()?.supportedVoices ?? []; track voice) {
+                    <option [value]="voice">{{ voice }}</option>
+                  }
+                </select>
+              } @else {
+                <input
+                  class="mn-control"
+                  type="text"
+                  aria-label="Voice"
+                  aria-labelledby="mn-voice-label"
+                  placeholder="Default"
+                  [disabled]="!credential.isConfigured()"
+                  [value]="tts.draft().voiceId"
+                  (change)="setVoice($event)"
+                />
+              }
+            </mn-settings-row>
+
+            @if (tts.acceptsDirection()) {
+              <mn-settings-row label="Speaking style" labelId="mn-style-label">
+                <select
+                  class="mn-control"
+                  data-testid="tts-style-select"
+                  aria-labelledby="mn-style-label"
+                  [disabled]="!credential.isConfigured()"
+                  [ngModel]="tts.draft().speechStyle"
+                  (change)="setSpeechStyle($event)"
                 >
                   <option value="natural">Natural</option>
-                  <option value="slow">Slow</option>
-                  <option value="very-slow">Very slow</option>
+                  <option value="clear">Clear</option>
+                  <option value="very-clear">Very clear</option>
                 </select>
-              </div>
-            </div>
+              </mn-settings-row>
+            }
+
+            <mn-settings-row label="Pace" labelId="mn-pace-label">
+              <select
+                class="mn-control"
+                data-testid="tts-pace-select"
+                aria-labelledby="mn-pace-label"
+                [disabled]="!credential.isConfigured()"
+                [ngModel]="tts.draft().speechPace"
+                (change)="setSpeechPace($event)"
+              >
+                <option value="natural">Natural</option>
+                <option value="slow">Slow</option>
+                <option value="very-slow">Very slow</option>
+              </select>
+            </mn-settings-row>
 
             @if (audioReadinessNote(); as note) {
               <p class="mn-settings-feedback" data-testid="audio-readiness-note">{{ note }}</p>
@@ -524,31 +468,16 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     </mn-settings-section>
   `,
   styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
     h3,
     p {
       margin: 0;
     }
-    .connection {
-      position: relative;
-      min-width: 0;
-    }
-    .connection > .mn-settings-row {
-      position: relative;
-    }
-    .connection-menu {
-      position: absolute;
-      z-index: 30;
-      inset: calc(100% + var(--space-1)) var(--space-4) auto;
+    .connection-menu:popover-open {
       display: grid;
       gap: var(--space-3);
-      width: min(23rem, calc(100% - 2 * var(--space-4)));
+      width: min(23rem, calc(100vw - 4 * var(--space-4)));
+      margin-inline-start: var(--space-4);
       padding: var(--space-3);
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-control);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
     }
     .connection-actions {
       justify-content: flex-end;
@@ -570,15 +499,6 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     .branches .mn-settings-subrows .mn-settings-subrows {
       padding-inline-start: var(--space-4);
     }
-
-    @media (max-width: breakpoints.$narrow-max) {
-      .connection-menu {
-        position: static;
-        width: auto;
-        margin: 0 var(--space-3) var(--space-2);
-        box-shadow: none;
-      }
-    }
   `,
 })
 export class ModelsSectionComponent {
@@ -597,7 +517,6 @@ export class ModelsSectionComponent {
       ? 'Connected'
       : 'Key saved';
   });
-  protected readonly connectionMenuOpen = signal(false);
   protected readonly branchesOpen = signal(false);
   protected readonly textModels = signal<readonly ModelCapabilities[]>([]);
   protected readonly speechModels = signal<readonly ModelCapabilities[]>([]);
@@ -612,9 +531,7 @@ export class ModelsSectionComponent {
   /** A sample already present when Settings opens is display-only. */
   private sampleEffectInitialized = false;
   private readonly samplePlaybackRequested = signal(false);
-  private readonly connectionMenu = viewChild<ElementRef<HTMLElement>>('connectionMenu');
-  private readonly connectionButton =
-    viewChild.required<ElementRef<HTMLButtonElement>>('connectionButton');
+  private readonly connectionPanel = viewChild.required<PopupDirective>('connection');
   private readonly sampleAudio = viewChild<ElementRef<HTMLAudioElement>>('sampleAudio');
 
   protected readonly selectedStoryModel = computed(() =>
@@ -757,20 +674,10 @@ export class ModelsSectionComponent {
     this.playSample();
   }
 
-  protected toggleConnectionMenu(): void {
-    this.connectionMenuOpen.update((open) => !open);
-  }
-
   protected setBranchesOpen(event: Event): void {
     this.branchesOpen.set((event.target as HTMLDetailsElement).open);
   }
 
-  protected closeConnectionMenuFromOutside(event: PointerEvent): void {
-    if (!this.connectionMenuOpen() || !(event.target instanceof Node)) return;
-    if (this.connectionMenu()?.nativeElement.contains(event.target)) return;
-    if (this.connectionButton().nativeElement.contains(event.target)) return;
-    this.connectionMenuOpen.set(false);
-  }
   protected onKeyInput(event: Event): void {
     this.keyDraft.set((event.target as HTMLInputElement).value);
   }
@@ -778,12 +685,14 @@ export class ModelsSectionComponent {
     const saved = await this.credential.save(this.keyDraft());
     this.keyDraft.set('');
     if (saved) {
-      this.connectionMenuOpen.set(false);
+      this.connectionPanel().hide();
       this.catalogLoaded = false;
       await this.loadCatalog();
     }
   }
   protected async removeKey(): Promise<void> {
+    // The confirmation is a dialog, and a panel left open would sit under it.
+    this.connectionPanel().hide();
     const confirmed = await openConfirmDialog(this.dialog, {
       title: 'Delete OpenRouter key?',
       message: 'AI requests will stop until you connect again.',
@@ -794,7 +703,7 @@ export class ModelsSectionComponent {
     });
     if (confirmed) {
       await this.credential.remove();
-      this.connectionMenuOpen.set(false);
+      this.connectionPanel().hide();
     }
   }
   protected async loadCatalog(): Promise<void> {

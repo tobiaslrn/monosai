@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { installPopoverShim } from '../../../testing/popover-shim';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { fixedClock } from '../../domain/shared/clock';
 import type { GeneratedStory, ImportedReading, Reading } from '../../domain/reading/reading';
@@ -151,7 +152,9 @@ describe('ReadingCardComponent', () => {
   it('keeps the whole row a native link and the actions out of it', () => {
     const element = render(generated());
     const link = element.querySelector<HTMLAnchorElement>('a[data-testid="reading-row"]');
-    const menuButton = element.querySelector<HTMLButtonElement>('.menu-anchor .mn-icon-button');
+    const menuButton = element.querySelector<HTMLButtonElement>(
+      '.mn-icon-button[aria-haspopup="menu"]',
+    );
 
     expect(link?.getAttribute('href')).toContain('/reader/');
     expect(menuButton).not.toBeNull();
@@ -166,5 +169,113 @@ describe('ReadingCardComponent', () => {
     expect(generatedRow.querySelector('[mn-list-row-leading] mn-icon')).not.toBeNull();
     expect(generatedRow.querySelector('[mn-list-row-meta]')?.textContent).toContain('Generated');
     expect(importedRow.querySelector('[mn-list-row-meta]')?.textContent).toContain('Imported');
+  });
+
+  describe('actions menu', () => {
+    let uninstall: () => void;
+
+    beforeEach(() => {
+      uninstall = installPopoverShim();
+    });
+
+    afterEach(() => {
+      uninstall();
+    });
+
+    function renderCard() {
+      const fixture = TestBed.createComponent(ReadingCardComponent);
+      fixture.componentRef.setInput('reading', generated());
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+      return {
+        fixture,
+        element,
+        toggle: element.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!,
+        menu: element.querySelector<HTMLElement>('[role="menu"]')!,
+        items: [...element.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')],
+      };
+    }
+
+    /** One of these sits in every row of a virtualised shelf. */
+    it('registers no document listener of its own', () => {
+      const add = vi.spyOn(document, 'addEventListener');
+
+      renderCard();
+
+      expect(
+        add.mock.calls.filter(([type]) => type === 'pointerdown' || type === 'keydown'),
+      ).toEqual([]);
+      add.mockRestore();
+    });
+
+    it('is a native popover opened by its toggle, which states whether it is open', () => {
+      const { fixture, toggle, menu } = renderCard();
+
+      expect(menu.getAttribute('popover')).toBe('auto');
+      expect(toggle.getAttribute('popovertarget')).toBe(menu.id);
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+      toggle.click();
+      fixture.detectChanges();
+
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('puts focus on the first action and moves between actions with the arrow keys', () => {
+      const { fixture, toggle, menu, items } = renderCard();
+      toggle.click();
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(items[0]);
+
+      menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      expect(document.activeElement).toBe(items[1]);
+      menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      expect(document.activeElement).toBe(items[0]);
+      menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+      expect(document.activeElement).toBe(items[1]);
+    });
+
+    it('closes on a press outside and on Escape, and returns focus to its toggle', () => {
+      const { fixture, toggle } = renderCard();
+      toggle.focus();
+      toggle.click();
+      fixture.detectChanges();
+
+      document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      fixture.detectChanges();
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+      toggle.focus();
+      toggle.click();
+      fixture.detectChanges();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      fixture.detectChanges();
+
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+      expect(document.activeElement).toBe(toggle);
+    });
+
+    it('asks for a rename or a delete and closes the menu behind the request', () => {
+      const { fixture, toggle, items } = renderCard();
+      const asked: string[] = [];
+      fixture.componentInstance.renameRequested.subscribe(() => {
+        asked.push('rename');
+      });
+      fixture.componentInstance.deleteRequested.subscribe(() => {
+        asked.push('delete');
+      });
+
+      toggle.click();
+      fixture.detectChanges();
+      items[0].click();
+      fixture.detectChanges();
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+      toggle.click();
+      fixture.detectChanges();
+      items[1].click();
+
+      expect(asked).toEqual(['rename', 'delete']);
+    });
   });
 });

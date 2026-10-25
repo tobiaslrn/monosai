@@ -1,4 +1,3 @@
-import type { ElementRef } from '@angular/core';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -6,7 +5,6 @@ import {
   inject,
   input,
   output,
-  signal,
   viewChild,
 } from '@angular/core';
 import { CLOCK } from '../../application/shared/repository-tokens';
@@ -16,6 +14,7 @@ import { formatCountOf, formatRelativeDay } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
+import { PopupDirective, PopupTriggerDirective } from '../../shared-ui/popup/popup.directive';
 
 /** What a story's length is called, in the words the generate form uses. */
 const FORM_LABELS: Readonly<Record<StoryForm, string>> = {
@@ -35,11 +34,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
 @Component({
   selector: 'mn-reading-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, ListRowComponent],
-  host: {
-    '(document:pointerdown)': 'onDocumentPointerDown($event)',
-    '(document:keydown.escape)': 'closeMenuOnEscape($event)',
-  },
+  imports: [IconComponent, ListRowComponent, PopupDirective, PopupTriggerDirective],
   template: `
     <mn-list-row
       [routerLink]="['/reader', reading().id]"
@@ -75,91 +70,40 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
         </span>
       }
       <span mn-list-row-menu>
-        <span class="menu-anchor">
-          <button
-            #toggle
-            type="button"
-            class="mn-icon-button"
-            aria-haspopup="menu"
-            [attr.aria-controls]="menuId()"
-            [attr.aria-expanded]="menuOpen()"
-            [attr.aria-label]="'Actions for ' + reading().title"
-            [attr.popovertarget]="menuId()"
-            [style.anchor-name]="anchorName()"
-          >
-            <mn-icon name="overflow" [size]="20" />
+        <button
+          type="button"
+          class="mn-icon-button"
+          aria-haspopup="menu"
+          [mnPopupTrigger]="actions"
+          [attr.aria-label]="'Actions for ' + reading().title"
+        >
+          <mn-icon name="overflow" [size]="20" />
+        </button>
+        <div
+          mnPopup
+          #actions="mnPopup"
+          role="menu"
+          [menu]="true"
+          [attr.aria-label]="'Actions for ' + reading().title"
+        >
+          <button type="button" role="menuitem" class="mn-menu-item" (click)="requestRename()">
+            <mn-icon name="rename" [size]="18" />
+            <span>Rename</span>
           </button>
-          <div
-            #menu
-            class="menu"
-            popover
-            role="menu"
-            [id]="menuId()"
-            [style.position-anchor]="anchorName()"
-            [attr.aria-label]="'Actions for ' + reading().title"
-            (toggle)="onMenuToggle($event)"
+          <button
+            type="button"
+            role="menuitem"
+            class="mn-menu-item mn-menu-item--danger"
+            (click)="requestDelete()"
           >
-            <button type="button" role="menuitem" (click)="requestRename()">
-              <mn-icon name="rename" [size]="18" />
-              <span>Rename</span>
-            </button>
-            <button type="button" role="menuitem" class="danger" (click)="requestDelete()">
-              <mn-icon name="delete" [size]="18" />
-              <span>Delete</span>
-            </button>
-          </div>
-        </span>
+            <mn-icon name="delete" [size]="18" />
+            <span>Delete</span>
+          </button>
+        </div>
       </span>
     </mn-list-row>
   `,
   styles: `
-    .menu-anchor {
-      position: relative;
-      z-index: 1;
-    }
-
-    .menu {
-      position: absolute;
-      position-area: bottom span-left;
-      z-index: 2;
-      inset: auto;
-      display: flex;
-      flex-direction: column;
-      min-width: 12rem;
-      margin: var(--space-1) 0 0;
-      padding: var(--space-1);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-control);
-      background: var(--surface-raised);
-      box-shadow: var(--shadow-overlay);
-    }
-
-    .menu:not(:popover-open) {
-      display: none;
-    }
-
-    .menu button {
-      display: flex;
-      gap: var(--space-2);
-      align-items: center;
-      min-height: var(--touch-target);
-      padding: var(--space-2) var(--space-3);
-      border: 0;
-      border-radius: var(--radius-control);
-      background: transparent;
-      font: inherit;
-      text-align: start;
-      cursor: pointer;
-    }
-
-    .menu .danger {
-      color: var(--status-danger);
-    }
-
-    :host-context(html[data-pointer='mouse']) .menu button:hover {
-      background: var(--surface-sunken);
-    }
-
     .audio-available {
       display: inline-flex;
       gap: var(--space-1);
@@ -174,13 +118,7 @@ export class ReadingCardComponent {
   readonly deleteRequested = output<Reading>();
   readonly renameRequested = output<Reading>();
 
-  private readonly menuOpenSignal = signal(false);
-  protected readonly menuOpen = this.menuOpenSignal.asReadonly();
-  private readonly menu = viewChild.required<ElementRef<HTMLElement>>('menu');
-  private readonly toggleButton = viewChild.required<ElementRef<HTMLButtonElement>>('toggle');
-
-  protected readonly menuId = computed(() => `mn-reading-actions-${this.reading().id}`);
-  protected readonly anchorName = computed(() => `--mn-reading-actions-${this.reading().id}`);
+  private readonly actions = viewChild.required<PopupDirective>('actions');
 
   protected readonly characterLabel = computed(() =>
     formatCountOf(this.reading().characterCount, 'character'),
@@ -215,30 +153,6 @@ export class ReadingCardComponent {
 
   protected readonly hasAudio = computed(() => this.reading().audioSummary.completed > 0);
 
-  protected onMenuToggle(event: Event): void {
-    this.menuOpenSignal.set((event.currentTarget as HTMLElement).matches(':popover-open'));
-  }
-
-  protected closeMenuOnEscape(event: Event): void {
-    const menu = this.menu().nativeElement;
-    if (!menu.matches(':popover-open')) {
-      return;
-    }
-    event.preventDefault();
-    this.hideMenu();
-  }
-
-  protected onDocumentPointerDown(event: PointerEvent): void {
-    const menu = this.menu().nativeElement;
-    if (!menu.matches(':popover-open') || !(event.target instanceof Node)) {
-      return;
-    }
-    if (menu.contains(event.target) || this.toggleButton().nativeElement.contains(event.target)) {
-      return;
-    }
-    this.hideMenu();
-  }
-
   protected requestRename(): void {
     this.hideMenu();
     this.renameRequested.emit(this.reading());
@@ -250,9 +164,6 @@ export class ReadingCardComponent {
   }
 
   private hideMenu(): void {
-    const menu = this.menu().nativeElement;
-    if (typeof menu.hidePopover === 'function' && menu.matches(':popover-open')) {
-      menu.hidePopover();
-    }
+    this.actions().hide();
   }
 }

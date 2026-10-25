@@ -178,9 +178,9 @@ describe('StorageSectionComponent', () => {
       const fixture = TestBed.createComponent(StorageSectionComponent);
       fixture.detectChanges();
       return (
-        (fixture.nativeElement as HTMLElement).querySelector(
-          '.mn-settings-row__hint[aria-live="polite"]',
-        )?.textContent ?? ''
+        (fixture.nativeElement as HTMLElement)
+          .querySelector('.mn-settings-row__hint[aria-live="polite"]')
+          ?.textContent.trim() ?? ''
       );
     }
 

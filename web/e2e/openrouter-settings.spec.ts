@@ -32,6 +32,49 @@ test.describe('the model tree', () => {
     expect(JSON.stringify(await readSettingsRecord(page, 'text-model'))).not.toContain(KEY);
   });
 
+  /**
+   * Both panels are native popovers, so the browser dismisses them; this holds
+   * the wiring to that: a press outside and Escape close them, and focus goes
+   * back to the control that opened them.
+   */
+  test('puts the connection panel and a model picker away on a press outside or Escape @smoke @mobile', async ({
+    page,
+  }) => {
+    await stubOpenRouter(page);
+    await page.goto('./#/settings');
+
+    const connect = page.getByTestId('connect-openrouter');
+    const connection = page.getByRole('dialog', { name: 'OpenRouter connection' });
+    await connect.click();
+    await expect(connection).toBeVisible();
+    await expect(connect).toHaveAttribute('aria-expanded', 'true');
+    await page.getByRole('heading', { name: 'AI', level: 2 }).click();
+    await expect(connection).toBeHidden();
+    await expect(connect).toHaveAttribute('aria-expanded', 'false');
+
+    await connect.click();
+    await expect(connection).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(connection).toBeHidden();
+    await expect(connect).toBeFocused();
+
+    await saveApiKey(page);
+
+    const trigger = page.getByTestId('text-model-picker').getByRole('button');
+    const picker = page.getByRole('dialog', { name: 'text models' });
+    await trigger.click();
+    await expect(picker).toBeVisible();
+    await expect(page.getByTestId(`model-option-${MODEL}`)).toBeVisible();
+    await page.getByRole('heading', { name: 'AI', level: 2 }).click();
+    await expect(picker).toBeHidden();
+
+    await trigger.click();
+    await expect(picker).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(picker).toBeHidden();
+    await expect(trigger).toBeFocused();
+  });
+
   test('tests the text model on selection and restores it', async ({ page }) => {
     await stubOpenRouter(page);
     await page.goto('./#/settings');

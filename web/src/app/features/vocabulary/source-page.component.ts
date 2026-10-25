@@ -40,6 +40,7 @@ import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-sourc
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+import { SwitchRowComponent } from '../../shared-ui/switch-row/switch-row.component';
 import { PackageImportComponent } from './package-import.component';
 import { TextListSourceComponent } from './text-list-source.component';
 
@@ -69,6 +70,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
     IconComponent,
     PageHeaderComponent,
     PackageImportComponent,
+    SwitchRowComponent,
     TextListSourceComponent,
   ],
   template: `
@@ -97,38 +99,26 @@ const STALE_REASONS: Record<StaleReason, string> = {
             </p>
           }
 
-          <label class="setting">
-            <span class="label">
-              <strong>Count these words</strong>
-            </span>
-            <input
-              type="checkbox"
-              class="mn-switch"
-              role="switch"
-              [checked]="included(source)"
-              [disabled]="busy()"
-              (change)="setIncluded(source.id, $event)"
-              data-testid="include-source"
-            />
-          </label>
+          <mn-switch-row
+            testId="include-source"
+            [checked]="included(source)"
+            [disabled]="busy()"
+            (checkedChange)="setIncluded(source.id, $event)"
+          >
+            <span class="setting-label">Count these words</span>
+          </mn-switch-row>
 
           <div class="rule"></div>
 
           @if (source.kind === 'anki-connect') {
-            <label class="setting">
-              <span class="label">
-                <strong>Keep it up to date</strong>
-              </span>
-              <input
-                type="checkbox"
-                class="mn-switch"
-                role="switch"
-                [checked]="source.automaticSync"
-                [disabled]="busy()"
-                (change)="setAutomaticSync(source.id, $event)"
-                data-testid="automatic-sync"
-              />
-            </label>
+            <mn-switch-row
+              testId="automatic-sync"
+              [checked]="source.automaticSync"
+              [disabled]="busy()"
+              (checkedChange)="setAutomaticSync(source.id, $event)"
+            >
+              <span class="setting-label">Keep it up to date</span>
+            </mn-switch-row>
             <div class="footline">
               @if (manual.isSyncingSource(source.id)) {
                 <span class="mn-hint">Reading…</span>
@@ -315,13 +305,9 @@ const STALE_REASONS: Record<StaleReason, string> = {
     </div>
   `,
   styles: `
-    .setting {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: var(--space-3);
-      align-items: center;
-      min-height: var(--touch-target);
-      cursor: pointer;
+    .setting-label {
+      font-size: var(--text-md);
+      font-weight: var(--weight-semibold);
     }
 
     .label {
@@ -586,8 +572,7 @@ export class SourcePageComponent {
     await this.applyConnectedSourceChange();
   }
 
-  protected async setIncluded(id: VocabularySourceId, event: Event): Promise<void> {
-    const included = readChecked(event);
+  protected async setIncluded(id: VocabularySourceId, included: boolean): Promise<void> {
     await this.store.setIncluded(id, included);
     await this.rebuildAfterSourceChange(
       included
@@ -596,8 +581,7 @@ export class SourcePageComponent {
     );
   }
 
-  protected async setAutomaticSync(id: VocabularySourceId, event: Event): Promise<void> {
-    const automatic = readChecked(event);
+  protected async setAutomaticSync(id: VocabularySourceId, automatic: boolean): Promise<void> {
     await this.store.setAutomaticSync(id, automatic);
     this.localAnnouncement.set(
       automatic

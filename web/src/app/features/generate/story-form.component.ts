@@ -29,6 +29,8 @@ import type { ConfigurationReadiness } from '../../domain/ai/configuration-readi
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PreparationTargetsComponent } from '../../shared-ui/preparation-targets/preparation-targets.component';
+import { RadioCardComponent } from '../../shared-ui/radio-card/radio-card.component';
+import { RadioCardGroupComponent } from '../../shared-ui/radio-card/radio-card-group.component';
 import { StoryDirectionComponent } from './story-direction.component';
 import { StoryPlotsComponent } from './story-plots.component';
 
@@ -41,6 +43,20 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
   standard: 'Standard',
   strict: 'Strict',
 };
+
+const STRICTNESS_DESCRIPTIONS: Readonly<Record<VocabularyStrictness, string>> = {
+  relaxed: 'Keep the first draft.',
+  standard: 'Try once to replace unfamiliar words.',
+  strict: 'Try twice to replace unfamiliar words.',
+};
+
+const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictness[]).map(
+  (value) => ({
+    value,
+    label: STRICTNESS_LABELS[value],
+    description: STRICTNESS_DESCRIPTIONS[value],
+  }),
+);
 
 /**
  * The story form, in three steps: the words a story may use, the direction it
@@ -66,6 +82,8 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
     RouterLink,
     IconComponent,
     PreparationTargetsComponent,
+    RadioCardComponent,
+    RadioCardGroupComponent,
     StoryDirectionComponent,
     StoryPlotsComponent,
   ],
@@ -180,39 +198,20 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
                 {{ strictnessLabels[vocabularyStrictness()] }}
               </span>
             </summary>
-            <fieldset [disabled]="disabled()">
-              <legend class="mn-visually-hidden">Vocabulary strictness</legend>
-              <label>
-                <input
-                  type="radio"
-                  name="mn-vocabulary-strictness"
-                  value="relaxed"
-                  [checked]="vocabularyStrictness() === 'relaxed'"
-                  (change)="onVocabularyStrictness($event)"
-                />
-                <span><strong>Relaxed</strong> Keep the first draft</span>
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="mn-vocabulary-strictness"
-                  value="standard"
-                  [checked]="vocabularyStrictness() === 'standard'"
-                  (change)="onVocabularyStrictness($event)"
-                />
-                <span><strong>Standard</strong> Try once to replace unfamiliar words</span>
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="mn-vocabulary-strictness"
-                  value="strict"
-                  [checked]="vocabularyStrictness() === 'strict'"
-                  (change)="onVocabularyStrictness($event)"
-                />
-                <span><strong>Strict</strong> Try twice to replace unfamiliar words</span>
-              </label>
-            </fieldset>
+            <mn-radio-card-group
+              class="strictness-options"
+              label="Vocabulary strictness"
+              [value]="vocabularyStrictness()"
+              [disabled]="disabled()"
+              (valueChange)="onVocabularyStrictness($event)"
+            >
+              @for (option of strictnessOptions; track option.value) {
+                <mn-radio-card [value]="option.value" [inset]="true">
+                  <span class="strictness-name">{{ option.label }}</span>
+                  <span class="strictness-description">{{ option.description }}</span>
+                </mn-radio-card>
+              }
+            </mn-radio-card-group>
           </details>
 
           <ng-content select="[story-defaults]" />
@@ -481,32 +480,17 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
       font-weight: var(--weight-medium);
     }
 
-    .strictness fieldset {
-      display: grid;
-      gap: var(--space-2);
-      margin: 0;
-      padding: 0 0 0 var(--space-4);
-      border: 0;
+    .strictness-options {
+      padding-top: var(--space-2);
     }
 
-    .strictness label {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: var(--space-2);
-      align-items: start;
-      min-height: var(--touch-target);
+    .strictness-name {
+      font-weight: var(--weight-semibold);
+    }
+
+    .strictness-description {
       color: var(--text-secondary);
       font-size: var(--text-sm);
-      cursor: pointer;
-    }
-
-    .strictness input {
-      margin-block-start: var(--control-check-offset);
-    }
-
-    .strictness strong {
-      display: block;
-      color: var(--text-primary);
     }
 
     .generation-sources {
@@ -564,6 +548,7 @@ export class StoryFormComponent {
 
   protected readonly stepNames = STEP_NAMES;
   protected readonly strictnessLabels = STRICTNESS_LABELS;
+  protected readonly strictnessOptions = STRICTNESS_OPTIONS;
   protected readonly focusSizes = RECENT_FOCUS_SIZES;
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
 
@@ -644,9 +629,8 @@ export class StoryFormComponent {
     }
   }
 
-  protected onVocabularyStrictness(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    if (value === 'relaxed' || value === 'standard' || value === 'strict') {
+  protected onVocabularyStrictness(value: VocabularyStrictness | undefined): void {
+    if (value !== undefined) {
       this.vocabularyStrictnessChanged.emit(value);
     }
   }

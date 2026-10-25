@@ -1,5 +1,4 @@
 import { NgTemplateOutlet } from '@angular/common';
-import type { ElementRef } from '@angular/core';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -11,26 +10,21 @@ import {
 } from '@angular/core';
 import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
+import { PopupDirective, PopupTriggerDirective } from '../../shared-ui/popup/popup.directive';
 
 @Component({
   selector: 'mn-model-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(document:pointerdown)': 'closeFromOutside($event)',
-    '(document:keydown.escape)': 'close()',
-  },
   template: `
     <div class="picker">
       <button
-        #trigger
         type="button"
         class="mn-control trigger"
         [class.trigger--compact]="compact()"
         [class.trigger--unset]="selectedId() === ''"
         aria-haspopup="listbox"
-        [attr.aria-expanded]="open()"
+        [mnPopupTrigger]="panel"
         [disabled]="disabled()"
-        (click)="toggle()"
       >
         <span>
           <strong>{{
@@ -42,7 +36,12 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
             <small>{{ model.modelId }}</small>
           }
         </span>
-        <svg class="chevron" [class.chevron--up]="open()" viewBox="0 0 16 16" aria-hidden="true">
+        <svg
+          class="chevron"
+          [class.chevron--up]="panel.isOpen()"
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+        >
           <path
             d="M4 6.5 8 10.5 12 6.5"
             fill="none"
@@ -54,8 +53,16 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
         </svg>
       </button>
 
-      @if (open()) {
-        <div #panel class="panel" role="dialog" [attr.aria-label]="label()">
+      <div
+        mnPopup
+        #panel="mnPopup"
+        class="panel"
+        role="dialog"
+        [attr.aria-label]="label()"
+        (opened)="opened.emit()"
+        (closed)="reset()"
+      >
+        @if (panel.isOpen()) {
           <label class="search">
             <span class="mn-visually-hidden">Search {{ label() }}</span>
             <input
@@ -109,8 +116,8 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
               }
             }
           </div>
-        </div>
-      }
+        }
+      </div>
     </div>
 
     <ng-template #modelRow let-model>
@@ -145,7 +152,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       </div>
     </ng-template>
   `,
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, PopupDirective, PopupTriggerDirective],
   styles: `
     :host {
       display: block;
@@ -221,23 +228,21 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .panel {
-      position: absolute;
-      z-index: 20;
-      inset: calc(100% + var(--space-1)) 0 auto;
+    .panel:popover-open {
       display: flex;
       flex-direction: column;
+      width: min(20rem, calc(100vw - 4 * var(--space-4)));
       max-height: min(28rem, 70vh);
       overflow: hidden;
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-control);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
     }
     .search {
+      display: block;
       padding: var(--space-2);
       border-bottom: 1px solid var(--border-subtle);
       background: var(--surface-panel);
+    }
+    .search input {
+      width: 100%;
     }
     .favorites {
       flex: none;
@@ -338,10 +343,8 @@ export class ModelPickerComponent {
   readonly favoriteToggled = output<string>();
   readonly fallbackSelected = output<void>();
 
-  protected readonly open = signal(false);
   protected readonly query = signal('');
-  private readonly panel = viewChild<ElementRef<HTMLElement>>('panel');
-  private readonly trigger = viewChild.required<ElementRef<HTMLButtonElement>>('trigger');
+  private readonly popup = viewChild.required(PopupDirective);
 
   protected readonly selected = computed(
     () => this.models().find((model) => model.modelId === this.selectedId()) ?? null,
@@ -360,30 +363,19 @@ export class ModelPickerComponent {
     this.matches().filter((model) => !this.favoriteIds().includes(model.modelId)),
   );
 
-  protected toggle(): void {
-    this.open.update((open) => !open);
-    if (this.open()) this.opened.emit();
-  }
-  protected close(): void {
-    this.open.set(false);
+  protected reset(): void {
     this.query.set('');
-  }
-  protected closeFromOutside(event: PointerEvent): void {
-    if (!this.open() || !(event.target instanceof Node)) return;
-    if (this.panel()?.nativeElement.contains(event.target)) return;
-    if (this.trigger().nativeElement.contains(event.target)) return;
-    this.close();
   }
   protected setQuery(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
   }
   protected choose(model: ModelCapabilities): void {
     this.modelSelected.emit(model);
-    this.close();
+    this.popup().hide();
   }
   protected chooseFallback(): void {
     this.fallbackSelected.emit();
-    this.close();
+    this.popup().hide();
   }
   protected isFavorite(modelId: string): boolean {
     return this.favoriteIds().includes(modelId);

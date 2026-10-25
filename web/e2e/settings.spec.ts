@@ -40,9 +40,9 @@ test.describe('settings persistence', () => {
 
     await expect(page.getByRole('group', { name: 'Reading appearance' })).toHaveCount(0);
     await expect(page.getByRole('slider', { name: 'Text size' })).toHaveCount(0);
-    await expect(page.getByRole('checkbox', { name: 'Furigana' })).toHaveCount(0);
-    await expect(page.getByRole('checkbox', { name: 'Token spacing' })).toHaveCount(0);
-    await expect(page.getByRole('checkbox', { name: 'Warning markers' })).toHaveCount(0);
+    await expect(page.getByRole('switch', { name: 'Furigana' })).toHaveCount(0);
+    await expect(page.getByRole('switch', { name: 'Token spacing' })).toHaveCount(0);
+    await expect(page.getByRole('switch', { name: 'Warning markers' })).toHaveCount(0);
   });
 
   test('keeps the AnkiConnect port out of App settings', async ({ page }) => {

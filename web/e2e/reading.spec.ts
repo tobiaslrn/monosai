@@ -55,7 +55,7 @@ async function setReaderAids(
     if (checked === undefined) {
       continue;
     }
-    const control = panel.getByRole('checkbox', { name: label });
+    const control = panel.getByRole('switch', { name: label });
     if ((await control.isChecked()) !== checked) {
       if (checked) {
         await control.check();
@@ -1228,7 +1228,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await saveAndOpenReader(page);
 
     await page.getByRole('button', { name: 'Story options', exact: true }).click();
-    const furigana = page.getByRole('checkbox', { name: 'Furigana' });
+    const furigana = page.getByRole('switch', { name: 'Furigana' });
     await expect(furigana).toBeChecked();
     await furigana.uncheck();
     await expectSettingPersisted(page, 'reader-preferences', 'furigana', false);
@@ -1236,7 +1236,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
     await page.reload();
     await page.getByRole('button', { name: 'Story options', exact: true }).click();
-    await expect(page.getByRole('checkbox', { name: 'Furigana' })).not.toBeChecked();
+    await expect(page.getByRole('switch', { name: 'Furigana' })).not.toBeChecked();
   });
 
   test('sentence per line puts each sentence on its own line, and is remembered', async ({
@@ -1539,6 +1539,24 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await page.keyboard.press('Escape');
     await expect(menu).toBeHidden();
     await expect(toggle).toBeFocused();
+  });
+
+  test('moves through a reading actions menu with the arrow keys @smoke @mobile', async ({
+    page,
+  }) => {
+    await importReading(page, SAMPLE_TEXT, '第一章');
+    await page.goto('./#/library');
+
+    await page.getByRole('button', { name: 'Actions for 第一章' }).click();
+    const rename = page.getByRole('menuitem', { name: 'Rename' });
+    const remove = page.getByRole('menuitem', { name: 'Delete' });
+    await expect(rename).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(remove).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(rename).toBeFocused();
+    await page.keyboard.press('ArrowUp');
+    await expect(remove).toBeFocused();
   });
 
   test('deleting asks first, then leaves zero owned orphan rows @smoke', async ({ page }) => {

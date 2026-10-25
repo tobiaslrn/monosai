@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
+import { SwitchRowComponent } from '../switch-row/switch-row.component';
 
 let instanceCount = 0;
 
@@ -30,23 +31,20 @@ export function audioPreparationUnavailableReason(
 @Component({
   selector: 'mn-preparation-targets',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [SwitchRowComponent],
   template: `
     <fieldset [disabled]="disabled()">
       <legend>{{ legend() }}</legend>
       @for (layer of layers; track layer) {
-        <label [class.is-disabled]="layer === 'audio' && audioReadiness() !== 'ready'">
-          <span>{{ labels[layer] }}</span>
-          <input
-            type="checkbox"
-            class="mn-switch"
-            role="switch"
-            [attr.data-testid]="'preparation-' + layer"
-            [checked]="isSelected(layer)"
-            [disabled]="layer === 'audio' && audioReadiness() !== 'ready'"
-            [attr.aria-describedby]="layer === 'audio' ? audioReasonId : null"
-            (change)="toggle(layer, $event)"
-          />
-        </label>
+        <mn-switch-row
+          [testId]="'preparation-' + layer"
+          [checked]="isSelected(layer)"
+          [disabled]="layer === 'audio' && audioReadiness() !== 'ready'"
+          [describedBy]="layer === 'audio' ? audioReasonId : null"
+          (checkedChange)="toggle(layer, $event)"
+        >
+          {{ labels[layer] }}
+        </mn-switch-row>
       }
       @if (audioReason(); as reason) {
         <p [id]="audioReasonId" class="reason">{{ reason }}</p>
@@ -74,24 +72,6 @@ export function audioPreparationUnavailableReason(
       font-size: var(--text-sm);
       font-weight: var(--weight-semibold);
     }
-
-    label {
-      display: flex;
-      gap: var(--space-3);
-      align-items: center;
-      justify-content: space-between;
-      min-height: var(--touch-target);
-      color: var(--text-primary);
-      font-size: var(--text-sm);
-      cursor: pointer;
-    }
-
-    label.is-disabled {
-      color: var(--text-secondary);
-      cursor: not-allowed;
-    }
-
-    /* The track itself is the shared mn-switch control. */
 
     .reason {
       margin: 0;
@@ -121,8 +101,7 @@ export class PreparationTargetsComponent {
     return this.targets().includes(layer);
   }
 
-  protected toggle(layer: PreparationLayer, event: Event): void {
-    const enabled = (event.target as HTMLInputElement).checked;
+  protected toggle(layer: PreparationLayer, enabled: boolean): void {
     const selected = new Set(this.targets());
     if (enabled) selected.add(layer);
     else selected.delete(layer);

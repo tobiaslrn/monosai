@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { EMPTY_STORY_DIRECTION, rollPlotFrames } from './story-direction';
 import { MAX_DRAFTED_PLOT_LENGTH, checkDraftedPlots, isEditedPlot } from './story-plot';
 
 describe('checkDraftedPlots', () => {
@@ -46,10 +45,8 @@ describe('checkDraftedPlots', () => {
 });
 
 describe('isEditedPlot', () => {
-  const [frame] = rollPlotFrames(EMPTY_STORY_DIRECTION, { nextInt: () => 0 });
-
   it('ignores spacing at either end and notices any other change', () => {
-    expect(isEditedPlot({ frame, text: ' A plot.\n', draftedText: 'A plot.' })).toBe(false);
-    expect(isEditedPlot({ frame, text: 'A plot!', draftedText: 'A plot.' })).toBe(true);
+    expect(isEditedPlot({ text: ' A plot.\n', draftedText: 'A plot.' })).toBe(false);
+    expect(isEditedPlot({ text: 'A plot!', draftedText: 'A plot.' })).toBe(true);
   });
 });

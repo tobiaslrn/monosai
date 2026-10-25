@@ -463,7 +463,9 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
+    element(fixture)
+      .querySelector<HTMLButtonElement>('mn-reading-card .mn-menu-item--danger')
+      ?.click();
     await settle(fixture);
 
     const dialog = document.querySelector('mn-confirm-dialog');
@@ -481,7 +483,9 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
+    element(fixture)
+      .querySelector<HTMLButtonElement>('mn-reading-card .mn-menu-item--danger')
+      ?.click();
     await settle(fixture);
 
     const confirm = [
@@ -511,7 +515,7 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card [role="menuitem"]')?.click();
     await settle(fixture);
 
     const field = document.querySelector<HTMLInputElement>('#mn-rename-input');
@@ -541,7 +545,7 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu button')?.click();
+    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card [role="menuitem"]')?.click();
     await settle(fixture);
 
     const field = document.querySelector<HTMLInputElement>('#mn-rename-input');
@@ -561,7 +565,9 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
+    element(fixture)
+      .querySelector<HTMLButtonElement>('mn-reading-card .mn-menu-item--danger')
+      ?.click();
     await settle(fixture);
 
     const keep = [...document.querySelectorAll<HTMLButtonElement>('mn-confirm-dialog button')].find(
@@ -580,7 +586,9 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
+    element(fixture)
+      .querySelector<HTMLButtonElement>('mn-reading-card .mn-menu-item--danger')
+      ?.click();
     await settle(fixture);
 
     const dialog = document.querySelector('mn-confirm-dialog');
@@ -605,7 +613,9 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
+    element(fixture)
+      .querySelector<HTMLButtonElement>('mn-reading-card .mn-menu-item--danger')
+      ?.click();
     await settle(fixture);
 
     [...document.querySelectorAll<HTMLButtonElement>('mn-confirm-dialog button')]
@@ -623,7 +633,9 @@ describe('LibraryPageComponent', () => {
 
     element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .mn-icon-button')?.click();
     fixture.detectChanges();
-    element(fixture).querySelector<HTMLButtonElement>('mn-reading-card .menu .danger')?.click();
+    element(fixture)
+      .querySelector<HTMLButtonElement>('mn-reading-card .mn-menu-item--danger')
+      ?.click();
     await settle(fixture);
 
     const cancel = [

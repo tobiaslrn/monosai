@@ -88,7 +88,7 @@ test('loads the next library page at the window end without Show more @smoke @mo
     const card = link.closest('mn-reading-card');
     const title = card?.querySelector('[mn-list-row-title]');
     const status = card?.querySelector('.mn-status-pill');
-    const menu = card?.querySelector('.menu-anchor');
+    const menu = card?.querySelector('[aria-haspopup="menu"]');
     if (
       title === null ||
       title === undefined ||

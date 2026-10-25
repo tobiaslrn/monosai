@@ -3,6 +3,8 @@ import { GrammarProfileStore } from '../../application/grammar/grammar-profile.s
 import type { GrammarPreset, GrammarPresetId } from '../../domain/grammar/presets';
 import { startSentence } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { RadioCardComponent } from '../../shared-ui/radio-card/radio-card.component';
+import { RadioCardGroupComponent } from '../../shared-ui/radio-card/radio-card-group.component';
 
 /**
  * The difficulty ladder.
@@ -17,90 +19,34 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 @Component({
   selector: 'mn-preset-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent],
+  imports: [IconComponent, RadioCardComponent, RadioCardGroupComponent],
   template: `
-    <div class="presets" role="radiogroup" aria-label="Reading level">
+    <mn-radio-card-group
+      label="Reading level"
+      [value]="selected() ?? undefined"
+      (valueChange)="onChange($event)"
+    >
       @for (preset of store.presets(); track preset.id) {
-        <label class="preset" [class.is-selected]="isChosen(preset)">
-          <input
-            type="radio"
-            name="grammar-preset"
-            [value]="preset.id"
-            [checked]="isChosen(preset)"
-            (change)="selectedChange.emit(preset.id)"
-          />
-          <span class="body">
-            <span class="name">{{ preset.nameEn }}</span>
-            <span class="caption">{{ captionOf(preset) }}</span>
-            <span class="description">{{ preset.descriptionEn }}</span>
-            @if (isChosen(preset)) {
-              <span class="example" lang="ja">{{ preset.exampleJa }}</span>
-              <span class="gloss" lang="en">{{ preset.exampleEn }}</span>
-            }
-          </span>
+        <mn-radio-card [value]="preset.id">
+          <span class="name">{{ preset.nameEn }}</span>
+          <span class="caption">{{ captionOf(preset) }}</span>
+          <span class="description">{{ preset.descriptionEn }}</span>
+          @if (selected() === preset.id) {
+            <span class="example" lang="ja">{{ preset.exampleJa }}</span>
+            <span class="gloss" lang="en">{{ preset.exampleEn }}</span>
+          }
           <mn-icon
+            mn-radio-card-end
             class="indicator mn-lead"
-            [name]="isChosen(preset) ? 'chevron-down' : 'chevron-right'"
+            [name]="selected() === preset.id ? 'chevron-down' : 'chevron-right'"
           />
-        </label>
+        </mn-radio-card>
       } @empty {
         <p class="mn-hint">Language assets are still loading.</p>
       }
-    </div>
+    </mn-radio-card-group>
   `,
   styles: `
-    .presets {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-    }
-
-    .preset {
-      display: flex;
-      gap: var(--space-3);
-      align-items: flex-start;
-      min-height: var(--touch-target);
-      padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
-      border: 1px solid var(--border-subtle-faint);
-      border-radius: var(--radius-card);
-      background: var(--surface-raised);
-      cursor: pointer;
-      transition:
-        background-color var(--motion-fast) var(--ease-standard),
-        border-color var(--motion-fast) var(--ease-standard);
-    }
-
-    :host-context(html[data-pointer='mouse']) .preset:hover:not(.is-selected) {
-      background: var(--surface-sunken);
-    }
-
-    .preset.is-selected {
-      border-color: var(--action-primary);
-      background: var(--surface-action-selected);
-    }
-
-    /* The keyboard's ring only: a tap or a click already shows as the selection. */
-    .preset:has(input:focus-visible) {
-      outline: 3px solid var(--focus-ring);
-      outline-offset: 2px;
-    }
-
-    /* Both lead the name, so both take its size and sit on its first line. */
-    .preset input {
-      flex: none;
-      margin-block-start: var(--control-check-offset);
-      font-size: var(--text-lg);
-    }
-
-    .body {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
-      /* Without this the Japanese example cannot wrap and the card collapses. */
-      min-width: 0;
-      gap: 0.15rem;
-    }
-
     .name {
       font-size: var(--text-lg);
       font-weight: var(--weight-semibold);
@@ -133,8 +79,10 @@ export class PresetPickerComponent {
   readonly selected = input<GrammarPresetId | null>(null);
   readonly selectedChange = output<GrammarPresetId>();
 
-  protected isChosen(preset: GrammarPreset): boolean {
-    return this.selected() === preset.id;
+  protected onChange(id: GrammarPresetId | undefined): void {
+    if (id !== undefined) {
+      this.selectedChange.emit(id);
+    }
   }
 
   protected captionOf(preset: GrammarPreset): string {

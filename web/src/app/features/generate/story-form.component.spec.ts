@@ -49,6 +49,7 @@ class HostComponent {
 function plotStoreStub() {
   const cards = signal<readonly PlotCard[]>(
     rollPlotFrames(EMPTY_STORY_DIRECTION, { nextInt: () => 0 }).map((frame, index) => ({
+      id: `plot-${String(index + 1)}`,
       frame,
       text: `Plot ${String(index + 1)}.`,
       draftedText: `Plot ${String(index + 1)}.`,
@@ -284,6 +285,32 @@ describe('StoryFormComponent', () => {
     expect(details?.querySelector('[data-testid="strictness-value"]')?.textContent).toContain(
       'Relaxed',
     );
+  });
+
+  it('shows what every strictness means inside its own card', () => {
+    const { element } = render();
+    const cards = [...element.querySelectorAll('.strictness mn-radio-card')];
+
+    expect(
+      cards.map((card) => [
+        card.querySelector('.strictness-name')?.textContent,
+        card.querySelector('.strictness-description')?.textContent,
+      ]),
+    ).toEqual([
+      ['Relaxed', 'Keep the first draft.'],
+      ['Standard', 'Try once to replace unfamiliar words.'],
+      ['Strict', 'Try twice to replace unfamiliar words.'],
+    ]);
+  });
+
+  it('locks the strictness choice while a run is in flight', () => {
+    const { element, fixture, host } = render();
+    host.disabled.set(true);
+    fixture.detectChanges();
+
+    const radios = element.querySelectorAll<HTMLInputElement>('.strictness input[type="radio"]');
+    expect(radios).toHaveLength(3);
+    expect([...radios].every((radio) => radio.disabled)).toBe(true);
   });
 
   it('opens Genre first, states every axis value, and keeps one row open at a time', () => {

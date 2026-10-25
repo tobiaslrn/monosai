@@ -213,18 +213,20 @@ primitive or add state-specific placement, but they do not redefine its
 silhouette, palette, type, or interaction treatment. The source of each role is
 kept beside the tokens in `web/src/styles/components/`:
 
-| Role       | Use                                                                                                                          | Source                                                                 |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Button     | Reversible, primary, quiet, danger, and icon-only actions                                                                    | [`_button.scss`](../../web/src/styles/components/_button.scss)         |
-| Card       | One raised surface; `mn-inset` is its borderless sunken group                                                                | [`_card.scss`](../../web/src/styles/components/_card.scss)             |
-| Notice     | A soft, named status or warning beside the thing it describes                                                                | [`_notice.scss`](../../web/src/styles/components/_notice.scss)         |
-| Status     | A non-pressable compact state such as Ready or Unread                                                                        | [`_status.scss`](../../web/src/styles/components/_status.scss)         |
-| Facts      | Read-only label/value pairs                                                                                                  | [`_facts.scss`](../../web/src/styles/components/_facts.scss)           |
-| Segmented  | One native choice out of a small, stable set                                                                                 | [`_segmented.scss`](../../web/src/styles/components/_segmented.scss)   |
-| List row   | One shelf destination with leading, title, meta, trailing, and menu slots; `mn-list-group` gives rows one pair of card edges | [`_list-row.scss`](../../web/src/styles/components/_list-row.scss)     |
-| Page frame | The centred non-reader measure, stacks, and action rows                                                                      | [`_layout.scss`](../../web/src/styles/components/_layout.scss)         |
-| Text       | Secondary text and sentence-case group titles                                                                                | [`_text.scss`](../../web/src/styles/components/_text.scss)             |
-| Icon badge | A meaningful leading icon for a row or card                                                                                  | [`_icon-badge.scss`](../../web/src/styles/components/_icon-badge.scss) |
+| Role        | Use                                                                                                                          | Source                                                                   |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Button      | Reversible, primary, quiet, danger, and icon-only actions                                                                    | [`_button.scss`](../../web/src/styles/components/_button.scss)           |
+| Card        | One raised surface; `mn-inset` is its borderless sunken group                                                                | [`_card.scss`](../../web/src/styles/components/_card.scss)               |
+| Notice      | A soft, named status or warning beside the thing it describes                                                                | [`_notice.scss`](../../web/src/styles/components/_notice.scss)           |
+| Status      | A non-pressable compact state such as Ready or Unread                                                                        | [`_status.scss`](../../web/src/styles/components/_status.scss)           |
+| Facts       | Read-only label/value pairs                                                                                                  | [`_facts.scss`](../../web/src/styles/components/_facts.scss)             |
+| Segmented   | One native choice out of a small, stable set                                                                                 | [`_segmented.scss`](../../web/src/styles/components/_segmented.scss)     |
+| Option card | One of several options read before choosing, as a native radio in a card                                                     | [`_option-card.scss`](../../web/src/styles/components/_option-card.scss) |
+| Popup       | A native popover hanging from its control: a menu, a picker, a small form                                                    | [`_popup.scss`](../../web/src/styles/components/_popup.scss)             |
+| List row    | One shelf destination with leading, title, meta, trailing, and menu slots; `mn-list-group` gives rows one pair of card edges | [`_list-row.scss`](../../web/src/styles/components/_list-row.scss)       |
+| Page frame  | The centred non-reader measure, stacks, and action rows                                                                      | [`_layout.scss`](../../web/src/styles/components/_layout.scss)           |
+| Text        | Secondary text and sentence-case group titles                                                                                | [`_text.scss`](../../web/src/styles/components/_text.scss)               |
+| Icon badge  | A meaningful leading icon for a row or card                                                                                  | [`_icon-badge.scss`](../../web/src/styles/components/_icon-badge.scss)   |
 
 The shared page-header component supplies every non-reader top bar on the same
 `--page-measure` as the page frame. The reader remains outside this primitive
@@ -325,6 +327,39 @@ do not replace the character count here.
 
 ## 3. Controls
 
+### Building the controls
+
+A control is built once, as a shared Angular primitive in `web/src/app/shared-ui/`,
+and every screen composes it rather than writing its markup again. The primitive
+draws on the shared style in `web/src/styles/`; a feature places it and never
+re-skins it. The primitives, and what each is the way to build:
+
+- **`mn-segmented-control`** — one choice out of a few whose labels say it all,
+  such as the theme. Native radios under one name, so arrow keys, the roving tab stop, and
+  the checked state stay the browser's. Three bare radio labels in a fieldset are
+  not a second way to build the same choice.
+- **`mn-radio-card-group` and `mn-radio-card`** — options a learner reads before
+  choosing: the reading levels, the drafted plots, the vocabulary strictness. The group owns the picked value
+  once and each card derives from it; the card's body, trailing indicator, and
+  extra controls are projected. The picked card wears the one selection tint,
+  `--action-primary-soft`, the tint of a pressed toggle and a segmented choice. No
+  second tint marks a selection, and no class mirrors it.
+- **`mn-switch-row`** — a labelled switch, whether it sits in a group or stands
+  alone as one decision. It is a native checkbox with `role="switch"`, and the whole
+  row is the target.
+- **`mn-settings-row`** — a row of a settings card: a title, optional hint and
+  result lines, and the control or value at the end. A settings screen is rows, not
+  repeated markup.
+- **A popup**, `mnPopup` with `mnPopupTrigger`, is how every floating panel that
+  hangs from a control is built: an action menu, a model picker, the connection
+  panel. It is a native popover, so the browser dismisses it on a press outside or
+  Escape, Escape and closing it from code hand focus back to the control (a press
+  outside has already moved it), the top layer keeps it above any card that clips, and no instance registers a listener, which is what lets one sit in
+  every row of a virtualised shelf. A menu adds focus on its first item and the
+  arrow keys. The reader's floating surfaces and sheets are a different thing and
+  stay on `PopoverService`, because they own gestures and docking that a menu does
+  not have ([ADR 0083](../decisions/0083-floating-panels-are-native-popovers.md)).
+
 ### The line between an icon and a label
 
 An icon may stand alone when the control is **pressed repeatedly within a
@@ -372,9 +407,11 @@ previewing. `.mn-button--danger` keeps a destructive action outlined in the
 danger colour and is used where confirmation follows. A surface has at most one
 filled primary control; selected toggles use a soft selection tint instead.
 
-A choice of one out of a few — the theme — is a **segmented** control: native
-radios drawn at the button's height, size, and weight, the chosen one wearing the
-same selection tint as a pressed toggle rather than the filled primary.
+A choice of one out of a few — the theme — is a **segmented** control (`mn-segmented-control`): native radios drawn at the
+button's height, size, and weight, the chosen one wearing the same selection tint
+as a pressed toggle rather than the filled primary. When each choice needs a
+sentence to be understood before it is picked — how strict a story is about
+vocabulary — it is a radio card instead, with every sentence visible.
 
 The filled primary icon control is `.mn-icon-button--primary`: a large circle in
 the action colour, as the play control of the transport. It has its own hover and
@@ -530,8 +567,9 @@ Custom. Filling every axis at random is a ghost action in the card's heading.
 
 Drafted options the learner picks one of — the plots — are **insets inside the
 card** that offers them, never cards of their own, so the page keeps its two
-levels of grouping. Each is a native radio with a visible circle; the picked one
-wears the selection tint. Every checkbox and radio in the application, switches aside, is one size
+levels of grouping. Each is a radio card (`mn-radio-card`, sunken when it sits in
+the card that offers it) with a native radio and a visible circle; the picked one
+wears the selection tint, the same one a segmented choice wears. Every checkbox and radio in the application, switches aside, is one size
 (`--control-check-size`), so a choice does not change how large its control is
 between screens. What an option was built from is a row of status
 pills: a value the learner chose is a plain pill, a value code chose is the

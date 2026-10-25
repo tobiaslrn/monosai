@@ -42,10 +42,6 @@
   overflow: clip;
 }
 
-.mn-settings-card--overlay {
-  overflow: visible;
-}
-
 .mn-settings-row {
   display: grid;
   grid-template-columns: minmax(min-content, 1fr) auto;
@@ -128,16 +124,6 @@
   padding: 0;
   overflow: clip;
   border-top: 0;
-}
-
-/* Keep an open picker above the settings groups that follow it. */
-.mn-settings-card > .mn-settings-group--overlay {
-  position: relative;
-  overflow: visible;
-}
-
-.mn-settings-card > .mn-settings-group--overlay:focus-within {
-  z-index: 1;
 }
 
 .mn-settings-group__header {

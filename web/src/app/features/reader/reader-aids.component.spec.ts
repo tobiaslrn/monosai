@@ -140,10 +140,10 @@ describe('ReaderAidsComponent', () => {
 
 /** The checkbox in the appearance row whose visible label is `label`. */
 function switchNamed(element: HTMLElement, label: string): HTMLInputElement {
-  const row = [...element.querySelectorAll<HTMLLabelElement>('label.aid')].find(
+  const row = [...element.querySelectorAll<HTMLElement>('mn-switch-row')].find(
     (candidate) => candidate.textContent.trim() === label,
   );
-  const input = row?.querySelector<HTMLInputElement>('input');
+  const input = row?.querySelector<HTMLInputElement>('input[role="switch"]');
   if (input === undefined || input === null) {
     throw new Error(`no switch labelled "${label}"`);
   }

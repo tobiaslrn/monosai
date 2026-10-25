@@ -70,6 +70,7 @@ export class StoryPlotStore {
   private controller: AbortController | null = null;
   /** Cards that were sent as stories, dropped the next time the step drafts. */
   private readonly spent = new Set<PlotCard>();
+  private cardCount = 0;
 
   readonly cards = this.cardsSignal.asReadonly();
   readonly selectedIndex = this.selectedSignal.asReadonly();
@@ -212,6 +213,7 @@ export class StoryPlotStore {
     let index = cards.findIndex((card) => card.text.trim() === text);
     if (index < 0) {
       const restored: PlotCard = {
+        id: this.newCardId(),
         frame: plot.frame,
         text,
         draftedText: plot.record.draftedPlotEn ?? text,
@@ -376,12 +378,17 @@ export class StoryPlotStore {
           return card;
         }
         const text = texts.shift() ?? '';
-        return { frame: frames[index], text, draftedText: text };
+        return { id: this.newCardId(), frame: frames[index], text, draftedText: text };
       }),
     );
     this.selectedSignal.update((index) => Math.min(index, kept.length - 1));
     this.statusSignal.set('ready');
     this.controller = null;
+  }
+
+  private newCardId(): string {
+    this.cardCount += 1;
+    return `plot-${String(this.cardCount)}`;
   }
 
   private fail(error: PlotFailure): void {

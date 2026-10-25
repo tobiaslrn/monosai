@@ -1,0 +1,72 @@
+/*
+ * A floating panel: a native popover anchored to the control that opened it.
+ *
+ *   <button mnPopupTrigger …>   names the panel and takes `anchor-name`
+ *   <div mnPopup …>             is `popover="auto"` and takes `position-anchor`
+ *
+ * The browser dismisses it on a press outside or Escape and returns focus, and
+ * the top layer keeps it above any card that clips. It opens below the control
+ * with its end edges aligned and falls back to above, or to the other side,
+ * when there is no room. `--start` aligns the start edges instead.
+ *
+ * `--menu` is a list of actions: items are `role="menuitem"` buttons and take
+ * the button states in ADR 0082's order.
+ */
+.mn-popup {
+  position: absolute;
+  inset: auto;
+  max-width: calc(100vw - 2 * var(--space-2));
+  max-height: calc(100vh - 2 * var(--space-4));
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-overlay);
+  position-area: bottom span-left;
+  position-try-fallbacks:
+    flip-block,
+    flip-inline,
+    flip-block flip-inline;
+}
+
+.mn-popup--start {
+  position-area: bottom span-right;
+}
+
+.mn-popup--menu:popover-open {
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  padding: var(--space-1);
+}
+
+.mn-menu-item {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.mn-menu-item--danger {
+  color: var(--status-danger);
+}
+
+:where(html[data-pointer='mouse']) .mn-menu-item:where(:hover) {
+  background: var(--surface-sunken);
+}
+
+.mn-menu-item:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}

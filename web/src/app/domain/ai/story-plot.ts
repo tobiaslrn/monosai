@@ -50,6 +50,12 @@ export interface StoryPlotRequest {
 
 /** One plot on offer: the frame it was drafted on and its current text. */
 export interface PlotCard {
+  /**
+   * Names this card for as long as it is on offer. A card that is edited keeps
+   * it and a rewritten one gets a new one, so a view can tell which card it is
+   * looking at without counting. It is not persisted.
+   */
+  readonly id: string;
   readonly frame: PlotFrame;
   readonly text: string;
   /** What the model wrote, so an edit is visible and can be recorded. */
@@ -61,7 +67,7 @@ export interface PlotCard {
  * the premise is sent trimmed, and a stray newline must not make a plot the
  * learner's own for good.
  */
-export function isEditedPlot(card: PlotCard): boolean {
+export function isEditedPlot(card: Pick<PlotCard, 'text' | 'draftedText'>): boolean {
   return card.text.trim() !== card.draftedText.trim();
 }
 

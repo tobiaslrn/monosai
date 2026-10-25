@@ -8,6 +8,7 @@ import {
   TEXT_SCALE_STEP,
   type ReaderPreferences,
 } from '../../domain/settings/settings';
+import { SwitchRowComponent } from '../../shared-ui/switch-row/switch-row.component';
 
 type AidToggle = 'furigana' | 'tokenSpacing' | 'sentencePerLine' | 'warningMarkers';
 
@@ -35,7 +36,7 @@ const AIDS: readonly AidOption[] = [
 @Component({
   selector: 'mn-reader-aids',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, SwitchRowComponent],
   template: `
     <section class="appearance mn-inset" role="group" aria-label="Reading appearance">
       <h3 class="mn-group-title">Reading appearance</h3>
@@ -56,15 +57,12 @@ const AIDS: readonly AidOption[] = [
 
       <div class="switches">
         @for (aid of aids; track aid.key) {
-          <label class="aid">
-            <span>{{ aid.label }}</span>
-            <input
-              class="mn-switch"
-              type="checkbox"
-              [checked]="settings.readerPreferences()[aid.key]"
-              (change)="toggleAid(aid.key, $event)"
-            />
-          </label>
+          <mn-switch-row
+            [checked]="settings.readerPreferences()[aid.key]"
+            (checkedChange)="setAid(aid.key, $event)"
+          >
+            {{ aid.label }}
+          </mn-switch-row>
         }
       </div>
       @if (vocabularyNotice(); as notice) {
@@ -93,8 +91,7 @@ const AIDS: readonly AidOption[] = [
     .scale input {
       min-width: 0;
     }
-    .scale,
-    .aid {
+    .scale {
       font-size: var(--text-sm);
     }
     :host {
@@ -119,15 +116,7 @@ const AIDS: readonly AidOption[] = [
       font-variant-numeric: tabular-nums;
     }
 
-    .aid {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-height: var(--touch-target);
-      cursor: pointer;
-    }
-
-    .aid + .aid {
+    mn-switch-row + mn-switch-row {
       border-top: 1px solid var(--border-subtle);
     }
   `,
@@ -176,8 +165,8 @@ export class ReaderAidsComponent {
     void this.vocabulary.refresh();
   }
 
-  protected toggleAid(key: AidToggle, event: Event): void {
-    void this.settings.setReaderPreference(key, (event.target as HTMLInputElement).checked);
+  protected setAid(key: AidToggle, enabled: boolean): void {
+    void this.settings.setReaderPreference(key, enabled);
   }
 
   protected setScale(event: Event): void {

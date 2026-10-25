@@ -1,0 +1,119 @@
+/*
+ * A card one of several is picked from, as a native radio.
+ *
+ *   <mn-radio-card-group>
+ *     <mn-radio-card>
+ *       <label class="mn-option-card__choice"><input type="radio" /> … </label>
+ *     </mn-radio-card>
+ *   </mn-radio-card-group>
+ *
+ * The picked card wears the selection tint (`--action-primary-soft`), the one
+ * tint a pressed toggle and a segmented choice wear too. The checked state is
+ * read off the radio, never mirrored in a class, and every state rule weighs
+ * the card's own class: rest, hover, picked, picked and hovered, disabled
+ * (ADR 0082). The choosing label stretches over the whole card, so a press on
+ * its padding picks it; what is projected as extra sits above that stretch.
+ */
+.mn-option-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.mn-option-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: var(--touch-target);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle-faint);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+/* Drafted options sit sunken inside the card that offers them, with no edge. */
+.mn-option-card--inset {
+  padding: var(--space-4);
+  border-width: 0;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--surface-sunken) 75%, var(--surface-raised));
+}
+
+.mn-option-card__choice {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  min-width: 0;
+  cursor: inherit;
+}
+
+/* The whole card is the label's hit area. */
+.mn-option-card__choice::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  content: '';
+}
+
+/* The radio leads the first line of the text and takes its size. */
+.mn-option-card__choice > input {
+  position: relative;
+  flex: none;
+  margin-block-start: var(--control-check-offset);
+  font-size: var(--text-lg);
+}
+
+.mn-option-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  /* Without this a long unbroken line cannot wrap and the card collapses. */
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+/* Controls that live in the card but are not part of choosing it. */
+.mn-option-card > :not(.mn-option-card__choice) {
+  position: relative;
+}
+
+/*
+ * States follow in source order at one specificity: rest, hover, picked, picked and
+ * hovered. A card that cannot be changed takes no hover, and keeps its picked tint.
+ */
+:where(html[data-pointer='mouse']) .mn-option-card:where(:hover:not(:has(input:disabled))) {
+  background: var(--surface-sunken);
+}
+
+.mn-option-card:where(:has(input:checked)) {
+  border-color: var(--action-primary);
+  background: var(--action-primary-soft);
+}
+
+:where(html[data-pointer='mouse'])
+  .mn-option-card:where(:has(input:checked):hover:not(:has(input:disabled))) {
+  background: var(--action-primary-soft-hover);
+}
+
+/* The keyboard's ring only: a tap or a click already shows as the selection. */
+.mn-option-card:has(input:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.mn-option-card:where(:has(input:disabled)) {
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mn-option-card {
+    transition: none;
+  }
+}

@@ -12,6 +12,7 @@ import { AudioCompressionStore } from '../../application/settings/audio-compress
 import { StorageStore } from '../../application/settings/storage.store';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
 
 function formatBytes(bytes: number | null): string {
@@ -37,59 +38,48 @@ function formatBytes(bytes: number | null): string {
 @Component({
   selector: 'mn-storage-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, SettingsSectionComponent],
+  imports: [IconComponent, SettingsRowComponent, SettingsSectionComponent],
   template: `
     <mn-settings-section heading="Storage">
       <div class="mn-card mn-card--flush mn-settings-card">
-        <div class="mn-settings-row">
-          <div class="mn-settings-row__label">
-            <span class="mn-settings-row__title">Space used</span>
-          </div>
-          <div class="mn-settings-row__end">
-            <span class="mn-settings-value">{{ usageLabel() }}</span>
-          </div>
-        </div>
+        <mn-settings-row label="Space used">
+          <span class="mn-settings-value">{{ usageLabel() }}</span>
+        </mn-settings-row>
 
-        <div class="mn-settings-row">
-          <div class="mn-settings-row__label">
-            <span class="mn-settings-row__title">Keep data</span>
-            <span class="mn-settings-row__hint" aria-live="polite">{{ persistenceLabel() }}</span>
-          </div>
-          <div class="mn-settings-row__end">
-            @if (storage.status().canRequest) {
-              <button
-                type="button"
-                class="mn-button"
-                [disabled]="storage.action() !== 'idle'"
-                (click)="requestPersistence()"
-              >
-                Protect
-              </button>
-            }
-          </div>
-        </div>
-
-        <div class="mn-settings-row">
-          <div class="mn-settings-row__label">
-            <span class="mn-settings-row__title">Saved audio</span>
-            <span class="mn-settings-row__hint" aria-live="polite">{{ savedAudioLabel() }}</span>
-          </div>
-          <div class="mn-settings-row__end mn-actions">
+        <mn-settings-row label="Keep data">
+          <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
+            {{ persistenceLabel() }}
+          </span>
+          @if (storage.status().canRequest) {
             <button
               type="button"
-              class="mn-button mn-button--danger"
-              data-testid="delete-saved-audio"
-              aria-label="Delete saved audio"
+              class="mn-button"
               [disabled]="storage.action() !== 'idle'"
-              (click)="clearAudio()"
+              (click)="requestPersistence()"
             >
-              Delete
+              Protect
             </button>
-            @if (compression.running()) {
-              <button type="button" class="mn-button" (click)="stopCompressing()">Stop</button>
-            }
-          </div>
-        </div>
+          }
+        </mn-settings-row>
+
+        <mn-settings-row label="Saved audio" [actions]="true">
+          <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
+            {{ savedAudioLabel() }}
+          </span>
+          <button
+            type="button"
+            class="mn-button mn-button--danger"
+            data-testid="delete-saved-audio"
+            aria-label="Delete saved audio"
+            [disabled]="storage.action() !== 'idle'"
+            (click)="clearAudio()"
+          >
+            Delete
+          </button>
+          @if (compression.running()) {
+            <button type="button" class="mn-button" (click)="stopCompressing()">Stop</button>
+          }
+        </mn-settings-row>
 
         <details class="mn-settings-details danger" data-testid="danger-zone">
           <summary class="mn-settings-row">

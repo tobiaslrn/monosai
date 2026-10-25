@@ -87,6 +87,29 @@
   border: 0;
 }
 
+/*
+ * Disabled is last in the order and is drawn, not dimmed: the sunken surface,
+ * secondary text, and a dashed boundary, with no hover. A choice that cannot be
+ * changed stays readable as chosen, keeping the selection tint behind the
+ * dashed boundary. The joined variant has no boundary to dash.
+ */
+.mn-segmented > label:where(:has(input:disabled)) {
+  border-color: var(--border-subtle);
+  border-style: dashed;
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+.mn-segmented > label:where(:has(input:checked:disabled)) {
+  background: var(--action-primary-soft);
+  color: var(--action-primary-text);
+}
+
+.mn-segmented input:disabled {
+  cursor: not-allowed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mn-segmented > label {
     transition: none;

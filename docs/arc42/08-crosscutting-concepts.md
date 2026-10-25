@@ -261,6 +261,12 @@ audit extracts Angular inline style blocks and applies the same token and primit
 to them. A change that departs from the design system changes that document first, in the same
 commit.
 
+Components compose the shared-ui primitives for controls instead of writing their markup: the
+segmented control, radio cards, switch row, settings row, and the popup (a native popover that
+the browser dismisses, so no menu registers a document listener of its own). A feature places a
+primitive and never re-skins it
+([ADR 0083](../decisions/0083-floating-panels-are-native-popovers.md)).
+
 Interaction states follow one fixed order — rest, variant, hover, active, pressed, pressed and
 hover, busy, disabled, pressed and disabled — decided by source order. In the shared controls every state qualifier, including the mouse-only
 hover guard, is written inside `:where()` so a state rule weighs only its own class

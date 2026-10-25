@@ -12,71 +12,64 @@ import { EXCEPTION_PROMPT_VERSION } from '../../domain/ai/exception-policy-hash'
 import { InstallPromptService } from '../../core/platform/install-prompt.service';
 import { readBuildInfo } from '../../core/diagnostics/build-info';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
 
 /** About, update, and local diagnostics controls. */
 @Component({
   selector: 'mn-about-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, SettingsSectionComponent],
+  imports: [IconComponent, SettingsRowComponent, SettingsSectionComponent],
   template: `
     <mn-settings-section heading="About">
       <div class="mn-card mn-card--flush mn-settings-card">
         @let update = updates.status();
-        <div class="mn-settings-row">
-          <div class="mn-settings-row__label">
-            <span class="mn-settings-row__title">Version</span>
-            <span class="mn-settings-row__hint">
-              {{ build.appVersion }} · {{ install.isStandalone() ? 'Installed' : 'Not installed' }}
+        <mn-settings-row label="Version" [actions]="true">
+          <span mn-settings-row-detail class="mn-settings-row__hint">
+            {{ build.appVersion }} · {{ install.isStandalone() ? 'Installed' : 'Not installed' }}
+          </span>
+          @if (updateStatusLabel(update); as statusLabel) {
+            <span mn-settings-row-detail class="mn-settings-row__result" aria-live="polite">
+              {{ statusLabel }}
             </span>
-            @if (updateStatusLabel(update); as statusLabel) {
-              <span class="mn-settings-row__result" aria-live="polite">{{ statusLabel }}</span>
-            }
-          </div>
-          <div class="mn-settings-row__end mn-actions">
-            @if (!install.isStandalone() && install.canInstall()) {
-              <button type="button" class="mn-button" (click)="installApp()">
-                Install Monosai
-              </button>
-            }
-            <button
-              type="button"
-              class="mn-button mn-button--ghost"
-              [disabled]="update.kind === 'activating'"
-              (click)="checkForUpdates()"
-            >
-              <mn-icon name="sync" [size]="17" />
-              Check for updates
-            </button>
-          </div>
-        </div>
+          }
+          @if (!install.isStandalone() && install.canInstall()) {
+            <button type="button" class="mn-button" (click)="installApp()">Install Monosai</button>
+          }
+          <button
+            type="button"
+            class="mn-button mn-button--ghost"
+            [disabled]="update.kind === 'activating'"
+            (click)="checkForUpdates()"
+          >
+            <mn-icon name="sync" [size]="17" />
+            Check for updates
+          </button>
+        </mn-settings-row>
 
-        <div class="mn-settings-row">
-          <div class="mn-settings-row__label">
-            <span class="mn-settings-row__title">Diagnostics</span>
-            <span class="mn-settings-row__hint">
-              Stays in this tab. Never includes your key or text.
+        <mn-settings-row label="Diagnostics" [actions]="true">
+          <span mn-settings-row-detail class="mn-settings-row__hint">
+            Stays in this tab. Never includes your key or text.
+          </span>
+          @if (copyStatus() === 'copied') {
+            <span mn-settings-row-detail class="mn-settings-row__result" role="status">
+              Diagnostics copied.
             </span>
-            @if (copyStatus() === 'copied') {
-              <span class="mn-settings-row__result" role="status">Diagnostics copied.</span>
-            } @else if (copyStatus() === 'failed') {
-              <span class="mn-settings-row__result" role="status">
-                Diagnostics could not be copied on this browser.
-              </span>
-            }
-          </div>
-          <div class="mn-settings-row__end mn-actions">
-            <button
-              type="button"
-              class="mn-button"
-              aria-label="Copy diagnostics"
-              (click)="copyDiagnostics()"
-            >
-              <mn-icon name="copy" [size]="17" />
-              Copy
-            </button>
-          </div>
-        </div>
+          } @else if (copyStatus() === 'failed') {
+            <span mn-settings-row-detail class="mn-settings-row__result" role="status">
+              Diagnostics could not be copied on this browser.
+            </span>
+          }
+          <button
+            type="button"
+            class="mn-button"
+            aria-label="Copy diagnostics"
+            (click)="copyDiagnostics()"
+          >
+            <mn-icon name="copy" [size]="17" />
+            Copy
+          </button>
+        </mn-settings-row>
 
         <details class="mn-settings-details">
           <summary class="mn-settings-row">

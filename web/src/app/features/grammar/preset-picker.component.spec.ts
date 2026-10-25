@@ -57,7 +57,7 @@ describe('PresetPickerComponent', () => {
 
   it('names and captions every preset without a JLPT level in the name', async () => {
     const { element } = await render();
-    const cards = [...element.querySelectorAll('.preset')];
+    const cards = [...element.querySelectorAll('mn-radio-card')];
 
     expect(cards).toHaveLength(TEST_PRESETS.length);
     for (const [index, card] of cards.entries()) {
