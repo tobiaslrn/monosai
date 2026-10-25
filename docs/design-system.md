@@ -545,9 +545,10 @@ focus when dismissed. It follows the app-level overlay pattern above while
 retaining its reader anchor. Its mobile grab handle uses the same shared
 dismissal: a downward drag closes the sheet, and a plain press on the handle
 does the same for keyboard and touch users.
-Reading appearance uses compact switch rows, and story content is one quiet
-grouped list with pill actions. Deleting the story itself is not here: it is on
-the library card, which is the one place it lives.
+Reading appearance uses compact switch rows (Furigana, Word spacing, Sentence per
+line, and Warning markers), and story content is one quiet grouped list with
+pill actions. Deleting the story itself is not here: it is on the library card,
+which is the one place it lives.
 
 A content row keeps its copy on one side and its controls on the other, and the
 controls move as one block: on a narrow sheet they wrap together below the copy

@@ -110,6 +110,8 @@ export function snapPlaybackRate(value: number): PlaybackRate {
 export interface ReaderPreferences {
   readonly furigana: boolean;
   readonly tokenSpacing: boolean;
+  /** Puts each sentence on its own line rather than running paragraphs together. */
+  readonly sentencePerLine: boolean;
   /** Underlines for unreviewed vocabulary and unfamiliar grammar only. */
   readonly warningMarkers: boolean;
   /** Multiplier over the base reading font size, within the bounds above. */
@@ -122,6 +124,7 @@ export interface ReaderPreferences {
 export const DEFAULT_READER_PREFERENCES: ReaderPreferences = {
   furigana: true,
   tokenSpacing: true,
+  sentencePerLine: false,
   warningMarkers: true,
   textScale: 1,
   playbackRate: DEFAULT_PLAYBACK_RATE,

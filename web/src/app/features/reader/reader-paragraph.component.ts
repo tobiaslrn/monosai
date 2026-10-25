@@ -25,6 +25,7 @@ import {
   template: `
     <p
       class="paragraph"
+      [class.is-lined]="sentencePerLine()"
       mnParagraphGestures
       (sentenceSelected)="sentenceSelected.emit($event)"
       [attr.data-paragraph-position]="entry().paragraph.position"
@@ -74,6 +75,14 @@ import {
       -webkit-user-select: none;
       -webkit-touch-callout: none;
     }
+
+    /*
+     * One sentence per line. Only the sentence element is blockified; its inner
+     * .sentence span stays inline so line-box hit-testing still works.
+     */
+    .paragraph.is-lined mn-reader-sentence {
+      display: block;
+    }
   `,
 })
 export class ReaderParagraphComponent {
@@ -81,6 +90,7 @@ export class ReaderParagraphComponent {
   readonly aids = input<ReadonlyMap<SentenceId, SentenceAids>>(new Map());
   readonly furigana = input(true);
   readonly tokenSpacing = input(true);
+  readonly sentencePerLine = input(false);
   readonly markers = input(true);
   readonly selectedSentenceId = input<string | null>(null);
   /** The sentence being read aloud, tinted so playback can be followed. */

@@ -32,6 +32,9 @@ export const appSettingsSchema = z.object({
 export const readerPreferencesSchema = z.object({
   furigana: z.boolean(),
   tokenSpacing: z.boolean(),
+  // Absent on rows written before the preference existed, which means off.
+  // Settings are keyed records, so no Dexie version.
+  sentencePerLine: z.boolean().default(false),
   warningMarkers: z.boolean(),
   textScale: z.number().min(MIN_TEXT_SCALE).max(MAX_TEXT_SCALE),
   playbackRate: z

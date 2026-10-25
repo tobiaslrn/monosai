@@ -36,7 +36,12 @@ async function openWordDetails(page: Page, surface: string): Promise<void> {
 
 async function setReaderAids(
   page: Page,
-  options: { readonly furigana: boolean; readonly spacing: boolean },
+  options: {
+    readonly furigana: boolean;
+    readonly spacing: boolean;
+    /** Left alone when omitted, so callers that predate the switch are unchanged. */
+    readonly sentencePerLine?: boolean;
+  },
 ): Promise<void> {
   await page.getByRole('button', { name: 'Story options', exact: true }).click();
   const panel = page.getByRole('group', { name: 'Reading appearance' });
@@ -45,7 +50,11 @@ async function setReaderAids(
   for (const [label, checked] of [
     ['Furigana', options.furigana],
     ['Word spacing', options.spacing],
+    ['Sentence per line', options.sentencePerLine],
   ] as const) {
+    if (checked === undefined) {
+      continue;
+    }
     const control = panel.getByRole('checkbox', { name: label });
     if ((await control.isChecked()) !== checked) {
       if (checked) {
@@ -1228,6 +1237,33 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await page.reload();
     await page.getByRole('button', { name: 'Story options', exact: true }).click();
     await expect(page.getByRole('checkbox', { name: 'Furigana' })).not.toBeChecked();
+  });
+
+  test('sentence per line puts each sentence on its own line, and is remembered', async ({
+    page,
+  }) => {
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    const sentences = page.locator('.sentence');
+    const topOf = async (index: number): Promise<number> => {
+      const box = await sentences.nth(index).boundingBox();
+      if (box === null) {
+        throw new Error(`sentence ${String(index)} has no layout box`);
+      }
+      return box.y;
+    };
+
+    // The first paragraph holds two sentences, which share a line until the
+    // switch separates them.
+    await setReaderAids(page, { furigana: true, spacing: true, sentencePerLine: true });
+    await expect.poll(async () => (await topOf(1)) > (await topOf(0))).toBe(true);
+    await expectSettingPersisted(page, 'reader-preferences', 'sentencePerLine', true);
+
+    // Pressing a sentence still opens its popover.
+    await openSentence(page, 1);
+    await expect(page.locator('mn-sentence-popover')).toBeVisible();
   });
 
   test('keeps every Reader action usable in the compact 320px header @mobile', async ({ page }) => {

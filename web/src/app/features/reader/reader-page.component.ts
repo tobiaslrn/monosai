@@ -272,6 +272,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                   [aids]="aids.aids()"
                   [furigana]="preferences().furigana"
                   [tokenSpacing]="preferences().tokenSpacing"
+                  [sentencePerLine]="preferences().sentencePerLine"
                   [markers]="preferences().warningMarkers"
                   [selectedSentenceId]="selectedSentenceId()"
                   [playingSentenceId]="audio.playback.currentSentenceId()"
@@ -850,7 +851,7 @@ export class ReaderPageComponent {
     });
 
     effect(() => {
-      const layoutKey = `${String(this.textScale())}:${String(this.preferences().furigana)}`;
+      const layoutKey = `${String(this.textScale())}:${String(this.preferences().furigana)}:${String(this.preferences().sentencePerLine)}`;
       this.store.paragraphs();
       untracked(() => {
         if (layoutKey !== this.measuredLayoutKey) {

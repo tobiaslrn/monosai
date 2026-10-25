@@ -139,6 +139,39 @@ describe('DexieSettingsRepository', () => {
     expect(preferences.value.textScale).toBe(1);
   });
 
+  it('reads a reader-preferences row written before sentence per line existed as off', async () => {
+    await db.settings.put({
+      key: SETTINGS_KEYS.readerPreferences,
+      v: ROW_VERSION,
+      value: {
+        furigana: false,
+        tokenSpacing: true,
+        warningMarkers: true,
+        textScale: 1.25,
+        playbackRate: 1,
+        updatedAt: 1_700_000_000_000,
+      },
+    });
+
+    const loaded = await repository.getReaderPreferences();
+
+    expect(loaded.ok).toBe(true);
+    expect(loaded.ok && loaded.value.sentencePerLine).toBe(false);
+    expect(loaded.ok && loaded.value.furigana).toBe(false);
+    expect(loaded.ok && loaded.value.textScale).toBe(1.25);
+  });
+
+  it('round-trips a partial update that turns sentence per line on', async () => {
+    const updated = await repository.updateReaderPreferences({ sentencePerLine: true });
+
+    expect(updated.ok && updated.value.sentencePerLine).toBe(true);
+    expect(updated.ok && updated.value.furigana).toBe(true);
+
+    const reloaded = await repository.getReaderPreferences();
+    expect(reloaded.ok && reloaded.value.sentencePerLine).toBe(true);
+    expect(reloaded.ok && reloaded.value.tokenSpacing).toBe(true);
+  });
+
   it('rejects a text scale outside the usable range rather than storing it', async () => {
     const updated = await repository.updateReaderPreferences({ textScale: 12 });
 

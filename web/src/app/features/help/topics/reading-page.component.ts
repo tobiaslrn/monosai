@@ -26,9 +26,9 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="reading-shape">
         <h2 id="reading-shape">Readings, spacing, and text size</h2>
         <p>
-          Story options can show hiragana above the kanji, put space between words, and change the
-          text size. These apply to every story on this device, so set them once the way you like to
-          read.
+          Story options can show hiragana above the kanji, put space between words, set each
+          sentence on its own line, and change the text size. These apply to every story on this
+          device, so set them once the way you like to read.
         </p>
         <p>
           Turn furigana off once you can manage without it, and let the tap on a word be your

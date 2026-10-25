@@ -1,9 +1,10 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   configureVocabularyTestBed,
   type VocabularyTestBed,
 } from '../../../testing/vocabulary-fakes';
+import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { snapshotId } from '../../domain/shared/ids';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
 import { ReaderAidsComponent } from './reader-aids.component';
@@ -120,4 +121,31 @@ describe('ReaderAidsComponent', () => {
       'Reading appearance',
     );
   });
+
+  it('toggles Sentence per line through the settings store', async () => {
+    activate(7);
+    const setReaderPreference = vi.spyOn(TestBed.inject(AppSettingsStore), 'setReaderPreference');
+    const element = await render();
+
+    const control = switchNamed(element, 'Sentence per line');
+    expect(control.checked).toBe(false);
+
+    control.click();
+    control.click();
+
+    expect(setReaderPreference).toHaveBeenNthCalledWith(1, 'sentencePerLine', true);
+    expect(setReaderPreference).toHaveBeenNthCalledWith(2, 'sentencePerLine', false);
+  });
 });
+
+/** The checkbox in the appearance row whose visible label is `label`. */
+function switchNamed(element: HTMLElement, label: string): HTMLInputElement {
+  const row = [...element.querySelectorAll<HTMLLabelElement>('label.aid')].find(
+    (candidate) => candidate.textContent.trim() === label,
+  );
+  const input = row?.querySelector<HTMLInputElement>('input');
+  if (input === undefined || input === null) {
+    throw new Error(`no switch labelled "${label}"`);
+  }
+  return input;
+}

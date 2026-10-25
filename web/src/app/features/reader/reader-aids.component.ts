@@ -9,7 +9,7 @@ import {
   type ReaderPreferences,
 } from '../../domain/settings/settings';
 
-type AidToggle = 'furigana' | 'tokenSpacing' | 'warningMarkers';
+type AidToggle = 'furigana' | 'tokenSpacing' | 'sentencePerLine' | 'warningMarkers';
 
 interface AidOption {
   readonly key: AidToggle;
@@ -20,6 +20,7 @@ interface AidOption {
 const AIDS: readonly AidOption[] = [
   { key: 'furigana', label: 'Furigana' },
   { key: 'tokenSpacing', label: 'Word spacing' },
+  { key: 'sentencePerLine', label: 'Sentence per line' },
   { key: 'warningMarkers', label: 'Warning markers' },
 ];
 

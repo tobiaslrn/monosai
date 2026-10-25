@@ -72,6 +72,10 @@ the learner opened deliberately.
   becomes `warningMarkers`. A `textScale` preference is added: reading size is a
   learner setting, and line height and paragraph spacing follow it within
   bounds, because the whitespace is now load-bearing.
+- `ReaderPreferences.sentencePerLine` is presentation only. It changes how a
+  paragraph is laid out, never what it contains: sentence boundaries are fixed
+  and persisted at import, and hit-testing stays line-box based, so a press
+  still resolves to the sentence it lands on.
 - Five components that existed only to render page-level aids are deleted:
   the sentence translation, sentence grammar, sentence details, sentence menu,
   and reading status panel.
