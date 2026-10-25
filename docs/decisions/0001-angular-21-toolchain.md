@@ -1,7 +1,13 @@
 # 0001 — Angular 21 toolchain and unit-test environment
 
 Date: 2026-08-17
-Status: Accepted
+Status: Accepted; the Angular version amended below
+
+> Amended on 2026-10-25. The application is on Angular 22 (`web/package.json` pins
+> `@angular/core` `^22.2.3`, with `"node": ">=24"`). The move this record anticipated
+> under Consequences happened as a version bump, as predicted. The title and the sentences
+> below that name Angular 21.2 are kept as the record of what was decided on 2026-08-17.
+> Everything else in this decision still stands.
 
 ## Context
 

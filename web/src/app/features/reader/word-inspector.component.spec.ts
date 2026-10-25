@@ -14,7 +14,7 @@ import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { wordAt } from '../../domain/reading/token-grouping';
 import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
-import { ok } from '../../domain/shared/result';
+import { err, ok, type Result } from '../../domain/shared/result';
 import { paragraphId, readingId, sentenceId } from '../../domain/shared/ids';
 import {
   NO_WORD_GRAMMAR,
@@ -22,7 +22,9 @@ import {
   type WordGrammarState,
 } from './word-inspector.component';
 
-const addWord = vi.fn(() => Promise.resolve(ok('Reader words')));
+const addWord = vi.fn((): Promise<Result<string, { message: string }>> =>
+  Promise.resolve(ok('Reader words')),
+);
 
 const TOKEN: Token = {
   id: 't1',
@@ -181,6 +183,54 @@ describe('WordInspectorComponent', () => {
     );
     expect(element.querySelector('.warning')).toBeNull();
     expect(element.querySelector('button.mn-button')).toBeNull();
+  });
+
+  describe('when the next word is inspected', () => {
+    const UNKNOWN: TokenStatusAssignment = {
+      tokenId: TOKEN.id,
+      validation: { category: 'unknown', reason: 'not-in-vocabulary' },
+    };
+
+    async function inspectNext(): Promise<void> {
+      await TestBed.inject(WordInspectorStore).inspect({
+        token: TOKEN,
+        word: wordAt([TOKEN], 0),
+        sentence: SENTENCE,
+        status: UNKNOWN,
+      });
+    }
+
+    it('forgets where the last word was added', async () => {
+      const fixture = await render(NO_WORD_GRAMMAR, TOKEN, UNKNOWN);
+      const element = fixture.nativeElement as HTMLElement;
+      element.querySelector<HTMLButtonElement>('button.mn-button')?.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(element.querySelector('[role="status"]')).not.toBeNull();
+
+      await inspectNext();
+      fixture.detectChanges();
+
+      expect(element.querySelector('[role="status"]')).toBeNull();
+      expect(element.querySelector('button.mn-button')?.textContent).toContain('Add to word list');
+    });
+
+    it("forgets the last word's failure", async () => {
+      addWord.mockResolvedValueOnce(err({ message: 'The list could not be saved.' }));
+      const fixture = await render(NO_WORD_GRAMMAR, TOKEN, UNKNOWN);
+      const element = fixture.nativeElement as HTMLElement;
+      element.querySelector<HTMLButtonElement>('button.mn-button')?.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(element.querySelector('[role="alert"]')?.textContent).toContain(
+        'The list could not be saved.',
+      );
+
+      await inspectNext();
+      fixture.detectChanges();
+
+      expect(element.querySelector('[role="alert"]')).toBeNull();
+    });
   });
 
   it('shows the grammar covering this word, where the reader stopped', async () => {
@@ -449,6 +499,25 @@ describe('WordInspectorComponent', () => {
 
       expect(element.querySelectorAll('.glosses li')).toHaveLength(5);
       expect(element.querySelector('.mn-button--ghost')).toBeNull();
+    });
+
+    it('opens the next word collapsed again', async () => {
+      entries = [entryWith(5)];
+      const fixture = await render();
+      const element = fixture.nativeElement as HTMLElement;
+      element.querySelector<HTMLButtonElement>('.mn-button--ghost')?.click();
+      fixture.detectChanges();
+      expect(element.querySelectorAll('.glosses li')).toHaveLength(5);
+
+      await TestBed.inject(WordInspectorStore).inspect({
+        token: TOKEN,
+        word: wordAt([TOKEN], 0),
+        sentence: SENTENCE,
+        status: null,
+      });
+      fixture.detectChanges();
+
+      expect(element.querySelectorAll('.glosses li')).toHaveLength(2);
     });
 
     it('offers no More when the entry is short enough to show whole', async () => {

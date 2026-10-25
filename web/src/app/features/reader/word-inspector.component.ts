@@ -2,9 +2,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  effect,
   inject,
   input,
+  linkedSignal,
   output,
   signal,
 } from '@angular/core';
@@ -379,21 +379,21 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 export class WordInspectorComponent {
   private readonly wordList = inject(ReaderWordListService);
   protected readonly adding = signal(false);
-  protected readonly addedTo = signal<string | null>(null);
-  protected readonly addFailure = signal<string | null>(null);
   protected readonly store = inject(WordInspectorStore);
 
-  private readonly expandedSignal = signal(false);
-
-  constructor() {
-    // A new word is a new lookup: it opens collapsed, whatever the last one did.
-    effect(() => {
-      this.store.selected();
-      this.expandedSignal.set(false);
-      this.addedTo.set(null);
-      this.addFailure.set(null);
-    });
-  }
+  // A new word is a new lookup: it opens collapsed, whatever the last one did.
+  private readonly expandedSignal = linkedSignal({
+    source: this.store.selected,
+    computation: (): boolean => false,
+  });
+  protected readonly addedTo = linkedSignal({
+    source: this.store.selected,
+    computation: (): string | null => null,
+  });
+  protected readonly addFailure = linkedSignal({
+    source: this.store.selected,
+    computation: (): string | null => null,
+  });
 
   /** The grammar around this word, and whether it can still be analysed. */
   readonly grammar = input<WordGrammarState>(NO_WORD_GRAMMAR);

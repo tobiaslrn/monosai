@@ -2,9 +2,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  effect,
   inject,
   input,
+  linkedSignal,
   output,
   signal,
 } from '@angular/core';
@@ -111,10 +111,14 @@ export class TextListSourceComponent {
   private readonly sync = inject(VocabularySyncService);
   private readonly history = inject(SnapshotHistoryStore);
 
-  protected readonly label = signal('');
-  protected readonly content = signal('');
+  // Opening another source (or none) starts the editor over from that source.
+  protected readonly label = linkedSignal(() => this.source()?.label ?? '');
+  protected readonly content = linkedSignal(() => this.source()?.content ?? '');
+  protected readonly editorError = linkedSignal({
+    source: this.source,
+    computation: (): string | null => null,
+  });
   protected readonly saving = signal(false);
-  protected readonly editorError = signal<string | null>(null);
   protected readonly preview = computed(() => parseTextList(this.content()));
   protected readonly canSave = computed(
     () => this.label().trim().length > 0 && this.preview().entries.length > 0,
@@ -127,15 +131,6 @@ export class TextListSourceComponent {
     return 'Add at least one word to continue.';
   });
   protected readonly previewLabel = computed(() => textListPreviewLabel(this.preview()));
-
-  constructor() {
-    effect(() => {
-      const source = this.source();
-      this.label.set(source?.label ?? '');
-      this.content.set(source?.content ?? '');
-      this.editorError.set(null);
-    });
-  }
 
   protected setLabel(event: Event): void {
     this.label.set((event.target as HTMLInputElement).value);

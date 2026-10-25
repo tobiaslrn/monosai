@@ -348,3 +348,15 @@ The reader's own not-found state keeps the reader's bar rather than a page heade
 is reached only after a reading has begun loading, and swapping the chrome in when a
 load fails would make one bar replace another as a reading opens. Its bar carries the
 same back control and names what was not found, so the two read alike.
+
+## 8.11 Signals and effects
+
+Derive with `computed`, reset on change with `linkedSignal`, and keep `effect` for side effects
+outside Angular's graph: the DOM, storage, observers, and logging.
+
+State that restarts when an input changes — a form that opens from the selected record, a panel that
+collapses when the selection moves — is a `linkedSignal` over that input, never an `effect` that
+writes signals. A resource tied to a value, such as an object URL for a clip, lives in an effect that
+makes it and releases it in `onCleanup`, which runs on replacement and on destroy; the effect writes no
+signals. An effect that has to call a store method which reads state it then rewrites wraps the call in
+`untracked()`, or it becomes its own trigger.

@@ -442,12 +442,11 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
             }
 
             <!-- The preview is heard, not operated: it starts itself and leaves no player behind. -->
-            @if (sampleUrl(); as url) {
+            @if (tts.sample() !== null) {
               <audio
                 #sampleAudio
                 class="mn-visually-hidden"
                 preload="auto"
-                [src]="url"
                 (canplay)="playRequestedSample()"
               ></audio>
             }
@@ -522,15 +521,16 @@ export class ModelsSectionComponent {
   protected readonly speechModels = signal<readonly ModelCapabilities[]>([]);
   protected readonly catalogLoading = signal(false);
   protected readonly catalogFailure = signal<string | null>(null);
-  protected readonly sampleUrl = signal<string | null>(null);
   protected readonly textTasks = [
     { id: 'translation' as const, label: 'Translation' },
     { id: 'grammar' as const, label: 'Grammar' },
   ];
   private catalogLoaded = false;
-  /** A sample already present when Settings opens is display-only. */
-  private sampleEffectInitialized = false;
-  private readonly samplePlaybackRequested = signal(false);
+  /**
+   * The clip that has already played, or been shown without playing: a sample
+   * already present when Settings opens is display-only, so it starts as played.
+   */
+  private readonly playedSample = signal<Blob | null>(untracked(this.tts.sample));
   private readonly connectionPanel = viewChild.required<PopupDirective>('connection');
   private readonly sampleAudio = viewChild<ElementRef<HTMLAudioElement>>('sampleAudio');
 
@@ -652,25 +652,26 @@ export class ModelsSectionComponent {
         untracked(() => void this.loadCatalog());
       }
     });
+    // The preview clip is an object URL, a browser resource tied to the clip it
+    // was made from: made when the clip and its element exist, released when
+    // either is replaced and when the panel is destroyed.
     effect((onCleanup) => {
       const sample = this.tts.sample();
-      if (sample === null) {
-        this.sampleUrl.set(null);
-        this.samplePlaybackRequested.set(false);
-        this.sampleEffectInitialized = true;
-        return;
-      }
-      const url = this.document.defaultView?.URL.createObjectURL(sample) ?? null;
-      this.sampleUrl.set(url);
-      this.samplePlaybackRequested.set(this.sampleEffectInitialized);
-      this.sampleEffectInitialized = true;
-      if (url !== null) onCleanup(() => this.document.defaultView?.URL.revokeObjectURL(url));
+      const audio = this.sampleAudio()?.nativeElement;
+      const view = this.document.defaultView;
+      if (sample === null || audio === undefined || view === null) return;
+      const url = view.URL.createObjectURL(sample);
+      audio.src = url;
+      onCleanup(() => {
+        view.URL.revokeObjectURL(url);
+      });
     });
   }
 
   protected playRequestedSample(): void {
-    if (!this.samplePlaybackRequested()) return;
-    this.samplePlaybackRequested.set(false);
+    const sample = this.tts.sample();
+    if (sample === null || sample === this.playedSample()) return;
+    this.playedSample.set(sample);
     this.playSample();
   }
 

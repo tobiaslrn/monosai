@@ -1,7 +1,7 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   FakeCredentialRepository,
   modelTest,
@@ -557,6 +557,34 @@ describe('ModelsSectionComponent audio readiness', () => {
       expect(played).toBe(1);
     });
 
+    it('plays a clip once, and plays the next clip as soon as it can play', async () => {
+      await connect();
+      const { element, tts, detect } = await render();
+      tts.setDraft(CONFIGURED);
+      await tts.test();
+      detect();
+      let played = 0;
+      HTMLMediaElement.prototype.play = (): Promise<void> => {
+        played += 1;
+        return Promise.resolve();
+      };
+      const canPlay = (): void => {
+        element.querySelector('audio')?.dispatchEvent(new Event('canplay'));
+      };
+
+      canPlay();
+      canPlay();
+      expect(played).toBe(1);
+
+      // A new preview is a new clip, as it is from a real provider.
+      provider.result = ok(ttsTest(true));
+      await tts.test();
+      detect();
+      canPlay();
+      canPlay();
+      expect(played).toBe(2);
+    });
+
     it('plays the preview at normal speed regardless of the story player speed', async () => {
       await connect();
       await TestBed.inject(AppSettingsStore).setReaderPreference('playbackRate', 0.8);
@@ -594,6 +622,39 @@ describe('ModelsSectionComponent audio readiness', () => {
 
       expect(played).toBe(0);
       reopened.fixture.destroy();
+    });
+
+    it('revokes the preview clip URL when the clip is replaced and when the panel is destroyed', async () => {
+      const created: string[] = [];
+      const revoked: string[] = [];
+      const create = vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {
+        const url = `blob:preview-${String(created.length)}`;
+        created.push(url);
+        return url;
+      });
+      const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation((url) => {
+        revoked.push(url);
+      });
+      try {
+        await connect();
+        const { tts, detect, fixture } = await render();
+        tts.setDraft(CONFIGURED);
+        await tts.test();
+        detect();
+        expect(created).toEqual(['blob:preview-0']);
+        expect(revoked).toEqual([]);
+
+        await tts.test();
+        detect();
+        expect(created).toEqual(['blob:preview-0', 'blob:preview-1']);
+        expect(revoked).toEqual(['blob:preview-0']);
+
+        fixture.destroy();
+        expect(revoked).toEqual(['blob:preview-0', 'blob:preview-1']);
+      } finally {
+        create.mockRestore();
+        revoke.mockRestore();
+      }
     });
 
     it('does not let a refused sample reject into the console', async () => {
