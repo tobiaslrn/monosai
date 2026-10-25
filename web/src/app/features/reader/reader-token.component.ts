@@ -199,10 +199,15 @@ export interface TokenActivationSource {
      * Words only: punctuation and whitespace are rendered with the same class
      * but are not targets, and padding one of them out pushes the line it sits
      * on around.
+     *
+     * The padding above the word is kept short: a ruby annotation sits on the
+     * padding box of its base, so every em added there is one more em between
+     * the furigana and the kanji. The annotation is not a target, so little is
+     * lost.
      */
     @media (pointer: coarse) {
       button.token {
-        padding-block: 0.4em;
+        padding-block: 0.2em 0.4em;
       }
     }
 
