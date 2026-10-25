@@ -105,7 +105,7 @@ const HARD_DIFFICULTY_PERCENT = 50;
       display: none;
     }
 
-    summary:hover {
+    :host-context(html[data-pointer='mouse']) summary:hover {
       background: var(--surface-sunken-hover);
     }
 

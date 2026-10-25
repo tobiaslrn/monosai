@@ -171,7 +171,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       border-color: transparent;
       background: transparent;
     }
-    .trigger--compact:hover:not(:disabled) {
+    :host-context(html[data-pointer='mouse']) .trigger--compact:hover:not(:disabled) {
       border-color: transparent;
       background: var(--surface-sunken);
     }
@@ -285,9 +285,9 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       padding: var(--space-2) var(--space-3);
       text-align: left;
     }
-    .model-choice:hover,
-    .star:hover,
-    .fallback:hover {
+    :host-context(html[data-pointer='mouse']) .model-choice:hover,
+    :host-context(html[data-pointer='mouse']) .star:hover,
+    :host-context(html[data-pointer='mouse']) .fallback:hover {
       background: var(--surface-sunken);
     }
     .star {

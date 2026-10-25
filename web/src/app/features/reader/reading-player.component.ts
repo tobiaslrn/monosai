@@ -458,18 +458,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       opacity: 0;
     }
 
-    .track:hover .scrub:not(:disabled)::-webkit-slider-thumb,
-    .scrub:focus-visible::-webkit-slider-thumb,
-    .scrub:active::-webkit-slider-thumb {
-      opacity: 1;
-    }
-
-    .track:hover .scrub:not(:disabled)::-moz-range-thumb,
-    .scrub:focus-visible::-moz-range-thumb,
-    .scrub:active::-moz-range-thumb {
-      opacity: 1;
-    }
-
     /*
      * One line, ranged to the leading edge. An empty slot is held open rather
      * than collapsed, so the line is one width in every state and nothing under
@@ -611,7 +599,11 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       .fill,
       .slot,
       .ring-fill,
-      .scrub::-webkit-slider-thumb,
+      .scrub::-webkit-slider-thumb {
+        transition: none;
+      }
+
+      /* Its own rule: a browser drops a whole list holding a pseudo it does not know. */
       .scrub::-moz-range-thumb {
         transition: none;
       }

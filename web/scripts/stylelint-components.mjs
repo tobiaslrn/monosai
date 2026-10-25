@@ -2,10 +2,12 @@ import { readFile, readdir } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import stylelint from 'stylelint';
+import { globalStylesConfig } from '../stylelint.config.mjs';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(scriptDirectory, '..');
 const appRoot = join(webRoot, 'src', 'app');
+const stylesRoot = join(webRoot, 'src', 'styles');
 const configFile = join(webRoot, 'stylelint.config.mjs');
 const sourceExtensions = new Set(['.scss', '.ts', '.html']);
 
@@ -64,6 +66,17 @@ async function lintCode(code, filePath) {
   return warnings.map((warning) => formatWarning(warning, filePath));
 }
 
+async function lintGlobalStyles(code, filePath) {
+  const result = await stylelint.lint({
+    code,
+    codeFilename: filePath,
+    config: globalStylesConfig,
+    formatter: 'json',
+  });
+  const warnings = result.results.flatMap((entry) => entry.warnings);
+  return warnings.map((warning) => formatWarning(warning, filePath));
+}
+
 function findForbiddenColors(filePath, source) {
   const warnings = [];
   const pattern = /#[0-9a-f]{3,8}\b|\b(?:rgb|rgba)\s*\(/gi;
@@ -96,6 +109,12 @@ for (const filePath of files) {
       warnings.push(...(await lintCode(inlineStyle.code, inlineStyle.filePath)));
     }
   }
+}
+
+const styleFiles = (await collectFiles(stylesRoot)).filter((file) => extname(file) === '.scss');
+
+for (const filePath of styleFiles.sort()) {
+  warnings.push(...(await lintGlobalStyles(await readFile(filePath, 'utf8'), filePath)));
 }
 
 if (warnings.length > 0) {

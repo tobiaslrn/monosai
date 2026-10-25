@@ -67,7 +67,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
         border-color var(--motion-fast) ease-out;
     }
 
-    .preset:hover:not(.is-selected) {
+    :host-context(html[data-pointer='mouse']) .preset:hover:not(.is-selected) {
       background: var(--surface-sunken);
     }
 

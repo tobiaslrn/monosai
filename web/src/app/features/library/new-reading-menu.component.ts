@@ -44,7 +44,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       text-decoration: none;
     }
 
-    a:hover {
+    :host-context(html[data-pointer='mouse']) a:hover {
       background: var(--surface-sunken);
     }
   `,

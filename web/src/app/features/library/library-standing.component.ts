@@ -116,7 +116,7 @@ type StandingHeadline =
      * name has to stay breakable on a narrow screen, so the mark fragmented
      * across lines instead of pointing anywhere.
      */
-    .standing:hover .headline span {
+    :host-context(html[data-pointer='mouse']) .standing:hover .headline span {
       text-decoration: underline;
     }
 

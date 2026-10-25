@@ -100,7 +100,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       text-decoration: none;
     }
 
-    .choice:hover {
+    :host-context(html[data-pointer='mouse']) .choice:hover {
       border-color: var(--border-strong);
       background: var(--surface-sunken);
     }

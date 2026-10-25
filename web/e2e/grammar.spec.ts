@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
+import { tap } from './reading';
 
 const STARTER = 'Starter forms';
 const EVERYDAY = 'Everyday forms';
@@ -38,6 +39,22 @@ test.describe('grammar profile', () => {
     await expect(page.locator('#wording')).toHaveCount(0);
 
     await expectNoSeriousAccessibilityViolations(page);
+  });
+
+  test('does not leave a fold tinted after a touch @mobile @smoke', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'sticky hover is a touch-only interaction');
+    await openOverview(page);
+
+    const summary = page.locator('#forms > summary');
+    const resting = await summary.evaluate((element) => getComputedStyle(element).backgroundColor);
+
+    await tap(page, summary);
+    await expect(page.locator('#forms')).toHaveAttribute('open', /.*/);
+
+    // The phone still reports the last tap as a hover; the fold must look as it did before.
+    expect(await summary.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+      resting,
+    );
   });
 
   test('saves a chosen level only when asked and says what changed @smoke', async ({ page }) => {

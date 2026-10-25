@@ -941,8 +941,8 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await tap(page, word);
     await expect(wordDetails(page)).toBeVisible();
     // The whole word is tinted, which for 猫である is more than one token.
+    await expect(page.locator('button.token.is-selected')).not.toHaveCount(0);
     const tinted = await page.locator('button.token.is-selected').count();
-    expect(tinted).toBeGreaterThan(0);
 
     await tap(page, word);
 

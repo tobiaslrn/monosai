@@ -29,7 +29,8 @@
     box-shadow var(--motion-fast) ease-out;
 }
 
-:where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select):hover:not(:disabled) {
+:where(html[data-pointer='mouse'])
+  :where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select):hover:not(:disabled) {
   border-color: var(--action-primary);
 }
 

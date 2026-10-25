@@ -404,6 +404,18 @@ hover. `aria-pressed` is the only state a toggle has; a feature does not mirror
 it in a class or paint it a second time. A busy control, when one exists, takes
 its place after pressed and hover, before disabled.
 
+Hover is a mouse state everywhere, not only in the shared controls: a phone
+reports hover after a tap and never takes it back, so every `:hover` in the
+app is written behind the pointer guard that `data-pointer` on `<html>`
+provides, and the static style audit rejects one that is not. Global partials
+write the guard as `:where(html[data-pointer='mouse'])`. A component's own
+styles write it as `:host-context(html[data-pointer='mouse'])`, which adds
+weight, so a component keeps the exclusions that decide its states
+(`:not(.is-selected)`, `:not(:disabled)`) in the selector, or restates a
+selected state's tint under the same guard, rather than relying on order.
+Hover selectors are written flat: the audit cannot see a guard on the parent
+of a nested `&:hover`.
+
 A bare icon button still meets the 3:1 non-text contrast requirement, because
 the glyph itself is the visual indicator; a boundary is not required to satisfy
 it. Text inputs are the opposite case and keep their visible boundary, because

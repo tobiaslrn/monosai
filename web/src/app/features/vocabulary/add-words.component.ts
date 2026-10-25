@@ -359,7 +359,7 @@ type AddMode = 'closed' | 'choices' | 'anki';
       color: var(--text-secondary);
     }
 
-    .choice:hover:not(:disabled) {
+    :host-context(html[data-pointer='mouse']) .choice:hover:not(:disabled) {
       background: var(--surface-sunken);
     }
 

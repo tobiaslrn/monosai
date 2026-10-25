@@ -156,7 +156,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       color: var(--status-danger);
     }
 
-    .menu button:hover {
+    :host-context(html[data-pointer='mouse']) .menu button:hover {
       background: var(--surface-sunken);
     }
 

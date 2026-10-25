@@ -197,7 +197,7 @@ export interface TokenActivation {
      * a reader could not tell apart or choose between.
      */
     .sentence.is-selected,
-    .sentence.is-selected:hover {
+    :host-context(html[data-pointer='mouse']) .sentence.is-selected:hover {
       background: var(--accent-secondary-soft);
     }
 
@@ -207,7 +207,7 @@ export interface TokenActivation {
      * different one from the open sentence, because both can be true at once.
      */
     .sentence.is-playing,
-    .sentence.is-playing:hover {
+    :host-context(html[data-pointer='mouse']) .sentence.is-playing:hover {
       background: var(--playing-sentence-soft);
     }
   `,

@@ -60,4 +60,5 @@ and before disabled.
 - The pressed and hover tint is a mix of the action colour into the selection tint. It is a
   token, so it follows both palettes and no component repeats it.
 - Hover stays a mouse state, so a phone never keeps a control tinted after a tap; only the
-  specificity of the guard changed.
+  specificity of the guard changed. The static style audit enforces it: a `:hover` selector
+  without `data-pointer='mouse'` fails, in a component and in the global partials alike.

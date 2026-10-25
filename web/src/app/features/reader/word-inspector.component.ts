@@ -256,7 +256,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
       color: var(--text-secondary);
     }
 
-    .sentence-details:hover mn-icon {
+    :host-context(html[data-pointer='mouse']) .sentence-details:hover mn-icon {
       color: var(--text-primary);
     }
 
