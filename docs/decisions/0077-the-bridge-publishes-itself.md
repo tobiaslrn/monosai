@@ -68,6 +68,6 @@ their platform semantics; only their appearance is Monosai's.
 - The repository's Releases page carries the bridge and is where a learner is sent.
   `web/src/app/features/vocabulary/anki-links.ts` already points there.
 - The bridge carries no design dependency on the PWA build: its resources are its own
-  transcription, and `docs/design-system.md` remains the one authority for both.
+  transcription, and `docs/design/design-system.md` remains the one authority for both.
 - Two Monosai icons can be told apart in a launcher, in the themed icon set, and on the
   splash screen, which is the only place the badge had to survive a mask.

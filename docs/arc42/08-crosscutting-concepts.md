@@ -250,7 +250,7 @@ learner activates the new version from a banner. See
 
 ## 8.9 User interface
 
-[`docs/design-system.md`](../design-system.md) is the authority for structure, controls, colour,
+[`docs/design-system.md`](../design/design-system.md) is the authority for structure, controls, colour,
 units, motion, voice, and state. It holds rules and intent. The values live in
 `web/src/styles/_tokens.scss`, the form fields in `web/src/styles/_controls.scss`, and each shared
 primitive — button, card and inset, notice, status pill, facts, stack and actions, segmented control,

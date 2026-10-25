@@ -4,7 +4,7 @@
 
 - Structure, layers, persistence, or external boundaries: read [docs/arc42](docs/arc42/)
   and [docs/decisions](docs/decisions/) first.
-- Anything visual or interactive: follow [the design system](docs/design-system.md).
+- Anything visual or interactive: follow [the design system](docs/design/design-system.md).
 - Update the affected document in the same commit as the change.
 
 ## Data

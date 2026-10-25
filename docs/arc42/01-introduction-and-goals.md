@@ -53,8 +53,8 @@ must stay responsive; the reader therefore mounts a bounded paragraph window
 
 | Role | Contact | Expectation of the architecture and this documentation |
 | --- | --- | --- |
-| **Learner** | The end user. Not a contributor | The reader is fast and quiet. Saved readings work offline. The Anki collection stays untouched. Cost stays under their control. They read [the setup guide](../setup.md), never this directory |
+| **Learner** | The end user. Not a contributor | The reader is fast and quiet. Saved readings work offline. The Anki collection stays untouched. Cost stays under their control. They read the guide inside the application, never this directory |
 | **Maintainer** | Repository owner | Change stays safe. Layers, typed errors, and tests catch mistakes before merge. This directory tells them how the system is shaped today |
-| **Coding agent** | Any agent working under [AGENTS.md](../../AGENTS.md) | Needs one authoritative description of the structure before it changes architecture. That description is this directory, plus [the ADRs](../decisions/) for the reasons and [the design system](../design-system.md) for the user interface |
+| **Coding agent** | Any agent working under [AGENTS.md](../../AGENTS.md) | Needs one authoritative description of the structure before it changes architecture. That description is this directory, plus [the ADRs](../decisions/) for the reasons and [the design system](../design/design-system.md) for the user interface |
 | **Anki project** | External. Not consulted | Monosai is a read-only client. It must not corrupt a collection or change review history. The action allowlist makes this a property of the code |
 | **OpenRouter** | External service, paid by the learner | Monosai is a bring-your-own-key client. It must respect rate limits, cap response sizes, and retry politely |

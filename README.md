@@ -18,9 +18,9 @@ own OpenRouter key.
 
 ## Docs
 
-- [Setup](docs/setup.md): connecting Anki, adding an AI key, installing the app
-- [Troubleshooting](docs/troubleshooting.md)
+- [The guide](https://tobiaslrn.github.io/monosai/#/help): setup, troubleshooting, and error codes, inside the app
 - [Architecture](docs/arc42/README.md)
+- [Design](docs/design/design-system.md)
 
 ## License
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  One control silhouette and one text scale, matching docs/design-system.md.
+  One control silhouette and one text scale, matching docs/design/design-system.md.
   The screen carries a single heading rank: its cards are rows whose labels say
   what they are, so a section or group title would name what is already in front
   of the reader. Every size is sp, so the device's font-size setting moves the

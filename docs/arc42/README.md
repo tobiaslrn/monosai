@@ -45,7 +45,7 @@ decision — not when the code inside a building block changes.
 
 - **[Architecture decision records](../decisions/)** — the records that give the reason for each
   decision. These chapters link to them. They never repeat them.
-- **[Design system](../design-system.md)** — the authority for structure, controls, colour, units,
+- **[Design system](../design/design-system.md)** — the authority for structure, controls, colour, units,
   motion, voice, and state. Read it before you change anything visual.
-- **[Setup guide](../setup.md)** and **[Troubleshooting](../troubleshooting.md)** — for users, not
-  for architects.
+- **The in-app guide** — the documentation for users, not for architects. It lives in
+  `web/src/app/features/help` and is described in [ADR 0079](../decisions/0079-help-is-a-hub-of-topics.md).

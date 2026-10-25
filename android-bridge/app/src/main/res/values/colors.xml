@@ -3,7 +3,7 @@
   The roles this screen uses from Monosai's light palette, transcribed from
   web/src/styles/_tokens.scss.
   The bridge is a native app and cannot read the PWA's custom properties, so these
-  are the same roles under the same names; docs/design-system.md governs both.
+  are the same roles under the same names; docs/design/design-system.md governs both.
   values-night/colors.xml carries the dark half.
 -->
 <resources>
