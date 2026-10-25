@@ -92,7 +92,7 @@ sequenceDiagram
     participant Provider as Text generation port
     participant Repo as Reading repository
 
-    Learner->>Form: words, then direction (seven axes, each Any or chosen)
+    Learner->>Form: words, then direction (six axes, each Any or chosen)
     Learner->>Form: Next
     Form->>Plots: prepare(direction, special instructions)
     Plots->>Repo: titles and premises of the last ten generated stories
@@ -144,7 +144,7 @@ sequenceDiagram
 
 The premise is the picked plot: two or three English sentences of setup and conflict. The card's
 frame travels with it as a story direction inside the same premise data block, because a plot leaves
-the ending unsaid and the chosen mood, format, and ending have to reach the writer; where an edited
+the ending unsaid and the chosen mood and format have to reach the writer, the mood carrying how it ends; where an edited
 plot and its direction disagree, the prompt says the plot wins. Provenance records the learner's
 choices, the picked card with what was rolled, its turning point, and the plot as sent. The story
 prompt still accepts an empty premise as a request for a topic of the model's choosing, but the form

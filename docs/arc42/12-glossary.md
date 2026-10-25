@@ -7,7 +7,7 @@ The terms Monosai's code and these chapters use. Where a term names a type, the 
 | **Reading** | Any saved content that opens in the reader. It is either imported or generated, and it is immutable once saved |
 | **Imported reading** | A reading made from Japanese the learner supplied, by pasting it or opening a `.txt` file |
 | **Generated story** | A reading written by the text provider and validated against the learner's vocabulary before it was saved |
-| **Story direction** | The learner's choices on seven axes — genre, mood, setting, cast, format, ending, time — each Any or chosen, custom options included. `domain/ai/story-direction.ts`. [ADR 0080](../decisions/0080-the-plot-is-chosen-before-the-story.md) |
+| **Story direction** | The learner's choices on six axes — genre, topic, setting, mood, cast, format — each Any or chosen, custom options included. `domain/ai/story-direction.ts`. [ADR 0080](../decisions/0080-the-plot-is-chosen-before-the-story.md), [ADR 0081](../decisions/0081-fewer-distinct-story-axes.md) |
 | **Plot frame** | What one plot card is built on: the pinned axes, the axes code rolled for that card, and its turning point |
 | **Turning point** | The event that sets a plot's problem in motion, rolled by code for every card and always distinct across the three. The learner cannot pin it |
 | **Plot** | Two or three English sentences of setup and conflict, drafted with two others in one request. The one the learner picks, edited or not, becomes the story's premise |

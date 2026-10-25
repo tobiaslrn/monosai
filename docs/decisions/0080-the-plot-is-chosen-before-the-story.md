@@ -2,7 +2,8 @@
 
 Date: 2026-10-25
 Status: Accepted; amends [ADR 0044](0044-backgrounded-story-generation.md) and
-[ADR 0071](0071-markdown-input-wire-and-cache-friendly-text-requests.md)
+[ADR 0071](0071-markdown-input-wire-and-cache-friendly-text-requests.md). The seven
+axes below are replaced by six in [ADR 0081](0081-fewer-distinct-story-axes.md).
 
 ## Context
 

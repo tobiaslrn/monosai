@@ -293,18 +293,17 @@ describe('StoryFormComponent', () => {
     const rows = [...element.querySelectorAll<HTMLDetailsElement>('details.axis')];
     expect(rows.map((row) => row.dataset['axis'])).toEqual([
       'genre',
-      'mood',
+      'topic',
       'setting',
+      'mood',
       'cast',
       'format',
-      'ending',
-      'time',
     ]);
     expect(rows.filter((row) => row.open).map((row) => row.dataset['axis'])).toEqual(['genre']);
     expect(rows.every((row) => row.getAttribute('name') === 'mn-story-axis')).toBe(true);
     expect(
       rows.map((row) => row.querySelector('[data-testid="axis-value"]')?.textContent.trim()),
-    ).toEqual(['Any', 'Any', 'Any', 'Any', 'Any', 'Any', 'Any']);
+    ).toEqual(['Any', 'Any', 'Any', 'Any', 'Any', 'Any']);
   });
 
   it('keeps chips in place, leads with Any, ends with Custom, and marks choices pressed', () => {
@@ -331,7 +330,7 @@ describe('StoryFormComponent', () => {
       genre()
         .filter((chip) => chip.getAttribute('aria-pressed') === 'true')
         .map((chip) => chip.textContent.trim()),
-    ).toEqual(['Mystery', 'Comedy']);
+    ).toEqual(['Comedy', 'Mystery']);
     expect(
       element.querySelector('[data-axis="genre"] [data-testid="axis-value"]')?.textContent.trim(),
     ).toBe('Mystery, Comedy');
@@ -372,7 +371,7 @@ describe('StoryFormComponent', () => {
     const values = [...element.querySelectorAll('[data-testid="axis-value"]')].map((value) =>
       value.textContent.trim(),
     );
-    expect(values).toHaveLength(7);
+    expect(values).toHaveLength(6);
     expect(values).not.toContain('Any');
   });
 

@@ -58,7 +58,7 @@ describe('toggleOption', () => {
   });
 
   it('makes every other axis single-choice and clears a choice picked again', () => {
-    let direction = pick(EMPTY_STORY_DIRECTION, ['mood', 'Calm'], ['mood', 'Tense']);
+    let direction = pick(EMPTY_STORY_DIRECTION, ['mood', 'Cozy'], ['mood', 'Tense']);
     expect(direction.selected.mood).toEqual(['Tense']);
     direction = toggleOption(direction, 'mood', 'Tense');
     expect(direction.selected.mood).toEqual([]);
@@ -90,9 +90,9 @@ describe('addCustomOption', () => {
   });
 
   it('picks an existing option rather than adding the same words twice', () => {
-    const added = addCustomOption(EMPTY_STORY_DIRECTION, 'mood', 'calm');
+    const added = addCustomOption(EMPTY_STORY_DIRECTION, 'mood', 'cozy');
     expect(added.ok && added.value.custom.mood).toEqual([]);
-    expect(added.ok && added.value.selected.mood).toEqual(['Calm']);
+    expect(added.ok && added.value.selected.mood).toEqual(['Cozy']);
   });
 
   it('refuses empty text and text longer than a chip', () => {
@@ -142,8 +142,8 @@ describe('rollPlotFrames', () => {
           expect(frame.values[axis][0].rolled).toBe(true);
         }
       }
-      // Format, ending, and time are left to the writer when nobody chose them.
-      for (const axis of ['format', 'ending', 'time'] as const) {
+      // Mood and format are left to the writer when nobody chose them.
+      for (const axis of ['mood', 'format'] as const) {
         expect(frames.every((frame) => frame.values[axis].length === 0)).toBe(true);
       }
       expect(new Set(frames.map((frame) => frame.turningPoint.label)).size).toBe(PLOT_COUNT);
@@ -203,13 +203,13 @@ describe('rollPlotFrames', () => {
 
 describe('reframePlot', () => {
   it('takes new pins, keeps rolled values on Any axes, and drops choices put back on Any', () => {
-    const pinned = pick(EMPTY_STORY_DIRECTION, ['mood', 'Calm'], ['ending', 'Happy']);
+    const pinned = pick(EMPTY_STORY_DIRECTION, ['mood', 'Cozy'], ['topic', 'Food']);
     const [frame] = rollPlotFrames(pinned, seeded(5));
 
-    const now = pick(EMPTY_STORY_DIRECTION, ['ending', 'Sad']);
+    const now = pick(EMPTY_STORY_DIRECTION, ['topic', 'Work']);
     const reframed = reframePlot(frame, now);
 
-    expect(reframed.values.ending).toEqual([{ value: 'Sad', rolled: false }]);
+    expect(reframed.values.topic).toEqual([{ value: 'Work', rolled: false }]);
     expect(reframed.values.mood).toEqual([]);
     expect(reframed.values.setting).toEqual(frame.values.setting);
     expect(reframed.turningPoint).toBe(frame.turningPoint);
@@ -219,7 +219,7 @@ describe('reframePlot', () => {
 describe('storyDirectionRecord', () => {
   it('records the choices, the custom values, the picked card, and the plot as sent', () => {
     const added = addCustomOption(
-      pick(EMPTY_STORY_DIRECTION, ['genre', 'Mystery'], ['ending', 'Happy']),
+      pick(EMPTY_STORY_DIRECTION, ['genre', 'Mystery'], ['mood', 'Funny']),
       'cast',
       'My cat Mochi',
     );
@@ -231,11 +231,11 @@ describe('storyDirectionRecord', () => {
     expect(record.selected).toEqual({
       genre: ['Mystery'],
       cast: ['My cat Mochi'],
-      ending: ['Happy'],
+      mood: ['Funny'],
     });
     expect(record.customSelected).toEqual({ cast: ['My cat Mochi'] });
     expect(record.frame.genre).toEqual([{ value: 'Mystery', rolled: false }]);
-    expect(record.frame.mood?.[0].rolled).toBe(true);
+    expect(record.frame.setting?.[0].rolled).toBe(true);
     expect(record.frame.format).toBeUndefined();
     expect(record.turningPoint).toBe(frame.turningPoint.label);
     expect(record.plotEn).toBe('Edited plot.');

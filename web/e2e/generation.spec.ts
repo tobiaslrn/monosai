@@ -217,22 +217,22 @@ test.describe('steering a story', () => {
     await page.getByTestId('story-length').fill('0');
     await page.getByTestId('wizard-next').click();
     await chip(page, 'genre', 'Mystery').click();
-    await openAxis(page, 'ending');
-    await chip(page, 'ending', 'Happy').click();
+    await openAxis(page, 'mood');
+    await chip(page, 'mood', 'Heartwarming').click();
     await page.getByTestId('wizard-next').click();
     await expect(page.getByTestId('plot-option')).toHaveCount(3);
 
     expect(recorded.plotRequests).toHaveLength(1);
     const plotRequest = recorded.plotRequests[0].user;
     expect(plotRequest.match(/^Genre: Mystery$/gm)).toHaveLength(3);
-    expect(plotRequest.match(/^Ending: Happy$/gm)).toHaveLength(3);
+    expect(plotRequest.match(/^Mood: Heartwarming$/gm)).toHaveLength(3);
     const turns = [...plotRequest.matchAll(/^Turning point: (.+) \(/gm)].map((match) => match[1]);
     expect(turns).toHaveLength(3);
     expect(new Set(turns).size).toBe(3);
-    // Mood was left on Any, so code rolled a different one for every card.
-    expect(new Set([...plotRequest.matchAll(/^Mood: (.+)$/gm)].map((match) => match[1])).size).toBe(
-      3,
-    );
+    // Setting was left on Any, so code rolled a different one for every card.
+    expect(
+      new Set([...plotRequest.matchAll(/^Setting: (.+)$/gm)].map((match) => match[1])).size,
+    ).toBe(3);
 
     // The chips say who chose what: the learner's genre solid, rolled values dashed.
     const first = page.getByTestId('plot-option').first();
@@ -259,7 +259,7 @@ test.describe('steering a story', () => {
     expect(premise).toContain(`# Premise\n\n${edited}`);
     expect(premise).toContain('## Story direction');
     expect(premise).toContain('Genre: Mystery');
-    expect(premise).toContain('Ending: Happy');
+    expect(premise).toContain('Mood: Heartwarming');
   });
 
   test('regenerates every plot but the edited one, and goes back one step at a time', async ({

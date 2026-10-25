@@ -21,7 +21,7 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
 /**
- * The Direction step: seven axes the learner may steer a story with.
+ * The Direction step: six axes the learner may steer a story with.
  *
  * Each axis is a native disclosure whose closed summary states its value, and
  * the disclosures share a name so the browser keeps one open at a time. Chips

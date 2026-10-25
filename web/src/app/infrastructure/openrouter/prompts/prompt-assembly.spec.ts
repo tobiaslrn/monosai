@@ -259,8 +259,15 @@ describe('prompt assembly contracts', () => {
     expect(prompt.user).not.toContain('Story direction');
   });
 
+  it('names the six axes the direction carries, with mood standing for the ending', () => {
+    const prompt = buildStoryPrompt(request());
+
+    expect(prompt.system).toContain('genre, topic, setting, mood, cast, and format');
+    expect(prompt.system).not.toContain('ending, and time');
+  });
+
   it('reads an English plot as the premise and carries its direction inside the same block', () => {
-    let direction = toggleOption(EMPTY_STORY_DIRECTION, 'ending', 'Bittersweet');
+    let direction = toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Bittersweet');
     direction = toggleOption(direction, 'format', 'Diary');
     const added = addCustomOption(direction, 'setting', 'Grandma’s kitchen');
     if (!added.ok) throw new Error('fixture');
@@ -281,7 +288,7 @@ describe('prompt assembly contracts', () => {
       expect(premise).toContain(`# Premise\n\n${plot}`);
       expect(premise).toContain('## Story direction');
       expect(premise).toContain('Format: Diary');
-      expect(premise).toContain('Ending: Bittersweet');
+      expect(premise).toContain('Mood: Bittersweet');
       expect(premise).toContain('Setting: Grandma’s kitchen');
       expect(premise).toContain(`Turning point: ${frame.turningPoint.label}`);
       // The instruction that gives the direction its meaning is the system's.

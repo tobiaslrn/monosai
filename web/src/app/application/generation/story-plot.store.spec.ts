@@ -37,7 +37,7 @@ describe('StoryPlotStore', () => {
     expect(request.frames).toHaveLength(3);
     expect(request.keptPlots).toEqual([]);
     expect(request.learnerNotes).toBe('Keep it gentle.');
-    expect(request.promptVersion).toBe('plots/1');
+    expect(request.promptVersion).toBe('plots/2');
     expect(request.vocabularySample.length).toBeGreaterThan(0);
     expect(request.vocabularySample.length).toBeLessThanOrEqual(PLOT_VOCABULARY_SAMPLE_SIZE);
     expect(plots.status()).toBe('ready');
@@ -83,11 +83,11 @@ describe('StoryPlotStore', () => {
     await plots.prepare(EMPTY_STORY_DIRECTION, '');
     expect(bed.provider.generationCalls.plots).toBe(1);
 
-    await plots.prepare(toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Calm'), '');
+    await plots.prepare(toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Cozy'), '');
     expect(bed.provider.generationCalls.plots).toBe(2);
     expect(
       bed.provider.plotRequests[1].frames.every(
-        (frame) => frame.values.mood[0]?.value === 'Calm' && !frame.values.mood[0].rolled,
+        (frame) => frame.values.mood[0]?.value === 'Cozy' && !frame.values.mood[0].rolled,
       ),
     ).toBe(true);
   });
@@ -154,7 +154,7 @@ describe('StoryPlotStore', () => {
 
   it('turns the picked plot into a premise and a record, with any edit', async () => {
     bed.provider.plotQueue.push(ok(PLOTS));
-    const direction = toggleOption(EMPTY_STORY_DIRECTION, 'ending', 'Happy');
+    const direction = toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Funny');
     await plots.prepare(direction, '');
     plots.select(2);
     plots.edit(2, `  ${PLOTS[2]} It is raining.  `);
@@ -164,7 +164,7 @@ describe('StoryPlotStore', () => {
     expect(chosen?.premise).toBe(`${PLOTS[2]} It is raining.`);
     expect(chosen?.plot.frame).toBe(plots.cards()[2].frame);
     expect(chosen?.plot.record).toMatchObject({
-      selected: { ending: ['Happy'] },
+      selected: { mood: ['Funny'] },
       plotEn: `${PLOTS[2]} It is raining.`,
       draftedPlotEn: PLOTS[2],
     });
@@ -215,7 +215,7 @@ describe('StoryPlotStore', () => {
 
     plots.restore(first.plot, EMPTY_STORY_DIRECTION, '');
     plots.edit(0, `${PLOTS[0]} Edited.`);
-    await plots.prepare(toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Calm'), '');
+    await plots.prepare(toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Cozy'), '');
 
     // The third plot was sent and stays sent; the first is the learner's again.
     const texts = plots.cards().map((card) => card.text);
@@ -225,18 +225,18 @@ describe('StoryPlotStore', () => {
 
   it('asks for nothing when every plot is the learner’s, and tells them what was chosen now', async () => {
     bed.provider.plotQueue.push(ok(PLOTS));
-    await plots.prepare(toggleOption(EMPTY_STORY_DIRECTION, 'ending', 'Happy'), '');
+    await plots.prepare(toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Funny'), '');
     plots.edit(0, 'a');
     plots.edit(1, 'b');
     plots.edit(2, 'c');
 
-    const sad = toggleOption(EMPTY_STORY_DIRECTION, 'ending', 'Sad');
+    const sad = toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Sad');
     await plots.prepare(sad, '');
 
     expect(bed.provider.generationCalls.plots).toBe(1);
     expect(plots.status()).toBe('ready');
-    expect(plots.cards()[0].frame.values.ending).toEqual([{ value: 'Sad', rolled: false }]);
-    expect(plots.chosenPlot(sad)?.plot.record.frame.ending).toEqual([
+    expect(plots.cards()[0].frame.values.mood).toEqual([{ value: 'Sad', rolled: false }]);
+    expect(plots.chosenPlot(sad)?.plot.record.frame.mood).toEqual([
       { value: 'Sad', rolled: false },
     ]);
   });

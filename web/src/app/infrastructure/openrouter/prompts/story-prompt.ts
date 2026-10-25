@@ -25,7 +25,7 @@ const TASK_LAYER = [
   '- Give the story a recognizable beginning, development, and ending, with causal or temporal continuity.',
   '- Keep the Japanese natural within the learner constraints. Avoid repetitive sentence templates and do not showcase vocabulary or grammar for its own sake.',
   '- Stay faithful to the premise and any compatible learner style instructions.',
-  '- When the premise carries a story direction, let its genre, mood, setting, cast, format, ending, and time shape the telling. The premise does not say how the story ends; write an ending that fits the direction. Where the premise and the direction disagree, follow the premise.',
+  '- When the premise carries a story direction, let its genre, topic, setting, mood, cast, and format shape the telling. The premise does not say how the story ends; write an ending that fits the direction. Where the premise and the direction disagree, follow the premise.',
   'Output semantics:',
   '- `titleJa` is a short Japanese title governed by the same vocabulary and grammar constraints.',
   '- `sentences` is an array of Japanese sentences in reading order.',

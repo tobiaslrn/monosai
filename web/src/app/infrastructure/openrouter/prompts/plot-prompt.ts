@@ -26,7 +26,7 @@ const TASK_LAYER = [
   'Success criteria:',
   '- Write two or three plain English sentences per plot: who the story is about, where it happens, and the problem or wish that drives it.',
   '- Stop before the resolution. Never say how the story ends; the ending is decided when the story is written.',
-  '- Build each plot on its own frame. Use its genre, mood, setting, and cast, and make its turning point the event that sets the problem in motion. When a frame names a format, an ending, or a time, keep the plot compatible with it, but do not narrate the ending.',
+  '- Build each plot on its own frame. Use its genre, topic, setting, and cast, and make its turning point the event that sets the problem in motion. When a frame names a mood or a format, keep the plot compatible with it, but do not narrate the ending.',
   '- Keep every plot concrete and everyday, so it can be told with simple words like those in the vocabulary sample. Prefer situations the focus words would fit. Avoid anything that needs specialist, technical, or fantastical vocabulary.',
   '- Make the plots clearly different from one another: each needs its own central problem, its own goal, and its own turning point. A plot must not be a rewording of another.',
   '- Make every plot clearly different from the stories already written and from the kept plots. Do not reuse their situations, problems, or characters.',

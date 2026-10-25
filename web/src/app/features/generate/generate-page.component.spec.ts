@@ -229,7 +229,7 @@ describe('GeneratePageComponent', () => {
     const fixture = await renderFixture();
     const page = fixture.nativeElement as HTMLElement;
     const draft = TestBed.inject(GenerationDraftStore);
-    draft.toggleOption('mood', 'Calm');
+    draft.toggleOption('mood', 'Cozy');
     // A configured word source is the one prerequisite this bed leaves unmet.
     sources.set([{}]);
 
@@ -255,11 +255,11 @@ describe('GeneratePageComponent', () => {
     expect(started.premise).toBe(
       'Two old friends plan a picnic, but a sudden call changes the day.',
     );
-    expect(started.chosenPlot?.record.selected).toEqual({ mood: ['Calm'] });
-    expect(started.chosenPlot?.frame.values.mood).toEqual([{ value: 'Calm', rolled: false }]);
+    expect(started.chosenPlot?.record.selected).toEqual({ mood: ['Cozy'] });
+    expect(started.chosenPlot?.frame.values.mood).toEqual([{ value: 'Cozy', rolled: false }]);
     // The next story starts from the words, with the same choices.
     expect(draft.step()).toBe(1);
-    expect(draft.direction().selected.mood).toEqual(['Calm']);
+    expect(draft.direction().selected.mood).toEqual(['Cozy']);
   });
 
   it('goes up one step at a time from the header, and to the library from the words', async () => {

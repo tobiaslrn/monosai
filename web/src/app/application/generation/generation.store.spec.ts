@@ -91,13 +91,13 @@ describe('GenerationStore strict pass', () => {
     expect(provenance.requestedSentenceCount).toBe(5);
     expect(provenance.repairAttempts).toBe(0);
     expect(provenance.modelId).toBe('vendor/text-model');
-    expect(provenance.promptVersions).toMatchObject({ story: 'story/7' });
+    expect(provenance.promptVersions).toMatchObject({ story: 'story/8' });
     expect(provenance.grammarProfileSnapshotId.length).toBeGreaterThan(0);
     expect(provenance.suggestedVocabularyItemIds.length).toBeGreaterThan(0);
   });
 
   it('writes from a picked plot: its direction reaches the writer and its record is kept', async () => {
-    const direction = toggleOption(EMPTY_STORY_DIRECTION, 'ending', 'Happy');
+    const direction = toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Funny');
     const [frame] = rollPlotFrames(direction, { nextInt: () => 0 });
     const plot = 'Aiko loses her umbrella at the station and has to ask for help.';
     const record = storyDirectionRecord(direction, frame, plot, 'Aiko loses her umbrella.');

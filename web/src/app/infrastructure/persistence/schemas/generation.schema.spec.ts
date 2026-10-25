@@ -43,6 +43,28 @@ describe('generationProvenanceRowSchema story direction', () => {
     expect(parsed.data?.storyDirection).toEqual(storyDirection);
   });
 
+  it('reads a topic chosen on the Direction step', () => {
+    const storyDirection = {
+      ...record(),
+      selected: { topic: ['Food'] },
+      frame: { topic: [{ value: 'Food', rolled: false }] },
+    };
+    expect(generationProvenanceRowSchema.safeParse({ ...ROW, storyDirection }).success).toBe(true);
+  });
+
+  it('still reads a record written when ending and time were axes', () => {
+    const storyDirection = {
+      ...record(),
+      selected: { genre: ['Mystery'], ending: ['Happy'], time: ['Night'] },
+      frame: {
+        genre: [{ value: 'Mystery', rolled: false }],
+        ending: [{ value: 'Happy', rolled: false }],
+        time: [{ value: 'Night', rolled: false }],
+      },
+    };
+    expect(generationProvenanceRowSchema.safeParse({ ...ROW, storyDirection }).success).toBe(true);
+  });
+
   it('measures a custom option in characters, as the form does', () => {
     const fits = { ...record(), selected: { cast: ['🐱'.repeat(40)] } };
     expect(generationProvenanceRowSchema.safeParse({ ...ROW, storyDirection: fits }).success).toBe(
@@ -59,7 +81,7 @@ describe('generationProvenanceRowSchema story direction', () => {
     for (const broken of [
       { ...storyDirection, plotEn: '' },
       { ...storyDirection, selected: { genre: ['a', 'b', 'c'] } },
-      { ...storyDirection, frame: { mood: [{ value: 'Calm' }] } },
+      { ...storyDirection, frame: { mood: [{ value: 'Cozy' }] } },
       { ...storyDirection, selected: { weather: ['Rain'] } },
     ]) {
       expect(

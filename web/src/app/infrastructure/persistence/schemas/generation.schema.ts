@@ -68,7 +68,18 @@ const optionLabelSchema = z
   .min(1)
   .refine((value) => countCodePoints(value) <= MAX_CUSTOM_OPTION_LENGTH);
 
-const storyAxisSchema = z.enum(['genre', 'mood', 'setting', 'cast', 'format', 'ending', 'time']);
+// `ending` and `time` were axes before ADR 0081. They stay valid so records
+// written then still parse; no new record names them.
+const storyAxisSchema = z.enum([
+  'genre',
+  'topic',
+  'setting',
+  'mood',
+  'cast',
+  'format',
+  'ending',
+  'time',
+]);
 
 /** At most two genres, one of every other axis; every value one short label. */
 const axisValuesSchema = z.array(optionLabelSchema).min(1).max(2).readonly();

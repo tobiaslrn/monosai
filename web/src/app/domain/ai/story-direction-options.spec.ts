@@ -21,19 +21,18 @@ describe('story direction options', () => {
 
   it('offers the reviewed number of options per axis', () => {
     expect(STORY_AXES.map((axis) => STORY_DIRECTION_OPTIONS[axis].length)).toEqual([
-      24, 20, 30, 20, 8, 10, 20,
+      7, 11, 8, 10, 12, 5,
     ]);
   });
 
   it('names every axis in sentence case', () => {
     expect(STORY_AXES.map((axis) => STORY_AXIS_LABELS[axis])).toEqual([
       'Genre',
-      'Mood',
+      'Topic',
       'Setting',
+      'Mood',
       'Cast',
       'Format',
-      'Ending',
-      'Time',
     ]);
   });
 
@@ -50,9 +49,23 @@ describe('story direction options', () => {
     }
   });
 
+  it('never offers one option on two axes, nor an option that is also a turning point', () => {
+    const seen = new Map<string, string>();
+    for (const axis of STORY_AXES) {
+      for (const option of STORY_DIRECTION_OPTIONS[axis]) {
+        const key = option.toLowerCase();
+        expect(seen.get(key), `${option} is on ${axis} and ${seen.get(key)}`).toBeUndefined();
+        seen.set(key, axis);
+      }
+    }
+    for (const turn of TURNING_POINTS) {
+      expect(seen.has(turn.label.toLowerCase()), `${turn.label} is an option too`).toBe(false);
+    }
+  });
+
   it('leaves out every frame a beginner vocabulary cannot tell', () => {
     const banned =
-      /sci-?fi|science fiction|time travel|superhero|fantasy|heist|survival|ghost|horror|robot|fable|news report|cliffhanger/i;
+      /sci-?fi|science fiction|time travel|superhero|fantasy|heist|survival|ghost|horror|robot|news report|cliffhanger/i;
     for (const label of everyLabel) {
       expect(label).not.toMatch(banned);
     }
@@ -70,10 +83,10 @@ describe('story direction options', () => {
   });
 
   it('allows two genres and one of everything else', () => {
-    expect(STORY_AXES.map((axis) => STORY_AXIS_LIMITS[axis])).toEqual([2, 1, 1, 1, 1, 1, 1]);
+    expect(STORY_AXES.map((axis) => STORY_AXIS_LIMITS[axis])).toEqual([2, 1, 1, 1, 1, 1]);
   });
 
   it('rolls only the axes that decide what a story is about', () => {
-    expect(ROLLED_STORY_AXES).toEqual(['genre', 'mood', 'setting', 'cast']);
+    expect(ROLLED_STORY_AXES).toEqual(['genre', 'topic', 'setting', 'cast']);
   });
 });
