@@ -459,7 +459,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       min-width: 0;
       margin: 0;
       font-size: var(--text-page-title);
-      line-height: 1.35;
+      line-height: var(--leading-snug);
       overflow-wrap: anywhere;
     }
 
@@ -480,8 +480,8 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       transform: translateY(var(--space-1));
       visibility: hidden;
       transition:
-        opacity var(--motion-fast) ease-out,
-        transform var(--motion-fast) ease-out,
+        opacity var(--motion-fast) var(--ease-standard),
+        transform var(--motion-fast) var(--ease-standard),
         visibility 0s linear var(--motion-fast);
     }
 
@@ -526,7 +526,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     }
 
     .audio-button.is-busy {
-      animation: audio-pulse 1.6s ease-in-out infinite;
+      animation: audio-pulse var(--motion-breathe) var(--ease-ambient) infinite;
     }
 
     @keyframes audio-pulse {

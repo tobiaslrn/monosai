@@ -106,7 +106,7 @@ const DISMISS_DISTANCE_PX = 80;
        * Published rather than only applied, for the card's own sticky footer.
        */
       --mn-popover-pad-bottom: var(--space-4);
-      transition: opacity var(--motion-fast) ease-out;
+      transition: opacity var(--motion-fast) var(--ease-standard);
 
       @starting-style {
         opacity: 0;
@@ -145,8 +145,8 @@ const DISMISS_DISTANCE_PX = 80;
       border-block-end: 0;
       border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
       transition:
-        opacity var(--motion-fast) ease-out,
-        transform var(--motion-medium) cubic-bezier(0.2, 0, 0, 1);
+        opacity var(--motion-fast) var(--ease-standard),
+        transform var(--motion-medium) var(--ease-settle);
 
       @starting-style {
         opacity: 1;

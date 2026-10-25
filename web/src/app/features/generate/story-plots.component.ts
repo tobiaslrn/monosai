@@ -193,7 +193,7 @@ interface PlotChip {
     .plot {
       gap: var(--space-3);
       padding: var(--space-4);
-      transition: background-color var(--motion-fast) ease-out;
+      transition: background-color var(--motion-fast) var(--ease-standard);
     }
 
     /* Picked is the selection tint, the same one a pressed toggle wears. */
@@ -210,10 +210,7 @@ interface PlotChip {
     }
 
     .plot-choice input {
-      width: 1.125rem;
-      height: 1.125rem;
-      margin: 0.2rem 0 0;
-      accent-color: var(--action-primary);
+      margin-block-start: var(--control-check-offset);
     }
 
     .plot-body {
@@ -230,7 +227,7 @@ interface PlotChip {
     }
 
     .plot-text {
-      line-height: 1.5;
+      line-height: var(--leading-normal);
     }
 
     .plot-edit textarea {

@@ -215,7 +215,7 @@ type AddMode = 'closed' | 'choices' | 'anki';
             </button>
           </div>
           <p class="sheet-note">
-            <mn-icon name="info" [size]="18" />
+            <mn-icon class="mn-lead" name="info" [size]="18" />
             <span>Your sources stay separate. Duplicate words are counted once.</span>
           </p>
           <button type="button" class="mn-button" (click)="dismiss()">Cancel</button>
@@ -380,11 +380,6 @@ type AddMode = 'closed' | 'choices' | 'anki';
       border-top: 1px solid var(--border-subtle);
       color: var(--text-secondary);
       font-size: var(--text-sm);
-    }
-
-    .sheet-note mn-icon {
-      flex: none;
-      margin-top: 0.05rem;
     }
 
     .sheet-note + .mn-button {

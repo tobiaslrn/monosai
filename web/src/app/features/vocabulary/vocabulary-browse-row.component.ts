@@ -94,7 +94,7 @@ const HARD_DIFFICULTY_PERCENT = 50;
       grid-template-columns: minmax(0, 1fr) 10.25rem 1.25rem;
       gap: var(--space-3);
       align-items: center;
-      min-height: 3.75rem;
+      min-height: var(--row-min-height);
       padding: var(--space-2) var(--space-3);
       border-radius: var(--radius-card);
       list-style: none;
@@ -156,7 +156,7 @@ const HARD_DIFFICULTY_PERCENT = 50;
 
     .chevron {
       color: var(--text-secondary);
-      transition: transform var(--motion-fast) ease-out;
+      transition: transform var(--motion-fast) var(--ease-standard);
     }
 
     .entry[open] .chevron {

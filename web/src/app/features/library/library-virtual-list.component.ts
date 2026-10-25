@@ -209,7 +209,7 @@ function readingKey(id: string): string {
       height: 0.5rem;
       border-radius: var(--radius-pill);
       background: var(--action-primary);
-      animation: library-loading-pulse 900ms ease-in-out infinite alternate;
+      animation: library-loading-pulse var(--motion-slow) var(--ease-ambient) infinite alternate;
     }
 
     .load-error {

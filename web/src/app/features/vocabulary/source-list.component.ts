@@ -127,7 +127,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
       margin-right: 0.35em;
       border-radius: var(--radius-pill);
       background: var(--status-warning);
-      vertical-align: 0.05em;
+      vertical-align: middle;
     }
 
     .footer {
@@ -165,13 +165,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
     }
 
     .sync.is-busy mn-icon {
-      animation: mn-sync-turn 1s linear infinite;
-    }
-
-    @keyframes mn-sync-turn {
-      to {
-        transform: rotate(1turn);
-      }
+      animation: mn-spin var(--motion-spin) linear infinite;
     }
 
     @media (prefers-reduced-motion: reduce) {

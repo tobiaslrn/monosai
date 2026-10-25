@@ -129,7 +129,7 @@ type StandingHeadline =
     .detail {
       color: var(--text-secondary);
       font-size: var(--text-sm);
-      line-height: 1.4;
+      line-height: var(--leading-snug);
     }
 
     @media (max-width: breakpoints.$narrow-max) {

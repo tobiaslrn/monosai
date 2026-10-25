@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ViewportService } from '../../core/platform/viewport.service';
 import type { WordmarkGlyphs } from './wordmark-glyphs';
 import { kana, latin } from './wordmark-glyphs';
 import type { WordmarkVariant } from './wordmark.state';
@@ -29,6 +30,7 @@ function other(variant: WordmarkVariant): WordmarkVariant {
         class="reel"
         aria-hidden="true"
         [class.is-spinning]="spinning()"
+        [style.--reel-widest]="widest"
         [style.--reel-width]="spinning() ? widest : landed().aspect"
         [style.--reel-stop]="stop()"
         (click)="spin()"
@@ -52,19 +54,22 @@ function other(variant: WordmarkVariant): WordmarkVariant {
 
     /*
      * Sized by its frame height, which shrinks when the bar is narrower than
-     * the wider spelling so the wordmark fits rather than clips.
+     * the wider spelling so the wordmark fits rather than clips. The reel is
+     * always as wide as the wider spelling; the landed spelling is the part of
+     * it left uncovered, so its width changes by clipping, not by layout.
      */
     .reel {
       --frame: min(1.875rem, calc(100cqi / 4.3));
 
       display: block;
-      width: calc(var(--reel-width) * var(--frame));
+      width: calc(var(--reel-widest) * var(--frame));
       height: var(--frame);
       overflow: hidden;
+      clip-path: inset(0 calc(100% - var(--reel-width) * var(--frame)) 0 0);
       color: var(--text-primary);
       cursor: default;
       user-select: none;
-      transition: width var(--motion-medium) ease-out;
+      transition: clip-path var(--motion-medium) var(--ease-standard);
       -webkit-tap-highlight-color: transparent;
     }
 
@@ -76,7 +81,7 @@ function other(variant: WordmarkVariant): WordmarkVariant {
 
     .is-spinning .strip {
       /* Decelerates onto the landing without overshooting, so no neighbour peeks in. */
-      animation: mn-reel-spin 900ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+      animation: mn-reel-spin var(--motion-slow) var(--ease-reel) both;
     }
 
     .frame {
@@ -106,8 +111,7 @@ function other(variant: WordmarkVariant): WordmarkVariant {
 })
 export class WordmarkComponent {
   private readonly state = inject(WordmarkState);
-  private readonly reduceMotion =
-    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  private readonly viewport = inject(ViewportService);
   private readonly landing = signal(this.state.landing());
   protected readonly widest = WIDEST;
   protected readonly run = signal(0);
@@ -135,7 +139,7 @@ export class WordmarkComponent {
     if (reroll) {
       this.landing.set(this.state.reroll());
     }
-    if (this.reduceMotion) {
+    if (this.viewport.prefersReducedMotion()) {
       return;
     }
     this.spinning.set(true);

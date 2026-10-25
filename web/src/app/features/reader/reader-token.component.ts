@@ -116,7 +116,7 @@ export interface TokenActivationSource {
       user-select: text;
       /* The platform's own grey flash would fight the tint below. */
       -webkit-tap-highlight-color: transparent;
-      transition: background-color var(--motion-fast) ease-out;
+      transition: background-color var(--motion-fast) var(--ease-standard);
     }
 
     @media (prefers-reduced-motion: reduce) {

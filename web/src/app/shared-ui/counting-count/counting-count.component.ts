@@ -8,6 +8,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { ViewportService } from '../../core/platform/viewport.service';
 
 /** Long enough to read as a rise, short enough not to delay the sentence. */
 const RISE_MS = 700;
@@ -68,8 +69,7 @@ export class CountingCountComponent {
   /** How the value is said. Passed in so one formatter states it everywhere. */
   readonly format = input.required<(value: number) => string>();
 
-  private readonly reduceMotion =
-    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  private readonly viewport = inject(ViewportService);
   private frame: number | null = null;
   private settled = false;
 
@@ -96,7 +96,7 @@ export class CountingCountComponent {
     this.settled = true;
     this.displayed.set(target);
 
-    if (first || this.reduceMotion || from === target) {
+    if (first || this.viewport.prefersReducedMotion() || from === target) {
       return;
     }
 
@@ -109,7 +109,10 @@ export class CountingCountComponent {
   }
 
   private step(from: number, target: number, startedAt: number, now: number): void {
-    const progress = Math.min(1, (now - startedAt) / RISE_MS);
+    // A setting turned on mid-rise lands the number rather than finishing the rise.
+    const progress = this.viewport.prefersReducedMotion()
+      ? 1
+      : Math.min(1, (now - startedAt) / RISE_MS);
     this.displayed.set(Math.round(from + (target - from) * easeOut(progress)));
     if (progress < 1) {
       this.frame = requestAnimationFrame((next) => {

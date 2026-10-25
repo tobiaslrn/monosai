@@ -28,7 +28,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       <ul class="checks mn-stack">
         @for (check of unmet(); track check.id) {
           <li class="check" [attr.data-check]="check.id">
-            <mn-icon name="warning" [size]="18" />
+            <mn-icon class="mn-lead" name="warning" [size]="18" />
             <p class="detail">
               <strong>{{ check.label }}: </strong>{{ check.detail }}
             </p>
@@ -79,9 +79,10 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       align-items: start;
     }
 
+    /* The glyph leads the detail, so it takes the detail's size to find its first line. */
     .check mn-icon {
-      margin-top: 0.125rem;
       color: var(--status-warning);
+      font-size: var(--text-sm);
     }
 
     .check .mn-button {

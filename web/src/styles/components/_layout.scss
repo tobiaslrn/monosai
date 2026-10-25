@@ -67,3 +67,19 @@
 .mn-actions--fill > * {
   flex: 1 1 0;
 }
+
+/*
+ * A leading glyph beside text that may wrap sits on the text's first line, not
+ * on the middle of the block. It is held to the height of one line and centred
+ * in it, whatever its own size, so no row needs a nudge of its own. The line is
+ * the glyph's own `lh`: where the text is set smaller than the row, the glyph
+ * takes the same font size. A checkbox or a radio does the same arithmetic
+ * with `--control-check-offset`.
+ */
+.mn-lead {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  align-self: start;
+  block-size: 1lh;
+}

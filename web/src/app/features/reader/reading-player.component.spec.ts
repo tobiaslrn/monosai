@@ -294,7 +294,9 @@ describe('ReadingPlayerComponent', () => {
       // The track is the report: one fill for how much of the reading has
       // audio, measured over the reading rather than over the job, so a retry
       // covering two missing sentences never renders as half of the reading.
-      expect(element.querySelector('.fill.generated')?.getAttribute('style')).toContain('23%');
+      expect(element.querySelector('.fill.generated')?.getAttribute('style')).toContain(
+        '--fill: 0.23',
+      );
       expect(control(element, 'Stop generating audio')).not.toBeNull();
       expect(control(element, 'Generate audio')).toBeNull();
     });
@@ -324,7 +326,9 @@ describe('ReadingPlayerComponent', () => {
       const element = fixture.nativeElement as HTMLElement;
 
       expect(control(element, 'Play')?.disabled).toBe(false);
-      expect(element.querySelector('.fill.generated')?.getAttribute('style')).toContain('31%');
+      expect(element.querySelector('.fill.generated')?.getAttribute('style')).toContain(
+        '--fill: 0.31',
+      );
     });
 
     /**
@@ -875,7 +879,7 @@ describe('ReadingPlayerComponent', () => {
       expect(store.calls).toEqual([]);
       expect(
         (fixture.nativeElement as HTMLElement).querySelector('.fill.played')?.getAttribute('style'),
-      ).toContain('50%');
+      ).toContain('--fill: 0.5');
 
       scrub.dispatchEvent(new Event('change'));
 
@@ -1084,7 +1088,7 @@ describe('ReadingPlayerComponent', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(said(element)).toContain('Finished');
-      expect(element.querySelector('.fill.played')?.getAttribute('style')).toContain('100%');
+      expect(element.querySelector('.fill.played')?.getAttribute('style')).toContain('--fill: 1');
       expect(scrubber(element)?.value).toBe('6');
       expect(control(element, BACK_LABEL)?.disabled).toBe(false);
       expect(control(element, 'Play again')?.disabled).toBe(false);

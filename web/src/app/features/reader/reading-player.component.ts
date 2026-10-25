@@ -298,9 +298,10 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       -->
       <div class="track">
         <span class="track-paint" aria-hidden="true">
-          <span class="rail"></span>
-          <span class="fill generated" [style.inline-size.%]="generatedPercent()"></span>
-          <span class="fill played" [style.inline-size.%]="percent()"></span>
+          <span class="rail">
+            <span class="fill generated" [style.--fill]="generatedPercent() / 100"></span>
+            <span class="fill played" [style.--fill]="percent() / 100"></span>
+          </span>
         </span>
         <input
           class="scrub"
@@ -338,14 +339,15 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
      * the reading is half the card.
      */
     .track {
+      --scrub-track-size: 24px;
       --scrub-thumb-size: 14px;
-      --scrub-thumb-radius: 7px;
+      --scrub-thumb-radius: calc(var(--scrub-thumb-size) / 2);
 
       position: relative;
       order: -1;
       display: flex;
       align-items: center;
-      block-size: 24px;
+      block-size: var(--scrub-track-size);
     }
 
     /*
@@ -359,23 +361,27 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       pointer-events: none;
     }
 
-    .rail,
-    .fill {
+    .rail {
       position: absolute;
       inset-block-start: 50%;
-      inset-inline-start: 0;
+      inset-inline: 0;
       block-size: 5px;
       border-radius: var(--radius-pill);
+      background: var(--surface-sunken);
       transform: translateY(-50%);
     }
 
-    .rail {
-      inline-size: 100%;
-      background: var(--surface-sunken);
-    }
-
+    /*
+     * A fill is laid out once, at the rail's full width, and shown up to its
+     * fraction by a clip from the inline start: moving it costs no layout pass.
+     * The clip, not a border radius, rounds its ends, which a scale would
+     * squash and leave square.
+     */
     .fill {
-      transition: inline-size var(--motion-medium) ease-out;
+      position: absolute;
+      inset: 0;
+      clip-path: inset(0 calc((1 - var(--fill, 0)) * 100%) 0 0 round var(--radius-pill));
+      transition: clip-path var(--motion-medium) var(--ease-standard);
     }
 
     /*
@@ -401,7 +407,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       z-index: 1;
       inline-size: 100%;
       min-block-size: 0;
-      block-size: 24px;
+      block-size: var(--scrub-track-size);
       margin: 0;
       padding: 0;
       appearance: none;
@@ -414,12 +420,12 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     }
 
     .scrub::-webkit-slider-runnable-track {
-      block-size: 24px;
+      block-size: var(--scrub-track-size);
       background: none;
     }
 
     .scrub::-moz-range-track {
-      block-size: 24px;
+      block-size: var(--scrub-track-size);
       background: none;
     }
 
@@ -431,14 +437,14 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     .scrub::-webkit-slider-thumb {
       inline-size: var(--scrub-thumb-size);
       block-size: var(--scrub-thumb-size);
-      margin-block-start: 5px;
+      margin-block-start: calc((var(--scrub-track-size) - var(--scrub-thumb-size)) / 2);
       border: 3px solid var(--surface-panel);
       border-radius: var(--radius-pill);
       background: var(--action-primary);
       box-shadow: var(--shadow-raised);
       opacity: 1;
       appearance: none;
-      transition: opacity var(--motion-fast) ease-out;
+      transition: opacity var(--motion-fast) var(--ease-standard);
     }
 
     .scrub::-moz-range-thumb {
@@ -449,7 +455,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       background: var(--action-primary);
       box-shadow: var(--shadow-raised);
       opacity: 1;
-      transition: opacity var(--motion-fast) ease-out;
+      transition: opacity var(--motion-fast) var(--ease-standard);
     }
 
     .scrub:disabled::-webkit-slider-thumb {
@@ -594,7 +600,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
     .ring-fill {
       stroke: currentcolor;
       stroke-linecap: round;
-      transition: stroke-dashoffset var(--motion-medium) ease-out;
+      transition: stroke-dashoffset var(--motion-medium) var(--ease-standard);
     }
 
     @media (prefers-reduced-motion: reduce) {

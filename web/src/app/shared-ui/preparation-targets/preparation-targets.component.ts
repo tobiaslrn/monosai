@@ -97,7 +97,7 @@ export function audioPreparationUnavailableReason(
       margin: 0;
       color: var(--text-secondary);
       font-size: var(--text-xs);
-      line-height: 1.4;
+      line-height: var(--leading-snug);
     }
   `,
 })

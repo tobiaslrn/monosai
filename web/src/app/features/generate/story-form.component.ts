@@ -389,10 +389,18 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
       text-align: end;
     }
 
+    /*
+     * The native thumb is centred on the track by a negative margin, so both
+     * sizes are properties and the margin is computed from them. The thumb's
+     * overhang at each end is the margin that keeps it inside the field.
+     */
     .length-slider {
-      width: calc(100% - 1.375rem);
+      --slider-track-size: 10px;
+      --slider-thumb-size: 22px;
+
+      width: calc(100% - var(--slider-thumb-size));
       height: var(--touch-target);
-      margin: 0 0.6875rem;
+      margin: 0 calc(var(--slider-thumb-size) / 2);
       padding: 0;
       appearance: none;
       background: transparent;
@@ -400,7 +408,7 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
     }
 
     .length-slider::-webkit-slider-runnable-track {
-      height: 10px;
+      height: var(--slider-track-size);
       border-radius: var(--radius-pill);
       background-color: var(--surface-sunken);
       background-image:
@@ -418,9 +426,9 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
     }
 
     .length-slider::-webkit-slider-thumb {
-      width: 22px;
-      height: 22px;
-      margin-top: -6px;
+      width: var(--slider-thumb-size);
+      height: var(--slider-thumb-size);
+      margin-top: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
       border: 4px solid var(--surface-raised);
       border-radius: var(--radius-pill);
       appearance: none;
@@ -429,7 +437,7 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
     }
 
     .length-slider::-moz-range-track {
-      height: 10px;
+      height: var(--slider-track-size);
       border-radius: var(--radius-pill);
       background-color: var(--surface-sunken);
       background-image: repeating-linear-gradient(
@@ -441,14 +449,14 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
     }
 
     .length-slider::-moz-range-progress {
-      height: 10px;
+      height: var(--slider-track-size);
       border-radius: var(--radius-pill);
       background: var(--action-primary);
     }
 
     .length-slider::-moz-range-thumb {
-      width: 22px;
-      height: 22px;
+      width: var(--slider-thumb-size);
+      height: var(--slider-thumb-size);
       border: 4px solid var(--surface-raised);
       border-radius: var(--radius-pill);
       background: var(--action-primary);
@@ -493,7 +501,7 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
     }
 
     .strictness input {
-      margin-top: 0.2rem;
+      margin-block-start: var(--control-check-offset);
     }
 
     .strictness strong {

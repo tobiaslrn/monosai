@@ -149,7 +149,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
       color: var(--status-danger);
       font-size: var(--text-md);
       font-weight: var(--weight-semibold);
-      line-height: 1.2;
+      line-height: var(--leading-tight);
       white-space: nowrap;
     }
 
@@ -162,7 +162,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
       margin: 0;
       overflow: hidden;
       font-size: var(--text-page-title);
-      line-height: 1.25;
+      line-height: var(--leading-tight);
       white-space: nowrap;
       text-overflow: ellipsis;
     }

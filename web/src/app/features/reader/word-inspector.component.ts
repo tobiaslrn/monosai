@@ -350,7 +350,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
     .finding-text {
       margin: 0;
       color: var(--text-secondary);
-      line-height: 1.6;
+      line-height: var(--leading-relaxed);
     }
 
     /* Ruled in the marker's own colour, so the section names the underline. */

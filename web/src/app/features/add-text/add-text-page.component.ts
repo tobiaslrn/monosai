@@ -97,13 +97,7 @@ import { TextInputStepComponent } from './text-input-step.component';
       border: 2px solid var(--border-strong);
       border-block-start-color: var(--action-primary);
       border-radius: var(--radius-pill);
-      animation: mn-spin 800ms linear infinite;
-    }
-
-    @keyframes mn-spin {
-      to {
-        transform: rotate(360deg);
-      }
+      animation: mn-spin var(--motion-spin) linear infinite;
     }
 
     @media (prefers-reduced-motion: reduce) {

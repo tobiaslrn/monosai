@@ -139,7 +139,7 @@ export interface VocabularyFilterSheetData {
       border-radius: var(--radius-card);
       background: var(--surface-panel);
       box-shadow: var(--shadow-overlay);
-      transition: transform var(--motion-medium) cubic-bezier(0.2, 0, 0, 1);
+      transition: transform var(--motion-medium) var(--ease-settle);
     }
 
     h2,

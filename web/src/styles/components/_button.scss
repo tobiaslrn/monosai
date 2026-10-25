@@ -16,17 +16,17 @@
   font: inherit;
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  line-height: 1.2;
+  line-height: var(--leading-tight);
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
   /* Keep the browser's rectangular touch flash from overpowering the pill. */
   -webkit-tap-highlight-color: transparent;
   transition:
-    background-color var(--motion-fast) ease-out,
-    border-color var(--motion-fast) ease-out,
-    color var(--motion-fast) ease-out,
-    transform var(--motion-fast) ease-out;
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
 }
 
 /*
@@ -116,7 +116,7 @@
  * swapped for another, so focus and position survive the work.
  */
 .mn-button:where([aria-busy='true']) {
-  animation: mn-busy-breathe 1.6s ease-in-out infinite;
+  animation: mn-busy-breathe var(--motion-breathe) var(--ease-ambient) infinite;
   cursor: progress;
 }
 
@@ -178,9 +178,9 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition:
-    background-color var(--motion-fast) ease-out,
-    color var(--motion-fast) ease-out,
-    transform var(--motion-fast) ease-out;
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
 }
 
 /*
@@ -238,7 +238,7 @@
 
 /* Busy, as for the button: it keeps its fill and says the work is going on. */
 .mn-icon-button:where([aria-busy='true']) {
-  animation: mn-busy-breathe 1.6s ease-in-out infinite;
+  animation: mn-busy-breathe var(--motion-breathe) var(--ease-ambient) infinite;
   cursor: progress;
 }
 

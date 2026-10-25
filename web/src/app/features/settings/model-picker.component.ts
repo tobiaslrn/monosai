@@ -166,7 +166,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
     .trigger--compact {
       width: 100%;
       min-width: 0;
-      min-height: 2.5rem;
+      min-height: var(--touch-target);
       padding-inline: var(--space-2);
       border-color: transparent;
       background: transparent;
@@ -199,7 +199,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
       width: 1rem;
       height: 1rem;
       color: var(--text-secondary);
-      transition: transform var(--motion-fast) ease-out;
+      transition: transform var(--motion-fast) var(--ease-standard);
     }
     .chevron--up {
       transform: rotate(180deg);
@@ -282,6 +282,8 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
     .model-choice {
       display: grid;
       gap: 2px;
+      align-content: center;
+      min-height: var(--touch-target);
       padding: var(--space-2) var(--space-3);
       text-align: left;
     }

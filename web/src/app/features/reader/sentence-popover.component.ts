@@ -216,7 +216,7 @@ export interface UnknownWord {
     .translation {
       margin: 0;
       font-size: var(--text-lg);
-      line-height: 1.55;
+      line-height: var(--leading-relaxed);
     }
 
     .source {
@@ -225,7 +225,7 @@ export interface UnknownWord {
       padding-inline-end: var(--mn-popover-close-inset, 0px);
       font-family: var(--font-japanese);
       font-size: var(--reader-font-size);
-      line-height: 1.7;
+      line-height: var(--leading-prose);
       user-select: text;
       -webkit-user-select: text;
     }
@@ -343,7 +343,7 @@ export interface UnknownWord {
     .finding-text {
       margin: 0;
       color: var(--text-secondary);
-      line-height: 1.6;
+      line-height: var(--leading-relaxed);
     }
 
     p[role='status'] {

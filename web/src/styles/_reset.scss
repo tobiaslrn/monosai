@@ -14,7 +14,7 @@ body {
   background: var(--surface-canvas);
   color: var(--text-primary);
   font-family: var(--font-ui);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -58,6 +58,12 @@ a {
   outline-offset: 2px;
 }
 
+/*
+ * Timed animation and transitions are cut to a single frame. A scroll-driven
+ * animation (the top bar's edge) is unaffected: Chromium takes its progress
+ * from the scroll position and ignores an explicit duration, which is the
+ * behaviour a scroll-linked colour fade needs. It moves nothing.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

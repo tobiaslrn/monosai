@@ -139,7 +139,7 @@ export interface TokenActivation {
     .sentence {
       /* A tint fades in rather than snapping, which is what a press on a
        * sentence feels like on a phone. */
-      transition: background-color var(--motion-fast) ease-out;
+      transition: background-color var(--motion-fast) var(--ease-standard);
       /* The platform's grey flash would fight every tint defined here. */
       -webkit-tap-highlight-color: transparent;
       /*

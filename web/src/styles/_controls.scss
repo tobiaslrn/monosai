@@ -22,11 +22,11 @@
   border-radius: var(--radius-control);
   background: var(--surface-raised);
   color: var(--text-primary);
-  line-height: 1.4;
+  line-height: var(--leading-snug);
   transition:
-    background-color var(--motion-fast) ease-out,
-    border-color var(--motion-fast) ease-out,
-    box-shadow var(--motion-fast) ease-out;
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
 }
 
 :where(html[data-pointer='mouse'])
@@ -75,8 +75,8 @@ textarea.mn-control,
 
 input[type='checkbox'],
 input[type='radio'] {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: var(--control-check-size);
+  height: var(--control-check-size);
   margin: 0;
   accent-color: var(--action-primary);
 }
@@ -105,8 +105,8 @@ input.mn-switch {
   background: var(--surface-sunken);
   cursor: pointer;
   transition:
-    background-color var(--motion-fast),
-    border-color var(--motion-fast);
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
 }
 
 input.mn-switch::after {
@@ -118,7 +118,7 @@ input.mn-switch::after {
   border-radius: 50%;
   background: var(--text-secondary);
   content: '';
-  transition: transform var(--motion-fast);
+  transition: transform var(--motion-fast) var(--ease-standard);
 }
 
 input.mn-switch:checked {
@@ -176,7 +176,7 @@ input.mn-switch:disabled {
   border-block-end: 2px solid currentColor;
   content: '';
   transform: rotate(-45deg);
-  transition: transform var(--motion-fast) ease-out;
+  transition: transform var(--motion-fast) var(--ease-standard);
 }
 
 .mn-disclosure[open] > summary::before {

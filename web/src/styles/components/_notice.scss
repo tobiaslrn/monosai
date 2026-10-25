@@ -25,7 +25,7 @@
   background: var(--notice-soft);
   color: var(--notice-ink);
   font-size: var(--text-sm);
-  line-height: 1.45;
+  line-height: var(--leading-snug);
 }
 
 .mn-notice--error {

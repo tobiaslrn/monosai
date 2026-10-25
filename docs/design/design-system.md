@@ -234,7 +234,8 @@ its bar follows the same shape.
 ### Density
 
 Interactive targets are **one size at every width and every pointer**. There is
-no denser desktop variant. A pointer-conditional target size requires knowing
+no denser desktop variant, and no compact variant of a control inside a picker:
+a row in an open list is a target like any other. A pointer-conditional target size requires knowing
 the current pointer, and a hit area that changes during a gesture breaks that
 gesture's own click (ADR 0032) — the cost of getting it wrong is larger than the
 space it would save.
@@ -250,7 +251,8 @@ carries a leading icon when the thing has a meaningful origin, a name, one
 secondary line saying what is inside, and — opposite the name — its status,
 value, or way forward. `mn-list-row` is the shared implementation: its title is
 `text-md` semibold, its metadata is `text-sm` secondary text, and every row uses
-one shared minimum height. A long title wraps once inside the content column and
+one shared minimum height (`--row-min-height`), which a vocabulary row and a
+fold's summary also take. A long title wraps once inside the content column and
 then ends in an ellipsis; the full title stays the link's accessible name. The
 trailing column stays separate, so the two never collide. The metadata is one
 line of facts separated by a middle dot, and it breaks between facts, never
@@ -529,7 +531,9 @@ Custom. Filling every axis at random is a ghost action in the card's heading.
 Drafted options the learner picks one of — the plots — are **insets inside the
 card** that offers them, never cards of their own, so the page keeps its two
 levels of grouping. Each is a native radio with a visible circle; the picked one
-wears the selection tint. What an option was built from is a row of status
+wears the selection tint. Every checkbox and radio in the application, switches aside, is one size
+(`--control-check-size`), so a choice does not change how large its control is
+between screens. What an option was built from is a row of status
 pills: a value the learner chose is a plain pill, a value code chose is the
 dashed pill, and an event code chose is the accent pill named as such to
 assistive technology. An option the learner changed says Edited. Only the picked
@@ -541,6 +545,18 @@ While options are being written the card names the wait in words — "Writing
 three plots…" — where the options will appear, and the commit is disabled. Options
 already on screen stay where they are, inert, until they are replaced. This is
 not a skeleton: nothing is drawn that pretends to be content.
+
+### A glyph beside text that wraps
+
+An icon, radio, or checkbox that leads text which may run to several lines sits
+on the **first line**, centred in it, never on the middle of the block and never
+by a nudge written for that one row. A radio or checkbox takes
+`--control-check-offset`; an icon takes the shared `mn-lead` class, which holds
+it to the height of one line. Both measure the line with `lh`, the height of a
+line of the element's own text, so the glyph is set in the same size as the text
+it leads and nothing else is needed. A hand-tuned margin is how a row and its
+neighbour end up a pixel apart, and how a text-size change drifts the glyph off
+the line it was lined up with.
 
 ### A choice that makes saved work stale
 
@@ -765,8 +781,12 @@ Three ranks exist: the page or surface title, the section within it, and the
 group within that. A fourth rank means the surface is doing too much. A group
 whose contents are self-evident takes no heading at all.
 
-Line heights are unitless, so they scale with whatever font size they land on.
-The reader's leading is deliberately looser than prose needs: it is the room
+Line heights are unitless, so they scale with whatever font size they land on,
+and they come from one short scale of tokens — tight, snug, normal, relaxed, and
+prose — rather than from a number chosen where the text is set. Two values less
+than a twentieth apart are one value; a component that finds the scale a hair
+off for its text takes the nearest step. The exceptions are tuned by eye and
+say so where they are set: display numerals, and the reader's own leading. The reader's leading is deliberately looser than prose needs: it is the room
 furigana occupies and the whitespace a sentence is pressed in. It eases off as
 the learner's scale grows, because what matters is the resulting gap, not the
 ratio.
@@ -841,6 +861,29 @@ Arrival decelerates into place and departure accelerates away, which is what
 makes the same distance read as settling one way and leaving the other. A
 surface that is cut away between frames reads as a fault, not as an answer.
 
+**Every duration and easing is a token.** Durations name how long a thing is
+allowed to take: a state settling (`--motion-fast`), a surface moving
+(`--motion-medium`), one slow movement such as the wordmark's reel
+(`--motion-slow`), a turn that says work is going on (`--motion-spin`), a
+breathing control (`--motion-breathe`), a loop of steps (`--motion-loop`), and a
+toast's whole stay (`--motion-toast`). Easings name the kind of movement: a
+state change eases out (`--ease-standard`); a surface moving to its place
+settles (`--ease-settle`); a sheet arrives decelerating (`--ease-enter`) and
+leaves accelerating (`--ease-exit`); what runs without being asked eases in and
+out (`--ease-ambient`). A transition names its easing, never the browser's
+default, and a component picks a token rather than writing a duration or a
+curve. Keyframes shared across component files live in
+[`_motion.scss`](../../web/src/styles/_motion.scss); one used only by a
+shared primitive stays in that primitive's partial.
+
+**Only paint properties animate.** Opacity, transform, colour, and clip move
+without asking the layout to be worked out again; width, height, inset, margin,
+and padding do not animate, however small the change. A bar that fills is drawn
+full width and uncovered up to its fraction by a clip, which keeps its rounded
+ends where a scale would squash them; a word that reveals is uncovered the same
+way; a thing that
+changes width keeps its box and changes what is shown of it.
+
 Beyond that, **a little character is allowed, and only on apparatus**: a spring
 on the play control, a settle on a popover arriving. The budget for it is small
 and it is spent on things the learner acts on or waits for.
@@ -858,12 +901,19 @@ through its romaji and kana spellings and lands on one of them — never a mix �
 once per launch, and again only when the learner taps it. It is never replayed
 on returning to the Library.
 
-The reading surface is exempt. Nothing on it animates, and nothing on it moves
-under the pointer — hovering a word or a sentence changes its colour and nothing
-else. A page of Japanese that shifts while being read is unreadable.
+The reading surface is exempt. Nothing on it moves, under the pointer or
+otherwise — hovering a word or a sentence changes its colour and nothing
+else. The colour of a word or sentence may fade at the fast duration, because a
+fade is feedback to a state and shifts nothing; position, size, and layout never
+animate there. A page of Japanese that shifts while being read is unreadable.
 
 Every non-essential transition is removed under `prefers-reduced-motion`,
 including the expressive ones. Character is the first thing cut, not the last.
+The setting is read live: a component that decides in script asks the viewport
+service, which follows the system, rather than reading the media query once. A
+top bar's edge that fades in as the page scrolls is driven by the scroll
+position, not by time; it moves nothing, so the global reduction that shortens
+timed animations leaves it as it is.
 
 ## 8. Words
 

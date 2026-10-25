@@ -55,10 +55,10 @@ const STEP_MODE_LABEL = 'One sentence at a time';
  * has produced something reads the bar rather than a sentence about it.
  */
 async function generatedPercent(page: Page): Promise<number> {
-  const width = await audioPlayer(page)
+  const fraction = await audioPlayer(page)
     .locator('.track .fill.generated')
-    .evaluate((fill) => (fill as HTMLElement).style.inlineSize);
-  return Number.parseFloat(width) || 0;
+    .evaluate((fill) => (fill as HTMLElement).style.getPropertyValue('--fill'));
+  return (Number.parseFloat(fraction) || 0) * 100;
 }
 
 function sentencePopover(page: Page): Locator {

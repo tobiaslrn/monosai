@@ -11,7 +11,7 @@
 
 .copy {
   max-width: 37.5rem;
-  animation: copy-in var(--motion-medium) ease-out;
+  animation: copy-in var(--motion-medium) var(--ease-standard);
 }
 
 .eyebrow {
@@ -31,24 +31,28 @@ h2 {
   vertical-align: bottom;
 }
 
+/*
+ * The dots are always laid out at their full width and uncovered from the left,
+ * so the line never reflows while they count up.
+ */
 .loading-dots__reveal {
   display: inline-block;
-  width: 0;
-  overflow: hidden;
+  width: 0.9em;
   vertical-align: bottom;
   white-space: nowrap;
-  animation: dots-reveal 1.2s steps(4, end) infinite;
+  clip-path: inset(0 100% 0 0);
+  animation: dots-reveal var(--motion-loop) steps(4, end) infinite;
 }
 
 .copy > p:last-child {
   margin: var(--space-3) 0 0;
   color: var(--text-secondary);
-  line-height: 1.55;
+  line-height: var(--leading-relaxed);
 }
 
 @keyframes dots-reveal {
   to {
-    width: 0.9em;
+    clip-path: inset(0);
   }
 }
 
@@ -66,7 +70,7 @@ h2 {
   }
 
   .loading-dots__reveal {
-    width: 0.9em;
+    clip-path: none;
   }
 }
 

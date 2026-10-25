@@ -1,0 +1,12 @@
+/*
+ * Keyframes shared by more than one surface. A component that animates with one
+ * of these names it and nothing else: Angular renames a component's own
+ * keyframes but leaves a global name alone. Durations and easings are tokens.
+ */
+
+/* One full turn, for anything that says work is going on by turning. */
+@keyframes mn-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}

@@ -49,7 +49,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
       color: var(--text-primary);
       box-shadow: var(--shadow-overlay);
       font-size: var(--text-sm);
-      animation: vocabulary-sync-toast 8s ease-in-out both;
+      animation: vocabulary-sync-toast var(--motion-toast) var(--ease-ambient) both;
     }
 
     @keyframes vocabulary-sync-toast {

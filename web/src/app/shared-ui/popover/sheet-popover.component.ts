@@ -61,7 +61,7 @@ interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPo
       background: var(--surface-panel);
       color: var(--text-primary);
       box-shadow: var(--shadow-overlay);
-      transition: transform var(--motion-medium) cubic-bezier(0.2, 0, 0, 1);
+      transition: transform var(--motion-medium) var(--ease-settle);
     }
 
     :host(:not(:popover-open)) {
@@ -91,7 +91,7 @@ interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPo
        */
       transform: translateY(100%);
       transition:
-        transform var(--motion-medium) cubic-bezier(0.3, 0, 0.8, 0.15),
+        transform var(--motion-medium) var(--ease-exit),
         display var(--motion-medium) allow-discrete,
         overlay var(--motion-medium) allow-discrete;
     }
@@ -104,7 +104,7 @@ interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPo
     /* Arriving decelerates and leaving accelerates, as a native sheet does. */
     :host(.is-sheet:popover-open) {
       transform: translateY(0);
-      transition-timing-function: cubic-bezier(0.05, 0.7, 0.1, 1);
+      transition-timing-function: var(--ease-enter);
 
       @starting-style {
         transform: translateY(100%);

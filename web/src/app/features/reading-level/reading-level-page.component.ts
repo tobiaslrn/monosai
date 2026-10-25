@@ -235,7 +235,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
       margin: 0;
       font-family: var(--font-japanese);
       font-size: var(--text-lg);
-      line-height: 1.6;
+      line-height: var(--leading-relaxed);
     }
 
     .gloss {
@@ -262,7 +262,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
       display: flex;
       gap: var(--space-3);
       align-items: center;
-      min-height: 3.75rem;
+      min-height: var(--row-min-height);
       padding: var(--space-2) var(--space-3);
       list-style: none;
       cursor: pointer;
@@ -295,7 +295,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     .fold-chevron {
       flex: none;
       color: var(--text-secondary);
-      transition: transform var(--motion-fast) ease-out;
+      transition: transform var(--motion-fast) var(--ease-standard);
     }
 
     .fold[open] .fold-chevron {

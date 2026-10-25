@@ -167,9 +167,52 @@
   --shadow-model-indicator: inset 3px 0 var(--action-primary);
   --radius-token: 0.25rem;
 
+  /*
+   * Motion. Durations: a state settling (fast), a surface moving (medium), and
+   * the long ones — one slow movement, a turn, a breath, a loop of steps, and a
+   * toast's whole stay. Easings: standard for a state change, settle for a
+   * surface moving to its place, enter and exit for a sheet arriving and
+   * leaving, ambient for what runs without being asked. Only paint properties
+   * animate; see the design system's motion section.
+   */
   --motion-fast: 120ms;
   --motion-medium: 200ms;
+  --motion-slow: 900ms;
+  --motion-spin: 900ms;
+  --motion-breathe: 1.6s;
+  --motion-loop: 1.2s;
+  --motion-toast: 8s;
+  --ease-standard: ease-out;
+  --ease-settle: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+  /* The wordmark's reel: a quick spin that lands softly without overshoot. */
+  --ease-reel: cubic-bezier(0.2, 0.75, 0.25, 1);
+  --ease-ambient: ease-in-out;
+
   --touch-target: max(44px, 2.75rem);
+  /* A shelf row, a vocabulary row and a fold's summary share one minimum. */
+  --row-min-height: 3.75rem;
+
+  /*
+   * One size for a checkbox and a radio. A glyph that leads text which may
+   * wrap is centred on that text's first line: its offset is the line's height
+   * less its own, halved, and `lh` is that line's height wherever it is used,
+   * so the glyph takes the font size of the text it leads (`.mn-lead` is the
+   * same rule for an icon).
+   */
+  --control-check-size: 1.125rem;
+  --control-check-offset: calc((1lh - var(--control-check-size)) / 2);
+
+  /*
+   * Line heights, unitless so they follow the font size they land on. The
+   * reader's own leading (above) is tuned separately and is not on this scale.
+   */
+  --leading-tight: 1.25;
+  --leading-snug: 1.4;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.6;
+  --leading-prose: 1.7;
 
   color-scheme: light;
 }

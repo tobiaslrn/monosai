@@ -38,7 +38,10 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
               <span class="gloss" lang="en">{{ preset.exampleEn }}</span>
             }
           </span>
-          <mn-icon class="indicator" [name]="isChosen(preset) ? 'chevron-down' : 'chevron-right'" />
+          <mn-icon
+            class="indicator mn-lead"
+            [name]="isChosen(preset) ? 'chevron-down' : 'chevron-right'"
+          />
         </label>
       } @empty {
         <p class="mn-hint">Language assets are still loading.</p>
@@ -63,8 +66,8 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       background: var(--surface-raised);
       cursor: pointer;
       transition:
-        background-color var(--motion-fast) ease-out,
-        border-color var(--motion-fast) ease-out;
+        background-color var(--motion-fast) var(--ease-standard),
+        border-color var(--motion-fast) var(--ease-standard);
     }
 
     :host-context(html[data-pointer='mouse']) .preset:hover:not(.is-selected) {
@@ -82,11 +85,11 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       outline-offset: 2px;
     }
 
+    /* Both lead the name, so both take its size and sit on its first line. */
     .preset input {
       flex: none;
-      width: 1.5rem;
-      height: 1.5rem;
-      margin-top: 0.1rem;
+      margin-block-start: var(--control-check-offset);
+      font-size: var(--text-lg);
     }
 
     .body {
@@ -114,13 +117,12 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       margin-top: var(--space-2);
       font-family: var(--font-japanese);
       font-weight: var(--weight-semibold);
-      line-height: 1.6;
+      line-height: var(--leading-relaxed);
     }
 
     .indicator {
-      flex: none;
-      margin-top: 0.15rem;
       color: var(--text-secondary);
+      font-size: var(--text-lg);
     }
   `,
 })

@@ -32,7 +32,7 @@
   margin: 0;
   color: var(--text-secondary);
   font-size: var(--text-lg);
-  line-height: 1.6;
+  line-height: var(--leading-relaxed);
 }
 
 .mn-prose h2 {
@@ -46,7 +46,7 @@
 }
 
 .mn-prose :is(p, li) {
-  line-height: 1.7;
+  line-height: var(--leading-prose);
   overflow-wrap: anywhere;
 }
 

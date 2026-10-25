@@ -66,14 +66,14 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       font-size: var(--text-2xl);
       font-weight: var(--weight-bold);
       letter-spacing: -0.02em;
-      line-height: 1.25;
+      line-height: var(--leading-tight);
     }
 
     .lede,
     .local {
       margin: 0;
       color: var(--text-secondary);
-      line-height: 1.6;
+      line-height: var(--leading-relaxed);
     }
 
     .local {
@@ -124,7 +124,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
     .choice small {
       color: var(--text-secondary);
       font-size: var(--text-sm);
-      line-height: 1.45;
+      line-height: var(--leading-snug);
     }
 
     @media (max-width: breakpoints.$narrow-max) {

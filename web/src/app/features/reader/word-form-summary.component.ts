@@ -51,7 +51,7 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
       gap: 0 var(--space-1);
       align-items: baseline;
       font-size: var(--text-lg);
-      line-height: 1.25;
+      line-height: var(--leading-tight);
     }
 
     .dictionary-form {
