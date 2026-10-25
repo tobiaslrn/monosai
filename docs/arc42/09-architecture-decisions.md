@@ -89,6 +89,7 @@ files are already linked from code comments and from other records.
 | [0073](../decisions/0073-pace-at-playback-style-in-prompt.md)                     | Pace is local playback; named speaking style is prompted                        |
 | [0075](../decisions/0075-named-pace-per-voice-model.md)                           | Named speech pace uses the model's instruction or speed channel                 |
 | [0076](../decisions/0076-model-reported-story-output-budgets.md)                  | Story budgets follow model-reported completion limits when available            |
+| [0080](../decisions/0080-the-plot-is-chosen-before-the-story.md)                  | The learner steers, code rolls, one request drafts three plots, one is picked   |
 
 ### The reader
 

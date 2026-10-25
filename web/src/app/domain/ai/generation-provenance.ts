@@ -6,6 +6,7 @@ import type {
   VocabularyStrictness,
 } from '../settings/settings';
 import type { FocusWord } from './recent-focus';
+import type { StoryDirectionRecord } from './story-direction';
 
 export interface RecentFocusProvenance {
   readonly size: RecentFocusSize;
@@ -66,5 +67,11 @@ export interface GenerationProvenance {
    * Absent on stories saved before generation recorded it.
    */
   readonly preparationTargets?: readonly PreparationLayer[];
+  /**
+   * How the premise was chosen: the learner's direction, the plot card that
+   * was picked with its rolled values and turning point, and the plot as sent.
+   * Absent on stories written from a typed premise, before ADR 0080.
+   */
+  readonly storyDirection?: StoryDirectionRecord;
   readonly createdAt: number;
 }

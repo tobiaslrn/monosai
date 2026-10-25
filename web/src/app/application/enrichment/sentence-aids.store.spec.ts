@@ -279,6 +279,7 @@ describe('SentenceAidsStore', () => {
     expect(enrichment.cacheKeyQueries.translations[0]).toHaveLength(2);
     expect(enrichment.cacheKeyQueries.grammar[0]).toHaveLength(2);
     expect(provider.generationCalls).toEqual({
+      plots: 0,
       story: 0,
       repair: 0,
       review: 0,

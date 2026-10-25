@@ -114,8 +114,7 @@ import { HelpArticleComponent } from '../help-article.component';
         <p>
           Usually because there is not much to build with. Below a few hundred known words there are
           too few verbs to move a plot along, and the model has no choice but to repeat itself.
-          Review more, refresh your words, and ask for a concrete premise with something happening
-          in it.
+          Review more, refresh your words, and pick or edit a plot with something happening in it.
         </p>
         <p>
           Length is a slider on the Generate screen, and it is a guideline rather than a promise.

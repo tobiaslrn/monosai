@@ -80,6 +80,36 @@ governs exactly one run, while several run side by side
 ([ADR 0044](../decisions/0044-backgrounded-story-generation.md)). The learner can start a story and
 go and read something else; the library lists each unsaved run as a muted row naming its stage.
 
+Before a run starts, the learner chooses the plot it is written from
+([ADR 0080](../decisions/0080-the-plot-is-chosen-before-the-story.md)). The form has three steps:
+the words a story may use, the direction it should take, and the plot.
+
+```mermaid
+sequenceDiagram
+    actor Learner
+    participant Form as Story form
+    participant Plots as Plot store
+    participant Provider as Text generation port
+    participant Repo as Reading repository
+
+    Learner->>Form: words, then direction (seven axes, each Any or chosen)
+    Learner->>Form: Next
+    Form->>Plots: prepare(direction, special instructions)
+    Plots->>Repo: titles and premises of the last ten generated stories
+    Plots->>Plots: roll a frame per card: Any axes distinct across cards,<br/>a distinct turning point on every card
+    Plots->>Provider: one request: every frame, focus words,<br/>a vocabulary sample, the stories already written
+    Provider-->>Plots: one English plot per frame, checked for repeats
+    Learner->>Form: pick a plot, edit it if wanted, Generate
+    Form->>Plots: the picked plot becomes the premise,<br/>its frame the story direction
+```
+
+Leaving the words costs nothing. Leaving the direction sends the plot request, so it waits on the
+same prerequisites a story does. Returning to the step with the same choices offers the same plots;
+changing a choice drafts again. A plot the learner edited is never discarded: Regenerate and a
+changed direction rewrite only the other cards, and the edited card's frame is brought up to date
+with the current choices. A started story spends its plot; a run that is cancelled or fails hands it
+back, picked, from its own record.
+
 Every input is captured before the first request, so changing a setting during a run cannot change
 what the running story is judged against. This includes vocabulary strictness: relaxed spends no
 content repair, standard spends at most one, and strict spends at most two.
@@ -92,7 +122,7 @@ sequenceDiagram
     participant Worker as Language worker
     participant Repo as Reading repository
 
-    Learner->>Store: premise (optional), length
+    Learner->>Store: plot as premise, its direction, length
     Store->>Store: check prerequisites, then capture<br/>snapshot, profile, policy, and model
     Store->>Provider: write the story (with the captured policy)
     Provider-->>Store: a structured story
@@ -112,10 +142,13 @@ sequenceDiagram
     Note over Store,Repo: The saved story's declared aid layers<br/>are queued for the preparation lane (§6.4).
 ```
 
-A premise is optional. An empty one is a request rather than an omission: the story prompt says in
-its own voice that no premise was supplied and that the model chooses the situation, because an
-empty premise block would arrive as a premise that says nothing. Only the character limits are
-validated before anything is spent.
+The premise is the picked plot: two or three English sentences of setup and conflict. The card's
+frame travels with it as a story direction inside the same premise data block, because a plot leaves
+the ending unsaid and the chosen mood, format, and ending have to reach the writer; where an edited
+plot and its direction disagree, the prompt says the plot wins. Provenance records the learner's
+choices, the picked card with what was rolled, its turning point, and the plot as sent. The story
+prompt still accepts an empty premise as a request for a topic of the model's choosing, but the form
+no longer produces one. Only the character limits are validated before anything is spent.
 
 Generation writes Japanese and stops. The aid layers the story declares are produced afterwards by
 the preparation lane described in [§6.4](#the-preparation-lane), so a story reaches the library as

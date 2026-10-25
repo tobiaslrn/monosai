@@ -14,6 +14,7 @@ import {
   LucideCopy,
   LucideCornerRightUp,
   LucideDatabase,
+  LucideDices,
   LucideEllipsisVertical,
   LucidePencil,
   LucideFileText,
@@ -102,6 +103,7 @@ export const ICON_SET = {
   synced: LucideCircleCheck,
   'sort-descending': LucideArrowDown,
   'sort-ascending': LucideArrowUp,
+  random: LucideDices,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICON_SET;

@@ -5,6 +5,7 @@ import type {
   GrammarReviewResult,
 } from '../../domain/ai/grammar-review-request';
 import type { ModelTest, TextModelConfig } from '../../domain/ai/model-test';
+import type { StoryPlotRequest } from '../../domain/ai/story-plot';
 import type { StoryCandidate, StoryGenerationRequest } from '../../domain/ai/story-request';
 import type {
   ExceptionReviewRequest,
@@ -69,6 +70,14 @@ export class OpenRouterTextProvider implements TextGenerationProvider {
     signal?: AbortSignal,
   ): Promise<Result<ModelTest, AiError>> {
     return this.tester.testConfiguration(config, signal);
+  }
+
+  async draftPlots(
+    request: StoryPlotRequest,
+    config: TextTaskConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<readonly string[], AiError>> {
+    return (await this.generation()).draftPlots(request, config, signal);
   }
 
   async generateStory(

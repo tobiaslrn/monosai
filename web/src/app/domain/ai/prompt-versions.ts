@@ -12,7 +12,8 @@
  * change behaviour keeps its version.
  */
 export const PROMPT_VERSIONS = {
-  story: 'story/6',
+  plots: 'plots/1',
+  story: 'story/7',
   repair: 'repair/6',
   'exception-review': 'exception-review/4',
   grammar: 'grammar/5',
@@ -22,6 +23,7 @@ export const PROMPT_VERSIONS = {
 export type PromptTaskName = keyof typeof PROMPT_VERSIONS;
 
 export const ALL_PROMPT_TASK_NAMES: readonly PromptTaskName[] = [
+  'plots',
   'story',
   'repair',
   'exception-review',

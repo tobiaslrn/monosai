@@ -87,9 +87,11 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="first-steps-story">
         <h2 id="first-steps-story">4. Generate a story</h2>
         <p>
-          Open <a routerLink="/generate">Generate</a>, write a premise in a sentence or two, and
-          start it. Something like "two friends miss the last train home" gives the model enough to
-          work with. You can leave it empty and let the model pick a topic.
+          Open <a routerLink="/generate">Generate</a> and go through its three steps: the words the
+          story may use, the direction it should take, and the plot. Leave every direction on Any
+          and Monosai varies it for you; pick a genre, a mood, or a setting to steer it. The plot
+          step drafts three short plots that differ from each other and from your earlier stories.
+          Pick one, change its wording if you like, and start the story.
         </p>
         <p>
           Stories need {{ minimumWords }} words. With a small vocabulary, expect short and plain

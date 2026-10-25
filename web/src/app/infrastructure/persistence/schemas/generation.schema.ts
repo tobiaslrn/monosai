@@ -1,4 +1,6 @@
 import * as z from 'zod';
+import { MAX_CUSTOM_OPTION_LENGTH } from '../../../domain/ai/story-direction-options';
+import { countCodePoints } from '../../../domain/ai/story-request';
 import {
   nonEmptyString,
   readingIdSchema,
@@ -57,6 +59,36 @@ export const frozenValidationRowSchema = z.object({
     .readonly(),
 });
 
+/**
+ * One option label: the domain caps it in characters, which are code points,
+ * so a label of emoji the form accepted is not refused here as too long.
+ */
+const optionLabelSchema = z
+  .string()
+  .min(1)
+  .refine((value) => countCodePoints(value) <= MAX_CUSTOM_OPTION_LENGTH);
+
+const storyAxisSchema = z.enum(['genre', 'mood', 'setting', 'cast', 'format', 'ending', 'time']);
+
+/** At most two genres, one of every other axis; every value one short label. */
+const axisValuesSchema = z.array(optionLabelSchema).min(1).max(2).readonly();
+
+const storyDirectionRecordSchema = z.object({
+  selected: z.partialRecord(storyAxisSchema, axisValuesSchema),
+  customSelected: z.partialRecord(storyAxisSchema, axisValuesSchema).optional(),
+  frame: z.partialRecord(
+    storyAxisSchema,
+    z
+      .array(z.object({ value: optionLabelSchema, rolled: z.boolean() }))
+      .min(1)
+      .max(2)
+      .readonly(),
+  ),
+  turningPoint: nonEmptyString,
+  plotEn: nonEmptyString,
+  draftedPlotEn: nonEmptyString.optional(),
+});
+
 export const generationProvenanceRowSchema = z.object({
   v: rowVersionSchema,
   id: nonEmptyString,
@@ -94,6 +126,10 @@ export const generationProvenanceRowSchema = z.object({
     .array(z.enum(['english', 'grammar', 'audio']))
     .readonly()
     .optional(),
+  // Optional for the same reason again: only stories whose premise was a plot
+  // picked on the Plot step carry it (ADR 0080). The indexes are unchanged, so
+  // no Dexie version is needed.
+  storyDirection: storyDirectionRecordSchema.optional(),
   createdAt: timestampSchema,
 });
 

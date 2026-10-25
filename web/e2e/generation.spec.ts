@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import {
   SHORT_STORY,
@@ -6,13 +6,16 @@ import {
   STRICT_STORY,
   openGenerate,
   prepareGeneration,
+  reachPlots,
+  writeStory,
 } from './generation';
-import { stubOpenRouter } from './openrouter';
+import { STUB_PLOTS, stubOpenRouter } from './openrouter';
 import { countOwnedRows } from './reading';
 import { GENERATION_READY_STATE } from './state';
 import { expectSettingPersisted } from './storage';
 
-const PREMISE = 'A cat plays in the garden and meets a friend.';
+/** The plot the stub drafts first, which is the one picked by default. */
+const FIRST_PLOT = STUB_PLOTS[0];
 
 /**
  * Setting up a key, a tested model, and a real vocabulary refresh loads two
@@ -20,6 +23,19 @@ const PREMISE = 'A cat plays in the garden and meets a friend.';
  * default budget.
  */
 const SETUP_TIMEOUT = 180_000;
+
+/** One chip on the open Direction row. */
+function chip(page: Page, axis: string, name: string) {
+  return page.locator(`[data-axis="${axis}"] .chips`).getByRole('button', { name, exact: true });
+}
+
+async function openAxis(page: Page, axis: string): Promise<void> {
+  const row = page.locator(`[data-axis="${axis}"]`);
+  if ((await row.getAttribute('open')) === null) {
+    await row.locator('summary').click();
+  }
+  await expect(row).toHaveAttribute('open', '');
+}
 
 test.describe('generate prerequisites', () => {
   test('names each missing prerequisite and links to the screen that fixes it @mobile @smoke', async ({
@@ -31,12 +47,13 @@ test.describe('generate prerequisites', () => {
     // Only what is missing is listed, one line each.
     await expect(page.locator('[data-check]')).toHaveCount(2);
     await expect(page.locator('[data-check="vocabulary"]')).toContainText('Add a word list');
-    await expect(page.getByTestId('generate')).toBeDisabled();
+    // Choosing words costs nothing; drafting plots is the first request.
+    await expect(page.getByTestId('wizard-next')).toBeEnabled();
+    await page.getByTestId('wizard-next').click();
+    await expect(page.getByTestId('wizard-next')).toBeDisabled();
 
     // Voice is optional, so it never appears here at all.
     await expect(page.getByText(/Voice \(optional\)/)).toHaveCount(0);
-    // What a generation sends is said once, above the button that sends it.
-    await expect(page.getByTestId('form-sources')).toHaveCount(1);
 
     await expectNoSeriousAccessibilityViolations(page);
   });
@@ -45,21 +62,24 @@ test.describe('generate prerequisites', () => {
     await stubOpenRouter(page);
     await openGenerate(page);
 
-    await page.getByTestId('premise').fill(PREMISE);
     await page.getByTestId('story-length').fill('2');
+    await page.getByTestId('wizard-next').click();
+    await chip(page, 'genre', 'Mystery').click();
 
     await page.locator('[data-check="text-model"]').getByRole('link').click();
     await expect(page).toHaveURL(/#\/settings/);
     await page.getByRole('button', { name: 'Back to story' }).click();
 
-    await expect(page.getByTestId('premise')).toHaveValue(PREMISE);
-    await expect(page.getByTestId('story-length')).toHaveValue('2');
+    await expect(page.locator('[data-axis="genre"] [data-testid="axis-value"]')).toHaveText(
+      'Mystery',
+    );
 
     await page.locator('[data-check="vocabulary"]').getByRole('link').click();
     await expect(page).toHaveURL(/#\/reading-level\?from=generate(?:#words)?$/);
     await page.getByRole('button', { name: 'Back to story' }).click();
 
-    await expect(page.getByTestId('premise')).toHaveValue(PREMISE);
+    await expect(chip(page, 'genre', 'Mystery')).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('button', { name: 'Back to words' }).click();
     await expect(page.getByTestId('story-length')).toHaveValue('2');
   });
 
@@ -67,7 +87,9 @@ test.describe('generate prerequisites', () => {
     const calls = await stubOpenRouter(page);
     await openGenerate(page);
 
-    await page.getByTestId('premise').fill(PREMISE);
+    await page.getByTestId('wizard-next').click();
+    await chip(page, 'genre', 'Comedy').click();
+    await page.getByTestId('surprise-direction').click();
     await page.getByTestId('special-instructions').fill('Write it as a diary entry.');
 
     expect(calls.urls).toEqual([]);
@@ -100,51 +122,210 @@ test.describe('generate prerequisites', () => {
   });
 });
 
-test.describe('generating a story', () => {
+test.describe('steering a story', () => {
   test.use({ storageState: GENERATION_READY_STATE });
 
-  test('keeps the action reachable and explains over-limit fields at laptop and phone sizes @mobile', async ({
+  test('keeps the step action reachable and explains over-limit instructions @mobile', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 700 });
     await openGenerate(page);
+    await page.getByTestId('wizard-next').click();
 
-    const generate = page.getByTestId('generate');
-    await expect(generate).toBeAttached();
+    const next = page.getByTestId('wizard-next');
     await expect
       .poll(() =>
-        generate.evaluate((element) => getComputedStyle(element.closest('.action-bar')!).position),
+        next.evaluate((element) => getComputedStyle(element.closest('.action-bar')!).position),
       )
       .toBe('sticky');
-    await generate.scrollIntoViewIfNeeded();
-    await expect(generate).toBeInViewport();
-    await expect(page.locator('#mn-premise-count')).toHaveCount(0);
+    await expect(next).toBeInViewport();
     await expect(page.locator('#mn-instructions-count')).toHaveCount(0);
 
-    await page.getByTestId('premise').fill('あ'.repeat(800));
-    await expect(page.locator('#mn-premise-count')).toContainText('800 of 1,000 characters');
+    await page.getByTestId('special-instructions').fill('あ'.repeat(800));
+    await expect(page.locator('#mn-instructions-count')).toContainText('800 of 1,000 characters');
 
-    await page.getByTestId('premise').fill('あ'.repeat(1_001));
+    await page.getByTestId('special-instructions').fill('あ'.repeat(1_001));
     await expect(page.getByRole('alert')).toContainText('Remove 1 character to continue.');
-    await expect(generate).toBeDisabled();
+    await expect(next).toBeDisabled();
 
     await page.setViewportSize({ width: 393, height: 727 });
-    await generate.scrollIntoViewIfNeeded();
-    await expect(generate).toBeVisible();
+    await expect(next).toBeInViewport();
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);
   });
+
+  test('chooses on one row at a time, keeps chips in place, and adds a custom choice', async ({
+    page,
+  }) => {
+    await openGenerate(page);
+    await page.getByTestId('wizard-next').click();
+
+    const rows = page.locator('details.axis');
+    await expect(rows).toHaveCount(7);
+    await expect(page.locator('details.axis[open]')).toHaveCount(1);
+    await expect(page.locator('[data-axis="genre"]')).toHaveAttribute('open', '');
+
+    const genreChips = page.locator('[data-axis="genre"] .chips button');
+    const before = await genreChips.allTextContents();
+    await chip(page, 'genre', 'Mystery').click();
+    await chip(page, 'genre', 'Comedy').click();
+    await chip(page, 'genre', 'Drama').click();
+    expect(await genreChips.allTextContents()).toEqual(before);
+    await expect(page.locator('[data-axis="genre"] [data-testid="axis-value"]')).toHaveText(
+      'Comedy, Drama',
+    );
+
+    await openAxis(page, 'setting');
+    await expect(page.locator('details.axis[open]')).toHaveCount(1);
+    await page.locator('[data-axis="setting"] [data-custom-toggle]').click();
+    const custom = page.getByTestId('custom-option');
+    await expect(custom).toBeFocused();
+    await custom.fill('Grandma’s kitchen');
+    await custom.press('Enter');
+    await expect(chip(page, 'setting', 'Grandma’s kitchen')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(page.locator('[data-axis="setting"] [data-custom-toggle]')).toBeFocused();
+
+    // Escape closes the field without adding anything.
+    await page.locator('[data-axis="setting"] [data-custom-toggle]').click();
+    await page.getByTestId('custom-option').fill('Not this');
+    await page.getByTestId('custom-option').press('Escape');
+    await expect(page.getByTestId('custom-option')).toHaveCount(0);
+    await expect(chip(page, 'setting', 'Not this')).toHaveCount(0);
+
+    await page.getByTestId('surprise-direction').click();
+    await expect(
+      page.locator('[data-testid="axis-value"]').filter({ hasText: /^\s*Any\s*$/ }),
+    ).toHaveCount(0);
+
+    await expectNoSeriousAccessibilityViolations(page);
+  });
+
+  test('sends the axes and three distinct turning points, then writes from the edited plot @smoke', async ({
+    page,
+  }) => {
+    test.setTimeout(SETUP_TIMEOUT);
+    await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
+    // `prepareGeneration` keeps its route's record to itself; the newest route
+    // answers, so this one records the bodies.
+    const recorded = await stubOpenRouter(page, { generation: { stories: [STRICT_STORY] } });
+
+    await openGenerate(page);
+    await page.getByTestId('story-length').fill('0');
+    await page.getByTestId('wizard-next').click();
+    await chip(page, 'genre', 'Mystery').click();
+    await openAxis(page, 'ending');
+    await chip(page, 'ending', 'Happy').click();
+    await page.getByTestId('wizard-next').click();
+    await expect(page.getByTestId('plot-option')).toHaveCount(3);
+
+    expect(recorded.plotRequests).toHaveLength(1);
+    const plotRequest = recorded.plotRequests[0].user;
+    expect(plotRequest.match(/^Genre: Mystery$/gm)).toHaveLength(3);
+    expect(plotRequest.match(/^Ending: Happy$/gm)).toHaveLength(3);
+    const turns = [...plotRequest.matchAll(/^Turning point: (.+) \(/gm)].map((match) => match[1]);
+    expect(turns).toHaveLength(3);
+    expect(new Set(turns).size).toBe(3);
+    // Mood was left on Any, so code rolled a different one for every card.
+    expect(new Set([...plotRequest.matchAll(/^Mood: (.+)$/gm)].map((match) => match[1])).size).toBe(
+      3,
+    );
+
+    // The chips say who chose what: the learner's genre solid, rolled values dashed.
+    const first = page.getByTestId('plot-option').first();
+    await expect(first.locator('.mn-status-pill--dashed')).toHaveCount(3);
+    await expect(first.locator('.mn-status-pill--accent')).toContainText('Turning point');
+
+    await page.getByTestId('plot-option').nth(1).locator('input[type="radio"]').check();
+    await page.getByTestId('plot-option').nth(1).getByTestId('edit-plot').click();
+    const editor = page.getByTestId('plot-editor');
+    await expect(editor).toBeFocused();
+    const edited = `${STUB_PLOTS[1]} The dog comes too.`;
+    await editor.fill(edited);
+    await page.getByTestId('edit-plot').click();
+    await expect(page.getByTestId('plot-option').nth(1)).toContainText('Edited');
+
+    await page.getByTestId('generate').click();
+    await expect(page.getByTestId('saved-title')).toHaveText(STRICT_STORY.titleJa, {
+      timeout: 60_000,
+    });
+
+    expect(recorded.storyRequests).toHaveLength(1);
+    const storyRequest = recorded.storyRequests[0].user;
+    const premise = storyRequest.slice(storyRequest.indexOf('<<<MONOSAI_DATA premise'));
+    expect(premise).toContain(`# Premise\n\n${edited}`);
+    expect(premise).toContain('## Story direction');
+    expect(premise).toContain('Genre: Mystery');
+    expect(premise).toContain('Ending: Happy');
+  });
+
+  test('regenerates every plot but the edited one, and goes back one step at a time', async ({
+    page,
+  }) => {
+    test.setTimeout(SETUP_TIMEOUT);
+    await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
+    const calls = await stubOpenRouter(page, { generation: { stories: [STRICT_STORY] } });
+
+    await openGenerate(page);
+    await reachPlots(page);
+    const texts = page.getByTestId('plot-text');
+    const firstDraft = await texts.allTextContents();
+
+    await page.getByTestId('edit-plot').click();
+    await page.getByTestId('plot-editor').fill('My own plot about a lost glove.');
+    await page.getByTestId('edit-plot').click();
+    await page.getByTestId('regenerate-plots').click();
+
+    await expect(texts.first()).toHaveText('My own plot about a lost glove.');
+    await expect(texts.nth(1)).not.toHaveText(firstDraft[1]);
+    await expect(texts.nth(2)).not.toHaveText(firstDraft[2]);
+    expect(calls.plotRequests).toHaveLength(2);
+    expect(calls.plotRequests[1].user).toContain('My own plot about a lost glove.');
+    expect(calls.plotRequests[1].user.match(/^## Frame \d$/gm)).toHaveLength(2);
+
+    // Back goes up one step; the plots were paid for and are still there.
+    await page.getByRole('button', { name: 'Back to direction' }).click();
+    await expect(page.getByRole('heading', { name: 'Direction', level: 2 })).toBeFocused();
+    await page.getByTestId('wizard-next').click();
+    await expect(texts.first()).toHaveText('My own plot about a lost glove.');
+    expect(calls.plotRequests).toHaveLength(2);
+
+    await page.getByRole('button', { name: 'Back to direction' }).click();
+    await page.getByRole('button', { name: 'Back to words' }).click();
+    await page.getByLabel('Back to library').click();
+    await expect(page).toHaveURL(/#\/library$/);
+  });
+
+  test('says what failed when the plots cannot be drafted, and writes nothing', async ({
+    page,
+  }) => {
+    test.setTimeout(SETUP_TIMEOUT);
+    await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
+    await stubOpenRouter(page, { plots: { kind: 'status', status: 429 } });
+
+    await openGenerate(page);
+    await page.getByTestId('wizard-next').click();
+    await page.getByTestId('wizard-next').click();
+
+    await expect(page.getByTestId('plot-failure')).toContainText('Your choices are kept.');
+    await expect(page.getByTestId('generate')).toBeDisabled();
+    await expect(page.getByTestId('regenerate-plots')).toBeEnabled();
+    expect((await countOwnedRows(page))['readings']).toBe(0);
+  });
+});
+
+test.describe('generating a story', () => {
+  test.use({ storageState: GENERATION_READY_STATE });
 
   test('saves a strict story, lists it, and opens it in the reader @smoke', async ({ page }) => {
     test.setTimeout(SETUP_TIMEOUT);
     await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
 
     await openGenerate(page);
-    await page.getByTestId('premise').fill(PREMISE);
-    await page.getByTestId('story-length').fill('0');
-    await expect(page.getByTestId('generate')).toBeEnabled();
-    await page.getByTestId('generate').click();
+    await writeStory(page);
 
     await expect(page.getByTestId('saved-title')).toHaveText(STRICT_STORY.titleJa, {
       timeout: 60_000,
@@ -166,7 +347,7 @@ test.describe('generating a story', () => {
     // Home keeps a compact title and character count; the premise belongs to
     // the story, not the shelf row.
     await expect(card.locator('[mn-list-row-meta]')).toContainText(/\d+ characters/);
-    await expect(card).not.toContainText(PREMISE);
+    await expect(card).not.toContainText(FIRST_PLOT);
     await expect(card).toContainText('Micro');
     await expect(card).not.toContainText('庭で遊びます');
     await expect(card).not.toContainText('Translations:');
@@ -193,9 +374,7 @@ test.describe('generating a story', () => {
     });
 
     await openGenerate(page);
-    await page.getByTestId('premise').fill(PREMISE);
-    await page.getByTestId('story-length').fill('0');
-    await page.getByTestId('generate').click();
+    await writeStory(page);
 
     // The story is in the library, and nothing warns about it here: the word
     // itself carries the warning, in the reader.
@@ -220,9 +399,7 @@ test.describe('generating a story', () => {
     });
 
     await openGenerate(page);
-    await page.getByTestId('premise').fill(PREMISE);
-    await page.getByTestId('story-length').fill('0');
-    await page.getByTestId('generate').click();
+    await writeStory(page);
 
     await expect(page.getByTestId('saved-title')).toHaveText(SHORT_STORY.titleJa, {
       timeout: 60_000,
@@ -237,20 +414,19 @@ test.describe('generating a story', () => {
     await expectNoSeriousAccessibilityViolations(page);
   });
 
-  test('cancelling mid-run saves nothing', async ({ page }) => {
+  test('cancelling mid-run saves nothing, and hands the plots back', async ({ page }) => {
     test.setTimeout(SETUP_TIMEOUT);
     await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
 
-    // The story request never answers, so the run really is interrupted.
+    // The story request never answers, so the run really is interrupted. The
+    // plots still arrive: they come before the story.
     await stubOpenRouter(page, { chat: { kind: 'hang' } });
 
     await openGenerate(page);
-    await page.getByTestId('premise').fill(PREMISE);
-    await page.getByTestId('story-length').fill('0');
-    await page.getByTestId('generate').click();
+    await writeStory(page);
 
     await expect(page.getByTestId('cancel-generation')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId('premise')).toHaveCount(0);
+    await expect(page.getByTestId('plot-option')).toHaveCount(0);
     await expect(page.getByTestId('generation-copy')).toContainText('Generating your story');
     await expect(page.locator('mn-generation-wait svg')).toHaveCount(0);
     const dots = page.locator('.loading-dots');
@@ -272,6 +448,10 @@ test.describe('generating a story', () => {
     const rows = await countOwnedRows(page);
     expect(rows['readings']).toBe(0);
     expect(rows['generationProvenance']).toBe(0);
+
+    await page.getByRole('button', { name: 'Back to the form' }).click();
+    await expect(page.getByTestId('plot-option')).toHaveCount(3);
+    await expect(page.getByTestId('plot-text').first()).toHaveText(FIRST_PLOT);
   });
 
   test('puts the story in the library before its aids, then fills them in @smoke', async ({
@@ -290,9 +470,7 @@ test.describe('generating a story', () => {
     });
 
     await openGenerate(page);
-    await page.getByTestId('premise').fill(PREMISE);
-    await page.getByTestId('story-length').fill('0');
-    await page.getByTestId('generate').click();
+    await writeStory(page);
 
     await expect(page.getByTestId('saved-title')).toHaveText(STRICT_STORY.titleJa, {
       timeout: 60_000,
@@ -333,8 +511,7 @@ test.describe('generating a story', () => {
     await stubOpenRouter(page, { chat: { kind: 'status', status: 401 } });
 
     await openGenerate(page);
-    await page.getByTestId('premise').fill(PREMISE);
-    await page.getByTestId('generate').click();
+    await writeStory(page);
 
     await expect(page.getByTestId('failure-context')).toHaveCount(0, { timeout: 60_000 });
 
@@ -354,9 +531,7 @@ test.describe('generating in the background', () => {
     await stubOpenRouter(page, { chat: { kind: 'hang' } });
 
     await openGenerate(page);
-    await page.getByTestId('premise').fill(PREMISE);
-    await page.getByTestId('story-length').fill('0');
-    await page.getByTestId('generate').click();
+    await writeStory(page);
     await expect(page.getByTestId('generation-copy')).toContainText('Generating your story', {
       timeout: 60_000,
     });
@@ -366,8 +541,9 @@ test.describe('generating in the background', () => {
     await page.getByLabel('Back to library').click();
     await expect(page).toHaveURL(/#\/library$/);
 
+    // The row is named by the plot the story is being written from.
     const row = page.locator('mn-generation-job-card');
-    await expect(row).toContainText(PREMISE);
+    await expect(row).toContainText(FIRST_PLOT);
     await expect(row).toContainText('Being written');
     await expect(row).toContainText('Generating your story');
 
@@ -383,7 +559,7 @@ test.describe('generating in the background', () => {
     await page.getByLabel('Back to library').click();
     await expect(row).toContainText('Needs attention');
 
-    await row.getByRole('button', { name: `Dismiss ${PREMISE}` }).click();
+    await row.getByRole('button', { name: `Dismiss ${FIRST_PLOT}` }).click();
     await expect(page.locator('mn-generation-job-card')).toHaveCount(0);
     expect((await countOwnedRows(page))['readings']).toBe(0);
   });
@@ -393,9 +569,7 @@ test.describe('generating in the background', () => {
     await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
 
     await openGenerate(page);
-    await page.getByTestId('premise').fill(PREMISE);
-    await page.getByTestId('story-length').fill('0');
-    await page.getByTestId('generate').click();
+    await writeStory(page);
     await expect(page.getByTestId('generation-screen')).toBeVisible();
 
     await page.getByLabel('Back to library').click();
@@ -406,5 +580,10 @@ test.describe('generating in the background', () => {
     });
     await expect(page.locator('mn-generation-job-card')).toHaveCount(0);
     expect((await countOwnedRows(page))['readings']).toBe(1);
+
+    // A repeat story is Next, Next, Generate: the choices stay, the plots are new.
+    await openGenerate(page);
+    await reachPlots(page);
+    await expect(page.getByTestId('plot-text').first()).not.toHaveText(FIRST_PLOT);
   });
 });

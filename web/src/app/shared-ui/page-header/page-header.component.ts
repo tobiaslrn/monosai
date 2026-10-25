@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../icon/icon.component';
@@ -19,7 +19,17 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
   template: `
     <header class="head">
       @if (backTo(); as target) {
-        @if (usesHistoryBack()) {
+        @if (stepsBack()) {
+          <button
+            type="button"
+            class="mn-icon-button back"
+            data-testid="step-back"
+            [attr.aria-label]="backLabel()"
+            (click)="backPressed.emit()"
+          >
+            <mn-icon name="back" />
+          </button>
+        } @else if (usesHistoryBack()) {
           <button
             type="button"
             class="mn-icon-button back"
@@ -188,6 +198,12 @@ export class PageHeaderComponent {
   readonly showAlpha = input(false);
   /** One quiet line under the title: what the page holds, or how much of it. */
   readonly subtitle = input<string | null>(null);
+  /**
+   * Back goes up one step inside the page rather than to `backTo`, as on a
+   * form with steps. The page decides what that step is from `backPressed`.
+   */
+  readonly stepsBack = input(false);
+  readonly backPressed = output<void>();
   protected readonly usesHistoryBack = computed(() => {
     const target = this.backTo();
     return target !== null && this.navigation.canPopTo(target);

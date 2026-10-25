@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { estimateTokens } from '../../../domain/ai/context-budget';
+import {
+  EMPTY_STORY_DIRECTION,
+  addCustomOption,
+  rollPlotFrames,
+  toggleOption,
+} from '../../../domain/ai/story-direction';
 import type { StoryGenerationRequest } from '../../../domain/ai/story-request';
 import { snapshotId } from '../../../domain/shared/ids';
 import { buildBlueprintPrompt } from './blueprint-prompt';
@@ -250,6 +256,37 @@ describe('prompt assembly contracts', () => {
 
     expect(block(prompt.user, 'premise', 'data')).toContain('# Premise\n\n猫が旅に出る話。');
     expect(prompt.user).not.toContain('No premise was supplied');
+    expect(prompt.user).not.toContain('Story direction');
+  });
+
+  it('reads an English plot as the premise and carries its direction inside the same block', () => {
+    let direction = toggleOption(EMPTY_STORY_DIRECTION, 'ending', 'Bittersweet');
+    direction = toggleOption(direction, 'format', 'Diary');
+    const added = addCustomOption(direction, 'setting', 'Grandma’s kitchen');
+    if (!added.ok) throw new Error('fixture');
+    const [frame] = rollPlotFrames(added.value, { nextInt: () => 0 });
+    const plot = 'Aiko loses her umbrella at the station and has to ask a stranger for help.';
+
+    for (const prompt of [
+      buildStoryPrompt(request({ premise: plot, direction: frame })),
+      buildBlueprintPrompt(
+        request({ premise: plot, direction: frame, requestedSentenceCount: 100 }),
+        [
+          { index: 0, sentenceCount: 50 },
+          { index: 1, sentenceCount: 50 },
+        ],
+      ),
+    ]) {
+      const premise = block(prompt.user, 'premise', 'data');
+      expect(premise).toContain(`# Premise\n\n${plot}`);
+      expect(premise).toContain('## Story direction');
+      expect(premise).toContain('Format: Diary');
+      expect(premise).toContain('Ending: Bittersweet');
+      expect(premise).toContain('Setting: Grandma’s kitchen');
+      expect(premise).toContain(`Turning point: ${frame.turningPoint.label}`);
+      // The instruction that gives the direction its meaning is the system's.
+      expect(prompt.system).toContain('When the premise carries a story direction');
+    }
   });
 
   it('reduces the complete story input by at least ten percent for a large fixture', () => {

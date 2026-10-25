@@ -123,7 +123,7 @@ export function estimateRequestTokens(request: StoryGenerationRequest): number {
         ),
     request.premise === ''
       ? 'No premise was supplied. Choose the topic yourself: one concrete, ordinary situation that this story is about.'
-      : estimateBlock('premise', `# Premise\n\n${request.premise}`),
+      : estimateBlock('premise', `# Premise\n\n${request.premise}${directionEstimate(request)}`),
     request.specialInstructions === undefined
       ? ''
       : estimateBlock('learner style', `# Learner style\n\n${request.specialInstructions}`),
@@ -179,4 +179,20 @@ export function checkContextBudget(
     );
   }
   return ok({ estimatedTokens, limit: MAX_REQUEST_TOKENS });
+}
+
+/** The story direction a plot premise carries, rendered roughly as it is sent. */
+function directionEstimate(request: StoryGenerationRequest): string {
+  const direction = request.direction;
+  if (direction === undefined) {
+    return '';
+  }
+  const fields = Object.entries(direction.values).flatMap(([axis, values]) =>
+    values.length === 0 ? [] : [`${axis}: ${values.map((value) => value.value).join(', ')}`],
+  );
+  return [
+    '\n\n## Story direction',
+    ...fields,
+    `Turning point: ${direction.turningPoint.label} (${direction.turningPoint.meaning})`,
+  ].join('\n');
 }

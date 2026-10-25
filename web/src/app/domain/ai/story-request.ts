@@ -3,6 +3,7 @@ import type { StoryForm } from '../reading/reading';
 import type { SnapshotId } from '../shared/ids';
 import { err, ok, type Result } from '../shared/result';
 import type { FocusWord } from './recent-focus';
+import type { PlotFrame, StoryDirectionRecord } from './story-direction';
 
 export const STORY_SENTENCE_COUNTS = [5, 15, 30, 50, 100, 200, 400, 800] as const;
 export const MIN_STORY_SENTENCES = STORY_SENTENCE_COUNTS[0];
@@ -100,6 +101,12 @@ export interface StoryGenerationRequest {
   /** A prompt target, not a local acceptance constraint. */
   readonly requestedSentenceCount: number;
   readonly premise: string;
+  /**
+   * The frame of the plot the premise came from: what the learner chose and
+   * what code rolled for the card. It carries the mood, format, and ending a
+   * plot deliberately leaves unsaid. Absent for a premise not drafted as a plot.
+   */
+  readonly direction?: PlotFrame;
   readonly specialInstructions?: string;
   /**
    * The learner exception policy the writer may draw from. Absent when empty.
@@ -143,16 +150,25 @@ export interface StoryInputIssue {
   readonly message: string;
 }
 
+/** The plot a story is written from, and how it was chosen. */
+export interface ChosenPlot {
+  readonly frame: PlotFrame;
+  readonly record: StoryDirectionRecord;
+}
+
 /** The learner's own text, trimmed and proven to fit the documented limits. */
 export interface ValidatedStoryInput {
   /** Empty when the learner left the topic to the model. */
   readonly premise: string;
   readonly specialInstructions?: string;
+  readonly chosenPlot?: ChosenPlot;
 }
 
 export interface StoryInputDraft {
   readonly premise: string;
   readonly specialInstructions?: string;
+  /** Present when the premise is a plot picked on the Plot step. */
+  readonly chosenPlot?: ChosenPlot;
 }
 
 /**
@@ -211,5 +227,6 @@ export function validateStoryInput(
   return ok({
     premise,
     ...(instructions === '' ? {} : { specialInstructions: instructions }),
+    ...(draft.chosenPlot === undefined ? {} : { chosenPlot: draft.chosenPlot }),
   });
 }

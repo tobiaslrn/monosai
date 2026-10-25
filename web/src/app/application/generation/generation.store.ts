@@ -7,6 +7,7 @@ import {
   type ExceptionReviewOutcome,
 } from '../../domain/ai/exception-review';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
+import type { StoryDirectionRecord } from '../../domain/ai/story-direction';
 import {
   storyFormForSentenceCount,
   validateStoryInput,
@@ -294,6 +295,7 @@ export class GenerationStore {
       form,
       requestedSentenceCount: sentenceCount,
       premise: input.value.premise,
+      ...(input.value.chosenPlot === undefined ? {} : { direction: input.value.chosenPlot.frame }),
       allowedVocabulary: prepared.value.allowedVocabulary,
       suggestedVocabulary: prepared.value.suggestedVocabulary,
       focusVocabulary: prepared.value.focusVocabulary,
@@ -328,6 +330,7 @@ export class GenerationStore {
       request,
       context,
       prepared.value.suggestedItemIds,
+      input.value.chosenPlot?.record,
       signal,
     );
   }
@@ -388,6 +391,7 @@ export class GenerationStore {
     request: StoryGenerationRequest,
     context: CapturedContext,
     suggestedItemIds: readonly VocabularyItemId[],
+    storyDirection: StoryDirectionRecord | undefined,
     signal: AbortSignal,
   ): Promise<void> {
     let candidate = firstCandidate;
@@ -470,6 +474,7 @@ export class GenerationStore {
           context,
           suggestedItemIds,
           review.approvals.size,
+          storyDirection,
           signal,
         );
         return;
@@ -799,6 +804,7 @@ export class GenerationStore {
     context: CapturedContext,
     suggestedItemIds: readonly VocabularyItemId[],
     exceptionCount: number,
+    storyDirection: StoryDirectionRecord | undefined,
     signal: AbortSignal,
   ): Promise<void> {
     const sentences: readonly AcceptedSentence[] = units
@@ -830,6 +836,7 @@ export class GenerationStore {
       vocabularyStrictness: context.vocabularyStrictness,
       exceptionCount,
       preparationTargets: context.preparationTargets,
+      ...(storyDirection === undefined ? {} : { storyDirection }),
       ...(request.specialInstructions === undefined
         ? {}
         : { specialInstructions: request.specialInstructions }),

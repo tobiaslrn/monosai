@@ -1,13 +1,24 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
+import { StoryPlotStore } from '../../application/generation/story-plot.store';
+import {
+  EMPTY_STORY_DIRECTION,
+  rollPlotFrames,
+  storyDirectionRecord,
+} from '../../domain/ai/story-direction';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
-import { configureGenerationTestBed } from '../../../testing/generation-fakes';
+import { ok } from '../../domain/shared/result';
+import {
+  configureGenerationTestBed,
+  type GenerationTestBed,
+} from '../../../testing/generation-fakes';
 import { buildReading } from '../../../testing/reading-repository-fake';
 import {
   FakeGenerationJobsStore,
@@ -20,12 +31,17 @@ const JOB_ID = '22222222-2222-4222-8222-222222222222';
 
 describe('GeneratePageComponent', () => {
   let jobs: FakeGenerationJobsStore;
+  let bed: GenerationTestBed;
   const online = signal(true);
+  const sources = signal<readonly unknown[]>([]);
 
   beforeEach(() => {
+    sources.set([]);
     jobs = new FakeGenerationJobsStore();
     online.set(true);
-    configureGenerationTestBed({
+    bed = configureGenerationTestBed({
+      // Enough reviewed words that the word list is not itself a blocker.
+      uniqueEntryCount: 60,
       extraProviders: [
         // Every route the screen navigates to resolves to nothing in
         // particular: what is under test is which address it goes to.
@@ -34,7 +50,7 @@ describe('GeneratePageComponent', () => {
         { provide: NETWORK_STATUS, useValue: { isOnline: online } },
         {
           provide: SourceMappingStore,
-          useValue: { sources: signal([]), load: () => Promise.resolve() },
+          useValue: { sources, load: () => Promise.resolve() },
         },
         {
           // The form asks the voice configuration one question: whether audio
@@ -52,6 +68,12 @@ describe('GeneratePageComponent', () => {
             testFailure: signal(null),
             structuredOutput: signal('native-schema' as const),
             activePresetId: signal<string | null>('preset'),
+            configForTask: () => ({
+              modelId: 'vendor/text-model',
+              reasoningEffort: null,
+              structuredOutput: 'native-schema' as const,
+              storyTokenBudget: 8_000,
+            }),
           },
         },
       ],
@@ -64,11 +86,26 @@ describe('GeneratePageComponent', () => {
       fixture.componentRef.setInput('jobId', jobId);
     }
     fixture.detectChanges();
+    await settle(fixture);
+    return fixture;
+  }
+
+  async function settle(fixture: {
+    whenStable(): Promise<unknown>;
+    detectChanges(): void;
+  }): Promise<void> {
     for (let pass = 0; pass < 5; pass += 1) {
       await fixture.whenStable();
       fixture.detectChanges();
     }
-    return fixture;
+  }
+
+  function press(page: HTMLElement, testId: string): void {
+    const button = page.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`);
+    if (button === null) {
+      throw new Error(`no button named ${testId}`);
+    }
+    button.click();
   }
 
   async function render(jobId?: string) {
@@ -82,10 +119,19 @@ describe('GeneratePageComponent', () => {
     expect(page.querySelector('[data-testid="generation-screen"]')).toBeNull();
     expect(page.querySelector('[data-testid="missing-job"]')).toBeNull();
   });
-  it('places labelled offline blockers beside the disabled Generate action', async () => {
+  it('places labelled offline blockers beside the disabled Next that would draft plots', async () => {
     online.set(false);
-    const page = await render();
-    const button = page.querySelector<HTMLButtonElement>('[data-testid="generate"]');
+    const fixture = await renderFixture();
+    const page = fixture.nativeElement as HTMLElement;
+
+    // Leaving the words costs nothing, so it is never blocked.
+    expect(page.querySelector<HTMLButtonElement>('[data-testid="wizard-next"]')?.disabled).toBe(
+      false,
+    );
+    press(page, 'wizard-next');
+    await settle(fixture);
+
+    const button = page.querySelector<HTMLButtonElement>('[data-testid="wizard-next"]');
     expect(button?.disabled).toBe(true);
     expect(button?.getAttribute('aria-describedby')).toBe('mn-generate-disabled-reason');
     // The blockers lead the form in the document flow, never inside the sticky
@@ -135,12 +181,27 @@ describe('GeneratePageComponent', () => {
 
     expect(run.cancelled).toHaveLength(1);
     expect(page.textContent).toContain('Nothing was saved');
-    expect(page.textContent).toContain('Your premise and instructions are still here');
+    expect(page.textContent).toContain('Your direction and plots are still here');
   });
 
   it('drops a finished run when the learner goes back to the form', async () => {
+    const [frame] = rollPlotFrames(EMPTY_STORY_DIRECTION, { nextInt: () => 0 });
     jobs.setJobs([
-      fakeGenerationJob(JOB_ID, new FakeGenerationRun({ kind: 'cancelled', during: 'writing' })),
+      {
+        ...fakeGenerationJob(
+          JOB_ID,
+          new FakeGenerationRun({ kind: 'cancelled', during: 'writing' }),
+        ),
+        chosenPlot: {
+          frame,
+          record: storyDirectionRecord(
+            EMPTY_STORY_DIRECTION,
+            frame,
+            'A lost glove.',
+            'A lost glove.',
+          ),
+        },
+      },
     ]);
     const fixture = await renderFixture(JOB_ID);
     const page = fixture.nativeElement as HTMLElement;
@@ -152,6 +213,77 @@ describe('GeneratePageComponent', () => {
 
     // The run is over; keeping its row would offer a result there is none of.
     expect(jobs.dismissed.map(String)).toEqual([JOB_ID]);
+    // Nothing was written, so the learner is back at the plot they sent.
+    expect(TestBed.inject(GenerationDraftStore).step()).toBe(3);
+    expect(TestBed.inject(StoryPlotStore).selected()?.text).toBe('A lost glove.');
+  });
+
+  it('walks words, direction, and plot, and starts the story from the picked plot', async () => {
+    bed.provider.plotQueue.push(
+      ok([
+        'Aiko loses her umbrella at the station and has to ask a stranger for help.',
+        'Two old friends plan a picnic, but a sudden call changes the day.',
+        'A boy finds a letter under his desk that was meant for his teacher.',
+      ]),
+    );
+    const fixture = await renderFixture();
+    const page = fixture.nativeElement as HTMLElement;
+    const draft = TestBed.inject(GenerationDraftStore);
+    draft.toggleOption('mood', 'Calm');
+    // A configured word source is the one prerequisite this bed leaves unmet.
+    sources.set([{}]);
+
+    press(page, 'wizard-next');
+    await settle(fixture);
+    expect(page.querySelector('mn-story-direction')).not.toBeNull();
+    expect(bed.provider.generationCalls.plots).toBe(0);
+
+    press(page, 'wizard-next');
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(page.querySelectorAll('[data-testid="plot-option"]')).toHaveLength(3);
+    });
+    expect(bed.provider.generationCalls.plots).toBe(1);
+
+    page.querySelectorAll<HTMLInputElement>('input[name="mn-plot"]')[1].click();
+    await settle(fixture);
+    press(page, 'generate');
+    await settle(fixture);
+
+    expect(jobs.started).toHaveLength(1);
+    const started = jobs.started[0].draft;
+    expect(started.premise).toBe(
+      'Two old friends plan a picnic, but a sudden call changes the day.',
+    );
+    expect(started.chosenPlot?.record.selected).toEqual({ mood: ['Calm'] });
+    expect(started.chosenPlot?.frame.values.mood).toEqual([{ value: 'Calm', rolled: false }]);
+    // The next story starts from the words, with the same choices.
+    expect(draft.step()).toBe(1);
+    expect(draft.direction().selected.mood).toEqual(['Calm']);
+  });
+
+  it('goes up one step at a time from the header, and to the library from the words', async () => {
+    const fixture = await renderFixture();
+    const page = fixture.nativeElement as HTMLElement;
+    const draft = TestBed.inject(GenerationDraftStore);
+    TestBed.inject(StoryPlotStore).clear();
+    draft.setStep(3);
+    fixture.detectChanges();
+
+    expect(page.querySelector('[data-testid="step-back"]')?.getAttribute('aria-label')).toBe(
+      'Back to direction',
+    );
+    press(page, 'step-back');
+    fixture.detectChanges();
+    expect(draft.step()).toBe(2);
+    expect(page.querySelector('[data-testid="step-back"]')?.getAttribute('aria-label')).toBe(
+      'Back to words',
+    );
+    press(page, 'step-back');
+    fixture.detectChanges();
+    expect(draft.step()).toBe(1);
+    expect(page.querySelector('[data-testid="step-back"]')).toBeNull();
+    expect(page.querySelector('[aria-label="Back to library"]')).not.toBeNull();
   });
 
   it('reports a provider failure with the stage it happened in', async () => {
@@ -196,6 +328,7 @@ describe('GeneratePageComponent', () => {
 
   it('explains that a new story has to wait while the limit is reached', async () => {
     jobs.nextJobId = null;
+    TestBed.inject(GenerationDraftStore).setStep(3);
     const page = await render();
 
     expect(page.querySelector('[data-testid="generation-limit"]')?.textContent).toContain(

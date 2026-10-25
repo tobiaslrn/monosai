@@ -11,6 +11,7 @@ export type AiTask =
   | 'model-discovery'
   | 'text-model-test'
   | 'tts-test'
+  | 'story-plots'
   | 'story-generation'
   | 'story-repair'
   | 'exception-review'
@@ -22,6 +23,7 @@ export const ALL_AI_TASKS: readonly AiTask[] = [
   'model-discovery',
   'text-model-test',
   'tts-test',
+  'story-plots',
   'story-generation',
   'story-repair',
   'exception-review',

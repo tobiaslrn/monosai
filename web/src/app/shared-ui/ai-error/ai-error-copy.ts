@@ -187,6 +187,7 @@ export const AI_TASK_COPY: Record<AiTask, string> = {
   'model-discovery': 'looking up model capabilities',
   'text-model-test': 'testing your text model',
   'tts-test': 'testing your voice',
+  'story-plots': 'drafting plots',
   'story-generation': 'writing your story',
   'story-repair': 'repairing your story',
   'exception-review': 'checking your exception policy',

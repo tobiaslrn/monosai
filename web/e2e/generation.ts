@@ -217,3 +217,21 @@ export async function openGenerate(page: Page): Promise<void> {
   await page.goto('./#/generate');
   await expect(page.getByRole('heading', { name: 'Write with AI', level: 1 })).toBeVisible();
 }
+
+/** Goes from the words through the direction to three drafted plots. */
+export async function reachPlots(page: Page): Promise<void> {
+  await page.getByTestId('wizard-next').click();
+  await expect(page.getByRole('heading', { name: 'Direction', level: 2 })).toBeVisible();
+  await page.getByTestId('wizard-next').click();
+  await expect(page.getByTestId('plot-option')).toHaveCount(3);
+}
+
+/**
+ * Starts a story the way a learner repeats one: a length, Next, Next, and
+ * Generate with the first plot. Tiny by default, so a run is one request.
+ */
+export async function writeStory(page: Page, lengthStop = '0'): Promise<void> {
+  await page.getByTestId('story-length').fill(lengthStop);
+  await reachPlots(page);
+  await page.getByTestId('generate').click();
+}

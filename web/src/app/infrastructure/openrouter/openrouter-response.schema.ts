@@ -125,6 +125,46 @@ export const COMPATIBILITY_PROBE_JSON_SCHEMA = {
 } as const;
 
 /**
+ * The plots a draft request must return: one English string per frame.
+ *
+ * Counted and checked for repeats by `checkDraftedPlots`, not here, so the
+ * refusal names which rule failed.
+ */
+export const storyPlotsSchema = z.object({
+  plots: z.array(z.string()),
+});
+
+/**
+ * The native schema for a plot draft.
+ *
+ * The array carries no bounds: strict providers refuse `minItems` and
+ * `maxItems`, which would cost a second request on every draft. The count is
+ * stated in the description and enforced by `checkDraftedPlots`.
+ */
+export function storyPlotsJsonSchema(count: number): Record<string, unknown> {
+  return {
+    name: 'monosai_story_plots',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['plots'],
+      properties: {
+        plots: {
+          type: 'array',
+          description: `Exactly ${String(count)} plots, one per frame, in frame order.`,
+          items: {
+            type: 'string',
+            description:
+              'Two or three plain English sentences: the setup and the problem, never the resolution.',
+          },
+        },
+      },
+    },
+  };
+}
+
+/**
  * The story a generation or repair request must return.
  *
  * Japanese only: translations are generated after the final Japanese is

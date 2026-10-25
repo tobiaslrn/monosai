@@ -4,6 +4,7 @@ import type {
   GenerationRun,
 } from '../app/application/generation/generation-jobs.store';
 import type { GenerationState } from '../app/application/generation/generation.store';
+import type { StoryInputDraft } from '../app/domain/ai/story-request';
 import { jobId, type JobId } from '../app/domain/shared/ids';
 
 const RUNNING = new Set<GenerationState['kind']>([
@@ -103,7 +104,19 @@ export class FakeGenerationJobsStore {
     return this.jobsSignal().find((candidate) => candidate.id === id) ?? null;
   }
 
-  start(): JobId | null {
+  /** What each `start` was asked to write, in order. */
+  readonly started: {
+    readonly sentenceCount: number;
+    readonly draft: StoryInputDraft;
+    readonly modelPresetId: string | null;
+  }[] = [];
+
+  start(
+    sentenceCount: number,
+    draft: StoryInputDraft,
+    modelPresetId: string | null = null,
+  ): JobId | null {
+    this.started.push({ sentenceCount, draft, modelPresetId });
     return this.nextJobId;
   }
 

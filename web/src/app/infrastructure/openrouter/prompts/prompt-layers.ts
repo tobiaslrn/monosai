@@ -19,8 +19,11 @@
  */
 
 import type { FocusWord } from '../../../domain/ai/recent-focus';
+import type { PlotFrame } from '../../../domain/ai/story-direction';
+import { STORY_AXES, STORY_AXIS_LABELS } from '../../../domain/ai/story-direction-options';
 import {
   markdownDocument,
+  markdownField,
   markdownHeading,
   markdownLineList,
   markdownLineValue,
@@ -120,7 +123,7 @@ export const STORY_POLICY_LAYER = [
  * because an empty data block would arrive as a premise that says nothing,
  * which is a different instruction and one no model can act on.
  */
-export function premiseSection(premise: string): string {
+export function premiseSection(premise: string, direction?: PlotFrame): string {
   return premise === ''
     ? [
         'No premise was supplied. Choose the topic yourself: one concrete, ordinary situation that this story is about.',
@@ -128,7 +131,11 @@ export function premiseSection(premise: string): string {
       ].join('\n')
     : asData(
         'premise',
-        markdownDocument([markdownHeading(1, 'Premise'), markdownLineValue(premise)]),
+        markdownDocument([
+          markdownHeading(1, 'Premise'),
+          markdownLineValue(premise),
+          direction === undefined ? '' : directionMarkdown(direction, 2, 'Story direction'),
+        ]),
       );
 }
 
@@ -138,13 +145,41 @@ export function premiseSection(premise: string): string {
  * Nothing stands in for an empty one here. The story on the table is the
  * subject, and inviting a topic would invite a different story.
  */
-export function premiseContext(premise: string): string {
+export function premiseContext(premise: string, direction?: PlotFrame): string {
   return premise === ''
     ? ''
     : asData(
         'story premise',
-        markdownDocument([markdownHeading(1, 'Story premise'), markdownLineValue(premise)]),
+        markdownDocument([
+          markdownHeading(1, 'Story premise'),
+          markdownLineValue(premise),
+          direction === undefined ? '' : directionMarkdown(direction, 2, 'Story direction'),
+        ]),
       );
+}
+
+/**
+ * One plot frame as named fields, in the order the Direction step lists them.
+ *
+ * Axes with no value are left out rather than sent as "Any": an absent field
+ * leaves the choice to the model, which is what Any means. The fields are only
+ * ever rendered inside a data block, because some values are text the learner
+ * typed.
+ */
+export function directionMarkdown(frame: PlotFrame, level: number, heading: string): string {
+  const fields = STORY_AXES.flatMap((axis) => {
+    const values = frame.values[axis];
+    return values.length === 0
+      ? []
+      : [markdownField(STORY_AXIS_LABELS[axis], values.map((value) => value.value).join(', '))];
+  });
+  return markdownDocument([
+    markdownHeading(level, heading),
+    [
+      ...fields,
+      markdownField('Turning point', `${frame.turningPoint.label} (${frame.turningPoint.meaning})`),
+    ].join('\n'),
+  ]);
 }
 
 /**

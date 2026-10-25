@@ -1,9 +1,13 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
-import { MAX_PREMISE_LENGTH } from '../../domain/ai/story-request';
+import { StoryPlotStore } from '../../application/generation/story-plot.store';
+import { RANDOM_SOURCE } from '../../application/shared/repository-tokens';
+import type { PlotCard } from '../../domain/ai/story-plot';
+import { EMPTY_STORY_DIRECTION, rollPlotFrames } from '../../domain/ai/story-direction';
+import { MAX_SPECIAL_INSTRUCTIONS_LENGTH } from '../../domain/ai/story-request';
 import type {
   AnkiWordPriorityMode,
   RecentFocusSize,
@@ -15,6 +19,7 @@ import { StoryFormComponent } from './story-form.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [StoryFormComponent],
   template: `<mn-story-form
+    [canContinue]="canContinue()"
     [canGenerate]="canGenerate()"
     [disabled]="disabled()"
     snapshotSummary="200 reviewed words"
@@ -25,16 +30,41 @@ import { StoryFormComponent } from './story-form.component';
     (recentFocusSizeChanged)="focusSize.set($event)"
     [vocabularyStrictness]="strictness()"
     (vocabularyStrictnessChanged)="strictness.set($event)"
+    (next)="nexts = nexts + 1"
     (generate)="generated = generated + 1"
   />`,
 })
 class HostComponent {
+  readonly canContinue = signal(true);
   readonly canGenerate = signal(true);
   readonly disabled = signal(false);
   readonly priorityMode = signal<AnkiWordPriorityMode>('uniform');
   readonly focusSize = signal<RecentFocusSize>(50);
   readonly strictness = signal<VocabularyStrictness>('standard');
+  nexts = 0;
   generated = 0;
+}
+
+/** Plots already on offer, so the Plot step renders without a provider. */
+function plotStoreStub() {
+  const cards = signal<readonly PlotCard[]>(
+    rollPlotFrames(EMPTY_STORY_DIRECTION, { nextInt: () => 0 }).map((frame, index) => ({
+      frame,
+      text: `Plot ${String(index + 1)}.`,
+      draftedText: `Plot ${String(index + 1)}.`,
+    })),
+  );
+  return {
+    cards,
+    selectedIndex: signal(0),
+    failure: signal(null),
+    isDrafting: signal(false),
+    draftingCount: signal(0),
+    canRegenerate: computed(() => true),
+    select: () => undefined,
+    edit: () => undefined,
+    regenerate: () => Promise.resolve(),
+  };
 }
 
 describe('StoryFormComponent', () => {
@@ -42,7 +72,13 @@ describe('StoryFormComponent', () => {
 
   beforeEach(() => {
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: RANDOM_SOURCE, useValue: { nextInt: () => 0 } },
+        { provide: StoryPlotStore, useValue: plotStoreStub() },
+      ],
+    });
     draft = TestBed.inject(GenerationDraftStore);
     draft.clear();
   });
@@ -72,98 +108,86 @@ describe('StoryFormComponent', () => {
     field.dispatchEvent(new Event('input'));
   }
 
-  it('clears story fields while keeping defaults and one primary action', () => {
-    const { element, fixture, host } = render();
-    draft.setPremise('ねこ');
-    draft.setSpecialInstructions('Dialogue');
-    draft.setSentenceCount(50);
-    host.priorityMode.set('recent');
-    host.strictness.set('strict');
-    draft.clear();
+  function atStep(fixture: ComponentFixture<HostComponent>, step: 1 | 2 | 3): void {
+    draft.setStep(step);
     fixture.detectChanges();
-    expect(draft.premise()).toBe('');
-    expect(draft.specialInstructions()).toBe('');
-    expect(draft.sentenceCount()).toBe(15);
-    expect(host.priorityMode()).toBe('recent');
-    expect(host.strictness()).toBe('strict');
-    expect(element.querySelector('.text-fields')?.textContent).toContain('This story');
-    expect(element.querySelector('.story-settings')?.textContent).toContain(
-      'Defaults for every story',
-    );
-    expect(element.querySelectorAll('.mn-button--primary')).toHaveLength(1);
-  });
+  }
 
-  it('writes the premise into the shared draft, so it survives a trip to Settings', () => {
-    const { element } = render();
-
-    type(element, 'premise', 'ねこが旅に出る話。');
-
-    expect(draft.premise()).toBe('ねこが旅に出る話。');
-  });
-
-  it('keeps character counters hidden until a field nears its limit', () => {
+  it('shows three named steps and marks the current one without making them controls', () => {
     const { element, fixture } = render();
 
-    expect(element.querySelector('#mn-premise-count')).toBeNull();
-
-    type(element, 'premise', 'あ'.repeat(799));
-    fixture.detectChanges();
-    expect(element.querySelector('#mn-premise-count')).toBeNull();
-
-    type(element, 'premise', 'あ'.repeat(800));
-    fixture.detectChanges();
-    expect(element.querySelector('#mn-premise-count')?.textContent).toContain(
-      '800 of 1,000 characters',
-    );
-  });
-
-  it('marks an over-long premise as invalid for assistive technology', () => {
-    const { element, fixture } = render();
-
-    type(element, 'premise', 'あ'.repeat(MAX_PREMISE_LENGTH + 1));
-    fixture.detectChanges();
-
-    expect(element.querySelector('[data-testid="premise"]')?.getAttribute('aria-invalid')).toBe(
-      'true',
-    );
-    expect(element.querySelector('#mn-premise-limit')?.getAttribute('role')).toBe('alert');
-    expect(element.querySelector('#mn-premise-limit')?.textContent).toContain(
-      'Remove 1 character to continue.',
-    );
+    const steps = [...element.querySelectorAll('[data-testid="wizard-steps"] li')];
+    expect(steps.map((step) => step.textContent.replace(/\s+/g, ' ').trim())).toEqual([
+      '1 Words',
+      '2 Direction',
+      '3 Plot',
+    ]);
+    expect(steps[0].getAttribute('aria-current')).toBe('step');
     expect(
-      element.querySelector('[data-testid="premise"]')?.getAttribute('aria-describedby'),
-    ).toContain('mn-premise-limit');
+      element.querySelector('[data-testid="wizard-steps"] button, [data-testid="wizard-steps"] a'),
+    ).toBeNull();
+
+    atStep(fixture, 3);
+    expect(element.querySelector('[aria-current="step"]')?.textContent).toContain('Plot');
+    expect(element.querySelector('[data-testid="wizard-steps"] li')?.textContent).toContain('done');
   });
 
-  it('uses the same counter wording and alignment for both story fields', () => {
+  it('has exactly one filled action on every step: Next, then Generate story', () => {
     const { element, fixture } = render();
 
-    type(element, 'premise', 'あ'.repeat(800));
-    type(element, 'special-instructions', 'い'.repeat(800));
-    fixture.detectChanges();
-
-    expect(element.querySelector('#mn-premise-count')?.textContent).toContain(
-      '800 of 1,000 characters',
-    );
-    expect(element.querySelector('#mn-instructions-count')?.textContent).toContain(
-      '800 of 1,000 characters',
-    );
-    expect(element.querySelectorAll('.counter')).toHaveLength(2);
+    for (const step of [1, 2, 3] as const) {
+      atStep(fixture, step);
+      const primaries = element.querySelectorAll('.mn-button--primary');
+      expect(primaries).toHaveLength(1);
+      expect(primaries[0].textContent.trim()).toBe(step === 3 ? 'Generate story' : 'Next');
+    }
   });
 
-  it('offers more length stops up to 800 sentences without adding length names', () => {
-    const { element } = render();
+  it('reports Next and Generate to its owner rather than acting itself', () => {
+    const { element, fixture, host } = render();
 
-    const text = element.querySelector('.text-fields')?.textContent ?? '';
-    // The current stop is named beside its count; four words under seven
-    // stops could not sit on the stops they named.
-    expect(element.querySelector('output[for="mn-story-length"]')?.textContent).toContain(
-      'Short · about 15 sentences',
+    element.querySelector<HTMLButtonElement>('[data-testid="wizard-next"]')?.click();
+    expect(host.nexts).toBe(1);
+    expect(draft.step()).toBe(1);
+
+    atStep(fixture, 3);
+    element.querySelector<HTMLButtonElement>('[data-testid="generate"]')?.click();
+    expect(host.generated).toBe(1);
+  });
+
+  it('disables Next and Generate when their owner says they cannot go on', () => {
+    const { element, fixture, host } = render();
+    host.canContinue.set(false);
+    host.canGenerate.set(false);
+    fixture.detectChanges();
+    expect(element.querySelector<HTMLButtonElement>('[data-testid="wizard-next"]')?.disabled).toBe(
+      true,
     );
-    expect(element.querySelector('.length-scale')).toBeNull();
-    expect(element.querySelector<HTMLInputElement>('[data-testid="story-length"]')?.max).toBe('7');
-    expect(text).toContain('15');
-    expect(element.querySelector('#mn-length-help')).toBeNull();
+
+    atStep(fixture, 3);
+    expect(element.querySelector<HTMLButtonElement>('[data-testid="generate"]')?.disabled).toBe(
+      true,
+    );
+  });
+
+  it('keeps the word controls, the length, and the sources on the Words step only', () => {
+    const { element, fixture } = render();
+
+    expect(element.querySelector('#mn-word-selection')).not.toBeNull();
+    expect(element.querySelector('[data-testid="story-length"]')).not.toBeNull();
+    expect(element.querySelector('[data-testid="form-sources"]')?.textContent).toContain(
+      '200 reviewed words',
+    );
+    expect(element.querySelector('[data-testid="form-sources"]')?.textContent).toContain(
+      'Starter forms',
+    );
+    // No focus-word list: showing a target list would turn reading into a checklist.
+    expect(element.textContent.toLowerCase()).not.toContain('target words');
+    expect(element.textContent.toLowerCase()).not.toContain('cost');
+
+    atStep(fixture, 2);
+    expect(element.querySelector('#mn-word-selection')).toBeNull();
+    expect(element.querySelector('[data-testid="form-sources"]')).toBeNull();
   });
 
   it('snaps to the selected named length and stores its sentence target', () => {
@@ -173,16 +197,19 @@ describe('StoryFormComponent', () => {
     if (slider === null) {
       throw new Error('story length slider was not rendered');
     }
+    expect(element.querySelector('output[for="mn-story-length"]')?.textContent).toContain(
+      'Short · about 15 sentences',
+    );
+    expect(slider.max).toBe('7');
     slider.value = '3';
     slider.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
     expect(draft.sentenceCount()).toBe(50);
-    expect(element.querySelector('output')?.textContent).toContain('50');
     expect(slider.getAttribute('aria-valuetext')).toBe('Long, 50 sentences');
   });
 
-  it('allows very long stories while warning that models follow constraints less reliably', () => {
+  it('warns about very long stories without blocking them', () => {
     const { element, fixture } = render();
     const slider = element.querySelector<HTMLInputElement>('[data-testid="story-length"]');
     if (slider === null) {
@@ -195,26 +222,10 @@ describe('StoryFormComponent', () => {
     fixture.detectChanges();
 
     expect(draft.sentenceCount()).toBe(800);
-    expect(slider.getAttribute('aria-valuetext')).toBe('Long, 800 sentences');
     expect(slider.getAttribute('aria-describedby')).toContain('mn-length-warning');
     expect(element.querySelector('#mn-length-warning')?.textContent).toContain(
       'Longer stories may ignore your vocabulary and grammar settings',
     );
-    expect(element.querySelector<HTMLButtonElement>('[data-testid="generate"]')?.disabled).toBe(
-      false,
-    );
-  });
-
-  it('offers the remembered Anki word-priority modes', () => {
-    const { element } = render();
-
-    const select = element.querySelector<HTMLSelectElement>('#mn-word-selection');
-    expect(select?.disabled).toBe(false);
-    expect(select?.value).toBe('uniform');
-    expect(select?.textContent).toContain('Recently learned');
-    expect(select?.textContent).toContain('Difficult');
-    expect(element.querySelector('.word-selection')?.textContent).not.toContain('Inspiration only');
-    expect(select?.getAttribute('aria-describedby')).toBeNull();
   });
 
   it('emits a changed mode and locks the select during generation', () => {
@@ -223,6 +234,7 @@ describe('StoryFormComponent', () => {
     if (select === null) {
       throw new Error('word-priority select was not rendered');
     }
+    expect(select.value).toBe('uniform');
 
     select.value = 'recent';
     select.dispatchEvent(new Event('change'));
@@ -248,144 +260,156 @@ describe('StoryFormComponent', () => {
       'Newest 100 words',
     ]);
 
+    select!.value = '25';
+    select!.dispatchEvent(new Event('change'));
+    expect(host.focusSize()).toBe(25);
+
     host.priorityMode.set('difficult');
     fixture.detectChanges();
     expect(element.querySelector('#mn-focus-size')).toBeNull();
   });
 
-  it('emits a changed focus size and locks it during generation', () => {
-    const { element, fixture, host } = render();
-    host.priorityMode.set('recent');
-    host.focusSize.set(100);
-    fixture.detectChanges();
-    const select = element.querySelector<HTMLSelectElement>('#mn-focus-size');
-    if (select === null) {
-      throw new Error('focus-size select was not rendered');
-    }
-    expect(select.value).toBe('100');
-
-    select.value = '25';
-    select.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-    expect(host.focusSize()).toBe(25);
-
-    host.disabled.set(true);
-    fixture.detectChanges();
-    expect(select.disabled).toBe(true);
-  });
-
-  it('keeps vocabulary strictness in an advanced disclosure and emits changes', () => {
+  it('states the strictness in its closed disclosure and emits changes', () => {
     const { element, fixture, host } = render();
     const details = element.querySelector<HTMLDetailsElement>('.strictness');
 
     expect(details?.open).toBe(false);
-    expect(details?.querySelector('summary')?.textContent).toContain('Vocabulary strictness');
-    const relaxed = details?.querySelector<HTMLInputElement>('input[value="relaxed"]');
-    if (relaxed === null || relaxed === undefined) {
-      throw new Error('relaxed strictness choice was not rendered');
-    }
-    relaxed.click();
+    expect(details?.querySelector('[data-testid="strictness-value"]')?.textContent).toContain(
+      'Standard',
+    );
+    details?.querySelector<HTMLInputElement>('input[value="relaxed"]')?.click();
     fixture.detectChanges();
 
     expect(host.strictness()).toBe('relaxed');
-    expect(details?.textContent).toContain('Keep the first draft');
-  });
-
-  it('leaves model choice to Settings', () => {
-    const { element } = render();
-
-    expect(element.querySelector('[data-testid="story-model-select"]')).toBeNull();
-  });
-
-  it('keeps special instructions optional', () => {
-    const { element } = render();
-
-    expect(element.querySelector('label[for="mn-instructions"]')?.textContent).toContain(
-      'optional',
+    expect(details?.querySelector('[data-testid="strictness-value"]')?.textContent).toContain(
+      'Relaxed',
     );
   });
 
-  it('leaves the draft valid with no premise, which asks for a random topic', () => {
-    const { element } = render();
+  it('opens Genre first, states every axis value, and keeps one row open at a time', () => {
+    const { element, fixture } = render();
+    atStep(fixture, 2);
 
-    expect(draft.isValid()).toBe(true);
+    const rows = [...element.querySelectorAll<HTMLDetailsElement>('details.axis')];
+    expect(rows.map((row) => row.dataset['axis'])).toEqual([
+      'genre',
+      'mood',
+      'setting',
+      'cast',
+      'format',
+      'ending',
+      'time',
+    ]);
+    expect(rows.filter((row) => row.open).map((row) => row.dataset['axis'])).toEqual(['genre']);
+    expect(rows.every((row) => row.getAttribute('name') === 'mn-story-axis')).toBe(true);
     expect(
-      element.querySelector<HTMLLabelElement>('label[for="mn-premise"]')?.textContent,
-    ).toContain('optional');
-
-    type(element, 'premise', 'ねこ');
-    expect(draft.isValid()).toBe(true);
+      rows.map((row) => row.querySelector('[data-testid="axis-value"]')?.textContent.trim()),
+    ).toEqual(['Any', 'Any', 'Any', 'Any', 'Any', 'Any', 'Any']);
   });
 
-  it('uses one optional marker and keeps useful instruction guidance in the text box', () => {
-    const { element } = render();
+  it('keeps chips in place, leads with Any, ends with Custom, and marks choices pressed', () => {
+    const { element, fixture } = render();
+    atStep(fixture, 2);
+    const genre = (): HTMLButtonElement[] => [
+      ...element.querySelectorAll<HTMLButtonElement>('[data-axis="genre"] .chips button'),
+    ];
+    const before = genre().map((chip) => chip.textContent.trim());
+    expect(before[0]).toBe('Any');
+    expect(before.at(-1)).toBe('Custom');
+    expect(genre()[0].getAttribute('aria-pressed')).toBe('true');
 
-    expect(
-      element
-        .querySelector<HTMLTextAreaElement>('[data-testid="premise"]')
-        ?.getAttribute('placeholder'),
-    ).toBeNull();
-    expect(
-      element.querySelector<HTMLTextAreaElement>('[data-testid="special-instructions"]')
-        ?.placeholder,
-    ).toBe('Tone, viewpoint, dialogue, or register');
-  });
-
-  it('links the snapshot and preset from the settings sidebar', () => {
-    const { element } = render();
-
-    const sources = element.querySelector('[data-testid="form-sources"]');
-    expect(sources?.textContent).toContain('200 reviewed words');
-    expect(sources?.textContent).toContain('Starter forms');
-    expect(sources?.querySelectorAll('a')).toHaveLength(2);
-    // Generate acts on the whole composer, so it is the action bar's rather
-    // than the defaults card's.
-    expect(element.querySelector('.story-settings [data-testid="generate"]')).toBeNull();
-    expect(element.querySelector('.action-bar [data-testid="generate"]')).not.toBeNull();
-  });
-
-  /**
-   * What the story is written from is said once, immediately above the button
-   * that acts on it, rather than three times across the screen. No price is
-   * estimated: a number that is wrong is worse than no number.
-   */
-  it('presents its linked sources once and estimates no price', () => {
-    const { element } = render();
-
-    const sources = element.querySelector('[data-testid="form-sources"]');
-    expect(sources?.textContent).toContain('Uses');
-    expect(sources?.textContent).toContain('Vocabulary');
-    expect(sources?.textContent).toContain('Grammar');
-    expect(element.querySelector('[data-testid="generate"]')).not.toBeNull();
-    expect(element.querySelectorAll('[data-testid="form-sources"]')).toHaveLength(1);
-    expect(element.textContent.toLowerCase()).not.toContain('$');
-    expect(element.textContent.toLowerCase()).not.toContain('cost');
-  });
-
-  it('shows no genre picker, topic suggestions, or target vocabulary', () => {
-    const { element } = render();
-
-    const text = element.textContent.toLowerCase();
-    expect(text).not.toContain('genre');
-    expect(text).not.toContain('temperature');
-    expect(text).not.toContain('target words');
-  });
-
-  it('disables Generate until every prerequisite is met', () => {
-    const { element, fixture, host } = render();
-    host.canGenerate.set(false);
+    genre()
+      .find((chip) => chip.textContent.trim() === 'Mystery')
+      ?.click();
+    genre()
+      .find((chip) => chip.textContent.trim() === 'Comedy')
+      ?.click();
     fixture.detectChanges();
 
-    const button = element.querySelector<HTMLButtonElement>('[data-testid="generate"]');
-    expect(button?.disabled).toBe(true);
+    expect(genre().map((chip) => chip.textContent.trim())).toEqual(before);
+    expect(
+      genre()
+        .filter((chip) => chip.getAttribute('aria-pressed') === 'true')
+        .map((chip) => chip.textContent.trim()),
+    ).toEqual(['Mystery', 'Comedy']);
+    expect(
+      element.querySelector('[data-axis="genre"] [data-testid="axis-value"]')?.textContent.trim(),
+    ).toBe('Mystery, Comedy');
+    // Selected is the soft tint a pressed toggle wears, not the filled primary.
+    expect(element.querySelectorAll('.axes .mn-button--primary')).toHaveLength(0);
+
+    genre()[0].click();
+    fixture.detectChanges();
+    expect(draft.direction().selected.genre).toEqual([]);
   });
 
-  it('reports the request to its owner rather than starting one itself', () => {
-    const { element, host } = render();
+  it('adds a custom option as a picked chip that stays in its row', () => {
+    const { element, fixture } = render();
+    atStep(fixture, 2);
+    element.querySelector<HTMLButtonElement>('[data-axis="genre"] [data-custom-toggle]')?.click();
+    fixture.detectChanges();
 
-    element.querySelector<HTMLButtonElement>('[data-testid="generate"]')?.click();
+    const field = element.querySelector<HTMLInputElement>('[data-testid="custom-option"]');
+    expect(field?.maxLength).toBe(40);
+    field!.value = 'Baking contest';
+    field!.form?.requestSubmit();
+    fixture.detectChanges();
 
-    expect(host.generated).toBe(1);
+    const chips = [...element.querySelectorAll('[data-axis="genre"] .chips button')].map((chip) =>
+      chip.textContent.trim(),
+    );
+    expect(chips.slice(-2)).toEqual(['Baking contest', 'Custom']);
+    expect(draft.direction().selected.genre).toEqual(['Baking contest']);
+    expect(element.querySelector('[data-testid="custom-option"]')).toBeNull();
+  });
+
+  it('fills every axis from Surprise me and says so in each row', () => {
+    const { element, fixture } = render();
+    atStep(fixture, 2);
+    element.querySelector<HTMLButtonElement>('[data-testid="surprise-direction"]')?.click();
+    fixture.detectChanges();
+
+    const values = [...element.querySelectorAll('[data-testid="axis-value"]')].map((value) =>
+      value.textContent.trim(),
+    );
+    expect(values).toHaveLength(7);
+    expect(values).not.toContain('Any');
+  });
+
+  it('keeps special instructions optional, counted, and limited', () => {
+    const { element, fixture } = render();
+    atStep(fixture, 2);
+    expect(element.querySelector('label[for="mn-instructions"]')?.textContent).toContain(
+      'optional',
+    );
+    expect(element.querySelector('#mn-instructions-count')).toBeNull();
+    // No premise box any more: the plot step produces the premise.
+    expect(element.querySelector('[data-testid="premise"]')).toBeNull();
+
+    type(element, 'special-instructions', 'い'.repeat(MAX_SPECIAL_INSTRUCTIONS_LENGTH + 1));
+    fixture.detectChanges();
+
+    expect(element.querySelector('#mn-instructions-count')?.textContent).toContain(
+      '1,001 of 1,000 characters',
+    );
+    expect(element.querySelector('#mn-instructions-limit')?.textContent).toContain(
+      'Remove 1 character to continue.',
+    );
+    expect(draft.isValid()).toBe(false);
+  });
+
+  it('shows the plots with where each value came from, and the turning point', () => {
+    const { element, fixture } = render();
+    atStep(fixture, 3);
+
+    const options = element.querySelectorAll('[data-testid="plot-option"]');
+    expect(options).toHaveLength(3);
+    const first = options[0];
+    expect(first.querySelectorAll('.mn-status-pill--dashed').length).toBe(4);
+    expect(first.querySelector('.mn-status-pill--accent')?.textContent).toContain('Turning point');
+    expect(first.textContent).toContain('(random)');
+    expect(first.querySelector('[data-testid="edit-plot"]')).not.toBeNull();
+    expect(options[1].querySelector('[data-testid="edit-plot"]')).toBeNull();
   });
 
   it('locks the fields while a run is in flight', () => {
@@ -393,13 +417,10 @@ describe('StoryFormComponent', () => {
     host.disabled.set(true);
     fixture.detectChanges();
 
-    expect(element.querySelector<HTMLTextAreaElement>('[data-testid="premise"]')?.disabled).toBe(
-      true,
-    );
     expect(element.querySelector<HTMLInputElement>('[data-testid="story-length"]')?.disabled).toBe(
       true,
     );
-    expect(element.querySelector<HTMLButtonElement>('[data-testid="generate"]')?.disabled).toBe(
+    expect(element.querySelector<HTMLButtonElement>('[data-testid="wizard-next"]')?.disabled).toBe(
       true,
     );
   });

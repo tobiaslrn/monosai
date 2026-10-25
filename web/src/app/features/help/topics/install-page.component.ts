@@ -83,8 +83,9 @@ import { HelpArticleComponent } from '../help-article.component';
           nowhere else. It never appears in a log, a diagnostic copy, or an error report.
         </p>
         <p>
-          What does leave your device is what a request needs: your premise, the words you know, and
-          the sentence being translated or spoken.
+          What does leave your device is what a request needs: the direction and plot you chose, the
+          words you know, the titles and plots of your last few stories when new plots are drafted,
+          and the sentence being translated or spoken.
         </p>
         <p class="mn-notice mn-notice--info">
           <mn-icon name="info" [size]="17" />

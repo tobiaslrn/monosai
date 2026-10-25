@@ -20,6 +20,12 @@ describe('temperatureForTask', () => {
     expect(temperatureForTask('story-generation')).toBeGreaterThan(0.5);
   });
 
+  it('drafts plots warmer than the story, because three different plots are the point', () => {
+    expect(temperatureForTask('story-plots')).toBeGreaterThan(
+      temperatureForTask('story-generation') ?? 0,
+    );
+  });
+
   it('sends nothing for tasks that do not sample text', () => {
     expect(temperatureForTask('tts-synthesis')).toBeUndefined();
     expect(temperatureForTask('model-discovery')).toBeUndefined();

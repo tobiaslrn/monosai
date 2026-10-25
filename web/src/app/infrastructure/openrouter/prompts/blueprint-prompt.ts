@@ -22,6 +22,7 @@ const TASK_LAYER = [
   'Success criteria:',
   '- Create exactly one beat for every supplied segment, in the supplied order.',
   '- Make the beats form one coherent beginning, development, and ending faithful to the premise.',
+  '- When the premise carries a story direction, let its genre, mood, setting, cast, format, ending, and time shape the telling. The premise does not say how the story ends; write an ending that fits the direction. Where the premise and the direction disagree, follow the premise.',
   '- Keep each beat concrete enough to guide its segment without scripting individual sentences.',
   '- The Japanese title follows the supplied vocabulary, grammar, and register constraints. English beat descriptions are planning data and are not subject to the Japanese allowlist.',
   // The Japanese-output layer is deliberately absent here, because the beats
@@ -76,7 +77,7 @@ export function buildBlueprintPrompt(
     ),
     exceptionPolicySection(request.exceptionPolicy),
     asConfig('segment plan', segmentPlan(segments)),
-    premiseSection(request.premise),
+    premiseSection(request.premise, request.direction),
     request.specialInstructions === undefined
       ? ''
       : asConfig('learner style', styleSection(request.specialInstructions)),

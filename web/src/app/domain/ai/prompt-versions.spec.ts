@@ -6,6 +6,7 @@ describe('PROMPT_VERSIONS', () => {
     expect(Object.keys(PROMPT_VERSIONS).sort()).toEqual([
       'exception-review',
       'grammar',
+      'plots',
       'repair',
       'story',
       'translation',
@@ -25,7 +26,8 @@ describe('PROMPT_VERSIONS', () => {
 
   it('invalidates the sparse grammar contract independently', () => {
     expect(PROMPT_VERSIONS).toEqual({
-      story: 'story/6',
+      plots: 'plots/1',
+      story: 'story/7',
       repair: 'repair/6',
       'exception-review': 'exception-review/4',
       grammar: 'grammar/5',

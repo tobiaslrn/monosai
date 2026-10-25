@@ -10,7 +10,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import type { StoryInputDraft } from '../../domain/ai/story-request';
+import type { ChosenPlot, StoryInputDraft } from '../../domain/ai/story-request';
 import { jobId, type JobId } from '../../domain/shared/ids';
 import { LibraryStore } from '../reading/library.store';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
@@ -36,6 +36,11 @@ export interface GenerationJob {
   readonly id: JobId;
   /** What the learner asked for, used as the row's title until a story exists. */
   readonly premise: string;
+  /**
+   * The plot the run was given, so a run that writes nothing can hand it back
+   * to the form however long ago, and from wherever, it was started.
+   */
+  readonly chosenPlot?: ChosenPlot;
   readonly sentenceCount: number;
   readonly startedAt: number;
   readonly store: GenerationRun;
@@ -178,6 +183,7 @@ export class GenerationJobsStore {
     const job: GenerationJob = {
       id,
       premise: draft.premise.trim(),
+      ...(draft.chosenPlot === undefined ? {} : { chosenPlot: draft.chosenPlot }),
       sentenceCount,
       startedAt: this.clock.now(),
       store,

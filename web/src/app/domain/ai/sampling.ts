@@ -13,10 +13,13 @@ import type { AiTask } from './ai-task';
  * Judgement tasks — translation, both reviews, planning, and repair — have one
  * right answer shape, so they are pinned low. Writing a story does not: the
  * suggestion palette exists precisely so that two runs of the same premise
- * differ, and that variety is now chosen rather than inherited.
+ * differ, and that variety is now chosen rather than inherited. Drafting plots
+ * is the most open task of all: its three answers are meant to be three
+ * different stories, so it runs warmest (ADR 0080).
  */
 const TEMPERATURES: Partial<Record<AiTask, number>> = {
   'text-model-test': 0,
+  'story-plots': 1,
   'story-generation': 0.9,
   'story-repair': 0.2,
   'exception-review': 0,

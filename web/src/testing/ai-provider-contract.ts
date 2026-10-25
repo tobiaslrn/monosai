@@ -2,6 +2,8 @@ import { expect, it } from 'vitest';
 import type { AiErrorCode } from '../app/domain/ai/ai-error';
 import type { GrammarReviewRequest } from '../app/domain/ai/grammar-review-request';
 import { declaredSpeechCapabilities } from '../app/domain/ai/speech-capabilities';
+import { rollPlotFrames, EMPTY_STORY_DIRECTION } from '../app/domain/ai/story-direction';
+import type { StoryPlotRequest } from '../app/domain/ai/story-plot';
 import type { StoryGenerationRequest } from '../app/domain/ai/story-request';
 import type { TextGenerationProvider } from '../app/domain/ai/text-generation-provider';
 import { sentenceId, snapshotId } from '../app/domain/shared/ids';
@@ -63,6 +65,15 @@ const CONTRACT_STORY_REQUEST: StoryGenerationRequest = {
   snapshotId: snapshotId('00000000-0000-4000-8000-000000000001'),
   grammarProfileHash: 'profile-hash',
   promptVersion: 'story/1',
+};
+
+const CONTRACT_PLOT_REQUEST: StoryPlotRequest = {
+  frames: rollPlotFrames(EMPTY_STORY_DIRECTION, { nextInt: () => 0 }),
+  keptPlots: [],
+  recentStories: [],
+  focusVocabulary: [],
+  vocabularySample: ['猫', '庭'],
+  promptVersion: 'plots/1',
 };
 
 const CONTRACT_TASK_CONFIG = {
@@ -148,6 +159,30 @@ export function runTextProviderContract(create: TextProviderFactory): void {
 
     expect(result.ok).toBe(false);
     expect(serialize(result)).not.toContain(FAKE_OPENROUTER.apiKey);
+  });
+
+  it('reports an offline device for plots without spending a request', async () => {
+    const context = create({ online: false });
+
+    expectFailure(
+      await context.provider.draftPlots(CONTRACT_PLOT_REQUEST, CONTRACT_TASK_CONFIG),
+      'offline',
+    );
+    expect(context.requestCount()).toBe(0);
+  });
+
+  it('returns cancelled for plots whose signal is already aborted', async () => {
+    const context = create();
+
+    expectFailure(
+      await context.provider.draftPlots(
+        CONTRACT_PLOT_REQUEST,
+        CONTRACT_TASK_CONFIG,
+        AbortSignal.abort(),
+      ),
+      'cancelled',
+    );
+    expect(context.requestCount()).toBe(0);
   });
 
   it('reports an offline device for a story without spending a request', async () => {

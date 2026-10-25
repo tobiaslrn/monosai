@@ -42,3 +42,15 @@
   /* The bare lavender misses text contrast on its own soft ground at pill size. */
   --pill-ink: color-mix(in srgb, var(--accent-secondary) 70%, var(--text-primary));
 }
+
+/*
+ * A value code chose rather than the learner, such as a plot card's rolled
+ * axis. The dashed edge is what says so, not a colour; it is drawn as an
+ * outline so the pill keeps the same box as its solid neighbours.
+ */
+.mn-status-pill--dashed {
+  --pill-soft: transparent;
+
+  outline: 1px dashed var(--border-strong);
+  outline-offset: -1px;
+}

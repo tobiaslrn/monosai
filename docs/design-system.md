@@ -58,9 +58,10 @@ make the desktop and the phone two different applications to learn.
 
 There is one exception. **A form may carry one narrow settings aside** beside
 its fields on wide screens, where the settings frame a decision the fields
-express — Generate's length and word-selection panel is the case this exists
-for. The aside stacks below the fields when the width no longer supports it. It
-is available to forms only; reading surfaces, lists, and prose never take one.
+express. The aside stacks below the fields when the width no longer supports it.
+It is available to forms only; reading surfaces, lists, and prose never take
+one. Generate no longer uses it: its decisions are made one after another, as
+steps (see Forms in steps).
 
 ### One top bar per screen, and the page frame
 
@@ -430,6 +431,59 @@ presents its contents plainly.
 
 Where a link can point inside a disclosure, arriving there opens it. A deep link
 that lands the learner on a long page next to a closed fold has not arrived.
+
+### Forms in steps
+
+A form whose later choices depend on earlier ones — Generate: the words, then
+the direction, then the plot — is shown **one step at a time**, in the same page
+frame. A row of step names under the bar says where the learner is: the current
+step in the action colour and marked as the current step for assistive
+technology, finished steps with a check and "done" in words. The row is not a
+control. The way between steps is the bar's Back, which goes up one step and,
+from the first, to the page's parent, and the step's one filled action at the
+foot — Next, then the verb that commits the work. There are no step tabs and no
+second Next; one action has one control. Moving to a step moves focus to its
+heading and the page to its top.
+
+A step's action is disabled only by what that step would spend. Leaving a step
+that only chooses costs nothing and is never blocked; leaving one that sends a
+request waits on the same prerequisites the request needs.
+
+### Choosing on several axes
+
+Where a learner may steer something along several independent axes, each axis
+is one **disclosure row** in one card, and the rows share a native `name` so the
+browser keeps one open at a time. The closed row states its value opposite its
+label, as every disclosure does: "Any" in secondary text when nothing is chosen,
+the choice in the action colour when something is. The first row is open.
+
+An open row is a wrap of **choice chips**: ordinary `.mn-button` toggles with
+`aria-pressed`, at the full touch-target height — the density rule allows no
+smaller target, and a compact chip whose hit area overflowed its neighbour's
+gap would put two targets under one finger. The order never changes on
+selection: **Any** leads, the options follow, **Custom** ends the row, and a
+custom option the learner adds joins just before Custom and stays. A choice is
+the soft selection tint, never the filled primary. Custom opens one text field
+and an outline Add beside it; Enter adds, Escape closes and returns focus to
+Custom. Filling every axis at random is a ghost action in the card's heading.
+
+### Options to pick from
+
+Drafted options the learner picks one of — the plots — are **insets inside the
+card** that offers them, never cards of their own, so the page keeps its two
+levels of grouping. Each is a native radio with a visible circle; the picked one
+wears the selection tint. What an option was built from is a row of status
+pills: a value the learner chose is a plain pill, a value code chose is the
+dashed pill, and an event code chose is the accent pill named as such to
+assistive technology. An option the learner changed says Edited. Only the picked
+option offers Edit, a ghost action that turns its text into a field and becomes
+Done. A Regenerate in the card heading rewrites every option the learner has not
+edited; an edited option is the learner's text and is never replaced.
+
+While options are being written the card names the wait in words — "Writing
+three plots…" — where the options will appear, and the commit is disabled. Options
+already on screen stay where they are, inert, until they are replaced. This is
+not a skeleton: nothing is drawn that pretends to be content.
 
 ### A choice that makes saved work stale
 
@@ -858,6 +912,8 @@ a **notice**: the status's soft background with its words in the status colour,
 an optional leading icon, and at most one action at its end. A short word that
 says where something stands — Ready, Unread, Test failed, a word's form — is a
 **status pill**, which is never pressable and so never takes the action colour.
+Its dashed variant marks a value code chose rather than the learner; the dash,
+not a colour, is what says so.
 What is wrong with the value of one field is plain danger-coloured text directly
 under that field, not a notice.
 

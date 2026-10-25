@@ -21,10 +21,13 @@ test.describe('first-use Help', () => {
     await page.getByRole('link', { name: 'Write with AI', exact: true }).click();
     await expect(page.locator('[data-check="text-model"] strong')).toHaveText('Text AI:');
     await expect(page.locator('[data-check="vocabulary"] strong')).toHaveText('Word list:');
-    await expect(page.getByTestId('generate')).toBeDisabled();
+    // Choosing words costs nothing; leaving the direction drafts plots, which
+    // is the first thing the missing setup blocks.
+    await page.getByTestId('wizard-next').click();
+    await expect(page.getByTestId('wizard-next')).toBeDisabled();
     await page.context().setOffline(true);
     await expect(page.locator('[data-check="network"]')).toContainText('You are offline');
-    await expect(page.getByTestId('generate')).toHaveAttribute(
+    await expect(page.getByTestId('wizard-next')).toHaveAttribute(
       'aria-describedby',
       'mn-generate-disabled-reason',
     );

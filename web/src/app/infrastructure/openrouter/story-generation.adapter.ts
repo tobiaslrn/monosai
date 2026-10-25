@@ -8,6 +8,7 @@ import type {
   StorySegmentPlan,
 } from '../../domain/ai/story-request';
 import { MAX_STORY_SEGMENT_SENTENCES, planStorySegments } from '../../domain/ai/story-request';
+import { checkDraftedPlots, type StoryPlotRequest } from '../../domain/ai/story-plot';
 import {
   checkStoryStructure,
   hasFormatFailure,
@@ -38,11 +39,14 @@ import {
   storyCandidateSchema,
   storyRepairPatchSchema,
   storyRepairPatchJsonSchema,
+  storyPlotsJsonSchema,
+  storyPlotsSchema,
   storySegmentCandidateSchema,
   storySegmentJsonSchema,
 } from './openrouter-response.schema';
 import { buildBlueprintPrompt } from './prompts/blueprint-prompt';
 import { buildExceptionPrompt, exceptionCandidateWireId } from './prompts/exception-prompt';
+import { buildPlotPrompt } from './prompts/plot-prompt';
 import { buildRepairPrompt, buildScopedRepairPrompt } from './prompts/repair-prompt';
 import { buildSegmentPrompt } from './prompts/segment-prompt';
 import { buildStoryPrompt } from './prompts/story-prompt';
@@ -58,6 +62,8 @@ import { StructuredTaskRunner } from './structured-request';
  */
 const MAX_REVIEW_TOKENS = 2_048;
 const MAX_BLUEPRINT_TOKENS = 4_096;
+/** Three plots of two or three sentences each, with room to spare. */
+const MAX_PLOT_TOKENS = 2_048;
 
 /**
  * How much preceding Japanese a segment request carries.
@@ -90,6 +96,29 @@ export class OpenRouterStoryGenerator {
   ) {
     this.runner = new StructuredTaskRunner(client, memo);
     this.newSessionId = sessionIdFactory;
+  }
+
+  /**
+   * Drafts every requested plot in one request.
+   *
+   * A reply that repeats a plot, or a kept one, is refused as malformed, so
+   * the single format recovery asks again rather than showing two cards that
+   * say the same thing.
+   */
+  draftPlots(
+    request: StoryPlotRequest,
+    config: TextTaskConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<readonly string[], AiError>> {
+    return this.runner.run<readonly string[]>({
+      task: 'story-plots',
+      config,
+      prompt: buildPlotPrompt(request),
+      jsonSchema: storyPlotsJsonSchema(request.frames.length),
+      maxTokens: MAX_PLOT_TOKENS,
+      read: plotsReader(request),
+      ...(signal === undefined ? {} : { signal }),
+    });
   }
 
   async generateStory(
@@ -337,6 +366,18 @@ export class OpenRouterStoryGenerator {
       ...(signal === undefined ? {} : { signal }),
     });
   }
+}
+
+function plotsReader(
+  request: StoryPlotRequest,
+): (parsed: unknown) => Result<readonly string[], string> {
+  return (parsed: unknown) => {
+    const payload = storyPlotsSchema.safeParse(parsed);
+    if (!payload.success) {
+      return err('story-plots-shape');
+    }
+    return checkDraftedPlots(payload.data.plots, request.frames.length, request.keptPlots);
+  };
 }
 
 function blueprintReader(

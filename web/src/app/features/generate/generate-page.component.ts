@@ -11,6 +11,7 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
+import { StoryPlotStore } from '../../application/generation/story-plot.store';
 import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
 import {
   allPrerequisitesMet,
@@ -82,7 +83,13 @@ function formatList(items: readonly string[]): string {
   ],
   template: `
     <div class="mn-page">
-      <mn-page-header [heading]="pageHeading()" backTo="/library" backLabel="Back to library" />
+      <mn-page-header
+        [heading]="pageHeading()"
+        backTo="/library"
+        [backLabel]="backLabel()"
+        [stepsBack]="stepsBack()"
+        (backPressed)="stepBack()"
+      />
 
       <p class="mn-visually-hidden" role="status" aria-live="polite" data-testid="generate-status">
         {{ announcement() }}
@@ -162,7 +169,7 @@ function formatList(items: readonly string[]): string {
         <section class="result-screen" aria-labelledby="mn-generate-cancelled-heading">
           <p class="mn-group-title">Nothing was saved</p>
           <h2 id="mn-generate-cancelled-heading">Generation stopped</h2>
-          <p class="mn-hint">Your premise and instructions are still here.</p>
+          <p class="mn-hint">Your direction and plots are still here.</p>
           <div class="mn-actions result-actions">
             <button type="button" class="mn-button mn-button--primary" (click)="retry()">
               Back to the form
@@ -175,6 +182,7 @@ function formatList(items: readonly string[]): string {
         <section aria-labelledby="mn-generate-form-heading">
           <h2 id="mn-generate-form-heading" class="mn-visually-hidden">Your story</h2>
           <mn-story-form
+            [canContinue]="canContinue()"
             [canGenerate]="canGenerate()"
             [disabledReason]="disabledReason()"
             [disabled]="isBusy() || savingDefault()"
@@ -211,6 +219,7 @@ function formatList(items: readonly string[]): string {
                 'Preparation choices'
               )
             "
+            (next)="next()"
             (generate)="generate()"
           >
             <mn-exception-policy-field story-defaults />
@@ -290,6 +299,7 @@ export class GeneratePageComponent {
 
   protected readonly jobs = inject(GenerationJobsStore);
   protected readonly draft = inject(GenerationDraftStore);
+  private readonly plots = inject(StoryPlotStore);
   protected readonly textModel = inject(TextModelStore);
   private readonly policy = inject(ExceptionPolicyStore);
   protected readonly appSettings = inject(AppSettingsStore);
@@ -360,15 +370,61 @@ export class GeneratePageComponent {
     return active === null ? 'No words yet' : `${String(active.uniqueEntryCount)} reviewed words`;
   });
 
-  protected readonly canGenerate = computed(
-    () => allPrerequisitesMet(this.checks()) && this.draft.isValid() && this.jobs.canStart(),
+  /** The form, rather than a run, is what the screen is showing. */
+  private readonly formShown = computed(() => {
+    const kind = this.state().kind;
+    return !this.missingJob() && kind === 'idle';
+  });
+
+  /** Inside the form, Back goes up one step; from the words, to the library. */
+  protected readonly stepsBack = computed(() => this.formShown() && this.draft.step() > 1);
+  protected readonly backLabel = computed(() => {
+    if (!this.stepsBack()) {
+      return 'Back to library';
+    }
+    return this.draft.step() === 3 ? 'Back to direction' : 'Back to words';
+  });
+
+  /**
+   * Whether this step's Next can be pressed. Leaving the words costs nothing;
+   * leaving the direction drafts plots, which is a request, so it waits on the
+   * same prerequisites a story does.
+   */
+  protected readonly canContinue = computed(
+    () => this.draft.step() === 1 || (allPrerequisitesMet(this.checks()) && this.draft.isValid()),
   );
-  protected readonly disabledReason = computed(() =>
-    this.checks()
+
+  protected readonly canGenerate = computed(
+    () =>
+      allPrerequisitesMet(this.checks()) &&
+      this.draft.isValid() &&
+      this.jobs.canStart() &&
+      this.plots.isReady(),
+  );
+  protected readonly disabledReason = computed(() => {
+    const missing = this.checks()
       .filter((check) => !check.satisfied)
       .map((check) => check.detail)
-      .join(' '),
-  );
+      .join(' ');
+    if (missing !== '' || this.draft.step() !== 3) {
+      return missing;
+    }
+    if (this.plots.isDrafting()) {
+      return 'The plots are still being written.';
+    }
+    if (this.plots.selected() === null) {
+      // The draft failed before any plot existed; Regenerate asks again.
+      return 'Regenerate the plots to continue.';
+    }
+    switch (this.plots.selectedIssue()) {
+      case 'empty':
+        return 'Write a plot to continue.';
+      case 'too-long':
+        return 'Shorten the plot to continue.';
+      default:
+        return '';
+    }
+  });
 
   /**
    * Whether anything is worth saying before the form. The advisory preset
@@ -480,16 +536,49 @@ export class GeneratePageComponent {
     void this.startGeneration();
   }
 
+  /** Moves the form one step on; leaving the direction drafts the plots. */
+  protected next(): void {
+    if (!this.canContinue()) {
+      return;
+    }
+    const step = this.draft.step();
+    if (step === 1) {
+      this.draft.setStep(2);
+    } else if (step === 2) {
+      this.draft.setStep(3);
+      void this.plots.prepare(this.draft.direction(), this.draft.specialInstructions());
+    }
+  }
+
+  protected stepBack(): void {
+    const step = this.draft.step();
+    if (step > 1) {
+      this.draft.setStep(step === 3 ? 2 : 1);
+    }
+  }
+
   private async startGeneration(): Promise<void> {
     if (!this.canGenerate()) return;
+    const chosen = this.plots.chosenPlot(this.draft.direction());
+    if (chosen === null) return;
+    const instructions = this.draft.specialInstructions();
     const started = this.jobs.start(
       this.draft.sentenceCount(),
-      this.draft.input(),
+      {
+        premise: chosen.premise,
+        chosenPlot: chosen.plot,
+        ...(instructions.trim() === '' ? {} : { specialInstructions: instructions }),
+      },
       this.textModel.activePresetId(),
     );
     if (started === null) {
       return;
     }
+    // The next story starts from the words with the same choices. The sent
+    // plot goes the next time plots are drafted; a run that writes nothing
+    // hands it back from its own record.
+    this.plots.spend();
+    this.draft.storyStarted();
     await this.router.navigate(['/generate', started], {
       replaceUrl: true,
       state: this.navigation.preservedOriginState('/library'),
@@ -509,9 +598,19 @@ export class GeneratePageComponent {
     void this.endJobAndReturnToForm();
   }
 
-  /** Drops the finished run and puts the form back at the plain address. */
+  /**
+   * Drops the finished run and puts the form back at the plain address.
+   *
+   * A run that wrote nothing hands its plots back at the step it left from, so
+   * trying again is one press; a saved story starts the next one at the words.
+   */
   private async endJobAndReturnToForm(): Promise<void> {
     const job = this.job();
+    const kind = this.state().kind;
+    if ((kind === 'cancelled' || kind === 'failed') && job?.chosenPlot !== undefined) {
+      this.plots.restore(job.chosenPlot, this.draft.direction(), this.draft.specialInstructions());
+      this.draft.setStep(3);
+    }
     if (job !== null) {
       this.jobs.dismiss(job.id);
     }

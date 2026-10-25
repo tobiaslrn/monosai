@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
+import {
+  EMPTY_STORY_DIRECTION,
+  rollPlotFrames,
+  storyDirectionRecord,
+  toggleOption,
+} from '../../domain/ai/story-direction';
 import { err, ok } from '../../domain/shared/result';
 import { storageError } from '../../domain/storage/storage-error';
 import {
@@ -40,6 +46,7 @@ describe('GenerationStore strict pass', () => {
     await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
+      plots: 0,
       story: 1,
       repair: 0,
       review: 0,
@@ -84,9 +91,34 @@ describe('GenerationStore strict pass', () => {
     expect(provenance.requestedSentenceCount).toBe(5);
     expect(provenance.repairAttempts).toBe(0);
     expect(provenance.modelId).toBe('vendor/text-model');
-    expect(provenance.promptVersions).toMatchObject({ story: 'story/6' });
+    expect(provenance.promptVersions).toMatchObject({ story: 'story/7' });
     expect(provenance.grammarProfileSnapshotId.length).toBeGreaterThan(0);
     expect(provenance.suggestedVocabularyItemIds.length).toBeGreaterThan(0);
+  });
+
+  it('writes from a picked plot: its direction reaches the writer and its record is kept', async () => {
+    const direction = toggleOption(EMPTY_STORY_DIRECTION, 'ending', 'Happy');
+    const [frame] = rollPlotFrames(direction, { nextInt: () => 0 });
+    const plot = 'Aiko loses her umbrella at the station and has to ask for help.';
+    const record = storyDirectionRecord(direction, frame, plot, 'Aiko loses her umbrella.');
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    await bed.store.generate(5, { premise: plot, chosenPlot: { frame, record } });
+
+    expect(bed.provider.storyRequests[0].premise).toBe(plot);
+    expect(bed.provider.storyRequests[0].direction).toBe(frame);
+    const saved = bed.readings.readings[0];
+    expect(saved.kind === 'generated' ? saved.premise : null).toBe(plot);
+    expect(bed.readings.provenance[0].storyDirection).toEqual(record);
+  });
+
+  it('records no direction for a story written from a typed premise', async () => {
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.provider.storyRequests[0].direction).toBeUndefined();
+    expect(bed.readings.provenance[0].storyDirection).toBeUndefined();
   });
 
   it('captures the selected priority mode in generation provenance', async () => {
@@ -213,6 +245,7 @@ describe('GenerationStore exception review', () => {
     await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
+      plots: 0,
       story: 1,
       repair: 0,
       review: 1,
@@ -257,6 +290,7 @@ describe('GenerationStore exception review', () => {
     await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
+      plots: 0,
       story: 1,
       repair: 1,
       review: 0,
@@ -276,6 +310,7 @@ describe('GenerationStore exception review', () => {
     await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
+      plots: 0,
       story: 1,
       repair: 1,
       review: 1,
@@ -318,6 +353,7 @@ describe('GenerationStore repair', () => {
     await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
+      plots: 0,
       story: 1,
       repair: 1,
       review: 1,
@@ -374,6 +410,7 @@ describe('GenerationStore repair', () => {
     await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
+      plots: 0,
       story: 1,
       repair: 0,
       review: 0,
@@ -415,6 +452,7 @@ describe('GenerationStore repair', () => {
     await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
+      plots: 0,
       story: 1,
       repair: 2,
       review: 0,
@@ -492,6 +530,7 @@ describe('GenerationStore failures', () => {
     await bed.store.generate(5, PREMISE);
 
     expect(bed.provider.generationCalls).toEqual({
+      plots: 0,
       story: 1,
       repair: 0,
       review: 0,

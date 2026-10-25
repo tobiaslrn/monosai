@@ -4,6 +4,7 @@ import type {
   RecentFocusProvenance,
 } from '../../domain/ai/generation-provenance';
 import { promptVersionRecord } from '../../domain/ai/prompt-versions';
+import type { StoryDirectionRecord } from '../../domain/ai/story-direction';
 import { ANALYZER_VERSION } from '../../domain/language/analyzer-version';
 import { buildExcerpt } from '../../domain/reading/excerpt';
 import { countCharacters } from '../../domain/reading/import-text';
@@ -61,6 +62,8 @@ export interface AcceptedStory {
   readonly exceptionCount: number;
   /** What the learner asked this story to be prepared with, at the time it was written. */
   readonly preparationTargets: readonly PreparationLayer[];
+  /** How the premise was chosen, when it was a plot picked on the Plot step. */
+  readonly storyDirection?: StoryDirectionRecord;
 }
 
 /**
@@ -169,6 +172,7 @@ export class StoryAssemblyService {
       ...(accepted.recentFocus === undefined ? {} : { recentFocus: accepted.recentFocus }),
       vocabularyStrictness: accepted.vocabularyStrictness,
       preparationTargets: accepted.preparationTargets,
+      ...(accepted.storyDirection === undefined ? {} : { storyDirection: accepted.storyDirection }),
       createdAt: now,
     };
 

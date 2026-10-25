@@ -31,6 +31,21 @@ export interface ProviderCalls {
    * two of them overlapped.
    */
   readonly audio: { peakConcurrency: number };
+  /**
+   * The system and user text of every plot and story request, in order.
+   *
+   * The plots a learner picks are the premise of the story that follows, so
+   * "the story was written from the picked plot" is a claim about two request
+   * bodies, and only the bodies themselves can carry it.
+   */
+  readonly plotRequests: SentChat[];
+  readonly storyRequests: SentChat[];
+}
+
+/** What one chat request said, as the model would read it. */
+export interface SentChat {
+  readonly system: string;
+  readonly user: string;
 }
 
 /**
@@ -119,7 +134,25 @@ export interface StubOptions {
    */
   readonly audioDelayMs?: number;
   readonly generation?: GenerationStubs;
+  /**
+   * How plot requests answer, independently of `chat`.
+   *
+   * Plots are drafted before a story can be started, so a test of what happens
+   * while a story is written — cancelling it, a refused key — still needs its
+   * plots to arrive. Valid by default; `hang` keeps the draft open.
+   */
+  readonly plots?: ChatOutcome;
 }
+
+/** The plots the stub drafts: one distinct plot per requested frame, in order. */
+export const STUB_PLOTS = [
+  'A young woman loses her umbrella at the station and has to ask a stranger for help.',
+  'Two old friends plan a picnic in the park, but a phone call changes the day.',
+  'A boy finds a letter under his desk that was meant for his teacher.',
+  'A grandmother tries a new recipe for her grandson’s birthday.',
+  'A shopkeeper notices that the same cat visits the shop every morning.',
+  'A student misses the last train and walks home through the quiet town.',
+] as const;
 
 /**
  * A short run of silent MPEG-1 Layer III frames.
@@ -146,6 +179,7 @@ function silentMp3(): Buffer {
 
 /** Names of the JSON schemas the generation and enrichment adapters send. */
 const STORY_SCHEMA = 'monosai_story';
+const PLOTS_SCHEMA = 'monosai_story_plots';
 const STORY_REPAIR_SCHEMA = 'monosai_story_repair_patch';
 const DECISIONS_SCHEMA = 'monosai_exception_decisions';
 /**
@@ -386,6 +420,22 @@ function repairTargets(text: string): { indexes: readonly number[]; title: boole
   }
 }
 
+/** A plot draft, told apart by its schema or, in contract mode, by its frames. */
+function isPlotRequest(body: ChatBody): boolean {
+  return (
+    body.response_format?.json_schema?.name === PLOTS_SCHEMA ||
+    sentChat(body).user.includes('<<<MONOSAI_DATA plot frames')
+  );
+}
+
+function sentChat(body: ChatBody): SentChat {
+  const messages = body.messages ?? [];
+  return {
+    system: messages.find((message) => message.role === 'system')?.content ?? '',
+    user: messages.find((message) => message.role === 'user')?.content ?? '',
+  };
+}
+
 function storyPayload(reply: StoryReply): string {
   return JSON.stringify({
     titleJa: reply.titleJa,
@@ -484,10 +534,13 @@ export async function stubOpenRouter(
   };
   let audioRequests = 0;
   let inFlightAudio = 0;
+  let plotDrafts = 0;
   const calls: ProviderCalls = {
     urls,
     translations: translationRequests,
     audio: { peakConcurrency: 0 },
+    plotRequests: [],
+    storyRequests: [],
   };
 
   await page.route(OPENROUTER_PATTERN, async (route) => {
@@ -539,6 +592,43 @@ export async function stubOpenRouter(
       } finally {
         inFlightAudio -= 1;
       }
+      return;
+    }
+
+    const requested = route.request().postDataJSON() as ChatBody;
+    if (isPlotRequest(requested)) {
+      calls.plotRequests.push(sentChat(requested));
+      const outcome = options.plots ?? { kind: 'valid' };
+      if (outcome.kind === 'status') {
+        await providerError(route, outcome.status, outcome.message ?? 'Refused');
+        return;
+      }
+      if (outcome.kind === 'hang') {
+        await new Promise(() => undefined);
+        return;
+      }
+      // Each draft starts further down the list, so a regenerated card is
+      // visibly a new plot and no draft repeats one already on screen.
+      const count = (sentChat(requested).user.match(/^## Frame \d+$/gm) ?? []).length;
+      const plots = Array.from(
+        { length: count },
+        (_value, index) => STUB_PLOTS[(plotDrafts * count + index) % STUB_PLOTS.length],
+      );
+      plotDrafts += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          choices: [
+            {
+              finish_reason: 'stop',
+              message: {
+                content: outcome.kind === 'prose' ? 'Sure!' : JSON.stringify({ plots }),
+              },
+            },
+          ],
+        }),
+      });
       return;
     }
 
@@ -738,6 +828,7 @@ export async function stubOpenRouter(
       served.repair += 1;
       return reply === undefined ? null : storyPayload(reply);
     }
+    calls.storyRequests.push(sentChat(body));
     const reply = nextOf(options.generation?.stories, served.story);
     served.story += 1;
     return reply === undefined ? null : storyPayload(reply);

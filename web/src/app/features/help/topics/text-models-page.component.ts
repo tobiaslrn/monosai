@@ -18,9 +18,9 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="models-how">
         <h2 id="models-how">What the model has to do</h2>
         <p>
-          Generating a story sends the model your premise, your grammar level, and the words you
-          know, and asks for the story back in a fixed structure rather than as chat. Monosai then
-          checks the result against your vocabulary, spends a repair budget on words that fall
+          Generating a story sends the model the plot you picked, your grammar level, and the words
+          you know, and asks for the story back in a fixed structure rather than as chat. Monosai
+          then checks the result against your vocabulary, spends a repair budget on words that fall
           outside it, and marks anything it could not fix.
         </p>
         <p>
@@ -139,13 +139,13 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="models-style">
         <h2 id="models-style">Models differ in style</h2>
         <p>
-          The same premise and the same word list give noticeably different stories from model to
+          The same plot and the same word list give noticeably different stories from model to
           model: sentence length, how much dialogue appears, how willing a model is to repeat a word
           you know rather than reach for one you do not.
         </p>
         <p>
-          Generate the same premise on two or three models when you start, then stay with whichever
-          you enjoy reading. Settings keeps several as favourites so you can switch.
+          Generate the same plot on two or three models when you start, then stay with whichever you
+          enjoy reading. Settings keeps several as favourites so you can switch.
         </p>
       </section>
 

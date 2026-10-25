@@ -26,6 +26,8 @@ export type ChatContentKind =
   | 'story-blueprint-800'
   | 'story-segment-50'
   | 'story-segment-short'
+  | 'plots-3'
+  | 'plots-duplicate'
   | 'decisions-approved'
   | 'decisions-rejected'
   | 'grammar-complete'
@@ -206,6 +208,20 @@ const CHAT_CONTENT: Record<ChatContentKind, string> = {
   'story-blueprint-800': blueprint(800),
   'story-segment-50': storySegment(50),
   'story-segment-short': storySegment(47),
+  'plots-3': JSON.stringify({
+    plots: [
+      'Aiko loses her umbrella at the station and has to ask a stranger for help.',
+      'Two old friends plan a picnic, but a phone call changes the day.',
+      'A boy finds a letter under his desk that was meant for his teacher.',
+    ],
+  }),
+  'plots-duplicate': JSON.stringify({
+    plots: [
+      'Aiko loses her umbrella at the station.',
+      'aiko loses her umbrella at the station',
+      'A boy finds a letter under his desk.',
+    ],
+  }),
   'decisions-approved': decisions('approved'),
   'decisions-rejected': decisions('rejected'),
   'grammar-complete': JSON.stringify({

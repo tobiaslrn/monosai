@@ -216,10 +216,11 @@ export class StructuredTaskRunner {
  * already exist, pinned to a low temperature. A reasoning model left to its own
  * defaults spends the whole budget thinking and returns a truncated or empty
  * reply, which reaches the learner as "the model answered wrongly" when it
- * actually ran out of room. Writing a story is the opposite case and keeps
- * whatever the provider defaults to.
+ * actually ran out of room. Drafting plots is short work the learner waits on
+ * before anything else can happen, so it is kept quick the same way. Writing a
+ * story is the opposite case and keeps whatever the provider defaults to.
  */
-const MINIMAL_REASONING_TASKS: readonly AiTask[] = ['translation', 'grammar-review'];
+const MINIMAL_REASONING_TASKS: readonly AiTask[] = ['translation', 'grammar-review', 'story-plots'];
 
 function reasoningRequest(
   task: AiTask,

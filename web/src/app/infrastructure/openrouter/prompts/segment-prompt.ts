@@ -24,6 +24,7 @@ const TASK_LAYER = [
   '- Aim for the supplied number of Japanese sentences, in reading order.',
   '- Follow the assigned beat while remaining consistent with the cumulative summary and preceding Japanese.',
   '- Preserve causal and temporal continuity, character state, viewpoint, tone, and register.',
+  '- When the story premise carries a story direction, keep its mood and format in every segment; its ending belongs to the final segment.',
   '- Avoid repetitive templates, disconnected vocabulary display, and an artificial ending unless this is the final segment.',
   'Output semantics: `sentences` is an array of Japanese sentences in reading order; `continuitySummaryEn` is a concise cumulative English summary for the next request and is not learner-visible.',
 ] as const;
@@ -112,7 +113,7 @@ export function buildSegmentPrompt(request: StorySegmentRequest): AssembledPromp
       ),
     ),
     exceptionPolicySection(request.original.exceptionPolicy),
-    premiseContext(request.original.premise),
+    premiseContext(request.original.premise, request.original.direction),
     request.original.specialInstructions === undefined
       ? ''
       : asConfig('learner style', styleSection(request.original.specialInstructions)),

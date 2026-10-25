@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
@@ -16,28 +27,48 @@ import {
 } from '../../domain/settings/settings';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
-import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PreparationTargetsComponent } from '../../shared-ui/preparation-targets/preparation-targets.component';
+import { StoryDirectionComponent } from './story-direction.component';
+import { StoryPlotsComponent } from './story-plots.component';
 
 const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
 
+const STEP_NAMES = ['Words', 'Direction', 'Plot'] as const;
+
+const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
+  relaxed: 'Relaxed',
+  standard: 'Standard',
+  strict: 'Strict',
+};
+
 /**
- * Option A: premise, instructions and length belong to this draft. Persisted
- * controls live in a separate defaults region and report when a default is saved.
+ * The story form, in three steps: the words a story may use, the direction it
+ * should take, and the plot it is written from.
  *
- * There is deliberately no genre picker, no topic suggestions, no visible
- * target-vocabulary list, no temperature control, and no prompt editor: the
- * vocabulary the story may use is decided by what the learner has reviewed, and
- * showing a target list would turn reading into a checklist.
+ * The plot is the topic decision. Left to the story model, an open premise
+ * converged on the same few beginner scenes; here the learner steers, code
+ * rolls what was left open, a plot request drafts three different stories, and
+ * the one picked becomes the premise (ADR 0080).
  *
- * The Generate button says a network request is about to happen and does not
- * estimate a price, because a number that is wrong is worse than no number.
+ * There is deliberately no visible target-vocabulary list, no temperature
+ * control, and no prompt editor: the vocabulary the story may use is decided by
+ * what the learner has reviewed, and showing a target list would turn reading
+ * into a checklist.
+ *
+ * Generate says a network request is about to happen and does not estimate a
+ * price, because a number that is wrong is worse than no number.
  */
 @Component({
   selector: 'mn-story-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, PreparationTargetsComponent],
+  imports: [
+    RouterLink,
+    IconComponent,
+    PreparationTargetsComponent,
+    StoryDirectionComponent,
+    StoryPlotsComponent,
+  ],
   template: `
     <!--
       What is missing leads the form, in the document flow: it is why the
@@ -45,185 +76,152 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       filled. Inside the sticky bar it rode up over the fields themselves.
     -->
     <ng-content select="[generation-blockers]" />
-    <div class="composer-grid">
-      <div class="mn-card mn-stack text-fields" role="region" aria-labelledby="mn-this-story">
-        <h2 id="mn-this-story" class="mn-card-title">This story</h2>
-        <div class="mn-field">
-          <label for="mn-premise">What should the story be about? (optional)</label>
-          <textarea
-            id="mn-premise"
-            rows="3"
-            data-testid="premise"
-            [value]="draft.premise()"
-            [attr.aria-describedby]="premiseDescriptionIds()"
-            [attr.aria-invalid]="premiseTooLong()"
-            [disabled]="disabled()"
-            (input)="onPremise($event)"
-          ></textarea>
-          @if (premiseCounterVisible()) {
-            <p id="mn-premise-count" class="counter" [class.is-over]="premiseTooLong()">
-              {{ formatCount(draft.premiseLength()) }} of
-              {{ formatCount(draft.premiseLimit) }} characters
-            </p>
+
+    <ol class="steps" aria-label="Steps" data-testid="wizard-steps">
+      @for (name of stepNames; track name; let index = $index) {
+        <li
+          [class.is-done]="draft.step() > index + 1"
+          [class.is-current]="draft.step() === index + 1"
+          [attr.aria-current]="draft.step() === index + 1 ? 'step' : null"
+        >
+          <span class="step-mark" aria-hidden="true">
+            @if (draft.step() > index + 1) {
+              <mn-icon name="check" [size]="14" />
+            } @else {
+              {{ index + 1 }}
+            }
+          </span>
+          <span>{{ name }}</span>
+          @if (draft.step() > index + 1) {
+            <span class="mn-visually-hidden">, done</span>
           }
-          @if (premiseTooLong()) {
-            <p id="mn-premise-limit" class="mn-field-error" role="alert">
-              {{ premiseLimitMessage() }}
-            </p>
-          }
-        </div>
+        </li>
+      }
+    </ol>
 
-        <div class="mn-field">
-          <label for="mn-instructions">Special instructions (optional)</label>
-          <textarea
-            id="mn-instructions"
-            rows="2"
-            data-testid="special-instructions"
-            placeholder="Tone, viewpoint, dialogue, or register"
-            [value]="draft.specialInstructions()"
-            [attr.aria-describedby]="instructionsDescriptionIds()"
-            [attr.aria-invalid]="instructionsTooLong()"
-            [disabled]="disabled()"
-            (input)="onInstructions($event)"
-          ></textarea>
-          @if (instructionsCounterVisible()) {
-            <p id="mn-instructions-count" class="counter" [class.is-over]="instructionsTooLong()">
-              {{ formatCount(draft.instructionsLength()) }} of
-              {{ formatCount(draft.instructionsLimit) }} characters
-            </p>
-          }
-          @if (instructionsTooLong()) {
-            <p id="mn-instructions-limit" class="mn-field-error" role="alert">
-              {{ instructionsLimitMessage() }}
-            </p>
-          }
-        </div>
+    @switch (draft.step()) {
+      @case (1) {
+        <section class="mn-card mn-stack" aria-labelledby="mn-words-title">
+          <h2 id="mn-words-title" class="mn-card-title" tabindex="-1" data-step-heading>Words</h2>
 
-        <div class="setting-heading">
-          <label for="mn-story-length">Length</label>
-          <output for="mn-story-length" aria-live="polite">
-            {{ selectedLengthLabel() }} · about {{ draft.sentenceCount() }} sentences
-          </output>
-        </div>
-        <input
-          id="mn-story-length"
-          class="length-slider"
-          type="range"
-          data-testid="story-length"
-          min="0"
-          [max]="lengthOptions.length - 1"
-          step="1"
-          [value]="selectedLengthIndex()"
-          [disabled]="disabled()"
-          [attr.aria-valuetext]="lengthAriaValue()"
-          [attr.aria-describedby]="lengthDescriptionIds()"
-          [style.--slider-progress.%]="sliderProgress()"
-          [style.--slider-step.%]="sliderStep()"
-          (input)="onSentenceCount($event)"
-        />
-        @if (showLengthWarning()) {
-          <p
-            id="mn-length-warning"
-            class="length-warning mn-notice mn-notice--warning"
-            role="status"
-          >
-            <mn-icon name="warning" [size]="17" />
-            <span> Longer stories may ignore your vocabulary and grammar settings. </span>
-          </p>
-        }
-      </div>
-
-      <aside class="mn-card mn-stack story-settings" aria-label="Story settings">
-        <h2 class="mn-card-title">Defaults for every story</h2>
-        <ng-content select="[story-defaults]" />
-
-        <mn-preparation-targets
-          class="preparation-targets"
-          legend="Prepare after generation"
-          [targets]="preparationTargets()"
-          [audioReadiness]="audioReadiness()"
-          [disabled]="disabled()"
-          (targetsChanged)="preparationTargetsChanged.emit($event)"
-        />
-
-        <div class="word-selection mn-stack mn-stack--tight">
-          <div class="mn-field">
-            <label for="mn-word-selection">Anki word selection</label>
-            <select
-              id="mn-word-selection"
-              data-testid="word-priority-select"
-              [value]="ankiWordPriorityMode()"
-              [disabled]="disabled()"
-              (change)="onWordPriorityMode($event)"
-            >
-              <option value="uniform">Uniform</option>
-              <option value="recent">Recently learned</option>
-              <option value="difficult">Difficult</option>
-            </select>
-          </div>
-          @if (ankiWordPriorityMode() === 'recent') {
+          <div class="mn-stack mn-stack--tight">
             <div class="mn-field">
-              <label for="mn-focus-size">Focus</label>
+              <label for="mn-word-selection">Anki word selection</label>
               <select
-                id="mn-focus-size"
-                data-testid="focus-size-select"
+                id="mn-word-selection"
+                data-testid="word-priority-select"
+                [value]="ankiWordPriorityMode()"
                 [disabled]="disabled()"
-                (change)="onRecentFocusSize($event)"
+                (change)="onWordPriorityMode($event)"
               >
-                @for (size of focusSizes; track size) {
-                  <option [value]="size" [selected]="size === recentFocusSize()">
-                    Newest {{ size }} words
-                  </option>
-                }
+                <option value="uniform">Uniform</option>
+                <option value="recent">Recently learned</option>
+                <option value="difficult">Difficult</option>
               </select>
             </div>
+            @if (ankiWordPriorityMode() === 'recent') {
+              <div class="mn-field">
+                <label for="mn-focus-size">Focus</label>
+                <select
+                  id="mn-focus-size"
+                  data-testid="focus-size-select"
+                  [disabled]="disabled()"
+                  (change)="onRecentFocusSize($event)"
+                >
+                  @for (size of focusSizes; track size) {
+                    <option [value]="size" [selected]="size === recentFocusSize()">
+                      Newest {{ size }} words
+                    </option>
+                  }
+                </select>
+              </div>
+            }
+          </div>
+
+          <div class="length">
+            <div class="setting-heading">
+              <label for="mn-story-length">Length</label>
+              <output for="mn-story-length" aria-live="polite">
+                {{ selectedLengthLabel() }} · about {{ draft.sentenceCount() }} sentences
+              </output>
+            </div>
+            <input
+              id="mn-story-length"
+              class="length-slider"
+              type="range"
+              data-testid="story-length"
+              min="0"
+              [max]="lengthOptions.length - 1"
+              step="1"
+              [value]="selectedLengthIndex()"
+              [disabled]="disabled()"
+              [attr.aria-valuetext]="lengthAriaValue()"
+              [attr.aria-describedby]="lengthDescriptionIds()"
+              [style.--slider-progress.%]="sliderProgress()"
+              [style.--slider-step.%]="sliderStep()"
+              (input)="onSentenceCount($event)"
+            />
+            @if (showLengthWarning()) {
+              <p
+                id="mn-length-warning"
+                class="length-warning mn-notice mn-notice--warning"
+                role="status"
+              >
+                <mn-icon name="warning" [size]="17" />
+                <span> Longer stories may ignore your vocabulary and grammar settings. </span>
+              </p>
+            }
+          </div>
+
+          <details class="mn-disclosure strictness">
+            <summary>
+              <span>Vocabulary strictness</span>
+              <span class="summary-value" data-testid="strictness-value">
+                {{ strictnessLabels[vocabularyStrictness()] }}
+              </span>
+            </summary>
+            <fieldset [disabled]="disabled()">
+              <legend class="mn-visually-hidden">Vocabulary strictness</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="mn-vocabulary-strictness"
+                  value="relaxed"
+                  [checked]="vocabularyStrictness() === 'relaxed'"
+                  (change)="onVocabularyStrictness($event)"
+                />
+                <span><strong>Relaxed</strong> Keep the first draft</span>
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="mn-vocabulary-strictness"
+                  value="standard"
+                  [checked]="vocabularyStrictness() === 'standard'"
+                  (change)="onVocabularyStrictness($event)"
+                />
+                <span><strong>Standard</strong> Try once to replace unfamiliar words</span>
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="mn-vocabulary-strictness"
+                  value="strict"
+                  [checked]="vocabularyStrictness() === 'strict'"
+                  (change)="onVocabularyStrictness($event)"
+                />
+                <span><strong>Strict</strong> Try twice to replace unfamiliar words</span>
+              </label>
+            </fieldset>
+          </details>
+
+          <ng-content select="[story-defaults]" />
+
+          @if (defaultFeedback()) {
+            <p class="mn-hint" role="status">{{ defaultFeedback() }}</p>
           }
-        </div>
 
-        <details class="mn-disclosure strictness">
-          <summary>Vocabulary strictness</summary>
-          <fieldset [disabled]="disabled()">
-            <legend class="mn-visually-hidden">Vocabulary strictness</legend>
-            <label>
-              <input
-                type="radio"
-                name="mn-vocabulary-strictness"
-                value="relaxed"
-                [checked]="vocabularyStrictness() === 'relaxed'"
-                (change)="onVocabularyStrictness($event)"
-              />
-              <span><strong>Relaxed</strong> Keep the first draft</span>
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="mn-vocabulary-strictness"
-                value="standard"
-                [checked]="vocabularyStrictness() === 'standard'"
-                (change)="onVocabularyStrictness($event)"
-              />
-              <span><strong>Standard</strong> Try once to replace unfamiliar words</span>
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="mn-vocabulary-strictness"
-                value="strict"
-                [checked]="vocabularyStrictness() === 'strict'"
-                (change)="onVocabularyStrictness($event)"
-              />
-              <span><strong>Strict</strong> Try twice to replace unfamiliar words</span>
-            </label>
-          </fieldset>
-        </details>
-
-        @if (defaultFeedback()) {
-          <p class="mn-hint" role="status">{{ defaultFeedback() }}</p>
-        }
-
-        <div class="generation-sources mn-stack" data-testid="form-sources">
-          <p class="mn-group-title">Uses</p>
-          <dl class="mn-facts">
+          <dl class="mn-facts generation-sources" data-testid="form-sources">
             <div>
               <dt>
                 <a
@@ -251,29 +249,57 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
               <dd>{{ presetName() }}</dd>
             </div>
           </dl>
-        </div>
-      </aside>
-    </div>
+        </section>
+      }
+      @case (2) {
+        <mn-story-direction [disabled]="disabled()" />
+      }
+      @case (3) {
+        <mn-story-plots [disabled]="disabled()" />
+        <section class="mn-card" aria-label="After the story">
+          <mn-preparation-targets
+            legend="Prepare after generation"
+            [targets]="preparationTargets()"
+            [audioReadiness]="audioReadiness()"
+            [disabled]="disabled()"
+            (targetsChanged)="preparationTargetsChanged.emit($event)"
+          />
+        </section>
+      }
+    }
 
     <div class="action-bar mn-stack">
       <div class="mn-actions">
-        <button
-          type="button"
-          class="mn-button mn-button--primary"
-          data-testid="generate"
-          [disabled]="disabled() || !canGenerate()"
-          [attr.aria-describedby]="!canGenerate() ? 'mn-generate-disabled-reason' : null"
-          (click)="generate.emit()"
-        >
-          <mn-icon name="generate" [size]="18" />
-          <span>Generate story</span>
-        </button>
+        @if (draft.step() < 3) {
+          <button
+            type="button"
+            class="mn-button mn-button--primary"
+            data-testid="wizard-next"
+            [disabled]="disabled() || !canContinue()"
+            [attr.aria-describedby]="!canContinue() ? 'mn-generate-disabled-reason' : null"
+            (click)="next.emit()"
+          >
+            Next
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="mn-button mn-button--primary"
+            data-testid="generate"
+            [disabled]="disabled() || !canGenerate()"
+            [attr.aria-describedby]="!canGenerate() ? 'mn-generate-disabled-reason' : null"
+            (click)="generate.emit()"
+          >
+            <mn-icon name="generate" [size]="18" />
+            <span>Generate story</span>
+          </button>
+        }
       </div>
-      @if (!canGenerate() && disabledReason()) {
+      @if (disabledReason()) {
         <!-- The panel above already says this on screen; this is the button's description. -->
         <p id="mn-generate-disabled-reason" class="mn-visually-hidden">{{ disabledReason() }}</p>
       }
-      @if (atGenerationLimit()) {
+      @if (draft.step() === 3 && atGenerationLimit()) {
         <p class="mn-hint" data-testid="generation-limit">
           Generation limit reached. This one can start when one finishes.
         </p>
@@ -281,36 +307,69 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
     </div>
   `,
   styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
     :host {
       display: flex;
       flex-direction: column;
       gap: var(--space-4);
     }
 
-    .counter {
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-2);
       margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
+      padding: 0;
+      list-style: none;
     }
 
-    .counter.is-over {
-      color: var(--status-danger);
+    .steps li {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+      min-width: 0;
+      padding-top: var(--space-2);
+      border-top: 3px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
       font-weight: var(--weight-semibold);
     }
 
-    .composer-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.85fr) minmax(17.5rem, 1fr);
-      gap: var(--space-5);
-      /* Each card is as tall as what is in it: stretching the shorter one left
-         a third of a card empty below its last control. */
-      align-items: start;
+    .steps li.is-done,
+    .steps li.is-current {
+      border-top-color: var(--action-primary);
     }
 
-    .text-fields textarea {
-      background: var(--surface-panel);
+    .steps li.is-done {
+      color: var(--text-primary);
+    }
+
+    .steps li.is-current {
+      color: var(--action-primary-text);
+    }
+
+    .step-mark {
+      display: inline-grid;
+      flex: none;
+      place-items: center;
+      width: 1.5rem;
+      height: 1.5rem;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      font-size: var(--text-xs);
+    }
+
+    .is-done .step-mark {
+      border-color: var(--action-primary);
+      background: var(--action-primary);
+      color: var(--text-on-action);
+    }
+
+    .is-current .step-mark {
+      border-color: var(--action-primary);
+    }
+
+    [data-step-heading]:focus {
+      outline: none;
     }
 
     .setting-heading {
@@ -402,15 +461,16 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       border-radius: var(--radius-pill);
     }
 
-    .word-selection {
-      margin-top: var(--space-5);
-      padding-top: var(--space-4);
+    .strictness {
+      padding-top: var(--space-2);
       border-top: 1px solid var(--border-subtle);
     }
 
-    .preparation-targets {
-      padding-top: var(--space-3);
-      border-top: 1px solid var(--border-subtle);
+    .summary-value {
+      margin-inline-start: auto;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      font-weight: var(--weight-medium);
     }
 
     .strictness fieldset {
@@ -441,21 +501,13 @@ const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
       color: var(--text-primary);
     }
 
-    @media (max-width: breakpoints.$wide-max) {
-      .composer-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
     .generation-sources {
-      margin-top: var(--space-5);
-      padding-top: var(--space-4);
-      border-top: 1px solid var(--border-subtle);
+      padding-top: var(--space-2);
     }
 
     /*
-     * Generate belongs to the whole composer. It remains in document flow so
-     * its prerequisite copy never covers the fields it explains.
+     * The step's one action belongs to the whole form. It remains in document
+     * flow so its prerequisite copy never covers the fields it explains.
      */
     .action-bar {
       position: sticky;
@@ -478,7 +530,11 @@ export class StoryFormComponent {
   readonly disabledReason = input('');
   protected readonly generateOriginState = navigationOriginState('/generate');
   protected readonly draft = inject(GenerationDraftStore);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
+  /** Whether the current step's Next can be pressed. */
+  readonly canContinue = input.required<boolean>();
   readonly canGenerate = input.required<boolean>();
   readonly disabled = input.required<boolean>();
   /** Whether enough stories are already being written that this one must wait. */
@@ -491,15 +547,17 @@ export class StoryFormComponent {
   readonly preparationTargets = input<readonly PreparationLayer[]>(['english', 'grammar']);
   readonly audioReadiness = input<ConfigurationReadiness>('incomplete');
 
+  readonly next = output<void>();
   readonly generate = output<void>();
   readonly ankiWordPriorityModeChanged = output<AnkiWordPriorityMode>();
   readonly recentFocusSizeChanged = output<RecentFocusSize>();
   readonly vocabularyStrictnessChanged = output<VocabularyStrictness>();
   readonly preparationTargetsChanged = output<readonly PreparationLayer[]>();
 
+  protected readonly stepNames = STEP_NAMES;
+  protected readonly strictnessLabels = STRICTNESS_LABELS;
   protected readonly focusSizes = RECENT_FOCUS_SIZES;
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
-  protected readonly formatCount = formatCount;
 
   protected readonly selectedLengthIndex = computed(() => {
     const index = STORY_SENTENCE_COUNTS.indexOf(
@@ -530,43 +588,30 @@ export class StoryFormComponent {
     this.showLengthWarning() ? 'mn-length-warning' : null,
   );
 
-  protected readonly premiseTooLong = computed(
-    () => this.draft.premiseLength() > this.draft.premiseLimit,
-  );
-  protected readonly instructionsTooLong = computed(
-    () => this.draft.instructionsLength() > this.draft.instructionsLimit,
-  );
-  protected readonly premiseCounterVisible = computed(() =>
-    this.counterVisible(this.draft.premiseLength(), this.draft.premiseLimit),
-  );
-  protected readonly instructionsCounterVisible = computed(() =>
-    this.counterVisible(this.draft.instructionsLength(), this.draft.instructionsLimit),
-  );
-  protected readonly premiseDescriptionIds = computed(() => {
-    const ids: string[] = [];
-    if (this.premiseCounterVisible()) ids.push('mn-premise-count');
-    if (this.premiseTooLong()) ids.push('mn-premise-limit');
-    return ids.length > 0 ? ids.join(' ') : null;
-  });
-  protected readonly instructionsDescriptionIds = computed(() => {
-    const ids: string[] = [];
-    if (this.instructionsCounterVisible()) ids.push('mn-instructions-count');
-    if (this.instructionsTooLong()) ids.push('mn-instructions-limit');
-    return ids.length > 0 ? ids.join(' ') : null;
-  });
-  protected readonly premiseLimitMessage = computed(() =>
-    this.limitMessage(this.draft.premiseLength() - this.draft.premiseLimit),
-  );
-  protected readonly instructionsLimitMessage = computed(() =>
-    this.limitMessage(this.draft.instructionsLength() - this.draft.instructionsLimit),
-  );
-
-  protected onPremise(event: Event): void {
-    this.draft.setPremise((event.target as HTMLTextAreaElement).value);
-  }
-
-  protected onInstructions(event: Event): void {
-    this.draft.setSpecialInstructions((event.target as HTMLTextAreaElement).value);
+  constructor() {
+    // A new step is new content where the old one was, so focus moves to its
+    // heading and the page starts at the top, as it would on a new page. The
+    // first render is the page arriving and keeps the browser's own focus.
+    let shownStep = this.draft.step();
+    effect(() => {
+      const step = this.draft.step();
+      if (step === shownStep) {
+        return;
+      }
+      shownStep = step;
+      afterNextRender(
+        () => {
+          this.host.nativeElement
+            .querySelector<HTMLElement>('[data-step-heading]')
+            ?.focus({ preventScroll: true });
+          const page = document.scrollingElement;
+          if (page !== null) {
+            page.scrollTop = 0;
+          }
+        },
+        { injector: this.injector },
+      );
+    });
   }
 
   protected onSentenceCount(event: Event): void {
@@ -596,13 +641,5 @@ export class StoryFormComponent {
     if (value === 'relaxed' || value === 'standard' || value === 'strict') {
       this.vocabularyStrictnessChanged.emit(value);
     }
-  }
-
-  private limitMessage(overBy: number): string {
-    return `Remove ${formatCountOf(overBy, 'character')} to continue.`;
-  }
-
-  private counterVisible(length: number, limit: number): boolean {
-    return length >= Math.ceil(limit * 0.8) || length > limit;
   }
 }

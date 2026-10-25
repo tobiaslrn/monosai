@@ -14,6 +14,7 @@ import type {
   GrammarReviewRequest,
   GrammarReviewResult,
 } from '../app/domain/ai/grammar-review-request';
+import type { StoryPlotRequest } from '../app/domain/ai/story-plot';
 import type { StoryCandidate, StoryGenerationRequest } from '../app/domain/ai/story-request';
 import type { ModelTest, TextModelConfig, TtsConfig, TtsTest } from '../app/domain/ai/model-test';
 import type {
@@ -232,7 +233,15 @@ export function openRouterHarness(options: HarnessOptions = {}): OpenRouterHarne
 export class StubTextProvider implements TextGenerationProvider {
   calls = 0;
 
-  readonly generationCalls = { story: 0, repair: 0, review: 0, grammar: 0, translate: 0 };
+  readonly generationCalls = {
+    plots: 0,
+    story: 0,
+    repair: 0,
+    review: 0,
+    grammar: 0,
+    translate: 0,
+  };
+  readonly plotRequests: StoryPlotRequest[] = [];
   /** Every request that reached the provider, for prompt-content assertions. */
   readonly storyRequests: StoryGenerationRequest[] = [];
   readonly repairRequests: StoryRepairRequest[] = [];
@@ -241,6 +250,7 @@ export class StubTextProvider implements TextGenerationProvider {
   readonly translationRequests: TranslationBatchRequest[] = [];
   readonly configs: TextTaskConfig[] = [];
 
+  readonly plotQueue: Result<readonly string[], AiError>[] = [];
   readonly storyQueue: Result<StoryCandidate, AiError>[] = [];
   readonly repairQueue: Result<StoryCandidate, AiError>[] = [];
   readonly reviewQueue: Result<readonly ExceptionDecision[], AiError>[] = [];
@@ -275,6 +285,17 @@ export class StubTextProvider implements TextGenerationProvider {
     void config;
     void signal;
     return Promise.resolve(this.outcome);
+  }
+
+  draftPlots(
+    request: StoryPlotRequest,
+    config: TextTaskConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<readonly string[], AiError>> {
+    this.generationCalls.plots += 1;
+    this.plotRequests.push(request);
+    this.configs.push(config);
+    return this.answer('story-plots', this.plotQueue, signal);
   }
 
   generateStory(
