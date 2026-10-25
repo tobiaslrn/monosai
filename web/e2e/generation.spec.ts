@@ -162,7 +162,7 @@ test.describe('steering a story', () => {
     await page.getByTestId('wizard-next').click();
 
     const rows = page.locator('details.axis');
-    await expect(rows).toHaveCount(7);
+    await expect(rows).toHaveCount(6);
     await expect(page.locator('details.axis[open]')).toHaveCount(1);
     await expect(page.locator('[data-axis="genre"]')).toHaveAttribute('open', '');
 
