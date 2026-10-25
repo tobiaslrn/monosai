@@ -107,6 +107,7 @@ jobs:
         if: steps.decide.outputs.needed == 'true'
         run: |
           node scripts/bridge/icons.mjs --check
+          node scripts/licenses/check-licenses.mjs
           cd android-bridge
           ./gradlew :app:testDebugUnitTest :app:lintDebug :app:runtimeLicenses
       - name: Check the resolved APK dependency graph and licences

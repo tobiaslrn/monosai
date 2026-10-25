@@ -92,9 +92,14 @@ dependencies {
 // Pin transitive runtime versions as well as the direct version catalog.
 dependencyLocking { lockAllConfigurations() }
 
+// The dependency report is generated, never committed: `npm run licenses:build`.
+val dependencyLicenses = rootProject.file("../build/third-party-licenses.md")
 val distributionNotices by tasks.registering(Copy::class) {
-    from(rootProject.file("../LICENSE"), rootProject.file("../docs/third-party-licenses.md"))
+    from(rootProject.file("../LICENSE"), dependencyLicenses)
     into(layout.buildDirectory.dir("generated/notices"))
+    doFirst {
+        check(dependencyLicenses.isFile) { "Run `npm run licenses:build` from the repository root first." }
+    }
 }
 tasks.named("preBuild") { dependsOn(distributionNotices) }
 

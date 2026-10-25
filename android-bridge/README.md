@@ -64,8 +64,10 @@ licence graph and release-version tests. It is included in `npm run verify`.
 The runtime graph is locked in `app/gradle.lockfile`. After an intentional
 dependency change, run Gradle with `--write-locks`, run `:app:runtimeLicenses`,
 copy `app/build/reports/runtime-dependencies.json` to `runtime-dependencies.json`,
-then run root `npm run licenses:build`. The checker rejects unknown/disallowed
-licences and CI compares the fresh report to the committed report. Maven parent
+then run root `npm run licenses:check`. The checker rejects unknown/disallowed
+licences and CI compares the fresh Gradle report to the committed one. The licence
+notice bundled in the APK is generated from them by `npm run licenses:build` and
+is never committed; `npm run bridge:verify` generates it before Gradle runs. Maven parent
 licences are followed when an artifact inherits them. No signing secrets enter PRs.
 
 ## Signed releases and updates
@@ -188,7 +190,7 @@ from the repository root after changing the mascot or the composition, and commi
 writes; `npm run bridge:verify` and CI check the committed resources against
 `scripts/bridge/icons.lock.json` without opening a browser.
 
-The screen is `docs/design-system.md` applied natively. `res/values/colors.xml`,
+The screen is `docs/design/design-system.md` applied natively. `res/values/colors.xml`,
 `dimens.xml` and `styles.xml` transcribe the PWA's tokens under the same role names, with
 `values-night/` carrying the dark palette; a change to a token belongs in both places.
 Every line of the screen is a label with its current value or its one control on the

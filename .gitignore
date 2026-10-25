@@ -3,6 +3,7 @@
 /tmp
 /web/out-tsc
 /web/coverage
+/build
 
 # Node
 /node_modules

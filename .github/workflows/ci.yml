@@ -31,6 +31,8 @@ jobs:
           node-version-file: .nvmrc
       - run: node --test scripts/bridge/release-version.test.mjs
       - run: node scripts/bridge/icons.mjs --check
+      - name: Generate the bundled dependency licence notice
+        run: node scripts/licenses/check-licenses.mjs
       - name: Test, assemble, lint and resolve production licences
         run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug :app:runtimeLicenses
         working-directory: android-bridge

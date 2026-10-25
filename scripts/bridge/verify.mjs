@@ -9,6 +9,10 @@ const tasks = [
   ':app:lintDebug',
   ':app:runtimeLicenses',
 ];
+const notices = spawnSync(process.execPath, ['scripts/licenses/check-licenses.mjs'], {
+  stdio: 'inherit',
+});
+if (notices.status !== 0) process.exit(notices.status ?? 1);
 const wrapper = path.resolve('android-bridge', windows ? 'gradlew.bat' : 'gradlew');
 const result = windows
   ? spawnSync(`"${wrapper}" ${tasks.join(' ')}`, {

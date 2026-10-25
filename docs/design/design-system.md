@@ -1,0 +1,1021 @@
+# Monosai design system
+
+This document holds the design language: what Monosai's surfaces mean, which
+choice applies when, and what each rule rules out. It is the authority for
+_why_ an interface looks and behaves the way it does.
+
+It deliberately carries **no values**. There are no hex codes, no pixel counts,
+no type scale, and no component API here, because a document that repeats them
+goes stale the first time one is tuned. Values live in `web/src/styles/_tokens.scss`,
+the named thresholds in `web/src/styles/_breakpoints.scss`, the form fields in
+`web/src/styles/_controls.scss`, and one file per shared primitive in
+`web/src/styles/components/`; this document
+names the _roles_ those tokens fill and the rules that govern their use. When
+these disagree, this document describes the intent and the tokens describe the
+current state — reconcile by changing the tokens.
+
+This document describes what any screen may do. What a particular screen does is
+described by the screen's own code, and the structure it sits in is described by
+[the architecture documentation](../arc42/README.md).
+
+It governs Monosai's native Android bridge as well as the PWA. The bridge cannot
+read the PWA's custom properties, so `android-bridge/app/src/main/res/values/`
+transcribes the same roles under the same names, with `values-night/` carrying the
+dark palette. That transcription is a copy and drifts like any copy: a token
+changed here is changed in both places, in the same commit. What the bridge does
+not copy is behaviour — its controls are framework widgets, so Android's text
+scaling, focus and touch semantics stay whatever the device says they are.
+
+## 1. Principles
+
+1. **The text is the application.** Japanese is the only content Monosai has.
+   Everything else is apparatus, and apparatus earns its place by being needed
+   at the moment it appears. The reading surface stays still and stays
+   uncoloured except where it is marking the Japanese itself.
+2. **Repetition earns silence.** A control pressed fifty times a session may
+   drop its label; a control pressed once a week may not. Familiarity is the
+   only thing that buys an icon its silence, and it has to be earned per
+   control rather than granted to the whole interface.
+3. **A word on screen is doing work or it is not there.** Explanatory prose is
+   a cost paid by every future reader of the screen. It is worth paying where
+   money, network, or the learner's own text is at stake, and rarely elsewhere.
+4. **State is shown, not narrated.** A control that is disabled, filled, or
+   part-way through says what a sentence would have said. Prefer changing the
+   thing over describing it.
+5. **Everything scales from the reader's own settings.** The browser's font
+   size, the OS text scale, and the learner's reader scale are inputs the
+   layout obeys. Nothing is pinned to a size the user cannot influence.
+
+## 2. Structure
+
+### The column
+
+Every page is **one centred column** at every width, with a bounded measure. A
+wide window gives a page more margin, never more columns. This is a deliberate
+refusal of the adaptive multi-pane layouts that desktop patterns encourage: the
+reader is a single measure of Japanese, and a shell that reflows around it would
+make the desktop and the phone two different applications to learn.
+
+There is one exception. **A form may carry one narrow settings aside** beside
+its fields on wide screens, where the settings frame a decision the fields
+express. The aside stacks below the fields when the width no longer supports it.
+It is available to forms only; reading surfaces, lists, and prose never take
+one. Generate no longer uses it: its decisions are made one after another, as
+steps (see Forms in steps).
+
+### One top bar per screen, and the page frame
+
+Every screen has **exactly one bar**, and it is the first thing on the screen.
+There is no application bar above a page's own header: two stacked bars put the
+way back second and spent a phone's first hundred pixels on chrome
+([ADR 0069](../decisions/0069-one-top-bar-per-screen.md)).
+
+Every non-reader screen's bar is its `mn-page-header`: Back where the page has a
+parent destination, the page title in the page-title token, and an optional
+trailing element for controls that belong to that page. The bar sticks to the
+top of the viewport on an opaque canvas ground that spans the full width, so
+the way back never scrolls away. Its lower edge is a hairline that fades in once
+content has begun to pass beneath it. The bar's title column shares the page's
+bounded `--page-measure`, and Back and the last trailing control are pulled out
+by their own inset so their glyphs, not their hit areas, align with the column.
+The title tucks into Back's inset as well, so the arrow and the title read as
+one unit rather than two separate items.
+
+The Library is the home destination and therefore has no Back: its bar leads
+with the Monosai mark, then the Monosai wordmark in place of a visible title,
+then the application's utilities in a labelled navigation landmark — Help and
+Settings. The wordmark is decoration; the bar's heading still names the page
+"Library" for assistive technology. Every other page is reached
+from the Library and leads back to it, so the utilities live there and nowhere
+else. The shelf's own Create button is the one way to start a story; the bar does
+not repeat it once it has scrolled away. Help carries a
+labelled GitHub link at the end of its own bar, because Help is where a learner
+looks for where the application comes from, and no icon reads as GitHub rather
+than as a branch.
+
+A control that does nothing is not shown. There is no search on the shelf until
+the shelf can search.
+
+The Reader keeps its own sticky bar with the same shape: Back, title, and its
+own controls, the same height, the same fading lower edge.
+
+Monosai does not use a bottom navigation bar. A bottom bar is for three to five
+peers a learner moves between constantly; Monosai has one home, a reader under
+it, and a handful of pages visited rarely. A bar that is always there would
+permanently cost the reader its bottom edge, which belongs to the docked audio
+player and the word and sentence sheets.
+
+These utilities are an explicit exception to the repetition rule: they are
+icon-only on both mobile and desktop, with accessible names and tooltips. They
+are bare shared icon controls with unchanged touch targets and visible keyboard
+focus.
+
+The Library mark may carry a small, non-interactive `alpha` label at its upper
+right while the application is in alpha. It is text, not colour alone, and it
+does not add another bar or action. On the first completed navigation of a new
+local installation, the application may show one blocking release-stage
+disclosure using the app-level CDK dialog pattern. The learner acknowledges it
+with one explicit Continue action; direct links are included so the status is
+not hidden by the route used to open the application.
+
+The home illustration blends into the canvas through an organic crop; the hero
+is not a card and therefore has no panel boundary or elevation.
+The crop follows the illustration's arch and low foreground, preserving the
+whole reading character and books. The asset is cropped to the drawing itself,
+so the hero's frame is the picture rather than the empty space around it and
+the distance to the bar above is the page rail and nothing else. Its
+proportions stay fixed as the column changes width. Once the shelf holds a story the hero steps down to a compact
+size, so the stories come up the screen; only its size changes, never its crop.
+The home headline is tightly set beside it, centred on the
+illustration's own axis so the two read as one composition rather than a
+sentence hanging from the top edge. It is stated whole, once every fact in it
+has been read; it never states one clause and appends the next. The creation
+action spans the column; filter pills share the available width on phones and
+stay compact on desktop.
+Home's primary action uses the shared primary action colour; each palette shows
+its own illustration unfiltered, as drawn.
+
+Below the bar the Library states **where the learner stands** — how many words
+Monosai can write from, and at what level. That line is the screen's lead and
+also the way to the page that explains it. In the image-led home hero it remains
+plain copy without a trailing navigation glyph; hover, focus, and link semantics
+identify the interaction without interrupting the headline. It states current
+facts and never becomes a control that changes them.
+
+**A destination is named once per screen.** The Library's bar supplies the
+common destinations, and every other page's bar names the current one. Where a prominent line
+already leads somewhere, that is the door; a second link to the same place in
+nearly the same words makes both harder to see.
+
+### Vertical composition
+
+Pages are **top-aligned and grow downward**, like a document. Content is never
+centred vertically and never stretched to fill the viewport. A short page leaves
+the space below it empty, which is the honest result of having little to say.
+
+A section heading may carry one action opposite it, and that action opens work
+rather than holding it. What the learner is drafting — a pasted word list, an
+Anki mapping waiting to be confirmed — is a card at the head of the section it
+will change, on the section's full width, above the facts it has not changed
+yet. An editor rendered in the action slot instead gets the width a button asks
+for and grows the heading row around itself, which centres the heading beside a
+column of squeezed fields.
+
+Settings uses the same page frame as every other non-reader screen. Each
+top-level group is one quiet raised card with a compact section heading. The
+heading sits close to its card and relies on type, weight, and spacing for rank;
+it carries no decorative rail or marker. A settings row keeps its label in one
+explicit left column and its value or action against the right edge; it does not
+let individual children wrap themselves into staggered rows. Only when the row's
+own container cannot support both columns does the complete trailing block move
+below the label. Actions use the same pill silhouette as the Library's filters
+and creation control.
+Complex model fields may use sunken groups inside that card, but may not
+introduce a second competing hierarchy of raised panels. The model fields appear
+once OpenRouter is connected: drawn disabled before that, they read as values
+nobody had chosen. The connection control is an ordinary outline action, not the
+page's filled primary, because it is pressed once. A card with one self-evident
+choice, such as the theme, carries its card title and no second group title.
+
+The voice card uses a native select labelled **Speaking style** with the three
+stable choices Natural, Clear, and Very clear when the selected model accepts
+instructions. It also carries a **Pace** select with Natural, Slow, and Very
+slow for every model: it is a model request preference, so both choices sit
+beside the voice and Preview controls. The player's local reading speed remains
+its own fine-tuning control.
+
+### Surfaces and groups
+
+A page groups its content with two surfaces and no others. The **card** is the
+one raised surface: a quiet edge, the card radius, and one inner padding. Inside
+a card, a related set of controls may sit in an **inset** — a sunken group with
+no border of its own, because the card already draws the boundary. Nesting stops
+there: an inset holds neither a card nor another inset, so a page never has more
+than two levels of grouping.
+
+Content inside a surface runs in a **stack** with one gap, and buttons that act
+together sit in one **actions** row. The row moves as a block: when it no longer
+fits beside the copy it belongs to it drops beneath that copy whole, and a button
+label never breaks across two lines.
+
+A card's title is the section rank. A group inside it takes a **group title** —
+sentence case, small, semibold, secondary — or no title at all when its contents
+are self-evident.
+
+A read-only list of **facts** puts each label on the left and its value on the
+right, on one line at every width. Diagnostic versions are separate label/value
+pairs rather than a compressed prose line, so they remain easy to scan.
+
+### Shared primitives
+
+Shared classes own the visual role they name. Feature styles may position a
+primitive or add state-specific placement, but they do not redefine its
+silhouette, palette, type, or interaction treatment. The source of each role is
+kept beside the tokens in `web/src/styles/components/`:
+
+| Role       | Use                                                                                                                          | Source                                                              |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Button     | Reversible, primary, quiet, danger, and icon-only actions                                                                    | [`_button.scss`](../../web/src/styles/components/_button.scss)         |
+| Card       | One raised surface; `mn-inset` is its borderless sunken group                                                                | [`_card.scss`](../../web/src/styles/components/_card.scss)             |
+| Notice     | A soft, named status or warning beside the thing it describes                                                                | [`_notice.scss`](../../web/src/styles/components/_notice.scss)         |
+| Status     | A non-pressable compact state such as Ready or Unread                                                                        | [`_status.scss`](../../web/src/styles/components/_status.scss)         |
+| Facts      | Read-only label/value pairs                                                                                                  | [`_facts.scss`](../../web/src/styles/components/_facts.scss)           |
+| Segmented  | One native choice out of a small, stable set                                                                                 | [`_segmented.scss`](../../web/src/styles/components/_segmented.scss)   |
+| List row   | One shelf destination with leading, title, meta, trailing, and menu slots; `mn-list-group` gives rows one pair of card edges | [`_list-row.scss`](../../web/src/styles/components/_list-row.scss)     |
+| Page frame | The centred non-reader measure, stacks, and action rows                                                                      | [`_layout.scss`](../../web/src/styles/components/_layout.scss)         |
+| Text       | Secondary text and sentence-case group titles                                                                                | [`_text.scss`](../../web/src/styles/components/_text.scss)             |
+| Icon badge | A meaningful leading icon for a row or card                                                                                  | [`_icon-badge.scss`](../../web/src/styles/components/_icon-badge.scss) |
+
+The shared page-header component supplies every non-reader top bar on the same
+`--page-measure` as the page frame. The reader remains outside this primitive
+set where its text measure and sticky chrome are intentionally separate, but
+its bar follows the same shape.
+
+### Density
+
+Interactive targets are **one size at every width and every pointer**. There is
+no denser desktop variant. A pointer-conditional target size requires knowing
+the current pointer, and a hit area that changes during a gesture breaks that
+gesture's own click (ADR 0032) — the cost of getting it wrong is larger than the
+space it would save.
+
+What may tighten on a wide viewport is the **vertical rhythm between sections**,
+so a long settings page scrolls less. Targets, control heights, and the padding
+inside a control do not change.
+
+### Rows on a shelf
+
+A shelf is for choosing what to open, so a row answers that and nothing else. It
+carries a leading icon when the thing has a meaningful origin, a name, one
+secondary line saying what is inside, and — opposite the name — its status,
+value, or way forward. `mn-list-row` is the shared implementation: its title is
+`text-md` semibold, its metadata is `text-sm` secondary text, and every row uses
+one shared minimum height. A long title wraps once inside the content column and
+then ends in an ellipsis; the full title stays the link's accessible name. The
+trailing column stays separate, so the two never collide. The metadata is one
+line of facts separated by a middle dot, and it breaks between facts, never
+inside a word. Hover tints a row only under a mouse: a phone reports hover after
+a tap and would leave the row it opened tinted.
+
+The navigable row is one native link, because a row is not a place to configure
+anything. Where a row has a handful of things to do to it, the overflow menu is
+projected into the primitive's separate menu slot and remains a native button
+outside the link. Where what it opens is a surface of its own, it lives there
+and the row carries none
+([ADR 0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)).
+
+The line saying what is inside prefers **what the content already says about
+itself** over anything counted about it: a generated story states the premise
+the learner wrote, and only something with no such sentence falls back to its
+size and its origin. On a shelf the useful date is when you last picked
+something up, not when it was filed, and something never opened says so rather
+than substituting the other date.
+
+Rows on one shelf are the same height, and a row standing in for work still
+running matches the row it will become.
+
+The vocabulary sources are one card of such rows, where the count joins the
+line saying what is inside rather than sitting opposite the name, because a
+source's name is long and the card is narrow. The card's last line reports how
+current the sources are as a whole — when they were last read, or what is
+stopping them — and holds the one control that can change that.
+
+### Lists with filters
+
+A list that helps the learner find a known item keeps one quiet column and a
+compact toolbar: search first, the most useful quick filter beside it, and a
+labelled Filters action for the less frequent choices. The current sort is
+visible as one line of text, and the result count is both visible near the list
+and announced through a polite live region.
+
+Rows show the value that makes them recognisable, the meaning or secondary
+line beneath it, and only the metadata needed to choose between rows. Where
+every row carries the same few figures they are columns under a quiet header
+row; the header is presentation, so each figure also names itself to
+assistive technology. The columns are sized in `rem`, and a list too narrow
+for them lays its figures under the value instead — a container query on the
+list, not a breakpoint. A figure that says the learner still finds something
+hard takes the warning colour, and the figure itself says so too. A row
+that has more to say uses native `details`/`summary`; its closed summary still
+states the current value. Expanded detail may include provenance links, but it
+does not create a second row action hierarchy. Long lists may mount a measured
+window of variable-height rows as long as the document keeps native list
+semantics and the expanded row remains fully usable.
+
+Search and filters have explicit empty-results states. Search text and the
+active filters remain visible when there are no matches, with a Reset action
+near the result. A list that has never been filled and a list whose current
+snapshot is empty are separate states, and both offer the one action that can
+change that fact.
+
+The home Library is a compact shelf exception: each date group is one
+`mn-list-group`, one pair of card edges with a hairline between its rows. A
+generated or imported story uses its origin icon inside `.mn-icon-badge`; an
+empty decorative circle is not used. The row carries a system-sans title and one
+visible line of metadata — the character count and the story's shape (its length,
+or how it was imported), with an audio glyph when audio exists — and, opposite,
+an Unread badge on a story never opened, then the overflow. Only what is still
+new is marked: a Read badge on every opened row was the same word down the whole
+shelf. The origin is already the icon and opened-or-not is already the badge's
+presence, so neither is repeated in the visible line; both, with the last-opened
+day, remain accessible metadata. Opened is not completed. Premises and filenames
+do not replace the character count here.
+
+## 3. Controls
+
+### The line between an icon and a label
+
+An icon may stand alone when the control is **pressed repeatedly within a
+session** and its meaning is fixed by that repetition — the reader header, the
+audio transport, close, back, and overflow. Everything else carries a visible
+label beside its icon: anything rare, anything destructive, and anything that
+spends money or sends a request.
+
+There are exactly three deliberate exceptions: the Library's utilities,
+described above; the trash icons on the
+Story options content rows, described under Saved-story controls; and the
+control that reads Anki again at the end of the vocabulary sources card. That
+last one sits on the line that already says what it acts on — "Synced today" —
+exists only where a source Monosai keeps up to date is listed, and turns while
+it works. None of them grants other infrequent controls icon-only status.
+
+This is narrower than it sounds, and deliberately so. Research on icon usability
+is consistent that only a small set of symbols is read reliably without a label,
+and that most icons carry different meanings across applications. Repetition is
+what closes that gap: a learner who has pressed the same three reader controls
+across four readings knows them, and a learner reaching Settings for the second
+time this month does not.
+
+Every icon-only control carries an accessible name and a tooltip. **Neither is
+the mechanism** — they are the recovery path for a control whose meaning was
+supposed to be obvious. A control that genuinely needs its tooltip read before
+it can be pressed has failed the repetition test and should carry a label.
+
+One concept gets one icon, and one icon means one concept across the whole
+application.
+
+### Appearance
+
+Icon buttons are **bare at rest**: no border, no filled background, only the
+glyph. Fill and border are reserved for hover, for press, and for the single
+primary action of a surface — the play control in the transport, the primary
+button of a form.
+
+Text buttons share one pill silhouette, one touch-target height, one text size,
+and one weight. The unqualified `.mn-button` is the secondary outline for an
+ordinary reversible action. `.mn-button--primary` is the one filled action that
+starts or commits the main work on a surface. `.mn-button--ghost` is action-colour
+text without a border for quiet verbs such as adding a source, testing, or
+previewing. `.mn-button--danger` keeps a destructive action outlined in the
+danger colour and is used where confirmation follows. A surface has at most one
+filled primary control; selected toggles use a soft selection tint instead.
+
+A choice of one out of a few — the theme — is a **segmented** control: native
+radios drawn at the button's height, size, and weight, the chosen one wearing the
+same selection tint as a pressed toggle rather than the filled primary.
+
+Disabled controls are drawn with the sunken surface, secondary text, and a
+distinct boundary. Opacity alone is not a disabled state: disabled must be
+recognisable in both themes and must not resemble either an active secondary
+outline or a selected control.
+
+A bare icon button still meets the 3:1 non-text contrast requirement, because
+the glyph itself is the visual indicator; a boundary is not required to satisfy
+it. Text inputs are the opposite case and keep their visible boundary, because
+an empty input with no border is not perceivable as a control at all.
+
+### Switch groups
+
+A compact switch group declares a small, stable set of independent outcomes,
+such as which reading aids a reading should eventually have. Each row carries a
+visible noun and a native checkbox with `role="switch"`, and the group has a
+fieldset and a legend. Switches are never hidden behind a disclosure, because
+the outcomes they select are part of the action being configured rather than
+advanced detail.
+
+A group sits on the form that starts the work. Saved stories instead expose
+content status and explicit actions in Story options. It does not go into a list
+row's action menu. That menu is a short list of things to do to a row, and a
+shelf is for choosing what to open rather than for configuring each entry.
+
+A switch is also the control for a **single standing decision** that changes
+something the moment it is flipped — whether a vocabulary source counts. That is
+not a group and carries no fieldset, but it is the same control: one appearance,
+`mn-switch` in [`_controls.scss`](../../web/src/styles/_controls.scss), wherever an
+independent outcome is turned on or off.
+
+The track uses the sunken surface at rest and the action colour when selected.
+A disabled switch stays visible and names, below the group, the exact state
+that prevents it; generic setup advice is never substituted for an untested,
+stale, or failed configuration. The whole labelled row meets the touch-target
+floor while the switch itself stays compact.
+
+**A surface never shows a control the thing in front of it cannot answer.** A
+file has no freshness to configure, so its source row offers no refresh control.
+A disabled control invites a learner to work out why; a fixed import instead
+states its mapping and lets the learner replace it with a new export.
+
+### Disclosures
+
+A disclosure hides detail that is set once and rarely revisited — a mapping, a
+list the learner is entitled to see but does not read. It is always
+native `details`/`summary`; it is never used to hide a control the surface's
+main action depends on, which is what a switch group is for.
+
+**A closed disclosure states its current value.** The summary carries the label
+and, opposite it, what is currently selected — a mapped field, a count of what
+is inside. A fold that hides the answer to the question its label asks makes the
+screen worse than no fold at all, and forces the learner to open every one to
+read the page. Disclosures do not nest: a section that already sits behind one
+presents its contents plainly.
+
+Where a link can point inside a disclosure, arriving there opens it. A deep link
+that lands the learner on a long page next to a closed fold has not arrived.
+
+### Forms in steps
+
+A form whose later choices depend on earlier ones — Generate: the words, then
+the direction, then the plot — is shown **one step at a time**, in the same page
+frame. A row of step names under the bar says where the learner is: the current
+step in the action colour and marked as the current step for assistive
+technology, finished steps with a check and "done" in words. The row is not a
+control. The way between steps is the bar's Back, which goes up one step and,
+from the first, to the page's parent, and the step's one filled action at the
+foot — Next, then the verb that commits the work. There are no step tabs and no
+second Next; one action has one control. Moving to a step moves focus to its
+heading and the page to its top.
+
+A step's action is disabled only by what that step would spend. Leaving a step
+that only chooses costs nothing and is never blocked; leaving one that sends a
+request waits on the same prerequisites the request needs.
+
+### Choosing on several axes
+
+Where a learner may steer something along several independent axes, each axis
+is one **disclosure row** in one card, and the rows share a native `name` so the
+browser keeps one open at a time. The closed row states its value opposite its
+label, as every disclosure does: "Any" in secondary text when nothing is chosen,
+the choice in the action colour when something is. The first row is open.
+
+An open row is a wrap of **choice chips**: ordinary `.mn-button` toggles with
+`aria-pressed`, at the full touch-target height — the density rule allows no
+smaller target, and a compact chip whose hit area overflowed its neighbour's
+gap would put two targets under one finger. The order never changes on
+selection: **Any** leads, the options follow, **Custom** ends the row, and a
+custom option the learner adds joins just before Custom and stays. A choice is
+the soft selection tint, never the filled primary. Custom opens one text field
+and an outline Add beside it; Enter adds, Escape closes and returns focus to
+Custom. Filling every axis at random is a ghost action in the card's heading.
+
+### Options to pick from
+
+Drafted options the learner picks one of — the plots — are **insets inside the
+card** that offers them, never cards of their own, so the page keeps its two
+levels of grouping. Each is a native radio with a visible circle; the picked one
+wears the selection tint. What an option was built from is a row of status
+pills: a value the learner chose is a plain pill, a value code chose is the
+dashed pill, and an event code chose is the accent pill named as such to
+assistive technology. An option the learner changed says Edited. Only the picked
+option offers Edit, a ghost action that turns its text into a field and becomes
+Done. A Regenerate in the card heading rewrites every option the learner has not
+edited; an edited option is the learner's text and is never replaced.
+
+While options are being written the card names the wait in words — "Writing
+three plots…" — where the options will appear, and the commit is disabled. Options
+already on screen stay where they are, inert, until they are replaced. This is
+not a skeleton: nothing is drawn that pretends to be content.
+
+### A choice that makes saved work stale
+
+Changing the reading level makes every stored grammar analysis out of date, so
+choosing one is a draft: the ladder is a page of its own, tapping a card opens
+its example and marks it chosen, and only **Save level** commits it. Leaving
+without saving keeps the level that was there. The chosen card alone shows its
+example so the ladder stays scannable; that costs nothing because choosing is
+free. The commit is the page's one filled control and stays in reach at the
+foot of the viewport while the ladder scrolls under it.
+
+### App-level overlays and sheets
+
+An app-level modal surface uses the CDK Dialog pattern: focus moves into the
+surface, `Escape` dismisses it, outside dismissal follows the surface's
+semantics, and focus returns to the control that opened it. The surface is a
+centred card on a wide viewport. On a small viewport it becomes a bottom sheet
+that is full width, owns its scrolling, and uses the sheet radius; it does not
+need an anchor in the page underneath it. The backdrop and focus treatment are
+shared, while the content decides whether its safe dismissal is Cancel, Close,
+or a committed primary action.
+
+Every docked sheet carries the same grab handle, whatever surface it is built
+on, because the handle is the sheet's only way out. Dragging it down dismisses
+the sheet and a plain press does the same; either discards whatever the sheet
+was drafting, exactly as dismissing it from outside would. A sheet that commits
+its draft does so through its own primary action, never through the handle.
+
+The gesture is read the way a phone reads it. The sheet follows the finger
+exactly while it is held. Letting go answers with the same two outcomes a
+native sheet gives: a drag that went far enough, or a downward flick of any
+length, sends the sheet away, and anything less settles it back against its
+edge. Speed counts because a short flick is how a sheet is usually put away,
+and a sheet that waits to be dragged the full distance feels deaf to it.
+
+Add words is the one sheet opened from a native popover rather than a dialog,
+because it must stay open while a file chooser is up. It follows the same
+placement — hanging from its control on a wide screen, docked to the bottom
+edge over a dimmed page on a phone — and the same dismissal: Escape, Cancel,
+and a press outside all close it, and Escape and Cancel return focus to Add
+source. On a small screen its grab handle is a real button: dragging it down
+dismisses the sheet, while pressing it closes it without a drag.
+
+### Saved-story controls
+
+The reader header has Back, Listen, and Story options. The story's full title is
+the page heading above the reading, in the page-title token, wrapping as far as
+it needs. Once that heading has scrolled beneath the header, the header repeats
+it on one truncated line; the repeat is hidden from assistive technology, so the
+heading stays the one title. Unlike a page header, its hairline lower edge is
+always drawn, so the header stays distinct from what begins beneath it. It
+carries no
+story progress marker: the reading surface and audio transport already expose
+the positions they can report accurately. Appearance, preparation, and
+maintenance share Story options rather than separate header buttons. The
+reader's panel is anchored on desktop and docked as a bottom sheet on small
+screens; it stays within the viewport, scrolls when necessary, and restores
+focus when dismissed. It follows the app-level overlay pattern above while
+retaining its reader anchor. Its mobile grab handle uses the same shared
+dismissal: a downward drag closes the sheet, and a plain press on the handle
+does the same for keyboard and touch users.
+Reading appearance uses compact switch rows (Furigana, Word spacing, Sentence per
+line, and Warning markers), and story content is one quiet grouped list with
+pill actions. Deleting the story itself is not here: it is on the library card,
+which is the one place it lives.
+
+A content row keeps its copy on one side and its controls on the other, and the
+controls move as one block: on a narrow sheet they wrap together below the copy
+rather than splitting a pill from the control beside it. A row's destructive
+control is **the trash icon alone**, in the danger colour and bare at rest.
+
+This is the one place a destructive control has no visible label, and it is a
+deliberate exception to the rule above. Three of them run down one short list,
+identical in shape, each in a row that already names the layer it clears, and
+each opening a confirmation that says in full what is about to go — so the
+press is not the commitment, and the trash can is the most reliably read symbol
+there is. Every one carries the whole sentence as its accessible name and its
+tooltip. Repeating the layer in the label instead produced three long red
+phrases that wrapped on a phone. The exception does not extend to destructive
+controls that stand alone or act without confirmation.
+
+Reading appearance contains immediate device-wide preferences. Content for this
+story shows saved results and explicit verbs: Translate story, Add notes,
+Continue, Stop, and Retry remaining. Ready is a status, never a switch, and it
+is the whole status once a layer is finished: a count says what is still
+missing, so a full set prints Ready rather than the same number twice. Closing
+the panel leaves background work running. Progress, failures, and the recovery
+actions for the text layers stay in this panel, beside the layer they affect;
+status changes use the row's accessible announcement. There is no second
+generation status line in the reader header. Every deletion is confirmed. The
+panel carries no standing cost note.
+
+Audio is the exception, and its row here is a report and a Delete: generating,
+stopping, retrying and setting up a voice all live on the player, which is the
+card the learner is looking at while any of them matters. One action belongs to
+one surface, and audio had grown a second set of the same controls on a panel
+that has to be opened to reach them.
+
+The player also carries one compact text control for local reading speed. It
+shows `1×`, `0.9×`, or `0.8×` and cycles forward on each press. It sits
+beside the mode control, keeps the same touch target and ghost-button treatment,
+and exposes the full accessible name — for example, “Reading speed, 0.8 times”.
+It changes playback immediately and never starts regeneration. Stored clips whose
+pace is already baked remain at `1×`.
+
+### Reader gestures and details
+
+One gesture means one thing, and it is decided while it is being made.
+
+| On a touch device            | What happens                            |
+| ---------------------------- | --------------------------------------- |
+| Short tap on a word          | Its details open at once                |
+| Tap the same word again      | The details stay exactly as they are    |
+| Tap a different word         | Its details replace the open ones       |
+| Hold a sentence for 450ms    | Sentence details open, under the finger |
+| Hold the same sentence again | The details stay open                   |
+| Short tap on anything else   | Whatever is open is dismissed           |
+| Drag on the reading          | The page scrolls; an open sheet stays   |
+
+The held press applies to words, furigana, punctuation, and the leading around
+them alike. There is no double tap. A press is cancelled by movement past 10
+CSS pixels, a second finger, a scroll before it fires, cancellation, or the
+window losing focus. A press that fired consumes only its own release and the
+click made from it. Mouse clicks, native desktop text selection, and keyboard
+navigation are unchanged.
+
+Because that press is the application's gesture, the reading surface gives up
+native text selection and the platform's long-press callout **on touch and
+nowhere else**. Text in details stays selectable — but never to the press that
+opened them. A sheet arrives under the finger still holding the line, and the
+platform would finish that same press as a selection over whatever it now finds
+there, so on touch a sheet starts inert and accepts selection only once that
+press has ended: selecting its text is a second, deliberate hold. Scrolling and
+pinch-zoom stay native. Copying a sentence with a finger is the sentence card's
+Copy action; when the clipboard is unavailable, the card prints the Japanese
+source as selectable text and keeps offering Copy.
+
+Sentence details also have a visible route from a word lookup: an unlabelled
+arrow that branches off and turns up sits on the headword's own row, at the
+ordinary touch target, with a tooltip and the accessible name "Sentence
+details". No icon draws a sentence, so it draws the relationship instead: the
+sentence is the level the word sits inside, not the next thing along. Grammar in
+word details is always readable — each rule once, title and full explanation
+together, with no fold to open.
+
+An anchored card closes from a small control in its own top corner, overlapping
+the card's padding so it costs no vertical space and the content still leads with
+what the reader asked for. Only the card's leading row is inset to clear it. A
+docked sheet carries no such control: its grab handle is both the affordance and
+the way out.
+
+On a small screen, word and sentence details are independently scrollable
+bottom sheets, at most half the viewport tall. Sheets and the docked player use
+a more generous top radius than ordinary cards so the edge reads as a temporary
+surface rather than another section of the page. Their bottom edge is the
+measured top edge of the docked audio player, and their height is the smaller of
+that cap and the remaining space above that boundary with the standard top gap.
+The player and the sheet account for the safe-area inset once. Opening or
+closing the player, resizing it, and changing the viewport remeasure that
+boundary. A sentence card keeps its grab handle and its action tray visible
+while the translation, warnings, and grammar scroll between them. Both are
+full-bleed and opaque to the card's own edge, so nothing scrolls visibly past
+them: a card whose content ends in a sticky footer gives that footer the card's
+bottom padding, exactly as a docked sheet gives its grab handle the top one. A
+sticky row stops at the content edge, and padding left on the card behind it is
+a strip the content shows through.
+
+An open sheet never covers the line it explains: the reading scrolls just far
+enough to clear the pressed line, reserving temporary room when the press was at
+the end of the document, and stops correcting as soon as the reader scrolls
+themselves.
+
+## 4. Colour
+
+Monosai's palette is warm paper, a muted sage as the action colour, a lavender
+accent, and restrained warning tones. That warmth is **identity, not decoration**
+— it is what makes a page of Japanese feel like something to sit with rather
+than a form to complete. It stays.
+
+Colour carries meaning in exactly three places:
+
+1. **Action.** One colour means "this is the thing to press."
+2. **Status.** Success, warning, and danger, each with a soft companion for
+   backgrounds.
+3. **The reading surface.** Two markers — vocabulary and grammar — plus the
+   tint on the sentence being read aloud and the tint on the open sentence or
+   word.
+
+The reading surface is the strictest. It may carry those colours and no others.
+A new thing worth marking in the Japanese is a change to this document, not a
+new token, because every added marker is subtracted from the text's own
+legibility.
+
+Colour is never the sole carrier of meaning. The two reading markers are drawn
+as squiggles as well as colours; status is named as well as tinted.
+
+## 5. Typography and units
+
+### Type
+
+UI text uses a local system sans-serif stack. Japanese uses a system Japanese
+gothic stack. An identifier the learner has to copy character for character — a
+model ID, an error code, a config key — uses a local system monospace stack, so
+that case and punctuation stay legible. No font is downloaded, ever — a reading
+application that cannot render Japanese until a network request completes is not
+local-first.
+
+The one display face is the wordmark: _monosai_ in Pacifico,
+ものさい in Zen Maru Gothic Black. It ships as outlined SVG paths, not as a
+font, and it is never used for text.
+
+The type scale is small on purpose: rank is carried by **size and weight within
+one scale**, not by a second system. All-caps micro-labels are not part of the
+language. The shared page or surface title uses the semantic
+`--text-page-title` token, a section uses `--text-xl`, and a group uses
+`--text-lg` one step below it. Body copy uses `--text-md`; metadata and
+supporting copy use `--text-sm` or `--text-xs`; the Library hero uses
+`--text-display`. Weight follows the same hierarchy through the regular,
+medium, semibold, and bold weight tokens.
+
+Three ranks exist: the page or surface title, the section within it, and the
+group within that. A fourth rank means the surface is doing too much. A group
+whose contents are self-evident takes no heading at all.
+
+Line heights are unitless, so they scale with whatever font size they land on.
+The reader's leading is deliberately looser than prose needs: it is the room
+furigana occupies and the whitespace a sentence is pressed in. It eases off as
+the learner's scale grows, because what matters is the resulting gap, not the
+ratio.
+
+### Units
+
+This is the part of the design system that decides whether the application is
+usable by someone who has changed their device's text size. Each unit expresses
+a different intention, and using the wrong one silently removes a setting from
+the user.
+
+| What                                | Unit                     | Intention                                                         |
+| ----------------------------------- | ------------------------ | ----------------------------------------------------------------- |
+| All type, UI and reader alike       | `rem`                    | Honour the browser and OS font-size preference                    |
+| Spacing and layout gaps             | `rem`                    | Layout breathes with the text rather than cramping around it      |
+| The reading measure                 | `em`                     | Hold characters-per-line constant across the learner's scale      |
+| Breakpoints                         | `em`                     | Layout changes when the _text_ outgrows the width, not the window |
+| Borders, hairlines, shadow geometry | `px`                     | A one-pixel rule is one pixel; tripling it at 200% is a defect    |
+| Touch-target floor                  | `px` floor, `rem` growth | A physical minimum that may grow but never shrink                 |
+| Full-height surfaces                | `dvh`                    | The viewport a mobile browser actually leaves after its chrome    |
+
+Four rules follow from that table, and each of them is a thing not to do:
+
+- **The root font size is never overridden.** `html` keeps whatever value the
+  user chose, and no element pins a fixed base size for the document to inherit.
+  A single `font-size` in pixels on `body` disables the font-size preference for
+  the entire application while leaving every automated check passing.
+- **No viewport units in type.** Type sized in `vw` does not respond to browser
+  zoom, which is a documented WCAG failure. Monosai has no need for it: the
+  learner already has a direct text-scale control, which is a better mechanism
+  than inferring their intent from window width.
+- **The reading measure is expressed in the reader's own text size.** A measure
+  in absolute units holds the line width fixed while the type grows inside it,
+  so the learner who enlarged the text most gets the fewest characters per line
+  — the opposite of what they asked for.
+- **Breakpoints are a named, closed set.** Every width rule uses one of them.
+  A one-off width invented for a single component is how an application ends up
+  with a dozen breakpoints that disagree about where the phone stops.
+
+## 6. Adaptation
+
+**A component adapts by fitting, not by asking.** It is built from flexible
+layout that works at any width it is handed, wraps when it must, and permits its
+children to shrink. It does not consult the window to decide how to arrange
+itself.
+
+Width breakpoints decide only **where a component sits**: docked to an edge,
+anchored to a word, centred in the column, stacked below the fields instead of
+beside them. They never decide internal composition.
+
+A component that needs to know its own width to compose itself has not been
+built to fit yet. When that is genuinely unavoidable, the fix is a container
+query on that one component — asking about its own box rather than the window —
+and not a new viewport breakpoint, which would be a lie about what the component
+depends on.
+
+Placement rules are the small set of cases where the viewport is the honest
+question: a bar docked to the bottom edge is docked to the _viewport's_ edge, and
+a sheet bounded to a fraction of the screen is bounded by the _screen_.
+
+## 7. Motion
+
+Motion is functional first: it shows where something came from, that something
+is still working, or that a value changed. A sheet rises from the edge it
+docks to. A generation fill breathes while requests are open. A control settles
+into its new state rather than cutting to it.
+
+A sheet leaves by the edge it arrived from, and a dismissal continues the
+gesture that asked for it: the slide starts wherever the finger let go rather
+than from the docked position, and the scrim of a modal sheet fades with it.
+Arrival decelerates into place and departure accelerates away, which is what
+makes the same distance read as settling one way and leaving the other. A
+surface that is cut away between frames reads as a fault, not as an answer.
+
+Beyond that, **a little character is allowed, and only on apparatus**: a spring
+on the play control, a settle on a popover arriving. The budget for it is small
+and it is spent on things the learner acts on or waits for.
+
+A **count the learner has earned rises when it changes**: the Library's standing
+line counts up to the number of words they know whenever a sync finds words they
+did not have. It does not rise on arriving at the screen, on a reload, or on
+returning to it — nothing moved, and a rise there competed with the sentence the
+number sits in for the learner's attention. The moving number is hidden from
+assistive technology while it moves, and the settled value is what is read, so a
+rise never states a count the learner does not have.
+
+The wordmark is the one flourish outside that: the word spins like a slot reel
+through its romaji and kana spellings and lands on one of them — never a mix —
+once per launch, and again only when the learner taps it. It is never replayed
+on returning to the Library.
+
+The reading surface is exempt. Nothing on it animates, and nothing on it moves
+under the pointer — hovering a word or a sentence changes its colour and nothing
+else. A page of Japanese that shifts while being read is unreadable.
+
+Every non-essential transition is removed under `prefers-reduced-motion`,
+including the expressive ones. Character is the first thing cut, not the last.
+
+## 8. Words
+
+### Voice
+
+Plain and short by default. State what is true and what to do. No exclamation,
+no reassurance where nothing was at risk, no personality in a label.
+
+There is one second register: **anything that touches the learner's own text,
+their money, or work that might be lost gets the extra sentence** saying what is
+safe. A local-first application failing to save is precisely where terseness
+reads as indifference. That sentence says what survived, in the concrete — not
+that an error occurred.
+
+Sentence case everywhere: page titles, section headings, group titles, buttons,
+menu items, labels. Title case is not a rank and is not used to mark one, and
+neither are capitals: there is no uppercase label anywhere in the application.
+A fragment that needs ranking below the heading above it is a group title.
+
+### The prose budget
+
+Standing explanatory text exists only where **money, network, or data loss is at
+stake**. A hint under a control that merely restates the control's own label, or
+describes what a section obviously contains, is removed rather than reworded.
+
+Four exceptions:
+
+- **Help is a prose surface, and it is a guide rather than a page.** Its job is
+  explanation: static, local English guidance in one readable column, with
+  section headings, short paragraphs, and links close to the actions they
+  explain. `/help` carries what the application is for, what it is not for, and a
+  shelf of topics; each topic is its own route below it, wearing the shared page
+  frame with Back to Help and ending in its neighbours. The measure and the prose
+  elements live in `.mn-prose`, so a topic page writes words and nothing else.
+  Two options being compared are a card each, never a table: the figures are few,
+  the prose beside them is long, and a table of that shape either scrolls
+  sideways on a phone or breaks a model ID down to one character a line. A guide
+  row is the one shelf row whose secondary line may wrap past one line, because
+  it says what a topic answers rather than what a thing contains.
+  A quiet, non-modal first-use banner offers Help on a non-reader
+  surface without moving focus or covering the app. Dismissal records the preference for this local installation;
+  the guide remains among the Library's utilities. Reader deep links are never
+  interrupted. See [ADR 0079](../decisions/0079-help-is-a-hub-of-topics.md).
+
+- **Empty states teach.** An empty surface has nothing but words to work with,
+  so any empty list explains what belongs there and how to fill it. The
+  exception ends the moment the surface has content.
+- **The first run introduces the application.** An empty Library is what a
+  stranger opening the public address sees, so it says what Monosai is and what
+  it would do for them before it offers a way in. This is the one surface
+  written in the first person: that a person made this is allowed to show here
+  and nowhere else. It ends, like any empty state, the moment there is content.
+- **Release-stage disclosure.** A new alpha installation may require one short
+  acknowledgment before use. This is a product disclosure rather than Help;
+  it is persisted locally and is not shown again after acknowledgment.
+- **Failures explain.** A failure states what happened, what is unaffected, and
+  what to do next, however quiet the surrounding screen is.
+
+A format used in two places is used the same way in both. A counter, a count, a
+character limit, and a duration each have one form across the application.
+Character counters stay hidden until a field is roughly 80% full, then remain
+visible and are always shown when the limit is exceeded. A hidden counter is
+also omitted from that field's accessible description.
+
+### Numbers, dates, and one locale
+
+Monosai is written in English and only in English: every label, hint, and error
+exists once, with no translation layer, under `<html lang="en">`. **Numbers and
+dates are therefore both formatted in `en`, explicitly, and never in whatever
+locale the browser happens to carry.** Following the browser for one and not
+the other is what produced `31.8.2026, 17:26:40` beside `72 unique expressions`
+on the same page, and a `50,000` character limit on a browser that writes
+`50.000`.
+
+The formatters live in `web/src/app/domain/shared/locale.ts` and nothing else
+formats a number or a date:
+
+- **A count** is grouped: `3,118 characters`, `50,000 characters`. The singular
+  is used for exactly one: `1 character`.
+- **A day** is `Aug 31, 2026` — a named month, because `8/31` and `31/8` are
+  the same six characters read two ways.
+- **A day with a time** is `Aug 31, 2026, 5:26 PM`. Seconds are not shown; no
+  screen has ever needed them.
+- **A recent day** is said in words — `today`, `yesterday`, `3 days ago` — and
+  falls back to the date once counting days stops being useful.
+
+Calling `toLocaleString()`, `toLocaleDateString()`, or `toLocaleTimeString()`
+with no locale argument is a defect anywhere in the application. Japanese is
+content, not a format: it is never passed through these, and it carries
+`lang="ja"` where it is rendered. See
+[ADR 0042](../decisions/0042-cross-tab-reading-mutations.md).
+
+## 9. State
+
+### Reporting
+
+A result appears **where it was caused** — beside the control that produced it —
+and clears on the next action. There is no application-wide notification
+surface.
+
+What a result says is drawn one of three ways. A sentence that belongs to a
+surface — a failure, a warning, a success, or a fact to know before acting — is
+a **notice**: the status's soft background with its words in the status colour,
+an optional leading icon, and at most one action at its end. A short word that
+says where something stands — Ready, Unread, Test failed, a word's form — is a
+**status pill**, which is never pressable and so never takes the action colour.
+Its dashed variant marks a value code chose rather than the learner; the dash,
+not a colour, is what says so.
+What is wrong with the value of one field is plain danger-coloured text directly
+under that field, not a notice.
+
+**Toasts are for work the learner did not trigger**: a background vocabulary
+refresh that changed something, an update becoming available. That is the whole
+of their remit. A toast for an action the user just took reports a result
+somewhere other than where they are looking.
+
+Every state change that is visible has a screen-reader equivalent, whether or
+not it is expressed in words on screen. The player normally prints no status
+prose and still announces its position, because the reason for the silence is
+visual economy, not secrecy. Its one bounded exception is older playable audio:
+it prints a single notice that some audio is from older settings, with a Settings
+link only when the configuration is not ready. When it is ready, the existing
+Generate action is the recovery control, so the notice never grows a duplicate
+button.
+
+**A request the browser can decline reports every answer it has.** Granted,
+declined, not available here, and could not be completed are four different
+situations and get four different sentences; a control that leaves the screen
+character-for-character unchanged has reported that it did nothing. The report
+says what the browser did, never what it will do — "it may grant this later" is
+as far as a promise about browser behaviour is allowed to go, and a retryable
+request stays enabled to match.
+
+### Waiting
+
+Work that resolves quickly is shown **on the control that started it**: the
+control holds the waiting state, and nothing else on the page moves. Nothing
+appears or disappears while waiting, so a surface is laid out identically before,
+during, and after.
+
+Work that takes longer than a few seconds **names its current stage**, in the
+learner's terms rather than the pipeline's. A stage name is what is happening
+now, not a percentage of an internal step count. Where a real count exists it is
+used; where one does not, none is invented.
+
+Skeleton placeholders are not used. Monosai's slow work is generation and
+analysis, which have no shape to promise in advance.
+
+**Work the learner walked away from keeps a row where its result will appear.**
+A story being written is a Library row of the same shape and height as the
+story it will become, so the shelf is laid out identically before, during, and
+after. The row is muted — secondary text on the sunken surface — and states in
+words both that it is not a story yet and which stage it is in; the muting is
+never the only thing saying so. It leads back to the screen that shows the run
+in full. A run that stopped without producing anything keeps its row, marked as
+needing attention, until the learner dismisses it: work they were not watching
+when it failed is not allowed to disappear.
+
+### Irreversible actions
+
+Anything irreversible **asks first**, in a dialog that names the specific thing
+being destroyed. Undo is not used as a substitute: it requires holding deleted
+records in limbo, and the data model is better served by asking.
+
+The dialog states what is being deleted and what is kept. Its confirming action
+is labelled with the verb, never with a bare "OK".
+
+### Empty and error surfaces
+
+An empty surface offers its primary action and explains what would fill it. An
+error surface states what failed, what is unaffected, and the one action worth
+taking — retry only where retrying could plausibly succeed unchanged.
+
+The same failure is classified identically wherever it appears, and the action
+is the one **this** surface can offer. A message that names a control the screen
+does not have — the settings test, quoted mid-reading — is a broken action, not
+a wording preference.
+
+**A link lives beside the thing it unblocks, and nowhere else.** There is no help
+section, no list of further reading, and nothing in a picker row that is working:
+a link on a screen where nothing is wrong is a symptom. The exceptions are
+narrow and stated — a claim the reader is entitled to check, such as an app
+saying it only reads a collection, may carry the link that lets them check it.
+Where a failure prints a technical code, the code carries the link that looks it
+up. Every one of these opens in a new tab and says so.
+
+## 10. Accessibility floor
+
+The Android bridge is a native utility surface: one vertically scrolling column
+of Android platform controls, light/dark system themes, scalable `sp` text and
+`dp` spacing. It has no web renderer or independent decorative palette. Native
+focus, touch targets, system-bar insets and permission/installer dialogs supply
+the equivalent semantics. Start/Stop and permission are visible; origins live in
+one labelled disclosure, and update status appears beside its action.
+
+These are not aspirations; a change that breaks one of them is a regression.
+
+- Text is resizable by browser zoom **and** by font-size preference, to 200%,
+  without loss of content or function.
+- Native semantics first. A button is a `button`, a disclosure is
+  `details`/`summary`, a link navigates. ARIA supplements native elements; it
+  does not replace them.
+- Focus is always visible, against every surface the application has, in both
+  themes.
+- Focus order follows visual order. Overlays trap focus, are labelled, close
+  where closing is safe, and return focus to what opened them.
+- Every icon-only control has an accessible name that states its current state
+  where the state matters.
+- Colour is never the only carrier of meaning.
+- No horizontal page scrolling at the narrowest supported width.
+- Both themes are checked at desktop and Android-sized viewports before a visual
+  change is considered done.
