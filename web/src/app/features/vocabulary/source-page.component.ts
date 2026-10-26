@@ -3,9 +3,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  effect,
   inject,
   input,
+  resource,
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -431,12 +431,16 @@ export class SourcePageComponent {
     void this.store.load().then(() => this.loadStandings());
     void this.history.load();
 
-    // A package import commits on its own, so what the page shows is reloaded
-    // the same way a manual read's result is.
-    effect(() => {
-      if (this.packageImport.state().kind === 'complete') {
-        void this.reload();
-      }
+    // A package import commits on its own, outside anything this page awaits,
+    // so what the page shows is reloaded the same way a manual read's result
+    // is. The completed state is the key, so each import reloads once, and the
+    // loader runs untracked.
+    resource({
+      params: () => {
+        const state = this.packageImport.state();
+        return state.kind === 'complete' ? state : undefined;
+      },
+      loader: () => this.reload(),
     });
   }
 

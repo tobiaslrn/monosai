@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   input,
+  resource,
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -387,8 +388,6 @@ export class ReadingLevelPageComponent {
     return this.origin === '/settings' ? 'Back to settings' : 'Back to library';
   });
 
-  protected readonly state = this.refresh.state;
-
   /** Whether the section is drafting a pasted list. Nothing is saved until Add source. */
   protected readonly textDraft = signal(false);
 
@@ -462,19 +461,17 @@ export class ReadingLevelPageComponent {
     });
 
     // The history is a read model of what has been committed, so it is reloaded
-    // whenever a refresh finishes rather than being patched in place.
-    effect(() => {
-      if (this.state().kind === 'complete') {
-        void this.history.load();
-      }
-    });
-
-    // A package import commits on its own, so the history it produced is
-    // reloaded the same way a refresh's is.
-    effect(() => {
-      if (this.packageImport.state().kind === 'complete') {
-        void this.history.load();
-      }
+    // whenever a commit finishes rather than being patched in place. A refresh
+    // is confirmed through the Anki connection store, which reloads it itself.
+    // A package import commits on its own, outside anything this page awaits,
+    // so its completed state is the key: each import reloads once, and the
+    // loader runs untracked.
+    resource({
+      params: () => {
+        const state = this.packageImport.state();
+        return state.kind === 'complete' ? state : undefined;
+      },
+      loader: () => this.history.load(),
     });
 
     // A deep link names the half of the page the caller had in mind, so the
