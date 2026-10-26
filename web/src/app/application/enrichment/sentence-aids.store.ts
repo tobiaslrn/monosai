@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, resource, signal } from '@angular/core';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import { concernCount } from '../../domain/enrichment/grammar-normalization';
 import type {
@@ -126,19 +126,22 @@ export class SentenceAidsStore {
   readonly lastError = this.errorSignal.asReadonly();
 
   constructor() {
-    effect(() => {
-      // Cache keys and staleness are derived from the text model, the live
-      // grammar profile, and the TTS configuration, all of which load after the
-      // reader opens. Re-deriving when they arrive is a repeat of the same three
-      // local reads — it can no more reach a provider than the first pass could.
-      this.textModel.settings();
-      this.grammarProfile.liveProfileHash();
-      this.audioConfig.resolve('tts-synthesis');
-      const reading = this.readingSignal();
-      const sentences = this.sentencesSignal();
-      if (reading !== null && sentences.length > 0) {
-        void this.load(reading, sentences);
-      }
+    // Cache keys and staleness are derived from the text model, the live
+    // grammar profile, and the TTS configuration, all of which load after the
+    // reader opens. A resource keyed on them re-reads when they arrive — a
+    // repeat of the same three local reads, which can no more reach a provider
+    // than the first pass could. Its loader runs untracked, so what `load`
+    // reads of those same signals cannot make it its own trigger.
+    resource({
+      params: () => {
+        this.textModel.settings();
+        this.grammarProfile.liveProfileHash();
+        this.audioConfig.resolve('tts-synthesis');
+        const reading = this.readingSignal();
+        const sentences = this.sentencesSignal();
+        return reading !== null && sentences.length > 0 ? { reading, sentences } : undefined;
+      },
+      loader: ({ params }) => this.load(params.reading, params.sentences),
     });
 
     inject(DestroyRef).onDestroy(() => {

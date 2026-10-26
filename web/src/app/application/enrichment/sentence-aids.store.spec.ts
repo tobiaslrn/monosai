@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { ApplicationRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
@@ -376,6 +376,29 @@ describe('SentenceAidsStore', () => {
     await store.load(importedReading(), [first[1]]);
 
     expect([...store.aids().keys()]).toEqual(['s1']);
+  });
+
+  it('reads the mounted sentences again when the live profile arrives after them', async () => {
+    const window = withSentences(sentences(1));
+    enrichment.grammarAnalyses = [analysisFor(window[0], LIVE_PROFILE_HASH)];
+    await store.load(importedReading(), window);
+    await TestBed.inject(ApplicationRef).whenStable();
+    expect(store.aids().get(window[0].id)?.grammarStale).toBe(false);
+    const readsBefore = enrichment.perSentenceQueries.grammar.length;
+
+    profileHash.set('profile-new');
+    await TestBed.inject(ApplicationRef).whenStable();
+
+    expect(enrichment.perSentenceQueries.grammar.length).toBeGreaterThan(readsBefore);
+    expect(enrichment.perSentenceQueries.grammar.at(-1)).toEqual(['s0']);
+    expect(store.aids().get(window[0].id)?.grammarStale).toBe(true);
+  });
+
+  it('does not read before anything is mounted', async () => {
+    profileHash.set('profile-new');
+    await TestBed.inject(ApplicationRef).whenStable();
+
+    expect(enrichment.perSentenceQueries.grammar).toEqual([]);
   });
   describe('explicit actions', () => {
     it('translates one sentence with exactly one request, and none on a repeat', async () => {
