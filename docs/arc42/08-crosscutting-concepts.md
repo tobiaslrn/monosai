@@ -358,5 +358,11 @@ State that restarts when an input changes — a form that opens from the selecte
 collapses when the selection moves — is a `linkedSignal` over that input, never an `effect` that
 writes signals. A resource tied to a value, such as an object URL for a clip, lives in an effect that
 makes it and releases it in `onCleanup`, which runs on replacement and on destroy; the effect writes no
-signals. An effect that has to call a store method which reads state it then rewrites wraps the call in
-`untracked()`, or it becomes its own trigger.
+signals. Work that has to be redone when state changes — a catalogue fetched once a key exists, the
+standings re-read when the sources or the current vocabulary change, the stored aids re-read when the
+model or profile they are keyed on arrives — is a `resource()` whose `params` read that state. Its
+loader runs untracked, so what it reads of the same signals cannot make it its own trigger, and
+`reload()` is the retry. When the store that commits the data can do the reload itself, as the Anki
+connection store does for the history, nothing needs to watch it. An effect that has to call a store
+method which reads state it then rewrites wraps the call in `untracked()`, or it becomes its own
+trigger.
