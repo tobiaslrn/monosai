@@ -630,6 +630,16 @@ length, sends the sheet away, and anything less settles it back against its
 edge. Speed counts because a short flick is how a sheet is usually put away,
 and a sheet that waits to be dragged the full distance feels deaf to it.
 
+A sheet leaves the way it arrived. However it is dismissed — the handle, the
+backdrop, Escape, a close or commit button — it slides back down its docked edge
+at the shared medium duration with the exit curve while the scrim fades with it,
+and only then does the dialog close and report its result. A native-popover sheet
+does this through its own transition; the Filters sheet, a dialog whose element
+the dialog would otherwise remove at once, animates itself out first and takes
+over the backdrop and Escape dismissal to do so. A second dismissal during the
+slide is ignored. With reduced motion, or on a wide viewport where the card is
+not docked, it closes at once.
+
 Add words is the one sheet opened from a native popover rather than a dialog,
 because it must stay open while a file chooser is up. It follows the same
 placement — hanging from its control on a wide screen, docked to the bottom
