@@ -114,7 +114,6 @@ export interface Logger {
 
 export const LOGGER = new InjectionToken<Logger>('monosai.logger');
 
-/** Safe fallback for focused unit tests that do not configure the app shell. */
 /**
  * Reports a background load that rejected.
  *
@@ -125,6 +124,7 @@ export function reportRejection(logger: Logger, error: unknown): void {
   logger.error('runtime.unhandled-rejection', { errorType: safeErrorTypeOf(error) });
 }
 
+/** Safe fallback for focused unit tests that do not configure the app shell. */
 export const NOOP_LOGGER: Logger = {
   debug: () => undefined,
   info: () => undefined,
