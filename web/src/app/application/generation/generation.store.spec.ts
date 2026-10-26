@@ -12,6 +12,7 @@ import {
   FIXED_NOW,
   configureGenerationTestBed,
   shortStory,
+  story,
   storyWithUnknown,
   strictStory,
   type GenerationTestBed,
@@ -420,17 +421,59 @@ describe('GenerationStore repair', () => {
     expect(bed.store.state().kind).toBe('saved');
   });
 
-  it('tells the repair exactly which word must go, and where', async () => {
-    bed.provider.storyQueue.push(ok(storyWithUnknown()));
+  it('tells the repair about the words the policy did not approve, and where', async () => {
+    await bed.setPolicy(POLICY);
+    bed.provider.storyQueue.push(
+      ok(
+        story([
+          'ねこがいます。',
+          'ねこは図書館へいきます。',
+          'ねこはたべます。',
+          'ねこは駅へいきます。',
+          'ねこはのみます。',
+        ]),
+      ),
+    );
+    bed.provider.reviewQueue.push(ok([APPROVAL]));
     bed.provider.repairQueue.push(ok(strictStory()));
 
     await bed.store.generate(5, PREMISE);
 
+    // The approved word is settled, so only the one still unknown is sent back.
     // The reason is stated once by the repair prompt, not repeated per span.
     expect(bed.provider.repairRequests[0].unknownSpans).toEqual([
-      { sentenceIndex: 1, surface: '図書館' },
+      { sentenceIndex: 3, surface: '駅' },
     ]);
     expect(bed.provider.repairRequests[0].previouslyAttempted).toEqual([]);
+  });
+
+  it('announces how many words the repair is replacing', async () => {
+    bed.provider.storyQueue.push(ok(storyWithUnknown()));
+    bed.provider.repairQueue.push(ok(strictStory()));
+    const announced: string[] = [];
+    const previous = bed.provider.beforeAnswer;
+    bed.provider.beforeAnswer = () => {
+      previous?.();
+      if (bed.store.state().kind === 'repairing') {
+        announced.push(bed.store.announcement());
+      }
+    };
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(announced).toEqual(['Replacing 1 unfamiliar word (attempt 1 of 1)…']);
+  });
+
+  it('forgets earlier surfaces when the same store generates again', async () => {
+    bed.provider.storyQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
+    bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
+
+    await bed.store.generate(5, PREMISE);
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.provider.repairRequests).toHaveLength(2);
+    expect(bed.provider.repairRequests[0].previouslyAttempted).toEqual([]);
+    expect(bed.provider.repairRequests[1].previouslyAttempted).toEqual([]);
   });
 
   it('names a surface an earlier repair already failed to remove', async () => {

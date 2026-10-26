@@ -3,7 +3,6 @@ import { aiError, type AiError } from '../../domain/ai/ai-error';
 import {
   applyDecisions,
   noApprovals,
-  type ExceptionCandidate,
   type ExceptionReviewOutcome,
 } from '../../domain/ai/exception-review';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
@@ -16,7 +15,7 @@ import {
   type StoryInputDraft,
 } from '../../domain/ai/story-request';
 import { checkStoryStructure, orderedSentences } from '../../domain/ai/story-structure';
-import type { TextTaskConfig, UnknownSpan } from '../../domain/ai/text-generation-provider';
+import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import type { GrammarProfileSnapshot } from '../../domain/grammar/profile';
 import { VALIDATOR_VERSION } from '../../domain/language/analyzer-version';
 import type { LanguageError } from '../../domain/language/language-error';
@@ -24,8 +23,6 @@ import type { SentenceTokens } from '../../domain/language/language-runtime';
 import type { GeneratedStory } from '../../domain/reading/reading';
 import type { GeneratedStoryDraft } from '../../domain/reading/reading-repository';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
-import type { Token } from '../../domain/reading/token';
-import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import type { VocabularyItemId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
@@ -45,6 +42,7 @@ import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
 import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
 import { StoryAssemblyService, type AcceptedSentence } from './story-assembly.service';
+import { RepairMemory, StoryRepairService, type AnalyzedUnit } from './story-repair.service';
 import { VocabularyPreparationService } from './vocabulary-preparation.service';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 
@@ -147,25 +145,18 @@ interface CapturedContext {
   readonly preparationTargets: readonly PreparationLayer[];
 }
 
-/** Title and sentences carry the same analysis; only the title has no row. */
-interface AnalyzedUnit {
-  readonly key: string;
-  /** Null for the title, which is validated but is not a sentence. */
-  readonly sentenceIndex: number | null;
-  readonly textJa: string;
-  readonly tokens: readonly Token[];
-  statuses: readonly TokenStatusAssignment[];
-}
-
-/**
- * Identity of one candidate unknown.
- *
- * Surface and lemma together, so two different words that happen to share a
- * surface are asked about separately. The separator is a character Japanese
- * text does not contain, so it cannot be produced by a surface itself.
- */
-function candidateKey(token: Token): string {
-  return `${token.surface}|${token.lemma ?? ''}`;
+/** What the learner is told while a repair runs. */
+function repairAnnouncement(
+  unknownCount: number,
+  structureIssueCount: number,
+  attempt: number,
+  totalAttempts: number,
+): string {
+  const work =
+    unknownCount > 0
+      ? `Replacing ${String(unknownCount)} unfamiliar ${unknownCount === 1 ? 'word' : 'words'}${structureIssueCount > 0 ? ' and fixing the story structure' : ''}`
+      : 'Fixing the story structure';
+  return `${work} (attempt ${String(attempt)} of ${String(totalAttempts)})…`;
 }
 
 /**
@@ -184,6 +175,7 @@ export class GenerationStore {
   private readonly vocabulary = inject(VOCABULARY_REPOSITORY);
   private readonly preparation = inject(VocabularyPreparationService);
   private readonly assembly = inject(StoryAssemblyService);
+  private readonly storyRepair = inject(StoryRepairService);
   private readonly classification = inject(VocabularyClassificationService);
   private readonly grammar = inject(GrammarProfileStore);
   private readonly policy = inject(ExceptionPolicyStore);
@@ -397,11 +389,11 @@ export class GenerationStore {
     let candidate = firstCandidate;
     // Two memories that live exactly as long as this run. A word the policy has
     // already refused would get the same answer from the same policy text, so
-    // asking again is a request the learner pays for twice; and a surface that
-    // survived a repair has to be named as such, or nothing stops the next
-    // repair reaching for the same replacement.
+    // asking again is a request the learner pays for twice; and the repair
+    // service has to be told which surfaces earlier repairs already failed to
+    // remove.
     const settledRejections = new Set<string>();
-    const attemptedSurfaces = new Set<string>();
+    const repairMemory = new RepairMemory();
 
     for (;;) {
       this.stateSignal.set({ kind: 'parsing' });
@@ -420,7 +412,7 @@ export class GenerationStore {
       }
 
       const units = analyzed.value;
-      const candidates = this.collectCandidates(units);
+      const candidates = this.storyRepair.collectCandidates(units);
       const unsettled = candidates.filter((candidate) => !settledRejections.has(candidate.id));
 
       let review: ExceptionReviewOutcome = noApprovals(unsettled);
@@ -453,7 +445,7 @@ export class GenerationStore {
         // is the one thing that must never happen here.
       }
 
-      this.applyApprovals(units, review);
+      this.storyRepair.applyApprovals(units, review);
       // Words the policy already refused never reached this pass's review, so
       // they are added back here: skipping the request must not quietly turn a
       // refusal into an acceptance.
@@ -467,7 +459,7 @@ export class GenerationStore {
       const outstanding = remaining.size > 0 || structureIssues.length > 0;
 
       if (!outstanding || budgetSpent) {
-        this.markUnresolved(units, remaining);
+        this.storyRepair.markUnresolved(units, remaining);
         await this.finalize(
           units,
           request,
@@ -491,35 +483,22 @@ export class GenerationStore {
         unknownCount,
         structureIssueCount,
       });
-      const repairWork =
-        unknownCount > 0
-          ? `Replacing ${String(unknownCount)} unfamiliar ${unknownCount === 1 ? 'word' : 'words'}${structureIssueCount > 0 ? ' and fixing the story structure' : ''}`
-          : 'Fixing the story structure';
       this.announce(
-        `${repairWork} (attempt ${String(attempt)} of ${String(context.repairBudget)})…`,
+        repairAnnouncement(unknownCount, structureIssueCount, attempt, context.repairBudget),
       );
 
-      const spans = this.unknownSpans(units, candidates, remaining);
-      const previouslyAttempted = [
-        ...new Set(
-          spans.map((span) => span.surface).filter((surface) => attemptedSurfaces.has(surface)),
-        ),
-      ];
-      for (const span of spans) {
-        attemptedSurfaces.add(span.surface);
-      }
-
-      const repaired = await this.provider.repairStory(
+      const repaired = await this.storyRepair.repair(
         {
-          original: request,
+          request,
           candidate,
-          unknownSpans: spans,
+          units,
+          candidates,
+          remaining,
           structureIssues,
           attempt,
-          previouslyAttempted,
-          promptVersion: PROMPT_VERSIONS.repair,
+          taskConfig: context.taskConfig,
+          memory: repairMemory,
         },
-        context.taskConfig,
         signal,
       );
       if (!repaired.ok) {
@@ -662,131 +641,6 @@ export class GenerationStore {
       unit.statuses = byKey.get(unit.key) ?? [];
     }
     return { ok: true, value: units };
-  }
-
-  /**
-   * One candidate per distinct word, not per occurrence.
-   *
-   * The policy is asked about a word, and asking twice would let the same word
-   * be approved in one sentence and refused in the next.
-   */
-  private collectCandidates(units: readonly AnalyzedUnit[]): readonly ExceptionCandidate[] {
-    const byKey = new Map<string, ExceptionCandidate>();
-
-    for (const unit of units) {
-      const tokenById = new Map(unit.tokens.map((token) => [token.id, token]));
-      for (const status of unit.statuses) {
-        if (status.validation.category !== 'unknown') {
-          continue;
-        }
-        const token = tokenById.get(status.tokenId);
-        if (token === undefined) {
-          continue;
-        }
-        const key = candidateKey(token);
-        const existing = byKey.get(key);
-        if (existing !== undefined) {
-          if (!existing.contextsJa.includes(unit.textJa) && existing.contextsJa.length < 3) {
-            byKey.set(key, { ...existing, contextsJa: [...existing.contextsJa, unit.textJa] });
-          }
-          continue;
-        }
-        byKey.set(key, {
-          id: key,
-          surface: token.surface,
-          contextsJa: [unit.textJa],
-          ...(token.lemma === undefined ? {} : { lemma: token.lemma }),
-          ...(token.readingHiragana === undefined
-            ? {}
-            : { readingHiragana: token.readingHiragana }),
-          ...(token.partOfSpeech === undefined ? {} : { partOfSpeech: token.partOfSpeech }),
-        });
-      }
-    }
-
-    return [...byKey.values()];
-  }
-
-  /** Replaces the statuses of approved words, and only those. */
-  private applyApprovals(units: AnalyzedUnit[], review: ExceptionReviewOutcome): void {
-    if (review.approvals.size === 0) {
-      return;
-    }
-    for (const unit of units) {
-      const tokenById = new Map(unit.tokens.map((token) => [token.id, token]));
-      unit.statuses = unit.statuses.map((status) => {
-        if (status.validation.category !== 'unknown') {
-          return status;
-        }
-        const token = tokenById.get(status.tokenId);
-        const approval =
-          token === undefined ? undefined : review.approvals.get(candidateKey(token));
-        return approval === undefined ? status : { tokenId: status.tokenId, validation: approval };
-      });
-    }
-  }
-
-  /**
-   * Re-labels the words repair could not replace, on the way into the library.
-   *
-   * A story is saved with these still marked unknown rather than being thrown
-   * away: the reader underlines them and the learner decides what to do about
-   * them. The reason distinguishes them from a word that was merely never
-   * looked at, so a saved story records that repair was spent and lost.
-   */
-  private markUnresolved(units: AnalyzedUnit[], remaining: ReadonlySet<string>): void {
-    if (remaining.size === 0) {
-      return;
-    }
-    for (const unit of units) {
-      const tokenById = new Map(unit.tokens.map((token) => [token.id, token]));
-      unit.statuses = unit.statuses.map((status) => {
-        if (status.validation.category !== 'unknown') {
-          return status;
-        }
-        const token = tokenById.get(status.tokenId);
-        if (token === undefined || !remaining.has(candidateKey(token))) {
-          return status;
-        }
-        return {
-          tokenId: status.tokenId,
-          validation: { category: 'unknown', reason: 'unresolved-after-repair' },
-        };
-      });
-    }
-  }
-
-  private unknownSpans(
-    units: readonly AnalyzedUnit[],
-    candidates: readonly ExceptionCandidate[],
-    remaining: ReadonlySet<string>,
-  ): readonly UnknownSpan[] {
-    const byId = new Map(candidates.map((candidate) => [candidate.id, candidate]));
-    const spans: UnknownSpan[] = [];
-    const seen = new Set<string>();
-
-    for (const unit of units) {
-      const tokenById = new Map(unit.tokens.map((token) => [token.id, token]));
-      for (const status of unit.statuses) {
-        if (status.validation.category !== 'unknown') {
-          continue;
-        }
-        const token = tokenById.get(status.tokenId);
-        if (token === undefined) {
-          continue;
-        }
-        const key = candidateKey(token);
-        if (!remaining.has(key) || seen.has(`${unit.key}:${key}`)) {
-          continue;
-        }
-        seen.add(`${unit.key}:${key}`);
-        spans.push({
-          sentenceIndex: unit.sentenceIndex,
-          surface: byId.get(key)?.surface ?? token.surface,
-        });
-      }
-    }
-    return spans;
   }
 
   /**
