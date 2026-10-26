@@ -9,8 +9,8 @@ import {
   HASHER,
   ID_GENERATOR,
   SETTINGS_REPOSITORY,
-  SOURCE_MAPPING_REPOSITORY,
   VOCABULARY_REPOSITORY,
+  VOCABULARY_SOURCE_REPOSITORY,
 } from '../app/application/shared/repository-tokens';
 import { HOST_PLATFORM, type HostPlatform } from '../app/domain/platform/host-platform';
 import { SnapshotBuilder } from '../app/application/vocabulary/snapshot-builder';
@@ -422,7 +422,7 @@ export function configureVocabularyTestBed(): VocabularyTestBed {
       VocabularyRefreshStore,
       VocabularyClassificationService,
       { provide: VOCABULARY_REPOSITORY, useValue: vocabulary },
-      { provide: SOURCE_MAPPING_REPOSITORY, useValue: mappings },
+      { provide: VOCABULARY_SOURCE_REPOSITORY, useValue: mappings },
       { provide: SETTINGS_REPOSITORY, useValue: new StubSettingsRepository(vocabulary) },
       { provide: LANGUAGE_RUNTIME, useValue: runtime },
       { provide: MARKUP_TEXT_EXTRACTOR, useValue: new DomMarkupTextExtractor() },
