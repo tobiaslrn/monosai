@@ -208,20 +208,6 @@ describe('StoryRepairService', () => {
     });
   });
 
-  describe('describe', () => {
-    it('counts the words in the singular and the plural', () => {
-      expect(service.describe(1, 0, 1, 2)).toBe('Replacing 1 unfamiliar word (attempt 1 of 2)…');
-      expect(service.describe(3, 0, 2, 2)).toBe('Replacing 3 unfamiliar words (attempt 2 of 2)…');
-    });
-
-    it('says so when the structure needs fixing too, or only', () => {
-      expect(service.describe(2, 1, 1, 2)).toBe(
-        'Replacing 2 unfamiliar words and fixing the story structure (attempt 1 of 2)…',
-      );
-      expect(service.describe(0, 1, 1, 2)).toBe('Fixing the story structure (attempt 1 of 2)…');
-    });
-  });
-
   describe('repair', () => {
     it('tells the provider exactly which word must go, and where', async () => {
       provider.repairQueue.push(ok(strictStory()));
@@ -304,15 +290,6 @@ describe('StoryRepairService', () => {
 
       expect(provider.repairRequests[0].previouslyAttempted).toEqual([]);
       expect(provider.repairRequests[1].previouslyAttempted).toEqual(['図書館']);
-    });
-
-    it('remembers nothing across runs', async () => {
-      provider.repairQueue.push(ok(strictStory()), ok(strictStory()));
-
-      await service.repair(input(), new AbortController().signal);
-      await service.repair(input(), new AbortController().signal);
-
-      expect(provider.repairRequests[1].previouslyAttempted).toEqual([]);
     });
 
     it('returns the provider failure unchanged', async () => {

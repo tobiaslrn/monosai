@@ -179,20 +179,6 @@ export class StoryRepairService {
     }
   }
 
-  /** What the learner is told while a repair runs. */
-  describe(
-    unknownCount: number,
-    structureIssueCount: number,
-    attempt: number,
-    totalAttempts: number,
-  ): string {
-    const work =
-      unknownCount > 0
-        ? `Replacing ${String(unknownCount)} unfamiliar ${unknownCount === 1 ? 'word' : 'words'}${structureIssueCount > 0 ? ' and fixing the story structure' : ''}`
-        : 'Fixing the story structure';
-    return `${work} (attempt ${String(attempt)} of ${String(totalAttempts)})…`;
-  }
-
   /**
    * Asks the provider to repair the candidate.
    *

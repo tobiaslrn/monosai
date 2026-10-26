@@ -145,6 +145,20 @@ interface CapturedContext {
   readonly preparationTargets: readonly PreparationLayer[];
 }
 
+/** What the learner is told while a repair runs. */
+function repairAnnouncement(
+  unknownCount: number,
+  structureIssueCount: number,
+  attempt: number,
+  totalAttempts: number,
+): string {
+  const work =
+    unknownCount > 0
+      ? `Replacing ${String(unknownCount)} unfamiliar ${unknownCount === 1 ? 'word' : 'words'}${structureIssueCount > 0 ? ' and fixing the story structure' : ''}`
+      : 'Fixing the story structure';
+  return `${work} (attempt ${String(attempt)} of ${String(totalAttempts)})…`;
+}
+
 /**
  * One generation, from prerequisites through to a saved story.
  *
@@ -161,7 +175,7 @@ export class GenerationStore {
   private readonly vocabulary = inject(VOCABULARY_REPOSITORY);
   private readonly preparation = inject(VocabularyPreparationService);
   private readonly assembly = inject(StoryAssemblyService);
-  private readonly repair = inject(StoryRepairService);
+  private readonly storyRepair = inject(StoryRepairService);
   private readonly classification = inject(VocabularyClassificationService);
   private readonly grammar = inject(GrammarProfileStore);
   private readonly policy = inject(ExceptionPolicyStore);
@@ -398,7 +412,7 @@ export class GenerationStore {
       }
 
       const units = analyzed.value;
-      const candidates = this.repair.collectCandidates(units);
+      const candidates = this.storyRepair.collectCandidates(units);
       const unsettled = candidates.filter((candidate) => !settledRejections.has(candidate.id));
 
       let review: ExceptionReviewOutcome = noApprovals(unsettled);
@@ -431,7 +445,7 @@ export class GenerationStore {
         // is the one thing that must never happen here.
       }
 
-      this.repair.applyApprovals(units, review);
+      this.storyRepair.applyApprovals(units, review);
       // Words the policy already refused never reached this pass's review, so
       // they are added back here: skipping the request must not quietly turn a
       // refusal into an acceptance.
@@ -445,7 +459,7 @@ export class GenerationStore {
       const outstanding = remaining.size > 0 || structureIssues.length > 0;
 
       if (!outstanding || budgetSpent) {
-        this.repair.markUnresolved(units, remaining);
+        this.storyRepair.markUnresolved(units, remaining);
         await this.finalize(
           units,
           request,
@@ -470,10 +484,10 @@ export class GenerationStore {
         structureIssueCount,
       });
       this.announce(
-        this.repair.describe(unknownCount, structureIssueCount, attempt, context.repairBudget),
+        repairAnnouncement(unknownCount, structureIssueCount, attempt, context.repairBudget),
       );
 
-      const repaired = await this.repair.repair(
+      const repaired = await this.storyRepair.repair(
         {
           request,
           candidate,
