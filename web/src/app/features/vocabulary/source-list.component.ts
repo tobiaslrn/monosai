@@ -1,9 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
 import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/automatic-anki-sync.coordinator';
 import { ManualSourceSyncStore } from '../../application/vocabulary/manual-source-sync.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { SourceStandingStore } from '../../application/vocabulary/source-standing.store';
+import {
+  LOGGER,
+  NOOP_LOGGER,
+  reportRejection,
+  type Logger,
+} from '../../application/shared/diagnostics';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { formatCountOf, formatDate, formatRelativeDay } from '../../domain/shared/locale';
 import type { VocabularySource } from '../../domain/vocabulary/vocabulary-source';
@@ -186,17 +192,24 @@ export class SourceListComponent {
   private readonly automatic = inject(AutomaticAnkiSyncCoordinator, { optional: true });
   private readonly clock = inject(CLOCK);
   private readonly manual = inject(ManualSourceSyncStore);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   protected readonly sources = this.store.sources;
 
   constructor() {
     // Each row's number is its source's last complete read. The active
-    // snapshot is read here as well, because re-reading one source changes its
-    // cache without changing the list the rows come from.
-    effect(() => {
-      const ids = this.sources().map((source) => source.id);
-      this.history.active();
-      void this.standings.load(ids);
+    // snapshot is part of the key as well, because re-reading one source
+    // changes its cache without changing the list the rows come from. The
+    // loader runs untracked, so nothing it reads can bring it back.
+    resource({
+      params: () => ({
+        ids: this.sources().map((source) => source.id),
+        snapshot: this.history.active(),
+      }),
+      loader: ({ params }) =>
+        this.standings.load(params.ids).catch((error: unknown) => {
+          reportRejection(this.logger, error);
+        }),
     });
   }
 

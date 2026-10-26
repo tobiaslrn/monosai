@@ -1,4 +1,5 @@
 import { InjectionToken } from '@angular/core';
+import { safeErrorTypeOf } from '../../domain/shared/errors';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -114,6 +115,16 @@ export interface Logger {
 export const LOGGER = new InjectionToken<Logger>('monosai.logger');
 
 /** Safe fallback for focused unit tests that do not configure the app shell. */
+/**
+ * Reports a background load that rejected.
+ *
+ * A resource's loader owns its promise, so a rejection no longer reaches the
+ * `unhandledrejection` listener; this logs it under the same event.
+ */
+export function reportRejection(logger: Logger, error: unknown): void {
+  logger.error('runtime.unhandled-rejection', { errorType: safeErrorTypeOf(error) });
+}
+
 export const NOOP_LOGGER: Logger = {
   debug: () => undefined,
   info: () => undefined,

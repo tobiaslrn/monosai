@@ -8,6 +8,7 @@ import {
 } from '../../../testing/vocabulary-fakes';
 import { ok } from '../../domain/shared/result';
 import { AnkiConnectionStore } from './anki-connection.store';
+import { SnapshotHistoryStore } from './snapshot-history.store';
 
 describe('AnkiConnectionStore', () => {
   let beds: VocabularyTestBed;
@@ -38,7 +39,11 @@ describe('AnkiConnectionStore', () => {
       expect(store.sampleWords()).toContain('ねこ');
       expect(beds.vocabulary.commitCount).toBe(0);
       expect(beds.mappings.stored.size).toBe(0);
+      expect(TestBed.inject(SnapshotHistoryStore).active()).toBeNull();
       await store.confirm();
+      // The history is a read model of the commit, so it is current when
+      // confirming returns, without any page having to watch the refresh.
+      expect(TestBed.inject(SnapshotHistoryStore).active()).not.toBeNull();
       expect(beds.vocabulary.commitCount).toBe(1);
       expect(beds.mappings.stored.size).toBe(1);
       const source = [...beds.mappings.stored.values()][0];

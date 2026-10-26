@@ -8,9 +8,11 @@ import {
   type VocabularyTestBed,
 } from '../../../testing/vocabulary-fakes';
 import { ANKI_PROVIDER_FACTORY } from '../../application/shared/anki-tokens';
+import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
-import { SourceStandingStore } from '../../application/vocabulary/source-standing.store';
+import { snapshotFixture } from '../../../testing/persistence-fixtures';
 import { vocabularySourceId } from '../../domain/shared/ids';
+import { unmeasuredBasis } from '../../domain/anki/practice-evidence';
 import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
 import type { TextListVocabularySource } from '../../domain/vocabulary/vocabulary-source';
 import { SourceListComponent } from './source-list.component';
@@ -60,6 +62,24 @@ describe('SourceListComponent', () => {
     return { fixture, element: fixture.nativeElement as HTMLElement };
   }
 
+  /** The last complete read of the text list, as the source repository holds it. */
+  function cacheWords(words: readonly string[]): void {
+    beds.mappings.caches.set(TEXT_LIST.id, {
+      sourceId: TEXT_LIST.id,
+      refreshedAt: 1_700_000_000_000,
+      entries: words.map((rawValue) => ({ rawValue })),
+      warnings: [],
+      practice: unmeasuredBasis(1_700_000_000_000),
+    });
+  }
+
+  async function settle(fixture: ComponentFixture<SourceListComponent>): Promise<void> {
+    for (let pass = 0; pass < 3; pass += 1) {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+  }
+
   function rows(element: HTMLElement): readonly HTMLAnchorElement[] {
     return [...element.querySelectorAll<HTMLAnchorElement>('[data-testid="source-row"]')];
   }
@@ -85,12 +105,39 @@ describe('SourceListComponent', () => {
   });
 
   it('says where a source came from and how much is in it', async () => {
-    await TestBed.inject(SourceStandingStore).load([TEXT_LIST.id]);
+    cacheWords(['ねこ', '犬']);
     const { element } = await render();
     const list = rows(element)[0];
 
     expect(list.textContent).toContain('My textbook');
     expect(list.textContent).toContain('Your list');
+    expect(list.textContent).toContain('2 words');
+  });
+
+  /** Re-reading a source changes its cache, and the new snapshot is how the list hears of it. */
+  it('reads the standings again when a new vocabulary becomes current', async () => {
+    cacheWords(['ねこ', '犬']);
+    const { fixture, element } = await render();
+    expect(rows(element)[0].textContent).toContain('2 words');
+
+    cacheWords(['ねこ', '犬', '鳥']);
+    beds.vocabulary.snapshots.push(snapshotFixture(1).snapshot);
+    beds.vocabulary.activeSnapshotId = snapshotFixture(1).snapshot.id;
+    await TestBed.inject(SnapshotHistoryStore).load();
+    await settle(fixture);
+
+    expect(rows(element)[0].textContent).toContain('3 words');
+  });
+
+  it('reads the standings again when the list of sources changes', async () => {
+    const { fixture, element } = await render();
+    expect(rows(element)[0].textContent).not.toContain('words');
+
+    cacheWords(['ねこ']);
+    await TestBed.inject(SourceMappingStore).setIncluded(TEXT_LIST.id, false);
+    await settle(fixture);
+
+    expect(rows(element)[0].textContent).toContain('1 word');
   });
 
   /**
