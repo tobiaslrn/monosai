@@ -31,7 +31,7 @@ import type { SpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import type { ModelCapabilities, ModelCatalog } from '../../domain/ai/model-catalog';
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
-import { ok, type Result } from '../../domain/shared/result';
+import { err, ok, type Result } from '../../domain/shared/result';
 import { ModelPickerComponent } from './model-picker.component';
 import { ModelsSectionComponent } from './models-section.component';
 
@@ -196,6 +196,77 @@ describe('ModelsSectionComponent audio readiness', () => {
     );
     expect(selects).toHaveLength(2);
     expect(selects.map((select) => select.value)).toEqual(['medium', 'medium']);
+  });
+
+  describe('fetching the catalogue', () => {
+    /** A catalogue that counts how often it is asked, and can fail the first time. */
+    function countingCatalog(failFirst = false): { asked: () => number } {
+      let asked = 0;
+      TestBed.overrideProvider(MODEL_CATALOG, {
+        useValue: {
+          list: (output: 'text' | 'speech') => {
+            if (output === 'text') {
+              asked += 1;
+            }
+            return Promise.resolve(
+              failFirst && asked === 1
+                ? err(aiError('rate-limited', 'translation', 'Too many requests.'))
+                : ok(output === 'speech' ? [SPEECH_MODEL] : []),
+            );
+          },
+        } satisfies ModelCatalog,
+      });
+      return { asked: () => asked };
+    }
+
+    it('fetches it as soon as a key is configured, without a picker being opened', async () => {
+      const catalog = countingCatalog();
+      await connect();
+      const { fixture } = await render();
+      await fixture.whenStable();
+
+      expect(catalog.asked()).toBe(1);
+    });
+
+    it('fetches it when the key arrives after the panel is already open', async () => {
+      const catalog = countingCatalog();
+      TestBed.overrideProvider(CREDENTIAL_REPOSITORY, {
+        useValue: new FakeCredentialRepository(null),
+      });
+      const { fixture } = await render();
+      await fixture.whenStable();
+      expect(catalog.asked()).toBe(0);
+
+      await connect();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(catalog.asked()).toBe(1);
+    });
+
+    it('asks again only when a picker opens after a failure', async () => {
+      const catalog = countingCatalog(true);
+      await connect();
+      const { fixture } = await render();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const picker = fixture.debugElement.queryAll(By.directive(ModelPickerComponent))[0]
+        .componentInstance as ModelPickerComponent;
+      expect(catalog.asked()).toBe(1);
+      expect(picker.failure()).toBe('Too many requests.');
+
+      picker.opened.emit();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(catalog.asked()).toBe(2);
+      expect(picker.failure()).toBeNull();
+
+      picker.opened.emit();
+      await fixture.whenStable();
+
+      expect(catalog.asked()).toBe(2);
+    });
   });
 
   it('uses the selected model maximum for the story token field', async () => {
