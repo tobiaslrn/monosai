@@ -29,6 +29,16 @@
   background: rgb(37 40 36 / 45%);
 }
 
+/* A dismissed sheet's scrim fades with it rather than cutting out behind it. */
+.cdk-overlay-dark-backdrop.is-leaving {
+  background-color: transparent;
+  transition: background-color var(--motion-medium) linear;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 /* Sheets sit against the bottom edge on a phone and are centred on desktop. */
 .mn-sheet-panel {
   display: block;
