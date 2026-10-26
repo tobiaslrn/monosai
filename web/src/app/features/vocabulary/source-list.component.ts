@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
 import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/automatic-anki-sync.coordinator';
 import { ManualSourceSyncStore } from '../../application/vocabulary/manual-source-sync.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
@@ -191,12 +191,15 @@ export class SourceListComponent {
 
   constructor() {
     // Each row's number is its source's last complete read. The active
-    // snapshot is read here as well, because re-reading one source changes its
-    // cache without changing the list the rows come from.
-    effect(() => {
-      const ids = this.sources().map((source) => source.id);
-      this.history.active();
-      void this.standings.load(ids);
+    // snapshot is part of the key as well, because re-reading one source
+    // changes its cache without changing the list the rows come from. The
+    // loader runs untracked, so nothing it reads can bring it back.
+    resource({
+      params: () => ({
+        ids: this.sources().map((source) => source.id),
+        snapshot: this.history.active(),
+      }),
+      loader: ({ params }) => this.standings.load(params.ids),
     });
   }
 
