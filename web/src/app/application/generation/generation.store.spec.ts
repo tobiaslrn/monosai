@@ -420,19 +420,6 @@ describe('GenerationStore repair', () => {
     expect(bed.store.state().kind).toBe('saved');
   });
 
-  it('tells the repair exactly which word must go, and where', async () => {
-    bed.provider.storyQueue.push(ok(storyWithUnknown()));
-    bed.provider.repairQueue.push(ok(strictStory()));
-
-    await bed.store.generate(5, PREMISE);
-
-    // The reason is stated once by the repair prompt, not repeated per span.
-    expect(bed.provider.repairRequests[0].unknownSpans).toEqual([
-      { sentenceIndex: 1, surface: '図書館' },
-    ]);
-    expect(bed.provider.repairRequests[0].previouslyAttempted).toEqual([]);
-  });
-
   it('names a surface an earlier repair already failed to remove', async () => {
     bed = configureGenerationTestBed({ vocabularyStrictness: 'strict' });
     bed.provider.storyQueue.push(ok(storyWithUnknown()));

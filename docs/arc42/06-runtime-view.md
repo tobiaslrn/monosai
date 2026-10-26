@@ -114,6 +114,13 @@ Every input is captured before the first request, so changing a setting during a
 what the running story is judged against. This includes vocabulary strictness: relaxed spends no
 content repair, standard spends at most one, and strict spends at most two.
 
+The state machine lives in `GenerationStore`: it decides when to parse, validate, review, repair, and
+finalize, and what the learner is told at each step. What the loop does to the unknown words along
+the way, and the repair request itself, is `StoryRepairService`. It finds the unknown words, applies
+the policy's approvals, marks the words repair could not replace, and asks the provider for the
+repair, naming the surfaces an earlier repair in the same run failed to remove. It holds no run state
+of its own; the one memory a run needs is created by the store.
+
 ```mermaid
 sequenceDiagram
     actor Learner
