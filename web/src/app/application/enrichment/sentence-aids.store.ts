@@ -13,6 +13,7 @@ import type { SentenceId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { TextModelStore } from '../settings/text-model.store';
+import { LOGGER, NOOP_LOGGER, reportRejection, type Logger } from '../shared/diagnostics';
 import { ENRICHMENT_REPOSITORY } from '../shared/repository-tokens';
 import { AudioConfigurationService } from './audio-configuration.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
@@ -107,6 +108,7 @@ export class SentenceAidsStore {
   private readonly textModel = inject(TextModelStore);
   private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly audioConfig = inject(AudioConfigurationService);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly readingSignal = signal<Reading | null>(null);
   private readonly sentencesSignal = signal<readonly Sentence[]>([]);
@@ -134,6 +136,12 @@ export class SentenceAidsStore {
     // reads of those same signals cannot make it its own trigger.
     resource({
       params: () => {
+        // The configured model per task is what the keys are built from, and
+        // reading it also follows the saved key, which the test fingerprints
+        // inside it are made with.
+        const configurable = this.textModel as Partial<Pick<TextModelStore, 'configForTask'>>;
+        configurable.configForTask?.('translation');
+        configurable.configForTask?.('grammar');
         this.textModel.settings();
         this.grammarProfile.liveProfileHash();
         this.audioConfig.resolve('tts-synthesis');
@@ -141,7 +149,10 @@ export class SentenceAidsStore {
         const sentences = this.sentencesSignal();
         return reading !== null && sentences.length > 0 ? { reading, sentences } : undefined;
       },
-      loader: ({ params }) => this.load(params.reading, params.sentences),
+      loader: ({ params }) =>
+        this.load(params.reading, params.sentences).catch((error: unknown) => {
+          reportRejection(this.logger, error);
+        }),
     });
 
     inject(DestroyRef).onDestroy(() => {

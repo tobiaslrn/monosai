@@ -10,6 +10,12 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import {
+  LOGGER,
+  NOOP_LOGGER,
+  reportRejection,
+  type Logger,
+} from '../../application/shared/diagnostics';
 import { ManualSourceSyncStore } from '../../application/vocabulary/manual-source-sync.store';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
@@ -377,6 +383,7 @@ export class SourcePageComponent {
   private readonly sync = inject(VocabularySyncService);
   private readonly history = inject(SnapshotHistoryStore);
   private readonly dialog = inject(Dialog);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
   private readonly router = inject(Router);
   private readonly clock = inject(CLOCK);
   private readonly createConnection = inject(ANKI_PROVIDER_FACTORY);
@@ -440,7 +447,10 @@ export class SourcePageComponent {
         const state = this.packageImport.state();
         return state.kind === 'complete' ? state : undefined;
       },
-      loader: () => this.reload(),
+      loader: () =>
+        this.reload().catch((error: unknown) => {
+          reportRejection(this.logger, error);
+        }),
     });
   }
 

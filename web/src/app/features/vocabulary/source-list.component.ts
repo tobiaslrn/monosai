@@ -4,6 +4,12 @@ import { ManualSourceSyncStore } from '../../application/vocabulary/manual-sourc
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { SourceStandingStore } from '../../application/vocabulary/source-standing.store';
+import {
+  LOGGER,
+  NOOP_LOGGER,
+  reportRejection,
+  type Logger,
+} from '../../application/shared/diagnostics';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { formatCountOf, formatDate, formatRelativeDay } from '../../domain/shared/locale';
 import type { VocabularySource } from '../../domain/vocabulary/vocabulary-source';
@@ -186,6 +192,7 @@ export class SourceListComponent {
   private readonly automatic = inject(AutomaticAnkiSyncCoordinator, { optional: true });
   private readonly clock = inject(CLOCK);
   private readonly manual = inject(ManualSourceSyncStore);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   protected readonly sources = this.store.sources;
 
@@ -199,7 +206,10 @@ export class SourceListComponent {
         ids: this.sources().map((source) => source.id),
         snapshot: this.history.active(),
       }),
-      loader: ({ params }) => this.standings.load(params.ids),
+      loader: ({ params }) =>
+        this.standings.load(params.ids).catch((error: unknown) => {
+          reportRejection(this.logger, error);
+        }),
     });
   }
 

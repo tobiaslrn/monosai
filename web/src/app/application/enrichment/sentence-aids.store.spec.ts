@@ -27,6 +27,7 @@ import { AppSettingsStore } from '../settings/app-settings.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { TtsStore } from '../settings/tts.store';
 import { TEXT_GENERATION_PROVIDER, TEXT_TO_SPEECH_PROVIDER } from '../shared/ai-tokens';
+import { LOGGER, NOOP_LOGGER } from '../shared/diagnostics';
 import {
   CLOCK,
   ENRICHMENT_REPOSITORY,
@@ -392,6 +393,62 @@ describe('SentenceAidsStore', () => {
     expect(enrichment.perSentenceQueries.grammar.length).toBeGreaterThan(readsBefore);
     expect(enrichment.perSentenceQueries.grammar.at(-1)).toEqual(['s0']);
     expect(store.aids().get(window[0].id)?.grammarStale).toBe(true);
+  });
+
+  it('reads the mounted sentences again when the saved key changes', async () => {
+    TestBed.resetTestingModule();
+    const keyGeneration = signal(1);
+    TestBed.configureTestingModule({
+      providers: [
+        ...aidsProviders(enrichment, readings, provider, profileHash),
+        // The real store reaches the key through the fingerprints that decide
+        // whether a configured model is ready, and nothing else changes with it.
+        {
+          provide: TextModelStore,
+          useValue: {
+            settings: signal({ modelId: MODEL_ID, structuredOutput: 'json-schema' }),
+            configForTask: () => {
+              keyGeneration();
+              return { modelId: MODEL_ID };
+            },
+          },
+        },
+      ],
+    });
+    const keyed = TestBed.inject(SentenceAidsStore);
+    const window = withSentences(sentences(1));
+    await keyed.load(importedReading(), window);
+    await TestBed.inject(ApplicationRef).whenStable();
+    const readsBefore = enrichment.perSentenceQueries.grammar.length;
+
+    keyGeneration.set(2);
+    await TestBed.inject(ApplicationRef).whenStable();
+
+    expect(enrichment.perSentenceQueries.grammar.length).toBeGreaterThan(readsBefore);
+  });
+
+  it('logs a rejected re-read instead of dropping it', async () => {
+    TestBed.resetTestingModule();
+    const logged: string[] = [];
+    TestBed.configureTestingModule({
+      providers: [
+        ...aidsProviders(enrichment, readings, provider, profileHash),
+        {
+          provide: LOGGER,
+          useValue: { ...NOOP_LOGGER, error: (event: string) => logged.push(event) },
+        },
+      ],
+    });
+    const logging = TestBed.inject(SentenceAidsStore);
+    const window = withSentences(sentences(1));
+    await logging.load(importedReading(), window);
+    await TestBed.inject(ApplicationRef).whenStable();
+    enrichment.listTranslationsForSentences = () => Promise.reject(new Error('closed'));
+
+    profileHash.set('profile-new');
+    await TestBed.inject(ApplicationRef).whenStable();
+
+    expect(logged).toEqual(['runtime.unhandled-rejection']);
   });
 
   it('does not read before anything is mounted', async () => {
