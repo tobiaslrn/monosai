@@ -33,10 +33,6 @@ export interface VocabularyFilterSheetData {
 /** Longer than the departure, so a missed `transitionend` still closes the dialog. */
 const DEPARTURE_FALLBACK_MS = 400;
 
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
 /** CDK dialog content used as a bottom sheet below the desktop breakpoint. */
 @Component({
   selector: 'mn-vocabulary-filter-sheet',
@@ -203,16 +199,18 @@ function prefersReducedMotion(): boolean {
         border-inline: 0;
         border-block-end: 0;
         border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-        transition: transform var(--motion-medium) var(--ease-exit);
       }
 
+      /* Leaving accelerates, as a native sheet does; springing back keeps the settle curve. */
       .sheet.is-leaving {
         transform: translateY(100%);
+        transition: transform var(--motion-medium) var(--ease-exit);
       }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .sheet {
+      .sheet,
+      .sheet.is-leaving {
         transition: none;
       }
     }
@@ -295,7 +293,7 @@ export class VocabularyFilterSheetComponent {
       return;
     }
     this.result = result;
-    if (!this.isMobile() || prefersReducedMotion()) {
+    if (!this.isMobile() || this.viewport.prefersReducedMotion()) {
       this.finish();
       return;
     }

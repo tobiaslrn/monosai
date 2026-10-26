@@ -12,21 +12,11 @@ import {
 
 describe('VocabularyFilterSheetComponent', () => {
   let media: FakeMediaMatcher;
-  let reduceMotion = false;
 
   beforeEach(() => {
     TestBed.resetTestingModule();
     TestBed.overrideProvider(CLOCK, { useValue: fixedClock(1_700_000_000_000) });
     media = installFakeMatchMedia(412);
-    reduceMotion = false;
-    const fake = window.matchMedia.bind(window);
-    window.matchMedia = (query: string) => {
-      const list = fake(query);
-      if (query.includes('prefers-reduced-motion')) {
-        Object.defineProperty(list, 'matches', { get: () => reduceMotion });
-      }
-      return list;
-    };
   });
 
   afterEach(() => {
@@ -144,7 +134,8 @@ describe('VocabularyFilterSheetComponent', () => {
   });
 
   it('closes at once when the user prefers reduced motion', () => {
-    reduceMotion = true;
+    media.restore();
+    media = installFakeMatchMedia(412, false, true);
     const { closed } = open();
 
     pressEscape();
