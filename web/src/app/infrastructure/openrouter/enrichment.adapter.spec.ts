@@ -29,6 +29,7 @@ const GRAMMAR_REQUEST: GrammarReviewRequest = {
 };
 
 const TRANSLATION_REQUEST: TranslationBatchRequest = {
+  kind: 'tail',
   window: [
     { targetId: S0, textJa: 'ねこがいます。' },
     { targetId: S1, textJa: 'ねこはねます。' },
@@ -159,16 +160,19 @@ describe('OpenRouterEnricher translation', () => {
     if (!result.ok) {
       return;
     }
-    expect(result.value).toEqual([
-      { id: S0, textEn: 'The cat is here.' },
-      { id: S1, textEn: 'The cat sleeps.' },
-    ]);
+    expect(result.value).toEqual({
+      translations: [
+        { id: S0, textEn: 'The cat is here.' },
+        { id: S1, textEn: 'The cat sleeps.' },
+      ],
+    });
     expect(context.server.callCount).toBe(1);
   });
 
   it('sends ordinals and context in one window, and restores the caller ids', async () => {
     const context = harness({ content: 'translations-full' });
     const contextual: TranslationBatchRequest = {
+      kind: 'tail',
       window: [
         { targetId: null, textJa: 'まえの文。', textEn: 'The sentence before.' },
         ...TRANSLATION_REQUEST.window,
@@ -200,6 +204,7 @@ describe('OpenRouterEnricher translation', () => {
     // Entry 0 is context, so ids "0" and "1" name one context entry and one
     // target — an extra translation, not a complete batch.
     const shifted: TranslationBatchRequest = {
+      kind: 'tail',
       window: [{ targetId: null, textJa: 'まえの文。' }, ...TRANSLATION_REQUEST.window],
       promptVersion: 'translation/1',
     };
@@ -213,20 +218,22 @@ describe('OpenRouterEnricher translation', () => {
     expect(result.error.code).toBe('malformed-response');
   });
 
-  it('treats a duplicate id as malformed, spending at most one recovery', async () => {
-    const context = harness({
-      content: 'translations-duplicate-id',
-      recoveryContent: 'translations-duplicate-id',
-    });
+  it('returns a duplicate id for the caller to settle, without a recovery', async () => {
+    const context = harness({ content: 'translations-duplicate-id' });
 
     const result = await context.text.translate(TRANSLATION_REQUEST, NATIVE);
 
-    expect(result.ok).toBe(false);
-    if (result.ok) {
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
       return;
     }
-    expect(result.error.code).toBe('malformed-response');
-    expect(context.server.callCount).toBe(2);
+    expect(result.value).toEqual({
+      translations: [
+        { id: S0, textEn: 'The cat is here.' },
+        { id: S0, textEn: 'The cat is here, again.' },
+      ],
+    });
+    expect(context.server.callCount).toBe(1);
   });
 
   it('treats an extra id as malformed, spending at most one recovery', async () => {
@@ -245,16 +252,17 @@ describe('OpenRouterEnricher translation', () => {
     expect(context.server.callCount).toBe(2);
   });
 
-  it('treats a partial reply as malformed', async () => {
+  it('returns a partial reply for the caller to settle, without a recovery', async () => {
     const context = harness({ content: 'translations-partial' });
 
     const result = await context.text.translate(TRANSLATION_REQUEST, NATIVE);
 
-    expect(result.ok).toBe(false);
-    if (result.ok) {
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
       return;
     }
-    expect(result.error.code).toBe('malformed-response');
+    expect(result.value).toEqual({ translations: [{ id: S0, textEn: 'The cat is here.' }] });
+    expect(context.server.callCount).toBe(1);
   });
 
   it('uses the opening contract with a required glossary and no provider ids for candidates', async () => {
@@ -292,10 +300,9 @@ describe('OpenRouterEnricher translation', () => {
   });
 
   it('uses the tail contract without requiring or returning a glossary', async () => {
-    const request: TranslationBatchRequest = { ...TRANSLATION_REQUEST, kind: 'tail' };
     const context = harness({ content: 'translations-full' });
 
-    const result = await context.text.translate(request, NATIVE);
+    const result = await context.text.translate(TRANSLATION_REQUEST, NATIVE);
 
     expect(result).toEqual({
       ok: true,

@@ -517,14 +517,6 @@ export const translationGlossaryRepairSchema = z
   .object({ glossary: z.array(glossaryEntrySchema).max(20) })
   .strict();
 
-/** Compatibility shape for callers that do not specify a request kind. */
-export const translationsSchema = z.object({
-  translations: z.array(translationEntrySchema).max(64),
-  glossary: z.array(glossaryEntrySchema).max(20).optional(),
-});
-
-export type TranslationsPayload = z.infer<typeof translationsSchema>;
-
 export function translationOpeningJsonSchema(targetCount: number): Record<string, unknown> {
   return translationJsonSchema('opening', targetCount);
 }

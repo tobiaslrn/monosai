@@ -6,7 +6,7 @@ import type { ModelTest, StructuredOutputMode, TextModelConfig } from './model-t
 import type { StructureIssue } from './story-structure';
 import type { StoryPlotRequest } from './story-plot';
 import type { StoryCandidate, StoryGenerationRequest } from './story-request';
-import type { TranslationBatchRequest, TranslationProviderResult } from './translation-request';
+import type { TranslationBatchRequest, TranslationResponse } from './translation-request';
 
 /**
  * How one generation task should talk to the model.
@@ -120,5 +120,5 @@ export interface TextGenerationProvider {
     request: TranslationBatchRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
-  ): Promise<Result<TranslationProviderResult, AiError>>;
+  ): Promise<Result<TranslationResponse, AiError>>;
 }

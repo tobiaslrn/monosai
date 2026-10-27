@@ -177,12 +177,8 @@ export const vocabularySourceCacheRowSchema = z.object({
   practice: practiceObservationBasisSchema,
 });
 
-/** Compatibility export for adapters/tests still using mapping terminology. */
-export const sourceMappingRowSchema = vocabularySourceRowSchema;
-
 export type VocabularySnapshotRow = z.infer<typeof vocabularySnapshotRowSchema>;
 export type VocabularyItemRow = z.infer<typeof vocabularyItemRowSchema>;
 export type VocabularyProvenanceRow = z.infer<typeof vocabularyProvenanceRowSchema>;
 export type VocabularySourceRow = z.infer<typeof vocabularySourceRowSchema>;
 export type VocabularySourceCacheRow = z.infer<typeof vocabularySourceCacheRowSchema>;
-export type SourceMappingRow = VocabularySourceRow;

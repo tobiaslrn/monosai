@@ -9,7 +9,7 @@ import type {
   VocabularySource,
 } from '../../domain/vocabulary/vocabulary-source';
 import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-source';
-import { CLOCK, ID_GENERATOR, SOURCE_MAPPING_REPOSITORY } from '../shared/repository-tokens';
+import { CLOCK, ID_GENERATOR, VOCABULARY_SOURCE_REPOSITORY } from '../shared/repository-tokens';
 
 export interface NewMapping {
   readonly providerKind: AnkiProviderKind;
@@ -32,7 +32,7 @@ export type MappingEdit = Partial<NewMapping>;
  */
 @Injectable({ providedIn: 'root' })
 export class SourceMappingStore {
-  private readonly repository = inject(SOURCE_MAPPING_REPOSITORY);
+  private readonly repository = inject(VOCABULARY_SOURCE_REPOSITORY);
   private readonly ids = inject(ID_GENERATOR);
   private readonly clock = inject(CLOCK);
 

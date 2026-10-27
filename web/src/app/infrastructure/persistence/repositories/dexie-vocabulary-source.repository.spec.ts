@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { sourceMappingId } from '../../../domain/shared/ids';
+import { vocabularySourceId } from '../../../domain/shared/ids';
 import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
 import { createTestDatabase, destroyTestDatabase } from '../../../../testing/test-database';
 import type { MonosaiDatabase } from '../monosai-db';
 import { ROW_VERSION } from '../schemas/common.schema';
-import { DexieSourceMappingRepository } from './dexie-source-mapping.repository';
+import { DexieVocabularySourceRepository } from './dexie-vocabulary-source.repository';
 import { unmeasuredBasis } from '../../../domain/anki/practice-evidence';
 
-const FIRST = sourceMappingId('11111111-1111-4111-8111-111111111111');
-const SECOND = sourceMappingId('22222222-2222-4222-8222-222222222222');
+const FIRST = vocabularySourceId('11111111-1111-4111-8111-111111111111');
+const SECOND = vocabularySourceId('22222222-2222-4222-8222-222222222222');
 
 function mapping(overrides: Partial<SourceMapping> = {}): SourceMapping {
   return {
@@ -29,13 +29,13 @@ function mapping(overrides: Partial<SourceMapping> = {}): SourceMapping {
   };
 }
 
-describe('DexieSourceMappingRepository', () => {
+describe('DexieVocabularySourceRepository', () => {
   let db: MonosaiDatabase;
-  let repository: DexieSourceMappingRepository;
+  let repository: DexieVocabularySourceRepository;
 
   beforeEach(async () => {
     db = await createTestDatabase();
-    repository = new DexieSourceMappingRepository(db);
+    repository = new DexieVocabularySourceRepository(db);
   });
 
   afterEach(async () => {

@@ -91,6 +91,7 @@ const CONTRACT_GRAMMAR_REQUEST: GrammarReviewRequest = {
 
 /** A minimal but complete translation request, for the shared guarantees. */
 const CONTRACT_TRANSLATION_REQUEST: TranslationBatchRequest = {
+  kind: 'tail',
   window: [
     {
       targetId: sentenceId('00000000-0000-4000-8000-000000000002'),

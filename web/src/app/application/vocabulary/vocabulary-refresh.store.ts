@@ -15,7 +15,7 @@ import {
   resolveMappings,
   type MappingResolution,
 } from '../../domain/anki/mapping-validation';
-import type { SourceMappingId } from '../../domain/shared/ids';
+import type { VocabularySourceId } from '../../domain/shared/ids';
 import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { SnapshotStats, VocabularySnapshot } from '../../domain/vocabulary/snapshot';
@@ -234,8 +234,8 @@ export class VocabularyRefreshStore {
 
     const entries: ExtractedEntry[] = [];
     const warnings: string[] = [];
-    const observed = new Map<SourceMappingId, PracticeObservationBasis>();
-    const seenMappings = new Set<SourceMappingId>();
+    const observed = new Map<VocabularySourceId, PracticeObservationBasis>();
+    const seenMappings = new Set<VocabularySourceId>();
 
     for await (const event of provider.extractReviewed(resolved, signal)) {
       switch (event.kind) {
@@ -275,7 +275,10 @@ export class VocabularyRefreshStore {
 
     this.warningsSignal.set(warnings);
     this.stateSignal.set({ kind: 'analyzing', completed: 0, total: entries.length });
-    const entriesBySource = new Map<SourceMappingId, VocabularySourceCache['entries'][number][]>();
+    const entriesBySource = new Map<
+      VocabularySourceId,
+      VocabularySourceCache['entries'][number][]
+    >();
     for (const source of resolved) {
       entriesBySource.set(source.id, []);
     }

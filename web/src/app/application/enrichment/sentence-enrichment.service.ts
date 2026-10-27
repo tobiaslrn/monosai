@@ -1,4 +1,4 @@
-import { Injectable, Injector, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
@@ -21,7 +21,6 @@ import { AudioSynthesisService, speechContextFor } from './audio-synthesis.servi
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { GrammarAnalysisService } from './grammar-analysis.service';
 import { TranslationJobStore } from './translation-job.store';
-import { TranslationService } from './translation.service';
 import {
   passageContextFingerprint,
   translationPassageWindow,
@@ -57,8 +56,7 @@ interface SentenceContext {
 @Injectable({ providedIn: 'root' })
 export class SentenceEnrichmentService {
   private readonly readings = inject(READING_REPOSITORY);
-  private readonly injector = inject(Injector);
-  private readonly translation = inject(TranslationService);
+  private readonly translationJobs = inject(TranslationJobStore);
   private readonly enrichment = inject(ENRICHMENT_REPOSITORY);
   private readonly hasher = inject(HASHER);
   private readonly grammar = inject(GrammarAnalysisService);
@@ -135,16 +133,8 @@ export class SentenceEnrichmentService {
         ),
       });
     }
-    // A sentence action joins the reading's plan-aware producer. The fallback
-    // exists only for isolated service tests whose injector deliberately omits
-    // the job infrastructure; the composed application always resolves it.
-    let translationJobs: TranslationJobStore;
-    try {
-      translationJobs = this.injector.get(TranslationJobStore);
-    } catch {
-      return this.translateWithoutJobInfrastructure(sentence, readingId, signal);
-    }
-    await translationJobs.start(readingId);
+    // A sentence action joins the reading's plan-aware producer.
+    await this.translationJobs.start(readingId);
     const [plan, records] = await Promise.all([
       this.enrichment.getTranslationPlan(readingId),
       this.enrichment.listTranslationsForSentences([sentence.id]),
@@ -177,7 +167,7 @@ export class SentenceEnrichmentService {
       record = [...records.value].sort((a, b) => b.createdAt - a.createdAt)[0];
     }
     if (record !== undefined) return ok(record);
-    const progress = translationJobs.progressFor(readingId);
+    const progress = this.translationJobs.progressFor(readingId);
     return err({
       source: 'provider',
       error:
@@ -185,37 +175,6 @@ export class SentenceEnrichmentService {
           ? progress.error.error
           : aiError('unknown', 'translation', 'The sentence is still missing after translation.'),
     });
-  }
-
-  private async translateWithoutJobInfrastructure(
-    sentence: Sentence,
-    readingId: ReadingId,
-    signal: AbortSignal,
-  ): Promise<EnrichmentResult<TranslationRecord>> {
-    const context = await this.contextFor(readingId, 'translation', (refs, modelId) =>
-      this.keys.translationKeys(refs, modelId, PROMPT_VERSIONS.translation),
-    );
-    if (!context.ok) return context;
-    const outcome = await this.translation.run(
-      [sentence],
-      readingId,
-      context.value.cacheKeys,
-      context.value.modelId,
-      PROMPT_VERSIONS.translation,
-      context.value.taskConfig,
-      signal,
-    );
-    const record = outcome.records.at(0);
-    if (record === undefined) {
-      return err({
-        source: 'provider',
-        error:
-          outcome.error ??
-          aiError('cancelled', 'translation', 'The translation was stopped before it finished.'),
-      });
-    }
-    const stored = await this.translation.store(record, context.value.cacheKeys);
-    return stored.ok ? ok(stored.value) : err({ source: 'storage', error: stored.error });
   }
 
   async analyzeGrammar(

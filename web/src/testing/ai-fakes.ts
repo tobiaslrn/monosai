@@ -31,8 +31,7 @@ import type {
 import {
   translationTargets,
   type TranslationBatchRequest,
-  type TranslationProviderResult,
-  type TranslationResult,
+  type TranslationResponse,
 } from '../app/domain/ai/translation-request';
 import type { CredentialStatus } from '../app/domain/settings/credential';
 import type { CredentialRepository } from '../app/domain/settings/credential-repository';
@@ -255,7 +254,7 @@ export class StubTextProvider implements TextGenerationProvider {
   readonly repairQueue: Result<StoryCandidate, AiError>[] = [];
   readonly reviewQueue: Result<readonly ExceptionDecision[], AiError>[] = [];
   readonly grammarQueue: Result<GrammarReviewResult, AiError>[] = [];
-  readonly translationQueue: Result<readonly TranslationResult[], AiError>[] = [];
+  readonly translationQueue: Result<TranslationResponse, AiError>[] = [];
 
   /** Runs just before each generation answer, so a test can cancel mid-flight. */
   beforeAnswer: (() => void) | null = null;
@@ -268,8 +267,7 @@ export class StubTextProvider implements TextGenerationProvider {
    * would decide the expected count in advance.
    */
   translateWith:
-    ((request: TranslationBatchRequest) => Result<readonly TranslationResult[], AiError>) | null =
-    null;
+    ((request: TranslationBatchRequest) => Result<TranslationResponse, AiError>) | null = null;
 
   constructor(private outcome: Result<ModelTest, AiError>) {}
 
@@ -346,7 +344,7 @@ export class StubTextProvider implements TextGenerationProvider {
     request: TranslationBatchRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
-  ): Promise<Result<TranslationProviderResult, AiError>> {
+  ): Promise<Result<TranslationResponse, AiError>> {
     this.generationCalls.translate += 1;
     this.translationRequests.push(request);
     this.configs.push(config);
@@ -354,10 +352,16 @@ export class StubTextProvider implements TextGenerationProvider {
       this.translationQueue.push(this.translateWith(request));
     }
     const answer = await this.answer('translation', this.translationQueue, signal);
-    if (!answer.ok || (request.kind !== 'opening' && request.kind !== 'glossary-repair')) {
+    // Like the parsed reply, an opening or repair answer always carries a
+    // glossary, so a queued answer that does not care about one gets it empty.
+    if (
+      !answer.ok ||
+      answer.value.glossary !== undefined ||
+      (request.kind !== 'opening' && request.kind !== 'glossary-repair')
+    ) {
       return answer;
     }
-    return ok({ translations: answer.value, glossary: [] });
+    return ok({ ...answer.value, glossary: [] });
   }
 
   private answer<T>(
@@ -554,12 +558,12 @@ export function autoAnswerAuxiliary(provider: StubTextProvider): void {
     if (provider.translationRequests.length > answeredTranslation) {
       const request = provider.translationRequests[provider.translationRequests.length - 1];
       provider.translationQueue.push(
-        ok(
-          translationTargets(request).map((sentence) => ({
+        ok({
+          translations: translationTargets(request).map((sentence) => ({
             id: sentence.id,
             textEn: `EN: ${sentence.textJa}`,
           })),
-        ),
+        }),
       );
       answeredTranslation = provider.translationRequests.length;
     }

@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fixedClock } from '../../../domain/shared/clock';
-import { sourceMappingId } from '../../../domain/shared/ids';
+import { vocabularySourceId } from '../../../domain/shared/ids';
 import { DEFAULT_GRAMMAR_PROFILE_SELECTION } from '../../../domain/grammar/profile';
 import { createTestDatabase, destroyTestDatabase } from '../../../../testing/test-database';
 import { uuid } from '../../../../testing/persistence-fixtures';
 import type { MonosaiDatabase } from '../monosai-db';
 import { DexieGrammarRepository } from './dexie-grammar.repository';
-import { DexieSourceMappingRepository } from './dexie-source-mapping.repository';
+import { DexieVocabularySourceRepository } from './dexie-vocabulary-source.repository';
 
 describe('DexieGrammarRepository', () => {
   let db: MonosaiDatabase;
@@ -99,13 +99,13 @@ describe('DexieGrammarRepository', () => {
   });
 });
 
-describe('DexieSourceMappingRepository', () => {
+describe('DexieVocabularySourceRepository', () => {
   let db: MonosaiDatabase;
-  let repository: DexieSourceMappingRepository;
+  let repository: DexieVocabularySourceRepository;
 
   beforeEach(async () => {
     db = await createTestDatabase();
-    repository = new DexieSourceMappingRepository(db);
+    repository = new DexieVocabularySourceRepository(db);
   });
 
   afterEach(async () => {
@@ -113,7 +113,7 @@ describe('DexieSourceMappingRepository', () => {
   });
 
   const mapping = {
-    id: sourceMappingId(uuid(8400)),
+    id: vocabularySourceId(uuid(8400)),
     kind: 'anki-connect' as const,
     label: 'Anki · Core Japanese · Expression',
     providerKind: 'desktop-connect' as const,
@@ -145,7 +145,7 @@ describe('DexieSourceMappingRepository', () => {
   });
 
   it('reports a missing mapping instead of creating one', async () => {
-    const missing = await repository.setEnabled(sourceMappingId(uuid(8499)), false);
+    const missing = await repository.setEnabled(vocabularySourceId(uuid(8499)), false);
 
     expect(missing.ok).toBe(false);
     if (missing.ok) {

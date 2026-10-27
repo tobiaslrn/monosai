@@ -48,8 +48,8 @@ export function translationWireId(index: number): string {
   return String(index);
 }
 
-export function translationJsonContract(kind: TranslationBatchRequest['kind'] | undefined): string {
-  switch (kind ?? 'tail') {
+export function translationJsonContract(kind: TranslationBatchRequest['kind']): string {
+  switch (kind) {
     case 'opening':
       return OPENING_JSON_CONTRACT;
     case 'glossary-repair':
@@ -60,7 +60,7 @@ export function translationJsonContract(kind: TranslationBatchRequest['kind'] | 
 }
 
 export function buildTranslationPrompt(request: TranslationBatchRequest): AssembledPrompt {
-  const kind = request.kind ?? 'tail';
+  const kind = request.kind;
   const system = assemble([PROTOCOL_LAYER, TASK_LAYER.join('\n')]);
 
   const user = assemble([

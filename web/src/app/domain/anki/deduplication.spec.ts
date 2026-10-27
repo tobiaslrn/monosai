@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { snapshotId, sourceMappingId, vocabularyItemId } from '../shared/ids';
+import { snapshotId, vocabularySourceId, vocabularyItemId } from '../shared/ids';
 import type { VocabularyItemId } from '../shared/ids';
 import { mergeEntries, type PreparedEntry } from './deduplication';
 
 const SNAPSHOT = snapshotId('33333333-3333-4333-8333-333333333333');
-const MAPPING_A = sourceMappingId('11111111-1111-4111-8111-111111111111');
-const MAPPING_B = sourceMappingId('22222222-2222-4222-8222-222222222222');
+const MAPPING_A = vocabularySourceId('11111111-1111-4111-8111-111111111111');
+const MAPPING_B = vocabularySourceId('22222222-2222-4222-8222-222222222222');
 
 function idSequence(): () => VocabularyItemId {
   let next = 0;

@@ -120,12 +120,12 @@ async function configure(): Promise<JobTestBed> {
   });
 
   provider.translateWith = (request) =>
-    ok(
-      translationTargets(request).map((sentence) => ({
+    ok({
+      translations: translationTargets(request).map((sentence) => ({
         id: sentence.id,
         textEn: `EN ${sentence.textJa}`,
       })),
-    );
+    });
 
   return {
     db,
@@ -218,7 +218,7 @@ describe('TranslationJobStore', () => {
         id: sentence.id,
         textEn: `EN ${sentence.textJa}`,
       }));
-      return ok(request.kind === 'opening' ? { translations, glossary: [] } : translations);
+      return ok(request.kind === 'opening' ? { translations, glossary: [] } : { translations });
     });
 
     await bed.store.start(draft.reading.id);
@@ -241,12 +241,12 @@ describe('TranslationJobStore', () => {
       call += 1;
       return call === 2
         ? err(aiError('provider-unavailable', 'translation', 'The provider was unavailable.'))
-        : ok(
-            translationTargets(request).map((sentence) => ({
+        : ok({
+            translations: translationTargets(request).map((sentence) => ({
               id: sentence.id,
               textEn: `English for ${sentence.textJa}`,
             })),
-          );
+          });
     };
 
     await bed.store.start(bed.draft.reading.id);
@@ -299,12 +299,12 @@ describe('TranslationJobStore', () => {
     await bed.store.start(bed.draft.reading.id);
 
     bed.provider.translateWith = (request) =>
-      ok(
-        translationTargets(request).map((sentence) => ({
+      ok({
+        translations: translationTargets(request).map((sentence) => ({
           id: sentence.id,
           textEn: `EN ${sentence.textJa}`,
         })),
-      );
+      });
     await bed.store.retry(bed.draft.reading.id);
 
     expect(bed.store.progress().kind).toBe('complete');

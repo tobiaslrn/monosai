@@ -15,7 +15,7 @@ import {
   READING_MUTATION_CHANNEL,
   READING_REPOSITORY,
   SETTINGS_REPOSITORY,
-  SOURCE_MAPPING_REPOSITORY,
+  VOCABULARY_SOURCE_REPOSITORY,
   STORAGE_MAINTENANCE,
   VOCABULARY_REPOSITORY,
 } from '../../application/shared/repository-tokens';
@@ -33,7 +33,7 @@ import { DexieGrammarRepository } from './repositories/dexie-grammar.repository'
 import { DexieJobRepository } from './repositories/dexie-job.repository';
 import { DexieReadingRepository } from './repositories/dexie-reading.repository';
 import { DexieSettingsRepository } from './repositories/dexie-settings.repository';
-import { DexieSourceMappingRepository } from './repositories/dexie-source-mapping.repository';
+import { DexieVocabularySourceRepository } from './repositories/dexie-vocabulary-source.repository';
 import { DexieVocabularyRepository } from './repositories/dexie-vocabulary.repository';
 import { configureStorageLogger } from './repositories/storage-operation';
 import { LOGGER, type Logger } from '../../application/shared/diagnostics';
@@ -104,8 +104,8 @@ export function providePersistence(): Provider[] {
       useFactory: () => new DexieVocabularyRepository(inject(MonosaiDatabase)),
     },
     {
-      provide: SOURCE_MAPPING_REPOSITORY,
-      useFactory: () => new DexieSourceMappingRepository(inject(MonosaiDatabase)),
+      provide: VOCABULARY_SOURCE_REPOSITORY,
+      useFactory: () => new DexieVocabularySourceRepository(inject(MonosaiDatabase)),
     },
     {
       provide: GRAMMAR_REPOSITORY,

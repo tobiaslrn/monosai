@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sentenceId } from '../shared/ids';
-import { isErr, isOk } from '../shared/result';
-import {
-  MAX_TRANSLATION_BATCH,
-  matchTranslations,
-  partitionTranslations,
-  planBatches,
-} from './translation-request';
+import { MAX_TRANSLATION_BATCH, partitionTranslations, planBatches } from './translation-request';
 
 describe('planBatches', () => {
   it('produces no batches for an empty input', () => {
@@ -39,81 +33,6 @@ describe('planBatches', () => {
 
   it('honours an override maximum', () => {
     expect(planBatches([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
-  });
-});
-
-describe('matchTranslations', () => {
-  const requested = [
-    { id: sentenceId('s1'), textJa: '一つ目。' },
-    { id: sentenceId('s2'), textJa: '二つ目。' },
-  ];
-
-  it('succeeds and preserves requested order', () => {
-    const returned = [
-      { id: sentenceId('s2'), textEn: 'Second.' },
-      { id: sentenceId('s1'), textEn: 'First.' },
-    ];
-
-    const result = matchTranslations(requested, returned);
-
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
-      expect(result.value.map((entry) => entry.id)).toEqual([sentenceId('s1'), sentenceId('s2')]);
-    }
-  });
-
-  it('rejects a returned id that was not requested', () => {
-    const returned = [
-      { id: sentenceId('s1'), textEn: 'First.' },
-      { id: sentenceId('s2'), textEn: 'Second.' },
-      { id: sentenceId('s3'), textEn: 'Extra.' },
-    ];
-
-    const result = matchTranslations(requested, returned);
-
-    expect(isErr(result)).toBe(true);
-    if (isErr(result)) {
-      expect(result.error).toBe('extra');
-    }
-  });
-
-  it('rejects when a requested id is missing from the response', () => {
-    const returned = [{ id: sentenceId('s1'), textEn: 'First.' }];
-
-    const result = matchTranslations(requested, returned);
-
-    expect(isErr(result)).toBe(true);
-    if (isErr(result)) {
-      expect(result.error).toBe('missing');
-    }
-  });
-
-  it('rejects a duplicate id in the response', () => {
-    const returned = [
-      { id: sentenceId('s1'), textEn: 'First.' },
-      { id: sentenceId('s1'), textEn: 'First again.' },
-    ];
-
-    const result = matchTranslations(requested, returned);
-
-    expect(isErr(result)).toBe(true);
-    if (isErr(result)) {
-      expect(result.error).toBe('duplicate');
-    }
-  });
-
-  it('rejects a blank translation', () => {
-    const returned = [
-      { id: sentenceId('s1'), textEn: '   ' },
-      { id: sentenceId('s2'), textEn: 'Second.' },
-    ];
-
-    const result = matchTranslations(requested, returned);
-
-    expect(isErr(result)).toBe(true);
-    if (isErr(result)) {
-      expect(result.error).toBe('blank');
-    }
   });
 });
 

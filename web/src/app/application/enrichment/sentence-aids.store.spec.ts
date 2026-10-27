@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { inject, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
@@ -9,7 +9,13 @@ import type { GeneratedStory, ImportedReading } from '../../domain/reading/readi
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { DEFAULT_READER_PREFERENCES } from '../../domain/settings/settings';
 import type { Hasher } from '../../domain/shared/hashing';
-import { paragraphId, readingId, sentenceId, snapshotId } from '../../domain/shared/ids';
+import {
+  paragraphId,
+  readingId,
+  sentenceId,
+  snapshotId,
+  type ReadingId,
+} from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
 import {
   autoAnswerAuxiliary,
@@ -39,6 +45,11 @@ import { EnrichmentKeysService } from './enrichment-keys.service';
 import { GrammarAnalysisService } from './grammar-analysis.service';
 import { SentenceAidsStore } from './sentence-aids.store';
 import { SentenceEnrichmentService } from './sentence-enrichment.service';
+import {
+  TranslationJobStore,
+  type TranslationJobError,
+  type TranslationJobProgress,
+} from './translation-job.store';
 import { TranslationService } from './translation.service';
 
 const READING_ID = readingId('r1');
@@ -153,6 +164,76 @@ function analysisFor(
   };
 }
 
+/**
+ * The reading's translation job, reduced to one pass of the real translation
+ * service over every sentence of the reading.
+ *
+ * Planning, batching, and persistence of the job are the job store's own specs'
+ * business. A sentence action only needs a job to join and, afterwards, either
+ * the stored translation or the reason the job failed.
+ */
+class OnePassTranslationJobStore implements Pick<TranslationJobStore, 'start' | 'progressFor'> {
+  private readonly readings = inject(READING_REPOSITORY);
+  private readonly translation = inject(TranslationService);
+  private readonly keys = inject(EnrichmentKeysService);
+  private readonly textModel = inject(TextModelStore);
+  private progress: TranslationJobProgress = { kind: 'idle' };
+
+  async start(readingId: ReadingId): Promise<void> {
+    // Refusing an untested model is the job store's own decision, specified in
+    // its spec; every reading here runs under a tested one.
+    const { modelId, structuredOutput } = this.textModel.settings();
+    if (structuredOutput === null) throw new Error('These specs run under a tested model.');
+    const refs = await this.readings.listSentenceRefs(readingId);
+    const loaded = refs.ok
+      ? await this.readings.loadSentences(refs.value.map((ref) => ref.id))
+      : refs;
+    if (!loaded.ok) throw new Error('The fake reading repository should not fail here.');
+    const cacheKeys = this.keys.translationKeys(loaded.value, modelId, PROMPT_VERSIONS.translation);
+    const outcome = await this.translation.run(
+      loaded.value,
+      readingId,
+      cacheKeys,
+      modelId,
+      PROMPT_VERSIONS.translation,
+      { modelId, structuredOutput },
+      new AbortController().signal,
+    );
+    for (const record of outcome.records) {
+      const stored = await this.translation.store(record, cacheKeys);
+      if (!stored.ok) {
+        this.fail(readingId, { source: 'storage', error: stored.error });
+        return;
+      }
+    }
+    if (outcome.error !== null) {
+      this.fail(readingId, { source: 'provider', error: outcome.error });
+      return;
+    }
+    const total = loaded.value.length;
+    this.progress = {
+      kind: 'complete',
+      readingId,
+      counts: { total, requested: total, completed: outcome.records.length, failed: 0 },
+    };
+  }
+
+  progressFor(readingId: ReadingId): TranslationJobProgress {
+    return this.progress.kind !== 'idle' && this.progress.readingId === readingId
+      ? this.progress
+      : { kind: 'idle' };
+  }
+
+  private fail(readingId: ReadingId, error: TranslationJobError): void {
+    this.progress = {
+      kind: 'failed',
+      readingId,
+      counts: { total: 0, requested: 0, completed: 0, failed: 0 },
+      error,
+    };
+  }
+}
+
 /** Everything the aids store and its enrichment service need, with fakes. */
 /**
  * The saved speech configuration a spec runs under.
@@ -178,7 +259,6 @@ function aidsProviders(
   readings: FakeReadingRepository,
   provider: StubTextProvider,
   liveProfileHash: ReturnType<typeof signal<string | null>>,
-  modelId = MODEL_ID,
   tts: TtsStub = ttsStub(),
 ): unknown[] {
   let nextId = 0;
@@ -188,6 +268,7 @@ function aidsProviders(
     TranslationService,
     GrammarAnalysisService,
     EnrichmentKeysService,
+    { provide: TranslationJobStore, useFactory: () => new OnePassTranslationJobStore() },
     { provide: ENRICHMENT_REPOSITORY, useValue: enrichment },
     { provide: READING_REPOSITORY, useValue: readings },
     { provide: HASHER, useValue: HASH },
@@ -220,7 +301,7 @@ function aidsProviders(
     {
       provide: TextModelStore,
       useValue: {
-        settings: signal({ modelId, structuredOutput: modelId === '' ? null : 'json-schema' }),
+        settings: signal({ modelId: MODEL_ID, structuredOutput: 'json-schema' }),
       },
     },
     {
@@ -458,24 +539,6 @@ describe('SentenceAidsStore', () => {
       await store.analyzeGrammar(window[0].id);
 
       expect(provider.generationCalls.grammar).toBe(0);
-    });
-
-    it('reports a missing text model as a failure instead of requesting anything', async () => {
-      TestBed.resetTestingModule();
-      const window = sentences(1);
-      readings.sentences = [...window];
-      TestBed.configureTestingModule({
-        providers: aidsProviders(enrichment, readings, provider, profileHash, ''),
-      });
-      const bare = TestBed.inject(SentenceAidsStore);
-
-      await bare.load(importedReading(), window);
-      await bare.translateSentence(window[0].id);
-
-      expect(provider.generationCalls.translate).toBe(0);
-      expect(bare.aids().get(window[0].id)?.translationAction.error?.error.code).toBe(
-        'capability-unsupported',
-      );
     });
   });
 });

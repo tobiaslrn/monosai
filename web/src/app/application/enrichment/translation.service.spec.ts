@@ -65,12 +65,12 @@ describe('TranslationService', () => {
   it('carries a neighbour and its finished English into the next batch', async () => {
     const list = sentences(MAX_TRANSLATION_BATCH + 2);
     provider.translateWith = (request) =>
-      ok(
-        translationTargets(request).map((sentence) => ({
+      ok({
+        translations: translationTargets(request).map((sentence) => ({
           id: sentence.id,
           textEn: `EN ${sentence.textJa}`,
         })),
-      );
+      });
 
     await service.run(
       list,
@@ -103,8 +103,8 @@ describe('TranslationService', () => {
       japaneseText: '夜に優希は帰った。',
     };
     provider.translateWith = (request) =>
-      ok(
-        translationTargets(request).map((sentence) => ({
+      ok({
+        translations: translationTargets(request).map((sentence) => ({
           id: sentence.id,
           textEn:
             sentence.textJa === '優希は家を出た。'
@@ -113,7 +113,7 @@ describe('TranslationService', () => {
                 ? 'Yuki returned at night.'
                 : `EN ${sentence.textJa}`,
         })),
-      );
+      });
 
     await service.run(
       list,
@@ -142,7 +142,12 @@ describe('TranslationService', () => {
   it('translates every sentence in one batch when the story is small', async () => {
     const list = sentences(3);
     provider.translationQueue.push(
-      ok(list.map((sentence) => ({ id: sentence.id, textEn: `EN ${sentence.japaneseText}` }))),
+      ok({
+        translations: list.map((sentence) => ({
+          id: sentence.id,
+          textEn: `EN ${sentence.japaneseText}`,
+        })),
+      }),
     );
 
     const outcome = await service.run(
@@ -248,7 +253,7 @@ describe('TranslationService', () => {
   it('falls through to the provider when the cache read itself fails', async () => {
     const list = sentences(1);
     enrichment.failGetTranslationWith = storageError('unavailable', 'x');
-    provider.translationQueue.push(ok([{ id: list[0].id, textEn: 'EN.' }]));
+    provider.translationQueue.push(ok({ translations: [{ id: list[0].id, textEn: 'EN.' }] }));
 
     const outcome = await service.run(
       list,
@@ -267,12 +272,16 @@ describe('TranslationService', () => {
   it('splits into bounded batches and preserves order through ids', async () => {
     const list = sentences(MAX_TRANSLATION_BATCH + 2);
     provider.translationQueue.push(
-      ok(
-        list
+      ok({
+        translations: list
           .slice(0, MAX_TRANSLATION_BATCH)
           .map((sentence) => ({ id: sentence.id, textEn: 'EN.' })),
-      ),
-      ok(list.slice(MAX_TRANSLATION_BATCH).map((sentence) => ({ id: sentence.id, textEn: 'EN.' }))),
+      }),
+      ok({
+        translations: list
+          .slice(MAX_TRANSLATION_BATCH)
+          .map((sentence) => ({ id: sentence.id, textEn: 'EN.' })),
+      }),
     );
 
     const outcome = await service.run(
@@ -312,7 +321,7 @@ describe('TranslationService', () => {
 
   it('rejects a batch whose returned ids do not match what was requested', async () => {
     const list = sentences(1);
-    const extra = ok([{ id: sentenceId('not-requested'), textEn: 'EN.' }]);
+    const extra = ok({ translations: [{ id: sentenceId('not-requested'), textEn: 'EN.' }] });
     provider.translationQueue.push(extra, extra);
 
     const outcome = await service.run(
@@ -332,14 +341,18 @@ describe('TranslationService', () => {
   it('keeps what a partial reply settled and re-asks only for the rest', async () => {
     const list = sentences(3);
     provider.translationQueue.push(
-      ok([
-        { id: list[0].id, textEn: 'EN one.' },
-        { id: list[1].id, textEn: '   ' },
-      ]),
-      ok([
-        { id: list[1].id, textEn: 'EN two.' },
-        { id: list[2].id, textEn: 'EN three.' },
-      ]),
+      ok({
+        translations: [
+          { id: list[0].id, textEn: 'EN one.' },
+          { id: list[1].id, textEn: '   ' },
+        ],
+      }),
+      ok({
+        translations: [
+          { id: list[1].id, textEn: 'EN two.' },
+          { id: list[2].id, textEn: 'EN three.' },
+        ],
+      }),
     );
 
     const outcome = await service.run(
@@ -365,8 +378,8 @@ describe('TranslationService', () => {
   it('re-asks only once, and fails whatever is still unresolved', async () => {
     const list = sentences(2);
     provider.translationQueue.push(
-      ok([{ id: list[0].id, textEn: 'EN one.' }]),
-      ok([{ id: list[1].id, textEn: '' }]),
+      ok({ translations: [{ id: list[0].id, textEn: 'EN one.' }] }),
+      ok({ translations: [{ id: list[1].id, textEn: '' }] }),
     );
 
     const outcome = await service.run(
@@ -391,11 +404,11 @@ describe('TranslationService', () => {
       controller.abort();
     };
     provider.translationQueue.push(
-      ok(
-        list
+      ok({
+        translations: list
           .slice(0, MAX_TRANSLATION_BATCH)
           .map((sentence) => ({ id: sentence.id, textEn: 'EN.' })),
-      ),
+      }),
     );
 
     const outcome = await service.run(

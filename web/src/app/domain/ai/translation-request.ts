@@ -1,5 +1,4 @@
 import type { SentenceId } from '../shared/ids';
-import { err, ok, type Result } from '../shared/result';
 import type { FrozenGlossaryEntry, TranslationCandidate } from '../enrichment/translation-plan';
 
 /** How many sentences one translation request may carry. */
@@ -44,7 +43,7 @@ export interface EstablishedRendering {
 
 export interface TranslationBatchRequest {
   /** Opening establishes terminology, tail consumes it, repair asks for terminology only. */
-  readonly kind?: 'opening' | 'tail' | 'glossary-repair';
+  readonly kind: 'opening' | 'tail' | 'glossary-repair';
   readonly window: readonly TranslationWindowEntry[];
   /** The reading's Japanese title, when it has one, as subject-matter context. */
   readonly titleJa?: string;
@@ -72,24 +71,9 @@ export interface TranslationResponse {
   readonly glossary?: readonly FrozenGlossaryEntry[];
 }
 
-/** Compatibility for existing provider fakes while callers migrate to the response envelope. */
-export type TranslationProviderResult = readonly TranslationResult[] | TranslationResponse;
-
-export function isTranslationResponse(
-  result: TranslationProviderResult,
-): result is TranslationResponse {
-  return !Array.isArray(result);
-}
-
-export function translationResults(
-  result: TranslationProviderResult,
-): readonly TranslationResult[] {
-  return isTranslationResponse(result) ? result.translations : result;
-}
-
 /** The entries a batch actually asks for, in reading order. */
 export function translationTargets(
-  request: TranslationBatchRequest,
+  request: Pick<TranslationBatchRequest, 'window'>,
 ): readonly { readonly id: SentenceId; readonly textJa: string }[] {
   return request.window.flatMap((entry) =>
     entry.targetId === null ? [] : [{ id: entry.targetId, textJa: entry.textJa }],
@@ -119,11 +103,9 @@ export interface TranslationPartition {
 /**
  * Splits a reply into what is usable and what still has to be asked for.
  *
- * The all-or-nothing rule {@link matchTranslations} applies is right where
- * there is no way to ask again — one bad id there means the reply cannot be
- * trusted. A caller that *can* re-ask does better by keeping the nine good
- * translations and re-requesting the tenth, rather than throwing away nine
- * requests the learner already paid for.
+ * A caller that can re-ask does better by keeping the nine good translations
+ * and re-requesting the tenth, rather than throwing away nine requests the
+ * learner already paid for.
  *
  * One case still voids the whole batch, and is reported by returning every
  * requested id as unresolved: an id that was never sent. A model returning an
@@ -170,48 +152,4 @@ export function partitionTranslations(
     }
   }
   return { matched, unresolved };
-}
-
-/**
- * Matches a provider's returned translations back to what was requested.
- *
- * Rejects rather than partially accepting: a response with an extra, missing,
- * duplicate, or blank translation cannot be trusted to have translated the
- * rest correctly either, so the whole batch is retried or repaired together.
- */
-export function matchTranslations(
-  requested: readonly { readonly id: SentenceId; readonly textJa: string }[],
-  returned: readonly TranslationResult[],
-): Result<readonly TranslationResult[], string> {
-  const requestedIds = new Set(requested.map((sentence) => sentence.id));
-  const seen = new Set<SentenceId>();
-  const byId = new Map<SentenceId, TranslationResult>();
-
-  for (const result of returned) {
-    if (!requestedIds.has(result.id)) {
-      return err('extra');
-    }
-    if (seen.has(result.id)) {
-      return err('duplicate');
-    }
-    seen.add(result.id);
-    if (result.textEn.trim() === '') {
-      return err('blank');
-    }
-    byId.set(result.id, result);
-  }
-
-  if (seen.size !== requestedIds.size) {
-    return err('missing');
-  }
-
-  return ok(
-    requested.map((sentence) => {
-      const match = byId.get(sentence.id);
-      if (match === undefined) {
-        throw new Error('matchTranslations: internal invariant violated');
-      }
-      return match;
-    }),
-  );
 }

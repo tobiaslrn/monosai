@@ -22,7 +22,7 @@ import { runStorage } from './storage-operation';
  * indexed. Caches are read here but written by the vocabulary commit, which
  * replaces them in the same transaction as the snapshot they produced.
  */
-export class DexieSourceMappingRepository implements VocabularySourceRepository {
+export class DexieVocabularySourceRepository implements VocabularySourceRepository {
   constructor(private readonly db: MonosaiDatabase) {}
 
   async list(): Promise<Result<readonly VocabularySource[], StorageError>> {

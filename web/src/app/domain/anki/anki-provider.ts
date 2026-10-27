@@ -1,6 +1,6 @@
 import type { Result } from '../shared/result';
 import type { AnkiFieldSample } from '../vocabulary/suggest-anki-mapping';
-import type { SourceMappingId } from '../shared/ids';
+import type { VocabularySourceId } from '../shared/ids';
 import type { AnkiProviderKind } from '../vocabulary/snapshot';
 import type { SourceMapping } from '../vocabulary/source-mapping';
 import type { AnkiCapabilities } from './capabilities';
@@ -17,7 +17,7 @@ import type { PracticeEvidence, PracticeObservationBasis } from './practice-evid
  * from the same field and no adapter can quietly apply its own cleanup.
  */
 export interface ExtractedEntry {
-  readonly sourceMappingId: SourceMappingId;
+  readonly sourceMappingId: VocabularySourceId;
   /** Absent when the note has no value for the selected field at all. */
   readonly rawFieldValue?: string;
   /** Absent when no meaning field is mapped or the note has no value there. */
@@ -52,7 +52,7 @@ export interface ExtractedEntry {
 export type AnkiExtractionEvent =
   | {
       readonly kind: 'progress';
-      readonly mappingId: SourceMappingId;
+      readonly mappingId: VocabularySourceId;
       readonly examined: number;
       readonly total: number | null;
     }
@@ -66,7 +66,7 @@ export type AnkiExtractionEvent =
        * which nothing could be asked.
        */
       readonly kind: 'observed';
-      readonly mappingId: SourceMappingId;
+      readonly mappingId: VocabularySourceId;
       readonly basis: PracticeObservationBasis;
     }
   | { readonly kind: 'warning'; readonly message: string }

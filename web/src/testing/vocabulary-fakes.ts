@@ -9,7 +9,7 @@ import {
   HASHER,
   ID_GENERATOR,
   SETTINGS_REPOSITORY,
-  SOURCE_MAPPING_REPOSITORY,
+  VOCABULARY_SOURCE_REPOSITORY,
   VOCABULARY_REPOSITORY,
 } from '../app/application/shared/repository-tokens';
 import { HOST_PLATFORM, type HostPlatform } from '../app/domain/platform/host-platform';
@@ -36,7 +36,7 @@ import type {
   SharedPackageInbox,
 } from '../app/domain/platform/shared-package-inbox.port';
 import { SHARED_PACKAGE_INBOX } from '../app/domain/platform/shared-package-inbox.port';
-import type { SourceMappingRepository } from '../app/domain/vocabulary/source-mapping-repository';
+import type { VocabularySourceRepository } from '../app/domain/vocabulary/vocabulary-source-repository';
 import {
   isIncludedInVocabulary,
   type VocabularySource,
@@ -64,7 +64,7 @@ const FIXED_NOW = 1_700_000_000_000;
  */
 export class StubVocabularyRepository implements VocabularyRepository {
   /** Set so a commit writes its sources and caches the way the transaction does. */
-  sources: StubSourceMappingRepository | null = null;
+  sources: StubVocabularySourceRepository | null = null;
   readonly snapshots: VocabularySnapshot[] = [];
   readonly items: VocabularyItem[] = [];
   readonly provenance: VocabularyProvenance[] = [];
@@ -223,7 +223,7 @@ export class StubVocabularyRepository implements VocabularyRepository {
   }
 }
 
-export class StubSourceMappingRepository implements SourceMappingRepository {
+export class StubVocabularySourceRepository implements VocabularySourceRepository {
   readonly stored = new Map<VocabularySourceId, VocabularySource>();
   readonly caches = new Map<VocabularySourceId, VocabularySourceCache>();
   saveFailure: StorageError | null = null;
@@ -384,7 +384,7 @@ const TEST_HASHER: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})
 
 export interface VocabularyTestBed {
   readonly vocabulary: StubVocabularyRepository;
-  readonly mappings: StubSourceMappingRepository;
+  readonly mappings: StubVocabularySourceRepository;
   readonly runtime: SingleTokenLanguageRuntime;
   readonly sharedInbox: StubSharedPackageInbox;
 }
@@ -409,7 +409,7 @@ function sequentialIds(): { nextId: () => string } {
  */
 export function configureVocabularyTestBed(): VocabularyTestBed {
   const vocabulary = new StubVocabularyRepository();
-  const mappings = new StubSourceMappingRepository();
+  const mappings = new StubVocabularySourceRepository();
   vocabulary.sources = mappings;
   const runtime = new SingleTokenLanguageRuntime();
   const sharedInbox = new StubSharedPackageInbox();
@@ -422,7 +422,7 @@ export function configureVocabularyTestBed(): VocabularyTestBed {
       VocabularyRefreshStore,
       VocabularyClassificationService,
       { provide: VOCABULARY_REPOSITORY, useValue: vocabulary },
-      { provide: SOURCE_MAPPING_REPOSITORY, useValue: mappings },
+      { provide: VOCABULARY_SOURCE_REPOSITORY, useValue: mappings },
       { provide: SETTINGS_REPOSITORY, useValue: new StubSettingsRepository(vocabulary) },
       { provide: LANGUAGE_RUNTIME, useValue: runtime },
       { provide: MARKUP_TEXT_EXTRACTOR, useValue: new DomMarkupTextExtractor() },

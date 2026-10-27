@@ -6,10 +6,9 @@ import type {
 import type { StructuredOutputMemo } from '../../domain/ai/structured-output-memo';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import {
-  matchTranslations,
   translationTargets,
   type TranslationBatchRequest,
-  type TranslationProviderResult,
+  type TranslationResponse,
   type TranslationResult,
 } from '../../domain/ai/translation-request';
 import { err, ok, type Result } from '../../domain/shared/result';
@@ -24,7 +23,6 @@ import {
   translationOpeningSchema,
   translationTailJsonSchema,
   translationTailSchema,
-  translationsSchema,
 } from './openrouter-response.schema';
 import { buildGrammarPrompt, grammarSentenceWireId } from './prompts/grammar-prompt';
 import { buildTranslationPrompt, translationWireId } from './prompts/translation-prompt';
@@ -60,11 +58,10 @@ function replyBudget(base: number, perEntry: number, entries: number, ceiling: n
  * actually asked about, and how to downgrade or drop anything that fails those
  * checks are judgements `domain/enrichment` makes with context this adapter's
  * `read` function does not have — the caller's sentence texts and requested id
- * list. A
- * `matchTranslations` mismatch is the one exception: it is a
- * `malformed-response` here and spends the single format recovery, because
- * `domain/ai/translation-request` already defines that mismatch as
- * untrustworthy on its own terms.
+ * list. A translation for an ordinal the request never issued is the one
+ * exception: it is a `malformed-response` here and spends the single format
+ * recovery, because a model answering for a sentence nobody sent has lost
+ * track of which request it is answering.
  */
 export class OpenRouterEnricher {
   private readonly runner: StructuredTaskRunner;
@@ -99,10 +96,10 @@ export class OpenRouterEnricher {
     request: TranslationBatchRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
-  ): Promise<Result<TranslationProviderResult, AiError>> {
+  ): Promise<Result<TranslationResponse, AiError>> {
     const targetCount = translationTargets(request).length;
-    const kind = request.kind ?? 'tail';
-    return this.runner.run<TranslationProviderResult>({
+    const { kind } = request;
+    return this.runner.run<TranslationResponse>({
       task: 'translation',
       config,
       prompt: buildTranslationPrompt(request),
@@ -168,12 +165,12 @@ function readGrammarReview(
 /**
  * Restores the caller's sentence ids from the ordinals the prompt sent.
  *
- * An ordinal the request never issued is an extra translation, which
- * `matchTranslations` already defines as untrustworthy for the whole batch.
+ * An ordinal the request never issued is an extra translation, which makes
+ * the whole batch untrustworthy.
  */
 function parseTranslations(
   parsed: unknown,
-  kind: TranslationBatchRequest['kind'] | undefined,
+  kind: TranslationBatchRequest['kind'],
 ): Result<
   {
     readonly translations: readonly { readonly id: string; readonly textEn: string }[];
@@ -191,18 +188,13 @@ function parseTranslations(
       ? ok({ translations: [], glossary: payload.data.glossary })
       : err('glossary-repair-shape');
   }
-  if (kind === undefined) {
-    const payload = translationsSchema.safeParse(parsed);
-    return payload.success ? ok(payload.data) : err('translations-shape');
-  }
   const payload = translationTailSchema.safeParse(parsed);
   return payload.success ? ok(payload.data) : err('translations-shape');
 }
 
 function readTranslations(
   request: TranslationBatchRequest,
-): (parsed: unknown) => Result<TranslationProviderResult, string> {
-  const targets = translationTargets(request);
+): (parsed: unknown) => Result<TranslationResponse, string> {
   const byWireId = new Map(
     request.window.flatMap((entry, index) =>
       entry.targetId === null ? [] : [[translationWireId(index), entry.targetId] as const],
@@ -225,17 +217,12 @@ function readTranslations(
       }
       returned.push({ id, textEn: translation.textEn });
     }
-    // Plan-aware callers validate per-sentence translations and the glossary
+    // Callers validate per-sentence translations and the glossary
     // independently, so a missing or duplicate sentence cannot discard a
     // safely parsed glossary or unrelated valid translations.
-    if (request.kind !== undefined) {
-      return ok({
-        translations: returned,
-        ...(payload.value.glossary === undefined ? {} : { glossary: payload.value.glossary }),
-      });
-    }
-    const matched = matchTranslations(targets, returned);
-    if (!matched.ok) return err(`translations-${matched.error}`);
-    return ok(matched.value);
+    return ok({
+      translations: returned,
+      ...(payload.value.glossary === undefined ? {} : { glossary: payload.value.glossary }),
+    });
   };
 }

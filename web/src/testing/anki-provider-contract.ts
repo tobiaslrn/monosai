@@ -8,7 +8,7 @@ import { canDiscover, canRefresh } from '../app/domain/anki/capabilities';
 import { extractVisibleText } from '../app/domain/anki/field-extraction';
 import { resolveMappings } from '../app/domain/anki/mapping-validation';
 import { DomMarkupTextExtractor } from '../app/infrastructure/anki/dom-markup-text';
-import { sourceMappingId } from '../app/domain/shared/ids';
+import { vocabularySourceId } from '../app/domain/shared/ids';
 import type { AnkiProviderKind } from '../app/domain/vocabulary/snapshot';
 import type { DeckScope, SourceMapping } from '../app/domain/vocabulary/source-mapping';
 
@@ -41,7 +41,7 @@ export interface ProviderContractSetup {
 
 export function mappingFor(overrides: Partial<SourceMapping> = {}): SourceMapping {
   return {
-    id: sourceMappingId('11111111-1111-4111-8111-111111111111'),
+    id: vocabularySourceId('11111111-1111-4111-8111-111111111111'),
     kind: 'anki-package',
     label: 'Anki · Core Japanese · Expression',
     providerKind: 'package',
@@ -262,7 +262,7 @@ export function runProviderContract(
     it('combines several mappings into one stream', async () => {
       await standard(async (provider) => {
         const second = mappingFor({
-          id: sourceMappingId('22222222-2222-4222-8222-222222222222'),
+          id: vocabularySourceId('22222222-2222-4222-8222-222222222222'),
           noteTypeName: 'Sentence',
           expressionFieldName: 'Front',
         });

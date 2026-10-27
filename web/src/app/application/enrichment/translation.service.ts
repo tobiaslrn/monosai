@@ -5,8 +5,6 @@ import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import {
   partitionTranslations,
   planBatches,
-  isTranslationResponse,
-  translationResults,
   translationTargets,
   type EstablishedRendering,
   type TranslationResult,
@@ -152,7 +150,7 @@ export class TranslationService {
       signal,
     );
     if (!answered.ok) return answered;
-    if (!isTranslationResponse(answered.value) || answered.value.glossary === undefined) {
+    if (answered.value.glossary === undefined) {
       return {
         ok: false,
         error: aiError(
@@ -343,7 +341,7 @@ export class TranslationService {
       run.context.passageWindow === undefined
         ? buildWindow(run.sentences, targets, run.positionById, run.englishByPosition)
         : buildFixedWindow(run.context.passageWindow, targets);
-    const requested = translationTargets({ window, promptVersion: run.promptVersion });
+    const requested = translationTargets({ window });
     const targetText = requested.map((target) => target.textJa).join('\n');
     const establishedRenderings = [...run.establishedBySurface.values()]
       .filter((rendering) => targetText.includes(rendering.surfaceJa))
@@ -375,15 +373,13 @@ export class TranslationService {
     if (!answered.ok) {
       return { matched: [], unresolved: targets, error: answered.error };
     }
-    const partitioned = partitionTranslations(requested, translationResults(answered.value));
+    const partitioned = partitionTranslations(requested, answered.value.translations);
     const outstanding = new Set(partitioned.unresolved);
     return {
       matched: partitioned.matched,
       unresolved: targets.filter((sentence) => outstanding.has(sentence.id)),
       error: null,
-      ...(isTranslationResponse(answered.value) && answered.value.glossary !== undefined
-        ? { glossary: answered.value.glossary }
-        : {}),
+      ...(answered.value.glossary !== undefined ? { glossary: answered.value.glossary } : {}),
     };
   }
 
