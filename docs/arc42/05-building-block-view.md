@@ -127,7 +127,7 @@ synthesis adapters, the worker that encodes, and the maintenance pass that re-en
 catch-all: it holds only the primitives every other area needs, and everything in it is either a type
 or a pure function.
 
-The application audio store resolves current rows first and then safe same-content
+Application audio playback resolves current rows first and then safe same-content
 fallback rows, while keeping current-settings coverage separate from playable
 coverage ([ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md)).
 It reads the device-wide reader playback rate from settings, applies it only to
@@ -198,6 +198,29 @@ translate, analyse, synthesize, play — each of which re-reads the reading's su
 afterwards. What stays in the component is the half that is genuinely about the page:
 where a popover opens, which element it returns focus to, and how a bottom sheet is
 kept clear of the docked player.
+
+### Whitebox: whole-reading playback
+
+`application/audio/audio-playback.store.ts` is the one surface the rest of the
+application injects. It is root-provided, because sound outlives the screen that
+started it ([ADR 0024](../decisions/0024-audio-cache-and-playback-ownership.md)),
+and it holds no logic of its own beyond `prepare`, the mode control, and wiring
+the `AudioPlayer`'s and the media session's events to the units behind it. Each of
+those is root-provided in the same folder and has its own spec:
+
+| Unit | Owns |
+| --- | --- |
+| `PlaybackClipsStore` | The reading, its sentences, and which clips exist: current-settings coverage, playable clips with their stale fallbacks and pace, and the searches that step over holes. Reads storage, never touches the player |
+| `PlaybackTransportStore` | The state the transport renders — status, cursor, pending sentence, failure, mode, explicit-navigation count, rate — and the media session's playing state and metadata, so the lock screen cannot disagree with the player card |
+| `ClipSequencer` | Getting clips into the player: a sentence clip read just before it plays, or a `ContinuousTrack` built over the contiguous run from the start sentence, appended to while the run is generated, and sealed on the four conditions of [ADR 0045](../decisions/0045-a-reading-is-extended-while-it-is-generated.md). Owns the load token, a Pause that lands mid-load, Stop, the end of a reading, and position state |
+| `PlaybackNavigator` | Where a start, a step, a seek, Previous's replay window, and the automatic advance land |
+| `PlaybackResumption` | How a held session goes on or is let go: resuming from `paused`, continuing from `stepped`, reading on when a waited-for clip arrives, the stall inside a growing track, and `stopExpectingClips` |
+| `PlaybackMaintenance` | Stopping and forgetting when the reading, its clips, or the whole cache are deleted |
+
+`ContinuousTrack` is a plain class, not a service: the timeline the player
+returned, the reading index it starts at, its pace, and the keys appended so far.
+Every index it takes is a reading index, so the offset of a track that starts
+partway through a reading lives in one place.
 
 ### Whitebox: non-reader shell and Help
 

@@ -1,6 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONTRACT_COLLECTION } from '../../../testing/anki-collection';
 import { FakeAnkiProvider } from '../../../testing/anki-fakes';
 import { mappingFor } from '../../../testing/anki-provider-contract';
@@ -12,7 +12,10 @@ import {
   ANKI_PROVIDER_FACTORY,
   PACKAGE_PROVIDER_FACTORY,
 } from '../../application/shared/anki-tokens';
+import { PackageImportStore } from '../../application/vocabulary/package-import.store';
+import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
+import { SourceStandingStore } from '../../application/vocabulary/source-standing.store';
 import { vocabularySourceId } from '../../domain/shared/ids';
 import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
 import type { TextListVocabularySource } from '../../domain/vocabulary/vocabulary-source';
@@ -182,6 +185,34 @@ describe('SourcePageComponent', () => {
     await settle(fixture);
 
     expect(TestBed.inject(SourceMappingStore).sources()).toHaveLength(1);
+  });
+
+  /**
+   * A package import commits on its own, outside anything the page awaits, so
+   * the page has to notice that it completed.
+   */
+  it('reloads the vocabulary and the standings when a package import completes', async () => {
+    const { fixture } = await render(TEXT_LIST.id);
+    const history = TestBed.inject(SnapshotHistoryStore);
+    const standings = TestBed.inject(SourceStandingStore);
+    const packageImport = fixture.debugElement.injector.get(PackageImportStore);
+    expect(history.active()).toBeNull();
+    expect(standings.standings().size).toBe(0);
+
+    await packageImport.start({
+      fileName: 'core-japanese.apkg',
+      bytes: () => Promise.resolve(new ArrayBuffer(0)),
+    });
+    if (packageImport.state().kind === 'selecting') {
+      await packageImport.confirm();
+    }
+
+    await vi.waitFor(async () => {
+      await settle(fixture);
+      expect(packageImport.state().kind).toBe('complete');
+      expect(history.active()).not.toBeNull();
+      expect(standings.standings().size).toBe(1);
+    });
   });
 
   it('says so plainly when the source is gone rather than showing empty controls', async () => {

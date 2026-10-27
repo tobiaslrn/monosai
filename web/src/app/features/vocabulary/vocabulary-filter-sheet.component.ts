@@ -2,11 +2,13 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { hasModifierKey } from '@angular/cdk/keycodes';
 import { FormsModule } from '@angular/forms';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { ViewportService } from '../../core/platform/viewport.service';
@@ -28,6 +30,9 @@ export interface VocabularyFilterSheetData {
   readonly sources: readonly CapturedSourceObservation[];
 }
 
+/** Longer than the departure, so a missed `transitionend` still closes the dialog. */
+const DEPARTURE_FALLBACK_MS = 400;
+
 /** CDK dialog content used as a bottom sheet below the desktop breakpoint. */
 @Component({
   selector: 'mn-vocabulary-filter-sheet',
@@ -37,11 +42,13 @@ export interface VocabularyFilterSheetData {
     <section
       class="sheet"
       aria-labelledby="vocabulary-filter-heading"
-      [class.is-dragging]="dragOffset() > 0"
-      [style.transform]="dragTransform()"
+      [class.is-dragging]="dragOffset() > 0 && !leaving()"
+      [class.is-leaving]="leaving()"
+      [style.transform]="leaving() ? null : dragTransform()"
+      (transitionend)="onTransitionEnd($event)"
     >
       @if (isMobile()) {
-        <mn-sheet-handle #handle label="Close filters" (dismissed)="dismiss()" />
+        <mn-sheet-handle #handle label="Close filters" (dismissed)="depart(undefined)" />
       }
       <h2 id="vocabulary-filter-heading">Filters</h2>
 
@@ -120,7 +127,7 @@ export interface VocabularyFilterSheetData {
       </label>
 
       <div class="mn-actions sheet-actions">
-        <button type="button" class="mn-button mn-button--primary" (click)="show()">
+        <button type="button" class="mn-button mn-button--primary" (click)="depart(draft())">
           Show {{ matchCount() }} words
         </button>
         <button type="button" class="mn-button mn-button--ghost" (click)="reset()">Reset</button>
@@ -173,14 +180,14 @@ export interface VocabularyFilterSheetData {
       transition: none;
     }
 
-    mn-sheet-handle {
-      --mn-sheet-handle-bleed: var(--space-5);
+    /* Leaving, a docked sheet goes back down the edge it rose from, at the
+       popover sheets' pace and curve, and is no longer a surface to press. */
+    .sheet.is-leaving {
+      pointer-events: none;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .sheet {
-        transition: none;
-      }
+    mn-sheet-handle {
+      --mn-sheet-handle-bleed: var(--space-5);
     }
 
     @media (max-width: 59.999em) {
@@ -193,18 +200,53 @@ export interface VocabularyFilterSheetData {
         border-block-end: 0;
         border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
       }
+
+      /* Leaving accelerates, as a native sheet does; springing back keeps the settle curve. */
+      .sheet.is-leaving {
+        transform: translateY(100%);
+        transition: transform var(--motion-medium) var(--ease-exit);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sheet,
+      .sheet.is-leaving {
+        transition: none;
+      }
     }
   `,
 })
 export class VocabularyFilterSheetComponent {
+  constructor() {
+    // The dialog would remove the sheet the moment it closed. Taking over
+    // backdrop and Escape dismissal lets the surface depart before it does.
+    this.dialogRef.disableClose = true;
+    this.dialogRef.backdropClick.subscribe(() => {
+      this.depart(undefined);
+    });
+    this.dialogRef.keydownEvents.subscribe((event) => {
+      if (event.key === 'Escape' && !hasModifierKey(event)) {
+        event.preventDefault();
+        this.depart(undefined);
+      }
+    });
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(this.fallback);
+    });
+  }
+
   protected readonly data = inject<VocabularyFilterSheetData>(DIALOG_DATA);
   private readonly dialogRef = inject<DialogRef<BrowseQuery | undefined>>(DialogRef);
   private readonly clock = inject(CLOCK);
   private readonly viewport = inject(ViewportService);
+  private fallback: ReturnType<typeof setTimeout> | undefined;
+  private result: BrowseQuery | undefined;
   private readonly handle = viewChild<SheetHandleComponent>('handle');
   protected readonly draft = signal<BrowseQuery>(this.data.query);
 
   protected readonly isMobile = this.viewport.isMobile;
+  /** Set once a dismissal has begun, so a second one during the slide is ignored. */
+  protected readonly leaving = signal(false);
   protected readonly dragOffset = computed(() => this.handle()?.offset() ?? 0);
   protected readonly dragTransform = computed(() => {
     const offset = this.dragOffset();
@@ -238,13 +280,44 @@ export class VocabularyFilterSheetComponent {
     this.update({ sort: value as BrowseQuery['sort'] });
   }
 
-  protected show(): void {
-    this.dialogRef.close(this.draft());
+  /**
+   * Sends the sheet away, then asks the dialog to close with `result`.
+   *
+   * The dialog removes its element the moment it closes, so the surface slides
+   * out first. Dragging the handle or dismissing from outside discards the
+   * draft (`undefined`); only Show commits it. A second dismissal while the
+   * sheet is already leaving is ignored.
+   */
+  protected depart(result: BrowseQuery | undefined): void {
+    if (this.leaving()) {
+      return;
+    }
+    this.result = result;
+    if (!this.isMobile() || this.viewport.prefersReducedMotion()) {
+      this.finish();
+      return;
+    }
+    this.leaving.set(true);
+    this.dialogRef.overlayRef.backdropElement?.classList.add('is-leaving');
+    // A transition that never runs (a hidden tab) must not strand the dialog.
+    this.fallback = setTimeout(() => {
+      this.finish();
+    }, DEPARTURE_FALLBACK_MS);
   }
 
-  /** Dragging the sheet away discards the draft, as dismissing it does. */
-  protected dismiss(): void {
-    this.dialogRef.close(undefined);
+  protected onTransitionEnd(event: TransitionEvent): void {
+    if (
+      this.leaving() &&
+      event.target === event.currentTarget &&
+      event.propertyName === 'transform'
+    ) {
+      this.finish();
+    }
+  }
+
+  private finish(): void {
+    clearTimeout(this.fallback);
+    this.dialogRef.close(this.result);
   }
 
   protected reset(): void {

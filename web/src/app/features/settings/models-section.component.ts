@@ -8,6 +8,8 @@ import {
   computed,
   effect,
   inject,
+  linkedSignal,
+  resource,
   signal,
   untracked,
   viewChild,
@@ -185,7 +187,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                 [loading]="catalogLoading()"
                 [failure]="catalogFailure()"
                 [disabled]="!credential.isConfigured()"
-                (opened)="loadCatalog()"
+                (opened)="retryCatalog()"
                 (modelSelected)="selectStoryModel($event)"
                 (favoriteToggled)="text.toggleFavorite($event)"
               />
@@ -277,7 +279,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                         [loading]="catalogLoading()"
                         [failure]="catalogFailure()"
                         [disabled]="!credential.isConfigured()"
-                        (opened)="loadCatalog()"
+                        (opened)="retryCatalog()"
                         (fallbackSelected)="clearTaskModel(task.id)"
                         (modelSelected)="selectTaskModel(task.id, $event)"
                         (favoriteToggled)="text.toggleFavorite($event)"
@@ -371,7 +373,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
                 [loading]="catalogLoading()"
                 [failure]="catalogFailure()"
                 [disabled]="!credential.isConfigured()"
-                (opened)="loadCatalog()"
+                (opened)="retryCatalog()"
                 (modelSelected)="selectSpeechModel($event)"
                 (favoriteToggled)="tts.toggleFavorite($event)"
               />
@@ -517,15 +519,52 @@ export class ModelsSectionComponent {
       : 'Key saved';
   });
   protected readonly branchesOpen = signal(false);
-  protected readonly textModels = signal<readonly ModelCapabilities[]>([]);
-  protected readonly speechModels = signal<readonly ModelCapabilities[]>([]);
-  protected readonly catalogLoading = signal(false);
-  protected readonly catalogFailure = signal<string | null>(null);
+  /**
+   * The catalogue, fetched as soon as a key can pay for it.
+   *
+   * The saved configuration cannot be shown correctly until the catalogue is
+   * known: a stored speech model has no listed voices, and a stored text model
+   * no reasoning efforts, until its entry is in hand. Waiting for a picker to be
+   * opened left those fields showing a fallback the learner never chose. The
+   * key being configured is the whole of the request, so a second key replaces
+   * the first through `reload` and a failure waits for a picker to retry it.
+   */
+  private readonly catalogLoad = resource({
+    params: () => (this.credential.isConfigured() ? true : undefined),
+    loader: async () => {
+      const [text, speech] = await Promise.all([
+        this.catalog.list('text'),
+        this.catalog.list('speech'),
+      ]);
+      if (!text.ok || !speech.ok) {
+        throw new Error(
+          (!text.ok ? text.error : !speech.ok ? speech.error : null)?.message ??
+            'Could not load models.',
+        );
+      }
+      return { text: text.value, speech: speech.value };
+    },
+  });
+  /**
+   * The last catalogue that arrived. Removing the key or a failed refetch keeps
+   * what is already known, so the names on the saved choices do not vanish.
+   */
+  private readonly loadedCatalog = linkedSignal<
+    | { readonly text: readonly ModelCapabilities[]; readonly speech: readonly ModelCapabilities[] }
+    | undefined,
+    { readonly text: readonly ModelCapabilities[]; readonly speech: readonly ModelCapabilities[] }
+  >({
+    source: () => (this.catalogLoad.hasValue() ? this.catalogLoad.value() : undefined),
+    computation: (arrived, previous) => arrived ?? previous?.value ?? { text: [], speech: [] },
+  });
+  protected readonly textModels = computed(() => this.loadedCatalog().text);
+  protected readonly speechModels = computed(() => this.loadedCatalog().speech);
+  protected readonly catalogLoading = computed(() => this.catalogLoad.isLoading());
+  protected readonly catalogFailure = computed(() => this.catalogLoad.error()?.message ?? null);
   protected readonly textTasks = [
     { id: 'translation' as const, label: 'Translation' },
     { id: 'grammar' as const, label: 'Grammar' },
   ];
-  private catalogLoaded = false;
   /**
    * The clip that has already played, or been shown without playing: a sample
    * already present when Settings opens is display-only, so it starts as played.
@@ -642,16 +681,6 @@ export class ModelsSectionComponent {
         this.tts.setCatalogParameters(parameters);
       });
     });
-    // The saved configuration cannot be shown correctly until the catalogue is
-    // known: a stored speech model has no listed voices, and a stored text
-    // model no reasoning efforts, until its entry is in hand. Waiting for a
-    // picker to be opened left those fields showing a fallback the learner
-    // never chose, so the list is fetched as soon as a key can pay for it.
-    effect(() => {
-      if (this.credential.isConfigured()) {
-        untracked(() => void this.loadCatalog());
-      }
-    });
     // The preview clip is an object URL, a browser resource tied to the clip it
     // was made from: made when the clip and its element exist, released when
     // either is replaced and when the panel is destroyed.
@@ -687,8 +716,7 @@ export class ModelsSectionComponent {
     this.keyDraft.set('');
     if (saved) {
       this.connectionPanel().hide();
-      this.catalogLoaded = false;
-      await this.loadCatalog();
+      this.catalogLoad.reload();
     }
   }
   protected async removeKey(): Promise<void> {
@@ -707,25 +735,11 @@ export class ModelsSectionComponent {
       this.connectionPanel().hide();
     }
   }
-  protected async loadCatalog(): Promise<void> {
-    if (this.catalogLoaded || this.catalogLoading() || !this.credential.isConfigured()) return;
-    this.catalogLoading.set(true);
-    this.catalogFailure.set(null);
-    const [text, speech] = await Promise.all([
-      this.catalog.list('text'),
-      this.catalog.list('speech'),
-    ]);
-    this.catalogLoading.set(false);
-    if (!text.ok || !speech.ok) {
-      this.catalogFailure.set(
-        (!text.ok ? text.error : !speech.ok ? speech.error : null)?.message ??
-          'Could not load models.',
-      );
-      return;
+  /** A picker opening is the learner's retry after a failed fetch. */
+  protected retryCatalog(): void {
+    if (this.catalogLoad.status() === 'error') {
+      this.catalogLoad.reload();
     }
-    this.textModels.set(text.value);
-    this.speechModels.set(speech.value);
-    this.catalogLoaded = true;
   }
 
   /**

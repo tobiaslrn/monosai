@@ -50,6 +50,12 @@ can hold them, a browser with `MediaSource` — is decided while loading, and an
 of it missing falls back to the established per-sentence path rather than making
 stored audio unplayable.
 
+*(Since playback was split into units behind `AudioPlaybackStore`, the resource
+is built, extended, and sealed by `ClipSequencer`, the gate is its
+`canUseTrack`, and the run's offset is held by `ContinuousTrack`. The append is
+still triggered from `AudioPlaybackStore.prepare`, and nothing in this decision
+changed. See [chapter 5](../arc42/05-building-block-view.md).)*
+
 ### While the reading is short of its end, the resource stays open
 
 A run that does not reach the last sentence is built **open**: the

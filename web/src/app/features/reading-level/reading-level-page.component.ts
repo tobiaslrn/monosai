@@ -5,12 +5,19 @@ import {
   effect,
   inject,
   input,
+  resource,
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
+import {
+  LOGGER,
+  NOOP_LOGGER,
+  reportRejection,
+  type Logger,
+} from '../../application/shared/diagnostics';
 import { AnkiConnectionStore } from '../../application/vocabulary/anki-connection.store';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
@@ -345,6 +352,7 @@ export class ReadingLevelPageComponent {
   private readonly history = inject(SnapshotHistoryStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   /** The level page's Back and Save return here through history. */
   protected readonly levelOriginState = navigationOriginState('/reading-level');
@@ -386,8 +394,6 @@ export class ReadingLevelPageComponent {
     }
     return this.origin === '/settings' ? 'Back to settings' : 'Back to library';
   });
-
-  protected readonly state = this.refresh.state;
 
   /** Whether the section is drafting a pasted list. Nothing is saved until Add source. */
   protected readonly textDraft = signal(false);
@@ -462,19 +468,20 @@ export class ReadingLevelPageComponent {
     });
 
     // The history is a read model of what has been committed, so it is reloaded
-    // whenever a refresh finishes rather than being patched in place.
-    effect(() => {
-      if (this.state().kind === 'complete') {
-        void this.history.load();
-      }
-    });
-
-    // A package import commits on its own, so the history it produced is
-    // reloaded the same way a refresh's is.
-    effect(() => {
-      if (this.packageImport.state().kind === 'complete') {
-        void this.history.load();
-      }
+    // whenever a commit finishes rather than being patched in place. A refresh
+    // is confirmed through the Anki connection store, which reloads it itself.
+    // A package import commits on its own, outside anything this page awaits,
+    // so its completed state is the key: each import reloads once, and the
+    // loader runs untracked.
+    resource({
+      params: () => {
+        const state = this.packageImport.state();
+        return state.kind === 'complete' ? state : undefined;
+      },
+      loader: () =>
+        this.history.load().catch((error: unknown) => {
+          reportRejection(this.logger, error);
+        }),
     });
 
     // A deep link names the half of the page the caller had in mind, so the

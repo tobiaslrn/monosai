@@ -15,9 +15,9 @@ import {
   READING_MUTATION_CHANNEL,
   READING_REPOSITORY,
   SETTINGS_REPOSITORY,
-  SOURCE_MAPPING_REPOSITORY,
   STORAGE_MAINTENANCE,
   VOCABULARY_REPOSITORY,
+  VOCABULARY_SOURCE_REPOSITORY,
 } from '../../application/shared/repository-tokens';
 import { sha256Hasher } from '../hashing/sha256-hasher';
 import {
@@ -104,7 +104,7 @@ export function providePersistence(): Provider[] {
       useFactory: () => new DexieVocabularyRepository(inject(MonosaiDatabase)),
     },
     {
-      provide: SOURCE_MAPPING_REPOSITORY,
+      provide: VOCABULARY_SOURCE_REPOSITORY,
       useFactory: () => new DexieSourceMappingRepository(inject(MonosaiDatabase)),
     },
     {

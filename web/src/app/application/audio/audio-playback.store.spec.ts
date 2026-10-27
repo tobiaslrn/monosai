@@ -1,460 +1,32 @@
-import { signal, type WritableSignal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { audioCacheKey, audioOptionsFingerprint } from '../../domain/enrichment/cache-keys';
-import type { AudioAsset } from '../../domain/enrichment/records';
-import type { Reading } from '../../domain/reading/reading';
-import type { ImportedReadingDraft } from '../../domain/reading/reading-repository';
+import { err } from '../../domain/shared/result';
+import { storageError } from '../../domain/storage/storage-error';
 import {
-  DEFAULT_READER_PREFERENCES,
-  type ReaderPreferences,
-  type TtsSettings,
-} from '../../domain/settings/settings';
-import { fixedClock } from '../../domain/shared/clock';
-import type { Hasher } from '../../domain/shared/hashing';
-import { assetId, type SentenceId } from '../../domain/shared/ids';
-import type { MonosaiDatabase } from '../../infrastructure/persistence/monosai-db';
-import { DexieEnrichmentRepository } from '../../infrastructure/persistence/repositories/dexie-enrichment.repository';
-import { DexieReadingRepository } from '../../infrastructure/persistence/repositories/dexie-reading.repository';
-import { importedReadingFixture, uuid } from '../../../testing/persistence-fixtures';
-import { createTestDatabase, destroyTestDatabase } from '../../../testing/test-database';
-import { ENRICHMENT_REPOSITORY, HASHER, READING_REPOSITORY } from '../shared/repository-tokens';
-import { TtsStore } from '../settings/tts.store';
-import { AppSettingsStore } from '../settings/app-settings.store';
-import {
-  AUDIO_PLAYER,
-  type AudioPlayer,
-  type AudioSequenceClip,
-  type AudioTimeline,
-  type PlayOptions,
-  type SequencePlayOptions,
-} from './audio-player';
-import { AudioPlaybackStore } from './audio-playback.store';
-import { MEDIA_SESSION, NO_MEDIA_SESSION } from './media-session';
-
-const NOW = 1_700_600_000_000;
-const SENTENCE_COUNT = 4;
-const TEST_HASHER: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
+  configurePlaybackBed,
+  orderedSentences,
+  SENTENCE_COUNT,
+  settle,
+  storeClips,
+  type PlaybackBed,
+} from '../../../testing/audio-playback-bed';
+import { importedReadingFixture } from '../../../testing/persistence-fixtures';
+import { destroyTestDatabase } from '../../../testing/test-database';
 
 /**
- * A player that records rather than plays.
- *
- * "Nothing plays without an explicit call" is the claim the whole milestone
- * rests on, and it is only a testable claim because the element sits behind
- * this port (ADR 0024). `played` is the ledger of every clip that reached it.
+ * The facade the rest of the application uses. What each unit behind it does
+ * is specified next to that unit; this spec covers what only the facade does —
+ * preparing, the mode control, the wiring of the player's and the media
+ * session's events — and that every command reaches the unit that owns it.
  */
-class FakeAudioPlayer implements AudioPlayer {
-  readonly played: Blob[] = [];
-  /** Whether each clip was asked for already paused, in the order they arrived. */
-  readonly startedPaused: boolean[] = [];
-  /** Sentence-relative position at which each standalone clip was started. */
-  readonly startedAt: number[] = [];
-  readonly rates: number[] = [];
-  stops = 0;
-  pauses = 0;
-  resumes = 0;
-  restarts = 0;
-  /** How far into the loaded clip playback has reached, as the element reports. */
-  position = 0;
-  /** Set to make the next `play` reject, standing in for an undecodable clip. */
-  failNextPlay = false;
-  /** Set to make the next `resume` reject, standing in for the autoplay policy. */
-  failNextResume = false;
-  sequenceSupported = false;
-  readonly sequences: AudioSequenceClip[][] = [];
-  /** Every clip appended to the open resource after it was built, in order. */
-  readonly appended: AudioSequenceClip[][] = [];
-  closes = 0;
-  /** Set to make the next `extendSequence` reject, standing in for a refused append. */
-  failNextExtend = false;
-  private trackDuration = 0;
-  private open = false;
-
-  private ended: (() => void) | null = null;
-
-  play(clip: Blob, options?: PlayOptions): Promise<void> {
-    if (this.failNextPlay) {
-      this.failNextPlay = false;
-      return Promise.reject(new Error('not decodable'));
-    }
-    this.played.push(clip);
-    this.startedPaused.push(options?.startPaused === true);
-    this.position = Math.max(options?.startSeconds ?? 0, 0);
-    this.startedAt.push(this.position);
-    return Promise.resolve();
-  }
-
-  playSequence(
-    clips: readonly AudioSequenceClip[],
-    options?: SequencePlayOptions,
-  ): Promise<AudioTimeline> {
-    if (!this.sequenceSupported) {
-      return Promise.reject(new Error('sequence unsupported'));
-    }
-    this.sequences.push([...clips]);
-    this.appended.push([]);
-    this.position = options?.startIndex ?? 0;
-    this.trackDuration = clips.length;
-    this.open = options?.open === true;
-    this.startedPaused.push(options?.startPaused === true);
-    return Promise.resolve(this.timeline());
-  }
-
-  extendSequence(clips: readonly AudioSequenceClip[]): Promise<AudioTimeline> {
-    if (this.failNextExtend) {
-      this.failNextExtend = false;
-      return Promise.reject(new Error('append refused'));
-    }
-    if (!this.open) {
-      return Promise.reject(new Error('no open sequence'));
-    }
-    const sequence = this.sequences.at(-1);
-    const appended = this.appended.at(-1);
-    if (sequence === undefined || appended === undefined) {
-      return Promise.reject(new Error('no open sequence'));
-    }
-    sequence.push(...clips);
-    appended.push(...clips);
-    this.trackDuration = sequence.length;
-    return Promise.resolve(this.timeline());
-  }
-
-  closeSequence(): void {
-    if (!this.open) {
-      return;
-    }
-    this.open = false;
-    this.closes += 1;
-  }
-
-  sequenceOpen(): boolean {
-    return this.open;
-  }
-
-  /** One second per sentence, which makes a boundary and its index the same number. */
-  private timeline(): AudioTimeline {
-    const length = this.sequences.at(-1)?.length ?? 0;
-    return {
-      starts: Array.from({ length }, (_, index) => index),
-      duration: length,
-      open: this.open,
-      floor: 0,
-    };
-  }
-
-  pause(): void {
-    this.pauses += 1;
-  }
-
-  resume(): Promise<void> {
-    if (this.failNextResume) {
-      this.failNextResume = false;
-      return Promise.reject(new Error('autoplay refused'));
-    }
-    this.resumes += 1;
-    return Promise.resolve();
-  }
-
-  elapsed(): number {
-    return this.position;
-  }
-
-  duration(): number {
-    return this.trackDuration;
-  }
-
-  seek(seconds: number): void {
-    this.position = seconds;
-  }
-
-  restart(): Promise<void> {
-    this.restarts += 1;
-    this.position = 0;
-    return Promise.resolve();
-  }
-
-  stop(): void {
-    this.stops += 1;
-  }
-
-  onEnded(handler: () => void): void {
-    this.ended = handler;
-  }
-
-  onError(): void {
-    // The decode failure this spec exercises arrives as a rejected `play`.
-  }
-
-  private timeUpdate: (() => void) | null = null;
-  private stalled: (() => void) | null = null;
-  private resumed: (() => void) | null = null;
-
-  setRate(rate: number): void {
-    this.rates.push(rate);
-  }
-
-  onTimeUpdate(handler: () => void): void {
-    this.timeUpdate = handler;
-  }
-
-  onStalled(handler: () => void): void {
-    this.stalled = handler;
-  }
-
-  onResumed(handler: () => void): void {
-    this.resumed = handler;
-  }
-
-  /** Runs out of appended audio, as the element's `waiting` event would. */
-  stall(): void {
-    this.stalled?.();
-  }
-
-  /** Starts producing sound again, as the element's `playing` event would. */
-  unstall(): void {
-    this.resumed?.();
-  }
-
-  moveTo(seconds: number): void {
-    this.position = seconds;
-    this.timeUpdate?.();
-  }
-
-  /** Ends the clip that is loaded, as the element's `ended` event would. */
-  finishClip(): void {
-    this.ended?.();
-  }
-}
-
-interface PlaybackBed {
-  readonly db: MonosaiDatabase;
-  readonly store: AudioPlaybackStore;
-  readonly player: FakeAudioPlayer;
-  readonly enrichment: DexieEnrichmentRepository;
-  readonly readings: DexieReadingRepository;
-  readonly draft: ImportedReadingDraft;
-  readonly reading: Reading;
-  readonly settings: WritableSignal<TtsSettings>;
-  readonly readiness: WritableSignal<'ready' | 'not-configured' | 'stale-test'>;
-  readonly readerPreferences: WritableSignal<ReaderPreferences>;
-  readonly setReaderPreference: ReturnType<typeof vi.fn>;
-  readonly positionStates: (MediaPositionState | null)[];
-}
-
-async function configure(): Promise<PlaybackBed> {
-  TestBed.resetTestingModule();
-  const db = await createTestDatabase();
-  const clock = fixedClock(NOW);
-  const readings = new DexieReadingRepository(db, clock);
-  const enrichment = new DexieEnrichmentRepository(db);
-  const draft = importedReadingFixture({
-    paragraphTexts: [
-      ['文0です。', '文1です。'],
-      ['文2です。', '文3です。'],
-    ],
-  });
-  await readings.saveImportedReading(draft);
-
-  const settings = signal<TtsSettings>({
-    modelId: 'vendor/tts',
-    voiceId: 'voice-a',
-    speechStyle: 'clear',
-    speechPace: 'natural',
-    lastTestFingerprint: 'fingerprint',
-    lastTestedAt: NOW,
-    activePresetId: null,
-    presets: [],
-  });
-  const readiness = signal<'ready' | 'not-configured' | 'stale-test'>('ready');
-  const readerPreferences = signal<ReaderPreferences>(DEFAULT_READER_PREFERENCES);
-  const setReaderPreference = vi.fn(
-    (preference: keyof ReaderPreferences, value: unknown): Promise<void> => {
-      readerPreferences.update((current) => Object.assign({}, current, { [preference]: value }));
-      return Promise.resolve();
-    },
-  );
-  const positionStates: (MediaPositionState | null)[] = [];
-  const mediaSession = {
-    ...NO_MEDIA_SESSION,
-    setPositionState: (state: MediaPositionState | null): void => {
-      positionStates.push(state);
-    },
-  };
-  const player = new FakeAudioPlayer();
-
-  TestBed.configureTestingModule({
-    providers: [
-      AudioPlaybackStore,
-      { provide: READING_REPOSITORY, useValue: readings },
-      { provide: ENRICHMENT_REPOSITORY, useValue: enrichment },
-      { provide: HASHER, useValue: TEST_HASHER },
-      { provide: AUDIO_PLAYER, useValue: player },
-      { provide: MEDIA_SESSION, useValue: mediaSession },
-      { provide: TtsStore, useValue: { settings, readiness } },
-      {
-        provide: AppSettingsStore,
-        useValue: { readerPreferences: readerPreferences.asReadonly(), setReaderPreference },
-      },
-    ],
-  });
-
-  const loaded = await readings.getReading(draft.reading.id);
-  if (!loaded.ok || loaded.value === null) {
-    throw new Error('fixture reading did not save');
-  }
-
-  return {
-    db,
-    store: TestBed.inject(AudioPlaybackStore),
-    player,
-    enrichment,
-    readings,
-    draft,
-    reading: loaded.value,
-    settings,
-    readiness,
-    readerPreferences,
-    setReaderPreference,
-    positionStates,
-  };
-}
-
-/**
- * Lets the automatic advance finish.
- *
- * Advancing loads the next clip from storage, so it is a real asynchronous
- * round trip rather than a microtask.
- */
-function settle(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-/** The sentences in reading order, which is playback order. */
-function orderedSentences(draft: ImportedReadingDraft) {
-  return [...draft.sentences].sort(
-    (left, right) => left.positionInReading - right.positionInReading,
-  );
-}
-
-function keyFor(bed: PlaybackBed, contentHash: string, voiceId = bed.settings().voiceId): string {
-  const settings = bed.settings();
-  return audioCacheKey(
-    TEST_HASHER,
-    contentHash,
-    settings.modelId,
-    voiceId,
-    audioOptionsFingerprint(TEST_HASHER, {
-      responseFormat: 'mp3',
-      speechStyle: settings.speechStyle,
-      speechPace: settings.speechPace,
-    }),
-  );
-}
-
-/** Writes clips for the first `count` sentences under the current voice. */
-function storeClips(bed: PlaybackBed, count = SENTENCE_COUNT): Promise<void> {
-  return storeClipsAt(bed, [...Array(count).keys()]);
-}
-
-/**
- * Writes clips for exactly these positions.
- *
- * Generation retries out of order and records per-sentence failures without
- * stopping a run, so a real available set can have holes in it rather than
- * only a frontier.
- */
-async function storeClipsAt(
-  bed: PlaybackBed,
-  positions: readonly number[],
-  mimeType: 'audio/mpeg' | 'audio/wav' | 'audio/webm' = 'audio/mpeg',
-  pace: AudioAsset['pace'] | null = 'playback',
-): Promise<void> {
-  const sentences = orderedSentences(bed.draft);
-  const cacheKeys = new Map<SentenceId, string>(
-    sentences.map((sentence) => [sentence.id, keyFor(bed, sentence.contentHash)]),
-  );
-  for (const index of positions) {
-    const sentence = sentences[index];
-    const asset: AudioAsset = {
-      id: assetId(uuid(8100 + index)),
-      sentenceId: sentence.id,
-      readingId: bed.draft.reading.id,
-      sourceContentHash: sentence.contentHash,
-      modelId: bed.settings().modelId,
-      voiceId: bed.settings().voiceId,
-      optionsFingerprint: audioOptionsFingerprint(TEST_HASHER, {
-        responseFormat: 'mp3',
-        speechStyle: bed.settings().speechStyle,
-        speechPace: bed.settings().speechPace,
-      }),
-      ...(pace === null ? {} : { pace }),
-      mimeType,
-      byteLength: 4,
-      blob: new Blob([new Uint8Array([1, 2, 3, index])], { type: mimeType }),
-      cacheKey: keyFor(bed, sentence.contentHash),
-      createdAt: NOW + index,
-    };
-    await bed.enrichment.storeAudio(asset, cacheKeys);
-  }
-}
-
 describe('AudioPlaybackStore', () => {
   let bed: PlaybackBed;
 
   beforeEach(async () => {
-    bed = await configure();
+    bed = await configurePlaybackBed();
   });
 
   afterEach(async () => {
     await destroyTestDatabase(bed.db);
-  });
-
-  describe('local playback pace', () => {
-    it('applies and persists the learner rate for playback-paced clips', async () => {
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      bed.readerPreferences.set({ ...bed.readerPreferences(), playbackRate: 0.8 });
-      bed.player.sequenceSupported = true;
-
-      await bed.store.play();
-
-      expect(bed.player.rates.at(-1)).toBe(0.8);
-      expect(bed.positionStates.at(-1)?.playbackRate).toBe(0.8);
-
-      bed.store.setPlaybackRate(0.9);
-
-      expect(bed.player.rates.at(-1)).toBe(0.9);
-      expect(bed.setReaderPreference).toHaveBeenCalledWith('playbackRate', 0.9);
-      expect(bed.positionStates.at(-1)?.playbackRate).toBe(0.9);
-    });
-
-    it('plays legacy clips with their baked pace', async () => {
-      await storeClipsAt(bed, [0], 'audio/mpeg', null);
-      await bed.store.prepare(bed.reading);
-
-      await bed.store.playSentence(orderedSentences(bed.draft)[0].id);
-
-      expect(bed.player.rates.at(-1)).toBe(1);
-    });
-
-    it('seals one pace run and continues into the next playable run', async () => {
-      await storeClipsAt(bed, [0], 'audio/mpeg', null);
-      await storeClipsAt(bed, [1, 2]);
-      await bed.store.prepare(bed.reading);
-      bed.readerPreferences.set({ ...bed.readerPreferences(), playbackRate: 0.8 });
-      bed.player.sequenceSupported = true;
-
-      await bed.store.play();
-      await bed.store.prepare(bed.reading);
-      expect(bed.player.closes).toBe(1);
-
-      bed.player.finishClip();
-      await settle();
-
-      expect(bed.player.sequences).toHaveLength(2);
-      expect(bed.player.rates).toEqual([1, 0.8]);
-      expect(bed.store.currentPosition()).toBe(2);
-    });
   });
 
   describe('nothing plays on its own', () => {
@@ -476,909 +48,61 @@ describe('AudioPlaybackStore', () => {
     });
   });
 
-  /**
-   * Clips are keyed by the configuration that produced them, but playback can
-   * use the newest same-content row while current-settings coverage remains
-   * honest.
-   */
-  describe('audio saved in other settings', () => {
-    it('plays the newest matching stored clip while coverage stays current-only', async () => {
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      expect(bed.store.hasStaleAudio()).toBe(false);
-
-      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.availableCount()).toBe(0);
-      expect(bed.store.hasStaleAudio()).toBe(true);
-      expect(bed.store.hasPlayableAudio()).toBe(true);
-      await bed.store.play();
-      expect(bed.player.played).toHaveLength(1);
-    });
-
-    it('uses the newest summary for a content hash', async () => {
-      await storeClipsAt(bed, [0]);
-      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-c' }));
-      await storeClipsAt(bed, [0]);
-      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
-
-      await bed.store.prepare(bed.reading);
-      await bed.store.playSentence(orderedSentences(bed.draft)[0].id);
-
-      const newest = await bed.enrichment.getAudioByCacheKey(
-        keyFor(bed, orderedSentences(bed.draft)[0].contentHash, 'voice-c'),
-      );
-      expect(newest.ok && newest.value).not.toBeNull();
-      expect(await bed.player.played[0]?.text()).toBe(
-        await (newest.ok ? newest.value?.blob.text() : Promise.resolve('')),
-      );
-    });
-
-    it('does not fall back after a sentence was edited', async () => {
-      const sentence = orderedSentences(bed.draft)[0];
-      await bed.enrichment.storeAudio(
-        {
-          id: assetId(uuid(8900)),
-          sentenceId: sentence.id,
-          readingId: bed.reading.id,
-          sourceContentHash: 'hash-for-old-text',
-          modelId: bed.settings().modelId,
-          voiceId: 'voice-old',
-          optionsFingerprint: 'old-options',
-          mimeType: 'audio/mpeg',
-          byteLength: 4,
-          blob: new Blob(['old'], { type: 'audio/mpeg' }),
-          cacheKey: 'old-edited-cache-key',
-          createdAt: NOW + 100,
-        },
-        new Map(),
-      );
-
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.hasPlayableAudio()).toBe(false);
-      expect(bed.store.isAvailable(sentence.id)).toBe(false);
-    });
-
-    it('reports them when the configuration is not ready, while keeping them playable', async () => {
-      await storeClips(bed);
-      bed.readiness.set('stale-test');
-
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.availableCount()).toBe(0);
-      expect(bed.store.hasStaleAudio()).toBe(true);
-      expect(bed.store.hasPlayableAudio()).toBe(true);
-    });
-
-    it('uses a regenerated current clip instead of its fallback', async () => {
-      await storeClipsAt(bed, [0]);
-      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
-      await bed.store.prepare(bed.reading);
-      expect(bed.store.hasStaleAudio()).toBe(true);
-
-      await storeClipsAt(bed, [0]);
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.availableCount()).toBe(1);
-      expect(bed.store.hasStaleAudio()).toBe(false);
-    });
-
-    it('reports nothing for a reading that has no clips anywhere', async () => {
-      bed.readiness.set('stale-test');
-
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.hasStaleAudio()).toBe(false);
-    });
-
-    it('forgets them once the clips are actually deleted', async () => {
-      await storeClips(bed);
-      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
-      await bed.store.prepare(bed.reading);
-
-      bed.store.readingAudioCleared(bed.reading.id);
-
-      expect(bed.store.hasStaleAudio()).toBe(false);
-    });
-  });
-
-  describe('starting against a partial set', () => {
-    /**
-     * The change ADR 0034 makes: a reading with one clip missing at the end is
-     * still a reading that can be listened to from the beginning. Waiting for
-     * the last clip before allowing the first is the thing progressive playback
-     * exists to stop doing.
-     */
-    it('starts from the beginning as soon as sentence one exists', async () => {
-      await storeClips(bed, 1);
-      await bed.store.prepare(bed.reading);
-
-      await bed.store.play();
-
-      expect(bed.player.played).toHaveLength(1);
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.canPlayWholeReading()).toBe(false);
-      expect(bed.store.hasPlayableAudio()).toBe(true);
-      expect(bed.store.failure()).toBeNull();
-    });
-
-    it('refuses, and names the sentence, when the one asked for has no clip', async () => {
-      await storeClips(bed, 1);
-      await bed.store.prepare(bed.reading);
-
-      await bed.store.playFrom(orderedSentences(bed.draft)[2].id);
-
-      expect(bed.player.played).toEqual([]);
-      expect(bed.store.status()).toBe('idle');
-      expect(bed.store.failure()).toEqual({ kind: 'missing-clip', position: 3 });
-    });
-
-    it('reports how many sentences are ready to play', async () => {
-      await storeClips(bed, 2);
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.availableCount()).toBe(2);
-      expect(bed.store.missingCount()).toBe(SENTENCE_COUNT - 2);
-      expect(bed.store.hasPlayableAudio()).toBe(true);
-    });
-
-    it('keeps current coverage while a same-configuration refresh is pending', async () => {
-      await storeClips(bed, 2);
-      await bed.store.prepare(bed.reading);
-
-      let releaseSummaries!: () => void;
-      const summariesGate = new Promise<void>((resolve) => {
-        releaseSummaries = resolve;
-      });
-      let summariesRequested!: () => void;
-      const summariesStarted = new Promise<void>((resolve) => {
-        summariesRequested = resolve;
-      });
-      const originalListAudioSummaries = bed.enrichment.listAudioSummaries.bind(bed.enrichment);
-      const listAudioSummaries = vi.spyOn(bed.enrichment, 'listAudioSummaries');
-      listAudioSummaries.mockImplementation(async (readingId) => {
-        summariesRequested();
-        await summariesGate;
-        return originalListAudioSummaries(readingId);
-      });
-
-      const refresh = bed.store.prepare(bed.reading);
-      await summariesStarted;
-
-      expect(bed.store.availableCount()).toBe(2);
-
-      releaseSummaries();
-      await refresh;
-      expect(bed.store.availableCount()).toBe(2);
-    });
-
-    it('opens the completeness figure once the last clip exists', async () => {
-      await storeClips(bed, SENTENCE_COUNT - 1);
-      await bed.store.prepare(bed.reading);
-      expect(bed.store.canPlayWholeReading()).toBe(false);
-
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.missingCount()).toBe(0);
-      expect(bed.store.canPlayWholeReading()).toBe(true);
-    });
-
-    /**
-     * Clips produced by a voice the learner no longer uses are valid historical
-     * output, and must not count toward current completeness
-     * (`domain-and-data-model.md` section 6).
-     */
-    it('discounts every clip when the voice changes under a complete set', async () => {
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      expect(bed.store.canPlayWholeReading()).toBe(true);
-
-      bed.settings.set({ ...bed.settings(), voiceId: 'voice-b' });
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.canPlayWholeReading()).toBe(false);
-      expect(bed.store.hasStaleAudio()).toBe(true);
-    });
-
-    it('counts nothing when no tested configuration exists at all', async () => {
-      await storeClips(bed);
-      bed.readiness.set('not-configured');
-
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.canPlayWholeReading()).toBe(false);
-      expect(bed.store.hasPlayableAudio()).toBe(true);
-    });
-
-    /**
-     * The audio table is keyed by `cacheKey`, so two sentences with identical
-     * Japanese share one clip and one row. Counting rows per sentence left the
-     * second of them permanently uncovered and the gate permanently shut, on a
-     * reading that had in fact been fully prepared. Sentences like `はい。`
-     * repeat in real Japanese text, so this was not a corner case.
-     */
-    it('opens for a reading whose sentences share one clip', async () => {
-      // Two sentences, identical Japanese, therefore one content hash, one
-      // cache key, and one stored row for both.
-      const duplicates = importedReadingFixture({
-        seed: 5,
-        paragraphTexts: [['はい。', 'はい。']],
-      });
-      await bed.readings.saveImportedReading(duplicates);
-      const loaded = await bed.readings.getReading(duplicates.reading.id);
-      if (!loaded.ok || loaded.value === null) {
-        throw new Error('the duplicate fixture should save');
-      }
-      const shared = keyFor(bed, duplicates.sentences[0].contentHash);
-      expect(keyFor(bed, duplicates.sentences[1].contentHash)).toBe(shared);
-
-      await bed.enrichment.storeAudio(
-        {
-          id: assetId(uuid(8200)),
-          sentenceId: duplicates.sentences[0].id,
-          readingId: duplicates.reading.id,
-          sourceContentHash: duplicates.sentences[0].contentHash,
-          modelId: bed.settings().modelId,
-          voiceId: bed.settings().voiceId,
-          optionsFingerprint: audioOptionsFingerprint(TEST_HASHER, {
-            responseFormat: 'mp3',
-            speechStyle: bed.settings().speechStyle,
-            speechPace: bed.settings().speechPace,
-          }),
-          pace: 'playback',
-          mimeType: 'audio/mpeg',
-          byteLength: 4,
-          blob: new Blob([new Uint8Array([9, 9, 9, 9])], { type: 'audio/mpeg' }),
-          cacheKey: shared,
-          createdAt: NOW,
-        },
-        new Map(duplicates.sentences.map((entry) => [entry.id, shared])),
-      );
-
-      await bed.store.prepare(loaded.value);
-
-      expect(bed.store.sentenceCount()).toBe(2);
-      expect(bed.store.missingCount()).toBe(0);
-      expect(bed.store.canPlayWholeReading()).toBe(true);
-    });
-
-    /** One clip is as playable on its own whether or not its neighbours exist. */
-    it('plays one sentence even when the whole set is incomplete', async () => {
-      await storeClips(bed, 1);
-      await bed.store.prepare(bed.reading);
-
-      await bed.store.playSentence(orderedSentences(bed.draft)[0].id);
-
-      expect(bed.player.played).toHaveLength(1);
-      expect(bed.store.status()).toBe('playing');
-    });
-  });
-
-  describe('walking the reading', () => {
-    beforeEach(async () => {
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-    });
-
-    it('starts at the first sentence and advances in reading order', async () => {
-      const sentences = orderedSentences(bed.draft);
-
-      await bed.store.play();
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
-      expect(bed.store.currentPosition()).toBe(1);
-
-      for (let index = 1; index < SENTENCE_COUNT; index += 1) {
-        bed.player.finishClip();
-        await settle();
-        expect(bed.store.currentSentenceId()).toBe(sentences[index].id);
-      }
-      expect(bed.player.played).toHaveLength(SENTENCE_COUNT);
-    });
-
-    it('starts from the sentence it was asked to start from', async () => {
-      const third = orderedSentences(bed.draft)[2];
-
-      await bed.store.playFrom(third.id);
-
-      expect(bed.store.currentSentenceId()).toBe(third.id);
-      expect(bed.store.currentPosition()).toBe(3);
-    });
-
-    /**
-     * Finishing is its own state. `stop()` cleared the cursor, so a reading
-     * that had just been read to the end looked exactly like one that had never
-     * been started: the bar dropped to zero, the highlight vanished, and the
-     * last sentence could not be replayed.
-     */
-    it('ends at the last sentence, keeping the cursor there', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[SENTENCE_COUNT - 1].id);
-
-      bed.player.finishClip();
-      await settle();
-
-      expect(bed.store.status()).toBe('ended');
-      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1].id);
-      expect(bed.store.currentPosition()).toBe(SENTENCE_COUNT);
-      expect(bed.store.canGoPrevious()).toBe(true);
-    });
-
-    it('replays the last sentence from a finished reading', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[SENTENCE_COUNT - 1].id);
-      bed.player.finishClip();
-      await settle();
-      bed.player.position = 4;
-
-      await bed.store.previous();
-
-      expect(bed.player.restarts).toBe(1);
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1].id);
-    });
-
-    /**
-     * The control is labelled "restart this sentence, or go back to the one
-     * before". At position one it used to do neither: it tore the session down,
-     * at the one position where the learner has nothing else to press.
-     */
-    it('restarts the first sentence rather than stopping when Back is pressed on it', async () => {
-      await bed.store.play();
-
-      await bed.store.previous();
-
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentPosition()).toBe(1);
-      expect(bed.player.restarts).toBe(1);
-      expect(bed.player.played).toHaveLength(1);
-    });
-
-    /**
-     * Next off the end is a press that means "the next sentence", not "end the
-     * session". The transport disables it there, but a headset does not.
-     */
-    it('does nothing when Next is pressed at the last sentence', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[SENTENCE_COUNT - 1].id);
-
-      await bed.store.next();
-
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1].id);
-    });
-
-    /**
-     * Why Previous is not simply "one back": the reason to reach for it is that
-     * the sentence being read went past too fast, so the first press has to be
-     * able to answer that.
-     */
-    it('replays the sentence being read before stepping back to the one before', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[1].id);
-      bed.player.position = 4;
-
-      await bed.store.previous();
-
-      expect(bed.player.restarts).toBe(1);
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
-      expect(bed.store.status()).toBe('playing');
-
-      // Restarting put playback back at the beginning, where Previous means
-      // the sentence before this one again.
-      await bed.store.previous();
-
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
-    });
-
-    it('steps back rather than replaying when a sentence has only just started', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[1].id);
-      bed.player.position = 0.4;
-
-      await bed.store.previous();
-
-      expect(bed.player.restarts).toBe(0);
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
-    });
-
-    it('replays from the start of a paused sentence rather than resuming it', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[1].id);
-      bed.player.position = 4;
-      bed.store.pause();
-
-      await bed.store.previous();
-
-      expect(bed.player.restarts).toBe(1);
-      expect(bed.store.status()).toBe('playing');
-    });
-
-    it('pauses and resumes without reloading the clip', async () => {
-      await bed.store.play();
-
-      bed.store.pause();
-      expect(bed.store.status()).toBe('paused');
-
-      await bed.store.resume();
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.player.resumes).toBe(1);
-      expect(bed.player.played).toHaveLength(1);
-    });
-
-    it('plays one sentence and stops at its end rather than reading on', async () => {
-      await bed.store.playSentence(orderedSentences(bed.draft)[0].id);
-
-      bed.player.finishClip();
-      await settle();
-
-      expect(bed.store.status()).toBe('idle');
-      expect(bed.player.played).toHaveLength(1);
-    });
-
-    /**
-     * The reader watches this to decide whether to scroll. A learner who
-     * scrolled away has said where they want to look, and only an explicit
-     * navigation says they want to be taken back — the automatic advance
-     * between sentences does not.
-     */
-    it('counts explicit navigation, and never the automatic advance', async () => {
-      const before = bed.store.explicitNavigation();
-
-      await bed.store.play();
-      expect(bed.store.explicitNavigation()).toBe(before + 1);
-
-      bed.player.finishClip();
-      await settle();
-      expect(bed.store.explicitNavigation()).toBe(before + 1);
-
-      await bed.store.next();
-      expect(bed.store.explicitNavigation()).toBe(before + 2);
-
-      await bed.store.previous();
-      expect(bed.store.explicitNavigation()).toBe(before + 3);
-    });
-  });
-
-  /**
-   * Reaching the end of what has been prepared is not the end of the reading.
-   * The session waits there and reads on when the next clip is stored, which is
-   * what makes generating and listening at the same time work (ADR 0034).
-   */
-  describe('waiting at the frontier', () => {
-    beforeEach(async () => {
-      await storeClips(bed, 2);
-      await bed.store.prepare(bed.reading);
-    });
-
-    it('waits rather than stopping when the next clip does not exist yet', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.play();
-
-      bed.player.finishClip();
-      await settle();
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
-
-      bed.player.finishClip();
-      await settle();
-
-      expect(bed.store.status()).toBe('waiting');
-      // The cursor stays where the learner is, so the reader keeps showing it.
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
-      expect(bed.store.pendingSentenceId()).toBe(sentences[2].id);
-      expect(bed.store.pendingPosition()).toBe(3);
-      expect(bed.player.played).toHaveLength(2);
-    });
-
-    it('reads on by itself once the clip it was waiting for is stored', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.play();
-      bed.player.finishClip();
-      await settle();
-      bed.player.finishClip();
-      await settle();
-      expect(bed.store.status()).toBe('waiting');
-
-      await storeClips(bed, 3);
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
-      expect(bed.store.pendingSentenceId()).toBeNull();
-      expect(bed.player.played).toHaveLength(3);
-    });
-
-    /**
-     * The continuation belongs to a session the learner started. A clip
-     * arriving while nothing is playing is metadata, and metadata makes no
-     * sound.
-     */
-    it('makes no sound when clips arrive and nothing was started', async () => {
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.status()).toBe('idle');
-      expect(bed.player.played).toEqual([]);
-    });
-
-    it('does not read on after the learner stopped a waiting session', async () => {
-      await bed.store.play();
-      bed.player.finishClip();
-      await settle();
-      bed.player.finishClip();
-      await settle();
-      bed.store.stop();
-
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.status()).toBe('idle');
-      expect(bed.store.pendingSentenceId()).toBeNull();
-      expect(bed.player.played).toHaveLength(2);
-    });
-
-    it('offers Next only while some later sentence has a clip', async () => {
-      await bed.store.play();
-      expect(bed.store.canGoNext()).toBe(true);
-
-      bed.player.finishClip();
-      await settle();
-
-      expect(bed.store.canGoNext()).toBe(false);
-      await bed.store.next();
-      expect(bed.player.played).toHaveLength(2);
-
-      await storeClips(bed, 3);
-      await bed.store.prepare(bed.reading);
-      expect(bed.store.canGoNext()).toBe(true);
-    });
-
-    it('ends at the end of the reading rather than waiting for a sentence after it', async () => {
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1].id);
-
-      bed.player.finishClip();
-      await settle();
-
-      expect(bed.store.status()).toBe('ended');
-      expect(bed.store.pendingSentenceId()).toBeNull();
-    });
-
-    /**
-     * Nothing but the clip arriving ever left `waiting`, so a run that failed
-     * or was cancelled parked the player at "Waiting for sentence N of M" for
-     * good, with Play disabled, Next disabled, and no Stop in the transport.
-     */
-    it('lets go of a wait for a clip that is not coming', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.play();
-      bed.player.finishClip();
-      await settle();
-      bed.player.finishClip();
-      await settle();
-      expect(bed.store.status()).toBe('waiting');
-
-      bed.store.stopExpectingClips();
-
-      expect(bed.store.status()).toBe('ended');
-      expect(bed.store.pendingSentenceId()).toBeNull();
-      // The cursor stays on the sentence that was heard, so Back still works.
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
-      expect(bed.store.failure()).toEqual({ kind: 'not-generated', position: 3 });
-    });
-
-    it('ignores a release when nothing is waiting', async () => {
-      await bed.store.play();
-
-      bed.store.stopExpectingClips();
-
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.failure()).toBeNull();
-    });
-  });
-
-  /**
-   * The learner hears a sentence, reads or translates it, and only then asks
-   * for the next one. The session stays alive at the seam rather than ending
-   * there, which is what separates this from the popover's one-shot play.
-   */
-  describe('one sentence at a time', () => {
-    it('holds at the seam and loads nothing until it is told to go on', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      bed.store.setStepMode(true);
-      await bed.store.play();
-
-      bed.player.finishClip();
-      await settle();
-
-      expect(bed.store.status()).toBe('stepped');
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
-      expect(bed.player.played).toHaveLength(1);
-    });
-
-    it('plays the next sentence when it is told to', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      bed.store.setStepMode(true);
-      await bed.store.play();
-      bed.player.finishClip();
-      await settle();
-
-      await bed.store.continueReading();
-
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
-      expect(bed.player.played).toHaveLength(2);
-    });
-
-    /** A hole is not a wall here either: continuing lands on what was made. */
-    it('continues across a sentence with no clip', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await storeClipsAt(bed, [0, 2]);
-      await bed.store.prepare(bed.reading);
-      bed.store.setStepMode(true);
-      await bed.store.play();
-      bed.player.finishClip();
-      await settle();
-      expect(bed.store.status()).toBe('stepped');
-
-      await bed.store.continueReading();
-
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
-    });
-
-    /**
-     * Where continuing differs from Next: Next means "take me to a sentence
-     * that exists" and does nothing at the frontier, and continuing means
-     * "carry on", which the reading does as soon as the clip is stored.
-     */
-    it('waits at the frontier and reads on when the clip arrives', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await storeClips(bed, 1);
-      await bed.store.prepare(bed.reading);
-      bed.store.setStepMode(true);
-      await bed.store.play();
-      bed.player.finishClip();
-      await settle();
-      expect(bed.store.status()).toBe('stepped');
-
-      await bed.store.continueReading();
-
-      expect(bed.store.status()).toBe('waiting');
-      expect(bed.store.pendingSentenceId()).toBe(sentences[1].id);
-      expect(bed.player.played).toHaveLength(1);
-
-      await storeClips(bed, 2);
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
-    });
-
-    it('still ends the reading at the last sentence', async () => {
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      bed.store.setStepMode(true);
-      await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1].id);
-
-      bed.player.finishClip();
-      await settle();
-
-      expect(bed.store.status()).toBe('ended');
-      expect(bed.store.pendingSentenceId()).toBeNull();
-    });
-
-    /**
-     * No special case: the elapsed position sits at the end of the clip that
-     * just finished, which is past the replay window, so Back means what it
-     * always means there.
-     */
-    it('replays the sentence just heard when Back is pressed at a seam', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      bed.store.setStepMode(true);
-      await bed.store.play();
-      bed.player.position = 3;
-      bed.player.finishClip();
-      await settle();
-
-      await bed.store.previous();
-
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
-      expect(bed.player.restarts).toBe(1);
-    });
-
-    it('reads on without stopping once the mode is turned off', async () => {
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      bed.store.setStepMode(true);
-      bed.store.setStepMode(false);
-      await bed.store.play();
-
-      bed.player.finishClip();
-      await settle();
-
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.player.played).toHaveLength(2);
-    });
-  });
-
-  describe('every stop trigger', () => {
-    beforeEach(async () => {
+  describe('preparing', () => {
+    it('stops one reading before preparing another', async () => {
       await storeClips(bed);
       await bed.store.prepare(bed.reading);
       await bed.store.play();
-      expect(bed.store.status()).toBe('playing');
-    });
 
-    it('stops when the learner presses Stop', () => {
-      bed.store.stop();
+      const other = importedReadingFixture({ seed: 9 });
+      await bed.store.prepare({ ...bed.reading, id: other.reading.id, title: 'Another' });
 
       expect(bed.store.status()).toBe('idle');
       expect(bed.store.currentSentenceId()).toBeNull();
-      expect(bed.player.stops).toBeGreaterThan(0);
     });
 
-    it('stops when the reading being read is deleted', () => {
-      bed.store.readingDeleted(bed.reading.id);
-
-      expect(bed.store.status()).toBe('idle');
-      expect(bed.store.canPlayWholeReading()).toBe(false);
-    });
-
-    it('leaves playback alone when a different reading is deleted', () => {
-      bed.store.readingDeleted(importedReadingFixture({ seed: 9 }).reading.id);
-
-      expect(bed.store.status()).toBe('playing');
-    });
-
-    it('stops when the audio cache is cleared', () => {
-      bed.store.audioCacheCleared();
-
-      expect(bed.store.status()).toBe('idle');
-      expect(bed.store.canPlayWholeReading()).toBe(false);
-      expect(bed.store.failure()).toBeNull();
-    });
-
-    it('stops when this reading audio is cleared', () => {
-      bed.store.readingAudioCleared(bed.reading.id);
-
-      expect(bed.store.status()).toBe('idle');
-      expect(bed.store.canPlayWholeReading()).toBe(false);
-    });
-
-    it('keeps playing when a different reading audio is cleared', () => {
-      bed.store.readingAudioCleared(importedReadingFixture({ seed: 19 }).reading.id);
-
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.canPlayWholeReading()).toBe(true);
-    });
-
-    it('stops and names the sentence when a clip cannot be decoded', async () => {
-      bed.player.failNextPlay = true;
-
-      await bed.store.next();
-
-      expect(bed.store.status()).toBe('idle');
-      expect(bed.store.failure()).toEqual({ kind: 'decode-failed', position: 2 });
-    });
-
-    it('stops and names the sentence when a clip has gone missing', async () => {
-      const second = orderedSentences(bed.draft)[1];
-      await bed.db.audioAssets.where('sentenceId').equals(second.id).delete();
-
-      await bed.store.next();
-
-      expect(bed.store.status()).toBe('idle');
-      expect(bed.store.failure()).toEqual({ kind: 'missing-clip', position: 2 });
-    });
-  });
-
-  /**
-   * The seam between two sentences. Reading on is not a state the transport
-   * should render, and a Pause pressed while the next clip is being read from
-   * storage is a press the learner made.
-   */
-  describe('the automatic advance', () => {
-    beforeEach(async () => {
+    it('reports a storage failure and claims nothing is playable', async () => {
       await storeClips(bed);
       await bed.store.prepare(bed.reading);
-    });
+      vi.spyOn(bed.enrichment, 'listAudioSummaries').mockResolvedValue(
+        err(storageError('unavailable', 'audio table unavailable')),
+      );
 
-    it('never reports loading between two sentences of one advance', async () => {
-      await bed.store.play();
-
-      bed.player.finishClip();
-      // Synchronously after the clip ended, while the next one is being read.
-      expect(bed.store.status()).toBe('playing');
-
-      await settle();
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentPosition()).toBe(2);
-    });
-
-    it('reports loading for a jump the learner asked for', async () => {
-      await bed.store.play();
-
-      const jump = bed.store.next();
-      expect(bed.store.status()).toBe('loading');
-
-      await jump;
-      expect(bed.store.status()).toBe('playing');
-    });
-
-    it('honours a Pause pressed while the next clip is being read', async () => {
-      await bed.store.play();
-
-      bed.player.finishClip();
-      bed.store.pause();
-      expect(bed.store.status()).toBe('paused');
-
-      await settle();
-
-      expect(bed.store.status()).toBe('paused');
-      expect(bed.store.currentPosition()).toBe(2);
-      expect(bed.player.startedPaused.at(-1)).toBe(true);
-    });
-  });
-
-  describe('moving around a reading with holes in it', () => {
-    /** Sentences 1, 2 and 4 have clips; sentence 3 failed and was recorded. */
-    beforeEach(async () => {
-      await storeClipsAt(bed, [0, 1, 3]);
-      await bed.store.prepare(bed.reading);
-    });
-
-    it('skips the hole rather than treating it as a wall', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[1].id);
-
-      expect(bed.store.canGoNext()).toBe(true);
-      await bed.store.next();
-
-      expect(bed.store.currentSentenceId()).toBe(sentences[3].id);
-      expect(bed.store.currentPosition()).toBe(4);
-    });
-
-    it('steps back across the hole as well', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[3].id);
-      bed.player.position = 0;
-
-      await bed.store.previous();
-
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
-    });
-
-    /**
-     * Clips arrive out of order, so a run can leave sentence one missing while
-     * the rest of the reading is ready. Gating Play on the first sentence left
-     * the learner with no way into audio they had already paid for.
-     */
-    it('starts at the first sentence that has a clip', async () => {
-      await storeClipsAt(bed, [2, 3]);
-      await bed.db.audioAssets
-        .where('sentenceId')
-        .anyOf(
-          orderedSentences(bed.draft)
-            .slice(0, 2)
-            .map((sentence) => sentence.id),
-        )
-        .delete();
       await bed.store.prepare(bed.reading);
 
+      expect(bed.store.failure()).toEqual({ kind: 'storage', message: 'audio table unavailable' });
+      expect(bed.store.hasPlayableAudio()).toBe(false);
+    });
+
+    it('reads on when the clip a waiting session stopped at is stored', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed, 2);
+      await bed.store.prepare(bed.reading);
+      await bed.store.play();
+      bed.player.finishClip();
+      await settle();
+      bed.player.finishClip();
+      await settle();
+      expect(bed.store.status()).toBe('waiting');
+
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+      expect(bed.player.played).toHaveLength(3);
+    });
+
+    it('reads on from the frontier and grows an open track', async () => {
+      await storeClips(bed, 2);
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
       await bed.store.play();
 
-      expect(bed.store.currentPosition()).toBe(3);
-      expect(bed.store.status()).toBe('playing');
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.player.appended[0]).toHaveLength(1);
     });
   });
 
@@ -1400,417 +124,158 @@ describe('AudioPlaybackStore', () => {
     });
   });
 
-  describe('seeking along the track', () => {
-    it('jumps a live session to the sentence it was dropped on', async () => {
-      const sentences = orderedSentences(bed.draft);
+  describe('the transport', () => {
+    beforeEach(async () => {
       await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+    });
+
+    it('walks the reading through its commands', async () => {
+      const sentences = orderedSentences(bed.draft);
+
+      await bed.store.play();
+      await bed.store.next();
+      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+
+      await bed.store.previous();
+      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+
+      await bed.store.seekTo(SENTENCE_COUNT);
+      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1].id);
+
+      bed.store.pause();
+      expect(bed.store.status()).toBe('paused');
+
+      await bed.store.resume();
+      expect(bed.store.status()).toBe('playing');
+
+      bed.store.stop();
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.store.currentSentenceId()).toBeNull();
+      expect(bed.player.stops).toBeGreaterThan(0);
+    });
+
+    it('answers whether a sentence can be started from', () => {
+      const sentences = orderedSentences(bed.draft);
+
+      expect(bed.store.isAvailable(sentences[0].id)).toBe(true);
+      expect(bed.store.isAvailable(null)).toBe(false);
+    });
+
+    it('clears a reported failure when the surface that showed it is done', async () => {
+      await bed.db.audioAssets.clear();
+      await storeClips(bed, SENTENCE_COUNT - 1);
+      await bed.store.prepare(bed.reading);
+      await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1].id);
+      expect(bed.store.failure()).not.toBeNull();
+
+      bed.store.acknowledgeFailure();
+
+      expect(bed.store.failure()).toBeNull();
+    });
+
+    it('stops and forgets for each maintenance event', async () => {
+      await bed.store.play();
+      bed.store.readingAudioCleared(bed.reading.id);
+      expect(bed.store.status()).toBe('idle');
+
       await bed.store.prepare(bed.reading);
       await bed.store.play();
+      bed.store.audioCacheCleared();
+      expect(bed.store.hasPlayableAudio()).toBe(false);
 
-      await bed.store.seekTo(3);
-
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
-      expect(bed.store.status()).toBe('playing');
-    });
-
-    /**
-     * Aiming is not playing. Dragging the track of a reading that is not being
-     * read says where to start, and starting is still the press of Play.
-     */
-    it('only moves the cursor while nothing is playing', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await storeClips(bed);
       await bed.store.prepare(bed.reading);
-
-      await bed.store.seekTo(2);
-
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
-      expect(bed.store.status()).toBe('idle');
-      expect(bed.player.played).toHaveLength(0);
-    });
-
-    /** A hole is somewhere the drag passes over, not somewhere it lands. */
-    it('snaps to the nearest sentence that has a clip', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await storeClipsAt(bed, [0, 3]);
-      await bed.store.prepare(bed.reading);
-
-      await bed.store.seekTo(3);
-
-      expect(bed.store.currentSentenceId()).toBe(sentences[3].id);
-    });
-
-    it('clamps a position outside the reading, and does nothing without audio', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.prepare(bed.reading);
-
-      await bed.store.seekTo(99);
-
-      expect(bed.store.currentSentenceId()).toBeNull();
-
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      await bed.store.seekTo(99);
-
-      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1].id);
+      bed.store.readingDeleted(bed.reading.id);
+      expect(bed.store.reading()).toBeNull();
     });
   });
 
-  describe('continuous background track', () => {
-    it('loads a complete reading once and follows its native sentence boundaries', async () => {
-      const sentences = orderedSentences(bed.draft);
+  describe('the player events', () => {
+    beforeEach(async () => {
       await storeClips(bed);
       await bed.store.prepare(bed.reading);
-      bed.player.sequenceSupported = true;
-
-      await bed.store.play();
-
-      expect(bed.player.sequences).toHaveLength(1);
-      expect(bed.player.sequences[0]).toHaveLength(SENTENCE_COUNT);
-      expect(bed.player.played).toEqual([]);
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
-
-      bed.player.moveTo(2.2);
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
-
-      await bed.store.next();
-      expect(bed.player.position).toBe(3);
-      expect(bed.store.currentSentenceId()).toBe(sentences[3].id);
-
-      await bed.store.previous();
-      expect(bed.player.position).toBe(2);
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
     });
 
-    it('loads a complete WebM reading as one native sequence', async () => {
-      bed = await configure();
-      await storeClipsAt(bed, [0, 1, 2, 3], 'audio/webm');
-      await bed.store.prepare(bed.reading);
-      bed.player.sequenceSupported = true;
+    it('stops and names the sentence when the element reports an error', async () => {
+      await bed.store.playFrom(orderedSentences(bed.draft)[1].id);
 
-      await bed.store.play();
+      bed.player.failClip();
 
-      expect(bed.player.sequences).toHaveLength(1);
-      expect(bed.player.sequences[0]?.every((clip) => clip.mimeType === 'audio/webm')).toBe(true);
-      expect(bed.player.played).toEqual([]);
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.store.failure()).toEqual({ kind: 'decode-failed', position: 2 });
     });
 
-    it('keeps a partly generated WebM reading in one open resource', async () => {
-      bed = await configure();
-      await storeClipsAt(bed, [0, 1], 'audio/webm');
-      await bed.store.prepare(bed.reading);
-      bed.player.sequenceSupported = true;
-
-      await bed.store.play();
-      await storeClipsAt(bed, [2], 'audio/webm');
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.player.sequences[0]?.every((clip) => clip.mimeType === 'audio/webm')).toBe(true);
-      expect(bed.player.appended[0]?.every((clip) => clip.mimeType === 'audio/webm')).toBe(true);
-      expect(bed.player.sequenceOpen()).toBe(true);
-      expect(bed.player.played).toEqual([]);
-    });
-
-    /**
-     * A resource that starts partway through the reading indexes from its own
-     * first sentence, so every boundary the store reads is offset from the
-     * reading's. Getting that wrong highlights the wrong sentence and seeks to
-     * the wrong place, and it is invisible while a resource always starts at
-     * sentence one.
-     */
-    it('maps positions from the sentence the resource starts at', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      bed.player.sequenceSupported = true;
-
-      await bed.store.playFrom(sentences[2].id);
-
-      expect(bed.player.sequences[0]).toHaveLength(2);
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
-
-      bed.player.moveTo(1.2);
-      expect(bed.store.currentSentenceId()).toBe(sentences[3].id);
-
-      // Sentence 2 is not in this resource. Aiming at it builds one from there
-      // rather than seeking into audio the element does not have.
-      await bed.store.seekTo(2);
-
-      expect(bed.player.sequences).toHaveLength(2);
-      expect(bed.player.sequences[1]).toHaveLength(3);
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
-      expect(bed.player.played).toEqual([]);
-    });
-
-    it('keeps one-sentence mode on the sentence path even with a complete set', async () => {
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      bed.player.sequenceSupported = true;
-      bed.store.setStepMode(true);
-
+    it('reads on when a clip ends', async () => {
       await bed.store.play();
 
-      expect(bed.player.sequences).toEqual([]);
-      expect(bed.player.played).toHaveLength(1);
-    });
-
-    it('changes a live continuous track without leaking into or skipping the next sentence', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      bed.player.sequenceSupported = true;
-      await bed.store.play();
-      bed.player.moveTo(0.6);
-
-      bed.store.setStepMode(true);
+      bed.player.finishClip();
       await settle();
 
-      expect(bed.player.pauses).toBe(1);
-      expect(bed.player.played).toHaveLength(1);
-      expect(bed.player.startedAt).toEqual([0.6]);
+      expect(bed.store.currentPosition()).toBe(2);
+    });
+  });
+
+  describe('the lock screen and headset', () => {
+    beforeEach(async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+    });
+
+    it('pauses, resumes, steps and stops from the media session', async () => {
+      const sentences = orderedSentences(bed.draft);
+      const handlers = bed.media.handlers;
+      if (handlers === null) {
+        throw new Error('the store should register media session handlers');
+      }
+      await bed.store.play();
+
+      handlers.pause();
+      expect(bed.store.status()).toBe('paused');
+      expect(bed.media.playbackStates.at(-1)).toBe('paused');
+
+      handlers.play();
+      await settle();
+      expect(bed.store.status()).toBe('playing');
+
+      handlers.next();
+      await settle();
+      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+
+      handlers.previous();
+      await settle();
       expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
 
+      handlers.stop();
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.media.playbackStates.at(-1)).toBe('none');
+      expect(bed.media.clears).toBeGreaterThan(0);
+    });
+
+    /** A session held at a seam has nothing to resume: a headset Play reads on. */
+    it('reads on from a seam when Play is pressed on a headset', async () => {
+      const sentences = orderedSentences(bed.draft);
+      bed.store.setStepMode(true);
+      await bed.store.play();
       bed.player.finishClip();
       await settle();
       expect(bed.store.status()).toBe('stepped');
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
 
-      await bed.store.continueReading();
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
-      expect(bed.player.startedAt).toEqual([0.6, 0]);
-    });
-
-    it('keeps a paused track paused at the same point when sentence mode is selected', async () => {
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-      bed.player.sequenceSupported = true;
-      await bed.store.play();
-      bed.player.moveTo(0.4);
-      bed.store.pause();
-
-      bed.store.setStepMode(true);
-      await settle();
-
-      expect(bed.store.status()).toBe('paused');
-      expect(bed.player.startedPaused).toEqual([false, true]);
-      expect(bed.player.startedAt).toEqual([0.4]);
-    });
-  });
-
-  /**
-   * A reading started while it is still being generated used to be sentence by
-   * sentence for the whole session, and advancing between two sentences is
-   * JavaScript — an event handler, a read from storage, a new source — which a
-   * locked Android screen may never run. The resource is therefore built over
-   * the clips that exist and left open, and each sentence is appended to it as
-   * it is stored, so the element never goes quiet at a seam.
-   */
-  describe('a track that grows while it is generated', () => {
-    beforeEach(async () => {
-      await storeClips(bed, 2);
-      await bed.store.prepare(bed.reading);
-      bed.player.sequenceSupported = true;
-    });
-
-    it('starts a partly generated reading on a resource left open', async () => {
-      await bed.store.play();
-
-      expect(bed.player.sequences[0]).toHaveLength(2);
-      expect(bed.player.sequenceOpen()).toBe(true);
-      expect(bed.player.played).toEqual([]);
-      expect(bed.store.status()).toBe('playing');
-    });
-
-    it('appends each sentence as it is stored, without loading a second clip', async () => {
-      await bed.store.play();
-
-      await storeClips(bed, 3);
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.player.appended[0]).toHaveLength(1);
-      expect(bed.player.sequences[0]).toHaveLength(3);
-      expect(bed.player.played).toEqual([]);
-      expect(bed.player.sequenceOpen()).toBe(true);
-    });
-
-    it('seals the resource once the last sentence has been appended', async () => {
-      await bed.store.play();
-
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.player.sequences[0]).toHaveLength(SENTENCE_COUNT);
-      expect(bed.player.closes).toBe(1);
-      expect(bed.player.sequenceOpen()).toBe(false);
-    });
-
-    /**
-     * Catching up with generation is a stall inside the resource, not a
-     * teardown: the element holds where it ran out, and the append that follows
-     * starts it again without a second Play.
-     */
-    it('names the sentence it is holding for, and reads on when it arrives', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.play();
-
-      bed.player.stall();
-
-      expect(bed.store.status()).toBe('waiting');
-      expect(bed.store.pendingSentenceId()).toBe(sentences[2].id);
-
-      await storeClips(bed, 3);
-      await bed.store.prepare(bed.reading);
-      bed.player.unstall();
-
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.pendingSentenceId()).toBeNull();
-      expect(bed.player.played).toEqual([]);
-    });
-
-    it('seals the resource and lets go when the run that was filling it stops', async () => {
-      await bed.store.play();
-      bed.player.stall();
-
-      bed.store.stopExpectingClips();
-
-      expect(bed.player.closes).toBe(1);
-      expect(bed.store.status()).toBe('ended');
-      expect(bed.store.failure()).toEqual({ kind: 'not-generated', position: 3 });
-    });
-
-    it('keeps fallback clips in an existing resource after a voice change', async () => {
-      await bed.store.play();
-
-      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.player.closes).toBe(0);
-      expect(bed.player.sequences[0]).toHaveLength(2);
-      expect(bed.player.sequenceOpen()).toBe(true);
-    });
-
-    it('seals when a clip already in the resource is regenerated', async () => {
-      await bed.store.play();
-
-      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
-      await bed.store.prepare(bed.reading);
-      await storeClipsAt(bed, [0]);
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.player.closes).toBe(1);
-      expect(bed.player.sequences[0]).toHaveLength(2);
-    });
-
-    it('seals rather than failing the session when an append is refused', async () => {
-      await bed.store.play();
-      await storeClips(bed, 3);
-      bed.player.failNextExtend = true;
-
-      await bed.store.prepare(bed.reading);
-
-      expect(bed.player.closes).toBe(1);
-      expect(bed.player.sequences[0]).toHaveLength(2);
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.failure()).toBeNull();
-    });
-
-    /**
-     * A WAV container states its own length, so a partial one could never grow
-     * and the session would end at the frontier with no way on. The
-     * per-sentence path waits there instead.
-     */
-    it('keeps a partly generated WAV reading on the sentence path', async () => {
-      await bed.db.audioAssets.clear();
-      await storeClipsAt(bed, [0, 1], 'audio/wav');
-      await bed.store.prepare(bed.reading);
-
-      await bed.store.play();
-
-      expect(bed.player.sequences).toEqual([]);
-      expect(bed.player.played).toHaveLength(1);
-    });
-  });
-
-  describe('failures that are not the clip', () => {
-    beforeEach(async () => {
-      await storeClips(bed);
-      await bed.store.prepare(bed.reading);
-    });
-
-    /**
-     * A browser refusing a resume it did not trace to a gesture is not an
-     * undecodable clip. Reporting it as one destroyed the session and told the
-     * learner their audio was broken.
-     */
-    it('stays paused when the browser refuses a resume', async () => {
-      await bed.store.play();
-      bed.store.pause();
-      bed.player.failNextResume = true;
-
-      await bed.store.resume();
-
-      expect(bed.store.status()).toBe('paused');
-      expect(bed.store.currentPosition()).toBe(1);
-      expect(bed.store.failure()).toBeNull();
-    });
-
-    /**
-     * The popover plays one sentence; the transport reads the reading. Resuming
-     * from the transport used to keep the single-sentence flag, so the reading
-     * stopped again at the end of that sentence with nothing explaining why.
-     */
-    it('reads on when a single sentence is resumed from the transport', async () => {
-      const sentences = orderedSentences(bed.draft);
-      await bed.store.playSentence(sentences[0].id);
-      bed.store.pause();
-
-      await bed.store.resume(true);
-      bed.player.finishClip();
+      bed.media.handlers?.play();
       await settle();
 
       expect(bed.store.status()).toBe('playing');
       expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
     });
 
-    /**
-     * `playSentence` used to reach `load()` directly, so a sentence whose row
-     * had gone tore the whole session down where `playFrom` merely named it.
-     */
-    it('names a missing sentence without tearing down the session', async () => {
-      await storeClipsAt(bed, [0]);
-      const third = orderedSentences(bed.draft)[2];
-      await bed.db.audioAssets.where('sentenceId').equals(third.id).delete();
-      await bed.store.prepare(bed.reading);
+    it('seeks a continuous track to a lock-screen position', async () => {
+      const sentences = orderedSentences(bed.draft);
+      bed.player.sequenceSupported = true;
       await bed.store.play();
 
-      await bed.store.playSentence(third.id);
+      bed.media.handlers?.seekTo(2.5);
 
-      expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentPosition()).toBe(1);
-      expect(bed.store.failure()).toEqual({ kind: 'missing-clip', position: 3 });
+      expect(bed.player.position).toBe(2.5);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
     });
-  });
-
-  it('stops one reading before preparing another', async () => {
-    await storeClips(bed);
-    await bed.store.prepare(bed.reading);
-    await bed.store.play();
-
-    const other = importedReadingFixture({ seed: 9 });
-    await bed.store.prepare({ ...bed.reading, id: other.reading.id, title: 'Another' });
-
-    expect(bed.store.status()).toBe('idle');
-    expect(bed.store.currentSentenceId()).toBeNull();
-  });
-
-  it('clears a reported failure when the surface that showed it is done', async () => {
-    await storeClips(bed, SENTENCE_COUNT - 1);
-    await bed.store.prepare(bed.reading);
-    await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1].id);
-    expect(bed.store.failure()).not.toBeNull();
-
-    bed.store.acknowledgeFailure();
-
-    expect(bed.store.failure()).toBeNull();
   });
 });

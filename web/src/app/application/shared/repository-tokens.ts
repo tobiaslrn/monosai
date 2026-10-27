@@ -35,8 +35,6 @@ export const VOCABULARY_REPOSITORY = new InjectionToken<VocabularyRepository>(
 export const VOCABULARY_SOURCE_REPOSITORY = new InjectionToken<VocabularySourceRepository>(
   'monosai.vocabulary-source-repository',
 );
-/** Compatibility alias while Anki mapping components are being generalized. */
-export const SOURCE_MAPPING_REPOSITORY = VOCABULARY_SOURCE_REPOSITORY;
 export const GRAMMAR_REPOSITORY = new InjectionToken<GrammarRepository>(
   'monosai.grammar-repository',
 );
