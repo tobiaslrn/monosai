@@ -630,7 +630,7 @@ length, sends the sheet away, and anything less settles it back against its
 edge. Speed counts because a short flick is how a sheet is usually put away,
 and a sheet that waits to be dragged the full distance feels deaf to it.
 
-A sheet leaves the way it arrived. However it is dismissed — the handle, the
+A sheet leaves by its docked edge. However it is dismissed — the handle, the
 backdrop, Escape, a close or commit button — it slides back down its docked edge
 at the shared medium duration with the exit curve while the scrim fades with it,
 and only then does the dialog close and report its result. A native-popover sheet
@@ -898,11 +898,11 @@ a sheet bounded to a fraction of the screen is bounded by the _screen_.
 ## 7. Motion
 
 Motion is functional first: it shows where something came from, that something
-is still working, or that a value changed. A sheet rises from the edge it
+is still working, or that a value changed. A popover sheet rises from the edge it
 docks to. A generation fill breathes while requests are open. A control settles
 into its new state rather than cutting to it.
 
-A sheet leaves by the edge it arrived from, and a dismissal continues the
+A popover sheet leaves by the edge it arrived from, and a dismissal continues the
 gesture that asked for it: the slide starts wherever the finger let go rather
 than from the docked position, and the scrim of a modal sheet fades with it.
 Arrival decelerates into place and departure accelerates away, which is what

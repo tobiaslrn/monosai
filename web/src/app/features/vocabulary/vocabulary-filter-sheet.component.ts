@@ -180,7 +180,7 @@ const DEPARTURE_FALLBACK_MS = 400;
       transition: none;
     }
 
-    /* Leaving, a docked sheet goes back down the edge it rose from, at the
+    /* Leaving, a docked sheet slides back down its edge, at the
        popover sheets' pace and curve, and is no longer a surface to press. */
     .sheet.is-leaving {
       pointer-events: none;
