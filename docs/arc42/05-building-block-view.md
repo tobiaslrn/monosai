@@ -279,6 +279,21 @@ A paragraph hands the looked-up and previewed word only to the sentence that
 contains it, so a hover re-renders the two sentences it moved between instead of
 every sentence mounted.
 
+The floating player is split the same way, along what it decides and what it draws, with the
+template and styles inline like every other component but the few that already keep a stylesheet
+beside them. `ReadingPlayerComponent` reads the root playback store and the job progress once into
+a `PlayerFacts` literal and binds the result; it holds the control row and its commands. What each
+control is lives in `reading-player-view.ts` as plain functions of those facts — the generation
+rail, the one button in the middle (generate, generating, play, pause), the one contextual slot,
+the hidden announcement, and the cycle of reading speeds — and every string it says lives in
+`reading-player-copy.ts`, so the wording a screen reader hears and the journeys assert is read in
+one place. Both are tested with literals, with no injector. `ReadingTrackComponent` owns the
+scrubber: the native range, the two fills behind it, the drag that follows the thumb without
+being fought by playback, and the seek that lands the thumb where playback actually went. It
+renders as `display: contents`, so its track is still a flex item of the card.
+`GenerationRingComponent` is the ring drawn around the control that stops a run and fills the
+element it is placed in. Each carries its own styles; the player styles only what is left: its own host, the card, the notice, and the row of controls. The described controls are compared by field, so one that a sentence tick did not change is not rebound.
+
 The reader's window is not the shared virtual list. Paragraphs are loaded from
 storage by position, a few at a time and asynchronously, around an anchor and
 within a bound ([ADR 0011](../decisions/0011-paragraph-window-bounds.md)); the

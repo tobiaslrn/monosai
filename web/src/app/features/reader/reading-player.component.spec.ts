@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -1171,6 +1172,41 @@ describe('ReadingPlayerComponent', () => {
       expect(element.querySelector('[role="alert"]')?.textContent).toContain(
         'Reading the saved audio failed: The database was unavailable.',
       );
+    });
+  });
+
+  describe('its parts', () => {
+    it('keeps the track a flex child of the card through its host element', () => {
+      store.total.set(6);
+      store.ready.set(6);
+      const element = render().nativeElement as HTMLElement;
+      const host = element.querySelector<HTMLElement>('mn-reading-track');
+      const track = host?.querySelector<HTMLElement>('.track');
+      const card = element.querySelector<HTMLElement>('.player');
+
+      expect(host?.parentElement).toBe(card);
+      expect(track?.parentElement).toBe(host);
+      expect(getComputedStyle(host!).display).toBe('contents');
+      expect(getComputedStyle(card!).display).toBe('flex');
+    });
+
+    it('keeps a control that did not change the same object when the reading moves on', () => {
+      store.total.set(6);
+      store.ready.set(6);
+      const fixture = render();
+      const player = fixture.debugElement.query(By.directive(ReadingPlayerComponent))
+        .componentInstance as { centre(): unknown; aux(): unknown };
+      const centre = player.centre();
+
+      store.position.set(3);
+      fixture.detectChanges();
+
+      expect(player.centre()).toBe(centre);
+
+      store.statusSignal.set('playing');
+      fixture.detectChanges();
+
+      expect(player.centre()).not.toBe(centre);
     });
   });
 });

@@ -1,68 +1,27 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  input,
-  output,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
-import {
-  isAudioRunInProgress,
-  type AudioJobCounts,
-  type AudioJobProgress,
-} from '../../application/enrichment/audio-job.store';
-import { PLAYBACK_RATES } from '../../domain/settings/settings';
+import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
 import type { SentenceId } from '../../domain/shared/ids';
-import type { IconName } from '../../shared-ui/icon/icon-set';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
-import { defined } from '../../domain/shared/invariant';
-
-/** What the card has to say about generation, if anything. */
-export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
-
-/**
- * The one contextual control, and what it is at this moment.
- *
- * Everything the card used to say in a band of prose and buttons — prepare
- * this, stop that, this failed — is one slot in the control row whose icon,
- * name and tint say which of them it currently is.
- */
-export interface AuxAction {
-  readonly kind: 'cancel' | 'generate' | 'retry' | 'dismiss';
-  readonly icon: IconName;
-  /** The accessible name, and the whole of what the button says out loud. */
-  readonly label: string;
-  /** The long version, for a pointer that rests on it. */
-  readonly title: string;
-  readonly tone: 'accent' | 'danger' | 'secondary';
-}
-
-/**
- * The big button in the middle, as data.
- *
- * One `<button>` is bound to this, so the element — and the focus on it —
- * survives every change between its meanings. `generating` is a run in
- * progress with nothing to play yet: the filled button stays exactly where it
- * was and is `aria-busy`, rather than turning into a dead Play.
- */
-export interface CentreControl {
-  readonly kind: 'generate' | 'generating' | 'play' | 'pause';
-  readonly icon: IconName;
-  /** The accessible name, and the tooltip. */
-  readonly label: string;
-  /** Unavailable: there is nothing to start, and no work that will provide it. */
-  readonly disabled: boolean;
-  /** Working: the control is holding a wait and ignores presses until it ends. */
-  readonly busy: boolean;
-}
-
-/** Geometry of the ring drawn around the aux button while a run is going. */
-const RING_RADIUS = 19;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+import { GenerationRingComponent } from './generation-ring.component';
+import {
+  playbackFailureMessage,
+  playbackSpeedAriaLabel,
+  playbackSpeedLabel,
+} from './reading-player-copy';
+import {
+  announcement,
+  auxAction,
+  centreControl,
+  coveragePercent,
+  nextPlaybackRate,
+  sameControl,
+  setupNeeded,
+  type AuxAction,
+  type PlayerFacts,
+} from './reading-player-view';
+import { ReadingTrackComponent } from './reading-track.component';
 
 /**
  * Everything to do with a reading audio, in one player.
@@ -101,13 +60,17 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
  * It reads the root playback store directly rather than being handed its state,
  * because playback is application-wide and outlives the player being open.
  *
+ * What it decides lives beside it as plain functions of {@link PlayerFacts}:
+ * `reading-player-view.ts` says what each control is, and `reading-player-copy.ts`
+ * says every word. The track and the ring are components of their own.
+ *
  * **Nothing here starts on mount.** Opening the player loads no audio and sends
  * no request: the first sound and the first spend are both a press.
  */
 @Component({
   selector: 'mn-reading-player',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, RouterLink],
+  imports: [GenerationRingComponent, IconComponent, ReadingTrackComponent, RouterLink],
   template: `
     <div class="player">
       <!--
@@ -166,7 +129,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           no audio at all has nothing to play, so the button that would be a
           dead Play is the one that makes the audio instead.
         -->
-        @if (setupNeeded()) {
+        @if (setupRequired()) {
           <!--
             A reading whose audio needs a model has no Play to press, and a
             dead Play beside a gear says none of that. The primary control is
@@ -232,11 +195,11 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
         <button
           type="button"
           class="mn-button mn-button--ghost slot speed"
-          [attr.aria-label]="playbackSpeedAriaLabel()"
-          [title]="playbackSpeedAriaLabel()"
+          [attr.aria-label]="speedAriaLabel()"
+          [title]="speedAriaLabel()"
           (click)="cyclePlaybackRate()"
         >
-          {{ playbackSpeedLabel() }}
+          {{ speedLabel() }}
         </button>
 
         <!--
@@ -259,65 +222,25 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           <span class="slot empty-slot" aria-hidden="true"></span>
         }
 
-        @if (auxAction(); as aux) {
+        @if (aux(); as action) {
           <button
             type="button"
-            [class]="'mn-icon-button slot tone-' + aux.tone"
-            [attr.aria-label]="aux.label"
-            [title]="aux.title"
-            (click)="pressAux(aux)"
+            [class]="'mn-icon-button slot tone-' + action.tone"
+            [attr.aria-label]="action.label"
+            [title]="action.title"
+            (click)="pressAux(action)"
           >
-            @if (aux.kind === 'cancel') {
-              <!--
-                  The run, drawn where the control that stops it is. A count in
-                  words underneath said what the ring and the track already say.
-                -->
-              <svg class="ring" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
-                <circle class="ring-track" cx="22" cy="22" [attr.r]="ringRadius" />
-                <circle
-                  class="ring-fill"
-                  cx="22"
-                  cy="22"
-                  [attr.r]="ringRadius"
-                  [attr.stroke-dasharray]="ringCircumference"
-                  [attr.stroke-dashoffset]="ringOffset()"
-                />
-              </svg>
+            @if (action.kind === 'cancel') {
+              <mn-generation-ring [fraction]="coverage() / 100" />
             }
-            <mn-icon [name]="aux.icon" [size]="aux.kind === 'cancel' ? 14 : 20" />
+            <mn-icon [name]="action.icon" [size]="action.kind === 'cancel' ? 14 : 20" />
           </button>
         } @else {
           <span class="slot empty-slot" aria-hidden="true"></span>
         }
       </div>
 
-      <!--
-        One track carrying both numbers, and the only way to move through the
-        reading by hand: what has been generated behind how far playback has
-        reached, with a range on top of it so the reading can be aimed at rather
-        than stepped through.
-      -->
-      <div class="track">
-        <span class="track-paint" aria-hidden="true">
-          <span class="rail">
-            <span class="fill generated" [style.--fill]="generatedPercent() / 100"></span>
-            <span class="fill played" [style.--fill]="percent() / 100"></span>
-          </span>
-        </span>
-        <input
-          class="scrub"
-          type="range"
-          min="0"
-          [max]="maxPosition()"
-          step="1"
-          [value]="positionValue()"
-          [disabled]="!store.hasPlayableAudio()"
-          aria-label="Position in this story"
-          [attr.aria-valuetext]="trackLabel()"
-          (input)="onScrubInput($event)"
-          (change)="onScrubCommit($event)"
-        />
-      </div>
+      <mn-reading-track />
     </div>
   `,
   styles: `
@@ -332,139 +255,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       flex-direction: column;
       gap: var(--space-3);
       min-width: 0;
-    }
-
-    /*
-     * The track is a hairline with a hit area around it: 4px of paint is not
-     * something a thumb can catch, and a 44px bar in a card that floats over
-     * the reading is half the card.
-     */
-    .track {
-      --scrub-track-size: 24px;
-      --scrub-thumb-size: 14px;
-      --scrub-thumb-radius: calc(var(--scrub-thumb-size) / 2);
-
-      position: relative;
-      order: -1;
-      display: flex;
-      align-items: center;
-      block-size: var(--scrub-track-size);
-    }
-
-    /*
-     * Native range thumbs travel between their own two radii, not between the
-     * input's outer edges. Paint on that same inner rail so the played fill
-     * ends at the thumb's centre throughout the drag.
-     */
-    .track-paint {
-      position: absolute;
-      inset: 0 var(--scrub-thumb-radius);
-      pointer-events: none;
-    }
-
-    .rail {
-      position: absolute;
-      inset-block-start: 50%;
-      inset-inline: 0;
-      block-size: 5px;
-      border-radius: var(--radius-pill);
-      background: var(--surface-sunken);
-      transform: translateY(-50%);
-    }
-
-    /*
-     * A fill is laid out once, at the rail's full width, and shown up to its
-     * fraction by a clip from the inline start: moving it costs no layout pass.
-     * The clip, not a border radius, rounds its ends, which a scale would
-     * squash and leave square.
-     */
-    .fill {
-      position: absolute;
-      inset: 0;
-      clip-path: inset(0 calc((1 - var(--fill, 0)) * 100%) 0 0 round var(--radius-pill));
-      transition: clip-path var(--motion-medium) var(--ease-standard);
-    }
-
-    /*
-     * Mixed back towards the rail rather than painted in the border colour it
-     * used to be: at full strength it read as a filled progress bar, so a
-     * prepared reading that had never been played looked finished.
-     */
-    .fill.generated {
-      background: var(--surface-reader-progress);
-    }
-
-    .fill.played {
-      background: var(--action-primary);
-    }
-
-    /*
-     * A native range, so dragging, tapping and the arrow keys are the browser's
-     * job rather than ours. It is transparent: the fills underneath are the
-     * track, and only the thumb is painted.
-     */
-    .scrub {
-      position: relative;
-      z-index: 1;
-      inline-size: 100%;
-      min-block-size: 0;
-      block-size: var(--scrub-track-size);
-      margin: 0;
-      padding: 0;
-      appearance: none;
-      background: none;
-      cursor: pointer;
-    }
-
-    .scrub:disabled {
-      cursor: default;
-    }
-
-    .scrub::-webkit-slider-runnable-track {
-      block-size: var(--scrub-track-size);
-      background: none;
-    }
-
-    .scrub::-moz-range-track {
-      block-size: var(--scrub-track-size);
-      background: none;
-    }
-
-    /*
-     * A compact, persistent thumb makes the generated track read as something
-     * that can be aimed at, not only as a report. It disappears while the
-     * range is disabled, when there is no audio position to choose yet.
-     */
-    .scrub::-webkit-slider-thumb {
-      inline-size: var(--scrub-thumb-size);
-      block-size: var(--scrub-thumb-size);
-      margin-block-start: calc((var(--scrub-track-size) - var(--scrub-thumb-size)) / 2);
-      border: 3px solid var(--surface-panel);
-      border-radius: var(--radius-pill);
-      background: var(--action-primary);
-      box-shadow: var(--shadow-raised);
-      opacity: 1;
-      appearance: none;
-      transition: opacity var(--motion-fast) var(--ease-standard);
-    }
-
-    .scrub::-moz-range-thumb {
-      inline-size: var(--scrub-thumb-size);
-      block-size: var(--scrub-thumb-size);
-      border: 3px solid var(--surface-panel);
-      border-radius: var(--radius-pill);
-      background: var(--action-primary);
-      box-shadow: var(--shadow-raised);
-      opacity: 1;
-      transition: opacity var(--motion-fast) var(--ease-standard);
-    }
-
-    .scrub:disabled::-webkit-slider-thumb {
-      opacity: 0;
-    }
-
-    .scrub:disabled::-moz-range-thumb {
-      opacity: 0;
     }
 
     /*
@@ -578,42 +368,8 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       color: var(--text-primary);
     }
 
-    /* The run, drawn around the control that stops it. */
-    .ring {
-      position: absolute;
-      inset: 0;
-      inline-size: 100%;
-      block-size: 100%;
-      transform: rotate(-90deg);
-      pointer-events: none;
-    }
-
-    .ring-track,
-    .ring-fill {
-      fill: none;
-      stroke-width: 2;
-    }
-
-    .ring-track {
-      stroke: var(--surface-sunken);
-    }
-
-    .ring-fill {
-      stroke: currentcolor;
-      stroke-linecap: round;
-      transition: stroke-dashoffset var(--motion-medium) var(--ease-standard);
-    }
-
     @media (prefers-reduced-motion: reduce) {
-      .fill,
-      .slot,
-      .ring-fill,
-      .scrub::-webkit-slider-thumb {
-        transition: none;
-      }
-
-      /* Its own rule: a browser drops a whole list holding a pseudo it does not know. */
-      .scrub::-moz-range-thumb {
+      .slot {
         transition: none;
       }
     }
@@ -634,429 +390,52 @@ export class ReadingPlayerComponent {
   /** Returns a settled report to rest without asking for the work again. */
   readonly dismissGeneration = output<void>();
 
-  protected readonly ringRadius = RING_RADIUS;
-  protected readonly ringCircumference = RING_CIRCUMFERENCE;
+  /** What the stores and the inputs say right now; every decision is a function of it. */
+  private readonly facts = computed<PlayerFacts>(() => ({
+    progress: this.progress(),
+    status: this.store.status(),
+    failure: this.store.failure(),
+    sentenceCount: this.store.sentenceCount(),
+    availableCount: this.store.availableCount(),
+    position: this.store.currentPosition(),
+    pendingPosition: this.store.pendingPosition(),
+    hasPlayableAudio: this.store.hasPlayableAudio(),
+    canPlayWholeReading: this.store.canPlayWholeReading(),
+    hasStaleAudio: this.store.hasStaleAudio(),
+    modelConfigured: this.modelConfigured(),
+  }));
 
-  /**
-   * Where the thumb is while it is being dragged, rather than where playback is.
-   *
-   * A drag that let the store keep writing the value would fight the pointer at
-   * every sentence boundary the reading crossed underneath it.
-   */
-  private readonly scrubbing = signal<number | null>(null);
-
-  /**
-   * What the rail says, resolved from the job first and the set second.
-   *
-   * A run that is going or has just stopped is what the learner is waiting on.
-   * With nothing to report, the rail offers to prepare whatever is still
-   * missing, and disappears entirely once nothing is.
-   */
-  protected readonly rail = computed<GenerationRail>(() => {
-    const progress = this.progress();
-    if (progress.kind === 'deleted') {
-      return 'none';
-    }
-    if (isAudioRunInProgress(progress)) {
-      return 'running';
-    }
-    if (this.store.canPlayWholeReading()) {
-      // A run that stopped but left the reading complete has nothing to retry,
-      // so it has nothing to say: the whole set is there and playable.
-      return 'none';
-    }
-    if (progress.kind === 'failed' || progress.kind === 'cancelled') {
-      return 'stopped';
-    }
-    if (this.store.sentenceCount() === 0) {
-      return 'none';
-    }
-    return 'offer';
-  });
-
-  /** The run is parked between batches and will pick up on its own. */
-  private readonly isParked = computed(() => this.progress().kind === 'paused');
-
-  protected readonly isPlaying = computed(() => this.store.status() === 'playing');
+  protected readonly setupRequired = computed(() => setupNeeded(this.facts()));
+  protected readonly centre = computed(() => centreControl(this.facts()), { equal: sameControl });
+  protected readonly aux = computed(() => auxAction(this.facts()), { equal: sameControl });
+  protected readonly announcement = computed(() => announcement(this.facts()));
 
   /** At least one playable sentence uses a clip made with older settings. */
   protected readonly staleAudio = computed(() => this.store.hasStaleAudio());
 
-  /**
-   * Whether a run is filling in the rest, which only the track and ring report.
-   * A run parked between batches counts: it picks up on its own, so the learner
-   * is still waiting on it and Stop stays where it was.
-   */
-  protected readonly isGenerating = computed(() => this.rail() === 'running');
+  /** Whatever stopped playback on its own; the dismiss control clears it. */
+  protected readonly failureMessage = computed(() => playbackFailureMessage(this.store.failure()));
 
-  /**
-   * Whether the primary control is the setup link rather than a button.
-   *
-   * Nothing can be generated and nothing can be played without a tested model,
-   * so the press that is worth making is the one that gets one. Playing wins:
-   * a sound already going is never replaced by a link.
-   */
-  protected readonly setupNeeded = computed(
-    () =>
-      !this.isPlaying() &&
-      this.store.sentenceCount() > 0 &&
-      !this.modelConfigured() &&
-      !this.store.hasPlayableAudio(),
+  /** How much of the reading has audio, which the ring around Stop draws. */
+  protected readonly coverage = computed(() =>
+    coveragePercent(this.store.availableCount(), this.store.sentenceCount()),
   );
-
-  /**
-   * What the big button in the middle is.
-   *
-   * A reading with nothing to play has no use for a Play button, and the thing
-   * a learner opening that player wants is the audio itself — so the primary
-   * control is the one that makes it, in the same place and the same shape.
-   * Once it has been pressed the control is still that button, busy, until the
-   * first clip lands and it becomes Play.
-   */
-  protected readonly centre = computed<CentreControl>(() => {
-    if (this.isPlaying()) {
-      return { kind: 'pause', icon: 'pause', label: 'Pause', disabled: false, busy: false };
-    }
-    if (!this.store.hasPlayableAudio()) {
-      if (this.isGenerating()) {
-        return {
-          kind: 'generating',
-          icon: 'generate',
-          // A parked run is waiting for its turn, in the words the reader's
-          // story options already use for it.
-          label: this.isParked() ? 'Waiting to continue' : 'Generating audio',
-          disabled: false,
-          busy: true,
-        };
-      }
-      if (this.store.sentenceCount() > 0 && this.modelConfigured()) {
-        return {
-          kind: 'generate',
-          icon: 'generate',
-          label: 'Generate audio',
-          disabled: false,
-          busy: false,
-        };
-      }
-    }
-    // A session that has started and is waiting on a clip is working, not
-    // unavailable, while something is still making that clip.
-    const status = this.store.status();
-    const busy = status === 'loading' || (status === 'waiting' && this.isGenerating());
-    return {
-      kind: 'play',
-      icon: 'play',
-      label: this.playLabel(),
-      disabled: !busy && !this.canPressPlay(),
-      busy,
-    };
-  });
-
-  /**
-   * The one contextual control, in priority order.
-   *
-   * A failure is acknowledged before anything else is offered, because it is
-   * the only state the card cannot leave on its own. A run being stopped or
-   * retried comes next, and preparing what is missing last.
-   */
-  protected readonly auxAction = computed<AuxAction | null>(() => {
-    if (this.isGenerating()) {
-      return {
-        kind: 'cancel',
-        icon: 'stop',
-        label: 'Stop generating audio',
-        title: 'Stop generating audio',
-        tone: 'accent',
-      };
-    }
-    const playbackFailure = this.failureMessage();
-    if (playbackFailure !== null) {
-      return {
-        kind: 'dismiss',
-        icon: 'close',
-        label: 'Dismiss',
-        title: playbackFailure,
-        tone: 'danger',
-      };
-    }
-    if (this.rail() === 'stopped') {
-      const title = [this.jobLine(), this.jobFailure() ?? '']
-        .filter((part) => part !== '')
-        .join(' ');
-      // A retry that has been shown not to work is not offered. What is left to
-      // do with the report is put it away, so that is what the button says: the
-      // card cannot leave a settled failure on its own, and a control that
-      // spends a request per missing sentence to reproduce the same answer is
-      // not the way out of it.
-      return this.canRetryGeneration()
-        ? { kind: 'retry', icon: 'retry', label: 'Try again', title, tone: 'danger' }
-        : { kind: 'dismiss', icon: 'close', label: 'Dismiss', title, tone: 'danger' };
-    }
-    if (!this.modelConfigured()) {
-      // The centre control is the setup in this state, and one screen does not
-      // offer the same link twice.
-      return null;
-    }
-    if (this.rail() === 'offer' && this.store.hasPlayableAudio()) {
-      return {
-        kind: 'generate',
-        icon: 'generate',
-        label: 'Generate audio',
-        title: `Generate audio — ${this.offerLabel()}`,
-        tone: 'accent',
-      };
-    }
-    return null;
-  });
-
-  protected readonly playLabel = computed(() => {
-    switch (this.store.status()) {
-      case 'paused':
-        return 'Resume';
-      case 'stepped':
-        // The one press whose meaning the position line cannot carry: the
-        // cursor genuinely is on the sentence just heard, so the button is
-        // where "and now the next one" has to be said.
-        return 'Next sentence';
-      case 'waiting':
-        return 'Waiting for the next sentence';
-      case 'ended':
-        return 'Play again';
-      default:
-        return 'Play';
-    }
-  });
-
-  /**
-   * Play is pressable when it has somewhere to start.
-   *
-   * Waiting and loading are already-started sessions with nothing to press —
-   * and no longer a dead end either way, because Stop is live beside them. Any
-   * stored clip is enough to start on: clips arrive out of order, so requiring
-   * sentence one left a learner with no way into audio they had paid for.
-   */
-  protected readonly canPressPlay = computed(() => {
-    const status = this.store.status();
-    if (status === 'paused' || status === 'stepped') {
-      return true;
-    }
-    if (status === 'loading' || status === 'waiting') {
-      return false;
-    }
-    return this.store.hasPlayableAudio();
-  });
-
-  /** The track's denominator, kept at least one so the range stays valid. */
-  protected readonly maxPosition = computed(() => Math.max(this.store.sentenceCount(), 1));
-
-  /** Where the thumb is: the drag if there is one, playback otherwise. */
-  protected readonly positionValue = computed(
-    () => this.scrubbing() ?? this.store.currentPosition(),
-  );
-
-  protected readonly percent = computed(() => {
-    const total = this.store.sentenceCount();
-    return total === 0 ? 0 : Math.round((this.positionValue() / total) * 100);
-  });
-
-  /**
-   * How much of the reading has audio, over the whole reading.
-   *
-   * Deliberately not the percentage of the job: a retry covering the two
-   * sentences a run missed is 50% done at one of them, and drawing that as half
-   * the reading would be a lie about a nearly complete set.
-   */
-  protected readonly generatedPercent = computed(() => {
-    const total = this.store.sentenceCount();
-    return total === 0 ? 0 : Math.round((this.store.availableCount() / total) * 100);
-  });
-
-  /** The ring around the cancel button, drawn from the same coverage figure. */
-  protected readonly ringOffset = computed(
-    () => RING_CIRCUMFERENCE * (1 - this.generatedPercent() / 100),
-  );
-
-  protected readonly trackLabel = computed(() => {
-    const total = this.store.sentenceCount();
-    const ready = this.store.availableCount();
-    const position = this.positionValue();
-    const where = position > 0 ? `Sentence ${String(position)} of ${String(total)}` : 'Not started';
-    return `${where}, ${String(ready)} of ${String(total)} with audio`;
-  });
-
-  protected readonly positionLabel = computed(() => {
-    const total = this.store.sentenceCount();
-    const status = this.store.status();
-    if (status === 'waiting') {
-      return `Waiting for sentence ${String(this.store.pendingPosition())} of ${String(total)}`;
-    }
-    if (status === 'ended') {
-      // Distinct from "N sentences ready", which is what a reading that was
-      // never started says. Reaching the end used to be reported as a reset.
-      return 'Finished';
-    }
-    const position = this.store.currentPosition();
-    if (position > 0) {
-      return `Sentence ${String(position)} of ${String(total)}`;
-    }
-    return this.rail() === 'none' ? `${String(total)} sentences ready` : 'Not playing';
-  });
-
-  /** What is still missing, when there is an offer to prepare it. */
-  protected readonly offerLabel = computed(() => {
-    const total = this.store.sentenceCount();
-    const ready = this.store.availableCount();
-    if (ready === 0) {
-      return `${String(total)} ${total === 1 ? 'sentence' : 'sentences'}`;
-    }
-    return `${String(ready)} of ${String(total)} sentences have audio`;
-  });
 
   protected readonly canStartFromSelection = computed(() =>
     this.store.isAvailable(this.selectedSentenceId()),
   );
 
-  protected readonly playbackSpeedLabel = computed(() => `${String(this.store.playbackRate())}×`);
-  protected readonly playbackSpeedAriaLabel = computed(
-    () => `Reading speed, ${String(this.store.playbackRate())} times`,
+  protected readonly speedLabel = computed(() => playbackSpeedLabel(this.store.playbackRate()));
+  protected readonly speedAriaLabel = computed(() =>
+    playbackSpeedAriaLabel(this.store.playbackRate()),
   );
-
-  /**
-   * What a run that has stopped has to report.
-   *
-   * Only a stopped run has anything to say. A run in progress is reported by
-   * the track and the ring alone; a count in words repeated what they showed.
-   */
-  protected readonly jobLine = computed(() => {
-    const progress = this.progress();
-    switch (progress.kind) {
-      // A paused run is still going as far as the learner is concerned: it
-      // stopped to let something else through and picks up on its own.
-      case 'idle':
-      case 'complete':
-      case 'deleted':
-      case 'preparing':
-      case 'running':
-      case 'paused':
-        return '';
-      case 'cancelled':
-        return progress.counts.requested === 0
-          ? 'Stopped.'
-          : `${this.readyLine()} ${this.attemptLine(progress.counts)}`;
-      case 'failed': {
-        // A job that failed before it resolved what to send has no position to
-        // report; claiming one produced "sentence 1 of 0".
-        if (progress.counts.requested === 0) {
-          return 'Audio could not be prepared.';
-        }
-        const exhausted = progress.canRetry
-          ? ''
-          : ' Trying again produced nothing, so it is no longer offered: a different voice or model may read these sentences.';
-        return `${this.readyLine()} ${this.attemptLine(progress.counts)}${exhausted}`;
-      }
-    }
-  });
-
-  /**
-   * What the *reading* has, which is what the track beside this is drawing.
-   *
-   * Deliberately not the run's own numerator over the run's own denominator:
-   * "0 of 4 ready" beside a bar drawn a third full read as "nothing is ready"
-   * when a third of the reading was, and the two figures were measuring
-   * different things under one form of words.
-   */
-  private readonly readyLine = computed(() => {
-    const total = this.store.sentenceCount();
-    return `Stopped with ${String(this.store.availableCount())} of ${String(total)} sentences ready.`;
-  });
-
-  /** What this attempt did, said as an attempt rather than as the reading. */
-  private attemptLine(counts: AudioJobCounts): string {
-    const missing = counts.requested;
-    return `This attempt covered ${String(counts.completed)} of the ${String(missing)} ${missing === 1 ? 'sentence' : 'sentences'} it set out to read.`;
-  }
-
-  /** Whether the settled report on screen still has a retry worth offering. */
-  private readonly canRetryGeneration = computed(() => {
-    const progress = this.progress();
-    return progress.kind !== 'failed' || progress.canRetry;
-  });
-
-  protected readonly jobFailure = computed(() => {
-    const progress = this.progress();
-    if (progress.kind !== 'failed') {
-      return null;
-    }
-    if (progress.error.source === 'storage') {
-      return `Saving failed: ${progress.error.error.message}`;
-    }
-    // The reader surface, because the settings table's action names a test this
-    // screen does not have. Try again is the control right beside this.
-    return aiFailureMessage(progress.error.error, 'reader');
-  });
-
-  protected readonly failureMessage = computed(() => {
-    const failure = this.store.failure();
-    if (failure === null) {
-      return null;
-    }
-    switch (failure.kind) {
-      case 'missing-clip':
-        return `Sentence ${String(failure.position)} has no audio for the voice you are using now. Playback stopped there.`;
-      case 'not-generated':
-        return `Sentence ${String(failure.position)} has not been generated yet. Playback stopped there.`;
-      case 'decode-failed':
-        return `The audio for sentence ${String(failure.position)} could not be played. Playback stopped there.`;
-      case 'storage':
-        return `Reading the saved audio failed: ${failure.message}`;
-    }
-  });
-
-  /**
-   * Everything the card used to print, in one announcement.
-   *
-   * The position first, because it is what changes and what a learner listening
-   * with a screen reader is following; then whatever the card would have said
-   * beneath the controls, so nothing that was readable has become unsayable.
-   */
-  protected readonly announcement = computed(() => {
-    const parts = [this.positionLabel()];
-    const failure = this.failureMessage();
-    if (failure !== null) {
-      parts.push(failure);
-    }
-    const job = this.jobLine();
-    if (job !== '') {
-      parts.push(job);
-    }
-    const jobFailure = this.jobFailure();
-    if (jobFailure !== null) {
-      parts.push(jobFailure);
-    }
-    if (this.staleAudio()) {
-      parts.push(
-        'Some audio is from older settings. It can still play; generating again replaces it.',
-      );
-    }
-    if (this.rail() === 'offer') {
-      parts.push(`${this.offerLabel()} — audio can be generated.`);
-    }
-    if (this.isGenerating()) {
-      const state = this.isParked() ? 'Waiting to continue' : 'Generating audio';
-      parts.push(`${state}, ${String(this.generatedPercent())}% of the reading ready.`);
-    }
-    return parts.join(' ');
-  });
 
   protected cycleMode(): void {
     this.store.cycleMode();
   }
 
   protected cyclePlaybackRate(): void {
-    const current = this.store.playbackRate();
-    const index = PLAYBACK_RATES.indexOf(current);
-    const next = PLAYBACK_RATES[(index + 1) % PLAYBACK_RATES.length];
-    this.store.setPlaybackRate(defined(next, 'cyclePlaybackRate'));
+    this.store.setPlaybackRate(nextPlaybackRate(this.store.playbackRate()));
   }
 
   protected pressCentre(): void {
@@ -1080,8 +459,8 @@ export class ReadingPlayerComponent {
     }
   }
 
-  protected pressAux(aux: AuxAction): void {
-    switch (aux.kind) {
+  protected pressAux(action: AuxAction): void {
+    switch (action.kind) {
       case 'cancel':
         this.cancelGeneration.emit();
         return;
@@ -1106,32 +485,7 @@ export class ReadingPlayerComponent {
     }
   }
 
-  protected onScrubInput(event: Event): void {
-    this.scrubbing.set(Number((event.target as HTMLInputElement).value));
-  }
-
-  /**
-   * Lands the thumb where playback actually went.
-   *
-   * A drop on a sentence with no clip snaps to the nearest one that has, and a
-   * drop that finds nothing playable at all moves nothing — so where the thumb
-   * was released is not where the reading is either way. The element is written
-   * rather than left to the value binding, because a range input can raise
-   * `input` and `change` in one task: the binding then only ever sees the
-   * position the drag ended on, finds it unchanged, and leaves the thumb
-   * sitting at a sentence the position line is not reporting.
-   */
-  protected async onScrubCommit(event: Event): Promise<void> {
-    const track = event.target as HTMLInputElement;
-    const position = Number(track.value);
-    this.scrubbing.set(null);
-    await this.store.seekTo(position);
-    if (this.scrubbing() === null) {
-      track.value = String(this.store.currentPosition());
-    }
-  }
-
-  protected play(): void {
+  private play(): void {
     if (this.store.status() === 'stepped') {
       void this.store.continueReading();
       return;
