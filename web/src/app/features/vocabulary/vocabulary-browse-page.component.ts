@@ -1,17 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  ElementRef,
-  HostListener,
-  Injector,
-  computed,
-  effect,
-  inject,
-  signal,
-  untracked,
-  viewChildren,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injector, computed, inject } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { createGlobalPositionStrategy } from '@angular/cdk/overlay';
 import { FormsModule } from '@angular/forms';
@@ -26,9 +13,9 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import {
-  VariableHeightVirtualListModel,
-  type VirtualListRange,
-} from '../library/library-virtual-list.model';
+  VirtualItemDirective,
+  VirtualListDirective,
+} from '../../shared-ui/virtual-list/virtual-list.directive';
 import { VocabularyBrowseRowComponent } from './vocabulary-browse-row.component';
 import {
   VocabularyFilterSheetComponent,
@@ -49,6 +36,8 @@ interface VirtualVocabularyEntry {
     RouterLink,
     IconComponent,
     PageHeaderComponent,
+    VirtualListDirective,
+    VirtualItemDirective,
     VocabularyBrowseRowComponent,
   ],
   template: `
@@ -162,15 +151,21 @@ interface VirtualVocabularyEntry {
                 <span>Difficulty</span>
                 <span>Studied</span>
               </div>
-              <div class="virtual-document">
+              <div
+                #list="virtualList"
+                class="virtual-document"
+                [mnVirtualList]="virtualEntries()"
+                [estimateHeight]="estimateHeight"
+                [overscanPx]="600"
+              >
                 <div
                   class="virtual-spacer"
                   aria-hidden="true"
-                  [style.height.px]="range().topSpacer"
+                  [style.height.px]="list.range().topSpacer"
                 ></div>
                 <ul class="entry-list">
-                  @for (item of visibleItems(); track item.key) {
-                    <li #virtualItem [attr.data-virtual-key]="item.key">
+                  @for (item of list.visibleItems(); track item.key) {
+                    <li [mnVirtualItem]="item.key">
                       <mn-vocabulary-browse-row
                         [entry]="item.entry"
                         [sources]="store.sources()"
@@ -183,7 +178,7 @@ interface VirtualVocabularyEntry {
                 <div
                   class="virtual-spacer"
                   aria-hidden="true"
-                  [style.height.px]="range().bottomSpacer"
+                  [style.height.px]="list.range().bottomSpacer"
                 ></div>
               </div>
             </div>
@@ -318,19 +313,11 @@ export class VocabularyBrowsePageComponent {
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly viewport = inject(ViewportService);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  private readonly model = new VariableHeightVirtualListModel<VirtualVocabularyEntry>({
-    estimateHeight: () => 82,
-    overscanPx: 600,
-  });
-  private readonly rangeSignal = signal<VirtualListRange>(this.model.rangeFor(0, 0));
-  private readonly visibleItemsSignal = signal<readonly VirtualVocabularyEntry[]>([]);
-  private readonly renderedItems = viewChildren<ElementRef<HTMLElement>>('virtualItem');
-  private resizeObserver: ResizeObserver | null = null;
-
-  protected readonly range = this.rangeSignal.asReadonly();
-  protected readonly visibleItems = this.visibleItemsSignal.asReadonly();
+  protected readonly virtualEntries = computed<readonly VirtualVocabularyEntry[]>(() =>
+    this.store.visible().map((entry) => ({ key: entry.itemId, entry })),
+  );
+  protected readonly estimateHeight = (): number => 82;
   /**
    * How many words there are, and how many rows are showing once a search or a
    * filter has narrowed them. A word with two meanings is one word and two
@@ -353,39 +340,6 @@ export class VocabularyBrowsePageComponent {
 
   constructor() {
     void this.store.load();
-    if (typeof ResizeObserver !== 'undefined') {
-      this.resizeObserver = new ResizeObserver((entries) => {
-        this.measureEntries(entries);
-      });
-    }
-
-    effect(() => {
-      const entries = this.store.visible();
-      untracked(() => {
-        this.model.setItems(entries.map((entry) => ({ key: entry.itemId, entry })));
-        this.refreshRange();
-      });
-    });
-
-    effect((onCleanup) => {
-      const elements = this.renderedItems();
-      this.resizeObserver?.disconnect();
-      for (const element of elements) {
-        this.resizeObserver?.observe(element.nativeElement);
-      }
-      if (typeof requestAnimationFrame === 'undefined') {
-        this.measureElements(elements);
-        return;
-      }
-      const frame = requestAnimationFrame(() => {
-        this.measureElements(elements);
-      });
-      onCleanup(() => {
-        cancelAnimationFrame(frame);
-      });
-    });
-
-    inject(DestroyRef).onDestroy(() => this.resizeObserver?.disconnect());
   }
 
   protected setSource(sourceId: string): void {
@@ -431,78 +385,6 @@ export class VocabularyBrowsePageComponent {
         this.store.applyQuery(query);
       }
     });
-  }
-
-  @HostListener('window:scroll')
-  protected onWindowScroll(): void {
-    this.refreshRange();
-  }
-
-  @HostListener('window:resize')
-  protected onWindowResize(): void {
-    this.refreshRange();
-  }
-
-  private refreshRange(): void {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    const documentTop = this.host.nativeElement.getBoundingClientRect().top + window.scrollY;
-    const localScrollTop = Math.max(0, window.scrollY - documentTop);
-    const localViewportBottom = Math.max(
-      localScrollTop,
-      window.scrollY + window.innerHeight - documentTop,
-    );
-    const viewportHeight = Math.max(0, localViewportBottom - localScrollTop);
-    const nextRange = this.model.rangeFor(localScrollTop, viewportHeight);
-    const nextItems = this.model.items.slice(nextRange.start, nextRange.end);
-    const currentRange = this.rangeSignal();
-    if (
-      currentRange.start !== nextRange.start ||
-      currentRange.end !== nextRange.end ||
-      currentRange.topSpacer !== nextRange.topSpacer ||
-      currentRange.bottomSpacer !== nextRange.bottomSpacer ||
-      currentRange.totalHeight !== nextRange.totalHeight
-    ) {
-      this.rangeSignal.set(nextRange);
-    }
-    const currentItems = this.visibleItemsSignal();
-    if (
-      currentItems.length !== nextItems.length ||
-      currentItems.some((item, index) => item !== nextItems[index])
-    ) {
-      this.visibleItemsSignal.set(nextItems);
-    }
-  }
-
-  private measureEntries(entries: readonly ResizeObserverEntry[]): void {
-    let changed = false;
-    for (const entry of entries) {
-      const key = entry.target.getAttribute('data-virtual-key');
-      if (key === null) {
-        continue;
-      }
-      changed = this.model.updateMeasurement(key, entry.contentRect.height) || changed;
-    }
-    if (changed) {
-      this.refreshRange();
-    }
-  }
-
-  private measureElements(elements: readonly ElementRef<HTMLElement>[]): void {
-    let changed = false;
-    for (const element of elements) {
-      const key = element.nativeElement.getAttribute('data-virtual-key');
-      if (key === null) {
-        continue;
-      }
-      changed =
-        this.model.updateMeasurement(key, element.nativeElement.getBoundingClientRect().height) ||
-        changed;
-    }
-    if (changed) {
-      this.refreshRange();
-    }
   }
 }
 

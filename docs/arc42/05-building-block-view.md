@@ -114,9 +114,9 @@ The other vocabulary route is `features/vocabulary/vocabulary-browse-page.compon
 and sort state in `application/vocabulary/vocabulary-browse.store.ts`. The page's row and filter
 sheet are presentation-only; the pure query rules remain in `domain/vocabulary/vocabulary-browse.ts`.
 The repository projects analyzed readings and joins provenance to each item in the same read
-transaction as the active snapshot and included source observations. The page uses the established
-variable-height virtual list model because an expanded native disclosure is taller than its closed
-row.
+transaction as the active snapshot and included source observations. The page renders its rows
+through the shared `mnVirtualList` directive (below) because an expanded native disclosure is taller
+than its closed row.
 
 Two entries are worth a note. `domain/audio` holds no playback, because playback is a platform
 behaviour rather than a rule about Japanese, and nothing durable about a clip either — the clip and
@@ -170,7 +170,7 @@ third-party AnkiConnect-compatible listener has none to claim
 
 ### Whitebox: the reader page and its audio
 
-The reader page is being taken apart along three seams — audio, the aids and
+The reader page was taken apart along three seams — audio, the aids and
 preparation lane, and word and sentence inspection — because it had grown to
 1,675 lines and 22 injected dependencies wiring all three
 ([chapter 11](11-risks-and-technical-debt.md)).
@@ -182,9 +182,10 @@ button, the floating player's open state and the sentence it captured, and clear
 this reading's clips. It is provided by the reader, so the player's open state dies
 with the screen while playback, which is application-wide, outlives it.
 
-The component keeps only what is about the page: the player card's measured height,
-which anything else docked to the bottom edge reads, and the confirmation before
-clips are deleted.
+The component keeps only what is about the page: the confirmation before clips are
+deleted. The player card's measured height, which anything else docked to the
+bottom edge reads, is published by the `mnDockedPlayer` directive on the card's
+shell (below).
 
 The second is done too. `application/reading/reader-preparation.store.ts` answers, for
 the open reading, what each aid has, what is being made, what a configuration would
@@ -195,9 +196,52 @@ and nothing else about the lane.
 The third is `application/reading/reader-selection.store.ts`: which sentence is open,
 which word is looked up, and the four things that can be asked for either of them —
 translate, analyse, synthesize, play — each of which re-reads the reading's summaries
-afterwards. What stays in the component is the half that is genuinely about the page:
-where a popover opens, which element it returns focus to, and how a bottom sheet is
-kept clear of the docked player.
+afterwards. What stays in the component is where a popover opens and which element it
+returns focus to.
+
+The page's own scrolling, measuring, and timing lives in units beside it in
+`features/reader/`, each provided by the page and each with a spec, so the
+component is composition and template:
+
+- `ReaderScrollService` owns the window listeners — scroll, wheel, touch move,
+  resize, and Home/End — through `Renderer2`, so they go with the page. It tells
+  the learner's scrolls from the reader's own, which is what turns playback
+  following off, and hands each scroll, resize, and edge request to whichever
+  unit asked for it.
+- `ReaderGeometryService` knows where the furniture is: it publishes the docked
+  player's height, keeps a pressed word clear of the sheet that explains it
+  (reading the sheet's pane from the `PopoverRef` rather than querying the
+  document), follows the sentence being read into the band between bar and
+  player, and hands the title to the bar. The page passes it its elements with
+  `connect`, and `mnDockedPlayer` attaches the player shell for exactly as long
+  as the shell exists.
+- `mnReaderParagraphWindow`, on the element the reading renders in, keeps the
+  space of unmounted paragraphs, measures mounted ones through a content query,
+  and moves `ReaderStore`'s window when a scroll reaches one outside it.
+  Measurements reset through a `linkedSignal` over the paragraph layout.
+- `ReaderWordPreviewService` owns the hover preview's delay and its card.
+
+A paragraph hands the looked-up and previewed word only to the sentence that
+contains it, so a hover re-renders the two sentences it moved between instead of
+every sentence mounted.
+
+The reader's window is not the shared virtual list. Paragraphs are loaded from
+storage by position, a few at a time and asynchronously, around an anchor and
+within a bound ([ADR 0011](../decisions/0011-paragraph-window-bounds.md)); the
+shared list ranges over items it already holds by key.
+
+### Whitebox: the shared virtual list
+
+`shared-ui/virtual-list/` holds window-scroll virtualization for variable-height
+rows. `VariableHeightVirtualListModel` is pure: offsets, ranges, and measurements by
+stable key. `mnVirtualList` sits on the element a list renders in, and its host
+template renders `visibleItems()` between two spacers sized from `range()`, marking
+each slot with `mnVirtualItem`. The directive measures those slots as they mount and
+resize, recomputes the range on window scroll and resize through `host` listeners, and
+emits `nearEnd` for an owner that pages. A new `generation` discards every
+measurement. The Library's shelf and the vocabulary browser are its two users; the
+Library still regroups the mounted items into date sections, so virtualization
+changes how much is mounted and never what a row means.
 
 ### Whitebox: non-reader shell and Help
 

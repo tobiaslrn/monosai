@@ -67,6 +67,10 @@ export interface PopoverOptions {
 
 export interface PopoverRef {
   close(): void;
+  /** The pane the surface is rendered into, for measuring what it covers. */
+  readonly pane: HTMLElement;
+  /** Whether the surface is currently docked to the bottom edge as a sheet. */
+  isSheet(): boolean;
 }
 
 function positionStrategy(
@@ -351,6 +355,8 @@ export class PopoverService {
       close: () => {
         close();
       },
+      pane: overlayRef.overlayElement,
+      isSheet: () => this.overlayRef === overlayRef && this.isSheet(options, modal),
     };
   }
 

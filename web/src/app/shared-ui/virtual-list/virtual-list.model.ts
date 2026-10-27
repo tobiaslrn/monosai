@@ -1,4 +1,4 @@
-/** A library virtual item has a stable key for its measured slot. */
+/** A virtual item has a stable key for its measured slot. */
 export interface VirtualListItem {
   readonly key: string;
 }
@@ -19,7 +19,8 @@ export interface VariableHeightVirtualListOptions<T extends VirtualListItem> {
   readonly loadMoreThresholdPx?: number;
 }
 
-const EMPTY_RANGE: VirtualListRange = {
+/** The range of a list with nothing in it, or not yet laid out. */
+export const EMPTY_VIRTUAL_RANGE: VirtualListRange = {
   start: 0,
   end: 0,
   topSpacer: 0,
@@ -30,14 +31,14 @@ const EMPTY_RANGE: VirtualListRange = {
 /**
  * Pure layout state for a window-scrolled variable-height list.
  *
- * The model knows nothing about the DOM. The component supplies measured slot
- * heights as rows wrap, while this class keeps offsets and range calculation
- * deterministic and cheap to test.
+ * The model knows nothing about the DOM. `VirtualListDirective` supplies
+ * measured slot heights as rows wrap, while this class keeps offsets and range
+ * calculation deterministic and cheap to test.
  */
 export class VariableHeightVirtualListModel<T extends VirtualListItem> {
-  private readonly estimateHeight: (item: T) => number;
-  private readonly overscanPx: number;
-  private readonly loadMoreThresholdPx: number;
+  private estimateHeight: (item: T) => number;
+  private overscanPx = 0;
+  private loadMoreThresholdPx = 0;
   private itemsValue: readonly T[] = [];
   private heights = new Map<string, number>();
   private indexes = new Map<string, number>();
@@ -45,8 +46,28 @@ export class VariableHeightVirtualListModel<T extends VirtualListItem> {
 
   constructor(options: VariableHeightVirtualListOptions<T>) {
     this.estimateHeight = options.estimateHeight;
-    this.overscanPx = Math.max(0, options.overscanPx ?? 0);
-    this.loadMoreThresholdPx = Math.max(0, options.loadMoreThresholdPx ?? 0);
+    this.configure(options);
+  }
+
+  /**
+   * Changes how unmeasured items are estimated and how far ranges reach,
+   * keeping every measurement. Returns whether anything changed.
+   */
+  configure(options: VariableHeightVirtualListOptions<T>): boolean {
+    const overscanPx = Math.max(0, options.overscanPx ?? 0);
+    const loadMoreThresholdPx = Math.max(0, options.loadMoreThresholdPx ?? 0);
+    if (
+      options.estimateHeight === this.estimateHeight &&
+      overscanPx === this.overscanPx &&
+      loadMoreThresholdPx === this.loadMoreThresholdPx
+    ) {
+      return false;
+    }
+    this.estimateHeight = options.estimateHeight;
+    this.overscanPx = overscanPx;
+    this.loadMoreThresholdPx = loadMoreThresholdPx;
+    this.rebuildOffsets();
+    return true;
   }
 
   get items(): readonly T[] {
@@ -104,7 +125,7 @@ export class VariableHeightVirtualListModel<T extends VirtualListItem> {
   rangeFor(scrollTop: number, viewportHeight: number): VirtualListRange {
     const itemCount = this.itemsValue.length;
     if (itemCount === 0) {
-      return EMPTY_RANGE;
+      return EMPTY_VIRTUAL_RANGE;
     }
 
     const top = Math.max(0, scrollTop);

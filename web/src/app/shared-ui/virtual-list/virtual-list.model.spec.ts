@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { VariableHeightVirtualListModel, type VirtualListItem } from './library-virtual-list.model';
+import { VariableHeightVirtualListModel, type VirtualListItem } from './virtual-list.model';
 
 interface TestItem extends VirtualListItem {
   readonly label: string;
@@ -69,5 +69,21 @@ describe('VariableHeightVirtualListModel', () => {
 
     expect(virtualizer.isNearEnd(700, 100)).toBe(false);
     expect(virtualizer.isNearEnd(800, 100)).toBe(true);
+  });
+
+  it('takes new options without losing measurements', () => {
+    const virtualizer = model();
+    virtualizer.reset(items(4));
+    virtualizer.updateMeasurement('item-0', 150);
+    expect(virtualizer.rangeFor(100, 0)).toMatchObject({ start: 0, end: 1 });
+
+    const estimateHeight = (): number => 50;
+    expect(virtualizer.configure({ estimateHeight, overscanPx: 100 })).toBe(true);
+    expect(virtualizer.configure({ estimateHeight, overscanPx: 100 })).toBe(false);
+
+    expect(virtualizer.heightOf('item-0')).toBe(150);
+    expect(virtualizer.totalHeight).toBe(150 + 3 * 50);
+    // The overscan reaches one row further than it did without it.
+    expect(virtualizer.rangeFor(100, 0)).toMatchObject({ start: 0, end: 2 });
   });
 });

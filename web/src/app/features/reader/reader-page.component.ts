@@ -8,12 +8,11 @@ import {
   effect,
   inject,
   input,
-  signal,
   untracked,
   viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { ReadingAudioMaintenanceStore } from '../../application/enrichment/reading-audio-maintenance.store';
 import { ReadingTextAidMaintenanceStore } from '../../application/enrichment/reading-text-aid-maintenance.store';
 import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
@@ -25,27 +24,19 @@ import { readerContentState } from './reader-content-state';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
-import { LibraryStore } from '../../application/reading/library.store';
-import { ViewportService } from '../../core/platform/viewport.service';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
-import {
-  DEFAULT_PARAGRAPH_HEIGHT_PX,
-  paragraphAtOffset,
-  paragraphSpacers,
-  windowContains,
-} from '../../domain/reading/paragraph-window';
 import { findingsCoveringToken, sentenceWideFindings } from '../../domain/enrichment/finding-spans';
 import { readingId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
 import { presentStatus } from '../../domain/reading/token-presentation';
 import { clampTextScale } from '../../domain/settings/settings';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { PopoverService, type PopoverRef } from '../../shared-ui/popover/popover.service';
+import { PopoverService } from '../../shared-ui/popover/popover.service';
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
 import { ReaderParagraphComponent } from './reader-paragraph.component';
 import { ReaderMenuComponent } from './reader-menu.component';
 import type { SentenceSelection } from './paragraph-gestures.directive';
-import type { SelectedWord, TokenActivation } from './reader-sentence.component';
+import type { TokenActivation } from './reader-sentence.component';
 import type { UnknownWord } from './sentence-popover.component';
 import { SentencePopoverComponent } from './sentence-popover.component';
 import { ReadingPlayerComponent } from './reading-player.component';
@@ -56,6 +47,14 @@ import {
 } from './word-inspector.component';
 import { WordPreviewComponent } from './word-preview.component';
 import { NotFoundPanelComponent } from '../../shared-ui/not-found/not-found-panel.component';
+import { DockedPlayerDirective } from './docked-player.directive';
+import { ReaderGeometryService } from './reader-geometry.service';
+import {
+  ReaderParagraphWindowDirective,
+  type ParagraphLayout,
+} from './reader-paragraph-window.directive';
+import { ReaderScrollService } from './reader-scroll.service';
+import { ReaderWordPreviewService } from './reader-word-preview.service';
 
 /**
  * The word buttons, which a press reaches even while a surface is open.
@@ -64,33 +63,6 @@ import { NotFoundPanelComponent } from '../../shared-ui/not-found/not-found-pane
  * but are not words, and a press on one is a press on the line.
  */
 const WORD_TARGET = 'button.token';
-
-/**
- * How much of the reading is kept between a sheet and the word it explains.
- *
- * A word butted against the sheet's edge reads as being underneath it; a line
- * of breathing room is what makes it look deliberately left visible.
- */
-const SHEET_CLEARANCE = 12;
-
-/** How long a pointer must rest on a word before its preview appears. */
-const PREVIEW_DELAY_MS = 250;
-
-/**
- * How long a smooth scroll is allowed to keep emitting events before a scroll
- * counts as the learner's again. Generous, because a smooth scroll's duration
- * is the browser's to choose and treating our own scroll as theirs would turn
- * following off after the very first advance.
- */
-const SCROLL_SETTLE_MS = 1000;
-
-/**
- * How tall the docked player currently is, published on the document root.
- *
- * The overlay a sheet is rendered into is a sibling of the reader, so this is
- * the only place both of them can read.
- */
-const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
 
 /**
  * The reader.
@@ -103,6 +75,9 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
  * Opening a reading is entirely local: immutable text, stored token analyses,
  * the bundled dictionary, and locally computed status. No AI request happens on
  * open, on selecting a sentence, or when an aid is toggled.
+ *
+ * The page composes: the stores own the reading, and the window, geometry,
+ * and preview units beside it own every scroll, measurement, and timer.
  */
 @Component({
   selector: 'mn-reader-page',
@@ -118,6 +93,8 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     WordInspectorComponent,
     WordPreviewComponent,
     NotFoundPanelComponent,
+    DockedPlayerDirective,
+    ReaderParagraphWindowDirective,
   ],
   providers: [
     ReaderStore,
@@ -128,13 +105,16 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
     ReaderAudioStore,
     ReaderPreparationStore,
     ReaderSelectionStore,
+    ReaderScrollService,
+    ReaderGeometryService,
+    ReaderWordPreviewService,
   ],
   template: `
     <div
       class="reader"
       [class.has-audio-player]="audio.playerOpen()"
       [style.--reader-scale]="textScale()"
-      [style.--sheet-scroll-reserve]="sheetScrollReserve()"
+      [style.--sheet-scroll-reserve]="geometry.sheetScrollReserve()"
     >
       <header #readerBar class="bar">
         <div class="bar-row">
@@ -153,7 +133,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
           <p
             class="bar-title"
             aria-hidden="true"
-            [class.is-shown]="titleTucked()"
+            [class.is-shown]="geometry.titleTucked()"
             [attr.lang]="store.status() === 'ready' ? 'ja' : 'en'"
           >
             {{ readerHeading() }}
@@ -214,7 +194,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
 
       @if (audio.playerOpen() && store.status() === 'ready') {
         <div
-          #audioPlayerShell
+          mnDockedPlayer
           id="reading-audio-player"
           class="audio-player-shell"
           role="region"
@@ -232,7 +212,12 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
         </div>
       }
 
-      <div class="content" #content>
+      <div
+        #content
+        #paragraphWindow="paragraphWindow"
+        class="content"
+        [mnReaderParagraphWindow]="paragraphLayout()"
+      >
         @switch (store.status()) {
           @case ('loading') {
             <p class="mn-hint" role="status">Opening…</p>
@@ -265,7 +250,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                 class="virtual-spacer"
                 aria-hidden="true"
                 data-virtual-spacer="before"
-                [style.height.px]="spacers().before"
+                [style.height.px]="paragraphWindow.spacers().before"
               ></div>
               @for (paragraph of store.paragraphs(); track paragraph.paragraph.id) {
                 <mn-reader-paragraph
@@ -278,7 +263,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                   [selectedSentenceId]="selectedSentenceId()"
                   [playingSentenceId]="audio.playback.currentSentenceId()"
                   [selectedWord]="selectedWord()"
-                  [previewedWord]="previewedWord()"
+                  [previewedWord]="wordPreview.word()"
                   (activated)="inspect($event)"
                   (previewed)="previewWord($event)"
                   (previewEnded)="endPreview()"
@@ -289,10 +274,11 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
                 class="virtual-spacer"
                 aria-hidden="true"
                 data-virtual-spacer="after"
-                [style.height.px]="spacers().after"
+                [style.height.px]="paragraphWindow.spacers().after"
               ></div>
             </article>
             <a
+              #afterStory
               id="mn-after-story"
               class="mn-button"
               routerLink="/library"
@@ -328,7 +314,7 @@ const DOCKED_PLAYER_HEIGHT = '--mn-docked-player-height';
       </mn-reader-popover>
     </ng-template>
 
-    <ng-template #wordPreview>
+    <ng-template #wordPreviewCard>
       <mn-word-preview />
     </ng-template>
 
@@ -637,35 +623,22 @@ export class ReaderPageComponent {
     ];
   });
   protected readonly audio = inject(ReaderAudioStore);
-  protected readonly viewport = inject(ViewportService);
   protected readonly inspector = inject(WordInspectorStore);
   private readonly settings = inject(AppSettingsStore);
-  private readonly library = inject(LibraryStore);
   protected readonly popover = inject(PopoverService);
+  protected readonly geometry = inject(ReaderGeometryService);
+  protected readonly wordPreview = inject(ReaderWordPreviewService);
   private readonly dialog = inject(Dialog);
-  private readonly router = inject(Router);
   private readonly navigation = inject(NavigationHistoryService);
   private readonly viewContainerRef = inject(ViewContainerRef);
 
-  private readonly content = viewChild<ElementRef<HTMLElement>>('content');
-  private readonly audioPlayerShell = viewChild<ElementRef<HTMLElement>>('audioPlayerShell');
   private readonly readerBar = viewChild<ElementRef<HTMLElement>>('readerBar');
   private readonly pageTitle = viewChild<ElementRef<HTMLElement>>('pageTitle');
-  /** Whether the page heading has scrolled beneath the bar, which then carries it. */
-  protected readonly titleTucked = signal(false);
+  private readonly content = viewChild<ElementRef<HTMLElement>>('content');
+  private readonly afterStory = viewChild<ElementRef<HTMLElement>>('afterStory');
   private readonly wordPopover = viewChild.required<TemplateRef<unknown>>('wordPopover');
-  private readonly wordPreview = viewChild.required<TemplateRef<unknown>>('wordPreview');
+  private readonly wordPreviewCard = viewChild.required<TemplateRef<unknown>>('wordPreviewCard');
   private readonly sentencePopover = viewChild.required<TemplateRef<unknown>>('sentencePopover');
-  private readonly estimatedParagraphHeightSignal = signal(DEFAULT_PARAGRAPH_HEIGHT_PX);
-  private readonly measuredParagraphHeightsSignal = signal<ReadonlyMap<number, number>>(new Map());
-  protected readonly spacers = computed(() =>
-    paragraphSpacers(
-      this.store.window(),
-      this.store.totalParagraphs(),
-      this.estimatedParagraphHeightSignal(),
-      this.measuredParagraphHeightsSignal(),
-    ),
-  );
 
   protected readonly selection = inject(ReaderSelectionStore);
   private inspectedActivation: TokenActivation | null = null;
@@ -678,6 +651,13 @@ export class ReaderPageComponent {
 
   /** Clamped here too: a stored row is external data like any other. */
   protected readonly textScale = computed(() => clampTextScale(this.preferences().textScale));
+
+  /** Every preference that changes how tall a paragraph is laid out. */
+  protected readonly paragraphLayout = computed<ParagraphLayout>(() => {
+    const scale = this.textScale();
+    const { furigana, sentencePerLine } = this.preferences();
+    return { key: `${String(scale)}:${String(furigana)}:${String(sentencePerLine)}`, scale };
+  });
 
   protected readonly readerHeading = computed(() => {
     switch (this.store.status()) {
@@ -694,10 +674,6 @@ export class ReaderPageComponent {
   });
 
   protected readonly selectedWord = this.selection.inspectedWord;
-
-  /** The whole word currently under the pointer or keyboard focus. */
-  private readonly previewedWordSignal = signal<SelectedWord | null>(null);
-  protected readonly previewedWord = this.previewedWordSignal.asReadonly();
 
   /** Every mounted sentence by id, for resolving what a press selected. */
   private readonly sentencesById = computed(() => {
@@ -782,44 +758,15 @@ export class ReaderPageComponent {
 
   protected skipStory(event: Event): void {
     event.preventDefault();
-    document.getElementById('mn-after-story')?.focus();
+    this.afterStory()?.nativeElement.focus();
   }
 
   protected readonly hasTranslationModel = this.preparation.hasTranslationModel;
   protected readonly hasGrammarModel = this.preparation.hasGrammarModel;
 
-  private scrollWindowFrame: number | null = null;
-  private lastScrollY = window.scrollY;
-  private lastScrollDirection: 'backward' | 'forward' | null = null;
-  private measuredLayoutKey = '';
-  /** Keeps the docked sheet clear of the docked player as the player resizes. */
-  private playerResizeObserver: ResizeObserver | null = null;
-  /**
-   * Whether playback may scroll the page to the sentence it has reached.
-   *
-   * A scroll the learner made themselves turns this off - they have said where
-   * they want to look - and only an explicit Play, Next, or Previous turns it
-   * back on (`ai-pipelines.md` section 11).
-   */
-  private followPlayback = true;
-  /** True while our own `scrollIntoView` is emitting scroll events. */
-  private scrollingProgrammatically = false;
-  /** The navigation count the follow state was last reconciled against. */
-  private lastNavigation = 0;
-  private previewTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Watches an open sheet, so a growing one never covers its own subject. */
-  private sheetClearance: ResizeObserver | null = null;
-  private sheetAnchor: HTMLElement | null = null;
-  /** Where the press landed, so a wrapped sentence clears the pressed line. */
-  private sheetAnchorY: number | null = null;
-  private sheetClearanceCheck: (() => void) | null = null;
-  private sheetClearanceFrame: number | null = null;
-  private sheetScrollFrame: number | null = null;
-  private readonly sheetReserveSignal = signal(0);
-  protected readonly sheetScrollReserve = computed(() => `${String(this.sheetReserveSignal())}px`);
-  private previewRef: PopoverRef | null = null;
-
   constructor() {
+    this.geometry.connect({ bar: this.readerBar, title: this.pageTitle, content: this.content });
+
     effect(() => {
       const nextReadingId = readingId(this.id());
       // Untracked, like every store call below it. An effect tracks the signals
@@ -834,8 +781,6 @@ export class ReaderPageComponent {
     });
 
     effect(() => {
-      // Measurements survive unmounting, so spacer estimates become exact for
-      // every paragraph the learner has passed.
       const paragraphs = this.store.paragraphs();
       const reading = this.store.reading();
       if (reading !== null) {
@@ -851,32 +796,21 @@ export class ReaderPageComponent {
           );
         });
       }
-      requestAnimationFrame(() => {
-        this.measureMountedParagraphs();
-      });
     });
 
     effect(() => {
-      const layoutKey = `${String(this.textScale())}:${String(this.preferences().furigana)}:${String(this.preferences().sentencePerLine)}`;
-      this.store.paragraphs();
-      untracked(() => {
-        if (layoutKey !== this.measuredLayoutKey) {
-          this.measuredLayoutKey = layoutKey;
-          this.measuredParagraphHeightsSignal.set(new Map());
-          this.estimatedParagraphHeightSignal.set(DEFAULT_PARAGRAPH_HEIGHT_PX * this.textScale());
-        }
-        requestAnimationFrame(() => {
-          this.measureMountedParagraphs();
-        });
-      });
-    });
-
-    effect(() => {
-      // A job writes rows this page is displaying, so its progress is what
-      // tells the reader to re-read them. Re-reading the reading row also
-      // refreshes the summaries the menu counts, and that in turn re-runs the
-      // aid load above for the mounted window.
-      if (this.translationProgress().kind !== 'idle') {
+      // Translation, audio, and grammar jobs all write rows this page is
+      // displaying, so a step by any of them is what tells the reader to
+      // re-read them. Each job's progress is read whole, because every step it
+      // takes is a reason to re-read, not only its start and end; one effect,
+      // so steps from two jobs in the same tick are one re-read, not two.
+      // Re-reading the reading row also refreshes the summaries the menu
+      // counts, and that in turn re-runs the aid load above for the mounted
+      // window.
+      const translating = this.translationProgress().kind !== 'idle';
+      const voicing = this.audio.progress().kind !== 'idle';
+      const analysing = this.preparation.grammarRunning();
+      if (translating || voicing || analysing) {
         // `refreshSummaries` reads the reading row it is about to replace, and
         // replaces it with a fresh object. Tracked, that re-ran this effect,
         // which refreshed again — an unbounded loop of reads behind a screen
@@ -904,23 +838,6 @@ export class ReaderPageComponent {
     });
 
     effect(() => {
-      // The audio job writes rows the menu counts, exactly as translation does.
-      if (this.audio.progress().kind !== 'idle') {
-        untracked(() => {
-          void this.store.refreshSummaries();
-        });
-      }
-    });
-
-    effect(() => {
-      if (this.preparation.grammarRunning()) {
-        untracked(() => {
-          void this.store.refreshSummaries();
-        });
-      }
-    });
-
-    effect(() => {
       // A session at the frontier is waiting for a clip the run is about to
       // store. Once the run has failed or been cancelled that clip is never
       // coming, and only the reader knows: the playback store has no business
@@ -941,110 +858,6 @@ export class ReaderPageComponent {
       }
     });
 
-    effect(() => {
-      // Follow the sentence being read, but only into view and only while the
-      // learner has not scrolled away themselves.
-      const navigation = this.audio.playback.explicitNavigation();
-      if (navigation !== this.lastNavigation) {
-        this.lastNavigation = navigation;
-        this.followPlayback = true;
-      }
-      const sentenceId = this.audio.playback.currentSentenceId();
-      if (sentenceId !== null && this.followPlayback) {
-        queueMicrotask(() => {
-          this.revealSentence(sentenceId);
-        });
-      }
-    });
-
-    effect(() => {
-      if (!this.audio.playerOpen()) {
-        return;
-      }
-      // The conditional wrapper is rendered immediately after the header, so
-      // its fixed visual position does not leave it after every token in the
-      // keyboard order. It still publishes its measured height for sheets.
-      this.audioPlayerShell();
-      queueMicrotask(() => {
-        const shell = this.audioPlayerShell()?.nativeElement;
-        if (this.audio.playerOpen() && shell !== undefined) {
-          this.trackPlayerHeight(shell);
-        }
-      });
-    });
-
-    effect((onCleanup) => {
-      // The bar takes over the title once the heading is wholly beneath it.
-      // The bar is measured rather than assumed: a maintenance notice grows it.
-      const title = this.pageTitle()?.nativeElement;
-      const bar = this.readerBar()?.nativeElement;
-      if (title === undefined || bar === undefined) {
-        return;
-      }
-      const observer = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            // Gone above the bar, not merely out of view below the fold.
-            const barBottom = entry.rootBounds?.top ?? bar.offsetHeight;
-            this.titleTucked.set(
-              !entry.isIntersecting && entry.boundingClientRect.bottom <= barBottom,
-            );
-          }
-        },
-        { rootMargin: `-${bar.offsetHeight}px 0px 0px 0px` },
-      );
-      observer.observe(title);
-      onCleanup(() => {
-        observer.disconnect();
-      });
-    });
-
-    const suppressFollow = (): void => {
-      // Only a scroll the learner made themselves counts. The programmatic one
-      // in `revealSentence` sets its own guard, so following never switches
-      // itself off.
-      if (!this.scrollingProgrammatically) {
-        this.followPlayback = false;
-        this.stopFollowingSheetAnchor();
-        if (window.scrollY > this.lastScrollY + 1) {
-          this.lastScrollDirection = 'forward';
-        } else if (window.scrollY < this.lastScrollY - 1) {
-          this.lastScrollDirection = 'backward';
-        }
-      }
-      this.lastScrollY = window.scrollY;
-      this.scheduleWindowForScroll();
-    };
-    const remeasureSheet = (): void => {
-      this.rearmSheetClearance();
-    };
-    window.addEventListener('scroll', suppressFollow, { passive: true });
-    window.addEventListener('wheel', suppressFollow, { passive: true });
-    window.addEventListener('touchmove', suppressFollow, { passive: true });
-    window.addEventListener('resize', remeasureSheet, { passive: true });
-    const navigateEdge = (event: KeyboardEvent): void => {
-      if (
-        (event.key !== 'Home' && event.key !== 'End') ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey
-      ) {
-        return;
-      }
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement ||
-        event.target instanceof HTMLSelectElement ||
-        (event.target instanceof HTMLElement && event.target.isContentEditable)
-      ) {
-        return;
-      }
-      event.preventDefault();
-      void this.moveToDocumentEdge(event.key === 'End' ? 'end' : 'start');
-    };
-    window.addEventListener('keydown', navigateEdge);
-
     inject(DestroyRef).onDestroy(() => {
       // Leaving the reading ends the session that was reading it aloud. The
       // player is the only surface with a transport, and it lives here, so
@@ -1053,18 +866,7 @@ export class ReaderPageComponent {
       // and stops nothing: the reader is still open, and the media notification
       // is the control there.
       this.audio.playback.stop();
-      this.endPreview();
-      this.releaseSheetClearance();
       this.popover.close();
-      this.releasePlayerHeight();
-      window.removeEventListener('scroll', suppressFollow);
-      window.removeEventListener('wheel', suppressFollow);
-      window.removeEventListener('touchmove', suppressFollow);
-      window.removeEventListener('resize', remeasureSheet);
-      window.removeEventListener('keydown', navigateEdge);
-      if (this.scrollWindowFrame !== null) {
-        cancelAnimationFrame(this.scrollWindowFrame);
-      }
       this.preparation.leftReader();
       this.store.close();
     });
@@ -1141,10 +943,12 @@ export class ReaderPageComponent {
     if (confirmed) await this.textAidMaintenance.clear(layer);
   }
 
-  /** Shows or hides the independent floating player, releasing its docked height. */
+  /**
+   * Shows or hides the independent floating player. Its docked height goes
+   * with its shell, which `mnDockedPlayer` measures for as long as it exists.
+   */
   protected toggleAudioPlayer(): void {
     if (this.audio.playerOpen()) {
-      this.releasePlayerHeight();
       this.audio.closePlayer();
       return;
     }
@@ -1153,42 +957,11 @@ export class ReaderPageComponent {
 
   /** Clears every surface whose content belongs to the current reading. */
   private closeReaderSurfaces(): void {
-    this.endPreview();
-    this.releaseSheetClearance();
+    this.wordPreview.end();
+    this.geometry.releaseSheet();
     this.popover.close();
-    this.releasePlayerHeight();
     this.audio.endPlayback();
     this.selection.clearSentence();
-  }
-
-  /**
-   * Publishes how tall the player is, for anything else docked to the bottom.
-   *
-   * On a phone both the player and a details sheet dock to the bottom edge, and
-   * the sheet has no other way to know what it is landing on. Measured rather
-   * than assumed, because the player is a transport in one state and a
-   * generation panel in another.
-   */
-  private trackPlayerHeight(shell: HTMLElement): void {
-    this.playerResizeObserver?.disconnect();
-    const publish = (): void => {
-      document.documentElement.style.setProperty(
-        DOCKED_PLAYER_HEIGHT,
-        `${String(Math.round(shell.getBoundingClientRect().height))}px`,
-      );
-      this.scheduleSheetClearanceCheck();
-    };
-    publish();
-    this.playerResizeObserver = new ResizeObserver(publish);
-    this.playerResizeObserver.observe(shell);
-  }
-
-  /** Gives the bottom edge back once the player is gone. */
-  private releasePlayerHeight(): void {
-    this.playerResizeObserver?.disconnect();
-    this.playerResizeObserver = null;
-    document.documentElement.style.removeProperty(DOCKED_PLAYER_HEIGHT);
-    this.scheduleSheetClearanceCheck();
   }
 
   /**
@@ -1215,10 +988,10 @@ export class ReaderPageComponent {
       this.popover.close();
       return;
     }
-    this.endPreview();
+    this.wordPreview.end();
     this.openSentence(
       sentence.sentence.id,
-      this.sentenceElement(sentence.sentence.id) ?? { x: selection.x, y: selection.y },
+      this.geometry.sentenceElement(sentence.sentence.id) ?? { x: selection.x, y: selection.y },
       undefined,
       selection.y,
     );
@@ -1235,22 +1008,23 @@ export class ReaderPageComponent {
     // Without returning focus, because another surface is opening in its place.
     this.popover.close(false);
     this.selection.selectSentence(sentenceId);
-    this.popover.open({
+    const surface = this.popover.open({
       origin,
       template: this.sentencePopover(),
       viewContainerRef: this.viewContainerRef,
-      returnFocusTo: returnFocusTo ?? this.sentenceElement(sentenceId),
+      returnFocusTo: returnFocusTo ?? this.geometry.sentenceElement(sentenceId),
       closeOnScroll: true,
-      preferredVerticalPlacement: this.sentencePlacement(origin),
+      preferredVerticalPlacement: this.geometry.placementFor(origin),
       // A press on a word is about that word, whatever is open at the time.
       retargetSelector: WORD_TARGET,
       onClosed: () => {
-        this.releaseSheetClearance();
+        this.geometry.releaseSheet();
         this.selection.clearSentence();
       },
     });
-    this.keepClearOfSheet(
-      origin instanceof HTMLElement ? origin : this.sentenceElement(sentenceId),
+    this.geometry.keepClearOfSheet(
+      origin instanceof HTMLElement ? origin : this.geometry.sentenceElement(sentenceId),
+      surface,
       pressedAtY,
     );
   }
@@ -1282,7 +1056,7 @@ export class ReaderPageComponent {
       this.popover.close();
       return;
     }
-    this.endPreview();
+    this.wordPreview.end();
     // Before the new word is set, because closing the surface over the old one
     // clears the selection, and a close that ran afterwards would clear this.
     // Focus is not returned: the next surface is already on its way.
@@ -1295,7 +1069,7 @@ export class ReaderPageComponent {
       status: activation.sentence.statuses?.get(activation.token.id) ?? null,
     });
 
-    this.popover.open({
+    const surface = this.popover.open({
       origin: activation.origin,
       template: this.wordPopover(),
       viewContainerRef: this.viewContainerRef,
@@ -1305,12 +1079,12 @@ export class ReaderPageComponent {
       // and a second to open the next.
       retargetSelector: WORD_TARGET,
       onClosed: () => {
-        this.releaseSheetClearance();
+        this.geometry.releaseSheet();
         this.inspectedActivation = null;
         this.selection.closeWord();
       },
     });
-    this.keepClearOfSheet(activation.origin);
+    this.geometry.keepClearOfSheet(activation.origin, surface);
   }
 
   /** Keyboard route from a focused word to every action on its sentence. */
@@ -1321,355 +1095,21 @@ export class ReaderPageComponent {
     }
     this.openSentence(
       activation.sentence.sentence.id,
-      this.sentenceElement(activation.sentence.sentence.id) ?? activation.origin,
+      this.geometry.sentenceElement(activation.sentence.sentence.id) ?? activation.origin,
       activation.origin,
     );
   }
 
-  private sentenceElement(sentenceId: SentenceId): HTMLElement | null {
-    return document.querySelector<HTMLElement>(`[data-sentence-id="${CSS.escape(sentenceId)}"]`);
-  }
-
-  private sentencePlacement(origin: { x: number; y: number } | HTMLElement): 'above' | 'below' {
-    const y = origin instanceof HTMLElement ? origin.getBoundingClientRect().top : origin.y;
-    return y < window.innerHeight / 2 ? 'above' : 'below';
-  }
-
-  /**
-   * Scrolls the word or line a sheet is about back into what is left of the
-   * page.
-   *
-   * A sheet docks over the bottom of the screen, so on a phone the press that
-   * opened it is as often as not underneath it — details about a word the
-   * reader can no longer see, in a sentence they can no longer read. Nothing
-   * happens on a desktop, where the card is anchored beside its word, or when
-   * the subject is already clear of the sheet.
-   */
-  private keepClearOfSheet(anchor: HTMLElement | null, pressedAtY?: number): void {
-    this.releaseSheetClearance();
-    this.sheetAnchor = anchor;
-    this.sheetAnchorY = pressedAtY ?? null;
-    this.armSheetClearance();
-  }
-
-  private armSheetClearance(): void {
-    const anchor = this.sheetAnchor;
-    if (anchor === null || !this.viewport.isMobile()) {
-      return;
-    }
-    // After the frame the sheet is laid out in: it is the sheet's own top edge
-    // that has to be cleared, and it has none until it has been rendered.
-    this.sheetClearanceFrame = requestAnimationFrame(() => {
-      this.sheetClearanceFrame = null;
-      if (this.sheetAnchor !== anchor || !this.viewport.isMobile()) {
-        return;
-      }
-      const sheet = document.querySelector<HTMLElement>('.mn-popover-pane.is-sheet');
-      if (sheet === null) {
-        return;
-      }
-      // A sentence can wrap across half a screen, and only the line that was
-      // actually pressed has to stay visible. Held as an index rather than a
-      // coordinate, so it survives the scrolling this is about to do.
-      const line = lineIndexAt(anchor, this.sheetAnchorY);
-      let scrolled = false;
-      let target = window.scrollY;
-      const clear = (): void => {
-        const overlap =
-          lineBottom(anchor, line) - sheet.getBoundingClientRect().top + SHEET_CLEARANCE;
-        // Resolved to a position rather than a distance, so a measurement taken
-        // while a smooth scroll is still running does not ask for the same
-        // distance twice.
-        const wanted = window.scrollY + overlap;
-        if (overlap <= 0 || wanted <= target + 1) {
-          return;
-        }
-        target = wanted;
-        // At the end of a reading there is nothing left to scroll into, so the
-        // room the pressed line needs is reserved temporarily and handed back
-        // when the sheet closes.
-        const reachable =
-          document.documentElement.scrollHeight - window.innerHeight - this.sheetReserveSignal();
-        this.sheetReserveSignal.set(Math.max(0, Math.ceil(target - reachable)));
-        const behavior = scrolled || this.viewport.prefersReducedMotion() ? 'auto' : 'smooth';
-        scrolled = true;
-        // After the reserve has been laid out: scrolling to a position the
-        // document does not have yet simply lands short of it.
-        this.sheetScrollFrame = requestAnimationFrame(() => {
-          this.sheetScrollFrame = null;
-          this.scrollingProgrammatically = true;
-          // The first move is the one the reader sees answer their press. A
-          // correction after the sheet has grown is not a second journey.
-          window.scrollTo({ top: target, behavior });
-          setTimeout(() => {
-            this.scrollingProgrammatically = false;
-          }, SCROLL_SETTLE_MS);
-        });
-      };
-      this.sheetClearanceCheck = clear;
-      // A sheet is as tall as what it has to say, and it has nothing to say
-      // until a lookup or a stored translation has arrived: measuring only once
-      // would clear an edge the sheet is about to grow past. The observer
-      // reports the first size as well, so this is also the initial check.
-      this.sheetClearance = new ResizeObserver(clear);
-      this.sheetClearance.observe(sheet);
-      const player = this.audioPlayerShell()?.nativeElement;
-      if (player !== undefined) {
-        this.sheetClearance.observe(player);
-      }
-    });
-  }
-
-  private releaseSheetClearance(): void {
-    this.clearSheetClearanceObserver();
-    this.sheetAnchor = null;
-    this.sheetAnchorY = null;
-  }
-
-  /**
-   * Stops correcting the scroll position once the reader has moved it.
-   *
-   * The sheet stays exactly where it is; only the correction ends. Left armed,
-   * a reader who scrolled back a paragraph with a sheet open was pulled
-   * forwards again to the line they had pressed, over and over.
-   */
-  private stopFollowingSheetAnchor(): void {
-    if (this.sheetAnchor !== null) {
-      this.releaseSheetClearance();
-    }
-  }
-
-  private rearmSheetClearance(): void {
-    if (this.sheetAnchor === null) {
-      return;
-    }
-    this.clearSheetClearanceObserver();
-    this.armSheetClearance();
-  }
-
-  private clearSheetClearanceObserver(): void {
-    if (this.sheetClearanceFrame !== null) {
-      cancelAnimationFrame(this.sheetClearanceFrame);
-      this.sheetClearanceFrame = null;
-    }
-    if (this.sheetScrollFrame !== null) {
-      cancelAnimationFrame(this.sheetScrollFrame);
-      this.sheetScrollFrame = null;
-    }
-    this.sheetReserveSignal.set(0);
-    this.sheetClearance?.disconnect();
-    this.sheetClearance = null;
-    this.sheetClearanceCheck = null;
-  }
-
-  /** Re-measures the shared sheet/player boundary after layout settles. */
-  private scheduleSheetClearanceCheck(): void {
-    if (this.sheetClearanceCheck === null || this.sheetClearanceFrame !== null) {
-      return;
-    }
-    this.sheetClearanceFrame = requestAnimationFrame(() => {
-      this.sheetClearanceFrame = null;
-      this.sheetClearanceCheck?.();
-    });
-  }
-
-  protected closeInspector(): void {
-    this.popover.close();
-  }
-
-  /**
-   * Shows the concise hover preview, after a pause so that sweeping the pointer
-   * across a line does not flash a card per word.
-   *
-   * Suppressed while a word is pinned: the preview and the pinned card share
-   * one floating surface, and a hover must never dismiss what the learner
-   * deliberately opened.
-   */
   protected previewWord(activation: TokenActivation): void {
-    if (this.selection.anythingOpen()) {
-      return;
-    }
-    this.previewedWordSignal.set({
-      sentenceId: activation.sentence.sentence.id,
-      tokenId: activation.token.id,
-    });
-    this.cancelPreviewTimer();
-    this.previewTimer = setTimeout(() => {
-      this.previewTimer = null;
-      this.selection.previewWord(activation.word);
-      this.previewRef = this.popover.open({
-        origin: activation.origin,
-        template: this.wordPreview(),
-        viewContainerRef: this.viewContainerRef,
-        modal: false,
-        onClosed: () => {
-          this.previewRef = null;
-        },
-      });
-    }, PREVIEW_DELAY_MS);
+    this.wordPreview.show(activation, this.wordPreviewCard(), this.viewContainerRef);
   }
 
   protected endPreview(): void {
-    this.cancelPreviewTimer();
-    this.previewedWordSignal.set(null);
-    this.previewRef?.close();
-    this.previewRef = null;
-    this.selection.clearPreview();
-  }
-
-  private cancelPreviewTimer(): void {
-    if (this.previewTimer !== null) {
-      clearTimeout(this.previewTimer);
-      this.previewTimer = null;
-    }
+    this.wordPreview.end();
   }
 
   protected backToLibrary(event: Event): void {
     event.preventDefault();
     void this.navigation.backOrNavigate('/library');
   }
-
-  /**
-   * What is left of the viewport once the reader's own furniture is subtracted.
-   *
-   * The sticky header and the docked player are both opaque and both fixed, so
-   * the part of the window a sentence can actually be read in is the band
-   * between them. Measured rather than assumed: the header grows with a long
-   * title on a narrow screen, and the player is docked flush on a phone and
-   * floating clear of the edge on a desktop.
-   */
-  private readableBand(): { readonly top: number; readonly bottom: number } {
-    const bar = this.readerBar()?.nativeElement.getBoundingClientRect();
-    const player = this.audio.playerOpen()
-      ? this.audioPlayerShell()?.nativeElement.getBoundingClientRect()
-      : undefined;
-    return {
-      top: Math.max(0, bar?.bottom ?? 0),
-      bottom: Math.min(window.innerHeight, player?.top ?? window.innerHeight),
-    };
-  }
-
-  /**
-   * Brings the sentence being read into view, and only if it is not already.
-   *
-   * Scrolling a sentence that is already on screen would jerk the page on every
-   * advance, which is exactly the behaviour that makes a follow-along player
-   * unusable. A sentence outside the mounted window has no element yet and is
-   * simply left alone.
-   *
-   * "On screen" is the band between the header and the player, not the window.
-   * Measured against the window, a sentence sitting behind the docked player
-   * counted as visible and was never scrolled to — so following a reading
-   * downwards stopped at the first sentence to reach the player and left the
-   * learner watching a sentence they could not see.
-   */
-  private revealSentence(sentenceId: SentenceId): void {
-    const element = document.querySelector<HTMLElement>(
-      `[data-sentence-id="${CSS.escape(sentenceId)}"]`,
-    );
-    if (element === null) {
-      return;
-    }
-    const box = element.getBoundingClientRect();
-    const band = this.readableBand();
-    if (box.top >= band.top && box.bottom <= band.bottom) {
-      return;
-    }
-    this.scrollingProgrammatically = true;
-    element.scrollIntoView({
-      block: 'center',
-      behavior: this.viewport.prefersReducedMotion() ? 'auto' : 'smooth',
-    });
-    // Released after the scroll has settled, so the events it emits are not
-    // mistaken for the learner scrolling away from the player.
-    setTimeout(() => {
-      this.scrollingProgrammatically = false;
-    }, SCROLL_SETTLE_MS);
-  }
-
-  private measureMountedParagraphs(): void {
-    const content = this.content()?.nativeElement;
-    if (content === undefined) {
-      return;
-    }
-    const next = new Map(this.measuredParagraphHeightsSignal());
-    const measured: number[] = [];
-    for (const paragraph of content.querySelectorAll<HTMLElement>('mn-reader-paragraph p')) {
-      const position = Number(paragraph.dataset['paragraphPosition']);
-      const margin = Number.parseFloat(getComputedStyle(paragraph).marginBottom) || 0;
-      const height = paragraph.getBoundingClientRect().height + margin;
-      if (Number.isFinite(position) && height > 0) {
-        next.set(position, height);
-        measured.push(height);
-      }
-    }
-    if (measured.length === 0) {
-      return;
-    }
-    this.measuredParagraphHeightsSignal.set(next);
-    if (next.size === measured.length) {
-      this.estimatedParagraphHeightSignal.set(
-        measured.reduce((total, height) => total + height, 0) / measured.length,
-      );
-    }
-    this.scheduleWindowForScroll();
-  }
-
-  private scheduleWindowForScroll(): void {
-    if (this.scrollWindowFrame !== null || this.store.status() !== 'ready') {
-      return;
-    }
-    this.scrollWindowFrame = requestAnimationFrame(() => {
-      this.scrollWindowFrame = null;
-      const content = this.content()?.nativeElement;
-      if (content === undefined) {
-        return;
-      }
-      const documentTop = content.getBoundingClientRect().top + window.scrollY;
-      const offset = window.scrollY + window.innerHeight / 2 - documentTop;
-      const position = paragraphAtOffset(
-        offset,
-        this.store.totalParagraphs(),
-        this.estimatedParagraphHeightSignal(),
-        this.measuredParagraphHeightsSignal(),
-      );
-      if (
-        (this.lastScrollDirection === 'forward' && position < this.store.window().first) ||
-        (this.lastScrollDirection === 'backward' &&
-          position >= this.store.window().first + this.store.window().count)
-      ) {
-        return;
-      }
-      if (!windowContains(this.store.window(), position)) {
-        void this.store.moveTo(position);
-      }
-    });
-  }
-
-  private async moveToDocumentEdge(edge: 'start' | 'end'): Promise<void> {
-    const position = edge === 'start' ? 0 : Math.max(0, this.store.totalParagraphs() - 1);
-    await this.store.moveTo(position);
-    requestAnimationFrame(() => {
-      this.scrollingProgrammatically = true;
-      window.scrollTo({ top: edge === 'start' ? 0 : document.documentElement.scrollHeight });
-      requestAnimationFrame(() => {
-        this.scrollingProgrammatically = false;
-      });
-    });
-  }
-}
-
-/** Which line box of a wrapped element a press landed in, or -1 for none. */
-function lineIndexAt(element: HTMLElement, pressedAtY: number | null): number {
-  const rects = [...element.getClientRects()];
-  if (pressedAtY === null || rects.length < 2) {
-    return -1;
-  }
-  return rects.findIndex((rect) => pressedAtY >= rect.top && pressedAtY <= rect.bottom);
-}
-
-/** The bottom of that line, or of the whole element when no one line applies. */
-function lineBottom(element: HTMLElement, line: number): number {
-  const rect = line >= 0 ? element.getClientRects()[line] : undefined;
-  return rect?.bottom ?? element.getBoundingClientRect().bottom;
 }

@@ -332,6 +332,24 @@ describe('PopoverService', () => {
     expect(pane()?.classList.contains('is-sheet')).toBe(true);
   });
 
+  it('hands back the pane it renders into, and whether it is docked', () => {
+    media.setWidth(412);
+    const fixture = render();
+    const ref = fixture.componentInstance.open();
+    fixture.detectChanges();
+
+    expect(ref.pane).toBe(pane());
+    expect(ref.isSheet()).toBe(true);
+
+    media.setWidth(1440);
+    fixture.detectChanges();
+    expect(ref.isSheet()).toBe(false);
+
+    media.setWidth(412);
+    ref.close();
+    expect(ref.isSheet()).toBe(false);
+  });
+
   it('anchors rather than docking on a desktop viewport', () => {
     const fixture = render();
     fixture.componentInstance.open();

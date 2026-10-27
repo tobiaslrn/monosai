@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import type { ElementRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output, viewChild } from '@angular/core';
 import { NO_AIDS, type SentenceAids } from '../../application/enrichment/sentence-aids.store';
 import type { ReaderParagraph } from '../../application/reading/reader.store';
 import type { SentenceId } from '../../domain/shared/ids';
@@ -24,6 +25,7 @@ import {
   imports: [ReaderSentenceComponent, ParagraphGesturesDirective],
   template: `
     <p
+      #paragraph
       class="paragraph"
       [class.is-lined]="sentencePerLine()"
       mnParagraphGestures
@@ -39,8 +41,8 @@ import {
           [markers]="markers()"
           [selected]="selectedSentenceId() === sentence.sentence.id"
           [playing]="playingSentenceId() === sentence.sentence.id"
-          [selectedWord]="selectedWord()"
-          [previewedWord]="previewedWord()"
+          [selectedWord]="wordIn(selectedWord(), sentence.sentence.id)"
+          [previewedWord]="wordIn(previewedWord(), sentence.sentence.id)"
           (activated)="activated.emit($event)"
           (previewed)="previewed.emit($event)"
           (previewEnded)="previewEnded.emit()"
@@ -103,7 +105,19 @@ export class ReaderParagraphComponent {
   readonly previewEnded = output<void>();
   readonly sentenceSelected = output<SentenceSelection>();
 
+  /** The paragraph's own box, which the reader's virtual window measures. */
+  readonly element = viewChild.required<ElementRef<HTMLElement>>('paragraph');
+
   protected aidsFor(sentenceId: SentenceId): SentenceAids {
     return this.aids().get(sentenceId) ?? NO_AIDS;
+  }
+
+  /**
+   * The word, for the one sentence it is in. Every other sentence keeps its
+   * null, so moving a hover or a lookup re-renders the two sentences it moved
+   * between rather than every sentence mounted.
+   */
+  protected wordIn(word: SelectedWord | null, sentenceId: SentenceId): SelectedWord | null {
+    return word?.sentenceId === sentenceId ? word : null;
   }
 }

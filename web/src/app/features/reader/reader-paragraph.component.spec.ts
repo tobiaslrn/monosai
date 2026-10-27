@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { describe, expect, it } from 'vitest';
 import type { ReaderParagraph, ReaderSentence } from '../../application/reading/reader.store';
 import { paragraphId, readingId, sentenceId } from '../../domain/shared/ids';
 import { ReaderParagraphComponent } from './reader-paragraph.component';
+import { ReaderSentenceComponent, type SelectedWord } from './reader-sentence.component';
 
 const READING_ID = readingId('r1');
 const PARAGRAPH_ID = paragraphId('p1');
@@ -48,11 +50,16 @@ const PARAGRAPH: ReaderParagraph = {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReaderParagraphComponent],
-  template: `<mn-reader-paragraph [entry]="entry()" [sentencePerLine]="sentencePerLine()" />`,
+  template: `<mn-reader-paragraph
+    [entry]="entry()"
+    [sentencePerLine]="sentencePerLine()"
+    [previewedWord]="previewedWord()"
+  />`,
 })
 class HostComponent {
   readonly entry = signal<ReaderParagraph>(PARAGRAPH);
   readonly sentencePerLine = signal(false);
+  readonly previewedWord = signal<SelectedWord | null>(null);
 }
 
 describe('ReaderParagraphComponent', () => {
@@ -91,5 +98,18 @@ describe('ReaderParagraphComponent', () => {
     fixture.componentInstance.sentencePerLine.set(false);
     fixture.detectChanges();
     expect(paragraphElement(fixture).classList.contains('is-lined')).toBe(false);
+  });
+
+  it('hands a word only to the sentence it is in', () => {
+    const fixture = render();
+    const word = { sentenceId: 's2', tokenId: 's2-t1' };
+
+    fixture.componentInstance.previewedWord.set(word);
+    fixture.detectChanges();
+
+    const sentences = fixture.debugElement
+      .queryAll(By.directive(ReaderSentenceComponent))
+      .map((node) => node.componentInstance as ReaderSentenceComponent);
+    expect(sentences.map((sentence) => sentence.previewedWord())).toEqual([null, word]);
   });
 });
