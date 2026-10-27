@@ -1,3 +1,4 @@
+import type * as z from 'zod';
 import type {
   AnalyzeTextRequest,
   AnalyzedSentence,
@@ -22,10 +23,13 @@ import {
   LANGUAGE_PROTOCOL_VERSION,
   type LanguageRequest,
   type LanguageRequestMessage,
-  type LanguageResult,
   type ResultFor,
 } from './worker-protocol';
-import { languageResponseEnvelopeSchema } from './worker-protocol.schema';
+import {
+  languageErrorSchema,
+  languageResponseEnvelopeSchema,
+  languageResultValueSchemas,
+} from './worker-protocol.schema';
 
 /**
  * Transport the client talks over. A real `Worker` and a test double both
@@ -37,9 +41,15 @@ export interface LanguageWorkerChannel {
   terminate(): void;
 }
 
+/** A result whose operation is known but whose value is not yet validated. */
+interface UncheckedResult {
+  readonly operation: string;
+  readonly value: unknown;
+}
+
 interface PendingRequest {
   readonly operation: LanguageRequest['operation'];
-  readonly settle: (outcome: Result<LanguageResult, LanguageError>) => void;
+  readonly settle: (outcome: Result<UncheckedResult, LanguageError>) => void;
 }
 
 let requestCounter = 0;
@@ -54,6 +64,34 @@ function unexpectedResult(operation: string): LanguageError {
     'invalid-response',
     'The language worker answered a different operation than requested.',
     operation,
+  );
+}
+
+/**
+ * Names where a worker answer broke its schema: paths and issue codes only,
+ * never the values, which can carry the learner's text.
+ */
+function describeIssues(operation: string, error: z.ZodError): string {
+  const issues = error.issues
+    .slice(0, 3)
+    .map((issue) => `${issue.path.join('.')}: ${issue.code}`)
+    .join('; ');
+  return `${operation}: ${issues}`;
+}
+
+function malformedResult(operation: string, error: z.ZodError): LanguageError {
+  return languageError(
+    'invalid-response',
+    'The language worker answered with a malformed result.',
+    describeIssues(operation, error),
+  );
+}
+
+function malformedError(operation: string, error: z.ZodError): LanguageError {
+  return languageError(
+    'invalid-response',
+    'The language worker answered with a malformed error.',
+    describeIssues(operation, error),
   );
 }
 
@@ -211,8 +249,18 @@ export class LanguageWorkerClient implements LanguageRuntime {
             finish(err(unexpectedResult(outcome.value.operation)));
             return;
           }
+          const schema: z.ZodType<Value> = languageResultValueSchemas[operation];
+          const value = schema.safeParse(outcome.value.value);
+          if (!value.success) {
+            this.logger?.error('language.operation.failed', {
+              operation,
+              errorCode: 'invalid-response',
+            });
+            finish(err(malformedResult(operation, value.error)));
+            return;
+          }
           this.logger?.debug('language.operation.succeeded', { operation });
-          finish(ok(outcome.value.value as Value));
+          finish(ok(value.data));
         },
       });
 
@@ -247,10 +295,13 @@ export class LanguageWorkerClient implements LanguageRuntime {
       return;
     }
     if (!parsed.data.outcome.ok) {
-      request.settle(err(parsed.data.outcome.error as LanguageError));
+      const error = languageErrorSchema.safeParse(parsed.data.outcome.error);
+      request.settle(
+        err(error.success ? error.data : malformedError(request.operation, error.error)),
+      );
       return;
     }
-    request.settle(ok(parsed.data.outcome.result as unknown as LanguageResult));
+    request.settle(ok(parsed.data.outcome.result));
   }
 }
 

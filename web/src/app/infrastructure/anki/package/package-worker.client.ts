@@ -1,3 +1,4 @@
+import type * as z from 'zod';
 import { ankiError, type AnkiError } from '../../../domain/anki/anki-error';
 import type { Logger } from '../../../application/shared/diagnostics';
 import { err, ok, type Result } from '../../../domain/shared/result';
@@ -5,10 +6,13 @@ import {
   PACKAGE_PROTOCOL_VERSION,
   type PackageRequest,
   type PackageRequestMessage,
-  type PackageResult,
   type ResultFor,
 } from './package-protocol';
-import { packageResponseEnvelopeSchema } from './package-protocol.schema';
+import {
+  ankiErrorSchema,
+  packageResponseEnvelopeSchema,
+  packageResultValueSchemas,
+} from './package-protocol.schema';
 
 /**
  * Transport the client talks over. A real `Worker` and a test double both
@@ -20,9 +24,15 @@ export interface PackageWorkerChannel {
   terminate(): void;
 }
 
+/** A result whose operation is known but whose value is not yet validated. */
+interface UncheckedResult {
+  readonly operation: string;
+  readonly value: unknown;
+}
+
 interface PendingRequest {
   readonly operation: PackageRequest['operation'];
-  readonly settle: (outcome: Result<PackageResult, AnkiError>) => void;
+  readonly settle: (outcome: Result<UncheckedResult, AnkiError>) => void;
 }
 
 let requestCounter = 0;
@@ -34,6 +44,34 @@ function nextRequestId(): string {
 
 function cancelled(): AnkiError {
   return ankiError('cancelled', 'The request was cancelled.');
+}
+
+/**
+ * Names where a worker answer broke its schema: paths and issue codes only,
+ * never the values, which can carry the learner's note contents.
+ */
+function describeIssues(operation: string, error: z.ZodError): string {
+  const issues = error.issues
+    .slice(0, 3)
+    .map((issue) => `${issue.path.join('.')}: ${issue.code}`)
+    .join('; ');
+  return `${operation}: ${issues}`;
+}
+
+function malformedResult(operation: string, error: z.ZodError): AnkiError {
+  return ankiError(
+    'malformed-response',
+    'The package worker answered with a malformed result.',
+    describeIssues(operation, error),
+  );
+}
+
+function malformedError(operation: string, error: z.ZodError): AnkiError {
+  return ankiError(
+    'malformed-response',
+    'The package worker answered with a malformed error.',
+    describeIssues(operation, error),
+  );
 }
 
 /**
@@ -184,8 +222,19 @@ export class PackageWorkerClient {
             );
             return;
           }
+          const schema: z.ZodType<Value> = packageResultValueSchemas[operation];
+          const value = schema.safeParse(outcome.value.value);
+          if (!value.success) {
+            this.logger?.error('worker.operation.failed', {
+              worker: 'package',
+              operation,
+              errorCode: 'malformed-response',
+            });
+            finish(err(malformedResult(operation, value.error)));
+            return;
+          }
           this.logger?.debug('worker.operation.succeeded', { worker: 'package', operation });
-          finish(ok(outcome.value.value as Value));
+          finish(ok(value.data));
         },
       });
 
@@ -220,10 +269,13 @@ export class PackageWorkerClient {
       return;
     }
     if (!parsed.data.outcome.ok) {
-      request.settle(err(parsed.data.outcome.error as AnkiError));
+      const error = ankiErrorSchema.safeParse(parsed.data.outcome.error);
+      request.settle(
+        err(error.success ? error.data : malformedError(request.operation, error.error)),
+      );
       return;
     }
-    request.settle(ok(parsed.data.outcome.result as unknown as PackageResult));
+    request.settle(ok(parsed.data.outcome.result));
   }
 }
 

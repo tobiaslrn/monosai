@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { Logger } from '../../application/shared/diagnostics';
 import { LanguageWorkerClient, type LanguageWorkerChannel } from './language-worker.client';
 import {
   LANGUAGE_PROTOCOL_VERSION,
@@ -36,6 +37,21 @@ function fakeChannel(): FakeChannel {
     lastRequestId: (operation) => {
       const match = [...sent].reverse().find((message) => message.request.operation === operation);
       return match?.requestId ?? '';
+    },
+  };
+}
+
+function errorLogger(): { readonly logger: Logger; readonly error: ReturnType<typeof vi.fn> } {
+  const error = vi.fn();
+  return {
+    error,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error,
+      snapshot: () => [],
+      clear: vi.fn(),
     },
   };
 }
@@ -210,6 +226,59 @@ describe('LanguageWorkerClient', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.code).toBe('analysis-failed');
+    }
+  });
+
+  it('rejects a well-formed envelope whose result value is malformed', async () => {
+    const channel = fakeChannel();
+    const { logger, error } = errorLogger();
+    const client = new LanguageWorkerClient(channel, logger);
+    const pending = client.analyzeSentences(['猫。']);
+    const requestId = channel.lastRequestId('analyze-sentences');
+
+    channel.deliver({
+      protocolVersion: LANGUAGE_PROTOCOL_VERSION,
+      requestId,
+      outcome: {
+        ok: true,
+        result: {
+          operation: 'analyze-sentences',
+          value: [{ startUtf16: 0, endUtf16: 2, text: '猫。', tokens: [{ id: 't1' }] }],
+        },
+      },
+    });
+
+    const result = await pending;
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('invalid-response');
+      // Where it broke, never what it held.
+      expect(result.error.cause).toContain('analyze-sentences: 0.tokens.0.');
+      expect(result.error.cause).not.toContain('猫');
+    }
+    expect(error).toHaveBeenCalledWith('language.operation.failed', {
+      operation: 'analyze-sentences',
+      errorCode: 'invalid-response',
+    });
+  });
+
+  it('rejects a worker error that is not a language error instead of hanging', async () => {
+    const channel = fakeChannel();
+    const client = new LanguageWorkerClient(channel);
+    const pending = client.segment('猫。');
+    const requestId = channel.lastRequestId('segment');
+
+    channel.deliver({
+      protocolVersion: LANGUAGE_PROTOCOL_VERSION,
+      requestId,
+      outcome: { ok: false, error: { domain: 'language', code: 'made-up', message: 'nope' } },
+    });
+
+    const result = await pending;
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('invalid-response');
+      expect(result.error.cause).toBe('segment: code: invalid_value');
     }
   });
 });

@@ -92,7 +92,9 @@ async function readPools(
   mapping: SourceMapping,
   signal?: AbortSignal,
 ): Promise<PoolRead> {
-  const pools: Record<string, ReadonlySet<number>> = {};
+  // The keys are the searches' own, so the loop replaces every placeholder, and
+  // a failed read returns before the pools are used.
+  const pools: Record<ActivitySearchKey, ReadonlySet<number>> = { ...emptyPools() };
   for (let index = 0; index < ACTIVITY_SEARCHES.length; index += CONCURRENT_SEARCHES) {
     const group = ACTIVITY_SEARCHES.slice(index, index + CONCURRENT_SEARCHES);
     const answers = await Promise.all(
@@ -108,7 +110,7 @@ async function readPools(
       pools[search.key] = new Set(result.value);
     }
   }
-  return { pools: pools as unknown as ActivityPools };
+  return { pools };
 }
 
 /**

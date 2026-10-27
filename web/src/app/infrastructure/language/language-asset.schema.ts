@@ -57,30 +57,42 @@ export const languageAssetManifestSchema = z.object({
   }),
 });
 
+/** Shared with the worker protocol, which hands the loaded presets to the page. */
+export const grammarPresetSchema = z.object({
+  id: z.enum(GRAMMAR_PRESET_IDS_EASIEST_FIRST),
+  order: z.number().int().nonnegative(),
+  nameEn: nonEmpty,
+  captionEn: nonEmpty,
+  descriptionEn: nonEmpty,
+  exampleJa: nonEmpty,
+  exampleEn: nonEmpty,
+  promptGuidance: nonEmpty.max(MAXIMUM_GUIDANCE_LENGTH),
+});
+
+export const registerGuidanceSchema = z.object({
+  spoken: nonEmpty,
+  written: nonEmpty,
+  either: z.literal(''),
+});
+
+export const structuralBaselineEntrySchema = z.object({
+  id: nonEmpty,
+  category: z.enum(STRUCTURAL_BASELINE_CATEGORIES),
+  forms: z.array(nonEmpty).min(1),
+  readings: z.array(nonEmpty).optional(),
+  partsOfSpeech: z.array(partOfSpeechSchema).min(1),
+  nameEn: nonEmpty,
+  descriptionEn: nonEmpty,
+  exampleJa: nonEmpty.optional(),
+});
+
 export const grammarPresetsAssetSchema = z.object({
   schemaVersion: z.literal(1),
   version: nonEmpty,
   sourceId: nonEmpty,
   presetCount: z.number().int().positive(),
-  presets: z
-    .array(
-      z.object({
-        id: z.enum(GRAMMAR_PRESET_IDS_EASIEST_FIRST),
-        order: z.number().int().nonnegative(),
-        nameEn: nonEmpty,
-        captionEn: nonEmpty,
-        descriptionEn: nonEmpty,
-        exampleJa: nonEmpty,
-        exampleEn: nonEmpty,
-        promptGuidance: nonEmpty.max(MAXIMUM_GUIDANCE_LENGTH),
-      }),
-    )
-    .length(GRAMMAR_PRESET_IDS_EASIEST_FIRST.length),
-  registerGuidance: z.object({
-    spoken: nonEmpty,
-    written: nonEmpty,
-    either: z.literal(''),
-  }),
+  presets: z.array(grammarPresetSchema).length(GRAMMAR_PRESET_IDS_EASIEST_FIRST.length),
+  registerGuidance: registerGuidanceSchema,
 });
 
 export const structuralBaselineAssetSchema = z.object({
@@ -96,20 +108,7 @@ export const structuralBaselineAssetSchema = z.object({
       alsoDeclaredBy: z.array(nonEmpty),
     }),
   ),
-  entries: z
-    .array(
-      z.object({
-        id: nonEmpty,
-        category: z.enum(STRUCTURAL_BASELINE_CATEGORIES),
-        forms: z.array(nonEmpty).min(1),
-        readings: z.array(nonEmpty).optional(),
-        partsOfSpeech: z.array(partOfSpeechSchema).min(1),
-        nameEn: nonEmpty,
-        descriptionEn: nonEmpty,
-        exampleJa: nonEmpty.optional(),
-      }),
-    )
-    .min(1),
+  entries: z.array(structuralBaselineEntrySchema).min(1),
 });
 
 /**

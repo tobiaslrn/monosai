@@ -1,4 +1,6 @@
 import * as z from 'zod';
+import { ALL_ANKI_ERROR_CODES } from '../../../domain/anki/anki-error';
+import type { PackageOperation, ResultFor } from './package-protocol';
 
 const nonEmpty = z.string().min(1);
 
@@ -50,24 +52,75 @@ export const packageRequestMessageSchema = z.object({
   request: requestSchema,
 });
 
-const ankiErrorSchema = z.object({
+export const ankiErrorSchema = z.object({
   domain: z.literal('anki'),
-  code: nonEmpty,
+  code: z.enum(ALL_ANKI_ERROR_CODES),
   message: z.string(),
   cause: z.string().optional(),
 });
 
 /**
- * Runtime shape of a worker response as seen by the client. Only the envelope is
- * validated: the result payload was produced by code in this repository against
- * the same protocol version, while the envelope is what routing and error
- * handling depend on.
+ * Runtime shape of a worker response as seen by the client.
+ *
+ * The envelope is what routing depends on, so it is checked first and alone:
+ * once the request id is known, a malformed result or error can settle that
+ * request with `malformed-response` instead of leaving it pending forever.
  */
 export const packageResponseEnvelopeSchema = z.object({
   protocolVersion: z.number().int(),
   requestId: nonEmpty,
   outcome: z.union([
-    z.object({ ok: z.literal(true), result: z.object({ operation: nonEmpty }).loose() }),
-    z.object({ ok: z.literal(false), error: ankiErrorSchema }),
+    z.object({
+      ok: z.literal(true),
+      result: z.object({ operation: nonEmpty, value: z.unknown() }),
+    }),
+    z.object({ ok: z.literal(false), error: z.unknown() }),
   ]),
 });
+
+const count = z.number().int().nonnegative();
+
+/**
+ * The result value each operation answers with, checked once the operation has
+ * been matched against the pending request.
+ *
+ * Scheduling numbers are only required to be finite here: the provider
+ * normalizes their ranges itself, as it does for every other source. `cancel`
+ * has no entry because the client never waits on one.
+ */
+export const packageResultValueSchemas: {
+  readonly [TOperation in Exclude<PackageOperation, 'cancel'>]: z.ZodType<ResultFor<TOperation>>;
+} = {
+  open: z.object({
+    memberName: nonEmpty,
+    compression: z.enum(['zstd', 'none']),
+    packageVersion: z.number().int().nullable(),
+    schemaVersion: z.number().int(),
+    layout: z.enum(['normalized', 'legacy-json']),
+    deckCount: count,
+    noteTypeCount: count,
+    hasAnyReviewEvidence: z.boolean(),
+    mediaEntryCount: count,
+  }),
+  discover: z.object({
+    decks: z.array(z.object({ name: nonEmpty, hasChildren: z.boolean() })),
+    noteTypes: z.array(z.object({ name: nonEmpty, fieldNames: z.array(z.string()) })),
+  }),
+  extract: z.object({
+    examined: count,
+    fields: z.array(
+      z.object({
+        sourceNoteId: nonEmpty,
+        rawFieldValue: z.string().optional(),
+        rawMeaning: z.string().optional(),
+        reps: z.number().optional(),
+        lapseRatio: z.number().optional(),
+        easeFactor: z.number().optional(),
+        firstReviewedAt: z.number().optional(),
+        intervalDays: z.number().optional(),
+        fsrsDifficulty: z.number().optional(),
+      }),
+    ),
+  }),
+  close: z.object({ closed: z.boolean() }),
+};

@@ -64,8 +64,20 @@ describe('PackageWorkerClient', () => {
     const pending = client.open(archive, 'wasm-url');
     expect(recorded.transfers[0]).toEqual([archive]);
 
-    recorded.respond(success(recorded.posted[0].requestId, 'open', { memberName: 'x' }));
-    await pending;
+    recorded.respond(
+      success(recorded.posted[0].requestId, 'open', {
+        memberName: 'collection.anki21b',
+        compression: 'zstd',
+        packageVersion: 3,
+        schemaVersion: 18,
+        layout: 'normalized',
+        deckCount: 1,
+        noteTypeCount: 1,
+        hasAnyReviewEvidence: true,
+        mediaEntryCount: 0,
+      }),
+    );
+    expect((await pending).ok).toBe(true);
   });
 
   it('multiplexes concurrent requests by id', async () => {
@@ -208,5 +220,57 @@ describe('PackageWorkerClient', () => {
     recorded.respond({ nonsense: true } as unknown as PackageResponseMessage);
 
     expect(settled).not.toHaveBeenCalled();
+  });
+
+  it('rejects a well-formed envelope whose result value is malformed', async () => {
+    const recorded = recordingChannel();
+    const error = vi.fn();
+    const client = new PackageWorkerClient(recorded.channel, {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error,
+      snapshot: () => [],
+      clear: vi.fn(),
+    });
+
+    const pending = client.discover();
+    recorded.respond(
+      success(recorded.posted[0].requestId, 'discover', { decks: [{ name: 7 }], noteTypes: [] }),
+    );
+
+    const result = await pending;
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('malformed-response');
+    expect(result.error.cause).toBe(
+      'discover: decks.0.name: invalid_type; decks.0.hasChildren: invalid_type',
+    );
+    expect(error).toHaveBeenCalledWith('worker.operation.failed', {
+      worker: 'package',
+      operation: 'discover',
+      errorCode: 'malformed-response',
+    });
+  });
+
+  it('rejects a worker error that is not an Anki error instead of hanging', async () => {
+    const recorded = recordingChannel();
+    const client = new PackageWorkerClient(recorded.channel);
+
+    const pending = client.discover();
+    recorded.respond({
+      protocolVersion: PACKAGE_PROTOCOL_VERSION,
+      requestId: recorded.posted[0].requestId,
+      outcome: {
+        ok: false,
+        error: { domain: 'anki', code: 'made-up', message: 'nope' },
+      },
+    } as unknown as PackageResponseMessage);
+
+    const result = await pending;
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('malformed-response');
+    expect(result.error.cause).toBe('discover: code: invalid_value');
   });
 });

@@ -4,24 +4,30 @@ import type { DomainErrorBase } from '../shared/errors';
  * Every failure the language pipeline can report. Asset problems, worker
  * transport problems, and analysis problems stay distinguishable so the UI can
  * offer the right recovery instead of a generic "something went wrong".
+ *
+ * Kept as a value, with the type derived from it, so an error that crossed the
+ * worker boundary can be checked against exactly this list.
  */
-export type LanguageErrorCode =
-  | 'assets-unavailable'
-  | 'asset-manifest-invalid'
-  | 'asset-integrity-mismatch'
-  | 'asset-schema-invalid'
-  | 'tokenizer-initialization-failed'
-  | 'dictionary-initialization-failed'
-  | 'not-initialized'
-  | 'protocol-version-mismatch'
-  | 'worker-unavailable'
-  | 'worker-terminated'
-  | 'invalid-request'
-  | 'invalid-response'
-  | 'analysis-failed'
-  | 'snapshot-not-compiled'
-  | 'cancelled'
-  | 'unknown';
+export const ALL_LANGUAGE_ERROR_CODES = [
+  'assets-unavailable',
+  'asset-manifest-invalid',
+  'asset-integrity-mismatch',
+  'asset-schema-invalid',
+  'tokenizer-initialization-failed',
+  'dictionary-initialization-failed',
+  'not-initialized',
+  'protocol-version-mismatch',
+  'worker-unavailable',
+  'worker-terminated',
+  'invalid-request',
+  'invalid-response',
+  'analysis-failed',
+  'snapshot-not-compiled',
+  'cancelled',
+  'unknown',
+] as const;
+
+export type LanguageErrorCode = (typeof ALL_LANGUAGE_ERROR_CODES)[number];
 
 export type LanguageError = DomainErrorBase<'language', LanguageErrorCode>;
 

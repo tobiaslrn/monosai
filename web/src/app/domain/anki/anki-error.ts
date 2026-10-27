@@ -8,39 +8,12 @@ import type { DomainErrorBase } from '../shared/errors';
  * generic connection failure would leave the learner guessing. The list is the
  * one named in the Anki specification and the UI must preserve every
  * distinction it makes.
- */
-export type AnkiErrorCode =
-  | 'not-running'
-  | 'bridge-not-running'
-  | 'bridge-too-old'
-  | 'ankidroid-not-installed'
-  | 'ankidroid-permission-denied'
-  | 'addon-missing-or-unreachable'
-  | 'permission-denied'
-  | 'origin-not-allowed'
-  | 'timeout'
-  | 'unsupported-api'
-  | 'unsupported-action'
-  | 'malformed-response'
-  | 'deck-discovery-failed'
-  | 'note-type-discovery-failed'
-  | 'field-discovery-failed'
-  | 'review-evidence-unsupported'
-  | 'query-failed'
-  | 'package-unreadable'
-  | 'package-schema-unsupported'
-  | 'package-review-data-missing'
-  | 'package-resource-limit'
-  | 'cancelled'
-  | 'unknown';
-
-/**
- * The same variants as a value.
  *
- * The UI has to give every one of them its own wording, and only a runtime list
- * lets a test prove none was forgotten.
+ * Kept as a value, with the type derived from it, because the UI has to give
+ * every variant its own wording and an error that crossed the package worker
+ * boundary is checked against exactly this list.
  */
-export const ALL_ANKI_ERROR_CODES: readonly AnkiErrorCode[] = [
+export const ALL_ANKI_ERROR_CODES = [
   'not-running',
   'bridge-not-running',
   'bridge-too-old',
@@ -64,7 +37,9 @@ export const ALL_ANKI_ERROR_CODES: readonly AnkiErrorCode[] = [
   'package-resource-limit',
   'cancelled',
   'unknown',
-];
+] as const;
+
+export type AnkiErrorCode = (typeof ALL_ANKI_ERROR_CODES)[number];
 
 export type AnkiError = DomainErrorBase<'anki', AnkiErrorCode>;
 

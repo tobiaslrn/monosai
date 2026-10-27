@@ -11,42 +11,9 @@ import {
   timestampSchema,
   vocabularyItemIdSchema,
 } from './common.schema';
+import { tokenValidationSchema } from '../../language/token-validation.schema';
 
-const tokenValidationSchema = z.discriminatedUnion('category', [
-  z.object({ category: z.literal('punctuation') }),
-  z.object({
-    category: z.literal('anki-exact'),
-    vocabularyItemIds: z.array(vocabularyItemIdSchema).readonly(),
-  }),
-  z.object({
-    category: z.literal('anki-normalized'),
-    vocabularyItemIds: z.array(vocabularyItemIdSchema).readonly(),
-    basis: nonEmptyString,
-  }),
-  z.object({
-    category: z.literal('anki-phrase'),
-    vocabularyItemId: vocabularyItemIdSchema,
-    tokenSpan: z.object({
-      startTokenIndex: z.number().int().nonnegative(),
-      endTokenIndex: z.number().int().nonnegative(),
-    }),
-  }),
-  z.object({ category: z.literal('structural-baseline'), ruleId: nonEmptyString }),
-  z.object({
-    category: z.literal('entity'),
-    entityKind: z.enum(['name', 'number', 'date', 'time', 'symbol']),
-  }),
-  z.object({
-    category: z.literal('policy-exception'),
-    exceptionId: nonEmptyString,
-    explanationEn: z.string(),
-  }),
-  z.object({ category: z.literal('not-in-snapshot') }),
-  z.object({
-    category: z.literal('unknown'),
-    reason: z.enum(['not-in-vocabulary', 'rejected-by-policy', 'unresolved-after-repair']),
-  }),
-]);
+const storedTokenValidationSchema = tokenValidationSchema(vocabularyItemIdSchema);
 
 export const frozenValidationRowSchema = z.object({
   v: rowVersionSchema,
@@ -55,7 +22,7 @@ export const frozenValidationRowSchema = z.object({
   snapshotId: snapshotIdSchema,
   validatorVersion: nonEmptyString,
   tokenStatuses: z
-    .array(z.object({ tokenId: nonEmptyString, validation: tokenValidationSchema }))
+    .array(z.object({ tokenId: nonEmptyString, validation: storedTokenValidationSchema }))
     .readonly(),
 });
 

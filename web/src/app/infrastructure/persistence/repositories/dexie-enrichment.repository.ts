@@ -466,7 +466,10 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
       .where('sentenceId')
       .anyOf([...sentenceIds])
       .keys();
-    return [...new Set(keys as SentenceId[])];
+    // Answered from the ids asked about rather than the index keys, which Dexie
+    // types loosely, so only an id the caller supplied can come back.
+    const stored = new Set<unknown>(keys);
+    return [...new Set(sentenceIds)].filter((id) => stored.has(id));
   }
 
   async listSentenceIdsMissingTranslation(
