@@ -1206,20 +1206,18 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await page.getByLabel('Text size').fill('1.5');
     await page.keyboard.press('Escape');
 
-    await expect
-      .poll(() =>
-        paragraph.evaluate((element) =>
-          Number.parseFloat(window.getComputedStyle(element).fontSize),
-        ),
-      )
-      .toBeGreaterThan(before);
+    const fontSize = () =>
+      paragraph.evaluate((element) => Number.parseFloat(window.getComputedStyle(element).fontSize));
+    await expect.poll(fontSize).toBeGreaterThan(before);
+
+    // The reading repaints from the in-memory value the moment the control
+    // moves; the write behind it is asynchronous. Reloading on the repaint
+    // alone races that write, so wait until the scale is actually stored.
+    await expectSettingPersisted(page, 'reader-preferences', 'textScale', 1.5);
 
     await page.reload();
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
-    const afterReload = await paragraph.evaluate((element) =>
-      Number.parseFloat(window.getComputedStyle(element).fontSize),
-    );
-    expect(afterReload).toBeGreaterThan(before);
+    await expect.poll(fontSize).toBeGreaterThan(before);
   });
 
   test('reader appearance is changed and remembered in Story options', async ({ page }) => {
