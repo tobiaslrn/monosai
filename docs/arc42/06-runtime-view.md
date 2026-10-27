@@ -230,9 +230,11 @@ and format-recovery rules. After a reload, only a matching unfinished job resume
 mismatch closes the old job and starts work under the new fingerprint, while cancellation keeps
 every analysis already stored.
 
-Whole-reading translation reports that it has stopped only after cancellation is saved. Reloading
-after that report cannot resume the cancelled job; a failed cancellation write is shown as a storage
-failure instead.
+Every whole-reading layer — translation, grammar, and audio — reports that it has stopped only after
+cancellation is saved. Until then a stopped run is still storing what it already paid for, and its
+progress says so; a run parked between batches has its row closed the same way. Reloading after that
+report cannot resume the cancelled job; a failed cancellation write is shown as a storage failure
+instead.
 
 Translation captures the configured model and prompt, title, premise, register, ordered source
 identity, and a deterministic whole-reading candidate set before its first request. Proper nouns

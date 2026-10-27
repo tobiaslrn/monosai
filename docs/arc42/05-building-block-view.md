@@ -140,6 +140,22 @@ The prompt keeps articulation and rate orthogonal: clearer speech never asks
 for extra pauses, and every pace preserves connected Japanese without inserted
 silence between words or morae.
 
+The three whole-reading job stores in `application/enrichment/` — translation, grammar, and
+audio — compose one `ReadingJobLifecycle` (`reading-job-lifecycle.ts`) rather than each carrying
+its own copy. It owns the published progress, the single run in flight that a second start joins,
+resuming from the job row, the lane's yield, the learner's stop, deletion, dismissal, and the row
+writes that end a run. A stop, a park, a completion, or a recorded failure is written to the row
+before progress reports it, so `cancelled` appears only once the row is closed — for a run parked
+between batches as much as for one in flight — and a yield is never reported as a stop
+([ADR 0048](../decisions/0048-the-preparation-lane-yields.md)). A failure of storage itself, and a
+reading with nothing to do, are reported without a row write. Being parked never changes how a job
+ends: a sentence that failed before a yield is not requested again by the resume, and the job ends
+`failed` as an uninterrupted run would, leaving the hole to Retry
+([ADR 0035](../decisions/0035-priority-retry-audio-queue.md)). Each store keeps what is its own:
+planning the row, batching, the provider calls, which failures stop a run, and, for audio, the
+fruitless-run evidence behind `canRetry`. `LayerRunner` is still how the preparation lane sees the
+three.
+
 ## 5.3 Level 3
 
 ### Whitebox: the Android bridge

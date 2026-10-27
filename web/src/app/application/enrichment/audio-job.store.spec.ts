@@ -368,6 +368,46 @@ describe('AudioJobStore', () => {
     expect(rows[0].failedItems.map((item) => item.errorCode)).toEqual(['audio-invalid']);
   });
 
+  /**
+   * The same hole, with the lane parking the run in between. Whether a run was
+   * parked must not change how the job ends: before, the resumed run reported
+   * `complete` over a missing clip and left the row active.
+   */
+  it('reports a hole made before a yield as failed once the resumed run drains', async () => {
+    const failedText = japaneseInOrder(bed.draft)[1];
+    let failedAttempts = 0;
+    bed.provider.synthesizeWith = async (request) => {
+      // Parked during the queue-level retry, so the hole is recorded first.
+      if (request.text === failedText && ++failedAttempts === 1 + AUDIO_SENTENCE_RETRY_LIMIT) {
+        bed.store.yieldAfterBatch();
+      }
+      await hold();
+      return request.text === failedText
+        ? err(aiError('audio-invalid', 'tts-synthesis', 'The clip was invalid.'))
+        : ok(audioPayload());
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+    expect(bed.store.progress().kind).toBe('paused');
+    const asked = bed.provider.synthesized.filter((request) => request.text === failedText);
+
+    await bed.store.resume(bed.draft.reading.id);
+
+    // The hole is left for Try again rather than requested again on resume.
+    expect(bed.provider.synthesized.filter((request) => request.text === failedText)).toEqual(
+      asked,
+    );
+    const progress = bed.store.progress();
+    expect(progress).toMatchObject({
+      kind: 'failed',
+      canRetry: true,
+      counts: { completed: SENTENCE_COUNT - 1, failed: 1 },
+    });
+    expect(progress.kind === 'failed' && progress.error.error.code).toBe('audio-invalid');
+    const rows = await bed.db.assetJobs.toArray();
+    expect(rows.map((row) => row.state)).toEqual(['failed']);
+  });
+
   it('does not multiply exhausted provider transport retries and continues', async () => {
     const failedText = japaneseInOrder(bed.draft)[1];
     bed.provider.synthesizeWith = (request) =>
@@ -662,8 +702,11 @@ describe('AudioJobStore', () => {
 
       bed.store.cancel(long.reading.id);
 
-      expect(bed.store.progress().kind).toBe('cancelled');
+      // Stopped is reported once the row says so, never before: a reload
+      // in between would otherwise resume a run the learner saw stop.
+      expect(bed.store.progress().kind).toBe('paused');
       await vi.waitFor(async () => {
+        expect(bed.store.progress().kind).toBe('cancelled');
         const rows = await bed.db.assetJobs.toArray();
         expect(rows.map((row) => row.state)).toEqual(['cancelled']);
       });

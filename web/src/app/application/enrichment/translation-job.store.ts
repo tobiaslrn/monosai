@@ -1,10 +1,10 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { aiError, isAutomaticallyRetryable, type AiError } from '../../domain/ai/ai-error';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import { estimateTokens } from '../../domain/ai/context-budget';
 import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import { translationConfigFingerprint } from '../../domain/enrichment/cache-keys';
-import { remainingSentenceIds, type AssetJob, type JobState } from '../../domain/enrichment/jobs';
+import type { AssetJob, JobState } from '../../domain/enrichment/jobs';
 import type { TranslationRecord } from '../../domain/enrichment/records';
 import {
   createPendingTranslationPlan,
@@ -35,61 +35,26 @@ import {
   READING_REPOSITORY,
 } from '../shared/repository-tokens';
 import { EnrichmentKeysService } from './enrichment-keys.service';
-import { NOTHING_TO_DO, QUEUED, type EnqueueOutcome, type LayerError } from './layer-progress';
+import type { EnqueueOutcome, LayerCounts, LayerError } from './layer-progress';
 import { PreparationPacer, backOffOnRateLimit } from './preparation-pacer';
+import {
+  ReadingJobLifecycle,
+  countsFor,
+  enqueueOutcome,
+  unavailable,
+  type PlanOutcome,
+  type ReadingJobProgress,
+  type ReadingJobRun,
+} from './reading-job-lifecycle';
 import { TranslationService, type TranslationContext } from './translation.service';
 
-export type TranslationJobError =
-  | { readonly source: 'provider'; readonly error: AiError }
-  | { readonly source: 'storage'; readonly error: StorageError };
+export type TranslationJobError = LayerError;
+export type TranslationJobCounts = LayerCounts;
+export type TranslationJobProgress = ReadingJobProgress;
 
-export interface TranslationJobCounts {
-  readonly total: number;
-  readonly requested: number;
-  readonly completed: number;
-  readonly failed: number;
-}
-
-export type TranslationJobProgress =
-  | { readonly kind: 'idle' }
-  | { readonly kind: 'preparing'; readonly readingId: ReadingId }
-  | {
-      readonly kind: 'running';
-      readonly readingId: ReadingId;
-      readonly counts: TranslationJobCounts;
-    }
-  | {
-      readonly kind: 'complete';
-      readonly readingId: ReadingId;
-      readonly counts: TranslationJobCounts;
-    }
-  | {
-      readonly kind: 'cancelled';
-      readonly readingId: ReadingId;
-      readonly counts: TranslationJobCounts;
-    }
-  | {
-      readonly kind: 'paused';
-      readonly readingId: ReadingId;
-      readonly counts: TranslationJobCounts;
-    }
-  | { readonly kind: 'deleted'; readonly readingId: ReadingId }
-  | {
-      readonly kind: 'failed';
-      readonly readingId: ReadingId;
-      readonly counts: TranslationJobCounts;
-      readonly error: TranslationJobError;
-    };
-
-const IDLE: TranslationJobProgress = { kind: 'idle' };
 export const MAX_ACTIVE_TRANSLATION_REQUESTS = 3;
 
 type JobScope = 'current-configuration' | 'never-prepared';
-type UnavailableOutcome = Extract<EnqueueOutcome, { kind: 'unavailable' }>;
-type PlanOutcome =
-  | { readonly kind: 'planned'; readonly context: JobContext; readonly job: AssetJob }
-  | { readonly kind: 'nothing-to-do'; readonly context: JobContext }
-  | { readonly kind: 'unavailable'; readonly outcome: UnavailableOutcome };
 
 interface JobContext {
   readonly readingId: ReadingId;
@@ -101,10 +66,6 @@ interface JobContext {
   readonly cacheKeys: ReadonlyMap<SentenceId, string>;
   readonly fingerprint: string;
   readonly total: number;
-}
-
-function unavailable(error: LayerError): PlanOutcome {
-  return { kind: 'unavailable', outcome: { kind: 'unavailable', error } };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -121,134 +82,88 @@ export class TranslationJobStore {
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
-  private readonly progressSignal = signal<TranslationJobProgress>(IDLE);
-  private controller: AbortController | null = null;
-  private yieldRequested = false;
-  private activeRun: Promise<void> | null = null;
+  /** When the current run started and how many requests it made, for its diagnostics. */
   private runStartedAt = 0;
   private requestCount = 0;
 
-  readonly progress = this.progressSignal.asReadonly();
-  readonly isRunning = computed(() =>
-    ['preparing', 'running'].includes(this.progressSignal().kind),
-  );
-  readonly idleProgress: TranslationJobProgress = IDLE;
+  private readonly lifecycle = new ReadingJobLifecycle<JobContext>({
+    jobKind: 'translate-reading',
+    task: 'translation',
+    logKind: 'translation',
+    jobs: this.jobs,
+    logger: this.logger,
+    failure: {},
+    onStart: () => {
+      this.runStartedAt = this.clock.now();
+      this.requestCount = 0;
+    },
+    plan: (readingId) => this.plan(readingId, 'current-configuration', 'running'),
+    process: (context, job, run) => this.process(context, job, run),
+  });
+
+  readonly progress = this.lifecycle.progress;
+  readonly isRunning = this.lifecycle.isRunning;
+  readonly idleProgress = this.lifecycle.idleProgress;
 
   progressFor(readingId: ReadingId): TranslationJobProgress {
-    const progress = this.progressSignal();
-    return progress.kind !== 'idle' && progress.readingId === readingId ? progress : IDLE;
+    return this.lifecycle.progressFor(readingId);
   }
 
   /** A run parked between batches is still in progress for the learner, as for audio. */
   isRunningFor(readingId: ReadingId): boolean {
-    return ['preparing', 'running', 'paused'].includes(this.progressFor(readingId).kind);
+    return this.lifecycle.isRunningFor(readingId);
   }
 
   async enqueue(
     readingId: ReadingId,
     intent: 'automatic' | 'explicit' = 'automatic',
   ): Promise<EnqueueOutcome> {
-    const prepared = await this.plan(
-      readingId,
-      intent === 'explicit' ? 'current-configuration' : 'never-prepared',
-      'queued',
+    return enqueueOutcome(
+      await this.plan(
+        readingId,
+        intent === 'explicit' ? 'current-configuration' : 'never-prepared',
+        'queued',
+      ),
     );
-    if (prepared.kind !== 'planned') {
-      return prepared.kind === 'nothing-to-do' ? NOTHING_TO_DO : prepared.outcome;
-    }
-    return remainingSentenceIds(prepared.job).length === 0 ? NOTHING_TO_DO : QUEUED;
   }
 
   yieldAfterBatch(): void {
-    if (this.isRunning()) this.yieldRequested = true;
+    this.lifecycle.yieldAfterBatch();
   }
 
-  async start(readingId: ReadingId): Promise<void> {
-    if (this.activeRun !== null) {
-      await this.activeRun;
-      return;
-    }
-    const run = this.run(readingId);
-    this.activeRun = run;
-    try {
-      await run;
-    } finally {
-      if (this.activeRun === run) this.activeRun = null;
-    }
+  start(readingId: ReadingId): Promise<void> {
+    return this.lifecycle.start(readingId);
   }
 
-  private async run(readingId: ReadingId): Promise<void> {
-    const controller = new AbortController();
-    this.controller = controller;
-    this.yieldRequested = false;
-    this.runStartedAt = this.clock.now();
-    this.requestCount = 0;
-    this.progressSignal.set({ kind: 'preparing', readingId });
-    this.logger.info('job.started', { kind: 'translation' });
-    const prepared = await this.plan(readingId, 'current-configuration', 'running');
-    if (prepared.kind === 'unavailable') {
-      this.report(readingId, prepared.outcome.error);
-      return;
-    }
-    if (prepared.kind === 'nothing-to-do') {
-      this.controller = null;
-      this.progressSignal.set({
-        kind: 'complete',
-        readingId,
-        counts: { total: prepared.context.total, requested: 0, completed: 0, failed: 0 },
-      });
-      return;
-    }
-    await this.process(prepared.context, prepared.job, controller.signal);
-  }
-
-  async resume(readingId: ReadingId): Promise<void> {
-    if (this.isRunning()) return;
-    const existing = await this.jobs.findActive(readingId, 'translate-reading');
-    if (!existing.ok) {
-      this.failStorage(readingId, existing.error, emptyCounts());
-      return;
-    }
-    if (existing.value === null) {
-      if (this.progressFor(readingId).kind !== 'idle') this.progressSignal.set(IDLE);
-      return;
-    }
-    await this.start(readingId);
+  resume(readingId: ReadingId): Promise<void> {
+    return this.lifecycle.resume(readingId);
   }
 
   retry(readingId: ReadingId): Promise<void> {
-    return this.start(readingId);
+    return this.lifecycle.start(readingId);
   }
 
   cancel(readingId: ReadingId): void {
-    if (this.owns(readingId)) this.controller?.abort();
+    this.lifecycle.cancel(readingId);
   }
 
-  async cancelAndWait(readingId: ReadingId): Promise<void> {
-    this.cancel(readingId);
-    await this.activeRun;
+  cancelAndWait(readingId: ReadingId): Promise<void> {
+    return this.lifecycle.cancelAndWait(readingId);
   }
 
-  async readingDeleted(readingId: ReadingId): Promise<void> {
-    if (!this.owns(readingId)) return;
-    await this.cancelAndWait(readingId);
-    this.progressSignal.set({ kind: 'deleted', readingId });
+  readingDeleted(readingId: ReadingId): Promise<void> {
+    return this.lifecycle.readingDeleted(readingId);
   }
 
   acknowledge(readingId: ReadingId): void {
-    if (this.owns(readingId) && !this.isRunningFor(readingId)) this.progressSignal.set(IDLE);
-  }
-
-  private owns(readingId: ReadingId): boolean {
-    const progress = this.progressSignal();
-    return progress.kind !== 'idle' && progress.readingId === readingId;
+    this.lifecycle.acknowledge(readingId);
   }
 
   private async plan(
     readingId: ReadingId,
     scope: JobScope,
     initialState: JobState,
-  ): Promise<PlanOutcome> {
+  ): Promise<PlanOutcome<JobContext>> {
     const configured = this.textModel.configForTask('translation');
     if (configured === null) {
       return unavailable({
@@ -284,7 +199,7 @@ export class TranslationJobStore {
       );
       if (!ever.ok) return unavailable({ source: 'storage', error: ever.error });
       if (ever.value.length > 0) {
-        return this.nothingContext(readingResult.value, sentences, configured);
+        return { kind: 'nothing-to-do', total: sentences.length };
       }
     }
     if (!this.grammarProfile.loaded()) await this.grammarProfile.load();
@@ -351,46 +266,11 @@ export class TranslationJobStore {
         ? await this.translation.missingSentenceIds(readingId, cacheKeys)
         : ok(sentences.map((sentence) => sentence.id));
     if (!missing.ok) return unavailable({ source: 'storage', error: missing.error });
-    if (missing.value.length === 0) return { kind: 'nothing-to-do', context };
+    if (missing.value.length === 0) return { kind: 'nothing-to-do', total: context.total };
     const created = await this.createJob(context, missing.value, initialState);
     return created.ok
       ? { kind: 'planned', context, job: created.value }
       : unavailable({ source: 'storage', error: created.error });
-  }
-
-  private nothingContext(
-    reading: Reading,
-    sentences: readonly Sentence[],
-    config: TextTaskConfig,
-  ): PlanOutcome {
-    const pending = createPendingTranslationPlan(
-      this.hasher,
-      {
-        readingId: reading.id,
-        modelId: config.modelId,
-        promptVersion: PROMPT_VERSIONS.translation,
-        title: reading.title,
-        premise: reading.kind === 'generated' ? reading.premise : '',
-        register: 'either',
-        sentences,
-        analyses: [],
-      },
-      this.clock.now(),
-    );
-    return {
-      kind: 'nothing-to-do',
-      context: {
-        readingId: reading.id,
-        modelId: config.modelId,
-        taskConfig: config,
-        reading,
-        sentences,
-        plan: pending,
-        cacheKeys: new Map(),
-        fingerprint: pending.inputFingerprint,
-        total: sentences.length,
-      },
-    };
   }
 
   private keysForPlan(
@@ -448,37 +328,32 @@ export class TranslationJobStore {
     });
   }
 
-  private async process(context: JobContext, job: AssetJob, signal: AbortSignal): Promise<void> {
-    let counts: TranslationJobCounts = {
-      total: context.total,
-      requested: job.orderedSentenceIds.length,
-      completed: job.completedSentenceIds.length,
-      failed: job.failedItems.length,
-    };
+  private async process(context: JobContext, job: AssetJob, run: ReadingJobRun): Promise<void> {
+    const { signal } = run;
+    let counts = countsFor(context.total, job);
     if (job.state !== 'running') {
       const started = await this.jobs.setState(job.id, 'running');
       if (!started.ok) {
-        this.failStorage(context.readingId, started.error, counts);
+        this.lifecycle.fail(context.readingId, started.error, counts);
         return;
       }
     }
-    this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+    this.lifecycle.publish({ kind: 'running', readingId: context.readingId, counts });
     let readyContext: JobContext | null = context.plan.state === 'ready' ? context : null;
     if (context.plan.state === 'opening-pending') {
       const established = await this.establishOpening(context, job, counts, signal);
       if (!established.ok) {
-        if (
-          signal.aborted ||
-          (established.error.domain === 'ai' && established.error.code === 'cancelled')
-        ) {
-          await this.markCancelled(job, counts);
+        if (isStop(established.error, signal)) {
+          await this.lifecycle.halt(job, counts, run);
           return;
         }
-        await this.failRun(job, context.readingId, established.error, counts);
+        await this.lifecycle.markFailed(job, established.error, counts);
         return;
       }
+      // No permit was granted: the run was stopped, or parked by the lane,
+      // while the opening waited for its turn.
       if (established.value === null) {
-        await this.markCancelled(job, counts);
+        await this.lifecycle.halt(job, counts, run);
         return;
       }
       readyContext = established.value.context;
@@ -486,14 +361,11 @@ export class TranslationJobStore {
     } else if (context.plan.state === 'glossary-repair-required') {
       const repaired = await this.repairGlossary(context, job, counts, signal);
       if (!repaired.ok) {
-        if (
-          signal.aborted ||
-          (repaired.error.domain === 'ai' && repaired.error.code === 'cancelled')
-        ) {
-          await this.markCancelled(job, counts);
+        if (isStop(repaired.error, signal)) {
+          await this.lifecycle.halt(job, counts, run);
           return;
         }
-        await this.failRun(job, context.readingId, repaired.error, counts);
+        await this.lifecycle.markFailed(job, repaired.error, counts);
         return;
       }
       readyContext = repaired.value.context;
@@ -503,34 +375,17 @@ export class TranslationJobStore {
     const tail = await this.runTail(readyContext, job, counts, signal);
     counts = tail.counts;
     if (tail.storage !== null) {
-      this.failStorage(context.readingId, tail.storage, counts);
+      this.lifecycle.fail(context.readingId, tail.storage, counts);
       return;
     }
-    if (signal.aborted) {
-      await this.markCancelled(job, counts);
-      return;
+    const settled = await this.lifecycle.settle(job, counts, run, tail.error);
+    if (settled === 'complete') {
+      this.logger.info('translation.completed', {
+        durationMs: this.clock.now() - this.runStartedAt,
+        count: counts.completed,
+        requestCount: this.requestCount,
+      });
     }
-    if (this.yieldRequested) {
-      await this.markPaused(job, counts);
-      return;
-    }
-    if (tail.error !== null) {
-      await this.failRun(job, context.readingId, tail.error, counts);
-      return;
-    }
-    this.controller = null;
-    const completed = await this.jobs.setState(job.id, 'complete');
-    if (!completed.ok) {
-      this.failStorage(context.readingId, completed.error, counts);
-      return;
-    }
-    this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
-    this.logger.info('job.succeeded', { kind: 'translation', count: counts.completed });
-    this.logger.info('translation.completed', {
-      durationMs: this.clock.now() - this.runStartedAt,
-      count: counts.completed,
-      requestCount: this.requestCount,
-    });
   }
 
   private translationContext(
@@ -637,7 +492,7 @@ export class TranslationJobStore {
         if (!advanced.ok) return err(advanced.error);
       }
       const nextCounts = { ...counts, completed: counts.completed + outcome.records.length };
-      this.progressSignal.set({
+      this.lifecycle.publish({
         kind: 'running',
         readingId: context.readingId,
         counts: nextCounts,
@@ -676,7 +531,7 @@ export class TranslationJobStore {
       if (!advanced.ok) return err(advanced.error);
     }
     const nextCounts = { ...counts, completed: counts.completed + records.length };
-    this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts: nextCounts });
+    this.lifecycle.publish({ kind: 'running', readingId: context.readingId, counts: nextCounts });
     return ok({ context: { ...context, plan: ready, cacheKeys: readyKeys }, counts: nextCounts });
   }
 
@@ -759,7 +614,7 @@ export class TranslationJobStore {
       ...counts,
       completed: new Set([...completed, ...promotable.map((r) => r.sentenceId)]).size,
     };
-    this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts: nextCounts });
+    this.lifecycle.publish({ kind: 'running', readingId: context.readingId, counts: nextCounts });
     return ok({ context: { ...context, plan: ready, cacheKeys: readyKeys }, counts: nextCounts });
   }
 
@@ -777,9 +632,13 @@ export class TranslationJobStore {
     const missing = await this.translation.missingSentenceIds(context.readingId, context.cacheKeys);
     if (!missing.ok) return { counts: initialCounts, error: null, storage: missing.error };
     const missingIds = new Set(missing.value);
+    // What an earlier run of this row already failed stays a hole for Retry,
+    // as it does for grammar and audio: a resumed job never retries on its own
+    // (ADR 0048), so a yield cannot change how the job ends.
+    const failedBefore = new Set(job.failedItems.map((failure) => failure.sentenceId));
     const groups = new Map<number, Sentence[]>();
     for (const sentence of context.sentences) {
-      if (!missingIds.has(sentence.id)) continue;
+      if (!missingIds.has(sentence.id) || failedBefore.has(sentence.id)) continue;
       const group = Math.floor(sentence.positionInReading / 10);
       const bucket = groups.get(group) ?? [];
       bucket.push(sentence);
@@ -791,7 +650,12 @@ export class TranslationJobStore {
     let storage: StorageError | null = null;
     let next = 0;
     const worker = async (): Promise<void> => {
-      while (next < batches.length && storage === null && !signal.aborted && !this.yieldRequested) {
+      while (
+        next < batches.length &&
+        storage === null &&
+        !signal.aborted &&
+        !this.lifecycle.yieldRequested
+      ) {
         const batch = batches[next++];
         const passage = translationPassageWindow(context.sentences, batch[0].positionInReading);
         const estimatedInput = estimateTokens(
@@ -858,7 +722,7 @@ export class TranslationJobStore {
             return;
           }
           counts = { ...counts, completed: advanced.value.completedSentenceIds.length };
-          this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+          this.lifecycle.publish({ kind: 'running', readingId: context.readingId, counts });
         }
         if (outcome.failures.length > 0 && outcome.error?.code !== 'cancelled') {
           const error =
@@ -901,87 +765,12 @@ export class TranslationJobStore {
       return null;
     }
     try {
-      if (signal.aborted || this.yieldRequested) return null;
+      if (signal.aborted || this.lifecycle.yieldRequested) return null;
       this.requestCount += 1;
       return await run();
     } finally {
       permit.release();
     }
-  }
-
-  private async failRun(
-    job: AssetJob,
-    readingId: ReadingId,
-    error: AiError | StorageError,
-    counts: TranslationJobCounts,
-  ): Promise<void> {
-    const marked = await this.jobs.setState(job.id, 'failed');
-    if (!marked.ok) {
-      this.failStorage(readingId, marked.error, counts);
-      return;
-    }
-    if (error.domain === 'storage') this.failStorage(readingId, error, counts);
-    else this.failProvider(readingId, error, counts);
-  }
-
-  private async markPaused(job: AssetJob, counts: TranslationJobCounts): Promise<void> {
-    this.yieldRequested = false;
-    this.controller = null;
-    const marked = await this.jobs.setState(job.id, 'paused');
-    if (!marked.ok) {
-      this.failStorage(job.readingId, marked.error, counts);
-      return;
-    }
-    this.progressSignal.set({ kind: 'paused', readingId: job.readingId, counts });
-  }
-
-  private async markCancelled(job: AssetJob, counts: TranslationJobCounts): Promise<void> {
-    this.controller = null;
-    const marked = await this.jobs.setState(job.id, 'cancelled');
-    if (!marked.ok) {
-      this.failStorage(job.readingId, marked.error, counts);
-      return;
-    }
-    this.progressSignal.set({ kind: 'cancelled', readingId: job.readingId, counts });
-  }
-
-  private report(readingId: ReadingId, error: LayerError): void {
-    if (error.source === 'provider') this.failProvider(readingId, error.error, emptyCounts());
-    else this.failStorage(readingId, error.error, emptyCounts());
-  }
-
-  private failProvider(readingId: ReadingId, error: AiError, counts: TranslationJobCounts): void {
-    this.controller = null;
-    this.progressSignal.set({
-      kind: 'failed',
-      readingId,
-      counts,
-      error: { source: 'provider', error },
-    });
-    this.logger.error('job.failed', {
-      kind: 'translation',
-      errorDomain: error.domain,
-      errorCode: error.code,
-    });
-  }
-
-  private failStorage(
-    readingId: ReadingId,
-    error: StorageError,
-    counts: TranslationJobCounts,
-  ): void {
-    this.controller = null;
-    this.progressSignal.set({
-      kind: 'failed',
-      readingId,
-      counts,
-      error: { source: 'storage', error },
-    });
-    this.logger.error('job.failed', {
-      kind: 'translation',
-      errorDomain: error.domain,
-      errorCode: error.code,
-    });
   }
 }
 
@@ -999,10 +788,11 @@ function rekey(
   });
 }
 
-function emptyCounts(): TranslationJobCounts {
-  return { total: 0, requested: 0, completed: 0, failed: 0 };
-}
-
 function isSentenceLocalFailure(error: AiError): boolean {
   return isAutomaticallyRetryable(error) || error.code === 'malformed-response';
+}
+
+/** Whether a refusal is the run being stopped rather than a failure to report. */
+function isStop(error: AiError | StorageError, signal: AbortSignal): boolean {
+  return signal.aborted || (error.domain === 'ai' && error.code === 'cancelled');
 }

@@ -29,6 +29,7 @@ import { TextModelStore } from '../settings/text-model.store';
 import { fakeTextModelStore } from '../../../testing/text-model-store-fake';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import type { GrammarProfileSelection } from '../../domain/grammar/profile';
+import { PreparationPacer } from './preparation-pacer';
 import { TranslationJobStore } from './translation-job.store';
 
 const NOW = 1_700_600_000_000;
@@ -269,6 +270,45 @@ describe('TranslationJobStore', () => {
     expect(rows[0].failedItems.map((item) => item.errorCode)).toContain('provider-unavailable');
   });
 
+  it('ends a resumed job as failed when a batch failed before it was parked', async () => {
+    let call = 0;
+    const asked: string[] = [];
+    bed.provider.translateWith = (request) => {
+      call += 1;
+      const targets = translationTargets(request);
+      asked.push(...targets.map((sentence) => sentence.id));
+      if (call === 2) {
+        bed.store.yieldAfterBatch();
+        return err(aiError('provider-unavailable', 'translation', 'The provider was unavailable.'));
+      }
+      return ok({
+        translations: targets.map((sentence) => ({
+          id: sentence.id,
+          textEn: `English for ${sentence.textJa}`,
+        })),
+      });
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+    expect(bed.store.progress().kind).toBe('paused');
+    const failed = (await bed.db.assetJobs.toArray())[0].failedItems.map((item) => item.sentenceId);
+    expect(failed).toHaveLength(7);
+    const askedBeforeResume = asked.length;
+
+    await bed.store.resume(bed.draft.reading.id);
+
+    // The same ending an uninterrupted run with that failure has, and the
+    // hole is left for Retry rather than requested again by the resume.
+    const holes = new Set<string>(failed);
+    expect(asked.slice(askedBeforeResume).filter((id) => holes.has(id))).toEqual([]);
+    expect(bed.store.progress()).toMatchObject({
+      kind: 'failed',
+      counts: { completed: 5, failed: 7 },
+    });
+    const rows = await bed.db.assetJobs.toArray();
+    expect(rows.map((row) => row.state)).toEqual(['failed']);
+  });
+
   it('stops at the first batch when the refusal is about the setup', async () => {
     bed.provider.translateWith = () =>
       err(aiError('authentication', 'translation', 'That key was rejected.'));
@@ -394,6 +434,23 @@ describe('TranslationJobStore', () => {
     const rows = await bed.db.assetJobs.toArray();
     expect(rows).toHaveLength(1);
     expect(rows[0].state).toBe('cancelled');
+  });
+
+  it('parks rather than stops when the lane yields while the opening waits its turn', async () => {
+    const pacer = TestBed.inject(PreparationPacer);
+    const acquire = pacer.acquire.bind(pacer);
+    vi.spyOn(pacer, 'acquire').mockImplementationOnce((...args) => {
+      bed.store.yieldAfterBatch();
+      return acquire(...args);
+    });
+
+    await bed.store.start(bed.draft.reading.id);
+
+    // A yield is never reported as a stop (ADR 0048): the row stays resumable.
+    expect(bed.provider.generationCalls.translate).toBe(0);
+    expect(bed.store.progress().kind).toBe('paused');
+    const rows = await bed.db.assetJobs.toArray();
+    expect(rows.map((row) => row.state)).toEqual(['paused']);
   });
 
   it('reports stopped only after cancellation is durable, so a reload cannot resume it', async () => {

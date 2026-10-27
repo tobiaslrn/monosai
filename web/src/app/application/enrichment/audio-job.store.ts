@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { isAutomaticallyRetryable, type AiError } from '../../domain/ai/ai-error';
 import { remainingSentenceIds, type AssetJob, type JobState } from '../../domain/enrichment/jobs';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
@@ -15,47 +15,40 @@ import { AudioConfigurationService, type ResolvedAudioConfig } from './audio-con
 import { AudioSynthesisService, speechContextFor } from './audio-synthesis.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { PreparationPacer, backOffOnRateLimit } from './preparation-pacer';
-import { NOTHING_TO_DO, QUEUED, type EnqueueOutcome, type LayerError } from './layer-progress';
+import type { EnqueueOutcome, LayerCounts, LayerError } from './layer-progress';
+import {
+  ReadingJobLifecycle,
+  countsFor,
+  enqueueOutcome,
+  unavailable,
+  type PlanOutcome,
+  type ReadingJobProgress,
+  type ReadingJobRun,
+} from './reading-job-lifecycle';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 
 /** Which layer refused, so the progress row can offer the right next action. */
-export type AudioJobError =
-  | { readonly source: 'provider'; readonly error: AiError }
-  | { readonly source: 'storage'; readonly error: StorageError };
+export type AudioJobError = LayerError;
 
-export interface AudioJobCounts {
-  /** Sentences in the reading, with a clip or not. */
-  readonly total: number;
-  /** Sentences this job set out to read — the ones missing a current clip. */
-  readonly requested: number;
-  readonly completed: number;
-  readonly failed: number;
+/**
+ * `requested` is the sentences this job set out to read — the ones missing a
+ * current clip — out of `total` in the reading.
+ */
+export type AudioJobCounts = LayerCounts;
+
+/** What a failed audio run adds to the report. */
+interface AudioFailure {
+  /**
+   * Whether running the same request again could plausibly produce a clip.
+   *
+   * False once repeated attempts have produced nothing: a retry that cannot
+   * work still spends a request per sentence, and offering it is how a
+   * learner discovers the same answer at the same price several times over.
+   */
+  readonly canRetry: boolean;
 }
 
-export type AudioJobProgress =
-  | { readonly kind: 'idle' }
-  | { readonly kind: 'preparing'; readonly readingId: ReadingId }
-  | { readonly kind: 'running'; readonly readingId: ReadingId; readonly counts: AudioJobCounts }
-  | { readonly kind: 'complete'; readonly readingId: ReadingId; readonly counts: AudioJobCounts }
-  | { readonly kind: 'cancelled'; readonly readingId: ReadingId; readonly counts: AudioJobCounts }
-  | { readonly kind: 'paused'; readonly readingId: ReadingId; readonly counts: AudioJobCounts }
-  | { readonly kind: 'deleted'; readonly readingId: ReadingId }
-  | {
-      readonly kind: 'failed';
-      readonly readingId: ReadingId;
-      readonly counts: AudioJobCounts;
-      readonly error: AudioJobError;
-      /**
-       * Whether running the same request again could plausibly produce a clip.
-       *
-       * False once repeated attempts have produced nothing: a retry that cannot
-       * work still spends a request per sentence, and offering it is how a
-       * learner discovers the same answer at the same price several times over.
-       */
-      readonly canRetry: boolean;
-    };
-
-const IDLE: AudioJobProgress = { kind: 'idle' };
+export type AudioJobProgress = ReadingJobProgress<object, AudioFailure>;
 
 /**
  * Whether a run is in progress as the learner sees it: preparing, running, or
@@ -105,7 +98,6 @@ interface FruitlessRuns {
   readonly configFingerprint: string;
 }
 
-/** Everything one run needs, captured once so no setting can change mid-flight. */
 /**
  * Which sentences a newly created job covers.
  *
@@ -114,17 +106,7 @@ interface FruitlessRuns {
  */
 type JobScope = 'current-configuration' | 'never-prepared';
 
-type PlanOutcome =
-  | { readonly kind: 'planned'; readonly context: JobContext; readonly job: AssetJob }
-  | { readonly kind: 'nothing-to-do'; readonly context: JobContext }
-  | { readonly kind: 'unavailable'; readonly outcome: UnavailableOutcome };
-
-type UnavailableOutcome = Extract<EnqueueOutcome, { kind: 'unavailable' }>;
-
-function unavailable(error: LayerError): PlanOutcome {
-  return { kind: 'unavailable', outcome: { kind: 'unavailable', error } };
-}
-
+/** Everything one run needs, captured once so no setting can change mid-flight. */
 interface JobContext {
   readonly readingId: ReadingId;
   readonly config: ResolvedAudioConfig;
@@ -171,7 +153,6 @@ export class AudioJobStore {
   private readonly ids = inject(ID_GENERATOR);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
-  private readonly progressSignal = signal<AudioJobProgress>(IDLE);
   /**
    * Consecutive runs that stored no clip, per reading and configuration.
    *
@@ -182,14 +163,24 @@ export class AudioJobStore {
    * dropped as soon as a run produces something or the reading goes.
    */
   private readonly fruitlessRuns = new Map<ReadingId, FruitlessRuns>();
-  private controller: AbortController | null = null;
-  private yieldRequested = false;
-  /** The row write that ends a parked run the learner stopped, until it settles. */
-  private parkedClose: Promise<void> | null = null;
-  /** The full prepare/process lifetime, so destructive maintenance can join it. */
-  private activeRun: Promise<void> | null = null;
 
-  readonly progress = this.progressSignal.asReadonly();
+  /**
+   * A failure the store reports without evidence of its own — a refused plan,
+   * an unreadable row — says nothing about whether the voice can read this
+   * reading, so the retry stays offered.
+   */
+  private readonly lifecycle = new ReadingJobLifecycle<JobContext, object, AudioFailure>({
+    jobKind: 'prepare-audio',
+    task: 'tts-synthesis',
+    logKind: 'audio',
+    jobs: this.jobs,
+    logger: this.logger,
+    failure: { canRetry: true },
+    plan: (readingId) => this.plan(readingId, 'current-configuration', 'running'),
+    process: (context, job, run) => this.process(context, job, run),
+  });
+
+  readonly progress = this.lifecycle.progress;
 
   /**
    * Whether a worker is busy this instant. Scheduling asks this — yielding only
@@ -197,17 +188,13 @@ export class AudioJobStore {
    * while a run is parked — so a paused run is not running here. What a learner
    * sees as "still going" is `isAudioRunInProgress`.
    */
-  readonly isRunning = computed(() => {
-    const kind = this.progressSignal().kind;
-    return kind === 'preparing' || kind === 'running';
-  });
+  readonly isRunning = this.lifecycle.isRunning;
 
   /** What "nothing is happening" looks like, for a caller with no reading yet. */
-  readonly idleProgress: AudioJobProgress = IDLE;
+  readonly idleProgress = this.lifecycle.idleProgress;
 
   progressFor(readingId: ReadingId): AudioJobProgress {
-    const progress = this.progressSignal();
-    return progress.kind !== 'idle' && progress.readingId === readingId ? progress : IDLE;
+    return this.lifecycle.progressFor(readingId);
   }
 
   /**
@@ -216,7 +203,7 @@ export class AudioJobStore {
    * must not hide a run that will resume — so a paused run counts.
    */
   isRunningFor(readingId: ReadingId): boolean {
-    return isAudioRunInProgress(this.progressFor(readingId));
+    return this.lifecycle.isRunningFor(readingId);
   }
 
   /**
@@ -224,11 +211,7 @@ export class AudioJobStore {
    * sentences with no clip at all, so changing the voice queues nothing.
    */
   async enqueue(readingId: ReadingId): Promise<EnqueueOutcome> {
-    const prepared = await this.plan(readingId, 'never-prepared', 'queued');
-    if (prepared.kind !== 'planned') {
-      return prepared.kind === 'nothing-to-do' ? NOTHING_TO_DO : prepared.outcome;
-    }
-    return remainingSentenceIds(prepared.job).length === 0 ? NOTHING_TO_DO : QUEUED;
+    return enqueueOutcome(await this.plan(readingId, 'never-prepared', 'queued'));
   }
 
   /**
@@ -240,9 +223,7 @@ export class AudioJobStore {
    * somebody is listening to.
    */
   yieldAfterBatch(): void {
-    if (this.isRunning()) {
-      this.yieldRequested = true;
-    }
+    this.lifecycle.yieldAfterBatch();
   }
 
   /**
@@ -251,80 +232,21 @@ export class AudioJobStore {
    * Reuses an active job whose configuration still matches, so pressing the
    * action twice continues one job rather than racing two.
    */
-  async start(readingId: ReadingId): Promise<void> {
-    if (this.parkedClose !== null) {
-      await this.parkedClose;
-    }
-    const activeRun = this.activeRun;
-    if (activeRun !== null) {
-      await activeRun;
-      return;
-    }
-    const run = this.run(readingId);
-    this.activeRun = run;
-    try {
-      await run;
-    } finally {
-      if (this.activeRun === run) {
-        this.activeRun = null;
-      }
-    }
-  }
-
-  private async run(readingId: ReadingId): Promise<void> {
-    // The controller exists before the first await so that cancelling while
-    // configuration is still being read stops the run rather than being ignored.
-    const controller = new AbortController();
-    this.controller = controller;
-    this.yieldRequested = false;
-    this.logger.info('job.started', { kind: 'audio' });
-    this.progressSignal.set({ kind: 'preparing', readingId });
-
-    const prepared = await this.plan(readingId, 'current-configuration', 'running');
-    if (prepared.kind === 'unavailable') {
-      this.report(readingId, prepared.outcome.error);
-      return;
-    }
-    if (prepared.kind === 'nothing-to-do') {
-      this.controller = null;
-      this.progressSignal.set({
-        kind: 'complete',
-        readingId,
-        counts: { total: prepared.context.total, requested: 0, completed: 0, failed: 0 },
-      });
-      return;
-    }
-    await this.process(prepared.context, prepared.job, controller);
+  start(readingId: ReadingId): Promise<void> {
+    return this.lifecycle.start(readingId);
   }
 
   /**
    * Continues an interrupted job after a reload. Does nothing when the reading
    * has no unfinished job, so opening a reader never issues a request.
    */
-  async resume(readingId: ReadingId): Promise<void> {
-    if (this.isRunning()) {
-      return;
-    }
-    if (this.parkedClose !== null) {
-      await this.parkedClose;
-    }
-    const existing = await this.jobs.findActive(readingId, 'prepare-audio');
-    if (!existing.ok) {
-      this.failStorage(readingId, existing.error, emptyCounts(), true);
-      return;
-    }
-    if (existing.value === null) {
-      if (this.progressFor(readingId).kind !== 'idle') {
-        this.progressSignal.set(IDLE);
-      }
-      return;
-    }
-    await this.start(readingId);
+  resume(readingId: ReadingId): Promise<void> {
+    return this.lifecycle.resume(readingId);
   }
 
   /** Starts a fresh bounded attempt over whatever is still missing. */
   retry(readingId: ReadingId): Promise<void> {
-    return this.start(readingId);
+    return this.lifecycle.start(readingId);
   }
 
   /**
@@ -340,65 +262,20 @@ export class AudioJobStore {
    * is not.
    */
   cancel(readingId: ReadingId): void {
-    if (!this.owns(readingId)) {
-      return;
-    }
-    this.controller?.abort();
-    this.controller = null;
-    // A stop outranks a yield that was asked for before it: the workers still in
-    // flight come back to a run that is stopped, not one to park.
-    this.yieldRequested = false;
-    const progress = this.progressSignal();
-    if (progress.kind === 'preparing') {
-      this.progressSignal.set({ kind: 'cancelled', readingId, counts: emptyCounts() });
-    } else if (progress.kind === 'running') {
-      this.progressSignal.set({ kind: 'cancelled', readingId, counts: progress.counts });
-    } else if (progress.kind === 'paused') {
-      // A parked run has no worker to abort, but its Stop is offered like any
-      // other, so it has to end the run: close the row so nothing resumes it.
-      // The write is kept so start, resume, and cancelAndWait wait for it.
-      this.progressSignal.set({ kind: 'cancelled', readingId, counts: progress.counts });
-      const close = this.closeParkedJob(readingId, progress.counts).finally(() => {
-        if (this.parkedClose === close) {
-          this.parkedClose = null;
-        }
-      });
-      this.parkedClose = close;
-    }
-  }
-
-  /** Closes a parked run's row; a row that cannot be closed is reported, not dropped. */
-  private async closeParkedJob(readingId: ReadingId, counts: AudioJobCounts): Promise<void> {
-    const active = await this.jobs.findActive(readingId, 'prepare-audio');
-    const closed = !active.ok
-      ? active
-      : active.value === null
-        ? active
-        : await this.jobs.setState(active.value.id, 'cancelled');
-    if (!closed.ok) {
-      this.failStorage(readingId, closed.error, counts, true);
-    }
+    this.lifecycle.cancel(readingId);
   }
 
   /** Cancels and waits until no in-flight result can still be stored. */
-  async cancelAndWait(readingId: ReadingId): Promise<void> {
-    this.cancel(readingId);
-    await this.activeRun;
-    if (this.parkedClose !== null) {
-      await this.parkedClose;
-    }
+  cancelAndWait(readingId: ReadingId): Promise<void> {
+    return this.lifecycle.cancelAndWait(readingId);
   }
 
   /** Finalizes a reading's run before its persisted rows are removed. */
-  async readingDeleted(readingId: ReadingId): Promise<void> {
+  readingDeleted(readingId: ReadingId): Promise<void> {
     // Whatever this reading could not be read aloud goes with it, whether or
     // not it is the reading whose run is currently published.
     this.fruitlessRuns.delete(readingId);
-    if (!this.owns(readingId)) {
-      return;
-    }
-    await this.cancelAndWait(readingId);
-    this.progressSignal.set({ kind: 'deleted', readingId });
+    return this.lifecycle.readingDeleted(readingId);
   }
 
   /**
@@ -409,14 +286,7 @@ export class AudioJobStore {
    * work that is still spending them.
    */
   acknowledge(readingId: ReadingId): void {
-    if (this.owns(readingId) && !this.isRunningFor(readingId)) {
-      this.progressSignal.set(IDLE);
-    }
-  }
-
-  private owns(readingId: ReadingId): boolean {
-    const progress = this.progressSignal();
-    return progress.kind !== 'idle' && progress.readingId === readingId;
+    this.lifecycle.acknowledge(readingId);
   }
 
   /**
@@ -431,7 +301,7 @@ export class AudioJobStore {
     readingId: ReadingId,
     scope: JobScope,
     initialState: JobState,
-  ): Promise<PlanOutcome> {
+  ): Promise<PlanOutcome<JobContext>> {
     const config = this.audioConfig.resolve('tts-synthesis');
     if (!config.ok) {
       return unavailable({ source: 'provider', error: config.error });
@@ -488,7 +358,7 @@ export class AudioJobStore {
     // No row is written for a reading with nothing outstanding: an empty job
     // could never complete itself, and the lane would pick it up forever.
     if (wanted.value.length === 0) {
-      return { kind: 'nothing-to-do', context };
+      return { kind: 'nothing-to-do', total: context.total };
     }
 
     const created = await this.createJob(context, wanted.value, initialState);
@@ -545,41 +415,29 @@ export class AudioJobStore {
    * because two overlapping transactions can resolve in either order and the
    * progress number must never go backwards.
    */
-  private async process(
-    context: JobContext,
-    job: AssetJob,
-    controller: AbortController,
-  ): Promise<void> {
-    const signal = controller.signal;
+  private async process(context: JobContext, job: AssetJob, run: ReadingJobRun): Promise<void> {
+    const { controller, signal } = run;
     const outstanding = remainingSentenceIds(job);
-    let counts: AudioJobCounts = {
-      total: context.total,
-      requested: job.orderedSentenceIds.length,
-      completed: job.completedSentenceIds.length,
-      failed: job.failedItems.length,
-    };
-
-    if (outstanding.length === 0) {
-      this.controller = null;
-      this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
-      return;
-    }
+    let counts = countsFor(context.total, job);
 
     const loaded = await this.readings.loadSentences(context.orderedSentenceIds);
     if (!loaded.ok) {
-      this.failStorage(context.readingId, loaded.error, counts, true);
+      this.lifecycle.fail(context.readingId, loaded.error, counts);
       return;
     }
 
     if (job.state !== 'running') {
       const started = await this.jobs.setState(job.id, 'running');
       if (!started.ok) {
-        this.failStorage(context.readingId, started.error, counts, true);
+        this.lifecycle.fail(context.readingId, started.error, counts);
         return;
       }
     }
 
-    this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+    const publish = (): void => {
+      this.lifecycle.publish({ kind: 'running', readingId: context.readingId, counts });
+    };
+    publish();
 
     const outstandingSet = new Set(outstanding);
     const allSentences = orderedByReading(loaded.value);
@@ -627,7 +485,7 @@ export class AudioJobStore {
       outcome.firstSentenceFailure ??= { error };
       failed = recorded.value.failedItems.length;
       counts = { ...counts, failed };
-      this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+      publish();
       return true;
     };
 
@@ -662,7 +520,7 @@ export class AudioJobStore {
         // Checked here rather than before the permit: a sentence can wait a
         // long time for its turn, and what stopped the run may have happened
         // while it did.
-        if (outcome.failure !== null || isAborted(signal) || this.yieldRequested) {
+        if (outcome.failure !== null || isAborted(signal) || this.lifecycle.yieldRequested) {
           return;
         }
         produced = await this.audio.run(
@@ -715,7 +573,7 @@ export class AudioJobStore {
       completed += 1;
       added += 1;
       counts = { ...counts, completed };
-      this.progressSignal.set({ kind: 'running', readingId: context.readingId, counts });
+      publish();
     };
 
     await Promise.all(wanted.map((sentence) => readSentence(sentence)));
@@ -724,48 +582,38 @@ export class AudioJobStore {
     // a request was refused is never reported as one the learner stopped.
     const failure = outcome.failure;
     if (failure !== null) {
-      if (failure.source === 'storage') {
-        this.failStorage(
-          context.readingId,
-          failure.error,
-          counts,
-          this.noteRunOutcome(context.readingId, context.config.configFingerprint, added),
-        );
-        return;
-      }
-      await this.stopAtFailure(job, failure.sentenceId, failure.error, counts, added);
-      return;
-    }
-    // A stop is checked before a yield: a learner who pressed Stop while the run
-    // was being asked to park ended it, and parking would write it back.
-    if (isAborted(signal)) {
-      await this.markCancelled(job, counts, added);
-      return;
-    }
-    if (this.yieldRequested) {
-      await this.markPaused(job, counts, added);
-      return;
-    }
-
-    if (outcome.firstSentenceFailure !== null) {
       const canRetry = this.noteRunOutcome(
         context.readingId,
         context.config.configFingerprint,
         added,
       );
-      const marked = await this.jobs.setState(job.id, 'failed');
-      if (!marked.ok) {
-        this.failStorage(context.readingId, marked.error, counts, canRetry);
+      if (failure.source === 'storage') {
+        this.lifecycle.fail(context.readingId, failure.error, counts, { canRetry });
         return;
       }
-      this.failProvider(context.readingId, outcome.firstSentenceFailure.error, counts, canRetry);
+      await this.stopAtFailure(job, failure.sentenceId, failure.error, counts, canRetry);
       return;
     }
 
-    this.controller = null;
-    this.fruitlessRuns.delete(context.readingId);
-    this.progressSignal.set({ kind: 'complete', readingId: context.readingId, counts });
-    this.logger.info('job.succeeded', { kind: 'audio', count: counts.completed });
+    // A hole an earlier run left before it was parked counts as this run's own:
+    // a job with a hole is reported as failed, however many runs it took.
+    const sentenceFailure =
+      outcome.firstSentenceFailure?.error ?? this.lifecycle.earlierFailure(job);
+    let canRetry = true;
+    if (isAborted(signal) || this.lifecycle.yieldRequested) {
+      // A run that was stopped or parked is not evidence of anything: stopping
+      // early is a choice rather than a refusal, so it never counts towards the
+      // fruitless streak — but clips it did produce still clear one, because a
+      // configuration that produced something is working.
+      if (added > 0) {
+        this.fruitlessRuns.delete(context.readingId);
+      }
+    } else if (sentenceFailure !== null) {
+      canRetry = this.noteRunOutcome(context.readingId, context.config.configFingerprint, added);
+    } else {
+      this.fruitlessRuns.delete(context.readingId);
+    }
+    await this.lifecycle.settle(job, counts, run, sentenceFailure, { canRetry });
   }
 
   private async stopAtFailure(
@@ -773,73 +621,19 @@ export class AudioJobStore {
     sentenceId: SentenceId,
     error: AiError,
     counts: AudioJobCounts,
-    added: number,
+    canRetry: boolean,
   ): Promise<void> {
-    const canRetry = this.noteRunOutcome(job.readingId, job.configFingerprint, added);
     const recorded = await this.jobs.recordFailure(job.id, {
       sentenceId,
       errorCode: error.code,
       failedAt: this.clock.now(),
     });
     if (!recorded.ok) {
-      this.failStorage(job.readingId, recorded.error, counts, canRetry);
+      this.lifecycle.fail(job.readingId, recorded.error, counts, { canRetry });
       return;
     }
     const withFailure = { ...counts, failed: recorded.value.failedItems.length };
-    const marked = await this.jobs.setState(job.id, 'failed');
-    if (!marked.ok) {
-      this.failStorage(job.readingId, marked.error, withFailure, canRetry);
-      return;
-    }
-    this.failProvider(job.readingId, error, withFailure, canRetry);
-  }
-
-  /**
-   * Parks the run where it stands, keeping the row for whoever resumes it.
-   *
-   * Clips this run produced still clear the fruitless streak, for the same
-   * reason a stopped run's do: a configuration that produced something is
-   * working, whatever made the run stop.
-   */
-  private async markPaused(job: AssetJob, counts: AudioJobCounts, added: number): Promise<void> {
-    this.yieldRequested = false;
-    this.controller = null;
-    if (this.progressSignal().kind === 'cancelled') {
-      // Stopped while the batch was settling: the stop stands, and the row is
-      // closed by markCancelled's own path rather than parked here.
-      return;
-    }
-    if (added > 0) {
-      this.fruitlessRuns.delete(job.readingId);
-    }
-    await this.jobs.setState(job.id, 'paused');
-    this.progressSignal.set({ kind: 'paused', readingId: job.readingId, counts });
-    this.logger.info('job.paused', { kind: 'audio', count: counts.completed });
-  }
-
-  private report(readingId: ReadingId, error: LayerError): void {
-    if (error.source === 'provider') {
-      this.failProvider(readingId, error.error, emptyCounts(), true);
-    } else {
-      this.failStorage(readingId, error.error, emptyCounts(), true);
-    }
-  }
-
-  /**
-   * A run the learner stopped, which is not evidence of anything.
-   *
-   * Stopping early is a choice rather than a refusal, so it never counts
-   * towards the fruitless streak — but clips it did produce still clear one,
-   * because a configuration that produced something is working.
-   */
-  private async markCancelled(job: AssetJob, counts: AudioJobCounts, added: number): Promise<void> {
-    this.controller = null;
-    if (added > 0) {
-      this.fruitlessRuns.delete(job.readingId);
-    }
-    await this.jobs.setState(job.id, 'cancelled');
-    this.progressSignal.set({ kind: 'cancelled', readingId: job.readingId, counts });
-    this.logger.info('job.cancelled', { kind: 'audio', count: counts.completed });
+    await this.lifecycle.markFailed(job, error, withFailure, { canRetry });
   }
 
   /**
@@ -860,48 +654,6 @@ export class AudioJobStore {
     const runs = (recorded?.configFingerprint === configFingerprint ? recorded.runs : 0) + 1;
     this.fruitlessRuns.set(readingId, { runs, configFingerprint });
     return runs < AUDIO_FRUITLESS_RUN_LIMIT;
-  }
-
-  private failProvider(
-    readingId: ReadingId,
-    error: AiError,
-    counts: AudioJobCounts,
-    canRetry: boolean,
-  ): void {
-    this.controller = null;
-    this.progressSignal.set({
-      kind: 'failed',
-      readingId,
-      counts,
-      error: { source: 'provider', error },
-      canRetry,
-    });
-    this.logger.error('job.failed', {
-      kind: 'audio',
-      errorDomain: error.domain,
-      errorCode: error.code,
-    });
-  }
-
-  private failStorage(
-    readingId: ReadingId,
-    error: StorageError,
-    counts: AudioJobCounts,
-    canRetry: boolean,
-  ): void {
-    this.controller = null;
-    this.progressSignal.set({
-      kind: 'failed',
-      readingId,
-      counts,
-      error: { source: 'storage', error },
-      canRetry,
-    });
-    this.logger.error('job.failed', {
-      kind: 'audio',
-      errorDomain: error.domain,
-      errorCode: error.code,
-    });
   }
 }
 
@@ -934,8 +686,4 @@ function missingCacheKeyError(sentenceId: SentenceId): StorageError {
     code: 'corrupt-record',
     message: `The audio cache key for sentence ${sentenceId} was missing.`,
   };
-}
-
-function emptyCounts(): AudioJobCounts {
-  return { total: 0, requested: 0, completed: 0, failed: 0 };
 }
