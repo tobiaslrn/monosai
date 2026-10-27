@@ -174,6 +174,21 @@ planning the row, batching, the provider calls, which failures stop a run, and, 
 fruitless-run evidence behind `canRetry`. `LayerRunner` is still how the preparation lane sees the
 three.
 
+A story generation is two units in `application/generation/`. `GenerationStore` is the state
+machine for one run: prerequisites, capture, the writing request, the saved or failed or cancelled
+ending, the abort controller, and the announcements, so every transition is still decided there. The
+stretch between a written story and an accepted one is `StoryRepairLoop` (`story-repair-loop.ts`),
+a plain class built from narrow ports: tokenize and classify, review exceptions, repair. It parses,
+validates, reviews, and repairs until the story is accepted, the repair budget is spent, or
+something stops it, and it says which — accepted, exhausted (saved with the unreplaced words
+marked, [ADR 0033](../decisions/0033-unresolved-unknown-words-are-marked-not-rejected.md)),
+cancelled, or failed. It never touches the state; it reports each stage and the running counts
+through a progress port, and the store turns them into `parsing`, `validating`, `exception-review`,
+and `repairing`. The words-and-statuses side of that work (`analyzed-story.ts`) is plain functions:
+analysing a candidate, collecting the distinct unknowns, applying approvals, marking the words repair
+could not replace, and naming the spans a repair request carries. Both are tested without the
+injector.
+
 ## 5.3 Level 3
 
 ### Whitebox: the Android bridge
