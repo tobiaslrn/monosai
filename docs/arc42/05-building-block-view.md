@@ -68,8 +68,15 @@ departure: the surface rises from and returns to its docked edge in CSS, which
 keeps the closing slide a property of the surface rather than of the feature
 that closed it. The handle gesture that dismisses a sheet with a downward drag
 or a flick is a component of its own, so a sheet built on a CDK dialog shares
-the one implementation rather than growing a second. Features provide only the
-content and the lifecycle actions that closing it triggers.
+the one implementation rather than growing a second. A dialog's element is
+removed the moment it closes, so the departure of a sheet built on one is
+sequenced by `injectSheetExit` instead: every way out (its own actions, the
+handle, `Escape`, the backdrop) lets the surface slide away in CSS and closes the
+dialog only when its animations have finished, at once under
+`prefers-reduced-motion`. Its arrival is the same CSS idiom as the popover
+sheets' (a starting style on the docked surface), so the dialog needs no code to
+rise. Features provide only the content and the lifecycle actions that closing it
+triggers.
 
 ## 5.2 Level 2: how each layer is divided
 

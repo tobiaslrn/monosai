@@ -2,15 +2,17 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  type ElementRef,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { FormsModule } from '@angular/forms';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { ViewportService } from '../../core/platform/viewport.service';
 import { SheetHandleComponent } from '../../shared-ui/sheet/sheet-handle.component';
+import { injectSheetExit } from '../../shared-ui/sheet/sheet-exit';
 import {
   applyBrowseQuery,
   DEFAULT_BROWSE_QUERY,
@@ -35,9 +37,12 @@ export interface VocabularyFilterSheetData {
   imports: [FormsModule, SheetHandleComponent],
   template: `
     <section
+      #surface
       class="sheet"
       aria-labelledby="vocabulary-filter-heading"
-      [class.is-dragging]="dragOffset() > 0"
+      [class.is-dragging]="dragOffset() > 0 && !leaving()"
+      [class.is-leaving]="leaving()"
+      [attr.inert]="leaving() ? '' : null"
       [style.transform]="dragTransform()"
     >
       @if (isMobile()) {
@@ -177,8 +182,30 @@ export interface VocabularyFilterSheetData {
       --mn-sheet-handle-bleed: var(--space-5);
     }
 
-    @media (prefers-reduced-motion: reduce) {
+    /*
+     * A docked sheet rises from the edge it is docked to and goes back down it,
+     * decelerating in and accelerating out as the popover sheets do. The exit
+     * carries on from wherever a finger let go. Wide screens centre the card,
+     * which has no edge to arrive from or leave by.
+     */
+    @media (max-width: 59.999em) {
       .sheet {
+        transition: transform var(--motion-medium) var(--ease-enter);
+
+        @starting-style {
+          transform: translateY(100%);
+        }
+      }
+
+      .sheet.is-leaving {
+        transform: translateY(100%);
+        transition: transform var(--motion-medium) var(--ease-exit);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sheet,
+      .sheet.is-leaving {
         transition: none;
       }
     }
@@ -198,17 +225,22 @@ export interface VocabularyFilterSheetData {
 })
 export class VocabularyFilterSheetComponent {
   protected readonly data = inject<VocabularyFilterSheetData>(DIALOG_DATA);
-  private readonly dialogRef = inject<DialogRef<BrowseQuery | undefined>>(DialogRef);
   private readonly clock = inject(CLOCK);
   private readonly viewport = inject(ViewportService);
   private readonly handle = viewChild<SheetHandleComponent>('handle');
+  private readonly surface = viewChild<ElementRef<HTMLElement>>('surface');
+  private readonly exit = injectSheetExit<BrowseQuery | undefined>(
+    () => this.surface()?.nativeElement,
+  );
   protected readonly draft = signal<BrowseQuery>(this.data.query);
 
   protected readonly isMobile = this.viewport.isMobile;
+  protected readonly leaving = this.exit.leaving;
   protected readonly dragOffset = computed(() => this.handle()?.offset() ?? 0);
   protected readonly dragTransform = computed(() => {
     const offset = this.dragOffset();
-    return offset === 0 ? null : `translateY(${String(offset)}px)`;
+    // A sheet on its way out is sent by its own transition, not by the finger.
+    return offset === 0 || this.leaving() ? null : `translateY(${String(offset)}px)`;
   });
 
   protected readonly matchCount = () =>
@@ -239,12 +271,12 @@ export class VocabularyFilterSheetComponent {
   }
 
   protected show(): void {
-    this.dialogRef.close(this.draft());
+    this.exit.close(this.draft());
   }
 
   /** Dragging the sheet away discards the draft, as dismissing it does. */
   protected dismiss(): void {
-    this.dialogRef.close(undefined);
+    this.exit.close(undefined);
   }
 
   protected reset(): void {

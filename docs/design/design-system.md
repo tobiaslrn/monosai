@@ -899,6 +899,13 @@ Arrival decelerates into place and departure accelerates away, which is what
 makes the same distance read as settling one way and leaving the other. A
 surface that is cut away between frames reads as a fault, not as an answer.
 
+A docked sheet moves the same way whether it is a popover or a dialog. A
+dialog's element is removed the moment it closes, so a sheet built on one holds
+the dialog open for the slide and closes it afterwards; it stops taking input
+while it goes. Under `prefers-reduced-motion` it neither rises nor slides and
+closes at once. A centred card on a wide screen has no edge to arrive from or
+leave by, so it appears and goes as an anchored popover does.
+
 **Every duration and easing is a token.** Durations name how long a thing is
 allowed to take: a state settling (`--motion-fast`), a surface moving
 (`--motion-medium`), one slow movement such as the wordmark's reel

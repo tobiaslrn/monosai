@@ -153,6 +153,31 @@ describe('VocabularyBrowsePageComponent', () => {
     expect(element.querySelectorAll('mn-vocabulary-browse-row')).toHaveLength(3);
   });
 
+  it('discards the draft and closes the filter sheet on Escape or a press on the backdrop', async () => {
+    await seedVocabulary();
+    const { fixture, element } = await render();
+
+    for (const dismiss of [
+      () => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })),
+      () => document.querySelector<HTMLElement>('.cdk-overlay-backdrop')?.click(),
+    ]) {
+      element.querySelector<HTMLButtonElement>('[data-testid="vocabulary-filters"]')?.click();
+      await settle(fixture);
+      const sheet = document.querySelector<HTMLElement>('mn-vocabulary-filter-sheet');
+      if (sheet === null) throw new Error('missing filter sheet');
+      const studied = sheet.querySelector<HTMLSelectElement>('[aria-label="First studied"]');
+      if (studied === null) throw new Error('missing date filter');
+      studied.value = 'last-7-days';
+      studied.dispatchEvent(new Event('change'));
+
+      dismiss();
+      await settle(fixture);
+
+      expect(document.querySelector('mn-vocabulary-filter-sheet')).toBeNull();
+      expect(element.querySelectorAll('mn-vocabulary-browse-row')).toHaveLength(3);
+    }
+  });
+
   it('expands a row and shows its detailed reading and source link', async () => {
     await seedVocabulary();
     const { fixture, element } = await render();
