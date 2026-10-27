@@ -9,8 +9,8 @@ import {
   HASHER,
   ID_GENERATOR,
   SETTINGS_REPOSITORY,
-  VOCABULARY_SOURCE_REPOSITORY,
   VOCABULARY_REPOSITORY,
+  VOCABULARY_SOURCE_REPOSITORY,
 } from '../app/application/shared/repository-tokens';
 import { HOST_PLATFORM, type HostPlatform } from '../app/domain/platform/host-platform';
 import { SnapshotBuilder } from '../app/application/vocabulary/snapshot-builder';

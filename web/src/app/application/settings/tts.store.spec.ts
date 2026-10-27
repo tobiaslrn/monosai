@@ -192,12 +192,15 @@ describe('TtsStore', () => {
     await store.test();
 
     // A catalog refresh cannot overrule what the current test measured.
-    expect(store.acceptsDirection(['instructions'])).toBe(false);
+    store.setCatalogParameters(['instructions']);
+    expect(store.acceptsDirection()).toBe(false);
 
     store.setDraft({ modelId: 'vendor/kokoro', voiceId: 'sakura' });
-    expect(store.acceptsDirection(['voice'])).toBe(false);
+    store.setCatalogParameters(['voice']);
+    expect(store.acceptsDirection()).toBe(false);
 
-    expect(store.acceptsDirection(['instructions'])).toBe(true);
+    store.setCatalogParameters(['instructions']);
+    expect(store.acceptsDirection()).toBe(true);
   });
 
   it('goes stale when the voice or the speaking style changes', async () => {

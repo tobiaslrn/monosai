@@ -15,7 +15,6 @@ import type { VocabularySource } from '../../domain/vocabulary/vocabulary-source
 import { PACKAGE_PROVIDER_FACTORY } from '../shared/anki-tokens';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { PackageImportStore } from './package-import.store';
-import { SnapshotHistoryStore } from './snapshot-history.store';
 import { SourceMappingStore } from './source-mapping.store';
 import { unmeasuredBasis } from '../../domain/anki/practice-evidence';
 
@@ -114,17 +113,6 @@ describe('PackageImportStore', () => {
 
   beforeEach(() => {
     configure();
-  });
-
-  it('has the current vocabulary read again by the time it reports the import done', async () => {
-    const importing = store();
-    const history = TestBed.inject(SnapshotHistoryStore);
-    expect(history.active()).toBeNull();
-
-    await importing.start(FILE);
-
-    expect(importing.state().kind).toBe('complete');
-    expect(history.active()?.uniqueEntryCount).toBe(2);
   });
 
   it('imports a single shared deck with its subdecks without asking', async () => {

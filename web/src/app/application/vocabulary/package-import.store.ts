@@ -23,7 +23,6 @@ import type { VocabularySourceCache } from '../../domain/vocabulary/vocabulary-s
 import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { PACKAGE_PROVIDER_FACTORY } from '../shared/anki-tokens';
 import { CLOCK, ID_GENERATOR } from '../shared/repository-tokens';
-import { SnapshotHistoryStore } from './snapshot-history.store';
 import { SourceMappingStore } from './source-mapping.store';
 import { VocabularySyncService, type VocabularySyncFailure } from './vocabulary-sync.service';
 import { unmeasuredBasis } from '../../domain/anki/practice-evidence';
@@ -73,7 +72,6 @@ const IDLE: PackageImportState = { kind: 'idle' };
 export class PackageImportStore {
   private readonly createProvider = inject(PACKAGE_PROVIDER_FACTORY);
   private readonly sources = inject(SourceMappingStore);
-  private readonly history = inject(SnapshotHistoryStore);
   private readonly sync = inject(VocabularySyncService);
   private readonly busyRegistry = inject(AppBusyRegistry);
   private readonly inbox = inject(SHARED_PACKAGE_INBOX);
@@ -427,9 +425,7 @@ export class PackageImportStore {
     }
 
     this.releaseProvider();
-    // The import commits on its own, so what the screens read from it is
-    // reloaded here, where the commit happened, before the import reports done.
-    await Promise.all([this.sources.load(), this.history.load()]);
+    await this.sources.load();
     if (!this.isCurrent(operation)) {
       return;
     }

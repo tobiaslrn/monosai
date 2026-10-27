@@ -12,6 +12,7 @@ import {
   FIXED_NOW,
   configureGenerationTestBed,
   shortStory,
+  story,
   storyWithUnknown,
   strictStory,
   type GenerationTestBed,
@@ -87,23 +88,23 @@ describe('GenerationStore strict pass', () => {
     expect(bed.readings.frozenValidations).toHaveLength(5);
     expect(bed.readings.provenance).toHaveLength(1);
 
-    const provenance = bed.readings.provenance[0]!;
-    expect(provenance.requestedSentenceCount).toBe(5);
-    expect(provenance.repairAttempts).toBe(0);
-    expect(provenance.modelId).toBe('vendor/text-model');
-    expect(provenance.promptVersions).toMatchObject({ story: 'story/8' });
-    expect(provenance.grammarProfileSnapshotId.length).toBeGreaterThan(0);
-    expect(provenance.suggestedVocabularyItemIds.length).toBeGreaterThan(0);
+    const provenance = bed.readings.provenance[0];
+    expect(provenance!.requestedSentenceCount).toBe(5);
+    expect(provenance!.repairAttempts).toBe(0);
+    expect(provenance!.modelId).toBe('vendor/text-model');
+    expect(provenance!.promptVersions).toMatchObject({ story: 'story/8' });
+    expect(provenance!.grammarProfileSnapshotId.length).toBeGreaterThan(0);
+    expect(provenance!.suggestedVocabularyItemIds.length).toBeGreaterThan(0);
   });
 
   it('writes from a picked plot: its direction reaches the writer and its record is kept', async () => {
     const direction = toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Funny');
-    const frame = rollPlotFrames(direction, { nextInt: () => 0 })[0]!;
+    const [frame] = rollPlotFrames(direction, { nextInt: () => 0 });
     const plot = 'Aiko loses her umbrella at the station and has to ask for help.';
-    const record = storyDirectionRecord(direction, frame, plot, 'Aiko loses her umbrella.');
+    const record = storyDirectionRecord(direction, frame!, plot, 'Aiko loses her umbrella.');
     bed.provider.storyQueue.push(ok(strictStory()));
 
-    await bed.store.generate(5, { premise: plot, chosenPlot: { frame, record } });
+    await bed.store.generate(5, { premise: plot, chosenPlot: { frame: frame!, record } });
 
     expect(bed.provider.storyRequests[0]!.premise).toBe(plot);
     expect(bed.provider.storyRequests[0]!.direction).toBe(frame);
@@ -200,12 +201,12 @@ describe('GenerationStore strict pass', () => {
 
     await bed.store.generate(5, PREMISE);
 
-    const request = bed.provider.storyRequests[0]!;
-    expect(request.allowedVocabulary).toContain('ねこ');
-    expect(request.allowedVocabulary).toHaveLength(9);
-    expect(request.suggestedVocabulary.length).toBeGreaterThan(0);
-    expect(request.structuralBaseline).toContain('は');
-    expect(request.requestedSentenceCount).toBe(5);
+    const request = bed.provider.storyRequests[0];
+    expect(request!.allowedVocabulary).toContain('ねこ');
+    expect(request!.allowedVocabulary).toHaveLength(9);
+    expect(request!.suggestedVocabulary.length).toBeGreaterThan(0);
+    expect(request!.structuralBaseline).toContain('は');
+    expect(request!.requestedSentenceCount).toBe(5);
   });
 
   it('opens in the structured-output mode the stored test proved', async () => {
@@ -420,17 +421,59 @@ describe('GenerationStore repair', () => {
     expect(bed.store.state().kind).toBe('saved');
   });
 
-  it('tells the repair exactly which word must go, and where', async () => {
-    bed.provider.storyQueue.push(ok(storyWithUnknown()));
+  it('tells the repair about the words the policy did not approve, and where', async () => {
+    await bed.setPolicy(POLICY);
+    bed.provider.storyQueue.push(
+      ok(
+        story([
+          'ねこがいます。',
+          'ねこは図書館へいきます。',
+          'ねこはたべます。',
+          'ねこは駅へいきます。',
+          'ねこはのみます。',
+        ]),
+      ),
+    );
+    bed.provider.reviewQueue.push(ok([APPROVAL]));
     bed.provider.repairQueue.push(ok(strictStory()));
 
     await bed.store.generate(5, PREMISE);
 
+    // The approved word is settled, so only the one still unknown is sent back.
     // The reason is stated once by the repair prompt, not repeated per span.
     expect(bed.provider.repairRequests[0]!.unknownSpans).toEqual([
-      { sentenceIndex: 1, surface: '図書館' },
+      { sentenceIndex: 3, surface: '駅' },
     ]);
     expect(bed.provider.repairRequests[0]!.previouslyAttempted).toEqual([]);
+  });
+
+  it('announces how many words the repair is replacing', async () => {
+    bed.provider.storyQueue.push(ok(storyWithUnknown()));
+    bed.provider.repairQueue.push(ok(strictStory()));
+    const announced: string[] = [];
+    const previous = bed.provider.beforeAnswer;
+    bed.provider.beforeAnswer = () => {
+      previous?.();
+      if (bed.store.state().kind === 'repairing') {
+        announced.push(bed.store.announcement());
+      }
+    };
+
+    await bed.store.generate(5, PREMISE);
+
+    expect(announced).toEqual(['Replacing 1 unfamiliar word (attempt 1 of 1)…']);
+  });
+
+  it('forgets earlier surfaces when the same store generates again', async () => {
+    bed.provider.storyQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
+    bed.provider.repairQueue.push(ok(storyWithUnknown()), ok(storyWithUnknown()));
+
+    await bed.store.generate(5, PREMISE);
+    await bed.store.generate(5, PREMISE);
+
+    expect(bed.provider.repairRequests).toHaveLength(2);
+    expect(bed.provider.repairRequests[0]!.previouslyAttempted).toEqual([]);
+    expect(bed.provider.repairRequests[1]!.previouslyAttempted).toEqual([]);
   });
 
   it('names a surface an earlier repair already failed to remove', async () => {

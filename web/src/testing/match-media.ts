@@ -13,7 +13,15 @@ interface ManagedList {
   listeners: ((event: MediaQueryListEvent) => void)[];
 }
 
-function evaluate(query: string, widthPx: number, prefersDark: boolean): boolean {
+function evaluate(
+  query: string,
+  widthPx: number,
+  prefersDark: boolean,
+  reducedMotion: boolean,
+): boolean {
+  if (query.includes('prefers-reduced-motion')) {
+    return reducedMotion;
+  }
   const min = /\(min-width:\s*(\d+(?:\.\d+)?)(px|em)\)/.exec(query);
   if (min) {
     return widthPx >= toPixels(Number(min[1]), min[2]!);
@@ -35,6 +43,7 @@ function toPixels(value: number, unit: string): number {
 export function installFakeMatchMedia(
   initialWidthPx = 1280,
   prefersDark = false,
+  reducedMotion = false,
 ): FakeMediaMatcher {
   const originalDescriptor = Object.getOwnPropertyDescriptor(window, 'matchMedia');
   const managed: ManagedList[] = [];
@@ -44,7 +53,7 @@ export function installFakeMatchMedia(
     const listeners: ((event: MediaQueryListEvent) => void)[] = [];
     const list = {
       media: query,
-      matches: evaluate(query, width, prefersDark),
+      matches: evaluate(query, width, prefersDark, reducedMotion),
       onchange: null,
       addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => {
         listeners.push(listener);
@@ -67,7 +76,7 @@ export function installFakeMatchMedia(
     setWidth(nextWidthPx: number): void {
       width = nextWidthPx;
       for (const entry of managed) {
-        const matches = evaluate(entry.query, width, prefersDark);
+        const matches = evaluate(entry.query, width, prefersDark, reducedMotion);
         Object.defineProperty(entry.list, 'matches', { value: matches, configurable: true });
         for (const listener of entry.listeners) {
           listener({ matches, media: entry.query } as MediaQueryListEvent);

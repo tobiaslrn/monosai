@@ -15,9 +15,9 @@ import {
   READING_MUTATION_CHANNEL,
   READING_REPOSITORY,
   SETTINGS_REPOSITORY,
-  VOCABULARY_SOURCE_REPOSITORY,
   STORAGE_MAINTENANCE,
   VOCABULARY_REPOSITORY,
+  VOCABULARY_SOURCE_REPOSITORY,
 } from '../../application/shared/repository-tokens';
 import { sha256Hasher } from '../hashing/sha256-hasher';
 import {

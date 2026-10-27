@@ -68,15 +68,8 @@ departure: the surface rises from and returns to its docked edge in CSS, which
 keeps the closing slide a property of the surface rather than of the feature
 that closed it. The handle gesture that dismisses a sheet with a downward drag
 or a flick is a component of its own, so a sheet built on a CDK dialog shares
-the one implementation rather than growing a second. A dialog's element is
-removed the moment it closes, so the departure of a sheet built on one is
-sequenced by `injectSheetExit` instead: every way out (its own actions, the
-handle, `Escape`, the backdrop) lets the surface slide away in CSS and closes the
-dialog only when its animations have finished, at once under
-`prefers-reduced-motion`. Its arrival is the same CSS idiom as the popover
-sheets' (a starting style on the docked surface), so the dialog needs no code to
-rise. Features provide only the content and the lifecycle actions that closing it
-triggers.
+the one implementation rather than growing a second. Features provide only the
+content and the lifecycle actions that closing it triggers.
 
 ## 5.2 Level 2: how each layer is divided
 
@@ -134,7 +127,7 @@ synthesis adapters, the worker that encodes, and the maintenance pass that re-en
 catch-all: it holds only the primitives every other area needs, and everything in it is either a type
 or a pure function.
 
-The application audio store resolves current rows first and then safe same-content
+Application audio playback resolves current rows first and then safe same-content
 fallback rows, while keeping current-settings coverage separate from playable
 coverage ([ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md)).
 It reads the device-wide reader playback rate from settings, applies it only to
@@ -146,24 +139,6 @@ otherwise, and never sends `speed` to Gemini ([ADR 0073](../decisions/0073-pace-
 The prompt keeps articulation and rate orthogonal: clearer speech never asks
 for extra pauses, and every pace preserves connected Japanese without inserted
 silence between words or morae.
-
-Playback is three units in `application/audio/`, split so that what is stored and how it is
-sequenced can be read without the transport around them. `AudioPlaybackStore` is the transport:
-status, the cursor, the mode, failure reporting, the platform media session, and the commands the
-learner presses. It alone decides what a stop, a pause, or a seam means. `ClipCatalogue`
-(`clip-catalogue.ts`) holds what is stored for the open reading — its sentences, the one clip each
-can be played from, and coverage kept apart from playability — and answers which sentence is next
-or nearest. It reads storage latest-wins, so a slower, older read never narrows a newer one, and it
-never touches the player. `ClipSequencer` (`clip-sequencer.ts`) owns the native resource a
-continuous reading is played from: it builds it from the run of clips that exist, appends each
-sentence as it is stored, seals it when nothing more can go in, and maps between the reading's
-sentences and the resource's timeline ([ADR 0045](../decisions/0045-a-reading-is-extended-while-it-is-generated.md)).
-Both are plain classes the store builds from narrow ports, so each is tested without the injector.
-A build or an append says what happened — built, superseded, played per sentence instead, failed —
-and the store turns that into status and failure; the sequencer asks the store only whether its
-load is still the one that counts. The WAV branches (a run of WAV may start a resource that is
-complete, never one that grows) sit in the sequencer and go with `audio/wav`
-([ADR 0070](../decisions/0070-gemini-speech-is-stored-compressed.md)).
 
 The three whole-reading job stores in `application/enrichment/` — translation, grammar, and
 audio — compose one `ReadingJobLifecycle` (`reading-job-lifecycle.ts`) rather than each carrying
@@ -180,21 +155,6 @@ ends: a sentence that failed before a yield is not requested again by the resume
 planning the row, batching, the provider calls, which failures stop a run, and, for audio, the
 fruitless-run evidence behind `canRetry`. `LayerRunner` is still how the preparation lane sees the
 three.
-
-A story generation is two units in `application/generation/`. `GenerationStore` is the state
-machine for one run: prerequisites, capture, the writing request, the saved or failed or cancelled
-ending, the abort controller, and the announcements, so every transition is still decided there. The
-stretch between a written story and an accepted one is `StoryRepairLoop` (`story-repair-loop.ts`),
-a plain class built from narrow ports: tokenize and classify, review exceptions, repair. It parses,
-validates, reviews, and repairs until the story is accepted, the repair budget is spent, or
-something stops it, and it says which — accepted, exhausted (saved with the unreplaced words
-marked, [ADR 0033](../decisions/0033-unresolved-unknown-words-are-marked-not-rejected.md)),
-cancelled, or failed. It never touches the state; it reports each stage and the running counts
-through a progress port, and the store turns them into `parsing`, `validating`, `exception-review`,
-and `repairing`. The words-and-statuses side of that work (`analyzed-story.ts`) is plain functions:
-analysing a candidate, collecting the distinct unknowns, applying approvals, marking the words repair
-could not replace, and naming the spans a repair request carries. Both are tested without the
-injector.
 
 ## 5.3 Level 3
 
@@ -255,11 +215,6 @@ translate, analyse, synthesize, play — each of which re-reads the reading's su
 afterwards. What stays in the component is where a popover opens and which element it
 returns focus to.
 
-`SentenceAidsStore` follows `ReaderStore`: the stored aids for the mounted sentences are a
-`resource` over the reading row and the mounted paragraphs, so a new window, a re-read row, or a
-changed cache key reads them again and a read that was replaced before it landed is dropped. The
-page does not push the window into it.
-
 The page's own scrolling, measuring, and timing lives in units beside it in
 `features/reader/`, each provided by the page and each with a spec, so the
 component is composition and template:
@@ -318,6 +273,29 @@ emits `nearEnd` for an owner that pages. A new `generation` discards every
 measurement. The Library's shelf and the vocabulary browser are its two users; the
 Library still regroups the mounted items into date sections, so virtualization
 changes how much is mounted and never what a row means.
+
+### Whitebox: whole-reading playback
+
+`application/audio/audio-playback.store.ts` is the one surface the rest of the
+application injects. It is root-provided, because sound outlives the screen that
+started it ([ADR 0024](../decisions/0024-audio-cache-and-playback-ownership.md)),
+and it holds no logic of its own beyond `prepare`, the mode control, and wiring
+the `AudioPlayer`'s and the media session's events to the units behind it. Each of
+those is root-provided in the same folder and has its own spec:
+
+| Unit | Owns |
+| --- | --- |
+| `PlaybackClipsStore` | The reading, its sentences, and which clips exist: current-settings coverage, playable clips with their stale fallbacks and pace, and the searches that step over holes. Reads storage, never touches the player |
+| `PlaybackTransportStore` | The state the transport renders — status, cursor, pending sentence, failure, mode, explicit-navigation count, rate — and the media session's playing state and metadata, so the lock screen cannot disagree with the player card |
+| `ClipSequencer` | Getting clips into the player: a sentence clip read just before it plays, or a `ContinuousTrack` built over the contiguous run from the start sentence, appended to while the run is generated, and sealed on the four conditions of [ADR 0045](../decisions/0045-a-reading-is-extended-while-it-is-generated.md). Owns the load token, a Pause that lands mid-load, Stop, the end of a reading, and position state |
+| `PlaybackNavigator` | Where a start, a step, a seek, Previous's replay window, and the automatic advance land |
+| `PlaybackResumption` | How a held session goes on or is let go: resuming from `paused`, continuing from `stepped`, reading on when a waited-for clip arrives, the stall inside a growing track, and `stopExpectingClips` |
+| `PlaybackMaintenance` | Stopping and forgetting when the reading, its clips, or the whole cache are deleted |
+
+`ContinuousTrack` is a plain class, not a service: the timeline the player
+returned, the reading index it starts at, its pace, and the keys appended so far.
+Every index it takes is a reading index, so the offset of a track that starts
+partway through a reading lives in one place.
 
 ### Whitebox: non-reader shell and Help
 

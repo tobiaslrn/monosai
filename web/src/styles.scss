@@ -29,6 +29,16 @@
   background: rgb(37 40 36 / 45%);
 }
 
+/* A dismissed sheet's scrim fades with it rather than cutting out behind it. */
+.cdk-overlay-dark-backdrop.is-leaving {
+  background-color: transparent;
+  transition: background-color var(--motion-medium) linear;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 /* Sheets sit against the bottom edge on a phone and are centred on desktop. */
 .mn-sheet-panel {
   display: block;
@@ -43,18 +53,6 @@
   .cdk-overlay-pane.vocabulary-filter-pane {
     width: 100%;
     max-width: 100%;
-  }
-
-  /* The scrim fades with the docked sheet leaving, as a popover sheet's does. */
-  .cdk-overlay-backdrop.is-leaving {
-    opacity: 0;
-    transition: opacity var(--motion-medium) linear;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cdk-overlay-backdrop.is-leaving {
-    transition: none;
   }
 }
 

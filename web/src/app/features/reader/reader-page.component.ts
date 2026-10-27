@@ -783,6 +783,26 @@ export class ReaderPageComponent {
       });
     });
 
+    // An effect because the sentences now mounted are known only to the page: it
+    // tells the aids store which window to read.
+    effect(() => {
+      const paragraphs = this.store.paragraphs();
+      const reading = this.store.reading();
+      if (reading !== null) {
+        // A local read of the stored aids for exactly the sentences now
+        // mounted. Nothing here reaches a provider: a missing aid is fetched
+        // only when the learner asks for it.
+        untracked(() => {
+          void this.aids.load(
+            reading,
+            paragraphs.flatMap((paragraph) =>
+              paragraph.sentences.map((sentence) => sentence.sentence),
+            ),
+          );
+        });
+      }
+    });
+
     // An effect because the trigger is three job stores' progress and the
     // response is a command on the reader's store; no one store owns both.
     effect(() => {

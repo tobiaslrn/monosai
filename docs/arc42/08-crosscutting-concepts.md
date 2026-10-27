@@ -359,25 +359,14 @@ State that restarts when an input changes — a form that opens from the selecte
 collapses when the selection moves — is a `linkedSignal` over that input, never an `effect` that
 writes signals. A resource tied to a value, such as an object URL for a clip, lives in an effect that
 makes it and releases it in `onCleanup`, which runs on replacement and on destroy; the effect writes no
-signals. An effect that has to call a store method which reads state it then rewrites wraps the call in
-`untracked()`, or it becomes its own trigger.
-
-Data that is read again when other state changes is a `resource`, not an effect that calls a
-`load()`. The `params` function names what the read depends on, the loader reads it, and a read that
-is replaced before it lands is dropped by the resource itself; a loader that calls something taking an
-`AbortSignal` also passes its `abortSignal`, so the work stops rather than only being ignored.
-The owner of the data exposes the resource's result, or a signal that moves when it commits, rather
-than a `load()` that every screen has to remember to call again. A loader returns failure as a value,
-because reading the `value` of a resource in its error state throws. A `linkedSignal` over the
-resource keeps the last result while the next is loading. A store that lives for the whole
-application only reads while a screen follows it (`SourceStandingStore.follow()`), so it does no work
-for a screen that is not there. When a store commits, it reloads what the commit changed at that
-point (`PackageImportStore` reloads the vocabulary history), so no screen has to watch it finish.
-
-What is left as an effect is a command that nothing owns the cause of: a route input that says a
-reading or a share has arrived, a job's progress that has to reach the reader's row, the
-application-wide playback or lane that cannot watch one screen. Each such effect carries a comment
-saying so.
+signals. Work that has to be redone when state changes — a catalogue fetched once a key exists, the
+standings re-read when the sources or the current vocabulary change, the stored aids re-read when the
+model or profile they are keyed on arrives — is a `resource()` whose `params` read that state. Its
+loader runs untracked, so what it reads of the same signals cannot make it its own trigger, and
+`reload()` is the retry. When the store that commits the data can do the reload itself, as the Anki
+connection store does for the history, nothing needs to watch it. An effect that has to call a store
+method which reads state it then rewrites wraps the call in `untracked()`, or it becomes its own
+trigger.
 
 ## 8.12 Compiler strictness
 

@@ -630,6 +630,16 @@ length, sends the sheet away, and anything less settles it back against its
 edge. Speed counts because a short flick is how a sheet is usually put away,
 and a sheet that waits to be dragged the full distance feels deaf to it.
 
+A sheet leaves the way it arrived. However it is dismissed — the handle, the
+backdrop, Escape, a close or commit button — it slides back down its docked edge
+at the shared medium duration with the exit curve while the scrim fades with it,
+and only then does the dialog close and report its result. A native-popover sheet
+does this through its own transition; the Filters sheet, a dialog whose element
+the dialog would otherwise remove at once, animates itself out first and takes
+over the backdrop and Escape dismissal to do so. A second dismissal during the
+slide is ignored. With reduced motion, or on a wide viewport where the card is
+not docked, it closes at once.
+
 Add words is the one sheet opened from a native popover rather than a dialog,
 because it must stay open while a file chooser is up. It follows the same
 placement — hanging from its control on a wide screen, docked to the bottom
@@ -898,13 +908,6 @@ than from the docked position, and the scrim of a modal sheet fades with it.
 Arrival decelerates into place and departure accelerates away, which is what
 makes the same distance read as settling one way and leaving the other. A
 surface that is cut away between frames reads as a fault, not as an answer.
-
-A docked sheet moves the same way whether it is a popover or a dialog. A
-dialog's element is removed the moment it closes, so a sheet built on one holds
-the dialog open for the slide and closes it afterwards; it stops taking input
-while it goes. Under `prefers-reduced-motion` it neither rises nor slides and
-closes at once. A centred card on a wide screen has no edge to arrive from or
-leave by, so it appears and goes as an anchored popover does.
 
 **Every duration and easing is a token.** Durations name how long a thing is
 allowed to take: a state settling (`--motion-fast`), a surface moving

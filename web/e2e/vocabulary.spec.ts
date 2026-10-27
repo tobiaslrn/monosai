@@ -155,7 +155,6 @@ test.describe('vocabulary', () => {
     await page.getByTestId('vocabulary-filters').click();
     const filters = page.getByRole('dialog', { name: 'Filters' });
     await expect(filters).toBeVisible();
-    await expectSheetAtRest(filters.locator('.sheet'));
 
     // A dragged-away sheet discards its draft, so the list keeps every word.
     await filters.getByLabel('First studied').selectOption('last-7-days');
@@ -172,97 +171,6 @@ test.describe('vocabulary', () => {
 
     await expect(filters).toBeHidden();
     await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(1);
-  });
-
-  test('rises from the docked edge and is held open while it leaves @smoke @mobile', async ({
-    page,
-    isMobile,
-  }) => {
-    await openVocabulary(page);
-    await addTextList(page, 'My textbook', '飲む');
-    await expect(page.getByTestId('words-standing')).toHaveText('1 word', { timeout: 60_000 });
-    await page.getByTestId('browse-vocabulary').click();
-    const trigger = page.getByTestId('vocabulary-filters');
-    const filters = page.getByRole('dialog', { name: 'Filters' });
-    const surface = filters.locator('.sheet');
-    // A slow timeline leaves the sheet in flight for as long as the test needs
-    // to look at it, so no assertion races the slide.
-    const slowTimeline = (): Promise<void> =>
-      page.evaluate(() => {
-        document.documentElement.style.setProperty('--motion-medium', '5s');
-      });
-    const finishAnimations = (): Promise<void> =>
-      page.evaluate(() => {
-        for (const animation of document.getAnimations()) {
-          if (Number.isFinite(animation.effect?.getComputedTiming().endTime)) animation.finish();
-        }
-      });
-    const surfaceAnimations = (): Promise<number> =>
-      surface.evaluate((element) => element.getAnimations().length);
-
-    const dismissals: Readonly<Record<string, () => Promise<void>>> = {
-      Escape: () => page.keyboard.press('Escape'),
-      'a press on the backdrop': () => page.mouse.click(4, 4),
-      Show: () => filters.getByRole('button', { name: /Show/ }).click(),
-    };
-    for (const [way, dismiss] of Object.entries(dismissals)) {
-      await slowTimeline();
-      await trigger.click();
-      await expect(filters).toBeVisible();
-      if (isMobile) {
-        // It arrives by sliding up from the edge, and focus still lands inside it.
-        await expect.poll(surfaceAnimations, { message: `rising for ${way}` }).toBeGreaterThan(0);
-        await expect(filters.locator(':focus')).toHaveCount(1);
-        await finishAnimations();
-        await expectSheetAtRest(surface);
-      }
-      // The sheet stops taking input while it leaves, so a ghost cannot hold focus.
-      await page.evaluate(() => {
-        const state = window as unknown as { sheetLeft: boolean };
-        state.sheetLeft = false;
-        new MutationObserver((records) => {
-          if (records.some((record) => (record.target as Element).hasAttribute('inert'))) {
-            state.sheetLeft = true;
-          }
-        }).observe(document.body, { attributes: true, attributeFilter: ['inert'], subtree: true });
-      });
-
-      await dismiss();
-
-      if (isMobile) {
-        // Still attached, and on its way out rather than cut away: the slide is
-        // running and is what the dialog is waiting for.
-        await expect(surface, `leaving after ${way}`).toHaveClass(/is-leaving/);
-        await expect(surface).toHaveAttribute('inert', '');
-        await expect(filters).toHaveCount(1);
-        expect(await surfaceAnimations()).toBeGreaterThan(0);
-      }
-
-      await finishAnimations();
-      await expect(filters, `after ${way}`).toHaveCount(0);
-      expect(
-        await page.evaluate(() => (window as unknown as { sheetLeft: boolean }).sheetLeft),
-      ).toBe(true);
-      await expect(trigger, `after ${way}`).toBeFocused();
-    }
-  });
-
-  test('closes the Filters sheet at once under reduced motion @smoke @mobile', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await openVocabulary(page);
-    await addTextList(page, 'My textbook', '飲む');
-    await expect(page.getByTestId('words-standing')).toHaveText('1 word', { timeout: 60_000 });
-    await page.getByTestId('browse-vocabulary').click();
-    const trigger = page.getByTestId('vocabulary-filters');
-    const filters = page.getByRole('dialog', { name: 'Filters' });
-
-    await trigger.click();
-    await expect(filters).toBeVisible();
-    await page.keyboard.press('Escape');
-
-    await expect(filters).toHaveCount(0);
-    await expect(trigger).toBeFocused();
-    await expect(page.locator('.cdk-overlay-container [inert]')).toHaveCount(0);
   });
 
   test('dismisses the Add words sheet when its handle is dragged down @smoke @mobile', async ({

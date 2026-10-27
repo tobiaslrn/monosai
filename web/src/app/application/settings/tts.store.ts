@@ -57,6 +57,7 @@ export class TtsStore {
   private readonly instructionsAppliedSignal = signal<boolean | null>(null);
   private readonly sampleSignal = signal<Blob | null>(null);
   private readonly testCancelledSignal = signal(false);
+  private readonly catalogParametersSignal = signal<readonly string[]>([]);
 
   private controller: AbortController | null = null;
 
@@ -94,6 +95,23 @@ export class TtsStore {
   readonly styleControl = computed<StyleControl>(() => {
     const settings = this.settingsSignal();
     return settings.speechInstructions === 'supported' ? 'prompted' : 'none';
+  });
+  /**
+   * Whether the draft can expose speaking style.
+   *
+   * A current test is stronger evidence than the catalog. While the draft is
+   * being changed, the catalog describes the new model until its own preview
+   * has measured the provider's actual behavior.
+   */
+  readonly acceptsDirection = computed(() => {
+    const draft = this.draftSignal();
+    const settings = this.settingsSignal();
+    const isCurrentTest =
+      draft.modelId.trim() === settings.modelId &&
+      settings.lastTestFingerprint === this.fingerprintFor(settings);
+    return isCurrentTest
+      ? settings.speechInstructions === 'supported'
+      : declaredSpeechCapabilities(draft.modelId, this.catalogParametersSignal()).instructions;
   });
   readonly presets = computed(() => this.settingsSignal().presets);
   readonly favoriteModelIds = computed(() => this.settingsSignal().favoriteModelIds ?? []);
@@ -144,23 +162,9 @@ export class TtsStore {
     this.draftSignal.update((draft) => ({ ...draft, ...patch }));
   }
 
-  /**
-   * Whether the draft can expose speaking style.
-   *
-   * A current test is stronger evidence than the catalog. While the draft is
-   * being changed, the catalog entry for the new model (its supported
-   * parameters) describes it until its own preview has measured the
-   * provider's actual behavior.
-   */
-  acceptsDirection(catalogParameters: readonly string[]): boolean {
-    const draft = this.draftSignal();
-    const settings = this.settingsSignal();
-    const isCurrentTest =
-      draft.modelId.trim() === settings.modelId &&
-      settings.lastTestFingerprint === this.fingerprintFor(settings);
-    return isCurrentTest
-      ? settings.speechInstructions === 'supported'
-      : declaredSpeechCapabilities(draft.modelId, catalogParameters).instructions;
+  /** Gives the draft's capability projection the current catalog entry. */
+  setCatalogParameters(parameters: readonly string[]): void {
+    this.catalogParametersSignal.set(parameters);
   }
 
   async registerPreset(preset: TtsPreset): Promise<boolean> {

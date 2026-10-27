@@ -1,12 +1,4 @@
-import {
-  DestroyRef,
-  Injectable,
-  computed,
-  inject,
-  linkedSignal,
-  resource,
-  signal,
-} from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, resource, signal } from '@angular/core';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import { concernCount } from '../../domain/enrichment/grammar-normalization';
 import type {
@@ -18,11 +10,10 @@ import { chooseAnalysis } from '../../domain/enrichment/staleness';
 import type { Reading } from '../../domain/reading/reading';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { SentenceId } from '../../domain/shared/ids';
-import { err, ok, type Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { TextModelStore } from '../settings/text-model.store';
-import { ReaderStore } from '../reading/reader.store';
+import { LOGGER, NOOP_LOGGER, reportRejection, type Logger } from '../shared/diagnostics';
 import { ENRICHMENT_REPOSITORY } from '../shared/repository-tokens';
 import { AudioConfigurationService } from './audio-configuration.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
@@ -85,18 +76,6 @@ interface StoredAids {
   readonly grammarStale: boolean;
 }
 
-/** Everything one local read depends on: the mounted window, and the keys it is judged by. */
-interface AidRequest {
-  readonly reading: Reading;
-  readonly sentences: readonly Sentence[];
-  readonly translationKeys: ReadonlyMap<SentenceId, string>;
-  readonly grammarKeys: ReadonlyMap<SentenceId, string>;
-  readonly audioKeys: ReadonlyMap<SentenceId, string>;
-  readonly liveProfileHash: string | null;
-}
-
-type StoredBySentence = ReadonlyMap<SentenceId, StoredAids>;
-
 interface SentenceActions {
   readonly translation: AidAction;
   readonly grammar: AidAction;
@@ -116,11 +95,10 @@ const NO_ACTIONS: SentenceActions = {
  * drops the state and aborts anything in flight instead of keeping one
  * reading's aids alive behind another's.
  *
- * The aids follow the reader's mounted window. Reading them is **local only**:
- * the bounded per-sentence queries and nothing else, and the audio one reads
- * metadata rather than blobs. Opening a reading, scrolling it, and toggling an
- * aid therefore make zero network requests — a missing aid is fetched only by
- * an explicit action.
+ * `load` is **local only**: it reads the three bounded per-sentence queries and
+ * nothing else, and the audio one reads metadata rather than blobs. Opening a
+ * reading, scrolling it, and toggling an aid therefore make zero network
+ * requests — a missing aid is fetched only by an explicit action.
  */
 @Injectable()
 export class SentenceAidsStore {
@@ -130,10 +108,13 @@ export class SentenceAidsStore {
   private readonly textModel = inject(TextModelStore);
   private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly audioConfig = inject(AudioConfigurationService);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
-  private readonly reader = inject(ReaderStore);
-
+  private readonly readingSignal = signal<Reading | null>(null);
+  private readonly sentencesSignal = signal<readonly Sentence[]>([]);
+  private readonly storedSignal = signal<ReadonlyMap<SentenceId, StoredAids>>(new Map());
   private readonly actionsSignal = signal<ReadonlyMap<SentenceId, SentenceActions>>(new Map());
+  private readonly errorSignal = signal<StorageError | null>(null);
 
   /**
    * Aborts every in-flight action when the reader is left. The store is
@@ -141,78 +122,39 @@ export class SentenceAidsStore {
    */
   private readonly controller = new AbortController();
 
-  /** The reading whose aids are shown, or null before the reader has opened one. */
-  readonly reading = computed(() => this.reader.reading());
-
-  /** The sentences of the paragraphs the reader has mounted. */
-  readonly sentences = computed(() =>
-    this.reader
-      .paragraphs()
-      .flatMap((paragraph) => paragraph.sentences.map((sentence) => sentence.sentence)),
-  );
-
-  /**
-   * What one read depends on.
-   *
-   * A new reading row — the reader re-reads it whenever a job has written
-   * something — is a reason to read again, and so is a new window. Cache keys
-   * and staleness are derived from the text model, the live grammar profile,
-   * and the TTS configuration, all of which load after the reader opens.
-   * Re-deriving when they arrive is a repeat of the same local reads — it can
-   * no more reach a provider than the first pass could.
-   */
-  private readonly request = computed<AidRequest | undefined>(() => {
-    const reading = this.reading();
-    if (reading === null) {
-      return undefined;
-    }
-    const sentences = this.sentences();
-    return {
-      reading,
-      sentences,
-      translationKeys: this.translationKeys(sentences),
-      grammarKeys: this.grammarKeys(sentences),
-      audioKeys: this.audioKeys(sentences),
-      liveProfileHash: this.grammarProfile.liveProfileHash(),
-    };
-  });
-
-  /**
-   * The stored aids for exactly the sentences now mounted — bounded by that
-   * window, so a 50,000 character reading never reads more rows than it
-   * renders. A read that is replaced before it lands is dropped.
-   */
-  private readonly read = resource({
-    params: () => this.request(),
-    loader: ({ params }) => this.readStored(params),
-  });
-  private readonly readResult = computed(() =>
-    this.read.hasValue() ? this.read.value() : undefined,
-  );
-
-  /**
-   * What the last read found, plus what explicit actions have written since.
-   * Kept while the next read is in flight, and when one fails, so the reading
-   * stays as readable as it was.
-   */
-  private readonly storedSignal = linkedSignal<
-    Result<StoredBySentence, StorageError> | undefined,
-    StoredBySentence
-  >({
-    source: this.readResult,
-    computation: (result, previous) => (result?.ok ? result.value : (previous?.value ?? new Map())),
-  });
-  private readonly errorSignal = linkedSignal<
-    Result<StoredBySentence, StorageError> | undefined,
-    StorageError | null
-  >({
-    source: this.readResult,
-    computation: (result, previous) =>
-      result === undefined ? (previous?.value ?? null) : result.ok ? null : result.error,
-  });
+  /** The reading whose aids are loaded, or null before the first load. */
+  readonly reading = this.readingSignal.asReadonly();
+  readonly sentences = this.sentencesSignal.asReadonly();
   readonly lastError = this.errorSignal.asReadonly();
 
   constructor() {
+    // Cache keys and staleness are derived from the text model, the live
+    // grammar profile, and the TTS configuration, all of which load after the
+    // reader opens. A resource keyed on them re-reads when they arrive — a
+    // repeat of the same three local reads, which can no more reach a provider
+    // than the first pass could. Its loader runs untracked, so what `load`
+    // reads of those same signals cannot make it its own trigger.
+    resource({
+      params: () => {
+        // The configured model per task is what the keys are built from, and
+        // reading it also follows the saved key, which the test fingerprints
+        // inside it are made with.
+        const configurable = this.textModel as Partial<Pick<TextModelStore, 'configForTask'>>;
+        configurable.configForTask?.('translation');
+        configurable.configForTask?.('grammar');
+        this.textModel.settings();
+        this.grammarProfile.liveProfileHash();
+        this.audioConfig.resolve('tts-synthesis');
+        const reading = this.readingSignal();
+        const sentences = this.sentencesSignal();
+        return reading !== null && sentences.length > 0 ? { reading, sentences } : undefined;
+      },
+      loader: ({ params }) =>
+        this.load(params.reading, params.sentences).catch((error: unknown) => {
+          reportRejection(this.logger, error);
+        }),
+    });
+
     inject(DestroyRef).onDestroy(() => {
       this.controller.abort();
     });
@@ -223,7 +165,7 @@ export class SentenceAidsStore {
     const actions = this.actionsSignal();
 
     const merged = new Map<SentenceId, SentenceAids>();
-    for (const sentence of this.sentences()) {
+    for (const sentence of this.sentencesSignal()) {
       const found = stored.get(sentence.id);
       const grammar = found?.grammar ?? null;
       const action = actions.get(sentence.id) ?? NO_ACTIONS;
@@ -241,19 +183,27 @@ export class SentenceAidsStore {
     return merged;
   });
 
-  private async readStored(request: AidRequest): Promise<Result<StoredBySentence, StorageError>> {
-    const { sentences } = request;
+  /**
+   * Reads the stored aids for the mounted sentences.
+   *
+   * Called on every paragraph-window change, and bounded by that window: a
+   * 50,000 character reading never reads more rows than it currently renders.
+   */
+  async load(reading: Reading, sentences: readonly Sentence[]): Promise<void> {
+    this.readingSignal.set(reading);
+    this.sentencesSignal.set(sentences);
     if (sentences.length === 0) {
-      return ok(new Map());
+      this.storedSignal.set(new Map());
+      return;
     }
 
     const sentenceIds = sentences.map((sentence) => sentence.id);
-    const translationKeys = [...new Set(request.translationKeys.values())];
-    const grammarKeys = [...new Set(request.grammarKeys.values())];
+    const translationKeys = [...new Set(this.translationKeys(sentences).values())];
+    const grammarKeys = [...new Set(this.grammarKeys(sentences).values())];
     // Audio is asked for by key rather than by sentence, because the audio
     // table is keyed by `cacheKey`: two sentences with identical Japanese share
     // one clip, and asking by sentence would report one of them as having none.
-    const audioKeys = [...new Set(request.audioKeys.values())];
+    const audioKeys = [...new Set(this.audioKeys(sentences).values())];
     const [translations, translationHistory, analyses, analysisHistory, clips] = await Promise.all([
       this.enrichment.listTranslationsForSentences(sentenceIds),
       this.enrichment.listTranslationsForCacheKeys(translationKeys),
@@ -262,24 +212,31 @@ export class SentenceAidsStore {
       this.enrichment.listAudioSummariesForCacheKeys(audioKeys),
     ]);
     if (!translations.ok) {
-      return err(translations.error);
+      this.errorSignal.set(translations.error);
+      return;
     }
     if (!translationHistory.ok) {
-      return err(translationHistory.error);
+      this.errorSignal.set(translationHistory.error);
+      return;
     }
     if (!analyses.ok) {
-      return err(analyses.error);
+      this.errorSignal.set(analyses.error);
+      return;
     }
     if (!analysisHistory.ok) {
-      return err(analysisHistory.error);
+      this.errorSignal.set(analysisHistory.error);
+      return;
     }
     if (!clips.ok) {
-      return err(clips.error);
+      this.errorSignal.set(clips.error);
+      return;
     }
 
-    return ok(
+    this.errorSignal.set(null);
+    this.storedSignal.set(
       this.assemble(
-        request,
+        reading,
+        sentences,
         mergeByCacheKey(translations.value, translationHistory.value),
         mergeByCacheKey(analyses.value, analysisHistory.value),
         clips.value,
@@ -403,8 +360,8 @@ export class SentenceAidsStore {
     sentenceId: SentenceId,
     kind: keyof SentenceActions,
   ): { readonly reading: Reading; readonly sentence: Sentence } | null {
-    const reading = this.reading();
-    const sentence = this.sentences().find((entry) => entry.id === sentenceId);
+    const reading = this.readingSignal();
+    const sentence = this.sentencesSignal().find((entry) => entry.id === sentenceId);
     const running = (this.actionsSignal().get(sentenceId) ?? NO_ACTIONS)[kind].state === 'running';
     return reading === null || sentence === undefined || running ? null : { reading, sentence };
   }
@@ -460,13 +417,16 @@ export class SentenceAidsStore {
   }
 
   private assemble(
-    request: AidRequest,
+    reading: Reading,
+    sentences: readonly Sentence[],
     translations: readonly TranslationRecord[],
     analyses: readonly GrammarAnalysisRecord[],
     clips: readonly AudioAssetSummary[],
-  ): StoredBySentence {
-    const { reading, sentences, translationKeys, grammarKeys, audioKeys, liveProfileHash } =
-      request;
+  ): ReadonlyMap<SentenceId, StoredAids> {
+    const translationKeys = this.translationKeys(sentences);
+    const grammarKeys = this.grammarKeys(sentences);
+    const audioKeys = this.audioKeys(sentences);
+    const liveProfileHash = this.grammarProfile.liveProfileHash();
 
     const translationsByCacheKey = new Map(
       translations.map((record) => [record.cacheKey, [record]]),

@@ -1,35 +1,32 @@
-import { computed, signal } from '@angular/core';
-import type { EnrichmentRepository } from '../../domain/enrichment/enrichment-repository';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import type { Reading } from '../../domain/reading/reading';
-import type { ReadingRepository, SentenceRef } from '../../domain/reading/reading-repository';
+import type { SentenceRef } from '../../domain/reading/reading-repository';
 import type { SentenceId } from '../../domain/shared/ids';
+import { AudioConfigurationService } from '../enrichment/audio-configuration.service';
+import { EnrichmentKeysService } from '../enrichment/enrichment-keys.service';
+import { ENRICHMENT_REPOSITORY, READING_REPOSITORY } from '../shared/repository-tokens';
 
-/** Whether a clip expects the learner's local rate or has its timing baked in. */
+/** Whether a clip expects the learner's local rate or carries baked timing. */
 export type ClipPace = 'playback' | 'baked';
 
-/** The one stored clip a sentence is played from, and how it relates to Settings. */
+/** The one stored clip a sentence plays in this session. */
 export interface PlayableClip {
   readonly cacheKey: string;
-  /** Made under older settings, and played only until it is regenerated. */
   readonly stale: boolean;
   readonly pace: ClipPace;
 }
 
-/** What reading the stored clips came to. */
-export type CatalogueRefresh =
+/**
+ * What a refresh of the stored clips came to.
+ *
+ * `superseded` is a refresh a later one overtook; it changed nothing and its
+ * caller has nothing to follow up. `failed` names the storage error, because
+ * reporting it is the transport's business rather than the catalogue's.
+ */
+export type ClipsRefresh =
   | { readonly kind: 'refreshed' }
-  /** A newer refresh began first, so this one claims nothing. */
   | { readonly kind: 'superseded' }
-  /** Storage could not be read, and nothing is claimed to be playable. */
-  | { readonly kind: 'unreadable'; readonly message: string };
-
-/** What the catalogue reads, narrowed to the calls it makes. */
-export interface ClipCatalogueSources {
-  readonly readings: Pick<ReadingRepository, 'listSentenceRefs'>;
-  readonly enrichment: Pick<EnrichmentRepository, 'listAudioSummaries'>;
-  /** Cache keys under the configuration selected in Settings; empty when none resolves. */
-  readonly cacheKeysFor: (refs: readonly SentenceRef[]) => ReadonlyMap<SentenceId, string>;
-}
+  | { readonly kind: 'failed'; readonly message: string };
 
 function sameCacheKeys(
   left: ReadonlyMap<SentenceId, string>,
@@ -47,38 +44,52 @@ function sameCacheKeys(
 }
 
 /**
- * Which sentences of the open reading have a clip that can be played.
+ * Which clips exist for the reading being played, and which of them can play.
  *
- * The playback store's half that only reads storage: it knows the reading's
- * sentences, the clip each can be played from, and how that compares with the
- * current settings, and it answers where the next or nearest playable sentence
- * is. It never plays, never touches the player, and never reports a failure
- * itself — a refresh says what happened and the store decides what to do.
+ * The catalogue half of playback: it reads storage and answers questions, and
+ * it never touches the player. Two figures are kept apart on purpose (ADR
+ * 0072). *Coverage* counts only clips made under the configuration selected
+ * now, because that is what says a set is finished. *Playable* also admits the
+ * newest same-content clip made under older settings, marked stale, because
+ * audio the learner already paid for should not go silent when a voice
+ * changes.
  *
- * Coverage and playability are kept apart (ADR 0072). A sentence is *covered*
- * only by a clip under the current cache key; it is *playable* by that clip or
- * by the newest stored one whose source text is identical.
+ * Generation can leave **holes** — the queue retries out of order and records
+ * per-sentence failures without stopping a run — so the searches here move to
+ * the nearest sentence that *has* a clip rather than only to a neighbour.
  */
-export class ClipCatalogue {
+@Injectable({ providedIn: 'root' })
+export class PlaybackClipsStore {
+  private readonly readings = inject(READING_REPOSITORY);
+  private readonly enrichment = inject(ENRICHMENT_REPOSITORY);
+  private readonly keys = inject(EnrichmentKeysService);
+  private readonly audioConfig = inject(AudioConfigurationService);
+
   private readonly readingSignal = signal<Reading | null>(null);
   private readonly refsSignal = signal<readonly SentenceRef[]>([]);
+  /** Cache keys for the configuration currently selected in Settings. */
+  private readonly cacheKeysSignal = signal<ReadonlyMap<SentenceId, string>>(new Map());
   /** Sentences with a stored clip under the current key. Coverage only. */
   private readonly currentAvailableSignal = signal<ReadonlySet<SentenceId>>(new Set());
   /** One stored clip per sentence that can be played in this session. */
   private readonly playableSignal = signal<ReadonlyMap<SentenceId, PlayableClip>>(new Map());
   /** Sentences with any playable stored clip. Metadata only. */
-  private readonly availableSignal = signal<ReadonlySet<SentenceId>>(new Set());
+  private readonly availableSignal = computed<ReadonlySet<SentenceId>>(
+    () => new Set(this.playableSignal().keys()),
+  );
   /** Number of playable sentences whose clip was made under older settings. */
-  private readonly staleCountSignal = signal(0);
-  /** Cache keys for the configuration currently selected in Settings. */
-  private cacheKeys: ReadonlyMap<SentenceId, string> = new Map();
-  /** Generation counter, so a stale read never narrows a fresher one. */
+  private readonly staleCountSignal = computed(
+    () => [...this.playableSignal().values()].filter((clip) => clip.stale).length,
+  );
+
+  /** Latest-wins counter, so a stale read never narrows a fresher one. */
   private refreshToken = 0;
 
   readonly reading = this.readingSignal.asReadonly();
+  /** The reading's sentences, in reading order, which is playback order. */
   readonly refs = this.refsSignal.asReadonly();
+  /** The clip each playable sentence plays, by sentence. */
   readonly playable = this.playableSignal.asReadonly();
-  readonly available = this.availableSignal.asReadonly();
 
   readonly sentenceCount = computed(() => this.refsSignal().length);
 
@@ -116,8 +127,6 @@ export class ClipCatalogue {
     () => this.refsSignal().length > 0 && this.missingCount() === 0,
   );
 
-  constructor(private readonly sources: ClipCatalogueSources) {}
-
   /**
    * Reads which clips exist for a reading. Local only, and silent.
    *
@@ -126,12 +135,12 @@ export class ClipCatalogue {
    * availability set settling last would make the frontier appear to move
    * backwards and strand a waiting session on a clip that had already arrived.
    */
-  async refresh(reading: Reading): Promise<CatalogueRefresh> {
+  async refresh(reading: Reading): Promise<ClipsRefresh> {
     const previous = this.readingSignal();
     this.readingSignal.set(reading);
     const token = (this.refreshToken += 1);
 
-    const refs = await this.sources.readings.listSentenceRefs(reading.id);
+    const refs = await this.readings.listSentenceRefs(reading.id);
     if (token !== this.refreshToken) {
       return { kind: 'superseded' };
     }
@@ -139,29 +148,40 @@ export class ClipCatalogue {
       // Availability could not be refreshed, so nothing is claimed to be
       // playable: offering a transport built on a set this call has just failed
       // to read would be offering controls that cannot be honoured.
-      this.clearAvailability();
-      return { kind: 'unreadable', message: refs.error.message };
+      this.currentAvailableSignal.set(new Set());
+      this.playableSignal.set(new Map());
+      return { kind: 'failed', message: refs.error.message };
     }
     const ordered = [...refs.value].sort(
       (left, right) => left.positionInReading - right.positionInReading,
     );
     this.refsSignal.set(ordered);
 
-    const cacheKeys = this.sources.cacheKeysFor(ordered);
+    const config = this.audioConfig.resolve('tts-synthesis');
+    const cacheKeys = config.ok
+      ? this.keys.audioKeys(
+          ordered,
+          config.value.modelId,
+          config.value.voiceId,
+          config.value.optionsFingerprint,
+          config.value.speechInstructions,
+        )
+      : new Map<SentenceId, string>();
     const configurationChanged =
-      previous?.id !== reading.id || !sameCacheKeys(this.cacheKeys, cacheKeys);
-    this.cacheKeys = cacheKeys;
+      previous?.id !== reading.id || !sameCacheKeys(this.cacheKeysSignal(), cacheKeys);
+    this.cacheKeysSignal.set(cacheKeys);
     if (configurationChanged) {
       this.currentAvailableSignal.set(new Set());
     }
 
-    const summaries = await this.sources.enrichment.listAudioSummaries(reading.id);
+    const summaries = await this.enrichment.listAudioSummaries(reading.id);
     if (token !== this.refreshToken) {
       return { kind: 'superseded' };
     }
     if (!summaries.ok) {
-      this.clearAvailability();
-      return { kind: 'unreadable', message: summaries.error.message };
+      this.currentAvailableSignal.set(new Set());
+      this.playableSignal.set(new Map());
+      return { kind: 'failed', message: summaries.error.message };
     }
     // Matched by key rather than by the row's own `sentenceId`: the audio table
     // is keyed by `cacheKey`, so two sentences with identical Japanese share one
@@ -170,8 +190,8 @@ export class ClipCatalogue {
     const stored = new Map(summaries.value.map((summary) => [summary.cacheKey, summary]));
     const newestByContentHash = new Map<string, (typeof summaries.value)[number]>();
     for (const summary of summaries.value) {
-      const known = newestByContentHash.get(summary.sourceContentHash);
-      if (known === undefined || summary.createdAt > known.createdAt) {
+      const previous = newestByContentHash.get(summary.sourceContentHash);
+      if (previous === undefined || summary.createdAt > previous.createdAt) {
         newestByContentHash.set(summary.sourceContentHash, summary);
       }
     }
@@ -200,74 +220,49 @@ export class ClipCatalogue {
     }
     this.currentAvailableSignal.set(currentAvailable);
     this.playableSignal.set(playable);
-    this.availableSignal.set(new Set(playable.keys()));
-    this.staleCountSignal.set([...playable.values()].filter((clip) => clip.stale).length);
     return { kind: 'refreshed' };
   }
 
-  /** Forgets the reading and everything known about it. */
+  /** Forgets every clip, keeping the reading and its sentences. */
+  forgetClips(): void {
+    this.cacheKeysSignal.set(new Map());
+    this.currentAvailableSignal.set(new Set());
+    this.playableSignal.set(new Map());
+  }
+
+  /** Forgets the reading as well as its clips. */
   forgetReading(): void {
     this.readingSignal.set(null);
     this.refsSignal.set([]);
     this.forgetClips();
   }
 
-  /** Forgets every clip, keeping the reading and its sentences. */
-  forgetClips(): void {
-    this.cacheKeys = new Map();
-    this.clearAvailability();
-  }
-
-  private clearAvailability(): void {
-    this.currentAvailableSignal.set(new Set());
-    this.availableSignal.set(new Set());
-    this.playableSignal.set(new Map());
-    this.staleCountSignal.set(0);
+  /** The clip a sentence plays, when it has one. */
+  clipFor(sentenceId: SentenceId | undefined): PlayableClip | undefined {
+    return sentenceId === undefined ? undefined : this.playableSignal().get(sentenceId);
   }
 
   /** Whether one sentence can be started from right now. */
-  isAvailable(sentenceId: SentenceId | null): boolean {
-    return sentenceId !== null && this.availableSignal().has(sentenceId);
+  isAvailable(sentenceId: SentenceId | null | undefined): boolean {
+    return (
+      sentenceId !== null && sentenceId !== undefined && this.availableSignal().has(sentenceId)
+    );
   }
 
-  /** Position of one sentence, one-based, or 0 when it is not in the reading. */
+  /** Index of a sentence in reading order, or -1. */
+  indexOf(sentenceId: SentenceId): number {
+    return this.refsSignal().findIndex((ref) => ref.id === sentenceId);
+  }
+
+  /** One-based position of a sentence in the reading, or 0 when it is not in it. */
   positionOf(sentenceId: SentenceId): number {
-    return this.refsSignal().findIndex((ref) => ref.id === sentenceId) + 1;
+    return this.indexOf(sentenceId) + 1;
   }
 
-  /** The first sentence that has a clip, which is not always sentence one. */
-  firstAvailable(): SentenceRef | undefined {
+  /** The first sentence in reading order that has a clip. */
+  firstAvailable(): SentenceId | undefined {
     const available = this.availableSignal();
-    return this.refsSignal().find((ref) => available.has(ref.id));
-  }
-
-  /**
-   * The index of the nearest sentence in `direction` from one that has a clip, or -1.
-   *
-   * A search rather than a neighbour check because generation can leave holes,
-   * and a hole must not be a wall: every later sentence that was made is still
-   * something the learner paid for and should be able to reach.
-   */
-  availableIndexFrom(current: SentenceId | null, direction: 1 | -1): number {
-    if (current === null) {
-      return -1;
-    }
-    const refs = this.refsSignal();
-    const available = this.availableSignal();
-    const from = refs.findIndex((ref) => ref.id === current);
-    if (from === -1) {
-      return -1;
-    }
-    for (
-      let index = from + direction, ref = refs[index];
-      ref !== undefined;
-      index += direction, ref = refs[index]
-    ) {
-      if (available.has(ref.id)) {
-        return index;
-      }
-    }
-    return -1;
+    return this.refsSignal().find((ref) => available.has(ref.id))?.id;
   }
 
   /**
@@ -280,29 +275,61 @@ export class ClipCatalogue {
   nearestAvailableIndex(index: number): number {
     const refs = this.refsSignal();
     const available = this.availableSignal();
+    const hasClipAt = (position: number): boolean => {
+      const ref = refs[position];
+      return ref !== undefined && available.has(ref.id);
+    };
     for (let distance = 0; distance < refs.length; distance += 1) {
       const before = index - distance;
-      const beforeRef = refs[before];
-      if (beforeRef !== undefined && available.has(beforeRef.id)) {
+      if (before >= 0 && hasClipAt(before)) {
         return before;
       }
       const after = index + distance;
-      const afterRef = refs[after];
-      if (afterRef !== undefined && available.has(afterRef.id)) {
+      if (after < refs.length && hasClipAt(after)) {
         return after;
       }
     }
     return -1;
   }
 
-  /** The sentences from one index on that have a clip, stopping at the first that does not. */
+  /**
+   * The index of the nearest sentence in `direction` from `from` that has a
+   * clip, or -1.
+   *
+   * A search rather than a neighbour check because generation can leave holes,
+   * and a hole must not be a wall: every later sentence that was made is still
+   * something the learner paid for and should be able to reach.
+   */
+  availableIndexFrom(from: SentenceId | null, direction: 1 | -1): number {
+    if (from === null) {
+      return -1;
+    }
+    const refs = this.refsSignal();
+    const available = this.availableSignal();
+    const start = refs.findIndex((ref) => ref.id === from);
+    if (start === -1) {
+      return -1;
+    }
+    for (let index = start + direction; index >= 0 && index < refs.length; index += direction) {
+      const ref = refs[index];
+      if (ref !== undefined && available.has(ref.id)) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * The sentences from one index on that have a clip, stopping at the first
+   * that does not or whose pace differs from the first one's.
+   */
   contiguousRunFrom(startIndex: number): readonly SentenceRef[] {
     const refs = this.refsSignal();
     const available = this.availableSignal();
     const playable = this.playableSignal();
     const run: SentenceRef[] = [];
-    const startRef = refs[startIndex];
-    const first = startRef === undefined ? undefined : playable.get(startRef.id);
+    const firstRef = refs[startIndex];
+    const first = firstRef === undefined ? undefined : playable.get(firstRef.id);
     if (first === undefined) {
       return run;
     }

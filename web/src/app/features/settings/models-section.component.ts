@@ -46,19 +46,6 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
  * thinks is what makes a test necessary, so the test runs then, and the status
  * beside the model doubles as the retry when it did not pass.
  */
-/** The two lists the pickers offer, from one read of the catalogue. */
-interface ListedModels {
-  readonly text: readonly ModelCapabilities[];
-  readonly speech: readonly ModelCapabilities[];
-}
-
-/** What a read of the catalogue found: the lists, or why there are none. */
-type CatalogRead =
-  | ({ readonly kind: 'listed' } & ListedModels)
-  | { readonly kind: 'failed'; readonly message: string };
-
-const NO_MODELS: ListedModels = { text: [], speech: [] };
-
 @Component({
   selector: 'mn-models-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -420,7 +407,7 @@ const NO_MODELS: ListedModels = { text: [], speech: [] };
               }
             </mn-settings-row>
 
-            @if (tts.acceptsDirection(speechParameters())) {
+            @if (tts.acceptsDirection()) {
               <mn-settings-row label="Speaking style" labelId="mn-style-label">
                 <select
                   class="mn-control"
@@ -533,33 +520,47 @@ export class ModelsSectionComponent {
   });
   protected readonly branchesOpen = signal(false);
   /**
-   * The catalogue, read as soon as a key can pay for it and again whenever the
-   * key is replaced. The saved configuration cannot be shown correctly until it
-   * is known: a stored speech model has no listed voices, and a stored text
-   * model no reasoning efforts, until its entry is in hand. Waiting for a
-   * picker to be opened left those fields showing a fallback the learner never
-   * chose.
+   * The catalogue, fetched as soon as a key can pay for it.
+   *
+   * The saved configuration cannot be shown correctly until the catalogue is
+   * known: a stored speech model has no listed voices, and a stored text model
+   * no reasoning efforts, until its entry is in hand. Waiting for a picker to be
+   * opened left those fields showing a fallback the learner never chose. The
+   * key being configured is the whole of the request, so a second key replaces
+   * the first through `reload` and a failure waits for a picker to retry it.
    */
-  private readonly catalogRead = resource({
-    params: () => (this.credential.isConfigured() ? this.credential.keyGeneration() : undefined),
-    loader: ({ abortSignal }) => this.readCatalog(abortSignal),
+  private readonly catalogLoad = resource({
+    params: () => (this.credential.isConfigured() ? true : undefined),
+    loader: async () => {
+      const [text, speech] = await Promise.all([
+        this.catalog.list('text'),
+        this.catalog.list('speech'),
+      ]);
+      if (!text.ok || !speech.ok) {
+        throw new Error(
+          (!text.ok ? text.error : !speech.ok ? speech.error : null)?.message ??
+            'Could not load models.',
+        );
+      }
+      return { text: text.value, speech: speech.value };
+    },
   });
-  /** Kept while the next read is in flight, after a failure, and once the key is gone. */
-  private readonly listed = linkedSignal<CatalogRead | undefined, ListedModels>({
-    source: () => (this.catalogRead.hasValue() ? this.catalogRead.value() : undefined),
-    computation: (read, previous) =>
-      read?.kind === 'listed' ? read : (previous?.value ?? NO_MODELS),
+  /**
+   * The last catalogue that arrived. Removing the key or a failed refetch keeps
+   * what is already known, so the names on the saved choices do not vanish.
+   */
+  private readonly loadedCatalog = linkedSignal<
+    | { readonly text: readonly ModelCapabilities[]; readonly speech: readonly ModelCapabilities[] }
+    | undefined,
+    { readonly text: readonly ModelCapabilities[]; readonly speech: readonly ModelCapabilities[] }
+  >({
+    source: () => (this.catalogLoad.hasValue() ? this.catalogLoad.value() : undefined),
+    computation: (arrived, previous) => arrived ?? previous?.value ?? { text: [], speech: [] },
   });
-  protected readonly textModels = computed(() => this.listed().text);
-  protected readonly speechModels = computed(() => this.listed().speech);
-  protected readonly catalogLoading = this.catalogRead.isLoading;
-  protected readonly catalogFailure = computed(() => {
-    if (this.catalogRead.isLoading() || !this.catalogRead.hasValue()) {
-      return null;
-    }
-    const read = this.catalogRead.value();
-    return read.kind === 'failed' ? read.message : null;
-  });
+  protected readonly textModels = computed(() => this.loadedCatalog().text);
+  protected readonly speechModels = computed(() => this.loadedCatalog().speech);
+  protected readonly catalogLoading = computed(() => this.catalogLoad.isLoading());
+  protected readonly catalogFailure = computed(() => this.catalogLoad.error()?.message ?? null);
   protected readonly textTasks = [
     { id: 'translation' as const, label: 'Translation' },
     { id: 'grammar' as const, label: 'Grammar' },
@@ -584,10 +585,6 @@ export class ModelsSectionComponent {
   );
   protected readonly selectedSpeechModel = computed(
     () => this.speechModels().find((model) => model.modelId === this.tts.draft().modelId) ?? null,
-  );
-  /** What the catalog says the configured model accepts, empty when unknown. */
-  protected readonly speechParameters = computed(
-    () => this.selectedSpeechModel()?.supportedParameters ?? [],
   );
   protected readonly speechModelLabel = computed(
     () =>
@@ -678,6 +675,12 @@ export class ModelsSectionComponent {
   );
 
   constructor() {
+    effect(() => {
+      const parameters = this.selectedSpeechModel()?.supportedParameters ?? [];
+      untracked(() => {
+        this.tts.setCatalogParameters(parameters);
+      });
+    });
     // The preview clip is an object URL, a browser resource tied to the clip it
     // was made from: made when the clip and its element exist, released when
     // either is replaced and when the panel is destroyed.
@@ -713,6 +716,7 @@ export class ModelsSectionComponent {
     this.keyDraft.set('');
     if (saved) {
       this.connectionPanel().hide();
+      this.catalogLoad.reload();
     }
   }
   protected async removeKey(): Promise<void> {
@@ -731,31 +735,10 @@ export class ModelsSectionComponent {
       this.connectionPanel().hide();
     }
   }
-  /** Opening a picker is the retry for a read that failed. */
+  /** A picker opening is the learner's retry after a failed fetch. */
   protected retryCatalog(): void {
-    if (this.catalogFailure() !== null) {
-      this.catalogRead.reload();
-    }
-  }
-  private async readCatalog(signal: AbortSignal): Promise<CatalogRead> {
-    try {
-      const [text, speech] = await Promise.all([
-        this.catalog.list('text', signal),
-        this.catalog.list('speech', signal),
-      ]);
-      if (!text.ok || !speech.ok) {
-        return {
-          kind: 'failed',
-          message:
-            (!text.ok ? text.error : !speech.ok ? speech.error : null)?.message ??
-            'Could not load models.',
-        };
-      }
-      return { kind: 'listed', text: text.value, speech: speech.value };
-    } catch {
-      // A rejection is a failure like any other, reported as a value: a resource
-      // in its error state would leave the pickers empty with nothing to say.
-      return { kind: 'failed', message: 'Could not load models.' };
+    if (this.catalogLoad.status() === 'error') {
+      this.catalogLoad.reload();
     }
   }
 
@@ -806,6 +789,10 @@ export class ModelsSectionComponent {
   protected async selectSpeechModel(model: ModelCapabilities): Promise<void> {
     this.tts.setDraft({ modelId: model.modelId, voiceId: model.supportedVoices[0] ?? '' });
     await this.tts.save();
+  }
+  /** What the catalog says the configured model accepts, empty when unknown. */
+  private speechParameters(): readonly string[] {
+    return this.selectedSpeechModel()?.supportedParameters ?? [];
   }
   protected setVoice(event: Event): void {
     this.tts.setDraft({ voiceId: (event.target as HTMLInputElement).value });

@@ -1,7 +1,21 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  resource,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import {
+  LOGGER,
+  NOOP_LOGGER,
+  reportRejection,
+  type Logger,
+} from '../../application/shared/diagnostics';
 import { ManualSourceSyncStore } from '../../application/vocabulary/manual-source-sync.store';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
@@ -369,6 +383,7 @@ export class SourcePageComponent {
   private readonly sync = inject(VocabularySyncService);
   private readonly history = inject(SnapshotHistoryStore);
   private readonly dialog = inject(Dialog);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
   private readonly router = inject(Router);
   private readonly clock = inject(CLOCK);
   private readonly createConnection = inject(ANKI_PROVIDER_FACTORY);
@@ -420,9 +435,23 @@ export class SourcePageComponent {
   });
 
   constructor() {
-    this.standings.follow();
-    void this.store.load();
+    void this.store.load().then(() => this.loadStandings());
     void this.history.load();
+
+    // A package import commits on its own, outside anything this page awaits,
+    // so what the page shows is reloaded the same way a manual read's result
+    // is. The completed state is the key, so each import reloads once, and the
+    // loader runs untracked.
+    resource({
+      params: () => {
+        const state = this.packageImport.state();
+        return state.kind === 'complete' ? state : undefined;
+      },
+      loader: () =>
+        this.reload().catch((error: unknown) => {
+          reportRejection(this.logger, error);
+        }),
+    });
   }
 
   protected included(source: VocabularySource): boolean {
@@ -578,7 +607,7 @@ export class SourcePageComponent {
   protected async syncNow(source: AnkiVocabularySource): Promise<void> {
     await this.manual.syncNow(source);
     if (this.manual.state().kind === 'complete') {
-      await this.history.load();
+      await this.reload();
     }
   }
 
@@ -595,7 +624,7 @@ export class SourcePageComponent {
 
   protected finishEdit(): void {
     this.editing.set(false);
-    void this.history.load();
+    void this.reload();
   }
 
   /**
@@ -629,7 +658,7 @@ export class SourcePageComponent {
       this.changeError.set(`${rebuilt.error.message} The previous vocabulary is unchanged.`);
       return;
     }
-    await this.history.load();
+    await this.reload();
     await this.router.navigate(['/reading-level'], { fragment: 'words' });
   }
 
@@ -638,7 +667,7 @@ export class SourcePageComponent {
     if (this.refresh.state().kind === 'complete') {
       this.changeError.set(null);
       this.localAnnouncement.set('Updated what this source reads.');
-      await this.history.load();
+      await this.reload();
     }
   }
 
@@ -650,7 +679,16 @@ export class SourcePageComponent {
     }
     this.changeError.set(null);
     this.localAnnouncement.set(successMessage);
+    await this.reload();
+  }
+
+  private async reload(): Promise<void> {
     await this.history.load();
+    await this.loadStandings();
+  }
+
+  private async loadStandings(): Promise<void> {
+    await this.standings.load(this.store.sources().map((source) => source.id));
   }
 }
 
