@@ -13,6 +13,8 @@ import {
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import { assetId, type SentenceId } from '../../domain/shared/ids';
+import { err } from '../../domain/shared/result';
+import { storageError } from '../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../../infrastructure/persistence/monosai-db';
 import { DexieEnrichmentRepository } from '../../infrastructure/persistence/repositories/dexie-enrichment.repository';
 import { DexieReadingRepository } from '../../infrastructure/persistence/repositories/dexie-reading.repository';
@@ -30,6 +32,7 @@ import {
   type SequencePlayOptions,
 } from './audio-player';
 import { AudioPlaybackStore } from './audio-playback.store';
+import { ClipSequencer } from './clip-sequencer';
 import { MEDIA_SESSION, NO_MEDIA_SESSION } from './media-session';
 
 const NOW = 1_700_600_000_000;
@@ -1728,6 +1731,120 @@ describe('AudioPlaybackStore', () => {
 
       expect(bed.player.sequences).toEqual([]);
       expect(bed.player.played).toHaveLength(1);
+    });
+  });
+
+  describe('a resource build that is overtaken', () => {
+    beforeEach(async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+    });
+
+    /** Holds the first clip read until the returned function is called. */
+    function holdFirstClipRead(): () => void {
+      let open!: () => void;
+      const opened = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+      const read = bed.enrichment.getAudioByCacheKey.bind(bed.enrichment);
+      vi.spyOn(bed.enrichment, 'getAudioByCacheKey').mockImplementationOnce(async (cacheKey) => {
+        await opened;
+        return read(cacheKey);
+      });
+      return open;
+    }
+
+    /** Stops in the hop between the sequencer answering and the store acting on it. */
+    function stopAfterTheSequencerAnswers(): void {
+      const sequencer: unknown = Reflect.get(bed.store, 'sequencer');
+      if (!(sequencer instanceof ClipSequencer)) {
+        throw new Error('the store has no sequencer to watch');
+      }
+      const build = sequencer.build.bind(sequencer);
+      vi.spyOn(sequencer, 'build').mockImplementation(
+        async (...args: Parameters<ClipSequencer['build']>) => {
+          const answer = await build(...args);
+          bed.store.stop();
+          return answer;
+        },
+      );
+    }
+
+    it('leaves everything alone when the learner stops while the clips are read', async () => {
+      const open = holdFirstClipRead();
+      const playing = bed.store.play();
+      await settle();
+
+      bed.store.stop();
+      open();
+      await playing;
+
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.store.currentSentenceId()).toBeNull();
+      expect(bed.store.failure()).toBeNull();
+      expect(bed.player.sequences).toEqual([]);
+      expect(bed.player.played).toEqual([]);
+    });
+
+    it('lets a newer load win over one still reading its clips', async () => {
+      const sentences = orderedSentences(bed.draft);
+      const open = holdFirstClipRead();
+      const playing = bed.store.play();
+      await settle();
+
+      await bed.store.playSentence(sentences[1]!.id);
+      open();
+      await playing;
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
+      expect(bed.player.sequences).toEqual([]);
+      expect(bed.player.played).toHaveLength(1);
+    });
+
+    it('reports a clip that cannot be read as a storage failure', async () => {
+      vi.spyOn(bed.enrichment, 'getAudioByCacheKey').mockResolvedValueOnce(
+        err(storageError('unavailable', 'disk gone')),
+      );
+
+      await bed.store.play();
+
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.store.failure()).toEqual({ kind: 'storage', message: 'disk gone' });
+      expect(bed.player.sequences).toEqual([]);
+    });
+
+    it('does not start a built resource that a stop overtook as it was answered', async () => {
+      stopAfterTheSequencerAnswers();
+
+      await bed.store.play();
+
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.store.currentSentenceId()).toBeNull();
+      expect(bed.store.failure()).toBeNull();
+    });
+
+    it('does not fall back to a single clip after a stop overtook the answer', async () => {
+      bed.player.sequenceSupported = false;
+      stopAfterTheSequencerAnswers();
+
+      await bed.store.play();
+
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.player.played).toEqual([]);
+    });
+
+    it('does not report a failure for a load a stop overtook as it was answered', async () => {
+      vi.spyOn(bed.enrichment, 'getAudioByCacheKey').mockResolvedValueOnce(
+        err(storageError('unavailable', 'disk gone')),
+      );
+      stopAfterTheSequencerAnswers();
+
+      await bed.store.play();
+
+      expect(bed.store.status()).toBe('idle');
+      expect(bed.store.failure()).toBeNull();
     });
   });
 

@@ -1,37 +1,16 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import type { Reading } from '../../domain/reading/reading';
-import type { SentenceRef } from '../../domain/reading/reading-repository';
 import { isPlaybackRate, type PlaybackRate } from '../../domain/settings/settings';
 import type { ReadingId, SentenceId } from '../../domain/shared/ids';
 import { AudioConfigurationService } from '../enrichment/audio-configuration.service';
 import { EnrichmentKeysService } from '../enrichment/enrichment-keys.service';
 import { ENRICHMENT_REPOSITORY, READING_REPOSITORY } from '../shared/repository-tokens';
 import { AppSettingsStore } from '../settings/app-settings.store';
-import { AUDIO_PLAYER, type AudioSequenceClip, type AudioTimeline } from './audio-player';
+import { AUDIO_PLAYER } from './audio-player';
+import { ClipCatalogue, type ClipPace } from './clip-catalogue';
+import { ClipSequencer } from './clip-sequencer';
 import { MEDIA_SESSION } from './media-session';
 import { defined } from '../../domain/shared/invariant';
-
-/** Audio containers that can be appended to one native continuous resource. */
-type SequenceMimeType = 'audio/mpeg' | 'audio/webm';
-
-function isSequenceMimeType(mimeType: string): mimeType is SequenceMimeType {
-  return mimeType === 'audio/mpeg' || mimeType === 'audio/webm';
-}
-
-function sameCacheKeys(
-  left: ReadonlyMap<SentenceId, string>,
-  right: ReadonlyMap<SentenceId, string>,
-): boolean {
-  if (left.size !== right.size) {
-    return false;
-  }
-  for (const [sentenceId, cacheKey] of left) {
-    if (right.get(sentenceId) !== cacheKey) {
-      return false;
-    }
-  }
-  return true;
-}
 
 /**
  * `waiting` is a started session that has run out of prepared audio.
@@ -100,32 +79,6 @@ export type PlaybackFailure =
   | { readonly kind: 'decode-failed'; readonly position: number }
   | { readonly kind: 'storage'; readonly message: string };
 
-/**
- * The native resource a continuous session is playing, and where it starts.
- *
- * The resource covers a run of sentences from `baseIndex` rather than the whole
- * reading: a session started while generation is still going gets the clips
- * that exist, and the rest are appended to the same resource as they are made.
- * Its own indices are therefore offset from the reading's.
- */
-interface LoadedSequence {
-  timeline: AudioTimeline;
-  /** Index in `refs` of the sentence the resource starts at. */
-  readonly baseIndex: number;
-  /** Whether the resource expects the learner's local rate or baked timing. */
-  readonly pace: ClipPace;
-  /** Cache keys appended so far, in reading order from `baseIndex`. */
-  readonly keys: string[];
-}
-
-type ClipPace = 'playback' | 'baked';
-
-interface PlayableClip {
-  readonly cacheKey: string;
-  readonly stale: boolean;
-  readonly pace: ClipPace;
-}
-
 /** What a load is: something the learner pressed, or reading on by itself. */
 interface LoadOptions {
   /**
@@ -169,7 +122,6 @@ interface LoadOptions {
  */
 @Injectable({ providedIn: 'root' })
 export class AudioPlaybackStore {
-  private readonly readings = inject(READING_REPOSITORY);
   private readonly enrichment = inject(ENRICHMENT_REPOSITORY);
   private readonly keys = inject(EnrichmentKeysService);
   private readonly audioConfig = inject(AudioConfigurationService);
@@ -177,18 +129,27 @@ export class AudioPlaybackStore {
   private readonly mediaSession = inject(MEDIA_SESSION);
   private readonly appSettings = inject(AppSettingsStore);
 
-  private readonly readingSignal = signal<Reading | null>(null);
-  private readonly refsSignal = signal<readonly SentenceRef[]>([]);
-  /** Cache keys for the configuration currently selected in Settings. */
-  private readonly cacheKeysSignal = signal<ReadonlyMap<SentenceId, string>>(new Map());
-  /** Sentences with a stored clip under the current key. Coverage only. */
-  private readonly currentAvailableSignal = signal<ReadonlySet<SentenceId>>(new Set());
-  /** One stored clip per sentence that can be played in this session. */
-  private readonly playableSignal = signal<ReadonlyMap<SentenceId, PlayableClip>>(new Map());
-  /** Sentences with any playable stored clip. Metadata only. */
-  private readonly availableSignal = signal<ReadonlySet<SentenceId>>(new Set());
-  /** Number of playable sentences whose clip was made under older settings. */
-  private readonly staleCountSignal = signal(0);
+  private readonly catalogue = new ClipCatalogue({
+    readings: inject(READING_REPOSITORY),
+    enrichment: this.enrichment,
+    cacheKeysFor: (refs) => {
+      const config = this.audioConfig.resolve('tts-synthesis');
+      return config.ok
+        ? this.keys.audioKeys(
+            refs,
+            config.value.modelId,
+            config.value.voiceId,
+            config.value.optionsFingerprint,
+            config.value.speechInstructions,
+          )
+        : new Map<SentenceId, string>();
+    },
+  });
+  private readonly sequencer = new ClipSequencer(this.catalogue, {
+    player: this.player,
+    clips: this.enrichment,
+    rateFor: (pace) => this.rateForPace(pace),
+  });
   private readonly statusSignal = signal<PlaybackStatus>('idle');
   private readonly currentSignal = signal<SentenceId | null>(null);
   private readonly failureSignal = signal<PlaybackFailure | null>(null);
@@ -218,8 +179,6 @@ export class AudioPlaybackStore {
 
   /** Generation counter, so a clip loaded for a superseded call never starts. */
   private loadToken = 0;
-  /** The same, for `prepare`, so a stale read never narrows a fresher one. */
-  private prepareToken = 0;
   /** Whether a clip read is in flight, so Pause knows there is no player to pause. */
   private loading = false;
   /** A Pause that arrived during a load, to be honoured when the clip lands. */
@@ -233,15 +192,6 @@ export class AudioPlaybackStore {
    * rather than in either caller.
    */
   private single = false;
-  /** The native continuous resource, when one is loaded. */
-  private sequence: LoadedSequence | null = null;
-  /**
-   * The append in flight, so two refreshes cannot append the same clip twice.
-   *
-   * `prepare` runs on every completed sentence of a generation run and is
-   * routinely re-entered while an earlier call is still reading blobs.
-   */
-  private extending: Promise<void> | null = null;
 
   readonly status = this.statusSignal.asReadonly();
   readonly currentSentenceId = this.currentSignal.asReadonly();
@@ -255,62 +205,28 @@ export class AudioPlaybackStore {
   });
   /** The one mode with behaviour behind it, named for what it does at a seam. */
   readonly stepMode = computed(() => this.modeSignal() === 'sentence');
-  readonly reading = this.readingSignal.asReadonly();
 
   readonly isActive = computed(() => this.statusSignal() !== 'idle');
 
-  readonly sentenceCount = computed(() => this.refsSignal().length);
-
-  readonly missingCount = computed(() => {
-    const available = this.currentAvailableSignal();
-    return this.refsSignal().filter((ref) => !available.has(ref.id)).length;
-  });
+  // What is stored for the open reading, as the catalogue reports it.
+  readonly reading = this.catalogue.reading;
+  readonly sentenceCount = this.catalogue.sentenceCount;
+  readonly missingCount = this.catalogue.missingCount;
+  readonly availableCount = this.catalogue.availableCount;
+  readonly hasPlayableAudio = this.catalogue.hasPlayableAudio;
+  readonly hasStaleAudio = this.catalogue.hasStaleAudio;
+  readonly canPlayWholeReading = this.catalogue.canPlayWholeReading;
 
   /** Position of the sentence being read, one-based, or 0 when nothing is. */
   readonly currentPosition = computed(() => {
     const current = this.currentSignal();
-    if (current === null) {
-      return 0;
-    }
-    return this.refsSignal().findIndex((ref) => ref.id === current) + 1;
+    return current === null ? 0 : this.catalogue.positionOf(current);
   });
-
-  /** Sentences with a clip under the current cache key. */
-  readonly availableCount = computed(() => this.refsSignal().length - this.missingCount());
-
-  /**
-   * Whether there is anything at all that could be played right now.
-   *
-   * This is what decides whether the player offers a transport, and what Play
-   * is gated on: clips arrive out of order and a run can leave a hole at
-   * sentence one, so requiring the *first* sentence would leave a learner
-   * unable to play audio they have already paid for.
-   */
-  readonly hasPlayableAudio = computed(() => this.availableSignal().size > 0);
-
-  /** At least one playable sentence uses a clip made with older settings. */
-  readonly hasStaleAudio = computed(() => this.staleCountSignal() > 0);
-
-  /**
-   * Whether the reading is complete under the current voice.
-   *
-   * No longer a gate on playback (ADR 0034). It is what says the set is
-   * finished — the library audio summary, and the player offer to prepare
-   * whatever is still missing — and it still excludes clips made by a voice
-   * that is no longer configured, because counting them would silently mix
-   * voices into one completeness figure.
-   */
-  readonly canPlayWholeReading = computed(
-    () => this.refsSignal().length > 0 && this.missingCount() === 0,
-  );
 
   /** Position of the sentence a waiting session is waiting for, or 0. */
   readonly pendingPosition = computed(() => {
     const pending = this.pendingSignal();
-    if (pending === null) {
-      return 0;
-    }
-    return this.refsSignal().findIndex((ref) => ref.id === pending) + 1;
+    return pending === null ? 0 : this.catalogue.positionOf(pending);
   });
 
   /** Whether Next has a later sentence with a clip to jump to. */
@@ -371,109 +287,26 @@ export class AudioPlaybackStore {
    * changed. Opening a reading therefore learns whether it can be played
    * without making a request and without making a sound.
    *
-   * Latest-wins: the reader re-runs this on every completed sentence of a
-   * generation run, so two calls are routinely in flight, and an older, smaller
-   * availability set settling last would make the frontier appear to move
-   * backwards and strand a waiting session on a clip that had already arrived.
+   * Latest-wins, which the catalogue enforces: the reader re-runs this on every
+   * completed sentence of a generation run, so two calls are routinely in flight.
    */
   async prepare(reading: Reading): Promise<void> {
-    const previous = this.readingSignal();
+    const previous = this.catalogue.reading();
     if (previous !== null && previous.id !== reading.id) {
       this.stop();
     }
-    this.readingSignal.set(reading);
-    const token = (this.prepareToken += 1);
-
-    const refs = await this.readings.listSentenceRefs(reading.id);
-    if (token !== this.prepareToken) {
+    const refreshed = await this.catalogue.refresh(reading);
+    if (refreshed.kind === 'superseded') {
       return;
     }
-    if (!refs.ok) {
-      this.failureSignal.set({ kind: 'storage', message: refs.error.message });
-      this.staleCountSignal.set(0);
-      // Availability could not be refreshed, so nothing is claimed to be
-      // playable: offering a transport built on a set this call has just failed
-      // to read would be offering controls that cannot be honoured.
-      this.currentAvailableSignal.set(new Set());
-      this.availableSignal.set(new Set());
-      this.playableSignal.set(new Map());
+    if (refreshed.kind === 'unreadable') {
+      this.failureSignal.set({ kind: 'storage', message: refreshed.message });
       return;
     }
-    const ordered = [...refs.value].sort(
-      (left, right) => left.positionInReading - right.positionInReading,
-    );
-    this.refsSignal.set(ordered);
-
-    const config = this.audioConfig.resolve('tts-synthesis');
-    const cacheKeys = config.ok
-      ? this.keys.audioKeys(
-          ordered,
-          config.value.modelId,
-          config.value.voiceId,
-          config.value.optionsFingerprint,
-          config.value.speechInstructions,
-        )
-      : new Map<SentenceId, string>();
-    const configurationChanged =
-      previous?.id !== reading.id || !sameCacheKeys(this.cacheKeysSignal(), cacheKeys);
-    this.cacheKeysSignal.set(cacheKeys);
-    if (configurationChanged) {
-      this.currentAvailableSignal.set(new Set());
-    }
-
-    const summaries = await this.enrichment.listAudioSummaries(reading.id);
-    if (token !== this.prepareToken) {
-      return;
-    }
-    if (!summaries.ok) {
-      this.failureSignal.set({ kind: 'storage', message: summaries.error.message });
-      this.currentAvailableSignal.set(new Set());
-      this.availableSignal.set(new Set());
-      this.playableSignal.set(new Map());
-      this.staleCountSignal.set(0);
-      return;
-    }
-    // Matched by key rather than by the row's own `sentenceId`: the audio table
-    // is keyed by `cacheKey`, so two sentences with identical Japanese share one
-    // clip and one row. Fallbacks are matched by content hash, which is the
-    // safety line that prevents an edited sentence from inheriting old audio.
-    const stored = new Map(summaries.value.map((summary) => [summary.cacheKey, summary]));
-    const newestByContentHash = new Map<string, (typeof summaries.value)[number]>();
-    for (const summary of summaries.value) {
-      const previous = newestByContentHash.get(summary.sourceContentHash);
-      if (previous === undefined || summary.createdAt > previous.createdAt) {
-        newestByContentHash.set(summary.sourceContentHash, summary);
-      }
-    }
-    const currentAvailable = new Set<SentenceId>();
-    const playable = new Map<SentenceId, PlayableClip>();
-    for (const ref of ordered) {
-      const cacheKey = cacheKeys.get(ref.id);
-      const current = cacheKey === undefined ? undefined : stored.get(cacheKey);
-      if (current !== undefined) {
-        currentAvailable.add(ref.id);
-        playable.set(ref.id, {
-          cacheKey: current.cacheKey,
-          stale: false,
-          pace: current.pace === 'playback' ? 'playback' : 'baked',
-        });
-        continue;
-      }
-      const fallback = newestByContentHash.get(ref.contentHash);
-      if (fallback !== undefined) {
-        playable.set(ref.id, {
-          cacheKey: fallback.cacheKey,
-          stale: true,
-          pace: fallback.pace === 'playback' ? 'playback' : 'baked',
-        });
-      }
-    }
-    this.currentAvailableSignal.set(currentAvailable);
-    this.playableSignal.set(playable);
-    this.availableSignal.set(new Set(playable.keys()));
-    this.staleCountSignal.set([...playable.values()].filter((clip) => clip.stale).length);
     await this.continueIfPendingArrived();
-    await this.extendSequence();
+    if (await this.sequencer.extend()) {
+      this.publishMediaPosition();
+    }
   }
 
   /**
@@ -488,27 +321,19 @@ export class AudioPlaybackStore {
     if (pending === null || this.statusSignal() !== 'waiting') {
       return;
     }
-    if (this.sequence !== null) {
+    if (this.sequencer.loaded) {
       // A continuous session waits inside its own resource. Appending the clip
       // is what reads on there, and loading it separately would replace the
       // resource the reading is playing from.
       return;
     }
-    if (!this.availableSignal().has(pending)) {
+    if (!this.catalogue.isAvailable(pending)) {
       return;
     }
     this.pendingSignal.set(null);
     await this.load(pending, { keepStatus: true });
   }
 
-  /**
-   * Starts at the first sentence that has a clip.
-   *
-   * Not strictly the first sentence: a run that failed or is still filling in
-   * can leave sentence one missing while the rest of the reading is ready, and
-   * refusing to start there would make audio the learner has already paid for
-   * unreachable from the transport.
-   */
   /**
    * Turns one-sentence-at-a-time on or off.
    *
@@ -544,7 +369,7 @@ export class AudioPlaybackStore {
     }
     // Resolve the current sentence while this is still continuous. In sentence
     // mode the fallback boundary guard deliberately keeps the old cursor.
-    if (mode === 'sentence' && this.sequence !== null) {
+    if (mode === 'sentence' && this.sequencer.loaded) {
       this.followSequencePosition();
     }
     this.modeSignal.set(mode);
@@ -561,20 +386,23 @@ export class AudioPlaybackStore {
    * sentence-relative offset and its native `ended` event stops exactly there.
    */
   private async useCurrentSentenceClip(): Promise<void> {
-    const sequence = this.sequence;
     const current = this.currentSignal();
     const status = this.statusSignal();
-    if (sequence === null || current === null || (status !== 'playing' && status !== 'paused')) {
+    if (
+      !this.sequencer.loaded ||
+      current === null ||
+      (status !== 'playing' && status !== 'paused')
+    ) {
       return;
     }
-    const refIndex = this.refsSignal().findIndex((ref) => ref.id === current);
-    const offset = refIndex - sequence.baseIndex;
-    const start = sequence.timeline.starts[offset];
-    if (start === undefined) {
+    const span = this.sequencer.spanOf(this.catalogue.positionOf(current) - 1);
+    if (span === null) {
       return;
     }
-    const end = sequence.timeline.starts[offset + 1] ?? sequence.timeline.duration;
-    const elapsed = Math.min(Math.max(this.player.elapsed() - start, 0), Math.max(end - start, 0));
+    const elapsed = Math.min(
+      Math.max(this.player.elapsed() - span.start, 0),
+      Math.max(span.end - span.start, 0),
+    );
     this.player.pause();
     await this.load(current, {
       startSeconds: elapsed,
@@ -595,18 +423,18 @@ export class AudioPlaybackStore {
    * reading that was not playing is still the press of Play.
    */
   async seekTo(position: number): Promise<void> {
-    const refs = this.refsSignal();
+    const refs = this.catalogue.refs();
     if (refs.length === 0) {
       return;
     }
     const clamped = Math.min(Math.max(Math.round(position), 1), refs.length);
-    const index = this.nearestAvailableIndex(clamped - 1);
+    const index = this.catalogue.nearestAvailableIndex(clamped - 1);
     const target = refs[index]?.id;
     if (target === undefined) {
       return;
     }
     if (this.isActive()) {
-      const time = this.sequenceTimeOf(index);
+      const time = this.sequencer.timeOf(index);
       if (time !== null) {
         this.navigationSignal.update((count) => count + 1);
         this.currentSignal.set(target);
@@ -626,8 +454,7 @@ export class AudioPlaybackStore {
   }
 
   play(): Promise<void> {
-    const available = this.availableSignal();
-    const first = this.refsSignal().find((ref) => available.has(ref.id));
+    const first = this.catalogue.firstAvailable();
     return first === undefined ? Promise.resolve() : this.startAt(first.id);
   }
 
@@ -645,10 +472,10 @@ export class AudioPlaybackStore {
    * learner just paid for unplayable.
    */
   async playSentence(sentenceId: SentenceId): Promise<void> {
-    if (!this.availableSignal().has(sentenceId)) {
+    if (!this.catalogue.isAvailable(sentenceId)) {
       // Reported the way `startAt` reports it: naming the sentence without
       // tearing down whatever session the learner already had.
-      const position = this.refsSignal().findIndex((ref) => ref.id === sentenceId) + 1;
+      const position = this.catalogue.positionOf(sentenceId);
       this.failureSignal.set({ kind: 'missing-clip', position });
       return;
     }
@@ -717,7 +544,7 @@ export class AudioPlaybackStore {
     this.loading = false;
     this.pauseRequested = false;
     this.pendingSignal.set(null);
-    this.sequence = null;
+    this.sequencer.release();
     this.player.stop();
     this.statusSignal.set('idle');
     this.currentSignal.set(null);
@@ -748,8 +575,7 @@ export class AudioPlaybackStore {
       await this.step(1);
       return;
     }
-    const refs = this.refsSignal();
-    const after = refs[refs.findIndex((ref) => ref.id === current) + 1];
+    const after = this.catalogue.refs()[this.catalogue.positionOf(current)];
     if (after === undefined) {
       // The last sentence. Nothing is coming, and the reading is over.
       return;
@@ -774,7 +600,7 @@ export class AudioPlaybackStore {
     if (this.currentSignal() === null) {
       return Promise.resolve();
     }
-    const currentStart = this.sequenceTimeOf(Math.max(this.currentPosition() - 1, 0)) ?? 0;
+    const currentStart = this.sequencer.timeOf(Math.max(this.currentPosition() - 1, 0)) ?? 0;
     if (this.player.elapsed() - currentStart > REPLAY_WINDOW_SECONDS) {
       return this.replayCurrent();
     }
@@ -795,7 +621,7 @@ export class AudioPlaybackStore {
    * running belongs to the reader rather than to playback.
    */
   stopExpectingClips(): void {
-    this.sealSequence();
+    this.sequencer.seal();
     if (this.statusSignal() !== 'waiting') {
       return;
     }
@@ -813,17 +639,11 @@ export class AudioPlaybackStore {
    * library never silences the one that is playing.
    */
   readingDeleted(readingId: ReadingId): void {
-    if (this.readingSignal()?.id !== readingId) {
+    if (this.catalogue.reading()?.id !== readingId) {
       return;
     }
     this.stop();
-    this.readingSignal.set(null);
-    this.refsSignal.set([]);
-    this.cacheKeysSignal.set(new Map());
-    this.currentAvailableSignal.set(new Set());
-    this.playableSignal.set(new Map());
-    this.availableSignal.set(new Set());
-    this.staleCountSignal.set(0);
+    this.catalogue.forgetReading();
   }
 
   /**
@@ -834,17 +654,13 @@ export class AudioPlaybackStore {
    */
   audioCacheCleared(): void {
     this.stop();
-    this.cacheKeysSignal.set(new Map());
-    this.currentAvailableSignal.set(new Set());
-    this.playableSignal.set(new Map());
-    this.availableSignal.set(new Set());
-    this.staleCountSignal.set(0);
+    this.catalogue.forgetClips();
     this.failureSignal.set(null);
   }
 
   /** Stops and forgets clips only when they belong to the cleared reading. */
   readingAudioCleared(readingId: ReadingId): void {
-    if (this.readingSignal()?.id !== readingId) {
+    if (this.catalogue.reading()?.id !== readingId) {
       return;
     }
     this.audioCacheCleared();
@@ -852,7 +668,7 @@ export class AudioPlaybackStore {
 
   /** Whether one sentence can be started from right now. */
   isAvailable(sentenceId: SentenceId | null): boolean {
-    return sentenceId !== null && this.availableSignal().has(sentenceId);
+    return this.catalogue.isAvailable(sentenceId);
   }
 
   /** Clears a reported failure once the surface that showed it is done with it. */
@@ -867,8 +683,8 @@ export class AudioPlaybackStore {
    * it exist yet is not the business of this call: reading on waits for them.
    */
   private async startAt(sentenceId: SentenceId): Promise<void> {
-    if (!this.availableSignal().has(sentenceId)) {
-      const position = this.refsSignal().findIndex((ref) => ref.id === sentenceId) + 1;
+    if (!this.catalogue.isAvailable(sentenceId)) {
+      const position = this.catalogue.positionOf(sentenceId);
       this.failureSignal.set({ kind: 'missing-clip', position });
       return;
     }
@@ -887,7 +703,7 @@ export class AudioPlaybackStore {
     this.navigationSignal.update((count) => count + 1);
     this.pendingSignal.set(null);
     try {
-      const start = this.sequenceTimeOf(Math.max(this.currentPosition() - 1, 0));
+      const start = this.sequencer.timeOf(Math.max(this.currentPosition() - 1, 0));
       if (start !== null) {
         this.player.seek(start);
         await this.player.resume();
@@ -917,7 +733,7 @@ export class AudioPlaybackStore {
       return;
     }
     const target = this.availableIndexFrom(direction);
-    const targetRef = this.refsSignal()[target];
+    const targetRef = this.catalogue.refs()[target];
     if (targetRef === undefined) {
       if (direction === -1) {
         await this.replayCurrent();
@@ -927,7 +743,7 @@ export class AudioPlaybackStore {
     this.navigationSignal.update((count) => count + 1);
     this.single = false;
     this.pendingSignal.set(null);
-    const time = this.sequenceTimeOf(target);
+    const time = this.sequencer.timeOf(target);
     if (time !== null) {
       this.currentSignal.set(targetRef.id);
       this.player.seek(time);
@@ -944,7 +760,7 @@ export class AudioPlaybackStore {
       this.publishMediaPosition();
       return;
     }
-    if (this.sequence !== null) {
+    if (this.sequencer.loaded) {
       // A sentence stored since the resource was built, or one before its
       // start. Starting there builds a resource from it rather than seeking
       // into audio the element does not have.
@@ -956,12 +772,12 @@ export class AudioPlaybackStore {
 
   /** The automatic advance. Deliberately does not count as a navigation. */
   private async advanceAfterEnd(): Promise<void> {
-    const refs = this.refsSignal();
+    const refs = this.catalogue.refs();
     const current = this.currentSignal();
     if (current === null) {
       return;
     }
-    if (this.sequence !== null) {
+    if (this.sequencer.loaded) {
       // A sealed resource can end at a pace boundary. Continue with the next
       // playable run rather than making the learner press Play again.
       const next = refs[this.availableIndexFrom(1)];
@@ -976,7 +792,7 @@ export class AudioPlaybackStore {
       this.stop();
       return;
     }
-    const next = refs[refs.findIndex((ref) => ref.id === current) + 1];
+    const next = refs[this.catalogue.positionOf(current)];
     if (next === undefined) {
       this.finish();
       return;
@@ -989,7 +805,7 @@ export class AudioPlaybackStore {
       this.mediaSession.setPlaybackState('paused');
       return;
     }
-    if (!this.availableSignal().has(next.id)) {
+    if (!this.catalogue.isAvailable(next.id)) {
       // The frontier. The cursor stays on the sentence just heard, so the
       // reader keeps showing where the learner is, and the session waits for
       // the clip rather than reporting that the reading would not play.
@@ -1036,268 +852,46 @@ export class AudioPlaybackStore {
   /**
    * Loads the clips that exist from one sentence on into one native resource.
    *
-   * The run is contiguous from the start sentence rather than the whole
-   * reading, so a session can begin while generation is still going. While it
-   * is short of the end the resource is left **open**, and `extendSequence`
-   * appends each sentence as it is stored. That is what keeps a locked screen
-   * reading on: the element never goes quiet between two sentences, so the
-   * document keeps the media-playing reason not to be frozen, and the advance
-   * itself happens inside the native pipeline rather than in an event handler.
+   * `ClipSequencer` builds it; this turns what happened into transport state.
+   * Whatever it cannot build, the sentence is played as a single clip instead.
    */
   private async loadSequence(sentenceId: SentenceId): Promise<void> {
     const token = (this.loadToken += 1);
-    const refs = this.refsSignal();
-    const startIndex = refs.findIndex((ref) => ref.id === sentenceId);
+    const startIndex = this.catalogue.positionOf(sentenceId) - 1;
     if (startIndex === -1) {
-      return;
-    }
-    const run = this.contiguousRunFrom(startIndex);
-    if (run.length === 0) {
-      await this.load(sentenceId);
       return;
     }
     this.loading = true;
     this.statusSignal.set('loading');
-    const byKey = new Map<string, AudioSequenceClip>();
-    const clips: AudioSequenceClip[] = [];
-    const keys: string[] = [];
-    for (const ref of run) {
-      const playable = this.playableSignal().get(ref.id);
-      if (playable === undefined) {
-        this.loading = false;
-        await this.load(sentenceId);
-        return;
-      }
-      const cacheKey = playable.cacheKey;
-      let clip = byKey.get(cacheKey);
-      if (clip === undefined) {
-        const loaded = await this.enrichment.getAudioByCacheKey(cacheKey);
-        if (token !== this.loadToken) {
-          return;
-        }
-        if (!loaded.ok) {
-          this.loading = false;
-          this.stopWithFailure({ kind: 'storage', message: loaded.error.message });
-          return;
-        }
-        if (loaded.value === null) {
-          this.loading = false;
-          await this.load(sentenceId);
-          return;
-        }
-        if (!isSequenceMimeType(loaded.value.mimeType) && loaded.value.mimeType !== 'audio/wav') {
-          this.loading = false;
-          await this.load(sentenceId);
-          return;
-        }
-        clip = { blob: loaded.value.blob, mimeType: loaded.value.mimeType };
-        byKey.set(cacheKey, clip);
-      }
-      keys.push(cacheKey);
-      clips.push(clip);
-    }
-
-    const complete = startIndex + run.length === refs.length;
-    const open = !complete && clips.every((clip) => isSequenceMimeType(clip.mimeType));
-    if (!complete && !open) {
-      // A WAV resource states its own length and cannot grow, so building one
-      // over part of a reading would end the session at the frontier with no
-      // way on. The per-sentence path waits there instead.
-      this.loading = false;
-      await this.load(sentenceId);
+    const built = await this.sequencer.build(startIndex, {
+      current: () => token === this.loadToken,
+      startPaused: () => this.pauseRequested,
+      continuous: () => this.canUseSequence(),
+    });
+    // Resumed a hop after the sequencer settled, so a stop or a newer load may
+    // have landed in between. Whatever it answered, acting on it now would
+    // start, fail, or fall back for a load nobody is waiting on.
+    if (token !== this.loadToken || built.kind === 'superseded') {
       return;
     }
-
-    const startPaused = this.pauseRequested;
-    try {
-      this.player.setRate(this.rateForPace(this.playableSignal().get(sentenceId)?.pace ?? 'baked'));
-      const timeline = await this.player.playSequence(clips, {
-        startIndex: 0,
-        startPaused,
-        open,
-      });
-      if (token !== this.loadToken) {
-        return;
-      }
-      if (!this.canUseSequence()) {
-        // The learner selected sentence mode while the native resource was
-        // being assembled. Replace the just-started resource before it can run
-        // across its first boundary.
-        this.loading = false;
-        await this.load(sentenceId);
-        return;
-      }
-      this.sequence = {
-        timeline,
-        baseIndex: startIndex,
-        pace: this.playableSignal().get(sentenceId)?.pace ?? 'baked',
-        keys,
-      };
-    } catch {
-      if (token === this.loadToken) {
-        // Browsers without MPEG MediaSource retain the established foreground path.
-        this.loading = false;
-        await this.load(sentenceId);
-      }
+    if (built.kind === 'failed') {
+      this.loading = false;
+      this.stopWithFailure({ kind: 'storage', message: built.message });
+      return;
+    }
+    if (built.kind === 'per-sentence') {
+      this.loading = false;
+      await this.load(sentenceId);
       return;
     }
     this.loading = false;
     this.pauseRequested = false;
     this.currentSignal.set(sentenceId);
-    this.statusSignal.set(startPaused ? 'paused' : 'playing');
+    this.statusSignal.set(built.startPaused ? 'paused' : 'playing');
     this.failureSignal.set(null);
     this.publishMediaMetadata(startIndex);
-    this.mediaSession.setPlaybackState(startPaused ? 'paused' : 'playing');
+    this.mediaSession.setPlaybackState(built.startPaused ? 'paused' : 'playing');
     this.publishMediaPosition();
-  }
-
-  /** The sentences from one index on that have a clip, stopping at the first that does not. */
-  private contiguousRunFrom(startIndex: number): readonly SentenceRef[] {
-    const refs = this.refsSignal();
-    const available = this.availableSignal();
-    const playable = this.playableSignal();
-    const run: SentenceRef[] = [];
-    const startRef = refs[startIndex];
-    const first = startRef === undefined ? undefined : playable.get(startRef.id);
-    if (first === undefined) {
-      return run;
-    }
-    for (const ref of refs.slice(startIndex)) {
-      const clip = playable.get(ref.id);
-      if (!available.has(ref.id) || clip?.pace !== first.pace) {
-        break;
-      }
-      run.push(ref);
-    }
-    return run;
-  }
-
-  /** Where a sentence starts in the loaded resource, or null if it is not in it. */
-  private sequenceTimeOf(refIndex: number): number | null {
-    const sequence = this.sequence;
-    if (sequence === null) {
-      return null;
-    }
-    const start = sequence.timeline.starts[refIndex - sequence.baseIndex];
-    if (start === undefined) {
-      return null;
-    }
-    // Never below the floor: audio evicted to make room for an append is no
-    // longer there to seek to, and landing under it would stall the element.
-    return Math.max(start, sequence.timeline.floor);
-  }
-
-  /** Index in `refs` of the last sentence appended to the resource, or -1. */
-  private appendedLimitIndex(): number {
-    const sequence = this.sequence;
-    return sequence === null ? -1 : sequence.baseIndex + sequence.timeline.starts.length - 1;
-  }
-
-  /**
-   * Appends every sentence stored since the resource was last extended.
-   *
-   * Called from `prepare`, which the reader already re-runs on each completed
-   * sentence of a generation run. Playback therefore learns of a clip from its
-   * own read of what is stored, and still does not watch the job (ADR 0037).
-   */
-  private async extendSequence(): Promise<void> {
-    const sequence = this.sequence;
-    if (sequence === null || !sequence.timeline.open || this.extending !== null) {
-      return;
-    }
-    this.extending = this.appendStoredClips(sequence);
-    try {
-      await this.extending;
-    } finally {
-      this.extending = null;
-    }
-  }
-
-  private async appendStoredClips(sequence: LoadedSequence): Promise<void> {
-    const refs = this.refsSignal();
-    const playable = this.playableSignal();
-    // A current cache key can change while a resource is open, for example when
-    // a regenerated clip replaces an older fallback. Appending that clip would
-    // change the resource's source configuration, so it is sealed instead and
-    // what is already in it plays out.
-    const rekeyed = sequence.keys.some((key, offset) => {
-      const ref = refs[sequence.baseIndex + offset];
-      return ref === undefined || playable.get(ref.id)?.cacheKey !== key;
-    });
-    if (rekeyed) {
-      this.sealSequence();
-      return;
-    }
-
-    const available = this.availableSignal();
-    const pending: { readonly cacheKey: string }[] = [];
-    for (const ref of refs.slice(this.appendedLimitIndex() + 1)) {
-      const clip = playable.get(ref.id);
-      if (clip?.pace !== sequence.pace || !available.has(ref.id)) {
-        break;
-      }
-      pending.push({ cacheKey: clip.cacheKey });
-    }
-    if (pending.length === 0) {
-      const nextRef = refs[this.appendedLimitIndex() + 1];
-      const next = nextRef === undefined ? undefined : playable.get(nextRef.id);
-      if (next !== undefined && next.pace !== sequence.pace) {
-        this.sealSequence();
-      }
-      return;
-    }
-
-    const byKey = new Map<string, AudioSequenceClip>();
-    const clips: AudioSequenceClip[] = [];
-    for (const item of pending) {
-      let clip = byKey.get(item.cacheKey);
-      if (clip === undefined) {
-        const loaded = await this.enrichment.getAudioByCacheKey(item.cacheKey);
-        if (this.sequence !== sequence) {
-          return;
-        }
-        if (!loaded.ok || loaded.value === null || !isSequenceMimeType(loaded.value.mimeType)) {
-          // Nothing that can go into this resource. Sealing keeps what is in it
-          // playable and lets the element finish, rather than failing a session
-          // over a sentence it has not reached yet.
-          this.sealSequence();
-          return;
-        }
-        clip = { blob: loaded.value.blob, mimeType: loaded.value.mimeType };
-        byKey.set(item.cacheKey, clip);
-      }
-      clips.push(clip);
-    }
-
-    try {
-      const timeline = await this.player.extendSequence(clips);
-      if (this.sequence !== sequence) {
-        return;
-      }
-      sequence.timeline = timeline;
-      sequence.keys.push(...pending.map((item) => item.cacheKey));
-    } catch {
-      if (this.sequence === sequence) {
-        this.sealSequence();
-      }
-      return;
-    }
-    this.publishMediaPosition();
-    const nextRef = refs[this.appendedLimitIndex() + 1];
-    const next = nextRef === undefined ? undefined : playable.get(nextRef.id);
-    if (nextRef === undefined || (next !== undefined && next.pace !== sequence.pace)) {
-      this.sealSequence();
-    }
-  }
-
-  /** Declares the resource complete, so the element can reach its end. */
-  private sealSequence(): void {
-    const sequence = this.sequence;
-    if (sequence?.timeline.open !== true) {
-      return;
-    }
-    sequence.timeline = { ...sequence.timeline, open: false };
-    this.player.closeSequence();
   }
 
   /**
@@ -1309,11 +903,10 @@ export class AudioPlaybackStore {
    * follows reads on without a second Play.
    */
   private noteFrontierReached(): void {
-    const sequence = this.sequence;
-    if (sequence === null || !sequence.timeline.open || this.statusSignal() !== 'playing') {
+    if (!this.sequencer.open || this.statusSignal() !== 'playing') {
       return;
     }
-    const nextRef = this.refsSignal()[this.appendedLimitIndex() + 1];
+    const nextRef = this.catalogue.refs()[this.sequencer.appendedLimitIndex() + 1];
     if (nextRef === undefined) {
       return;
     }
@@ -1324,7 +917,7 @@ export class AudioPlaybackStore {
 
   /** The appended clip arrived and the element started itself again. */
   private noteFrontierPassed(): void {
-    if (this.sequence === null || this.statusSignal() !== 'waiting') {
+    if (!this.sequencer.loaded || this.statusSignal() !== 'waiting') {
       return;
     }
     this.pendingSignal.set(null);
@@ -1342,15 +935,15 @@ export class AudioPlaybackStore {
    */
   private async load(sentenceId: SentenceId, options?: LoadOptions): Promise<void> {
     const token = (this.loadToken += 1);
-    const position = this.refsSignal().findIndex((ref) => ref.id === sentenceId) + 1;
-    const playable = this.playableSignal().get(sentenceId);
+    const position = this.catalogue.positionOf(sentenceId);
+    const playable = this.catalogue.playable().get(sentenceId);
     if (playable === undefined) {
       this.stopWithFailure({ kind: 'missing-clip', position });
       return;
     }
     const cacheKey = playable.cacheKey;
 
-    this.sequence = null;
+    this.sequencer.release();
     this.loading = true;
     if (options?.keepStatus !== true) {
       this.statusSignal.set('loading');
@@ -1400,23 +993,9 @@ export class AudioPlaybackStore {
   }
 
   private followSequencePosition(): void {
-    const sequence = this.sequence;
-    if (sequence === null) {
-      return;
-    }
-    const timeline = sequence.timeline;
-    const elapsed = this.player.elapsed();
-    let index = 0;
-    let indexStart = 0;
-    for (const [candidate, start] of timeline.starts.entries()) {
-      if (candidate > 0 && start > elapsed) {
-        break;
-      }
-      index = candidate;
-      indexStart = start;
-    }
-    const ref = this.refsSignal()[sequence.baseIndex + index];
-    if (ref === undefined) {
+    const located = this.sequencer.locate(this.player.elapsed());
+    const ref = located === null ? undefined : this.catalogue.refs()[located.refIndex];
+    if (located === null || ref === undefined) {
       return;
     }
     if (ref.id !== this.currentSignal()) {
@@ -1424,7 +1003,7 @@ export class AudioPlaybackStore {
         this.player.pause();
         this.statusSignal.set('stepped');
         this.mediaSession.setPlaybackState('paused');
-        this.player.seek(indexStart);
+        this.player.seek(located.start);
         // Keep the cursor on the sentence that was actually heard. Continuing
         // advances from it to `ref`; moving the cursor here skipped `ref` on the
         // next press and made the player jump straight to the sentence after it.
@@ -1432,30 +1011,26 @@ export class AudioPlaybackStore {
         return;
       }
       this.currentSignal.set(ref.id);
-      this.publishMediaMetadata(sequence.baseIndex + index);
+      this.publishMediaMetadata(located.refIndex);
     }
     this.publishMediaPosition();
   }
 
   private seekSequenceTime(seconds: number): void {
-    const sequence = this.sequence;
-    if (sequence === null) {
+    const time = this.sequencer.clampTime(seconds);
+    if (time === null) {
       return;
     }
-    // Clamped to what the resource actually holds: a lock-screen scrub can name
-    // a position past the frontier or below audio that has been evicted.
-    this.player.seek(
-      Math.min(Math.max(seconds, sequence.timeline.floor), sequence.timeline.duration),
-    );
+    this.player.seek(time);
     this.followSequencePosition();
   }
 
   private publishMediaMetadata(index: number): void {
-    const readingTitle = mediaArtist(this.readingSignal()?.title ?? '');
+    const readingTitle = mediaArtist(this.catalogue.reading()?.title ?? '');
     this.mediaSession.setMetadata({
       title: readingTitle === '' ? 'Japanese story' : readingTitle,
       artist: 'Monosai',
-      album: `Sentence ${String(index + 1)} of ${String(this.refsSignal().length)}`,
+      album: `Sentence ${String(index + 1)} of ${String(this.catalogue.sentenceCount())}`,
     });
   }
 
@@ -1467,83 +1042,34 @@ export class AudioPlaybackStore {
    * about where the end is.
    */
   private publishMediaPosition(): void {
-    const timeline = this.sequence?.timeline;
-    if (timeline === undefined || timeline.duration <= 0) {
+    const timeline = this.sequencer.timeline;
+    if (timeline === null || timeline.duration <= 0) {
       this.mediaSession.setPositionState(null);
       return;
     }
     this.mediaSession.setPositionState({
       duration: timeline.duration,
-      playbackRate: this.rateForPace(this.sequence?.pace ?? 'baked'),
+      playbackRate: this.rateForPace(this.sequencer.pace ?? 'baked'),
       position: Math.min(Math.max(this.player.elapsed(), 0), timeline.duration),
     });
   }
 
   private loadedPace(): ClipPace {
-    if (this.sequence !== null) {
-      return this.sequence.pace;
+    const pace = this.sequencer.pace;
+    if (pace !== null) {
+      return pace;
     }
     const current = this.currentSignal();
-    return current === null ? 'baked' : (this.playableSignal().get(current)?.pace ?? 'baked');
+    return current === null ? 'baked' : (this.catalogue.playable().get(current)?.pace ?? 'baked');
   }
 
   private rateForPace(pace: ClipPace): number {
     return pace === 'playback' ? this.playbackRate() : 1;
   }
 
-  /**
-   * The index of the nearest sentence in `direction` that has a clip, or -1.
-   *
-   * A search rather than a neighbour check because generation can leave holes,
-   * and a hole must not be a wall: every later sentence that was made is still
-   * something the learner paid for and should be able to reach.
-   */
-  /**
-   * The sentence with a clip closest to one index, searching both ways.
-   *
-   * Ties go backwards, because a scrub that lands in a hole is aiming at the
-   * text around it and the sentence before the gap is the one that leads into
-   * what the learner pointed at.
-   */
-  private nearestAvailableIndex(index: number): number {
-    const refs = this.refsSignal();
-    const available = this.availableSignal();
-    for (let distance = 0; distance < refs.length; distance += 1) {
-      const before = index - distance;
-      const beforeRef = refs[before];
-      if (beforeRef !== undefined && available.has(beforeRef.id)) {
-        return before;
-      }
-      const after = index + distance;
-      const afterRef = refs[after];
-      if (afterRef !== undefined && available.has(afterRef.id)) {
-        return after;
-      }
-    }
-    return -1;
-  }
-
+  /** The nearest sentence in `direction` from the current one that has a clip, or -1. */
   private availableIndexFrom(direction: 1 | -1): number {
-    const current = this.currentSignal();
-    if (current === null) {
-      return -1;
-    }
-    const refs = this.refsSignal();
-    const available = this.availableSignal();
-    const from = refs.findIndex((ref) => ref.id === current);
-    if (from === -1) {
-      return -1;
-    }
-    for (
-      let index = from + direction, ref = refs[index];
-      ref !== undefined;
-      index += direction, ref = refs[index]
-    ) {
-      if (available.has(ref.id)) {
-        return index;
-      }
-    }
-    return -1;
+    return this.catalogue.availableIndexFrom(this.currentSignal(), direction);
   }
 
   private stopWithFailure(failure: PlaybackFailure): void {

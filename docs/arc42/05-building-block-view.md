@@ -140,6 +140,24 @@ The prompt keeps articulation and rate orthogonal: clearer speech never asks
 for extra pauses, and every pace preserves connected Japanese without inserted
 silence between words or morae.
 
+Playback is three units in `application/audio/`, split so that what is stored and how it is
+sequenced can be read without the transport around them. `AudioPlaybackStore` is the transport:
+status, the cursor, the mode, failure reporting, the platform media session, and the commands the
+learner presses. It alone decides what a stop, a pause, or a seam means. `ClipCatalogue`
+(`clip-catalogue.ts`) holds what is stored for the open reading — its sentences, the one clip each
+can be played from, and coverage kept apart from playability — and answers which sentence is next
+or nearest. It reads storage latest-wins, so a slower, older read never narrows a newer one, and it
+never touches the player. `ClipSequencer` (`clip-sequencer.ts`) owns the native resource a
+continuous reading is played from: it builds it from the run of clips that exist, appends each
+sentence as it is stored, seals it when nothing more can go in, and maps between the reading's
+sentences and the resource's timeline ([ADR 0045](../decisions/0045-a-reading-is-extended-while-it-is-generated.md)).
+Both are plain classes the store builds from narrow ports, so each is tested without the injector.
+A build or an append says what happened — built, superseded, played per sentence instead, failed —
+and the store turns that into status and failure; the sequencer asks the store only whether its
+load is still the one that counts. The WAV branches (a run of WAV may start a resource that is
+complete, never one that grows) sit in the sequencer and go with `audio/wav`
+([ADR 0070](../decisions/0070-gemini-speech-is-stored-compressed.md)).
+
 The three whole-reading job stores in `application/enrichment/` — translation, grammar, and
 audio — compose one `ReadingJobLifecycle` (`reading-job-lifecycle.ts`) rather than each carrying
 its own copy. It owns the published progress, the single run in flight that a second start joins,
