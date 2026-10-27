@@ -453,28 +453,14 @@ export class ReadingLevelPageComponent {
     void this.language.initialize();
     void this.profile.load();
 
+    // An effect because a route input is the only signal that a share arrived,
+    // and taking the file is a one-off command rather than a load.
     effect(() => {
       const marker = this.shared();
       if (marker === undefined) {
         return;
       }
       void this.consumeShare(marker, this.reason());
-    });
-
-    // The history is a read model of what has been committed, so it is reloaded
-    // whenever a refresh finishes rather than being patched in place.
-    effect(() => {
-      if (this.state().kind === 'complete') {
-        void this.history.load();
-      }
-    });
-
-    // A package import commits on its own, so the history it produced is
-    // reloaded the same way a refresh's is.
-    effect(() => {
-      if (this.packageImport.state().kind === 'complete') {
-        void this.history.load();
-      }
     });
 
     // A deep link names the half of the page the caller had in mind, so the

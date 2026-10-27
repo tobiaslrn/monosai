@@ -1,5 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CONTRACT_COLLECTION } from '../../../testing/anki-collection';
 import { FakeAnkiProvider } from '../../../testing/anki-fakes';
@@ -43,6 +44,10 @@ describe('SourcePageComponent', () => {
 
   beforeEach(async () => {
     beds = configureVocabularyTestBed();
+    // Removing a source ends on the words list, so that route has to exist.
+    TestBed.configureTestingModule({
+      providers: [provideRouter([{ path: 'reading-level', children: [] }])],
+    });
     TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, {
       useValue: () => new FakeAnkiProvider(CONTRACT_COLLECTION, { kind: 'desktop-connect' }),
     });
@@ -182,6 +187,7 @@ describe('SourcePageComponent', () => {
     await settle(fixture);
 
     expect(TestBed.inject(SourceMappingStore).sources()).toHaveLength(1);
+    expect(TestBed.inject(Router).url).toBe('/reading-level#words');
   });
 
   it('says so plainly when the source is gone rather than showing empty controls', async () => {

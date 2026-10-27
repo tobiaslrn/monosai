@@ -767,6 +767,9 @@ export class ReaderPageComponent {
   constructor() {
     this.geometry.connect({ bar: this.readerBar, title: this.pageTitle, content: this.content });
 
+    // An effect because the route input is the only trigger there is: opening is
+    // a one-off command that starts a load and resets the page's surfaces, not
+    // a read to derive.
     effect(() => {
       const nextReadingId = readingId(this.id());
       // Untracked, like every store call below it. An effect tracks the signals
@@ -780,24 +783,8 @@ export class ReaderPageComponent {
       });
     });
 
-    effect(() => {
-      const paragraphs = this.store.paragraphs();
-      const reading = this.store.reading();
-      if (reading !== null) {
-        // A local read of the stored aids for exactly the sentences now
-        // mounted. Nothing here reaches a provider: a missing aid is fetched
-        // only when the learner asks for it.
-        untracked(() => {
-          void this.aids.load(
-            reading,
-            paragraphs.flatMap((paragraph) =>
-              paragraph.sentences.map((sentence) => sentence.sentence),
-            ),
-          );
-        });
-      }
-    });
-
+    // An effect because the trigger is three job stores' progress and the
+    // response is a command on the reader's store; no one store owns both.
     effect(() => {
       // Translation, audio, and grammar jobs all write rows this page is
       // displaying, so a step by any of them is what tells the reader to
@@ -805,8 +792,7 @@ export class ReaderPageComponent {
       // takes is a reason to re-read, not only its start and end; one effect,
       // so steps from two jobs in the same tick are one re-read, not two.
       // Re-reading the reading row also refreshes the summaries the menu
-      // counts, and that in turn re-runs the aid load above for the mounted
-      // window.
+      // counts, and that in turn re-reads the aids for the mounted window.
       const translating = this.translationProgress().kind !== 'idle';
       const voicing = this.audio.progress().kind !== 'idle';
       const analysing = this.preparation.grammarRunning();
@@ -821,6 +807,8 @@ export class ReaderPageComponent {
       }
     });
 
+    // An effect because playback is application-wide and outlives this page, so
+    // it cannot watch this reader's reading and job; the page tells it.
     effect(() => {
       // Which clips exist, re-read whenever the reading changes and whenever
       // the audio job has written more. Two local reads: the player appears
@@ -837,6 +825,8 @@ export class ReaderPageComponent {
       }
     });
 
+    // An effect because whether a run is still coming belongs to the reader, not
+    // to playback, and releasing a wait is a command.
     effect(() => {
       // A session at the frontier is waiting for a clip the run is about to
       // store. Once the run has failed or been cancelled that clip is never

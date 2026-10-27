@@ -9,7 +9,7 @@ import {
 } from '../../../testing/vocabulary-fakes';
 import { ANKI_PROVIDER_FACTORY } from '../../application/shared/anki-tokens';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
-import { SourceStandingStore } from '../../application/vocabulary/source-standing.store';
+import { unmeasuredBasis } from '../../domain/anki/practice-evidence';
 import { vocabularySourceId } from '../../domain/shared/ids';
 import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
 import type { TextListVocabularySource } from '../../domain/vocabulary/vocabulary-source';
@@ -85,12 +85,19 @@ describe('SourceListComponent', () => {
   });
 
   it('says where a source came from and how much is in it', async () => {
-    await TestBed.inject(SourceStandingStore).load([TEXT_LIST.id]);
+    beds.mappings.caches.set(TEXT_LIST.id, {
+      sourceId: TEXT_LIST.id,
+      refreshedAt: TEXT_LIST.updatedAt,
+      entries: [{ rawValue: 'ねこ' }, { rawValue: '犬' }],
+      warnings: [],
+      practice: unmeasuredBasis(TEXT_LIST.updatedAt),
+    });
     const { element } = await render();
     const list = rows(element)[0]!;
 
     expect(list.textContent).toContain('My textbook');
     expect(list.textContent).toContain('Your list');
+    expect(list.textContent).toContain('2 words');
   });
 
   /**

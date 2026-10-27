@@ -108,9 +108,11 @@ export class PreparationStore {
   readonly hasWork = computed(() => this.queueSignal().length > 0);
 
   constructor() {
-    // A hold that clears is the only thing that restarts a parked lane on its
-    // own. Everything else that creates work calls `reconcile` explicitly,
-    // which is what keeps a launch from starting anything (ADR 0047).
+    // An effect because the hold clears through three other stores' state and the
+    // response is a command, the lane's pump, not a read to derive. A hold that
+    // clears is the only thing that restarts a parked lane on its own. Everything
+    // else that creates work calls `reconcile` explicitly, which is what keeps a
+    // launch from starting anything (ADR 0047).
     effect(() => {
       const clear =
         this.network.isOnline() &&

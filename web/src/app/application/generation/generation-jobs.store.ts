@@ -128,8 +128,10 @@ export class GenerationJobsStore {
       );
     });
 
-    // Watching every job from one place rather than one effect per job, so a
-    // job that ends can be cleaned up without an effect destroying itself.
+    // An effect because a job's save is visible only as its own store's state, and
+    // reporting it is a one-off command. Watching every job from one place rather
+    // than one effect per job, so a job that ends can be cleaned up without an
+    // effect destroying itself.
     effect(() => {
       for (const job of this.jobs()) {
         if (job.store.state().kind === 'saved' && !this.reportedSaves.has(job.id)) {

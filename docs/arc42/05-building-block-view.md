@@ -215,6 +215,11 @@ translate, analyse, synthesize, play — each of which re-reads the reading's su
 afterwards. What stays in the component is where a popover opens and which element it
 returns focus to.
 
+`SentenceAidsStore` follows `ReaderStore`: the stored aids for the mounted sentences are a
+`resource` over the reading row and the mounted paragraphs, so a new window, a re-read row, or a
+changed cache key reads them again and a read that was replaced before it landed is dropped. The
+page does not push the window into it.
+
 The page's own scrolling, measuring, and timing lives in units beside it in
 `features/reader/`, each provided by the page and each with a spec, so the
 component is composition and template:

@@ -146,6 +146,8 @@ export class AppShellComponent {
   });
 
   constructor() {
+    // An effect because a completed navigation is the only trigger, and offering a
+    // notice is a one-off command rather than state to derive.
     effect(() => {
       if (this.url().completed) {
         void this.alpha.offer();

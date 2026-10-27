@@ -1,13 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  effect,
-  inject,
-  input,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ManualSourceSyncStore } from '../../application/vocabulary/manual-source-sync.store';
@@ -428,16 +420,9 @@ export class SourcePageComponent {
   });
 
   constructor() {
-    void this.store.load().then(() => this.loadStandings());
+    this.standings.follow();
+    void this.store.load();
     void this.history.load();
-
-    // A package import commits on its own, so what the page shows is reloaded
-    // the same way a manual read's result is.
-    effect(() => {
-      if (this.packageImport.state().kind === 'complete') {
-        void this.reload();
-      }
-    });
   }
 
   protected included(source: VocabularySource): boolean {
@@ -593,7 +578,7 @@ export class SourcePageComponent {
   protected async syncNow(source: AnkiVocabularySource): Promise<void> {
     await this.manual.syncNow(source);
     if (this.manual.state().kind === 'complete') {
-      await this.reload();
+      await this.history.load();
     }
   }
 
@@ -610,7 +595,7 @@ export class SourcePageComponent {
 
   protected finishEdit(): void {
     this.editing.set(false);
-    void this.reload();
+    void this.history.load();
   }
 
   /**
@@ -644,7 +629,7 @@ export class SourcePageComponent {
       this.changeError.set(`${rebuilt.error.message} The previous vocabulary is unchanged.`);
       return;
     }
-    await this.reload();
+    await this.history.load();
     await this.router.navigate(['/reading-level'], { fragment: 'words' });
   }
 
@@ -653,7 +638,7 @@ export class SourcePageComponent {
     if (this.refresh.state().kind === 'complete') {
       this.changeError.set(null);
       this.localAnnouncement.set('Updated what this source reads.');
-      await this.reload();
+      await this.history.load();
     }
   }
 
@@ -665,16 +650,7 @@ export class SourcePageComponent {
     }
     this.changeError.set(null);
     this.localAnnouncement.set(successMessage);
-    await this.reload();
-  }
-
-  private async reload(): Promise<void> {
     await this.history.load();
-    await this.loadStandings();
-  }
-
-  private async loadStandings(): Promise<void> {
-    await this.standings.load(this.store.sources().map((source) => source.id));
   }
 }
 

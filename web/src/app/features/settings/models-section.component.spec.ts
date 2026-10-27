@@ -1,3 +1,4 @@
+import type { DebugElement } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
@@ -31,7 +32,7 @@ import type { SpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import type { ModelCapabilities, ModelCatalog } from '../../domain/ai/model-catalog';
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
-import { ok, type Result } from '../../domain/shared/result';
+import { err, ok, type Result } from '../../domain/shared/result';
 import { ModelPickerComponent } from './model-picker.component';
 import { ModelsSectionComponent } from './models-section.component';
 
@@ -672,6 +673,138 @@ describe('ModelsSectionComponent audio readiness', () => {
 
       // A browser that refuses autoplay leaves the panel exactly as it was.
       expect(readiness(element)).toBe('Ready');
+    });
+  });
+
+  describe('reading the catalogue', () => {
+    let listed: { readonly output: string; readonly signal: AbortSignal | undefined }[];
+    let offline: boolean;
+
+    beforeEach(() => {
+      listed = [];
+      offline = false;
+      TestBed.overrideProvider(MODEL_CATALOG, {
+        useValue: {
+          list: (output: 'text' | 'speech', signal?: AbortSignal) => {
+            listed.push({ output, signal });
+            return Promise.resolve(
+              offline
+                ? err(aiError('offline', 'model-discovery', 'You are offline.'))
+                : ok(output === 'speech' ? [SPEECH_MODEL] : []),
+            );
+          },
+        },
+      });
+    });
+
+    function pickers(fixture: ComponentFixture<ModelsSectionComponent>): readonly DebugElement[] {
+      return fixture.debugElement.queryAll(By.directive(ModelPickerComponent));
+    }
+
+    function failureOf(picker: DebugElement): string | null {
+      return (picker.componentInstance as ModelPickerComponent).failure();
+    }
+
+    async function settle(fixture: ComponentFixture<ModelsSectionComponent>): Promise<void> {
+      for (let pass = 0; pass < 3; pass += 1) {
+        fixture.detectChanges();
+        await fixture.whenStable();
+      }
+    }
+
+    it('reads nothing until a key can pay for it', async () => {
+      TestBed.overrideProvider(CREDENTIAL_REPOSITORY, {
+        useValue: new FakeCredentialRepository(null),
+      });
+      const { fixture } = await render();
+      await settle(fixture);
+
+      expect(listed).toHaveLength(0);
+    });
+
+    it('reads the text and speech lists once when a key is already saved', async () => {
+      await connect();
+      const { fixture } = await render();
+      await settle(fixture);
+      await settle(fixture);
+
+      expect(listed.map((call) => call.output).sort()).toEqual(['speech', 'text']);
+    });
+
+    it('reads again, and only then, when the key is replaced', async () => {
+      await connect();
+      const { fixture } = await render();
+      await settle(fixture);
+
+      await TestBed.inject(CredentialStore).save('sk-or-another');
+      await settle(fixture);
+
+      expect(listed).toHaveLength(4);
+    });
+
+    it('keeps the lists it has when the key is removed', async () => {
+      await connect();
+      const { fixture } = await render();
+      await settle(fixture);
+      const speechModels = (): readonly ModelCapabilities[] =>
+        (
+          fixture.componentInstance as unknown as { speechModels(): readonly ModelCapabilities[] }
+        ).speechModels();
+      expect(speechModels()).toEqual([SPEECH_MODEL]);
+
+      await TestBed.inject(CredentialStore).remove();
+      await settle(fixture);
+
+      expect(speechModels()).toEqual([SPEECH_MODEL]);
+      expect(listed).toHaveLength(2);
+    });
+
+    it('says why the lists are missing, and a picker being opened reads them again', async () => {
+      offline = true;
+      await connect();
+      const { fixture } = await render();
+      await settle(fixture);
+      expect(failureOf(pickers(fixture)[0]!)).toBe('You are offline.');
+
+      offline = false;
+      pickers(fixture)[0]!.triggerEventHandler('opened');
+      await settle(fixture);
+
+      expect(failureOf(pickers(fixture)[0]!)).toBeNull();
+      expect(listed).toHaveLength(4);
+    });
+
+    it('does not read again when a picker is opened and the lists are in hand', async () => {
+      await connect();
+      const { fixture } = await render();
+      await settle(fixture);
+
+      pickers(fixture)[0]!.triggerEventHandler('opened');
+      await settle(fixture);
+
+      expect(listed).toHaveLength(2);
+    });
+
+    it('says the lists could not be loaded when the read itself rejects', async () => {
+      TestBed.overrideProvider(MODEL_CATALOG, {
+        useValue: { list: () => Promise.reject(new Error('socket closed')) },
+      });
+      await connect();
+      const { fixture } = await render();
+      await settle(fixture);
+
+      expect(failureOf(pickers(fixture)[0]!)).toBe('Could not load models.');
+    });
+
+    it('cancels the read when the panel goes away', async () => {
+      await connect();
+      const { fixture } = await render();
+      fixture.detectChanges();
+
+      fixture.destroy();
+
+      expect(listed.length).toBeGreaterThan(0);
+      expect(listed.every((call) => call.signal?.aborted === true)).toBe(true);
     });
   });
 });
