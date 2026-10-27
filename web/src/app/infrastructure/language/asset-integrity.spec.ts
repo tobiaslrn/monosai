@@ -29,4 +29,13 @@ describe('digestHex', () => {
 
     expect(viaFallback).toBe(viaSubtle);
   });
+
+  it('falls back correctly for a length that needs an extra padding block', async () => {
+    const bytes = new Uint8Array(55).fill(97);
+    const viaSubtle = await digestHex(bytes);
+    vi.stubGlobal('crypto', {});
+
+    expect(await digestHex(bytes)).toBe(viaSubtle);
+    expect(viaSubtle).toBe('9f4390f8d30c2dd92ec9f095b65e2b9ae9b0a925a5258e241c9f1e910f734318');
+  });
 });

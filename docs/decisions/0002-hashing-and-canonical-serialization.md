@@ -3,6 +3,8 @@
 Date: 2026-08-17
 Status: Accepted
 
+The verification claim below is corrected by [ADR 0085](0085-sha256-padding-is-fixed.md).
+
 ## Context
 
 Cache keys, content hashes, and configuration fingerprints must use "a single

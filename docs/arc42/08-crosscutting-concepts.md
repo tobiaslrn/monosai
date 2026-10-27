@@ -186,7 +186,8 @@ made. If it does not match, the stored result is not shown as current.
 
 The key functions are pure and live in `domain/enrichment/`; hashing is over a canonical
 serialization, so the same inputs always produce the same key
-([ADR 0002](../decisions/0002-hashing-and-canonical-serialization.md)).
+([ADR 0002](../decisions/0002-hashing-and-canonical-serialization.md), padding corrected by
+[ADR 0085](../decisions/0085-sha256-padding-is-fixed.md)).
 
 Playback keeps current-settings coverage separate from playable coverage. If a current key is
 missing, the playback store selects the newest same-content row and marks it stale; coverage and

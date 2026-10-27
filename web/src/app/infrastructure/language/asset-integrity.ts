@@ -13,8 +13,9 @@ function toHex(bytes: Uint8Array): string {
  *
  * WebCrypto is used when the context allows it, because hashing a multi-megabyte
  * tokenizer runtime in JavaScript would add noticeable time to initialization.
- * The synchronous implementation stays as the fallback so integrity checks still
- * work on insecure origins, where `crypto.subtle` is unavailable.
+ * The synchronous implementation is a correct SHA-256 for every input length
+ * (ADR 0085) and stays as the fallback so integrity checks still work on
+ * insecure origins, where `crypto.subtle` is unavailable.
  */
 export async function digestHex(bytes: Uint8Array): Promise<string> {
   const subtle: SubtleCrypto | undefined = (globalThis as { crypto?: Crypto }).crypto?.subtle;

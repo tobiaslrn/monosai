@@ -145,3 +145,4 @@ files are already linked from code comments and from other records.
 | [0082](../decisions/0082-interaction-states-have-equal-specificity-and-a-fixed-order.md) | Interaction states have equal specificity and a fixed order                |
 | [0083](../decisions/0083-floating-panels-are-native-popovers.md)                         | Floating panels that hang from a control are native popovers               |
 | [0084](../decisions/0084-unchecked-index-and-exact-optional-properties.md)               | Unchecked index access and exact optional properties                       |
+| [0085](../decisions/0085-sha256-padding-is-fixed.md)                                     | The synchronous SHA-256 pads correctly                                     |
