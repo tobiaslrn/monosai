@@ -60,7 +60,7 @@ export class PlaybackNavigator {
       return;
     }
     this.transport.countNavigation();
-    this.transport.single = true;
+    this.transport.playOneSentence();
     this.transport.stopWaiting();
     await this.sequencer.load(sentenceId);
   }
@@ -77,7 +77,7 @@ export class PlaybackNavigator {
       return;
     }
     this.transport.countNavigation();
-    this.transport.single = false;
+    this.transport.readOn();
     this.transport.stopWaiting();
     if (this.sequencer.canUseTrack()) {
       await this.sequencer.loadTrack(sentenceId);
@@ -172,7 +172,7 @@ export class PlaybackNavigator {
       return;
     }
     this.transport.countNavigation();
-    this.transport.single = false;
+    this.transport.readOn();
     this.transport.stopWaiting();
     const time = this.sequencer.timeOf(target);
     if (time !== null) {
@@ -184,8 +184,9 @@ export class PlaybackNavigator {
         this.transport.enter('paused');
         return;
       }
-      this.transport.enter('playing');
+      this.transport.setStatus('playing');
       this.transport.publishMetadata(target);
+      this.transport.announce();
       this.sequencer.publishPosition();
       return;
     }
@@ -217,7 +218,7 @@ export class PlaybackNavigator {
       }
       return;
     }
-    if (this.transport.single) {
+    if (this.transport.readsOneSentence()) {
       this.sequencer.stop();
       return;
     }

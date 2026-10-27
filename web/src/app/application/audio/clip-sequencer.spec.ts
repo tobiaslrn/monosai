@@ -90,6 +90,12 @@ describe('ClipSequencer', () => {
       expect(bed.media.metadata.at(-1)?.album).toBe(`Sentence 2 of ${String(SENTENCE_COUNT)}`);
     });
 
+    it('names the sentence on the lock screen before saying it plays', async () => {
+      await bed.sequencer.load(orderedSentences(bed.draft)[0].id);
+
+      expect(bed.media.sequence).toEqual(['metadata', 'state:playing']);
+    });
+
     it('stops when the learner presses Stop', async () => {
       await bed.store.play();
 
@@ -205,6 +211,16 @@ describe('ClipSequencer', () => {
       await bed.store.previous();
       expect(bed.player.position).toBe(2);
       expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+    });
+
+    it('names the sentence on the lock screen before saying the track plays', async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+
+      await bed.sequencer.loadTrack(orderedSentences(bed.draft)[0].id);
+
+      expect(bed.media.sequence).toEqual(['metadata', 'state:playing']);
     });
 
     it('loads a complete WebM reading as one native sequence', async () => {

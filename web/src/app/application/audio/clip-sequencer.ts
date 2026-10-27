@@ -217,9 +217,10 @@ export class ClipSequencer {
     this.pauseRequested = false;
 
     this.transport.moveTo(sentenceId);
-    this.transport.enter(startPaused ? 'paused' : 'playing');
+    this.transport.setStatus(startPaused ? 'paused' : 'playing');
     this.transport.clearFailure();
     this.transport.publishMetadata(position - 1);
+    this.transport.announce();
   }
 
   /**
@@ -333,9 +334,10 @@ export class ClipSequencer {
     this.loading = false;
     this.pauseRequested = false;
     this.transport.moveTo(sentenceId);
-    this.transport.enter(startPaused ? 'paused' : 'playing');
+    this.transport.setStatus(startPaused ? 'paused' : 'playing');
     this.transport.clearFailure();
     this.transport.publishMetadata(startIndex);
+    this.transport.announce();
     this.publishPosition();
   }
 

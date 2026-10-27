@@ -74,6 +74,25 @@ describe('AudioPlaybackStore', () => {
       expect(bed.store.hasPlayableAudio()).toBe(false);
     });
 
+    it('reads on when the clip a waiting session stopped at is stored', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed, 2);
+      await bed.store.prepare(bed.reading);
+      await bed.store.play();
+      bed.player.finishClip();
+      await settle();
+      bed.player.finishClip();
+      await settle();
+      expect(bed.store.status()).toBe('waiting');
+
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+      expect(bed.player.played).toHaveLength(3);
+    });
+
     it('reads on from the frontier and grows an open track', async () => {
       await storeClips(bed, 2);
       await bed.store.prepare(bed.reading);

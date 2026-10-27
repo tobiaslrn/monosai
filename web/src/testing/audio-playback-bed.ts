@@ -263,6 +263,8 @@ export interface MediaSessionLedger {
   readonly metadata: MediaSessionMetadata[];
   readonly positionStates: (MediaPositionState | null)[];
   clears: number;
+  /** Metadata and playback-state calls interleaved, as `metadata` or `state:<state>`. */
+  readonly sequence: string[];
 }
 
 export interface PlaybackBed {
@@ -326,6 +328,7 @@ export async function configurePlaybackBed(): Promise<PlaybackBed> {
     metadata: [],
     positionStates: [],
     clears: 0,
+    sequence: [],
   };
   const mediaSession = {
     ...NO_MEDIA_SESSION,
@@ -334,9 +337,11 @@ export async function configurePlaybackBed(): Promise<PlaybackBed> {
     },
     setMetadata: (metadata: MediaSessionMetadata): void => {
       media.metadata.push(metadata);
+      media.sequence.push('metadata');
     },
     setPlaybackState: (state: 'none' | 'playing' | 'paused'): void => {
       media.playbackStates.push(state);
+      media.sequence.push(`state:${state}`);
     },
     setPositionState: (state: MediaPositionState | null): void => {
       media.positionStates.push(state);

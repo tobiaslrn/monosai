@@ -39,7 +39,7 @@ export class PlaybackResumption {
       return;
     }
     if (continueReading) {
-      this.transport.single = false;
+      this.transport.readOn();
     }
     try {
       await this.player.resume();
@@ -80,7 +80,7 @@ export class PlaybackResumption {
       return;
     }
     this.transport.countNavigation();
-    this.transport.single = false;
+    this.transport.readOn();
     this.transport.waitFor(refs[after].id);
   }
 

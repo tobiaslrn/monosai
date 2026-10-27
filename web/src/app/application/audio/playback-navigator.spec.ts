@@ -410,6 +410,20 @@ describe('PlaybackNavigator', () => {
       expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
     });
 
+    it('names the sentence a step lands on before saying it plays', async () => {
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+      await bed.navigator.play();
+      bed.media.sequence.length = 0;
+
+      await bed.navigator.step(1);
+
+      expect(bed.player.sequences).toHaveLength(1);
+      expect(bed.media.metadata.at(-1)?.album).toBe(`Sentence 2 of ${String(SENTENCE_COUNT)}`);
+      expect(bed.media.sequence).toEqual(['metadata', 'state:playing']);
+    });
+
     /**
      * Aiming is not playing. Dragging the track of a reading that is not being
      * read says where to start, and starting is still the press of Play.

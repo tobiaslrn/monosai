@@ -110,7 +110,7 @@ export class PlaybackTransportStore {
    * reading. Both use the one element, so the difference has to live here
    * rather than in either caller.
    */
-  single = false;
+  private single = false;
 
   readonly status = this.statusSignal.asReadonly();
   readonly currentSentenceId = this.currentSignal.asReadonly();
@@ -146,10 +146,41 @@ export class PlaybackTransportStore {
    * for the length of a read from storage.
    */
   enter(status: Exclude<PlaybackStatus, 'idle'>): void {
+    this.setStatus(status);
+    this.announce();
+  }
+
+  /**
+   * Moves a live session to `status` without telling the media session yet.
+   *
+   * For a clip that has just landed, whose metadata has to reach the lock
+   * screen before its playing state does; `announce` follows.
+   */
+  setStatus(status: Exclude<PlaybackStatus, 'idle'>): void {
     this.statusSignal.set(status);
-    if (status !== 'loading') {
+  }
+
+  /** Tells the media session the status the session is in. */
+  announce(): void {
+    const status = this.statusSignal();
+    if (status !== 'loading' && status !== 'idle') {
       this.mediaSession.setPlaybackState(status === 'playing' ? 'playing' : 'paused');
     }
+  }
+
+  /** Whether the session plays exactly one sentence and stops at its end. */
+  readsOneSentence(): boolean {
+    return this.single;
+  }
+
+  /** The popover Play: this sentence, and then stop. */
+  playOneSentence(): void {
+    this.single = true;
+  }
+
+  /** The player Play: read on through the reading. */
+  readOn(): void {
+    this.single = false;
   }
 
   /** Ends the session: no cursor, nothing waited for, and an empty lock screen. */

@@ -83,6 +83,27 @@ describe('PlaybackTransportStore', () => {
     expect(transport.status()).toBe('ended');
   });
 
+  it('can set a status first and announce it after the metadata', () => {
+    transport.setStatus('playing');
+    expect(states).toEqual([]);
+
+    transport.publishMetadata(0);
+    transport.announce();
+
+    expect(transport.status()).toBe('playing');
+    expect(states).toEqual(['playing']);
+  });
+
+  it('switches between one sentence and reading on', () => {
+    expect(transport.readsOneSentence()).toBe(false);
+
+    transport.playOneSentence();
+    expect(transport.readsOneSentence()).toBe(true);
+
+    transport.readOn();
+    expect(transport.readsOneSentence()).toBe(false);
+  });
+
   it('positions the cursor and the wait by sentence, one-based', () => {
     transport.moveTo(SENTENCES[1]);
     transport.waitFor(SENTENCES[2]);
@@ -99,7 +120,7 @@ describe('PlaybackTransportStore', () => {
   });
 
   it('resets to an empty lock screen', () => {
-    transport.single = true;
+    transport.playOneSentence();
     transport.moveTo(SENTENCES[0]);
     transport.waitFor(SENTENCES[1]);
 
@@ -108,7 +129,7 @@ describe('PlaybackTransportStore', () => {
     expect(transport.status()).toBe('idle');
     expect(transport.currentSentenceId()).toBeNull();
     expect(transport.pendingSentenceId()).toBeNull();
-    expect(transport.single).toBe(false);
+    expect(transport.readsOneSentence()).toBe(false);
     expect(states.at(-1)).toBe('none');
     expect(clears).toBe(1);
   });
