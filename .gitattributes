@@ -1,3 +1,7 @@
+# Checks compare files byte for byte (Prettier, the bridge contract, generated
+# resources), so every checkout keeps LF whatever core.autocrlf says.
+* text=auto eol=lf
+
 # The Gradle wrapper batch script relies on CRLF: cmd.exe mis-parses `goto`
 # targets in a LF-terminated batch file.
 gradlew.bat text eol=crlf
